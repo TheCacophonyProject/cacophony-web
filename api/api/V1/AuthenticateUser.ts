@@ -20,6 +20,7 @@ import middleware, { validateFields } from "../middleware";
 import auth, {
   generateAuthTokensForUser,
   getEmailConfirmationToken,
+  getPasswordResetToken,
   ttlTypes,
 } from "../auth";
 import { body } from "express-validator";
@@ -175,6 +176,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {String} refreshToken One-time use token to refresh JWT session token
    * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    */
   app.post(
     `${apiUrl}/refresh-session-token`,
@@ -249,6 +251,7 @@ export default function (app: Application, baseUrl: string) {
           token: `JWT ${token}`,
           expiry,
           refreshToken: refreshTokenSigned,
+          userData: mapUser(user),
         });
       } else {
         return next(new AuthorizationError("Invalid refresh token."));
@@ -367,12 +370,11 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         const user = response.locals.user as User;
-        // If we're using the new end-point, make sure the user has confirmed their email address.
         const isNewEndpoint = request.path.endsWith("reset-password");
         if (isNewEndpoint) {
-          // Do nothing
-          const token = "";
+          const token = getPasswordResetToken(user.id, (user as any).password);
           const sendingSuccess = await sendPasswordResetEmail(
+            request.headers.host,
             token,
             user.email
           );
@@ -405,7 +407,7 @@ export default function (app: Application, baseUrl: string) {
   ];
 
   /**
-   * @api {post} /api/v1/reset-password Sends an email to a user for resetting password
+   * @api {post} /api/v1/users/reset-password Sends an email to a user for resetting password
    * @apiName ResetPassword
    * @apiGroup Authentication
    * @apiBody {String} email Email address of user.
@@ -476,7 +478,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
-      const browseNextLaunchDate = new Date(); // Fix this to a specific date once browse-next goes live.
+      const browseNextLaunchDate = new Date(); // FIXME Fix this to a specific date once browse-next goes live.
       const user = await models.User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
@@ -489,23 +491,27 @@ export default function (app: Application, baseUrl: string) {
         if (!groups.length) {
           // If the user has no groups, re-send the welcome email,
           sendSuccess = await sendWelcomeEmailConfirmationEmail(
+            request.headers.host,
             emailConfirmationToken,
             user.email
           );
         } else if (user.createdAt < browseNextLaunchDate) {
           sendSuccess = await sendEmailConfirmationEmailLegacyUser(
+            request.headers.host,
             emailConfirmationToken,
             user.email
           );
         } else {
           // otherwise resend the email change confirmation email.
           sendSuccess = await sendChangedEmailConfirmationEmail(
+            request.headers.host,
             emailConfirmationToken,
             user.email
           );
         }
         if (!sendSuccess) {
           return serverErrorResponse(
+            request,
             response,
             new ClientError(
               `Failed to send email to ${user.email}`,
@@ -521,15 +527,19 @@ export default function (app: Application, baseUrl: string) {
   );
 
   if (config.server.loggerLevel === "debug") {
+    // NOTE: This exists only for cypress e2e browser tests, and is unauthenticated.
     app.post(
       `${apiUrl}/get-email-confirmation-token`,
-      extractJwtAuthorizedUser,
       validateFields([body("email")]),
-      async (request: Request, response: Response) => {
-        const token = getEmailConfirmationToken(
-          response.locals.requestUser.id,
-          request.body.email
-        );
+      async (request: Request, response: Response, next: NextFunction) => {
+        const email = request.body.email.toLowerCase();
+        const user = await models.User.findOne({
+          where: { email },
+        });
+        if (!user) {
+          return next(new AuthenticationError("No such user"));
+        }
+        const token = getEmailConfirmationToken(user.id, email);
         return successResponse(response, "Got email confirmation token", {
           token,
         });
@@ -594,7 +604,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  // NOTE: This is really just for is the user has lost the email that was sent
+  // NOTE: This is really just for if the user has lost the email that was sent
   // /api/v1/users/resend-email-confirmation-request (initial email confirmation request is sent as part of sign-up)
   // /api/v1/users/validate-email-confirmation-request (also needs browse endpoint)
   // /api/v1/users/refresh-session-token

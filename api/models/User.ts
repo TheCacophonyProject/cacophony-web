@@ -66,6 +66,8 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
   globalPermission: UserGlobalPermission;
   endUserAgreement: EndUserAgreementVersion;
   settings?: ApiUserSettings;
+  transferredBytes: number;
+  transferredItems: number;
 }
 
 export interface UserStatic extends ModelStaticCommon<User> {
@@ -112,6 +114,20 @@ export default function (
     endUserAgreement: {
       type: DataTypes.INTEGER,
     },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    transferredItems: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    transferredBytes: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
   };
 
   const options: ModelOptions = {
@@ -132,7 +148,11 @@ export default function (
 
   User.publicFields = Object.freeze(["id", "userName"]);
 
-  User.apiSettableFields = Object.freeze(["email", "endUserAgreement"]);
+  User.apiSettableFields = Object.freeze([
+    "email",
+    "endUserAgreement",
+    "settings",
+  ]);
   //---------------
   // CLASS METHODS
   //---------------
@@ -152,7 +172,7 @@ export default function (
     });
   };
 
-  User.getFromId = async function (id) {
+  User.getFromId = async function (id: UserId) {
     return this.findByPk(id);
   };
 

@@ -7,3 +7,14 @@ export const TagColours = [
   { background: "#a55eea", foreground: "light" },
   { background: "#ffcccc", foreground: "dark" },
 ];
+
+export const DEFAULT_TAGS = [
+  "possum",
+  "rodent",
+  "hedgehog",
+  "cat",
+  "bird",
+  "mustelid",
+  "false-positive",
+  "unidentified",
+];

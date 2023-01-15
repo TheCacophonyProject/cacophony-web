@@ -121,9 +121,6 @@ export default {
   methods: {
     mapName(name) {
       // Map 'unidentified' ai tag to 'unknown' user tag
-      if (name === "unidentified") {
-        return "unknown";
-      }
       return name;
     },
     imgSrc,

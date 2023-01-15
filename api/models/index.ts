@@ -36,6 +36,7 @@ import { ScheduleStatic } from "./Schedule";
 import { StationStatic } from "./Station";
 import { asyncLocalStorage } from "@/Globals";
 import { DeviceHistoryStatic } from "./DeviceHistory";
+import { GroupInvitesStatic } from "./GroupInvites";
 
 const basename = path.basename(module.filename);
 const dbConfig = config.database;
@@ -178,6 +179,7 @@ const AllModels = {
   Device: db.Device as DeviceStatic,
   Group: db.Group as GroupStatic,
   DeviceHistory: db.DeviceHistory as DeviceHistoryStatic,
+  GroupInvites: db.GroupInvites as GroupInvitesStatic,
   Station: db.Station as StationStatic,
   GroupUsers: db.GroupUsers as GroupUsersStatic,
   Schedule: db.Schedule as ScheduleStatic,

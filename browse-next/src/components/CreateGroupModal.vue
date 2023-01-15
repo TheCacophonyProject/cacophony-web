@@ -6,7 +6,7 @@ import {
   creatingNewGroup,
   urlNormalisedCurrentGroupName,
 } from "@models/LoggedInUser";
-import { computed, onBeforeMount, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import type { ErrorResult } from "@api/types";
 import { BModal } from "bootstrap-vue-3";
 import { formFieldInputText } from "@/utils";
@@ -23,11 +23,11 @@ const submittingCreateRequest = ref(false);
 const resetFormValues = () => {
   newGroupName.value = "";
   newGroupName.touched = false;
-  creatingNewGroup.visible = false;
+  creatingNewGroup.enabled = false;
 };
 
-onBeforeMount(() => {
-  creatingNewGroup.enabled = true;
+onMounted(() => {
+  creatingNewGroup.visible = true;
 });
 
 const router = useRouter();
@@ -43,6 +43,7 @@ const createNewGroup = async () => {
         groupName,
         id: createGroupResponse.result.groupId,
         admin: true,
+        owner: true,
       });
       UserGroups.value.sort((a, b) => a.groupName.localeCompare(b.groupName));
       switchCurrentGroup({ groupName, id: newGroupId });
@@ -50,7 +51,7 @@ const createNewGroup = async () => {
         name: "group-settings",
         params: { groupName: urlNormalisedCurrentGroupName.value },
       });
-      creatingNewGroup.enabled = false;
+      creatingNewGroup.visible = false;
     } else {
       // User groups doesn't exist?
       console.error("FIXME");
@@ -64,7 +65,7 @@ const createNewGroup = async () => {
 </script>
 <template>
   <b-modal
-    v-model="creatingNewGroup.enabled"
+    v-model="creatingNewGroup.visible"
     title="Create a new group"
     centered
     @hidden="resetFormValues"
@@ -73,8 +74,10 @@ const createNewGroup = async () => {
       <b-form-input
         type="text"
         placeholder="group name"
+        data-cy="new group name"
         v-model="newGroupName.value"
         @blur="newGroupName.touched = true"
+        @input="newGroupName.touched = true"
         :state="needsValidationAndIsValidGroupName"
         :disabled="submittingCreateRequest"
       />
@@ -87,19 +90,23 @@ const createNewGroup = async () => {
           (include macrons)
         </span>
       </b-form-invalid-feedback>
-      <template #footer>
-        <button
-          class="btn btn-primary"
-          type="submit"
-          :disabled="submittingCreateRequest"
-        >
-          <span
-            v-if="submittingCreateRequest"
-            class="spinner-border spinner-border-sm"
-          ></span>
-          {{ submittingCreateRequest ? "Creating group" : "Create group" }}
-        </button>
-      </template>
     </b-form>
+    <template #footer>
+      <button
+        class="btn btn-primary"
+        type="submit"
+        data-cy="create group button"
+        @click.stop.prevent="createNewGroup"
+        :disabled="
+          !needsValidationAndIsValidGroupName || submittingCreateRequest
+        "
+      >
+        <span
+          v-if="submittingCreateRequest"
+          class="spinner-border spinner-border-sm"
+        ></span>
+        {{ submittingCreateRequest ? "Creating group" : "Create group" }}
+      </button>
+    </template>
   </b-modal>
 </template>

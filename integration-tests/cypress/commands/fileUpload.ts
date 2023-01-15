@@ -3,8 +3,9 @@
 
 import { getCreds } from "./server";
 import { Interception } from "cypress/types/net-stubbing";
-import { RecordingType } from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingSet } from "@commands/types";
+import { RecordingId } from "@typedefs/api/common";
 //import {createTestCptvFile} from "cptv-decoder/encoder";
 
 export function sendMultipartMessage(
@@ -13,7 +14,8 @@ export function sendMultipartMessage(
   formData: any,
   waitOn: string,
   onComplete: any
-): Cypress.Chainable<Interception> {
+) {
+  //: Cypress.Chainable<Interception>
   const xhr = new XMLHttpRequest();
   xhr.open("POST", url);
   xhr.setRequestHeader("authorization", jwt);
@@ -30,7 +32,7 @@ export function sendMultipartMessage(
     onComplete(xhr);
   };
   xhr.send(formData);
-  return cy.wait(waitOn, { requestTimeout: 20000 });
+  //return cy.wait(waitOn, { requestTimeout: 20000 });
 }
 
 // Uploads a file and data in a multipart message
@@ -39,14 +41,19 @@ export function uploadFile(
   url: string,
   credName: string,
   fileName: string,
-  fileType: RecordingType,
-  data: ApiRecordingSet,
+  fileType: RecordingType | string,
+  data: ApiRecordingSet | Record<string, string | string[] | number>,
   waitOn: string,
   statusCode: number = 200
-): Cypress.Chainable<Interception> {
+): Cypress.Chainable<
+  Promise<{
+    recordingId: RecordingId;
+    messages: string[];
+    statusCode: HttpStatusCode;
+  }>
+> {
   const jwt = getCreds(credName).jwt;
-
-  const doUpload = (blob: Blob, data: any) => {
+  const doUpload = (blob: Blob, data: any, resolve) => {
     // Build up the form
     const formData = new FormData();
     formData.set("file", blob, fileName); //adding a file to the form
@@ -84,6 +91,11 @@ export function uploadFile(
             `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`
           ).to.equal(statusCode);
         }
+        Cypress.log({
+          name: "Upload complete",
+          message: xhr,
+        });
+        resolve({ ...xhr.response, statusCode });
       }
     );
   };
@@ -101,10 +113,20 @@ export function uploadFile(
   //   // Create a test cptv file from data.
   // } else if (fileType === RecordingType.Audio) {
   // Get file from fixtures as binary
-  return cy.fixture(fileName, "binary").then((fileBinary) => {
-    // File in binary format gets converted to blob so it can be sent as Form data
-    const blob = Cypress.Blob.binaryStringToBlob(fileBinary, "audio/mpeg");
-    return doUpload(blob, data);
+  const uploadPromise = new Promise((resolve, reject) => {
+    cy.fixture(fileName, "binary").then((fileBinary) => {
+      // File in binary format gets converted to blob so it can be sent as Form data
+      const blob = Cypress.Blob.binaryStringToBlob(fileBinary, "audio/mpeg");
+      doUpload(blob, data, resolve);
+    });
   });
+  return cy.wrap(uploadPromise) as Cypress.Chainable<
+    Promise<{
+      recordingId: RecordingId;
+      messages: string[];
+      statusCode: HttpStatusCode;
+    }>
+  >;
+
   // }
 }

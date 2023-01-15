@@ -48,7 +48,7 @@ function validateToken(
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
 > {
   return CacophonyApi.post(
-    "/validateToken",
+    "/api/v1/users/validate-reset-token",
     {
       token,
     },
@@ -62,7 +62,7 @@ function changePassword(
 ): Promise<
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
 > {
-  return CacophonyApi.patch("/api/v1/Users/changePassword", {
+  return CacophonyApi.patch("/api/v1/users/change-password", {
     token: token,
     password: newPassword,
   });
@@ -71,7 +71,7 @@ function changePassword(
 function list(): Promise<
   FetchResult<{ usersList: ApiLoggedInUserResponse[] }>
 > {
-  return CacophonyApi.get("/api/v1/listUsers");
+  return CacophonyApi.get("/api/v1/users/list-users");
 }
 
 interface UserData {

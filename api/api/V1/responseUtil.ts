@@ -19,9 +19,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "@log";
 import jwt from "jsonwebtoken";
 import config from "@config";
-import { Response } from "express";
+import { Response, Request } from "express";
 import { CACOPHONY_WEB_VERSION } from "@/Globals";
 import { HttpStatusCode } from "@/../types/api/consts";
+import { DecodedJWTToken, getVerifiedJWT } from "@api/auth";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
@@ -82,6 +83,14 @@ function validRecordingUpload(response, idOfRecording, message = "") {
 }
 
 function validAudiobaitUpload(response, id, message = "") {
+  send(response, {
+    statusCode: HttpStatusCode.Ok,
+    messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
+    id,
+  });
+}
+
+function validEventThumbnailUpload(response, id, message = "") {
   send(response, {
     statusCode: HttpStatusCode.Ok,
     messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
@@ -152,13 +161,27 @@ export const successResponse = (
   data: Record<string, any> = {}
 ) => someResponse(response, HttpStatusCode.Ok, messageOrData, data);
 
-export const serverErrorResponse = (
+export const serverErrorResponse = async (
+  request: Request,
   response: Response,
   error: Error,
   messageOrData: string | string[] | Record<string, any> = "",
   data: Record<string, any> = {}
 ) => {
-  log.error("SERVER ERROR: %s, %s", error.toString(), error.stack);
+  try {
+    // If the payload was too large, we'd still like to know who the request is from in the logs.
+    const token = getVerifiedJWT(request) as DecodedJWTToken;
+    log.error(
+      "SERVER ERROR: %s, %s, %s, %s(%s)",
+      error.toString(),
+      error.stack,
+      Object.entries(error).flat(),
+      token._type,
+      token.id
+    );
+  } catch (e) {
+    log.error("SERVER ERROR: %s, %s", error.toString(), error.stack);
+  }
   return someResponse(
     response,
     HttpStatusCode.ServerError,
@@ -176,5 +199,6 @@ export default {
   validDatapointUpdate,
   validRecordingUpload,
   validAudiobaitUpload,
+  validEventThumbnailUpload,
   validFileRequest,
 };

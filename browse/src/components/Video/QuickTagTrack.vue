@@ -265,7 +265,7 @@ export default defineComponent({
       const userTags = this.userTags.filter(
         (tag) =>
           ![
-            "unknown",
+            "unidentified",
             "false positive",
             ...this.animals,
             ...this.pinnedLabels,
@@ -310,7 +310,7 @@ export default defineComponent({
       if (other === DefaultLabels.falsePositiveLabel.value) {
         return "Mark as nothing or false positive (meaning there is no animal)";
       } else if (other === DefaultLabels.unknownLabel.value) {
-        return "Mark as unknown (meaning the type of animal is unclear)";
+        return "Mark as unidentified (meaning the type of animal is unclear)";
       }
     },
     hasUserTag(animal) {

@@ -13,7 +13,7 @@ import { decodeJWT, delayMs, delayMsThen } from "@/utils";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
-import { API_ROOT } from "@api/api";
+import { API_ROOT } from "@api/root";
 
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;
@@ -84,7 +84,7 @@ export const maybeRefreshStaleCredentials = async () => {
               refreshToken: refreshedUser.refreshToken,
               refreshingToken: false,
             });
-            refreshLocallyStoredUser();
+            refreshLocallyStoredUser(refreshedUser.userData);
           } else {
             // Refresh token wasn't found, so prompt login again
             forgetUserOnCurrentDevice();
@@ -110,6 +110,9 @@ export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
   retryCount: 0,
   control: false,
 });
+
+let hotReloaded = true;
+
 /**
  * Makes a request to the given url with default handling for cors and authentication.
  * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
@@ -139,11 +142,16 @@ export async function fetch<T>(
       console.warn("Aborted", e, request.signal);
     });
   }
-  if (userIsLoggedIn.value) {
+  if (userIsLoggedIn.value || hotReloaded) {
+    hotReloaded = false;
     await maybeRefreshStaleCredentials();
-    (request.headers as Record<string, string>).Authorization = (
-      CurrentUserCreds.value as LoggedInUserAuth
-    ).apiToken;
+    if (CurrentUserCreds.value) {
+      (request.headers as Record<string, string>).Authorization = (
+        CurrentUserCreds.value as LoggedInUserAuth
+      ).apiToken;
+    } else {
+      //debugger;
+    }
     //console.log("Requesting with token", CurrentUser.value?.apiToken);
   } else {
     // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
@@ -195,7 +203,8 @@ export async function fetch<T>(
       success: false,
     };
   }
-  if (response.status === 401) {
+  if (response.status === HttpStatusCode.AuthorizationError) {
+    debugger;
     forgetUserOnCurrentDevice();
     return {
       result: {

@@ -7,6 +7,7 @@ import { Device } from "@models/Device";
 import moment from "moment";
 import models from "../models";
 import { sendEmail } from "@/emails/sendEmail";
+import { Op } from "sequelize";
 
 async function getUserEvents(devices: Device[]) {
   const groupAdmins = {};
@@ -15,7 +16,7 @@ async function getUserEvents(devices: Device[]) {
   for (const device of devices) {
     if (!groupAdmins.hasOwnProperty(device.GroupId)) {
       const adminUsers = await device.Group.getUsers({
-        through: { where: { admin: true } },
+        through: { where: { admin: true, removedAt: { [Op.eq]: null } } },
       });
       groupAdmins[device.GroupId] = adminUsers;
     }

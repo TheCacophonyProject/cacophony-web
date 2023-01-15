@@ -9,6 +9,8 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 describe("Groups - add, check and remove users", () => {
   const ADMIN = true;
   const NOT_ADMIN = false;
+  const OWNER = true;
+  const NOT_OWNER = false;
   let expectedGuAdminUser: ApiGroupUserResponse;
   let expectedGuAdminUser2: ApiGroupUserResponse;
 
@@ -19,6 +21,7 @@ describe("Groups - add, check and remove users", () => {
           userName: getTestName("guGroupAdmin"),
           id: getCreds("guGroupAdmin").id,
           admin: ADMIN,
+          owner: OWNER,
         };
       }
     );
@@ -32,6 +35,7 @@ describe("Groups - add, check and remove users", () => {
         userName: getTestName("guGroup2Admin"),
         id: getCreds("guGroup2Admin").id,
         admin: ADMIN,
+        owner: OWNER,
       };
     });
 
@@ -44,6 +48,7 @@ describe("Groups - add, check and remove users", () => {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,
+      owner: NOT_OWNER,
     };
 
     cy.log("add the user");
@@ -67,6 +72,7 @@ describe("Groups - add, check and remove users", () => {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
+      owner: NOT_OWNER,
     };
 
     cy.log("add a non admin user (to run the test)");
@@ -78,6 +84,7 @@ describe("Groups - add, check and remove users", () => {
       "guTestUser2",
       "guGroup",
       NOT_ADMIN,
+      NOT_OWNER,
       true,
       HttpStatusCode.Forbidden
     );
@@ -115,6 +122,7 @@ describe("Groups - add, check and remove users", () => {
       "guTestUser2",
       "guGroup2",
       NOT_ADMIN,
+      NOT_OWNER,
       true,
       HttpStatusCode.Forbidden
     );
@@ -144,6 +152,7 @@ describe("Groups - add, check and remove users", () => {
       "IDontExist",
       "guGroup",
       NOT_ADMIN,
+      NOT_OWNER,
       true,
       HttpStatusCode.Forbidden
     );
@@ -176,6 +185,7 @@ describe("Groups - add, check and remove users", () => {
       "guTestUser",
       "ThisGroupDoesNotExist",
       NOT_ADMIN,
+      NOT_OWNER,
       true,
       HttpStatusCode.Forbidden
     );
@@ -217,11 +227,13 @@ describe("Groups - add, check and remove users", () => {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: NOT_ADMIN,
+      owner: NOT_OWNER,
     };
     const expectedTestAdminUser: ApiGroupUserResponse = {
       userName: getTestName("guTestUser"),
       id: getCreds("guTestUser").id,
       admin: ADMIN,
+      owner: NOT_OWNER,
     };
 
     cy.log("add the user");
@@ -248,6 +260,7 @@ describe("Groups - add, check and remove users", () => {
       "guTestUser2",
       "guGroup",
       ADMIN,
+      NOT_OWNER,
       true,
       HttpStatusCode.Forbidden
     );
@@ -261,7 +274,7 @@ describe("Groups - add, check and remove users", () => {
       expectedTestAdminUser,
     ]);
 
-    cy.log("Verfiy that user can now do admin tasks (by removing themselves)");
+    cy.log("Verify that user can now do admin tasks (by removing themselves)");
     cy.apiGroupUserRemove("guTestUser", "guTestUser", "guGroup");
   });
 });

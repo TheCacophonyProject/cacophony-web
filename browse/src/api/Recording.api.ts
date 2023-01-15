@@ -454,6 +454,11 @@ function addTrackTag(
   trackId: TrackId,
   tagJWT?: JwtToken<TrackTag>
 ): Promise<FetchResult<{ trackTagId: number; success: boolean }>> {
+  // Quick fix: New tags should use unidentified, not unknown
+  if (tag.what === "unknown") {
+    tag.what = "unidentified";
+  }
+
   const body: ApiTrackTagRequest = {
     what: tag.what,
     confidence: tag.confidence,

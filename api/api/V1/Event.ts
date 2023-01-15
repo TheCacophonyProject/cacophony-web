@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { expectedTypeOf, validateFields } from "../middleware";
 import models from "@models";
-import { QueryOptions } from "@models/Event";
+import { Event, QueryOptions } from "@models/Event";
 import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
@@ -28,6 +28,7 @@ import {
   extractJwtAuthorizedUser,
   fetchAuthorizedOptionalDeviceById,
   fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredEventById,
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
 } from "../extract-middleware";
 import { jsonSchemaOf } from "../schema-validation";
@@ -44,8 +45,13 @@ import {
 } from "../validation-middleware";
 import { ClientError } from "../customErrors";
 import { IsoFormattedDateString } from "@typedefs/api/common";
-import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
+import {
+  maybeUpdateDeviceHistory,
+  sendEventAlerts,
+} from "@api/V1/recordingUtil";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import util from "@api/V1/util";
+import { streamS3Object } from "@api/V1/signedUrl";
 
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
@@ -188,6 +194,102 @@ export default function (app: Application, baseUrl: string) {
     },
     // Finally, upload event(s)
     uploadEvent
+  );
+
+  /**
+   * @api {post} /api/v1/events/thumbnail Adds a new thumbnail + classification event.
+   * @apiName Post Device Thumbnail Classification
+   * @apiGroup Events
+   * @apiDescription Upload a thumbnail + classification from a connected edge device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {File} file Thumbnail for the recording.
+   * @apiBody {JSON} data JSON data in the format { what: string, conf: number, dateTimes?: IsoFormattedDateString[] }
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} success
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/thumbnail`,
+    extractJwtAuthorisedDevice,
+    util.multipartUpload(
+      "event-thumb",
+      async (
+        uploader,
+        uploadingDevice,
+        uploadingUser,
+        data,
+        key,
+        uploadedFileData,
+        locals
+      ): Promise<Event> => {
+        // New event
+        const description: EventDescription = {
+          type: "classifier",
+          details: {
+            fileKey: key,
+            ...data,
+          },
+        };
+        delete description.details.type;
+        delete description.details.filename;
+        delete description.details.dateTimes;
+        const detail = await models.DetailSnapshot.getOrCreateMatching(
+          description.type,
+          description.details
+        );
+        const dateTime =
+          (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
+          new Date().toISOString();
+        const event = await models.Event.create({
+          DeviceId: uploadingDevice.id,
+          EventDetailId: detail.id,
+          dateTime,
+        });
+        // TODO:
+        // await sendEventAlerts(data, uploadingDevice, dateTime, uploadedFileData);
+
+        return event;
+      }
+    )
+  );
+
+  /**
+   * @api {get} /api/v1/events/:id/thumbnail Return an event thumbnail given an event id.
+   * @apiName GetEventThumbnail
+   * @apiGroup Events
+   * @apiDescription Get an event thumbnail given an event id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/thumbnail`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredEventById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const event = response.locals.event;
+      if (event.EventDetail.type !== "classifier") {
+        return next(
+          new ClientError(
+            `Specified event was not of type 'thumbnail`,
+            HttpStatusCode.Forbidden
+          )
+        );
+      }
+      await streamS3Object(
+        request,
+        response,
+        event.EventDetail.details.fileKey,
+        `event-thumbnail-${event.id}.png`,
+        "image/png"
+      );
+    }
   );
 
   /**
@@ -490,6 +592,39 @@ export default function (app: Application, baseUrl: string) {
       });
       return successResponse(response, "Completed query.", {
         events,
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/events/:id Return an event given an event id.
+   * @apiName GetEventById
+   * @apiGroup Events
+   * @apiDescription Get an event given an event id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredEventById(param("id")),
+    async (request: Request, response: Response) => {
+      const event = response.locals.event;
+      const details = {
+        ...event.EventDetail.details,
+      };
+      delete details.fileKey;
+      return successResponse(response, "Got event", {
+        event: {
+          id: event.id,
+          details,
+          type: event.EventDetail.type,
+          dateTime: event.dateTime,
+        },
       });
     }
   );

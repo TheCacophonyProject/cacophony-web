@@ -19,11 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import { validateFields } from "../middleware";
 import models from "@models";
 import util from "./util";
-import { someResponse, successResponse } from "./responseUtil";
+import { successResponse } from "./responseUtil";
 import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
 import { param, query } from "express-validator";
-import { Application, NextFunction, request, Request, Response } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   extractJwtAuthorizedUserOrDevice,
@@ -34,9 +34,7 @@ import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware";
 import { AuthorizationError } from "@api/customErrors";
 import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
-import { ApiClassificationResponse } from "@typedefs/api/trackTag.d";
 import classification from "../../classifications/classification.json";
-import { HttpStatusCode } from "@/../types/api/consts";
 import { User } from "@models/User";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
@@ -179,14 +177,22 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredFileById(param("id")),
     async (request: Request, response: Response) => {
       const file = response.locals.file;
+      const user = response.locals.requestUser;
+      const device = response.locals.requestDevice;
       const downloadFileData = {
         _type: "fileDownload",
         key: file.fileKey,
       };
+      if (user) {
+        (downloadFileData as any).userId = user.id;
+      } else if (device) {
+        (downloadFileData as any).deviceId = device.id;
+      }
 
       return successResponse(response, "", {
         file: mapAudiobaitFile(file),
-        fileSize: await util.getS3ObjectFileSize(file.fileKey),
+        fileSize:
+          file.fileSize || (await util.getS3ObjectFileSize(file.fileKey)),
         jwt: jsonwebtoken.sign(downloadFileData, config.server.passportSecret, {
           expiresIn: 60 * 10,
         }),

@@ -25,17 +25,23 @@ export type DeviceHistorySetBy =
   | "register"
   | "re-register";
 
+export interface DeviceHistorySettings {
+  referenceImage?: string; // S3 Key for a device reference image
+  maskPolygons: { points: [number, number]; exclude?: boolean }[];
+}
+
 export interface DeviceHistory
   extends Sequelize.Model,
     ModelCommon<DeviceHistory> {
   DeviceId: DeviceId;
   GroupId: GroupId;
-  StationId: StationId;
+  stationId?: StationId;
   location: LatLng;
   fromDateTime: Date;
   saltId: number;
   uuid: number;
   setBy: DeviceHistorySetBy;
+  settings?: DeviceHistorySettings;
 }
 
 export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {}
@@ -76,6 +82,11 @@ export default function (
     },
     stationId: {
       type: DataTypes.INTEGER,
+    },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
     },
   };
 

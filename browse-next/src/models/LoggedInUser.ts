@@ -7,11 +7,20 @@ import type { ErrorResult, JwtTokenPayload } from "@api/types";
 import { computed, reactive, ref } from "vue";
 import { login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
-import type { ApiGroupResponse } from "@typedefs/api/group";
+import type {
+  ApiGroupResponse,
+  ApiGroupSettings,
+  ApiGroupUserSettings,
+} from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseGroupName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
+import {
+  getGroups,
+  saveGroupSettings,
+  saveGroupUserSettings,
+} from "@api/Group";
 
 export interface LoggedInUserAuth {
   apiToken: string;
@@ -29,6 +38,24 @@ export interface PendingRequest {
 export const CurrentUserCreds: Ref<LoggedInUserAuth | null> = ref(null);
 export const CurrentUser: Ref<LoggedInUser | null> = ref(null);
 export const UserGroups: Ref<ApiGroupResponse[] | null> = ref(null);
+
+export const nonPendingUserGroups = computed<ApiGroupResponse[]>(() => {
+  if (UserGroups.value === null) {
+    return [];
+  }
+  return UserGroups.value.filter((group) => group.pending === undefined);
+});
+
+export const pendingUserGroups = computed<ApiGroupResponse[]>(() => {
+  if (UserGroups.value === null) {
+    return [];
+  }
+  return UserGroups.value.filter((group) => group.pending !== undefined);
+});
+export const userHasPendingGroups = computed<boolean>(() => {
+  return pendingUserGroups.value.length !== 0;
+});
+
 // TODO - Test opening a whole lot of tabs, print who wins the tokenRefresh race in the page title
 
 export const userIsLoggedIn = computed<boolean>({
@@ -41,12 +68,42 @@ export const userIsLoggedIn = computed<boolean>({
 });
 
 export const userHasGroups = computed<boolean>(() => {
-  return UserGroups.value !== null && UserGroups.value.length !== 0;
+  return nonPendingUserGroups.value.length !== 0;
+});
+
+export const userHasGroupsIncludingPending = computed<boolean>(() => {
+  return UserGroups.value !== null && UserGroups.value?.length !== 0;
 });
 
 export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
   CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
   persistCreds(CurrentUserCreds.value);
+};
+
+export const persistUserGroupSettings = async (
+  userSettings: ApiGroupUserSettings
+) => {
+  if (currentSelectedGroup.value) {
+    const localGroupToUpdate = nonPendingUserGroups.value.find(
+      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+    );
+    if (localGroupToUpdate) {
+      localGroupToUpdate.userSettings = userSettings;
+      await saveGroupUserSettings(localGroupToUpdate.id, userSettings);
+    }
+  }
+};
+
+export const persistGroupSettings = async (settings: ApiGroupSettings) => {
+  if (currentSelectedGroup.value) {
+    const localGroupToUpdate = nonPendingUserGroups.value.find(
+      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+    );
+    if (localGroupToUpdate) {
+      localGroupToUpdate.settings = settings;
+      await saveGroupSettings(localGroupToUpdate.id, settings);
+    }
+  }
 };
 
 export const setLoggedInUserData = (user: LoggedInUser) => {
@@ -81,7 +138,7 @@ export const login = async (
   userPassword: string,
   signInInProgress: PendingRequest
 ) => {
-  const emailAddress = userEmailAddress.trim();
+  const emailAddress = userEmailAddress.trim().toLowerCase();
   const password = userPassword.trim();
   signInInProgress.requestPending = true;
   const loggedInUserResponse = await userLogin(emailAddress, password);
@@ -102,7 +159,6 @@ export const login = async (
 };
 
 export const persistUser = (currentUser: LoggedInUser) => {
-  // NOTE: These credentials have already been validated.
   window.localStorage.setItem(
     "saved-login-user-data",
     JSON.stringify(currentUser)
@@ -137,7 +193,15 @@ export const refreshLocallyStoredUserActivation = (): boolean => {
   return false;
 };
 
-export const refreshLocallyStoredUser = (): boolean => {
+export const refreshLocallyStoredUser = (
+  refreshedUserData?: ApiLoggedInUserResponse
+): boolean => {
+  if (refreshedUserData) {
+    setLoggedInUserData({
+      ...refreshedUserData,
+    });
+    return true;
+  }
   const rememberedCredentials = window.localStorage.getItem(
     "saved-login-user-data"
   );
@@ -162,13 +226,12 @@ export const refreshLocallyStoredUser = (): boolean => {
 };
 
 const refreshCredentials = async () => {
-  // FIXME - Should also load current user here.
-
   // NOTE: Because this can be shared between browser windows/tabs,
   //  always pull out the localStorage version before refreshing
   const rememberedCredentials = window.localStorage.getItem(
     "saved-login-credentials"
   );
+
   if (rememberedCredentials) {
     console.warn("-- Resuming from saved credentials");
     let currentUserCreds;
@@ -205,6 +268,7 @@ export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
   window.localStorage.removeItem("saved-login-user-data");
+  UserGroups.value = null;
   userIsLoggedIn.value = false;
 };
 
@@ -247,6 +311,8 @@ export const euaIsOutOfDate = computed<boolean>(() => {
   );
 });
 
+export const showUnimplementedModal = ref<boolean>(false);
+
 export const currentUserSettings = computed<ApiUserSettings | false>(() => {
   if (userIsLoggedIn.value) {
     return (CurrentUser.value as LoggedInUser).settings || false;
@@ -254,45 +320,53 @@ export const currentUserSettings = computed<ApiUserSettings | false>(() => {
   return false;
 });
 
-export type SelectedGroup = { groupName: string; id: GroupId; admin?: boolean };
+export type SelectedGroup = {
+  groupName: string;
+  id: GroupId;
+  admin?: boolean;
+  settings?: ApiGroupSettings;
+  userSettings?: ApiGroupUserSettings;
+};
 export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
-    if (UserGroups.value && UserGroups.value?.length === 0) {
+    if (nonPendingUserGroups.value.length === 0) {
       return false;
     }
     if (
-      UserGroups.value &&
-      UserGroups.value?.length !== 0 &&
+      currentUserSettings.value &&
       currentUserSettings.value.currentSelectedGroup
     ) {
       const potentialGroupId =
         currentUserSettings.value.currentSelectedGroup.id;
-      const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
+      const matchedGroup = nonPendingUserGroups.value.find(
         ({ id }) => id === potentialGroupId
       );
       if (!matchedGroup) {
         return false;
       }
+      return {
+        id: matchedGroup.id,
+        groupName: matchedGroup.groupName,
+        settings: matchedGroup.settings,
+        userSettings: matchedGroup.userSettings,
+        admin: matchedGroup.admin,
+        owner: matchedGroup.owner,
+      };
     }
-
-    return (
-      currentUserSettings.value.currentSelectedGroup ||
-      (UserGroups.value &&
-        UserGroups.value.length !== 0 && {
-          id: UserGroups.value[0].id,
-          groupName: UserGroups.value[0].groupName,
-        }) ||
-      false
-    );
   }
-  return (
-    (UserGroups.value &&
-      UserGroups.value?.length !== 0 && {
-        id: UserGroups.value[0].id,
-        groupName: UserGroups.value[0].groupName,
-      }) ||
-    false
-  );
+  if (nonPendingUserGroups.value.length !== 0) {
+    const { id, groupName, settings, userSettings, admin, owner } =
+      nonPendingUserGroups.value[0];
+    return {
+      id,
+      groupName,
+      settings,
+      userSettings,
+      admin,
+      owner,
+    };
+  }
+  return false;
 });
 
 export const userIsAdminForCurrentSelectedGroup = computed<boolean>(() => {
@@ -318,7 +392,7 @@ export const shouldViewAsSuperUser = computed<boolean>(() => {
   return false;
 });
 
-// TODO - If viewing other user as super user, return appropriate naem
+// TODO - If viewing other user as super user, return appropriate name
 export const userDisplayName = computed<string>(() => {
   if (userIsLoggedIn.value) {
     return CurrentUser.value?.userName || "";
@@ -345,11 +419,26 @@ export const isResumingSession = ref(false);
 export const isLoggingInAutomatically = ref(false);
 export const isFetchingGroups = ref(false);
 
+export const refreshUserGroups = async () => {
+  // Grab the users' groups, and select the first one.
+  isFetchingGroups.value = true;
+  console.warn("Fetching user groups");
+  const NO_ABORT = false;
+  const groupsResponse = await getGroups(NO_ABORT);
+  if (groupsResponse.success) {
+    UserGroups.value = reactive(groupsResponse.result.groups);
+    //console.warn("Fetched user groups", currentSelectedGroup.value, JSON.stringify(UserGroups.value));
+  }
+  isFetchingGroups.value = false;
+  return groupsResponse;
+};
+
 // Global modal control
-export const creatingNewGroup = reactive({
-  enabled: false,
-  visible: false,
-});
+export const creatingNewGroup = reactive({ enabled: false, visible: false });
+export const showEUAOutOfDate = computed<{
+  enabled: boolean;
+  visible: boolean;
+}>(() => ({ enabled: euaIsOutOfDate.value, visible: false }));
 export const joiningNewGroup = reactive({ enabled: false, visible: false });
 export const showSwitchGroup = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
@@ -359,9 +448,16 @@ const windowDimensions = useWindowSize();
 export const isWideScreen = computed<boolean>(() => {
   return windowDimensions.width.value > 1650;
 });
+export const isSmallScreen = computed<boolean>(() => {
+  return windowDimensions.width.value < 576;
+});
 
 export const sideNavIsPinned = computed<boolean>(() => {
   return pinSideNav.value || isWideScreen.value;
+});
+
+export const showSideNavBg = computed<boolean>(() => {
+  return pinSideNav.value && isSmallScreen.value;
 });
 
 export const rafFps = ref(60);

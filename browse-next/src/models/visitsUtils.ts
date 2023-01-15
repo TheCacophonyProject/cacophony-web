@@ -68,10 +68,19 @@ export const visitsBySpecies = (
 export const visitsCountBySpecies = (
   visits: ApiVisitResponse[]
 ): [string, number][] =>
-  visitsBySpecies(visits).map(([classification, visits]) => [
-    classification,
-    visits.length,
-  ]);
+  (
+    visitsBySpecies(visits).map(([classification, visits]) => [
+      classification,
+      visits.length,
+    ]) as [string, number][]
+  ).sort((a, b) => {
+    // Sort by count and break ties by name alphabetically
+    const order = b[1] - a[1];
+    if (order === 0) {
+      return a[0] > b[0] ? 1 : -1;
+    }
+    return order;
+  });
 
 export const eventsAreNocturnalOnlyAtLocation = (
   eventDates: Date[],

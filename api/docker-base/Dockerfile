@@ -37,7 +37,7 @@ RUN curl --location --fail --silent --show-error https://dl.minio.io/client/mc/r
 RUN chmod +x mc
 
 #install node
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 RUN apt-get install -y nodejs
 
 # install packages - this still has to be done each time because of updates but doing it

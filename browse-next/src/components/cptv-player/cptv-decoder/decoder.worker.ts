@@ -15,12 +15,6 @@ class Unlocker {
   }
 }
 
-export let API_ROOT = import.meta.env.VITE_API;
-if (API_ROOT === "CURRENT_HOST") {
-  // In production, use whatever the current host is, since it should be proxying the api
-  API_ROOT = "";
-}
-
 class CptvDecoderInterface {
   private framesRead = 0;
   private locked = false;
@@ -37,6 +31,7 @@ class CptvDecoderInterface {
     this.framesRead = 0;
     this.locked = false;
     this.consumed = false;
+    this.inited = false;
     this.prevFrameHeader = null;
     this.playerContext && this.playerContext.ptr && this.playerContext.free();
     this.reader && this.reader.cancel();
@@ -52,6 +47,7 @@ class CptvDecoderInterface {
   async initWithRecordingIdAndSize(
     id: RecordingId,
     apiToken: string,
+    apiRoot: string,
     size?: number
   ): Promise<boolean | string> {
     this.free();
@@ -70,7 +66,7 @@ class CptvDecoderInterface {
       };
 
       this.response = await fetch(
-        `${API_ROOT}/api/v1/recordings/raw/${id}`,
+        `${apiRoot}/api/v1/recordings/raw/${id}`,
         request as RequestInit
       );
       if (this.response.status === 200) {
@@ -159,6 +155,9 @@ class CptvDecoderInterface {
   }
 
   async fetchNextFrame() {
+    if (!this.inited) {
+      return null;
+    }
     if (!this.reader) {
       console.warn("You need to initialise the player with a CPTV file stream");
       return null;
@@ -353,6 +352,7 @@ self.addEventListener("message", async ({ data }) => {
         const result = await player.initWithRecordingIdAndSize(
           data.id,
           data.apiToken,
+          data.apiRoot,
           data.size
         );
         self.postMessage({ type: data.type, data: result });

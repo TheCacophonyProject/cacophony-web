@@ -22,8 +22,11 @@ import {
   urlNormalisedCurrentGroupName,
   rafFps,
   pinSideNav,
+  showSideNavBg,
   isWideScreen,
   sideNavIsPinned,
+  isSmallScreen,
+  showUnimplementedModal,
 } from "@/models/LoggedInUser";
 import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
 import {
@@ -32,10 +35,12 @@ import {
   onBeforeMount,
   onMounted,
   ref,
+  watch,
 } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
-import JoinExistingGroupModal from "@/components/JoinExistingGroupModal.vue";
+
+const globalSideNav = ref<HTMLDivElement>();
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
@@ -43,6 +48,10 @@ const BlockingUserActionRequiredModal = defineAsyncComponent(
 
 const CreateGroupModal = defineAsyncComponent(
   () => import("@/components/CreateGroupModal.vue")
+);
+
+const JoinExistingGroupModal = defineAsyncComponent(
+  () => import("@/components/JoinExistingGroupModal.vue")
 );
 
 const _userIsSuperAdmin = false;
@@ -102,22 +111,49 @@ const pollFrameTimes = () => {
   }
 };
 
+const hideNavBg = ref<boolean>(true);
+
+watch(pinSideNav, (next) => {
+  if (!next && isSmallScreen.value) {
+    setTimeout(() => {
+      hideNavBg.value = true;
+    }, 300);
+  } else if (next && isSmallScreen.value) {
+    hideNavBg.value = false;
+  }
+});
 onMounted(() => {
   // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
   setTimeout(pollFrameTimes, 1000);
+  window.addEventListener("click", (e: MouseEvent) => {
+    const navBounds = globalSideNav.value?.getBoundingClientRect();
+    if (navBounds && e.clientX > navBounds?.right && pinSideNav.value) {
+      pinSideNav.value = false;
+    }
+  });
 });
 </script>
 <template>
   <div class="debug">Logged in? {{ userIsLoggedIn }}</div>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal id="network-issue-modal" />
+  <b-modal
+    id="unimplemented-modal"
+    v-model="showUnimplementedModal"
+    centered
+    ok-only
+    title="Unimplemented feature"
+    hide-backdrop
+  >
+    <div>Sorry, this feature is not yet implemented.</div>
+  </b-modal>
   <switch-groups-modal
-    v-if="showSwitchGroup.visible"
+    v-if="showSwitchGroup.enabled"
     id="switch-groups-modal"
   />
-  <create-group-modal v-if="creatingNewGroup.visible" id="create-group-modal" />
+  <create-group-modal v-if="creatingNewGroup.enabled" id="create-group-modal" />
   <join-existing-group-modal
-    v-if="joiningNewGroup.visible"
+    v-if="joiningNewGroup.enabled"
     id="join-group-modal"
   />
   <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
@@ -125,7 +161,12 @@ onMounted(() => {
     class="justify-content-center align-items-center d-flex"
     v-if="isLoggingInAutomatically || isFetchingGroups"
   >
-    <h1 class="h3"><b-spinner /> Signing in...</h1>
+    <div
+      class="d-flex flex-column align-items-center justify-content-center user-select-none"
+    >
+      <b-spinner variant="secondary" />
+      <span class="h3 d-block mt-3"> Signing in...</span>
+    </div>
   </main>
   <main
     id="main-wrapper"
@@ -134,10 +175,16 @@ onMounted(() => {
       'logged-in',
       { 'has-git-info-bar': hasGitReleaseInfoBar },
     ]"
-    v-else-if="userIsLoggedIn && userHasGroups && userHasConfirmedEmailAddress"
+    v-else-if="
+      userIsLoggedIn &&
+      userHasConfirmedEmailAddress &&
+      userHasGroups &&
+      !route.meta.nonMainView
+    "
   >
     <nav
       id="global-side-nav"
+      ref="globalSideNav"
       :class="[
         'd-flex',
         'flex-column',
@@ -169,7 +216,7 @@ onMounted(() => {
           <button
             class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
             v-if="userHasMultipleGroups"
-            @click="showSwitchGroup.visible = true"
+            @click="() => (showSwitchGroup.enabled = true)"
           >
             {{ currentSelectedGroup.groupName }}
             <span class="switch-label figure ms-1"
@@ -201,7 +248,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="creatingNewGroup.visible = true"
+                  @click.stop.prevent="creatingNewGroup.enabled = true"
                 >
                   Create a new group
                 </button>
@@ -210,7 +257,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="joiningNewGroup.visible = true"
+                  @click.stop.prevent="joiningNewGroup.enabled = true"
                 >
                   Join an existing group
                 </button>
@@ -379,7 +426,8 @@ onMounted(() => {
       <div class="border-top d-flex">
         <router-link
           :to="{ name: 'user-settings' }"
-          class="d-flex py-3 text-decoration-none flex-fill"
+          class="d-flex py-3 text-decoration-none flex-fill align-items-center flex-row"
+          data-cy="user settings nav button"
         >
           <span class="nav-icon-wrapper">
             <span class="icon-alert-wrapper">
@@ -398,10 +446,11 @@ onMounted(() => {
               </svg>
             </span>
           </span>
-          <span v-html="currentUserName"></span>
+          <span v-html="currentUserName" class="text-nowrap"></span>
         </router-link>
         <router-link
           :to="{ name: 'sign-out' }"
+          data-cy="sign out link"
           class="d-block py-3 text-decoration-none border-start"
         >
           <span class="nav-icon-wrapper">
@@ -410,18 +459,22 @@ onMounted(() => {
         </router-link>
       </div>
     </nav>
+    <div
+      class="nav-bg"
+      :class="{ visible: showSideNavBg, hidden: hideNavBg }"
+    ></div>
     <section id="main-content" :class="{ 'offset-content': isWideScreen }">
       <div class="container-xxl py-0">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
         <div class="d-flex flex-column router-view">
-          <router-view v-if="!route.meta.nonMainView" />
+          <router-view />
         </div>
       </div>
     </section>
   </main>
   <main
-    v-else
+    v-else-if="route.meta.nonMainView"
     :class="[
       userIsLoggedIn && (!userHasGroups || !userHasConfirmedEmailAddress)
         ? 'account-setup'
@@ -435,7 +488,7 @@ onMounted(() => {
     ]"
   >
     <!--  When logging out, the existing router view gets re-mounted in here, which we don't want.  -->
-    <router-view v-if="route.meta.nonMainView" />
+    <router-view />
   </main>
 </template>
 
@@ -469,55 +522,26 @@ onMounted(() => {
   --bs-btn-focus-border-color: transparent;
   --bs-btn-active-border-color: transparent;
 }
-
-.fs-1 {
-  font-size: calc(var(--bs-body-font-size) * 2.5);
+#unimplemented-modal {
+  z-index: 20000;
 }
-.fs-2 {
-  font-size: calc(var(--bs-body-font-size) * 2);
-}
-.fs-3 {
-  font-size: calc(var(--bs-body-font-size) * 1.75);
-}
-.fs-4 {
-  font-size: calc(var(--bs-body-font-size) * 1.5);
-}
-.fs-5 {
-  font-size: calc(var(--bs-body-font-size) * 1.25);
-}
-.fs-6 {
-  font-size: calc(var(--bs-body-font-size) * 1);
-}
-.fw-bold {
-  font-weight: 500 !important;
-}
-//.fs-7 {
-//  font-size: calc(var(--bs-body-font-size) * 0.9375); // 14px
-//}
-.fs-7 {
-  font-size: calc(var(--bs-body-font-size) * 0.8125); // 13px
-}
-.fs-8 {
-  font-size: calc(var(--bs-body-font-size) * 0.75); // 12px
-}
-.fs-9 {
-  font-size: calc(var(--bs-body-font-size) * 0.625); // 10px
-}
+@import "./assets/font-sizes.less";
 </style>
 
 <style lang="less" scoped>
+@global-side-nav-collapsed-width: 3.5rem;
+@global-side-nav-expanded-width: 20rem;
 #main-wrapper {
   position: relative;
   @media (min-width: 576px) {
-    padding-left: 3.5rem;
+    padding-left: @global-side-nav-collapsed-width;
   }
   max-height: 100vh;
   &.has-git-info-bar {
     max-height: calc(100vh - 24px);
   }
 }
-@global-side-nav-collapsed-width: 3.5rem;
-@global-side-nav-expanded-width: 20rem;
+
 #main-content {
   background: #f6f6f6;
   width: 100%;
@@ -529,7 +553,24 @@ onMounted(() => {
     );
   }
 }
-
+.nav-bg {
+  opacity: 0;
+  transition: opacity 0.2s;
+  &.hidden {
+    display: none;
+  }
+  &.visible {
+    background: rgba(0, 0, 0, 0.5);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    opacity: 1;
+    display: block;
+  }
+}
 #global-side-nav {
   transform: translateX(-@global-side-nav-expanded-width);
   @media (min-width: 576px) {
@@ -543,7 +584,8 @@ onMounted(() => {
   left: 0;
   width: @global-side-nav-collapsed-width;
   overflow: hidden;
-  transition: width 0.2s;
+  user-select: none;
+  transition: width 0.2s, transform 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1002;
 
@@ -628,7 +670,6 @@ onMounted(() => {
   }
 
   // Expanded menu state
-  &:hover,
   &.pinned {
     transform: translateX(0);
     width: @global-side-nav-expanded-width;
@@ -636,6 +677,20 @@ onMounted(() => {
       background-color: #fafafa;
       .group-switcher {
         opacity: 1;
+      }
+    }
+  }
+
+  @media screen and (min-width: 576px) {
+    &:hover,
+    &.pinned {
+      transform: translateX(0);
+      width: @global-side-nav-expanded-width;
+      .nav-top {
+        background-color: #fafafa;
+        .group-switcher {
+          opacity: 1;
+        }
       }
     }
   }

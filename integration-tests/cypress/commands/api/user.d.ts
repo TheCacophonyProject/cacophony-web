@@ -24,7 +24,8 @@ declare namespace Cypress {
       email?: string,
       endUserAgreement?: number,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
+      inviteToken?: string
     ): Cypress.Chainable<UserId>;
 
     /**
@@ -113,6 +114,18 @@ declare namespace Cypress {
     ): any;
 
     /**
+     * Request password reset on user by name
+     * Optionally, check for non-200 return statusCode
+     * By default makes the userName unique.
+     * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
+     */
+    apiResetPasswordLegacy(
+      userName: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /**
      * Change password using reset token
      * Optionally, check for non-200 return statusCode
      */
@@ -122,6 +135,12 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
+    /**
+     * Confirm the email address of the user on sign-up and
+     * when the user changes their email address
+     */
+    apiConfirmEmailAddress(token: string): any;
 
     /**
      * create user group and camera at the same time

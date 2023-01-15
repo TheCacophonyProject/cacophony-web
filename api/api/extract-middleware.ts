@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import {
   checkAccess,
   DecodedJWTToken,
-  getDecodedResetToken,
   getDecodedToken,
   getVerifiedJWT,
   lookupEntity,
@@ -28,7 +27,8 @@ import { Schedule } from "@/models/Schedule";
 import { UserGlobalPermission } from "@typedefs/api/consts";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 import { SuperUsers } from "@/Globals";
-import { Alert, AlertId } from "@models/Alert";
+import { Alert } from "@models/Alert";
+import { Event } from "@models/Event";
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -174,6 +174,7 @@ const deviceAttributes = [
   "public",
   "active",
   "kind",
+  "ScheduleId",
   "password", // Needed for auth, but not passed through when mapping to response.
 ];
 
@@ -188,8 +189,9 @@ const getGroupInclude = (
       through: {
         where: {
           ...useAdminAccess,
+          removedAt: { [Op.eq]: null },
         },
-        attributes: ["admin"],
+        attributes: ["admin", "settings", "owner", "pending"],
       },
       where: { id: requestUserId },
     },
@@ -220,6 +222,8 @@ const getDeviceInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["admin", "UserId"],
             },
@@ -250,6 +254,8 @@ const getStationInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["UserId"],
             },
@@ -280,6 +286,8 @@ const getScheduleInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["admin", "UserId"],
             },
@@ -313,6 +321,8 @@ const getRecordingInclude =
             through: {
               where: {
                 ...useAdminAccess,
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
               },
               attributes: ["admin", "UserId"],
             },
@@ -853,13 +863,6 @@ const getGroups =
     } else {
       getGroupOptions = {
         where: {},
-        // include: [
-        //   {
-        //     model: models.Group,
-        //     required: true,
-        //     where: {},
-        //   },
-        // ],
       };
     }
     return models.Group.findAll({
@@ -904,7 +907,6 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     order: ["createdAt"],
     attributes: [
       "id",
-      "what",
       "detail",
       "taggerId",
       "automatic",
@@ -1263,6 +1265,83 @@ const getGroup =
     return models.Group.findOne(getGroupOptions);
   };
 
+const getEvent =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    eventDetailId?: string,
+    unusedParam?: string,
+    context?: any
+  ): Promise<ModelStaticCommon<Event> | ClientError | null> => {
+    let eventWhere;
+    if (eventDetailId) {
+      eventWhere = {
+        id: parseInt(eventDetailId),
+      };
+    }
+    let getEventOptions;
+    if (forRequestUser) {
+      if (context && context.requestUser) {
+        // Insert request user constraints
+        getEventOptions = getIncludeForUser(
+          context,
+          (asAdmin, userId) => {
+            return {
+              attributes: ["dateTime", "id"],
+              include: [
+                {
+                  model: models.DetailSnapshot,
+                  as: "EventDetail",
+                  required: true,
+                  attributes: ["type", "details"],
+                },
+                {
+                  model: models.Device,
+                  attributes: [],
+                  required: true,
+                  include: [
+                    {
+                      model: models.Group,
+                      attributes: [],
+                      required: true,
+                      where: {},
+                      include: [
+                        {
+                          model: models.User,
+                          attributes: [],
+                          required: true,
+                          through: {
+                            where: {
+                              ...asAdmin,
+                              removedAt: { [Op.eq]: null },
+                              pending: { [Op.eq]: null },
+                            },
+                            attributes: [],
+                          },
+                          where: { id: userId },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            };
+          },
+          asAdmin
+        );
+        getEventOptions.where = eventWhere;
+      } else {
+        return Promise.resolve(
+          new ClientError("No authorizing user specified")
+        );
+      }
+    } else {
+      getEventOptions = {
+        where: eventWhere,
+      };
+    }
+    return models.Event.findOne(getEventOptions);
+  };
+
 const getUser =
   () =>
   (
@@ -1288,7 +1367,7 @@ const getUser =
   };
 
 const getAlert =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (forRequestUser: boolean = false) =>
   (
     alertId: string,
     unusedParam?: string,
@@ -1477,6 +1556,17 @@ export const fetchUnauthorizedRequiredGroupById = (
     groupNameOrId
   );
 
+export const fetchUnauthorizedRequiredInvitationById = (
+  invitationId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.GroupInvites,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.GroupInvites),
+    invitationId
+  );
+
 export const fetchAuthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain
 ) =>
@@ -1513,20 +1603,36 @@ export const extractJWTInfo =
     next();
   };
 
+export const extractOptionalJWTInfo =
+  (field: ValidationChain) =>
+  async (request: Request, response: Response, next: NextFunction) => {
+    const token = extractValFromRequest(request, field) as string;
+    if (!token) {
+      return next();
+    }
+    let tokenInfo;
+    try {
+      tokenInfo = getDecodedToken(token, false);
+    } catch (e) {
+      return next(e);
+    }
+    response.locals.tokenInfo = tokenInfo;
+    next();
+  };
+
 export const fetchUnauthorizedRequiredUserByResetToken =
   (field: ValidationChain) =>
   async (request: Request, response: Response, next: NextFunction) => {
     const token = extractValFromRequest(request, field) as string;
     let resetInfo;
     try {
-      resetInfo = getDecodedResetToken(token);
+      resetInfo = getDecodedToken(token);
     } catch (e) {
       return next(new AuthenticationError(`Reset token expired`));
     }
     response.locals.resetInfo = resetInfo;
     const user = await models.User.findByPk(response.locals.resetInfo.id);
     if (!user) {
-      // FIXME - Should this be an AuthenticationError?
       return next(
         new AuthorizationError(
           `Could not find a user with id '${response.locals.resetInfo.id}'`
@@ -1647,7 +1753,7 @@ export const fetchAuthorizedRequiredStationById = (
   );
 
 export const fetchAuthorizedRequiredAlertById = (alertId: ValidationChain) =>
-  fetchRequiredModel(models.Alert, false, true, getAlert(true, false), alertId);
+  fetchRequiredModel(models.Alert, false, true, getAlert(true), alertId);
 
 export const fetchAdminAuthorizedRequiredStationById = (
   stationId: ValidationChain
@@ -1685,6 +1791,9 @@ export const fetchAuthorizedRequiredStationByNameInGroup = (
     stationNameOrId,
     groupNameOrId
   );
+
+export const fetchAuthorizedRequiredEventById = (eventId: ValidationChain) =>
+  fetchRequiredModel(models.Event, false, true, getEvent(true, false), eventId);
 
 export const fetchAuthorizedRequiredSchedulesForGroup = (
   groupNameOrId: ValidationChain
@@ -1731,6 +1840,15 @@ export const fetchUnauthorizedRequiredEventDetailSnapshotById = (
     true,
     getUnauthorizedGenericModelById(models.DetailSnapshot),
     detailId
+  );
+
+export const fetchUnauthorizedRequiredEventById = (eventId: ValidationChain) =>
+  fetchRequiredModel(
+    models.Event,
+    false,
+    true,
+    getUnauthorizedGenericModelById(models.Event),
+    eventId
   );
 
 export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>

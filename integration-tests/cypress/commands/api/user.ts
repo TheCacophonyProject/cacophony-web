@@ -26,7 +26,8 @@ Cypress.Commands.add(
     email: string = getTestEmail(userName),
     endUserAgreement: number = LATEST_END_USER_AGREEMENT,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
+    inviteToken: string | undefined = undefined
   ) => {
     logTestDescription(`Create user '${userName}'`, { user: userName }, true);
 
@@ -45,6 +46,9 @@ Cypress.Commands.add(
       endUserAgreement: endUserAgreement,
       ...additionalChecks["additionalParams"],
     };
+    if (inviteToken) {
+      (data as any).inviteTokenJWT = inviteToken.replace(/:/g, ".");
+    }
 
     if (statusCode && statusCode > 200) {
       cy.request({
@@ -228,7 +232,7 @@ Cypress.Commands.add(
   ) => {
     logTestDescription(`Check users`, {});
 
-    const url = v1ApiPath(`listUsers/`);
+    const url = v1ApiPath(`users/list-users`);
 
     makeAuthorizedRequestWithStatus(
       {
@@ -290,8 +294,8 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiResetPassword",
-  (userName: string, statusCode: number = 200, additionalChecks: any = {}) => {
-    const fullUrl = apiPath() + "/resetpassword";
+  (userName: string, statusCode: number, additionalChecks: any = {}) => {
+    const fullUrl = v1ApiPath("users/reset-password");
     let fullName: string;
 
     if (additionalChecks["useRawUserName"] === true) {
@@ -314,24 +318,58 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-  "apiUserChangePassword",
-  (
-    token: string,
-    password: string,
-    statusCode: number = 200,
-    additionalChecks: any = {}
-  ) => {
-    const fullUrl = v1ApiPath(`users/changePassword`);
+  "apiResetPasswordLegacy",
+  (userName: string, statusCode: number, additionalChecks: any = {}) => {
+    const fullUrl = apiPath() + "/resetpassword";
+    let fullName: string;
+
+    if (additionalChecks["useRawUserName"] === true) {
+      fullName = userName;
+    } else {
+      fullName = getTestEmail(userName);
+    }
 
     const data = {
-      token: token,
-      password: password,
+      email: fullName,
+    };
+
+    cy.request({
+      method: "POST",
+      url: fullUrl,
+      body: data,
+      failOnStatusCode: true,
+    });
+  }
+);
+
+Cypress.Commands.add("apiConfirmEmailAddress", (token: string) => {
+  const fullUrl = v1ApiPath("users/validate-email-confirmation-request");
+  const data = {
+    emailConfirmationJWT: token.replace(/:/g, "."),
+  };
+
+  cy.request({
+    method: "POST",
+    url: fullUrl,
+    body: data,
+    failOnStatusCode: true,
+  });
+});
+
+Cypress.Commands.add(
+  "apiUserChangePassword",
+  (token: string, password: string) => {
+    const fullUrl = v1ApiPath(`users/change-password`);
+
+    const body = {
+      token: token.replace(/:/g, "."),
+      password,
     };
 
     cy.request({
       method: "PATCH",
       url: fullUrl,
-      body: data,
+      body,
       failOnStatusCode: true,
     });
   }
