@@ -7,14 +7,22 @@ import {
   userDisplayName,
   userHasConfirmedEmailAddress,
   userHasGroups,
+  userHasPendingGroups,
+  pendingUserGroups,
+  refreshUserGroups,
+  urlNormalisedCurrentGroupName,
 } from "@models/LoggedInUser";
 import {
+  acceptGroupInvitation,
   changeAccountEmail,
   resendAccountActivationEmail as resendEmail,
 } from "@api/User";
-import { computed, onUnmounted, ref } from "vue";
+import { computed, onBeforeMount, onUnmounted, ref } from "vue";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 import { formFieldInputText } from "@/utils";
+import CardTable from "@/components/CardTable.vue";
+import type { ApiGroupResponse } from "@typedefs/api/group";
+import { useRoute, useRouter } from "vue-router";
 
 // TODO: Stop admins adding users without confirmed email addresses.
 //  Maybe the list users api should only return "active/verified" users.
@@ -22,7 +30,20 @@ import { formFieldInputText } from "@/utils";
 
 const submittingResendActivationRequest = ref(false);
 const resendRequestSent = ref(false);
-const emailAddressUpdated = ref(false);
+
+const router = useRouter();
+const route = useRoute();
+const emailAddressUpdated = ref(route.query.updated === "true");
+
+onBeforeMount(async () => {
+  if (route.query.updated) {
+    // Redirect to remove param
+    await router.replace({
+      name: "setup",
+    });
+  }
+});
+
 const emailUpdateInProgress = ref(false);
 const resendError = ref<null | string>(null);
 const emailUpdateError = ref<string | false>(false);
@@ -76,6 +97,22 @@ const updateEmailAddress = async () => {
   emailUpdateInProgress.value = false;
 };
 
+const acceptingInvite = ref<boolean>(false);
+const acceptInvitationToGroup = async (group: ApiGroupResponse) => {
+  acceptingInvite.value = true;
+  const acceptInviteResponse = await acceptGroupInvitation(group.id);
+  if (acceptInviteResponse.success) {
+    await refreshUserGroups();
+    await router.push({
+      name: "dashboard",
+      params: {
+        groupName: urlNormalisedCurrentGroupName.value,
+      },
+    });
+  }
+  acceptingInvite.value = false;
+};
+
 const resendAccountActivationEmail = async () => {
   submittingResendActivationRequest.value = true;
   const resendResponse = await resendEmail();
@@ -98,6 +135,23 @@ const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
     newUserEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
+
+const pendingGroupTableItems = computed(() => {
+  return pendingUserGroups.value.map((group) => {
+    const item: {
+      groupName: string;
+      status: { value: ApiGroupResponse };
+      permissions?: { value: ApiGroupResponse };
+    } = {
+      groupName: group.groupName,
+      status: { value: group },
+    };
+    if (group.admin || group.owner) {
+      item.permissions = { value: group };
+    }
+    return item;
+  });
+});
 
 // const router = useRouter();
 // const debugConfirmEmail = async () => {
@@ -152,6 +206,7 @@ const needsValidationAndIsValidEmailAddress =
         <button
           class="btn btn-secondary"
           type="button"
+          data-cy="resend confirmation email"
           @click="resendAccountActivationEmail"
           :disabled="resendRequestSent"
         >
@@ -168,24 +223,46 @@ const needsValidationAndIsValidEmailAddress =
     </div>
     <div v-else-if="!userHasConfirmedEmailAddress">
       <p class="mt-3">Welcome to your Cacophony account.</p>
-      <p>Before you can get setup, we need you confirm your email address.</p>
-      <div v-if="CurrentUser?.email">
-        <p>
-          <strong>{{ CurrentUser?.email }}</strong> is the email address we
-          currently have associated with your account.
-        </p>
+      <p v-if="CurrentUser?.email && !emailAddressUpdated">
+        Before you can continue, we need to confirm your email address.
+      </p>
+      <div v-if="CurrentUser?.email && !emailAddressUpdated">
         <hr />
-        <p>
-          <strong
-            >If this is NOT the email address you use, update it now:</strong
+        <p v-if="!emailAddressUpdated && CurrentUser?.email" class="mt-3">
+          If <strong>{{ CurrentUser?.email }}</strong> is the email address you
+          currently use, and you <em>haven't</em> just received an email with a
+          confirmation link, you can click this button to resend your email
+          confirmation email.
+        </p>
+        <p
+          v-if="!emailAddressUpdated"
+          class="mt-3 d-flex flex-md-row flex-column justify-content-md-between align-items-start"
+        >
+          <button
+            class="btn btn-secondary me-3 mb-3"
+            type="button"
+            data-cy="send account confirmation email"
+            @click="resendAccountActivationEmail"
+            :disabled="resendRequestSent || emailUpdateInProgress"
           >
+            <span v-if="submittingResendActivationRequest">
+              <span class="spinner-border spinner-border-sm"></span> Sending...
+            </span>
+            <span v-else>Send account confirmation email. </span>
+          </button>
         </p>
       </div>
-      <p v-else>
+      <p v-else-if="!CurrentUser?.email">
         There is no email address associated with your account. Please enter
         one.
       </p>
       <div v-if="!emailAddressUpdated">
+        <hr />
+        <p v-if="CurrentUser?.email">
+          <strong
+            >If this is NOT the email address you use, update it now:</strong
+          >
+        </p>
         <b-form @submit.stop.prevent="updateEmailAddress" novalidate>
           <b-alert
             v-model="hasError"
@@ -203,6 +280,7 @@ const needsValidationAndIsValidEmailAddress =
               @blur="newUserEmailAddress.touched = true"
               @focus="emailUpdateError = false"
               :state="needsValidationAndIsValidEmailAddress"
+              data-cy="new email address"
               aria-label="new email address"
               placeholder="new email address"
               :disabled="emailUpdateInProgress"
@@ -210,6 +288,7 @@ const needsValidationAndIsValidEmailAddress =
             <button
               class="btn btn-secondary ms-3"
               type="submit"
+              data-cy="update email address button"
               :disabled="!isValidEmailAddress || emailUpdateInProgress"
             >
               <span v-if="emailUpdateInProgress">
@@ -230,31 +309,11 @@ const needsValidationAndIsValidEmailAddress =
       </div>
       <p v-else>
         Your email address has been changed to
-        <span>{{ CurrentUser?.email }}</span
-        >. You should receive a confirmation email to this address. You'll need
-        to confirm your new email address before your can continue.
+        <strong>{{ CurrentUser?.email }}</strong
+        >.<br />You should receive a confirmation email to this address. You'll
+        need to confirm your new email address before your can continue.
       </p>
-      <hr v-if="!emailAddressUpdated && CurrentUser?.email" />
-      <p v-if="!emailAddressUpdated && CurrentUser?.email" class="mt-3">
-        If <strong>{{ CurrentUser?.email }}</strong> is correct:
-      </p>
-      <p
-        v-if="!emailAddressUpdated"
-        class="mt-3 d-flex flex-md-row flex-column justify-content-md-between align-items-start"
-      >
-        <button
-          class="btn btn-secondary me-3 mb-3"
-          type="button"
-          @click="resendAccountActivationEmail"
-          :disabled="resendRequestSent || emailUpdateInProgress"
-        >
-          <span v-if="submittingResendActivationRequest">
-            <span class="spinner-border spinner-border-sm"></span> Sending...
-          </span>
-          <span v-else> Send account confirmation email. </span>
-        </button>
-      </p>
-      <p class="alert alert-secondary">
+      <p class="alert alert-secondary mt-3">
         NOTE: If you can't find the email we send, make sure to check your spam
         folder.
       </p>
@@ -279,13 +338,101 @@ const needsValidationAndIsValidEmailAddress =
             <button
               class="btn btn-primary"
               type="button"
-              @click="creatingNewGroup.visible = true"
+              data-cy="create new group button"
+              @click="creatingNewGroup.enabled = true"
             >
               <font-awesome-icon icon="plus" /> Create a new group
             </button>
           </div>
         </div>
         <div class="card mb-3 option-item">
+          <div
+            class="card-body d-flex flex-column"
+            v-if="userHasPendingGroups"
+            data-cy="pending group memberships"
+          >
+            <h5 class="card-title">Pending group memberships</h5>
+            <card-table :items="pendingGroupTableItems">
+              <template #card="{ card }">
+                <div>
+                  <div
+                    class="d-flex align-items-center justify-content-between"
+                  >
+                    <h6>{{ card.groupName }}</h6>
+                    <div v-if="card.status.value.pending === 'requested'">
+                      Waiting for approval from group admin
+                    </div>
+                    <div v-else-if="card.status.value.pending === 'invited'">
+                      <button
+                        type="button"
+                        data-cy="accept group invitation button"
+                        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                        @click.prevent="
+                          () => acceptInvitationToGroup(card.status.value)
+                        "
+                        :disabled="acceptingInvite"
+                      >
+                        <font-awesome-icon icon="thumbs-up" />
+                        <span class="ps-2">Accept invitation</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    class="d-flex align-items-center justify-content-between"
+                    v-if="card.status.value.admin || card.status.value.owner"
+                  >
+                    <div
+                      class="fs-7 text-secondary d-flex align-items-center"
+                      v-if="card.status.value.admin"
+                    >
+                      <font-awesome-icon icon="check-circle" class="fs-6" />
+                      <span class="ps-2">admin</span>
+                    </div>
+                    <div
+                      class="fs-7 text-secondary d-flex align-items-center ms-3"
+                      v-if="card.status.value.owner"
+                    >
+                      <font-awesome-icon icon="check-circle" class="fs-6" />
+                      <span class="ps-2">owner</span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template #status="{ cell }">
+                <div v-if="cell.value.pending === 'requested'">
+                  Waiting for approval from group admin
+                </div>
+                <div v-else-if="cell.value.pending === 'invited'">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                    @click.prevent="() => acceptInvitationToGroup(cell.value)"
+                    :disabled="acceptingInvite"
+                  >
+                    <font-awesome-icon icon="thumbs-up" />
+                    <span class="ps-2">Accept invitation</span>
+                  </button>
+                </div>
+              </template>
+              <template #permissions="{ cell }">
+                <div
+                  class="fs-7 text-secondary d-flex align-items-center"
+                  v-if="cell.value.admin"
+                >
+                  <font-awesome-icon icon="check-circle" class="fs-6" />
+                  <span class="ps-2">admin</span>
+                </div>
+                <div
+                  class="fs-7 text-secondary d-flex align-items-center ms-3"
+                  v-if="cell.value.owner"
+                >
+                  <font-awesome-icon icon="check-circle" class="fs-6" />
+                  <span class="ps-2">owner</span>
+                </div>
+              </template>
+            </card-table>
+          </div>
           <div class="card-body d-flex flex-column">
             <h5 class="card-title">Join a group</h5>
             <p class="flex-fill">
@@ -296,7 +443,8 @@ const needsValidationAndIsValidEmailAddress =
             <button
               class="btn btn-secondary"
               type="button"
-              @click="joiningNewGroup.visible = true"
+              data-cy="join existing group button"
+              @click="joiningNewGroup.enabled = true"
             >
               <font-awesome-icon icon="question" /> Ask to join an existing
               group
@@ -305,7 +453,10 @@ const needsValidationAndIsValidEmailAddress =
         </div>
       </div>
     </div>
-    <router-link to="sign-out" class="text-center d-block my-3"
+    <router-link
+      to="sign-out"
+      class="text-center d-block my-3"
+      data-cy="sign out link"
       >Sign out</router-link
     >
   </div>

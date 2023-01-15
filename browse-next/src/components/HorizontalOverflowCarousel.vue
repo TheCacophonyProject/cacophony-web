@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, onUpdated, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, onUpdated, ref } from "vue";
+import { useElementSize } from "@vueuse/core";
 const container = ref<HTMLDivElement | null>(null);
 const innerScrollContainer = ref<HTMLDivElement | null>(null);
 
 // TODO - Don't do horizontal scrolling of contents after a certain point -
 //  stack items as per design?
+
+const { width } = useElementSize(container);
+const { minWidth = 360 } = defineProps<{ minWidth?: number }>();
+
+const shouldOverflow = computed<boolean>(() => {
+  return width.value > minWidth;
+});
 
 const evaluateScrollOverflow = () => {
   const inner = innerScrollContainer.value;
@@ -55,9 +63,9 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-  <div ref="container" class="outer">
+  <div ref="container" :class="{ outer: shouldOverflow }">
     <div
-      class="inner"
+      :class="{ inner: shouldOverflow }"
       ref="innerScrollContainer"
       @scroll="evaluateScrollOverflow"
     >

@@ -1,4 +1,4 @@
-import { GroupId, IsoFormattedDateString, StationId } from "./common";
+import { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common";
 
 export interface MonitoringRequest {
   perPage?: number;
@@ -24,11 +24,13 @@ export interface MonitoringPageCriteria {
 }
 
 interface VisitRecordingTag {
-  aiTag: string;
+  aiTag: string | null;
   end: number;
   start: number;
-  tag: string;
+  tag: string | null;
   isAITagged: boolean;
+  mass: number;
+  id: TrackId;
 }
 
 export interface ApiVisitResponse {

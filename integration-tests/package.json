@@ -6,11 +6,11 @@
   "scripts": {
     "dev": "node ./node_modules/.bin/cypress open",
     "performance": "node ./node_modules/.bin/cypress open --config-file cypress-performance.json",
-    "browse": "node ./node_modules/.bin/cypress open --config-file cypress-browse.json",
+    "browse": "node ./node_modules/.bin/cypress open --config-file cypress-browse.config.ts",
     "release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD",
     "performance:release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD --config-file cypress-performance.json",
-    "lint": "eslint ./cypress --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
-    "lint:fix": "eslint ./cypress --fix --ext .ts && npx prettier --write './cypress/**/*.ts'",
+    "lint": "eslint ./ --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
+    "lint:fix": "eslint ./ --fix --ext .ts && npx prettier --write './**/*.ts'",
     "postinstall": "npm update cptv-decoder"
   },
   "dependencies": {
@@ -24,7 +24,7 @@
     "@typescript-eslint/eslint-plugin": "^4.29.0",
     "@typescript-eslint/parser": "^4.29.0",
     "@vue/cli-service": "^5.0.4",
-    "cypress": "^10.9.0",
+    "cypress": "^12.0.0",
     "cypress-promise": "^1.1.0",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",

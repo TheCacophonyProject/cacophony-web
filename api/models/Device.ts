@@ -391,7 +391,8 @@ order by hour;
     try {
       await sequelize.transaction(
         {
-          isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+          isolationLevel:
+            Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
         async (t) => {
           const conflictingDevice = await Device.findOne({

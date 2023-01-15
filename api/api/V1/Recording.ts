@@ -186,9 +186,6 @@ const mapTag = (tag: Tag): ApiRecordingTagResponse => {
   if (tag.duration !== null && tag.duration !== undefined) {
     result.duration = tag.duration;
   }
-  if (tag.what) {
-    result.what = tag.what;
-  }
   return result;
 };
 
@@ -1146,12 +1143,6 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
       const recording = mapRecordingResponse(response.locals.recording);
-      if (!config.productionEnv) {
-        const JsonSchema = new Validator();
-        console.assert(
-          JsonSchema.validate(recording, ApiRecordingResponseSchema).valid
-        );
-      }
       if (request.query["requires-signed-url"]) {
         let rawJWT;
         let cookedJWT;
@@ -1161,7 +1152,9 @@ export default (app: Application, baseUrl: string) => {
           cookedJWT = signedToken(
             recordingItem.fileKey,
             recordingItem.getFileName(),
-            recordingItem.fileMimeType
+            recordingItem.fileMimeType,
+            response.locals.requestUser.id,
+            recordingItem.groupId
           );
           cookedSize =
             recordingItem.fileSize ||
@@ -1171,7 +1164,9 @@ export default (app: Application, baseUrl: string) => {
           rawJWT = signedToken(
             recordingItem.rawFileKey,
             recordingItem.getRawFileName(),
-            recordingItem.rawMimeType
+            recordingItem.rawMimeType,
+            response.locals.requestUser.id,
+            recordingItem.GroupId
           );
           rawSize =
             recordingItem.rawFileSize ||
@@ -1247,12 +1242,15 @@ export default (app: Application, baseUrl: string) => {
         ?.toISOString()
         .replace(/:/g, "_")
         .replace(".", "_");
-      return await streamS3Object(
+      return streamS3Object(
         request,
         response,
         recordingItem.rawFileKey,
         `${recordingItem.id}@${time}.${fileExt}`,
-        recordingItem.rawMimeType || "application/octet-stream"
+        recordingItem.rawMimeType || "application/octet-stream",
+        response.locals.requestUser.id,
+        recordingItem.GroupId,
+        recordingItem.rawFileSize
       );
     }
   );
@@ -1265,9 +1263,9 @@ export default (app: Application, baseUrl: string) => {
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
    * @apiParam {Integer} id Id of the recording to get the thumbnail for.
+   * @apiParam {Integer} Optional trackId of recording to get thumbnail of.
    * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
    * recordings.
-   *
    * @apiSuccess {file} file Raw data stream of the png.
    * @apiUse V1ResponseError
    */
@@ -1275,20 +1273,26 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/thumbnail`,
     validateFields([
       idOf(param("id")),
+      query("trackId").optional().isInt().toInt(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
       const mimeType = "image/png";
-      const filename = `${rec.id}-thumb.png`;
-
       if (!rec.rawFileKey) {
         return next(new ClientError("Rec has no raw file key."));
       }
-
+      let trackId;
+      let filename;
+      if (request.query.trackId) {
+        trackId = request.query.trackId as unknown as number;
+        filename = `${rec.id}-${trackId}-thumb.png`;
+      } else {
+        filename = `${rec.id}-thumb.png`;
+      }
       recordingUtil
-        .getThumbnail(rec)
+        .getThumbnail(rec, trackId)
         .then((data) => {
           response.setHeader(
             "Content-disposition",
@@ -1605,35 +1609,7 @@ export default (app: Application, baseUrl: string) => {
     }
   );
 
-  /**
-   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replaceTag
-   * Adds/Replaces a Track Tag
-   * @apiDescription Adds or Replaces track tag based off:
-   * if tag already exists for this user, ignore request
-   * Add tag if it is an additional tag e.g. :Part"
-   * Add tag if this user hasn't already tagged this track
-   * Replace existing tag, if user has an existing animal tag
-   * @apiName PostTrackTag
-   * @apiGroup Tracks
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} id Id of the recording
-   * @apiParam {Integer} trackId id of the recording track to tag
-   *
-   * @apiBody {String} what Object/event to tag.
-   * @apiBody {Number} confidence Tag confidence score.
-   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false"
-   * otherwise.
-   * @apiBody {JSON} [data] Data Additional tag data.
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
-   *
-   * @apiUse V1ResponseError
-   */
-  app.post(
-    `${apiUrl}/:id/tracks/:trackId/replaceTag`,
+  const replaceTrackTagParams = [
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
@@ -1646,9 +1622,21 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
-    // FIXME - extract valid track for trackId on recording with id
+    async (request: Request, response: Response, next: NextFunction) => {
+      // Make sure track actually belongs to the recording we have permissions for.
+      if (response.locals.track.RecordingId === response.locals.recording.id) {
+        return next();
+      } else {
+        return next(
+          new FatalError("Track does not belong to specified recording")
+        );
+      }
+    },
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = response.locals.requestUser;
+      if (request.body.what === "unknown") {
+        request.body.what = "unidentified";
+      }
       const path =
         request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
       const newTag = models.TrackTag.build({
@@ -1673,7 +1661,44 @@ export default (app: Application, baseUrl: string) => {
       } catch (e) {
         return next(new FatalError("Server error replacing tag."));
       }
-    }
+    },
+  ];
+
+  /**
+   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replace-tag
+   * Adds/Replaces a Track Tag
+   * @apiDescription Adds or Replaces track tag based off:
+   * if tag already exists for this user, ignore request
+   * Add tag if it is an additional tag e.g. :Part
+   * Add tag if this user hasn't already tagged this track
+   * Replace existing tag, if user has an existing animal tag
+   * @apiName PostTrackTag
+   * @apiGroup Tracks
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false"
+   * otherwise.
+   * @apiBody {JSON} [data] Data Additional tag data.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/replace-tag`,
+    ...replaceTrackTagParams
+  );
+
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/replaceTag`,
+    ...replaceTrackTagParams
   );
 
   /**
@@ -1848,7 +1873,9 @@ export default (app: Application, baseUrl: string) => {
       if (track.RecordingId !== request.params.id) {
         return next(new ClientError("Track does not belong to recording"));
       }
-
+      if (request.body.what === "unknown") {
+        request.body.what = "unidentified";
+      }
       const tag = await track.addTag(
         request.body.what,
         request.body.confidence,

@@ -33,7 +33,6 @@ watch(
     () => networkConnectionError.retryInterval,
     () => networkConnectionError.control,
   ],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async ([count, cancel]) => {
     if (cancel) {
       await delayMs(1500);

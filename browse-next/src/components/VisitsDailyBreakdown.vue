@@ -9,15 +9,15 @@ import {
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
-import { API_ROOT } from "@api/api";
+import { API_ROOT } from "@api/root";
 import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
-import { truncateLongStationNames } from "@/utils";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
+import ImageLoader from "@/components/ImageLoader.vue";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
 
 const now = new Date();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars,vue/no-setup-props-destructure
 const { visits, startTime, isNocturnal, location } = defineProps<{
   visits: ApiVisitResponse[];
   startTime: DateTime;
@@ -80,6 +80,17 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       location.lng
     );
     if (startTime > sunrise) {
+      events.push({
+        type: "sun",
+        name: `Sunset`,
+        timeStart: sunset.toISOString(),
+        date: sunset,
+      } as SunEventItem);
+    } else {
+      // startTime is after midnight, so use the sunset from the previous day.
+      const prevDay = new Date(startTime);
+      prevDay.setDate(prevDay.getDate() - 1);
+      const { sunset } = sunCalc.getTimes(prevDay, location.lat, location.lng);
       events.push({
         type: "sun",
         name: `Sunset`,
@@ -166,6 +177,11 @@ const toggleVisitsDetail = (e: Event) => {
   e.stopPropagation();
   if (hasVisits.value) {
     showVisitsDetail.value = !showVisitsDetail.value;
+    if (showVisitsDetail.value) {
+      // Expand
+    } else {
+      // Contract
+    }
   }
 };
 const openDetailIfClosed = (e: Event) => {
@@ -183,7 +199,10 @@ const visitTime = (timeIsoString: string) =>
   visitTimeAtLocation(timeIsoString, location);
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
-  return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+  if (visit.recordings.length) {
+    return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+  }
+  return "";
 };
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
@@ -216,7 +235,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         :rotation="showVisitsDetail ? 270 : 90"
       />
     </div>
-    <div v-if="!showVisitsDetail">
+    <div v-if="!showVisitsDetail" class="visits-summary">
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
       <div v-else class="visits-species-count p-3 pb-1 user-select-none">
         <div
@@ -227,12 +246,12 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         >
           <span class="count text-capitalize">{{ count }}</span>
           <span class="text-capitalize species d-inline-block">
-            {{ classification }}
+            {{ displayLabelForClassificationLabel(classification) }}
           </span>
         </div>
       </div>
     </div>
-    <div v-else class="p-1">
+    <div v-else class="p-1 visits-detail">
       <div
         v-for="(visit, index) in visitEvents"
         :key="index"
@@ -246,7 +265,9 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         ]"
         @click="selectedVisit(visit)"
       >
-        <div class="visit-time-duration d-flex flex-column py-2 pe-3">
+        <div
+          class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
+        >
           <span class="pb-1">{{ visitTime(visit.timeStart) }}</span>
           <span
             class="duration fs-8"
@@ -299,9 +320,12 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
         <div v-if="visit.type === 'sun'" class="py-2 ps-3">
           {{ visit.name }}
         </div>
-        <div v-else class="d-flex py-2 ps-3 align-items-center">
+        <div
+          v-else
+          class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden"
+        >
           <div class="visit-thumb">
-            <img
+            <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
               alt="Thumbnail for first recording of this visit"
               width="45"
@@ -311,12 +335,12 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
               visit.data.recordings.length
             }}</span>
           </div>
-          <div class="ps-3 d-flex flex-column">
+          <div class="ps-3 d-flex flex-column text-truncate">
             <div>
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
                 :class="[visit.name]"
-                >{{ visit.name }}
+                >{{ displayLabelForClassificationLabel(visit.name) }}
                 <font-awesome-icon
                   icon="check"
                   v-if="visit.data.classFromUserTag"
@@ -325,12 +349,12 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
                 />
               </span>
             </div>
-            <span
+            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
               ><font-awesome-icon
                 icon="map-marker-alt"
                 size="xs"
-                class="station-icon pe-1"
-              />{{ truncateLongStationNames(visit.data.stationName) }}</span
+                class="station-icon pe-1 text"
+              />{{ visit.data.stationName }}</span
             >
           </div>
         </div>
@@ -421,6 +445,8 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
     }
   }
   .visit-thumb {
+    min-width: 45px;
+    max-width: 45px;
     width: 45px;
     height: 45px;
     overflow: hidden;
@@ -505,5 +531,8 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   .station-icon {
     color: rgba(0, 0, 0, 0.5);
   }
+}
+img.image-loading {
+  background: red;
 }
 </style>

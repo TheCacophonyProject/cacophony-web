@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import Sequelize from "sequelize";
 import { ModelCommon, ModelStaticCommon } from "./index";
-import { User } from "./User";
 import { Recording } from "./Recording";
 import { Track } from "./Track";
 import { TrackTag } from "./TrackTag";
@@ -25,6 +24,9 @@ import { alertBody, EmailImageAttachment } from "@/scripts/emailUtil";
 import { DeviceId, StationId, UserId } from "@typedefs/api/common";
 import logger from "../logging";
 import { sendEmail } from "@/emails/sendEmail";
+import { sendAnimalAlertEmail } from "@/emails/transactionalEmails";
+import { Station } from "@models/Station";
+import { Device } from "@models/Device";
 
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -73,7 +75,7 @@ export interface AlertStatic extends ModelStaticCommon<Alert> {
     asAdmin?: boolean
   ) => Promise<Alert[]>;
   getActiveAlerts: (
-    tag: TrackTag,
+    tagPath: string,
     deviceId?: DeviceId,
     stationId?: StationId
   ) => Promise<Alert[]>;
@@ -112,7 +114,12 @@ export default function (sequelize, DataTypes): AlertStatic {
     trackTag: TrackTag | null = null,
     asAdmin: boolean = false
   ): Promise<Alert[]> => {
-    return Alert.query({ DeviceId: deviceId }, userId, trackTag, asAdmin);
+    return Alert.query(
+      { DeviceId: deviceId },
+      userId,
+      (trackTag && trackTag.path) || null,
+      asAdmin
+    );
   };
 
   Alert.queryUserStation = async (
@@ -121,13 +128,18 @@ export default function (sequelize, DataTypes): AlertStatic {
     trackTag: TrackTag | null = null,
     asAdmin: boolean = false
   ): Promise<Alert[]> => {
-    return Alert.query({ StationId: stationId }, userId, trackTag, asAdmin);
+    return Alert.query(
+      { StationId: stationId },
+      userId,
+      (trackTag && trackTag.path) || null,
+      asAdmin
+    );
   };
 
   Alert.query = async function (
     where: any,
     userId: UserId | null,
-    trackTag: TrackTag | null = null,
+    tagPath: string | null = null,
     asAdmin: boolean = false
   ): Promise<Alert[]> {
     if (userId === null && !asAdmin) {
@@ -153,13 +165,11 @@ export default function (sequelize, DataTypes): AlertStatic {
       ];
     }
     const alerts: Alert[] = await models.Alert.findAll(whereClause);
-    if (trackTag) {
+    if (tagPath) {
       // check that any of the alert conditions are met
       return alerts.filter(({ conditions }) =>
         conditions.some(({ tag }) =>
-          trackTag.path
-            .split(".")
-            .includes(tag.replace(/-/g, "").replace(/ /g, "_"))
+          tagPath.split(".").includes(tag.replace(/-/g, "").replace(/ /g, "_"))
         )
       );
     }
@@ -169,7 +179,7 @@ export default function (sequelize, DataTypes): AlertStatic {
   // get all alerts for this device that satisfy the what condition, or are further up the hierarchy and have
   // not been triggered already (are active)
   Alert.getActiveAlerts = async function (
-    tag: TrackTag,
+    tagPath: string,
     deviceId?: DeviceId,
     stationId?: StationId
   ): Promise<Alert[]> {
@@ -193,7 +203,7 @@ export default function (sequelize, DataTypes): AlertStatic {
         },
       },
       null,
-      tag,
+      tagPath,
       true
     );
   };
@@ -236,6 +246,46 @@ export default function (sequelize, DataTypes): AlertStatic {
     });
     await this.update({ lastAlert: alertTime });
   };
+
+  // Alert.prototype.sendEventAlert = async function (
+  //     tag: TrackTag,
+  //     event: Event,
+  //     station: Station,
+  //     device: Device,
+  //     alertOn: "station" | "device",
+  //     thumbnail?: EmailImageAttachment
+  // ) {
+  //   const subject = `${this.name}  - ${tag.what} Detected`;
+  //
+  //   await sendAnimalAlertEmail();
+  //   const [html, text] = alertBody(
+  //       recording,
+  //       tag,
+  //       this,
+  //       !!thumbnail,
+  //       alertOn === "device" ? recording.Device?.deviceName : undefined,
+  //       alertOn === "station" ? recording.Station?.name : undefined
+  //   );
+  //   const alertTime = new Date().toISOString();
+  //   const result = await sendEmail(
+  //       html,
+  //       text,
+  //       this.User.email,
+  //       subject,
+  //       thumbnail && [thumbnail]
+  //   );
+  //   const detail = await models.DetailSnapshot.getOrCreateMatching("alert", {
+  //     alertId: this.id,
+  //     eventId: event.id,
+  //     success: result,
+  //   });
+  //   await models.Event.create({
+  //     DeviceId: event.De.id,
+  //     EventDetailId: detail.id,
+  //     dateTime: alertTime,
+  //   });
+  //   await this.update({ lastAlert: alertTime });
+  // };
 
   return Alert;
 }

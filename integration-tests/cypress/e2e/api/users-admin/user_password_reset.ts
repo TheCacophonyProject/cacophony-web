@@ -1,70 +1,78 @@
 /// <reference path="../../../support/index.d.ts" />
 
-import { getTestName } from "@commands/names";
+import { getTestEmail, getTestName } from "@commands/names";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import {
+  clearMailServerLog,
+  extractTokenStartingWith,
+  RESET_PASSWORD_PREFIX,
+  startMailServerStub,
+  waitForEmail,
+} from "@commands/emailUtils";
+import { uniqueName } from "@commands/testUtils";
 
 describe("User: password reset", () => {
   //Do not run against a live server as we don't have a stubbed email server
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    before(() => {
-      cy.exec(
-        `cd ../api && docker-compose exec -T server bash -lic "rm mailServerStub.log || true;"`
-      );
-      cy.exec(
-        `cd ../api && docker-compose exec -d -T server bash -lic "node api/scripts/mailServerStub.js"`
-      );
-      cy.exec(
-        `cd ../api && docker-compose exec -T server bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`
-      );
-    });
+    before(startMailServerStub);
 
-    it("Can reset a password", () => {
-      //clear mailserver log
+    it("Can reset a password (legacy url)", () => {
       const address =
         "uprUser2" + getTestName("").substring(4, 12) + "@test.com";
       cy.log("Adding user with email address", address);
       cy.apiUserAdd("uprUser2", "password", address);
 
-      cy.exec(
-        `cd ../api && docker-compose exec -T server bash -lic "echo "" > mailServerStub.log;"`
-      ).then(() => {
-        cy.log("Request a password reset");
-        cy.apiResetPassword(address, HttpStatusCode.Ok, {
-          useRawUserName: true,
-        });
+      clearMailServerLog();
 
-        cy.log("wait for a password reset email");
-        cy.log(
-          `cd ../api && docker-compose exec -T server bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`
+      cy.log("Request a password reset");
+      cy.apiResetPasswordLegacy(address, HttpStatusCode.Ok, {
+        useRawUserName: true,
+      });
+
+      waitForEmail("password reset").then((email) => {
+        cy.log(email);
+        expect(email.includes("token="), "Email contains reset token").to.equal(
+          true
         );
-        cy.exec(
-          `cd ../api && docker-compose exec -T server bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`
-        ).then((response) => {
-          expect(response.stdout, "Received an email").to.include(
-            "SERVER: received email"
-          );
-          expect(response.stdout, "Email contains reset token").to.include(
-            "token="
-          );
-          const tokenstring = response.stdout
-            .match(/token=[A-Za-z0-9._-]*/)
-            .toString();
-          const token = tokenstring.substring(6);
+        const { token } = extractTokenStartingWith(email, "token=");
+        cy.log("reset password");
+        cy.apiUserChangePassword(token, "password2");
 
-          cy.log("reset password");
-          cy.apiUserChangePassword(token, "password2");
+        cy.log("Log in using new password");
+        cy.apiSignInAs(null, address, "password2");
 
-          cy.log("Log in using new password");
-          cy.apiSignInAs(null, address, "password2");
+        cy.log("Cannot log in using old password");
+        cy.apiSignInAs(null, address, null, HttpStatusCode.AuthorizationError);
+      });
+    });
 
-          cy.log("Cannot log in using old password");
-          cy.apiSignInAs(
-            null,
-            address,
-            null,
-            HttpStatusCode.AuthorizationError
-          );
-        });
+    it("Can reset a password", () => {
+      const user = uniqueName("user");
+      cy.log("Adding user with email address", getTestEmail(user));
+      cy.apiUserAdd(user, "password");
+
+      clearMailServerLog();
+      cy.log("Request a password reset");
+      cy.apiResetPassword(user, HttpStatusCode.Ok);
+
+      waitForEmail("password reset").then((email) => {
+        const { token } = extractTokenStartingWith(
+          email,
+          RESET_PASSWORD_PREFIX
+        );
+        cy.log("reset password");
+        cy.apiUserChangePassword(token, "password2");
+
+        cy.log("Log in using new password");
+        cy.apiSignInAs(null, getTestEmail(user), "password2");
+
+        cy.log("Cannot log in using old password");
+        cy.apiSignInAs(
+          null,
+          getTestEmail(user),
+          "password",
+          HttpStatusCode.AuthorizationError
+        );
       });
     });
   } else {

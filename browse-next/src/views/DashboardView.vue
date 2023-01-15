@@ -2,7 +2,11 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { getAllVisitsForGroup } from "@api/Monitoring";
-import { currentSelectedGroup, UserGroups } from "@models/LoggedInUser";
+import {
+  currentSelectedGroup,
+  showUnimplementedModal,
+  UserGroups,
+} from "@models/LoggedInUser";
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
@@ -25,6 +29,12 @@ import {
   visitsContext,
 } from "@models/SelectionContext";
 import { useMediaQuery } from "@vueuse/core";
+import {
+  classifications,
+  getClassifications,
+  displayLabelForClassificationLabel,
+} from "@api/Classifications";
+import TagImage from "@/components/TagImage.vue";
 
 const audioMode = ref<boolean>(false);
 
@@ -71,6 +81,10 @@ watch(
     }
   }
 );
+
+watch(route, () => {
+  loadedRouteName.value = "dashboard";
+});
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
 
@@ -95,6 +109,19 @@ const speciesSummary = computed<Record<string, number>>(() => {
     {}
   );
 });
+
+watch(speciesOrStations, (next) => {
+  if (next === "station") {
+    showUnimplementedModal.value = true;
+  }
+});
+
+watch(visitsOrRecordings, (next) => {
+  if (next === "recordings") {
+    showUnimplementedModal.value = true;
+  }
+});
+
 const earliestDate = computed<Date>(() => {
   const now = new Date();
   return new Date(now.setUTCDate(now.getUTCDate() - timePeriodDays.value));
@@ -121,6 +148,14 @@ const reloadDashboard = async () => {
 
 watch(timePeriodDays, loadVisits);
 watch(currentSelectedGroup, reloadDashboard);
+
+const loadedRouteName = ref<string>("");
+onMounted(async () => {
+  loadedRouteName.value = route.name as string;
+  if (!classifications.value) {
+    await getClassifications();
+  }
+});
 // I don't think the underlying data changes?
 //watch(visitsOrRecordings, reloadDashboard);
 //watch(speciesOrStations, reloadDashboard);
@@ -237,6 +272,12 @@ const showVisitsForTag = (tag: string) => {
   }
 };
 
+const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
+  return (
+    stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0
+  );
+});
+
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
@@ -261,45 +302,69 @@ const showVisitsForTag = (tag: string) => {
           >Audio</span
         >
       </div>
-      <div class="scope-filters d-flex align-items-center">
-        <span>View </span
-        ><select
-          class="form-select form-select-sm"
-          v-model="visitsOrRecordings"
-        >
-          <option>visits</option>
-          <option>recordings</option></select
-        ><span> in the last </span
-        ><select class="form-select form-select-sm" v-model="timePeriodDays">
-          <option value="1">24 hours</option>
-          <option value="3">3 days</option>
-          <option value="7">7 days</option></select
-        ><span> grouped by </span
-        ><select class="form-select form-select-sm" v-model="speciesOrStations">
-          <option>species</option>
-          <option>station</option>
-        </select>
+      <div
+        class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
+      >
+        <div class="d-flex flex-row align-items-center justify-content-between">
+          <span>View </span>
+          <select
+            class="form-select form-select-sm text-end"
+            v-model="visitsOrRecordings"
+          >
+            <option>visits</option>
+            <option>recordings</option>
+          </select>
+        </div>
+        <div class="d-flex flex-row align-items-center justify-content-between">
+          <span> in the last </span>
+          <select
+            class="form-select form-select-sm text-end"
+            v-model="timePeriodDays"
+          >
+            <option value="7">7 days</option>
+            <option value="1">24 hours</option>
+            <option value="3">3 days</option>
+          </select>
+        </div>
+        <div class="d-flex flex-row align-items-center justify-content-between">
+          <span> grouped by </span>
+          <select
+            class="form-select form-select-sm text-end"
+            v-model="speciesOrStations"
+          >
+            <option>species</option>
+            <option>station</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
-  <h2>Species summary</h2>
-  <horizontal-overflow-carousel class="species-summary-container mb-5">
-    <div class="card-group species-summary flex-nowrap">
+  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+    Species summary
+  </h2>
+  <horizontal-overflow-carousel class="species-summary-container mb-sm-5 mb-4">
+    <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
       <div
         v-for="[key, val] in Object.entries(speciesSummary)"
         :key="key"
         class="card d-flex flex-row species-summary-item align-items-center"
         @click="showVisitsForTag(key)"
       >
-        <img width="24" height="auto" class="species-icon ms-3" />
-        <div class="d-flex justify-content-evenly flex-column ms-3 pe-3">
-          <div class="species-count fs-4 lh-sm">{{ val }}</div>
-          <div class="species-name fs-6 lh-sm small">{{ key }}</div>
+        <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
+        <div
+          class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+        >
+          <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
+          <div class="species-name lh-sm small text-capitalize">
+            {{ displayLabelForClassificationLabel(key) }}
+          </div>
         </div>
       </div>
     </div>
   </horizontal-overflow-carousel>
-  <h2>Visits summary</h2>
+  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+    Visits summary
+  </h2>
   <div class="d-md-flex flex-md-row">
     <group-visits-summary
       v-if="!isMobileView"
@@ -315,13 +380,15 @@ const showVisitsForTag = (tag: string) => {
       :location="canonicalLocationForActiveStations"
     />
   </div>
-  <h2>Stations summary</h2>
+  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+    Stations summary {{ loadedRouteName }}
+  </h2>
   <horizontal-overflow-carousel class="mb-5">
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
     <b-spinner v-if="isLoading" />
     <div
-      class="card-group species-summary flex-nowrap"
-      v-else-if="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length"
+      class="card-group species-summary flex-sm-nowrap"
+      v-else-if="hasVisitsForSelectedTimePeriod"
     >
       <station-visit-summary
         v-for="(
@@ -337,11 +404,21 @@ const showVisitsForTag = (tag: string) => {
     <div v-else>
       There were no active stations in the last {{ timePeriodDays }} days for
       this group.
+      <em
+        >TODO: Suggest to user that they put out some devices, or make sure the
+        batteries are charged?</em
+      >
     </div>
   </horizontal-overflow-carousel>
-  <recording-view-modal @close="selectedVisit = null" />
+  <recording-view-modal
+    @close="selectedVisit = null"
+    :fade-in="loadedRouteName === 'dashboard'"
+    @shown="() => (loadedRouteName = 'dashboard')"
+  />
 </template>
 <style lang="less" scoped>
+@import "../assets/font-sizes.less";
+
 .group-name {
   text-transform: uppercase;
   color: #aaa;
@@ -401,44 +478,87 @@ h2 {
 }
 
 .species-summary-container {
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-  background: white;
+  @media screen and (min-width: 576px) {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    background: white;
+  }
 }
 
 .species-summary {
   min-height: 68px;
   user-select: none;
+
   .card {
     border-radius: unset;
-    border-left-width: 0;
-    border-bottom-width: 0;
-    border-top-width: 0;
-    &:last-child {
-      border-right-width: 0;
+    border-width: 0;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+    @media screen and (min-width: 576px) {
+      box-shadow: unset;
+      border-left-width: 0;
+      border-bottom-width: 0;
+      border-top-width: 0;
+      border-right-width: 1px;
+      margin: unset;
+      &:last-child {
+        border-right-width: 0;
+      }
     }
   }
-  .species-icon {
-    width: 24px;
-    background: #aaa;
-    min-height: 24px;
-  }
   .species-summary-item {
+    &:nth-child(even) {
+      margin: 0 0 4px 2px;
+    }
+    &:nth-child(odd) {
+      margin: 0 2px 4px 0;
+    }
+    height: 47px;
+    @media screen and (min-width: 576px) {
+      height: unset;
+      &:nth-child(even) {
+        margin: unset;
+      }
+      &:nth-child(odd) {
+        margin: unset;
+      }
+    }
     cursor: pointer;
     user-select: none;
     text-decoration: none;
     color: inherit;
     padding: 2px;
+    width: calc(50% - 2px);
     min-width: 130px; // TODO @media breakpoints
     transition: background-color 0.2s ease-in-out;
     &:hover {
       background-color: #ececec;
     }
+    @media screen and (min-width: 576px) {
+      width: unset;
+      margin: unset;
+    }
+
+    .species-count {
+      font-weight: 500;
+    }
+    .species-name,
+    .species-count {
+      .fs-7();
+    }
+    @media screen and (min-width: 576px) {
+      .species-count {
+        .fs-4();
+      }
+      .species-name {
+        .fs-6();
+      }
+    }
   }
-  .species-count {
-    font-weight: 500;
-  }
-  .species-name {
-    //font-size
+}
+
+.dashboard-subhead {
+  .fs-6();
+  @media screen and (min-width: 576px) {
+    font-size: unset;
   }
 }
 </style>

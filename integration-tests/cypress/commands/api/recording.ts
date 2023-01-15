@@ -256,18 +256,18 @@ Cypress.Commands.add(
       data,
       "@addRecording",
       statusCode
-    ).then((x) => {
-      cy.wrap(x.response.body.recordingId);
-      if (
-        recordingName !== null &&
-        x.response.statusCode === HttpStatusCode.Ok
-      ) {
-        saveIdOnly(recordingName, x.response.body.recordingId);
+    ).then((p) => {
+      const x = p as unknown as {
+        recordingId: RecordingId;
+        statusCode: HttpStatusCode;
+        messages: string[];
+      };
+      cy.wrap(x.recordingId);
+      if (recordingName !== null && statusCode === HttpStatusCode.Ok) {
+        saveIdOnly(recordingName, x.recordingId);
       }
       if (additionalChecks["message"] !== undefined) {
-        expect(x.response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
-        );
+        expect(x.messages.join("|")).to.include(additionalChecks["message"]);
       }
     });
   }
@@ -492,7 +492,6 @@ Cypress.Commands.add(
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
-    const additionalParams = additionalChecks["additionalParams"];
     logTestDescription(`Check recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });
@@ -617,11 +616,15 @@ Cypress.Commands.add(
     userName: string,
     recordingNameOrId: string,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
+    trackName?: string
   ) => {
-    logTestDescription(`Check thumbnail for recording ${recordingNameOrId} `, {
-      recordingName: recordingNameOrId,
-    });
+    logTestDescription(
+      `Check thumbnail for recording ${recordingNameOrId} and trackId ${trackName}`,
+      {
+        recordingName: recordingNameOrId,
+      }
+    );
 
     let recordingId: string;
     if (additionalChecks["useRawRecordingId"] === true) {
@@ -629,7 +632,12 @@ Cypress.Commands.add(
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
     }
-    const url = v1ApiPath(`recordings/${recordingId}/thumbnail`);
+
+    let url = v1ApiPath(`recordings/${recordingId}/thumbnail`);
+    if (trackName) {
+      const trackId = getCreds(trackName).id.toString();
+      url = `${url}/?trackId=${trackId}`;
+    }
 
     makeAuthorizedRequestWithStatus(
       {
@@ -704,10 +712,11 @@ Cypress.Commands.add(
       data,
       "@addRecording",
       statusCode
-    ).then((x) => {
-      cy.wrap(x.response.body.recordingId);
+    ).then((p) => {
+      const x = p as unknown as { recordingId: RecordingId };
+      cy.wrap(x.recordingId);
       if (recordingName !== null) {
-        saveIdOnly(recordingName, x.response.body.recordingId);
+        saveIdOnly(recordingName, x.recordingId);
       }
     });
   }
@@ -750,10 +759,11 @@ Cypress.Commands.add(
       data,
       "@addRecording",
       statusCode
-    ).then((x) => {
-      cy.wrap(x.response.body.recordingId);
+    ).then((p) => {
+      const x = p as unknown as { recordingId: RecordingId };
+      cy.wrap(x.recordingId);
       if (recordingName !== null) {
-        saveIdOnly(recordingName, x.response.body.recordingId);
+        saveIdOnly(recordingName, x.recordingId);
       }
     });
   }

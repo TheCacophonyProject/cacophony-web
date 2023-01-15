@@ -7,8 +7,10 @@ import { currentSelectedGroup } from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import type { NamedPoint } from "@models/mapUtils";
+import CardTable from "@/components/CardTable.vue";
+import type { CardTableRows } from "@/components/CardTableTypes";
 
-const stations = ref<ApiStationResponse[] | null>(null);
+const stations = ref<ApiStationResponse[]>([]);
 const loadingStations = ref(false);
 
 onMounted(async () => {
@@ -26,33 +28,44 @@ onMounted(async () => {
 });
 
 const stationsForMap = computed<NamedPoint[]>(() => {
-  if (stations.value) {
-    // return [
-    //   {
-    //     name: "test",
-    //     group: "test group",
-    //     location: { lat: -43.80795, lng: 172.36845 } as LatLng,
-    //   },
-    //   {
-    //     name: "test2",
-    //     group: "test group",
-    //     location: { lat: -43.80856, lng: 172.36323 } as LatLng,
-    //   },
-    // ];
-    return stations.value.map(({ name, groupName, location }) => ({
-      name,
-      group: groupName,
-      location: location as LatLng,
-    }));
-  }
-  return [];
+  // return [
+  //   {
+  //     name: "test",
+  //     group: "test group",
+  //     location: { lat: -43.80795, lng: 172.36845 } as LatLng,
+  //   },
+  //   {
+  //     name: "test2",
+  //     group: "test group",
+  //     location: { lat: -43.80856, lng: 172.36323 } as LatLng,
+  //   },
+  // ];
+  return stations.value.map(({ name, groupName, location }) => ({
+    name,
+    group: groupName,
+    location: location as LatLng,
+  }));
 });
 //  Display in table and on map.
 const highlightedPoint = ref<NamedPoint | null>(null);
 
+// TODO: Add an alert bell next to stations that have alerts for me.
+// Also look at the ability for alerts for me to be at a blanket group level.
+// Rename stations here.
+// Delete stations here?
+
+// Think about station images, but really, I think we want those to be at the device level, and be tracked
+// in DeviceHistory.  Similarly to polygon masks
+
 const highlightPoint = (p: NamedPoint | null) => {
   highlightedPoint.value = p;
 };
+
+const tableItems = computed<CardTableRows<string>>(() => {
+  return stations.value.map((station: ApiStationResponse) => ({
+    name: station.name, // Use device name with icon like we do currently?
+  }));
+});
 </script>
 <template>
   <div>
@@ -68,16 +81,28 @@ const highlightPoint = (p: NamedPoint | null) => {
       class="d-flex flex-md-row flex-column-reverse justify-content-between"
       v-else
     >
-      <div class="px-3 p-md-0">
-        <div
-          v-for="p in stationsForMap"
-          :key="p.name"
-          @mouseover="highlightPoint(p)"
-          @mouseout="highlightPoint(null)"
-          @mouseleave="highlightPoint(null)"
-        >
-          {{ p.name }}
-        </div>
+      <div>
+        <h6>Things that need to appear here:</h6>
+        <ul>
+          <li>
+            Hovering table rows should be able to highlight points on the map
+          </li>
+          <li>Rename stations</li>
+          <li>Show active vs inactive stations</li>
+        </ul>
+
+        <!--      <div class="px-3 p-md-0">-->
+        <!--        <div-->
+        <!--          v-for="p in stationsForMap"-->
+        <!--          :key="p.name"-->
+        <!--          @mouseover="highlightPoint(p)"-->
+        <!--          @mouseout="highlightPoint(null)"-->
+        <!--          @mouseleave="highlightPoint(null)"-->
+        <!--        >-->
+        <!--          {{ p.name }}-->
+        <!--        </div>-->
+        <!--      </div>-->
+        <card-table compact :items="tableItems" />
       </div>
       <map-with-points
         :points="stationsForMap"

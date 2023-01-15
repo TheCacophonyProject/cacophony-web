@@ -67,7 +67,7 @@ describe("Station alerts", () => {
         stationId,
         0,
         HttpStatusCode.Ok
-      ).then((alertId) => {
+      ).then(() => {
         //upload a recording tagged as possum and  build an expected event using the returned recording details
         cy.testUploadRecording(
           usera.camera,
@@ -79,13 +79,12 @@ describe("Station alerts", () => {
             time: new Date(),
           },
           "recording1"
-        ).then((recordingId) => {
+        ).then(() => {
           const expectedAlert = createExpectedAlert(
             "alert1",
             0,
             POSSUM_ALERT,
-            true,
-            usera.name
+            true
           );
           const expectedEvent = createExpectedEvent(
             usera.camera,
@@ -123,7 +122,7 @@ describe("Station alerts", () => {
         stationId,
         0,
         HttpStatusCode.Ok
-      ).then((alertId) => {
+      ).then(() => {
         //upload a recording tagged as possum and  build an expected event using the returned recording details
         cy.testUploadRecordingOnBehalfUsingDevice(
           usera.name,
@@ -136,13 +135,12 @@ describe("Station alerts", () => {
             time: new Date(),
           },
           "recording1"
-        ).then((recordingId) => {
+        ).then(() => {
           const expectedAlert = createExpectedAlert(
             "alert1",
             0,
             POSSUM_ALERT,
-            false,
-            usera.name
+            false
           );
           // check that an alert is present and has no 'last alerted'
           cy.apiStationAlertCheck(usera.name, stationId, expectedAlert);
@@ -171,7 +169,7 @@ describe("Station alerts", () => {
         stationId,
         0,
         HttpStatusCode.Ok
-      ).then((alertId) => {
+      ).then(() => {
         //upload a recording tagged as possum and  build an expected event using the returned recording details
         cy.testUploadRecording(
           usera.camera,
@@ -183,13 +181,12 @@ describe("Station alerts", () => {
             time: twoDaysAgo,
           },
           "recording1"
-        ).then((recordingId) => {
+        ).then(() => {
           const expectedAlert = createExpectedAlert(
             "alert1",
             0,
             POSSUM_ALERT,
-            false,
-            usera.name
+            false
           );
           // check that an alert is present and has no 'last alerted'
           cy.apiStationAlertCheck(usera.name, stationId, expectedAlert);

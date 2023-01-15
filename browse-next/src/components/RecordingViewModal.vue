@@ -6,7 +6,12 @@ import type { RouteRecordName } from "vue-router";
 import { BModal } from "bootstrap-vue-3";
 const route = useRoute();
 const router = useRouter();
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "shown"]);
+
+const { fadeIn } = defineProps<{
+  fadeIn: boolean;
+}>();
+
 const closedModal = () => {
   router.push({
     name: "dashboard",
@@ -32,22 +37,33 @@ const show = ref(isModalRouteName(route.name as string));
 watch(route, (next) => {
   show.value = !!(next && next.name && isModalRouteName(next.name));
 });
+
+const noFadeInternal = ref<boolean>(!fadeIn);
+const onShown = () => {
+  noFadeInternal.value = false;
+  emit("shown");
+};
 </script>
 <template>
-  <b-modal
-    v-model="show"
-    centered
-    hide-footer
-    hide-header
-    ref="modal"
-    @hide="show = false"
-    @hidden="closedModal"
-    body-class="p-0"
-    content-class="recording-view-modal"
-    dialog-class="recording-view-dialog"
-  >
-    <router-view @close="show = false" />
-  </b-modal>
+  <router-view v-slot="{ Component }">
+    <b-modal
+      v-model="show"
+      centered
+      lazy
+      hide-footer
+      hide-header
+      :no-fade="noFadeInternal"
+      ref="modal"
+      @hide="show = false"
+      @hidden="closedModal"
+      @shown="onShown"
+      body-class="p-0"
+      content-class="recording-view-modal"
+      dialog-class="recording-view-dialog m-0 m-sm-auto modal-fullscreen-sm-down"
+    >
+      <component :is="Component" @close="show = false" />
+    </b-modal>
+  </router-view>
 </template>
 
 <style lang="less">

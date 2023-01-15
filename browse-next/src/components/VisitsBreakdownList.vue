@@ -13,7 +13,6 @@ import {
 import type { LatLng } from "@typedefs/api/common";
 import type { DateTime } from "luxon";
 
-// eslint-disable-next-line vue/no-setup-props-destructure
 const { visits, location } = defineProps<{
   visits: ApiVisitResponse[];
   location: LatLng;

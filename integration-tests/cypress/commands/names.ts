@@ -13,7 +13,7 @@ export function getTestName(baseName: string): string {
 }
 
 export function getTestEmail(baseName: string): string {
-  return getTestName(baseName) + "@api.created.com";
+  return getTestName(baseName).toLowerCase() + "@api.created.com";
 }
 
 export function initializeTestNames(uniqueId: string = "") {

@@ -30,12 +30,7 @@ import {
   fetchAuthorizedRequiredStationById,
   parseJSONField,
 } from "../extract-middleware";
-import {
-  anyOf,
-  idOf,
-  integerOfWithDefault,
-  validNameOf,
-} from "../validation-middleware";
+import { anyOf, idOf, integerOfWithDefault } from "../validation-middleware";
 import { DeviceId, Seconds } from "@typedefs/api/common";
 import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
 import { Alert } from "@models/Alert";

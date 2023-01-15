@@ -1,4 +1,3 @@
-import { query } from "express-validator";
 /*
 cacophony-api: The Cacophony Project API server
 Copyright (C) 2018  The Cacophony Project
@@ -59,6 +58,7 @@ import {
   CacophonyIndex,
 } from "@typedefs/api/recording";
 import labelPath from "../classifications/label_paths.json";
+import { DetailSnapshotId } from "@models/DetailSnapshot";
 
 type SqlString = string;
 
@@ -113,7 +113,7 @@ interface RecordingQueryBuilder {
     exclusive: boolean
   ) => SqlString;
   tagOfType: (tags: string[], sql: SqlString, exclusive: boolean) => SqlString;
-  selectByTag: (tags: string[], useDetail: boolean, exclusive: boolean) => any;
+  selectByTag: (tags: string[], exclusive: boolean) => any;
 }
 
 interface RecordingQueryBuilderInstance {
@@ -189,8 +189,14 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   // NOTE: Implicitly created by sequelize associations (along with other
   //  potentially undocumented extension methods).
   getTrack: (id: TrackId) => Promise<Track | null>;
-  getTracks: (options: FindOptions) => Promise<Track[]>;
-  createTrack: ({ data: any, AlgorithmId: DetailSnapshotId }) => Promise<Track>;
+  getTracks: (options?: FindOptions) => Promise<Track[]>;
+  createTrack: ({
+    data,
+    AlgorithmId,
+  }: {
+    data: any;
+    AlgorithmId: DetailSnapshotId;
+  }) => Promise<Track>;
   setStation: (station: Station) => Promise<void>;
 
   getNextState: () => RecordingProcessingState;
@@ -284,9 +290,11 @@ export default function (
     rawFileKey: DataTypes.STRING,
     rawMimeType: DataTypes.STRING,
     rawFileHash: DataTypes.STRING,
+    rawFileSize: DataTypes.INTEGER,
 
     // Processing fields. Fields set by and for the processing.
     fileKey: DataTypes.STRING,
+    fileSize: DataTypes.INTEGER,
     fileMimeType: DataTypes.STRING,
     processingStartTime: DataTypes.DATE,
     processingEndTime: DataTypes.DATE,
@@ -1059,11 +1067,7 @@ from (
     let sql =
       'SELECT "Recording"."id" FROM "Tags" WHERE  "Tags"."RecordingId" = "Recording".id';
     if (tags) {
-      sql += ` AND (${Recording.queryBuilder.selectByTag(
-        tags,
-        true,
-        exclusive
-      )})`;
+      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, exclusive)})`;
     }
     if (tagTypeSql) {
       sql += ` AND (${tagTypeSql})`;
@@ -1079,7 +1083,7 @@ from (
     let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags".
     "archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
     const tagsSql = tags
-      ? ` AND (${Recording.queryBuilder.selectByTag(tags, false, exclusive)})`
+      ? ` AND (${Recording.queryBuilder.selectByTag(tags, exclusive)})`
       : "";
     if (!tagTypeSql) {
       // When we're not filtering by tag type, we want override automatic tags with human tags
@@ -1097,11 +1101,7 @@ from (
     }
   };
 
-  Recording.queryBuilder.selectByTag = (
-    tags: string[],
-    usesDetail: boolean,
-    exclusive: boolean
-  ) => {
+  Recording.queryBuilder.selectByTag = (tags: string[], exclusive: boolean) => {
     if (!tags || tags.length === 0) {
       return null;
     }
@@ -1110,25 +1110,15 @@ from (
     for (let i = 0; i < tags.length; i++) {
       const tag = tags[i];
       if (tag === "interesting") {
-        if (usesDetail) {
-          parts.push(
-            `(("Tags"."what" IS NULL OR "Tags"."what"!='bird') AND ("Tags"."detail" IS NULL OR "Tags"."detail"!='false positive'))`
-          );
-        } else {
-          parts.push(
-            `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`
-          );
-        }
+        parts.push(
+          `("Tags"."detail"!='bird' AND "Tags"."detail"!='false positive')`
+        );
       } else {
         const path = labelPath[tag.toLowerCase()];
         if (path) {
           parts.push(`"Tags".path ~ '${path}${exclusive ? "" : ".*"}'`);
         } else {
-          // TODO: this catches tags that may of not been added to classfications but should be added
-          parts.push(`"Tags"."what" = '${tag}'`);
-        }
-        if (usesDetail) {
-          // the label could also be the detail field not the what field
+          // TODO: this catches tags that may of not been added to classifications but should be added
           parts.push(`"Tags"."detail" = '${tag}'`);
         }
       }

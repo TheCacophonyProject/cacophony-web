@@ -746,6 +746,7 @@ describe("Recordings query using where", () => {
         superuser,
         "rqGroup",
         true,
+        false,
         true,
         HttpStatusCode.Ok,
         { useRawUserName: true }

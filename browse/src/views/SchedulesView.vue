@@ -393,17 +393,22 @@ const newSchedule = (): ScheduleConfig => ({
 
 const mapSchedule = (schedule: ScheduleConfig): ScheduleConfig => {
   const trimToHoursMinutes = (time: string) => {
-    const parts = time.split(":");
-    return `${parts[0]}:${parts[1]}`;
+    if (time) {
+      const parts = time.split(":");
+      return `${parts[0]}:${parts[1]}`;
+    }
+    return time;
   };
-  schedule.combos = schedule.combos.map((combo) => ({
-    waits: combo.waits.map(Number),
-    every: parseInt(combo.every.toString()),
-    volumes: combo.volumes.map(Number),
-    sounds: combo.sounds.map(String),
-    from: trimToHoursMinutes(combo.from),
-    until: trimToHoursMinutes(combo.until),
-  }));
+  schedule.combos = schedule.combos
+    .map((combo) => ({
+      waits: combo.waits.map(Number),
+      every: parseInt(combo.every.toString()),
+      volumes: combo.volumes.map(Number),
+      sounds: combo.sounds.map(String),
+      from: trimToHoursMinutes(combo.from),
+      until: trimToHoursMinutes(combo.until),
+    }))
+    .filter((combo) => !!combo.from && !!combo.until);
   schedule.playNights = parseInt(schedule.playNights.toString());
   schedule.controlNights = parseInt(schedule.controlNights.toString());
   schedule.startday = parseInt(schedule.startday.toString());
@@ -606,7 +611,7 @@ export default {
       this.assigningTo = id;
       if (this.assignedDevices[id]) {
         this.selectedDevices = this.assignedDevices[id].map(({ id }) =>
-          this.deviceOptions.find((option) => option.id === id)
+          this.audioDeviceOptions.find((option) => option.id === id)
         );
       }
       this.assigningToDevices = true;

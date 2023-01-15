@@ -5,13 +5,9 @@ import {
   currentSelectedGroup,
   showSwitchGroup,
 } from "@models/LoggedInUser";
-import { computed, onBeforeMount } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { urlNormaliseGroupName } from "@/utils";
-
-onBeforeMount(() => {
-  showSwitchGroup.enabled = true;
-});
 
 const nextRoute = (groupName: string) => {
   const currentRoute = useRoute();
@@ -41,15 +37,19 @@ const currentGroupName = computed<string>(() => {
   );
 });
 
+onMounted(() => {
+  showSwitchGroup.visible = true;
+});
+
 // TODO: Add icons for a) the kinds of devices in the group, and b) If there are recent recordings in the last 24 hours for each device type.
 </script>
 <template>
   <b-modal
     title="Switch group"
-    v-model="showSwitchGroup.enabled"
+    v-model="showSwitchGroup.visible"
     centered
     hide-footer
-    @hidden="showSwitchGroup.visible = false"
+    @hidden="showSwitchGroup.enabled = false"
   >
     <div class="list-group">
       <router-link
@@ -63,7 +63,7 @@ const currentGroupName = computed<string>(() => {
         :to="nextRoute(groupName)"
         :aria-disabled="groupName === currentGroupName"
         :tabindex="groupName === currentGroupName ? -1 : index"
-        @click="showSwitchGroup.enabled = false"
+        @click="showSwitchGroup.visible = false"
       >
         {{ groupName }}
         <span v-if="groupName === currentGroupName">(selected)</span>

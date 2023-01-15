@@ -4,6 +4,7 @@ import magma from "scale-color-perceptual/rgb/magma.json";
 import inferno from "scale-color-perceptual/rgb/inferno.json";
 
 import defaultColourmap from "./DefaultColourmap.js";
+import type { CptvHeader } from "@/components/cptv-player/cptv-decoder/decoder";
 type RgbZeroOneArray = [number, number, number][];
 // Colour maps
 const mapRgba = ([r, g, b]: [number, number, number]): number =>
@@ -88,4 +89,65 @@ export const getFrameIndexAtTime = (
       )
     ) + (hasBackgroundFrame ? -1 : 0)
   );
+};
+
+export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
+  if (header) {
+    const {
+      width,
+      height,
+      fps,
+      deviceName,
+      deviceId,
+      previewSecs,
+      brand,
+      model,
+      serialNumber,
+      firmwareVersion,
+      motionConfig,
+      timestamp,
+      hasBackgroundFrame,
+    } = header;
+    const headerInfo: Record<
+      string,
+      string | boolean | number | Record<string, number | string>
+    > = {
+      dimensions: `${width} x ${height}`,
+      fps,
+      time: new Date(timestamp / 1000).toLocaleString(),
+      "has background": hasBackgroundFrame,
+      "preview seconds": previewSecs || 0,
+    };
+    if (deviceName) {
+      headerInfo["device name"] = deviceName;
+    }
+    if (deviceId) {
+      headerInfo["device ID"] = deviceId;
+    }
+    if (brand && model) {
+      headerInfo["sensor"] = `${brand} ${model}`;
+    }
+    if (serialNumber) {
+      headerInfo["serial"] = `#${serialNumber}`;
+    }
+    if (firmwareVersion) {
+      headerInfo["firmware"] = firmwareVersion;
+    }
+    if (motionConfig) {
+      headerInfo["motion config"] = motionConfig
+        .split("\n")
+        .reduce((acc: Record<string, number | string>, item: string) => {
+          const parts = item.split(": ");
+          if (Number(parts[1]).toString() == parts[1]) {
+            acc[parts[0]] = Number(parts[1]);
+          } else {
+            acc[parts[0]] = parts[1];
+          }
+          return acc;
+        }, {});
+    }
+    return JSON.stringify(headerInfo, null, "  ");
+  } else {
+    return null;
+  }
 };

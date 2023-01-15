@@ -42,7 +42,15 @@ interface FailureFetchResult<FAILURE = ErrorResult> {
 }
 
 export interface JwtTokenPayload<
-  T = "user" | "device" | "reset-password" | "confirm-email"
+  T =
+    | "user"
+    | "device"
+    | "reset-password"
+    | "confirm-email"
+    | "join-group"
+    | "invite-new-user"
+    | "invite-existing-user"
+    | "refresh"
 > {
   exp: number;
   iat: number;

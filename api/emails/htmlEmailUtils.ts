@@ -85,7 +85,10 @@ export interface StoppedDevice {
 
 export const createEmailWithTemplate = async (
   templateFilename: string,
-  interpolants: Record<string, string | number | StoppedDevice[] | string[]>
+  interpolants: Record<
+    string,
+    string | number | StoppedDevice[] | string[] | boolean
+  >
 ) => {
   const baseTemplate = (
     await fs.readFile(`${__dirname}/templates/base-template.html`)

@@ -1,4 +1,5 @@
 import type { RecordingId } from "@typedefs/api/common";
+import { API_ROOT } from "@api/root";
 
 interface MessageData {
   type: string;
@@ -40,11 +41,16 @@ export class CptvDecoder {
         delete messageQueue[type];
         resolver && resolver(data);
       };
-      decoder = new Worker(new URL("./decoder.worker.ts", import.meta.url), {
-        type: "module",
-      });
+      const decoderNotInited = !decoder;
+      if (decoderNotInited) {
+        decoder = new Worker(new URL("./decoder.worker.ts", import.meta.url), {
+          type: "module",
+        });
+      }
       decoder.onmessage = onMessage;
-      await this.waitForMessage("init");
+      if (decoderNotInited) {
+        await this.waitForMessage("init");
+      }
       this.inited = true;
     }
   }
@@ -79,7 +85,7 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithRecordingIdAndSize";
-    decoder.postMessage({ type, id, size, apiToken });
+    decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
     return (await this.waitForMessage(type)) as string | boolean;
   }
 

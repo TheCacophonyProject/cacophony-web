@@ -8,7 +8,7 @@ dist: bionic
 
 language: node_js
 node_js:
-  - "lts/*"
+  - "16"
 
 env:
   - IS_CI_ENV=true

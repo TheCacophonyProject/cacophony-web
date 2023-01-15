@@ -11,6 +11,7 @@ import type {
 } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { add, mul, perp } from "@/components/cptv-player/motion-paths";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
 
 export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
   overlayContext.font = "13px sans-serif";
@@ -185,7 +186,7 @@ export const renderOverlay = (
         context,
         trackId,
         trackBox.rect,
-        trackBox.what,
+        trackBox.what && displayLabelForClassificationLabel(trackBox.what),
         isExporting,
         tracks,
         currentTrack,
@@ -207,7 +208,7 @@ export const renderOverlay = (
           context,
           currentTrack.id,
           trackBox.rect,
-          trackBox.what,
+          trackBox.what && displayLabelForClassificationLabel(trackBox.what),
           isExporting,
           tracks,
           currentTrack,
