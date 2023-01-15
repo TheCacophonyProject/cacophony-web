@@ -3,11 +3,12 @@ import models from "@models";
 import { Recording } from "@models/Recording";
 import { getCanonicalTrackTag, UNIDENTIFIED_TAGS } from "./Visits";
 import { ClientError } from "../customErrors";
-import { StationId, UserId } from "@typedefs/api/common";
+import { StationId, TrackId, UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
 import { Station } from "@models/Station";
+import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -37,12 +38,11 @@ class Visit {
     recording: Recording
   ) {
     this.recordings = [];
-    this.rawRecordings = [];
     this.tracks = 0;
     this.stationName = stationName ? stationName.name : "";
     this.stationId = stationId || 0;
 
-    this.rawRecordings.push(recording);
+    this.rawRecordings = [recording];
     this.timeStart = moment(recording.recordingDateTime);
     this.timeEnd = moment(this.timeStart).add(recording.duration, "seconds");
   }
@@ -79,26 +79,70 @@ class Visit {
   }
 
   calculateTags(aiModel: string) {
-    this.rawRecordings.forEach((rec) => {
-      this.recordings.push(this.calculateTrackTags(rec, aiModel));
-    });
-    delete this.rawRecordings;
+    this.recordings = (this.rawRecordings || []).map((rec) =>
+      this.calculateTrackTags(rec, aiModel)
+    );
 
     const allVisitTracks = this.getAllTracks();
     this.tracks = allVisitTracks.length;
     const bestHumanTags = getBestGuessOverall(allVisitTracks, HUMAN_ONLY);
-
     if (bestHumanTags.length > 0) {
-      this.classification = bestHumanTags[0];
-      this.classFromUserTag = true;
+      if (bestHumanTags.length === 1) {
+        const classification = bestHumanTags[0];
+        if (!["false-positive"].includes(classification[0])) {
+          // Only prefer human tags for visit labels if they're not false-positives.
+          this.classification = bestHumanTags[0][0];
+          this.classFromUserTag = true;
+        } else {
+          // Use AI tags instead for visit.
+          const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
+          this.classification =
+            bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
+          this.classFromUserTag = false;
+        }
+      } else {
+        return { split: this, rawRecordings: this.rawRecordings };
+      }
     } else {
       const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
-      this.classification = bestAiTags.length > 0 ? bestAiTags[0] : "none";
+      if (bestAiTags.length > 1) {
+        // Tie-break based on the average mass of the track in question.
+        let bestMass = -1;
+        let bestTag;
+        for (const [tag, tracks] of bestAiTags) {
+          const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
+          if (mass > bestMass) {
+            bestMass = mass;
+            bestTag = tag;
+          }
+        }
+        this.classification = bestTag;
+      } else {
+        this.classification = bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
+      }
+
       this.classFromUserTag = false;
     }
 
+    delete this.rawRecordings;
     const aiGuess = getBestGuessFromSpecifiedAi(allVisitTracks);
-    this.classificationAi = aiGuess.length > 0 ? aiGuess[0] : "none";
+    if (aiGuess.length > 1) {
+      // Tie-break based on the average mass of the track in question.
+      let bestMass = -1;
+      let bestTag;
+      for (const [tag, tracks] of aiGuess) {
+        const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
+        if (mass > bestMass) {
+          bestMass = mass;
+          bestTag = tag;
+        }
+      }
+      this.classificationAi = bestTag;
+    } else {
+      this.classificationAi = aiGuess.length > 0 ? aiGuess[0][0] : "none";
+    }
+
+    return { split: false };
   }
 
   calculateTrackTags(recording, aiModel: string): VisitRecording {
@@ -109,28 +153,28 @@ class Visit {
     };
     for (const track of (recording as any).Tracks) {
       const bestTag = getCanonicalTrackTag(track.TrackTags);
-      let aiTag = [];
-      if (track.TrackTags) {
-        aiTag = track.TrackTags.filter((tag) => tag.data == aiModel);
-      }
+      const aiTag: ApiTrackTagResponse = (track.TrackTags || []).find(
+        (tag) => tag.data === aiModel && tag.automatic
+      );
 
       newVisitRecording.tracks.push({
+        id: track.id,
         tag: bestTag ? bestTag.what : null,
         isAITagged: bestTag ? bestTag.automatic : false,
-        aiTag: aiTag.length > 0 ? aiTag[0].what : null,
+        aiTag: (aiTag && aiTag.what) || null,
         start: track.data ? track.data.start_s : "",
         end: track.data ? track.data.end_s : "",
+        mass:
+          (track.positions &&
+            track.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+          0,
       });
     }
     return newVisitRecording;
   }
 
   getAllTracks(): VisitTrack[] {
-    const allVisitTracks: VisitTrack[] = [];
-    this.recordings.forEach((recording) => {
-      allVisitTracks.push(...recording.tracks);
-    });
-    return allVisitTracks;
+    return this.recordings.flatMap((recording) => recording.tracks);
   }
 
   markIfPossiblyIncomplete(cutoff: Moment) {
@@ -145,47 +189,76 @@ const COUNT = 1;
 const HUMAN_ONLY = false;
 const AI_ONLY = true;
 
-function getBestGuessFromSpecifiedAi(tracks: VisitTrack[]): string[] {
+function getBestGuessFromSpecifiedAi(
+  tracks: VisitTrack[]
+): [TagName, VisitTrack[]][] {
   const counts = {};
   tracks.forEach((track) => {
     const tag = track.aiTag;
     if (tag) {
-      counts[tag] = counts[tag] ? (counts[tag] += 1) : 1;
+      counts[tag] = counts[tag] || [];
+      counts[tag].push(track);
     }
   });
   return getBestGuess(Object.entries(counts));
 }
 
-function getBestGuessOverall(allTracks: VisitTrack[], isAi: boolean): string[] {
-  const tracks = allTracks.filter((track) => track.isAITagged == isAi);
+function getBestGuessOverall(
+  allTracks: VisitTrack[],
+  isAi: boolean
+): [TagName, VisitTrack[]][] {
+  let tracks;
+  if (!isAi) {
+    // Make sure we don't count user false-positive tags, unless that is the *only* user tag.
+    // If a user tags one track as a cat, and two tracks as false positive, we should always say the visit was a cat!
+    const userNonFalsePositiveTags = allTracks.filter(
+      (track) => !track.isAITagged && track.tag !== "false-positive"
+    );
+    if (userNonFalsePositiveTags.length === 0) {
+      tracks = allTracks.filter((track) => !track.isAITagged);
+    } else {
+      tracks = userNonFalsePositiveTags;
+    }
+  } else {
+    // For AI, first prefer non false-positive tags, but if we only have false-positives, then fall back to that.
+    tracks = allTracks.filter(
+      (track) => track.isAITagged && track.tag !== "false-positive"
+    );
+    if (tracks.length === 0) {
+      tracks = allTracks.filter((track) => track.isAITagged);
+    }
+  }
 
   const counts = {};
   tracks.forEach((track) => {
     const tag = track.tag;
     if (tag) {
-      counts[tag] = counts[tag] ? (counts[tag] += 1) : 1;
+      counts[tag] = counts[tag] || [];
+      counts[tag].push(track);
     }
   });
 
   return getBestGuess(Object.entries(counts));
 }
 
-function getBestGuess(counts: [TagName, Count][]): TagName[] {
+function getBestGuess(
+  counts: [TagName, VisitTrack[]][]
+): [TagName, VisitTrack[]][] {
   const animalOnlyCounts = counts.filter(
     (tc) => !UNIDENTIFIED_TAGS.includes(tc[TAG])
   );
   if (animalOnlyCounts.length > 0) {
     // there are animal tags
     const maxCount = animalOnlyCounts.reduce(
-      (max, item) => Math.max(max, item[COUNT]),
+      (max, item) => Math.max(max, item[COUNT].length),
       0
     );
-    const tagsWithMaxCount = animalOnlyCounts
-      .filter((tc) => tc[COUNT] === maxCount)
-      .map((tc) => tc[TAG]);
+    const tagsWithMaxCount = animalOnlyCounts.filter(
+      (tc) => tc[COUNT].length === maxCount
+    );
     return tagsWithMaxCount;
   } else {
-    return counts.map((tc) => tc[TAG]);
+    return counts;
   }
 }
 
@@ -199,11 +272,13 @@ interface VisitTrack {
   // this is the overriding tag that we have given this event
   // e.g. if it was unidentified but grouped under a cat visit
   // assumedTag would be "cat"
+  id: TrackId;
   tag: string;
   aiTag: string;
   isAITagged: boolean;
   start: string;
   end: string;
+  mass: number; // For tie-breaking purposes with AI only visits
 }
 
 export async function generateVisits(
@@ -245,12 +320,63 @@ export async function generateVisits(
     "seconds"
   );
 
-  visits.forEach((visit) => {
-    visit.calculateTags(search.compareAi);
-    visit.markIfPossiblyIncomplete(incompleteCutoff);
-  });
+  const actualVisits = [];
+  for (const visit of visits) {
+    const { split } = visit.calculateTags(search.compareAi);
+    if (split) {
+      // We need to create multiple visits from this visit, since there were multiple user tags for the period.
+      const userVisits = {};
+      for (const recording of (split as Visit).recordings) {
+        const userTag = recording.tracks.filter(
+          (track) =>
+            track.isAITagged === false && track.tag !== "false-positive"
+        );
+        // In the case where there are two user tags on a single recording (multiple different animals) we'll
+        // generate another visit using the same recording.
+        if (userTag.length !== 0) {
+          for (const track of userTag) {
+            userVisits[track.tag] = userVisits[track.tag] || [];
+            userVisits[track.tag].push(recording);
+          }
+        }
+      }
+      for (const recording of (split as Visit).recordings) {
+        const userTag = recording.tracks.filter(
+          (track) => track.isAITagged === false
+        );
+        if (userTag.length === 0) {
+          // Add the ai-only recording to all user visits
+          for (const visit of Object.values(userVisits)) {
+            (visit as VisitRecording[]).push(recording);
+          }
+        }
+      }
+      for (const visitRecordings of Object.values(userVisits)) {
+        const record = recordings.find(
+          (rec) => rec.id === visitRecordings[0].recId
+        );
+        const actualVisit = new Visit(visit.stationId, record.Station, record);
+        for (let i = 1; i < (visitRecordings as VisitRecording[]).length; i++) {
+          const record = recordings.find(
+            (rec) => rec.id === visitRecordings[i].recId
+          );
+          actualVisit.addRecordingIfWithinTimeLimits(record);
+        }
+        actualVisits.push(actualVisit);
+      }
+      for (const aVisit of actualVisits) {
+        if (aVisit.rawRecordings) {
+          aVisit.calculateTags(search.compareAi);
+        }
+        aVisit.markIfPossiblyIncomplete(incompleteCutoff);
+      }
+    } else {
+      visit.markIfPossiblyIncomplete(incompleteCutoff);
+      actualVisits.push(visit);
+    }
+  }
 
-  return visits.reverse();
+  return actualVisits.reverse();
 }
 
 async function getRecordings(
@@ -264,7 +390,7 @@ async function getRecordings(
     duration: { [Op.gte]: "0" },
     type: RecordingType.ThermalRaw,
     deletedAt: { [Op.eq]: null },
-    recordingDateTime: { [Op.gt]: from, [Op.lt]: until }, // FIXME - Used to be gte: from
+    recordingDateTime: { [Op.gt]: from, [Op.lt]: until },
   };
   if (params.stations) {
     where.StationId = params.stations;

@@ -5,7 +5,7 @@ import { Recording } from "@models/Recording";
 import { TrackTag } from "@models/TrackTag";
 import moment from "moment";
 import { User } from "@models/User";
-import { getEmailConfirmationToken, getResetToken } from "@api/auth";
+import { getPasswordResetToken } from "@api/auth";
 import { sendEmail } from "@/emails/sendEmail";
 import { Alert } from "@models/Alert";
 
@@ -70,45 +70,13 @@ function resetBody(userTitle: string, token: string): string[] {
 }
 
 async function sendResetEmail(user: User, password: string): Promise<boolean> {
-  const token = getResetToken(user.id, password);
+  const token = getPasswordResetToken(user.id, password);
   const [html, text] = resetBody(user.userName, token);
   return sendEmail(
     html,
     text,
     user.email,
     "Your request to reset your Cacophony account password"
-  );
-}
-
-// export async function sendWelcomeEmailConfirmationEmail(
-//   user: User
-// ): Promise<boolean> {
-//   // TODO - This is like the email change confirmation email, but includes a bit more of a "welcome to cacophony" vibe.
-//
-//   const token = getEmailConfirmationToken(user.id, user.email);
-//   // FIXME - This needs to be a transactional email about confirming your email.
-//   // TODO - Only send automated emails to users if they have confirmed their email address.
-//   const [html, text] = resetBody(user.userName, token);
-//   return sendEmail(
-//     html,
-//     text,
-//     user.email,
-//     "Confirm your email associated with your Cacophony account"
-//   );
-// }
-export async function sendEmailConfirmationEmail(
-  user: User,
-  newEmailAddress: string
-): Promise<boolean> {
-  const token = getEmailConfirmationToken(user.id, newEmailAddress);
-  // FIXME - This needs to be a transactional email about confirming your email.
-  // TODO - Only send automated emails to users if they have confirmed their email address.
-  const [html, text] = resetBody(user.userName, token);
-  return sendEmail(
-    html,
-    text,
-    newEmailAddress,
-    "Confirm your email associated with your Cacophony account"
   );
 }
 

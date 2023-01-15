@@ -28,10 +28,9 @@ export const visitsContext = ref<ApiVisitResponse[] | null>(null);
 export const recordingsContext = ref<ApiRecordingResponse[] | null>(null);
 
 const ignored: string[] = [
-  //"unknown",
   "none",
   //"unidentified",
-  "false-positive",
+  //"false-positive",
   "bird",
   "vehicle",
   "human",

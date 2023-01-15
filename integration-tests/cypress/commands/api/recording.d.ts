@@ -132,7 +132,7 @@ declare namespace Cypress {
       recordingName?: string,
       statusCode?: number,
       additionalChecks?: any
-    ): any;
+    ): Cypress.Chainable<RecordingId>;
 
     /** Get a single recording response using api/v1/recordings/{id}
      */
@@ -203,7 +203,8 @@ declare namespace Cypress {
       userName: string,
       recordingNameOrId: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
+      trackName?: string
     ): any;
 
     /** Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters

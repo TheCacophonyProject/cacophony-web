@@ -163,14 +163,6 @@ Cypress.Commands.add(
 // Legacy test functions used in /recordings. To be retired and replaces with standard-format API wrappers.
 
 Cypress.Commands.add(
-  "thenCheckStationIs",
-  { prevSubject: true },
-  (subject, userName: string, station: string) => {
-    checkStationNameIs(userName, subject, station);
-  }
-);
-
-Cypress.Commands.add(
   "apiGroupStationsCheck",
   (
     userName: string,

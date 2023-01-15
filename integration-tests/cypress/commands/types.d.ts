@@ -79,6 +79,10 @@ export interface DeviceHistoryEntry {
   setBy: string;
   stationId: number;
   uuid: number;
+  settings: {
+    referenceImage?: string; // S3 Key for a device reference image
+    maskPolygons: { points: [number, number]; exclude?: boolean }[];
+  } | null;
 }
 
 /*******************************************************************

@@ -5,7 +5,7 @@ declare namespace Cypress {
   type ApiGroupReturned = import("../types").ApiGroupReturned;
   type ApiDeviceIdAndName = import("../types").ApiDeviceIdAndName;
   type ApiGroupsDevice = import("../types").ApiGroupsDevice;
-  type ApiStationData = import("../types").ApiStationData;
+  type ApiStationDataAlias = import("../types").ApiStationData;
   type ApiStationDataReturned = import("../types").ApiStationDataReturned;
   type ApiDeviceResponseAlias =
     import("@typedefs/api/device").ApiDeviceResponse;
@@ -39,9 +39,60 @@ declare namespace Cypress {
       userName: string,
       groupName: string,
       admin?: boolean,
+      owner?: boolean,
       log?: boolean,
       statusCode?: number,
       additionalChecks?: any
+    ): any;
+
+    /**
+     * Invite user to group
+     * Optionally check for fail response (statusCode!=200)
+     * By default gropuAdminUser and groupName are converted into unique (for this test run) names.
+     */
+    apiGroupUserInvite(
+      groupAdminUser: string,
+      inviteeEmail: string,
+      groupName: string,
+      admin?: boolean,
+      owner?: boolean,
+      log?: boolean,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Ask an admin user to join one of their groups.
+     */
+    apiGroupUserRequestInvite(
+      groupAdminUserEmail: string,
+      userName: string,
+      groupName: string,
+      log?: boolean,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Accept a user request to join one of your groups.
+     */
+    apiGroupUserAcceptInviteRequest(
+      groupAdminUser: string,
+      token: string,
+      log?: boolean,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Accept group invitation
+     * Optionally check for fail response (statusCode!=200)
+     * By default invitedUser and groupName are converted into unique (for this test run) names.
+     */
+    apiGroupUserAcceptInvite(
+      invitedUser: string,
+      groupName: string,
+      token: string,
+      useExistingUser?: boolean,
+      log?: boolean,
+      statusCode?: number
     ): any;
 
     /**

@@ -127,7 +127,7 @@ const checkS3Connection = (): Promise<void> => {
     })
   );
   app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
-  app.use(express.json());
+  app.use(express.json({ limit: "2Mb" }));
   app.use(passport.initialize());
   // Adding API documentation
   app.use(express.static(__dirname + "/apidoc"));

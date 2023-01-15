@@ -9,6 +9,12 @@ export const isEmpty = (str: string): boolean => str.trim().length === 0;
 export const delayMs = async (delayMs: number) =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
+export const capitalize = (str: string): string =>
+  str
+    .split(" ")
+    .map((p) => (p[0] || "").toUpperCase() + p.slice(1))
+    .join(" ");
+
 export const delayMsThen = async <T>(
   delayInMs: number,
   callback: () => T,
@@ -79,14 +85,3 @@ export const urlNormaliseGroupName = (name: string): string => {
 };
 
 export type FormInputValidationState = boolean | undefined;
-
-export const truncateLongStationNames = (
-  str: string,
-  maxLength = 30
-): string => {
-  const split = str.indexOf("_");
-  if (split !== -1 && str.length > maxLength) {
-    return str.slice(0, split) + "...";
-  }
-  return str;
-};

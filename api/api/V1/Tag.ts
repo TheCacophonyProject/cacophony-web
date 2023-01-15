@@ -89,6 +89,7 @@ export default function (app: Application, baseUrl: string) {
   /**
    * @api {delete} /api/v1/tags Delete a given recording tag
    * @apiName DeleteTag
+   * @apiDeprecated Functionality moved to "DELETE /api/v1/recordings/:recordingId/tags/:tagId"
    * @apiGroup Tag
    * @apiUse V1UserAuthorizationHeader
    *

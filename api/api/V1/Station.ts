@@ -213,7 +213,9 @@ export default function (app: Application, baseUrl: string) {
         response,
         fileKey,
         "reference-image.jpg",
-        "image/jpeg"
+        "image/jpeg",
+        response.locals.requestUser.id,
+        response.locals.station.GroupId
       );
     }
   );

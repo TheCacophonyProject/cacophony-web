@@ -33,11 +33,17 @@
           <b-nav-item to="/recordings">Recordings</b-nav-item>
         </b-navbar-nav>
 
-        <b-navbar-nav class="ml-auto">
+        <b-navbar-nav class="ml-auto align-items-center">
+          <b-nav-item :href="browseNextUrl" target="_blank">
+            <b-btn variant="outline-primary" size="sm">
+              Preview our new beta version
+            </b-btn>
+          </b-nav-item>
           <b-nav-item to="/groups">
             <font-awesome-icon icon="users" class="icon" />
             Groups
           </b-nav-item>
+
           <b-nav-item-dropdown
             class="profile"
             menu-class="profile-dropdown"
@@ -113,6 +119,21 @@
         />
       </b-form-group>
     </b-modal>
+    <b-alert
+      v-model="showNews"
+      class="position-fixed fixed-bottom m-0 rounded-0"
+      style="z-index: 2000"
+      variant="warning"
+      dismissible
+      @dismissed="dismissMessage()"
+    >
+      We're working on a new version of Cacophony Browse. It's still very much a
+      work in progress, but you can
+      <a :href="browseNextUrl" target="_blank"
+        >try out our new visits dashboard now</a
+      >
+      with your Cacophony account.
+    </b-alert>
   </div>
 </template>
 
@@ -151,6 +172,9 @@ export default {
       usersListLabel: "loading users",
       showRevisionInfo: true,
       viewAs: "",
+      showNews: !(
+        window.localStorage.getItem("dismissed-browse-next-message") === "true"
+      ),
       selectedUser: {
         name: "",
         email: "",
@@ -160,6 +184,12 @@ export default {
     };
   },
   computed: {
+    browseNextUrl() {
+      if (window.location.host.includes("test")) {
+        return "https://browse-next-test.cacophony.org.nz";
+      }
+      return "https://browse-next.cacophony.org.nz";
+    },
     revisionInfo() {
       let version = this.config.revisionInfo.version;
       if (this.config.revisionInfo.travis) {
@@ -223,8 +253,32 @@ export default {
   },
   mounted() {
     this.viewAs = shouldViewAsSuperUser() ? "super" : "regular";
+
+    const h = this.$createElement;
+    // Create a ID with a incremented count
+    const id = `my-toast-${this.count++}`;
+
+    // Create the custom close button
+    const $closeButton = h(
+      "div",
+      {
+        on: { click: () => this.$bvToast.hide(id) },
+      },
+      "Close"
+    );
+    this.$bvToast.show("browse-next-toast");
+    //
+    // this.$bvToast.toast(``, {
+    //   title: 'News',
+    //   variant: "warning",
+    //   appendToast: false,
+    //   solid: true
+    // })
   },
   methods: {
+    dismissMessage() {
+      window.localStorage.setItem("dismissed-browse-next-message", "true");
+    },
     async initUsersList() {
       if (this.hasGlobalReadPermissions) {
         const response = await User.list();

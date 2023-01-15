@@ -1,13 +1,15 @@
 import CacophonyApi from "./api";
 import type { FetchResult } from "@api/types";
-import type { GroupId } from "@typedefs/api/common";
+import type { GroupId, UserId } from "@typedefs/api/common";
 import type {
   ApiGroupResponse,
+  ApiGroupSettings,
   ApiGroupUserResponse,
 } from "@typedefs/api/group";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import { shouldViewAsSuperUser } from "@models/LoggedInUser";
+import type { ApiGroupUserSettings } from "@typedefs/api/group";
 
 // FIXME - Move all the super user view mode stuff into the fetch function?
 
@@ -16,28 +18,66 @@ export const addNewGroup = (groupName: string) =>
     FetchResult<{ groupId: GroupId }>
   >;
 
+export const saveGroupUserSettings = (
+  id: GroupId,
+  settings: ApiGroupUserSettings
+) => CacophonyApi.patch(`/api/v1/groups/${id}/my-settings`, { settings });
+
+export const saveGroupSettings = (id: GroupId, settings: ApiGroupSettings) =>
+  CacophonyApi.patch(`/api/v1/groups/${id}/group-settings`, { settings });
+
 export const getGroups = (abortable: boolean) =>
   CacophonyApi.get(
     `/api/v1/groups${shouldViewAsSuperUser.value ? "" : "?view-mode=user"}`,
     abortable
   ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
 
-export const addGroupUser = (
-  groupName: string,
-  userName: string,
-  isAdmin: boolean
-) =>
-  CacophonyApi.post("/api/v1/groups/users", {
-    group: groupName,
-    userName,
+export const addOrUpdateGroupUser = (
+  groupNameOrId: string | GroupId,
+  isAdmin: boolean,
+  isOwner: boolean,
+  userId?: UserId,
+  email?: string
+) => {
+  const payload: {
+    group: string | GroupId;
+    admin: boolean;
+    owner: boolean;
+    userId?: UserId;
+    email?: string;
+  } = {
+    group: groupNameOrId,
     admin: isAdmin,
-  }) as Promise<FetchResult<void>>;
+    owner: isOwner,
+  };
+  if (userId) {
+    payload.userId = userId;
+  } else {
+    payload.email = email;
+  }
+  return CacophonyApi.post("/api/v1/groups/users", payload) as Promise<
+    FetchResult<void>
+  >;
+};
 
-export const removeGroupUser = (groupName: string, userName: string) =>
-  CacophonyApi.delete("/api/v1/groups/users", {
-    group: groupName,
-    userName,
-  }) as Promise<FetchResult<void>>;
+export const removeGroupUser = (
+  groupName: string,
+  userId?: UserId,
+  email?: string
+) => {
+  const payload: { group: string | GroupId; userId?: UserId; email?: string } =
+    {
+      group: groupName,
+    };
+  if (userId) {
+    payload.userId = userId;
+  } else {
+    payload.email = email;
+  }
+  return CacophonyApi.delete("/api/v1/groups/users", payload) as Promise<
+    FetchResult<void>
+  >;
+};
 
 export const getGroupByName = (groupName: string) =>
   CacophonyApi.get(
@@ -92,6 +132,20 @@ export const getStationByNameInGroup = (
     )}/station/${encodeURIComponent(stationName)}`
   ) as Promise<FetchResult<{ station: ApiStationResponse }>>;
 
+export const inviteSomeoneToGroup = (
+  groupNameOrId: string | GroupId,
+  inviteeEmail: string,
+  asAdmin = false,
+  asOwner = false
+) =>
+  CacophonyApi.post(
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/invite-user`,
+    {
+      email: inviteeEmail,
+      admin: asAdmin,
+      owner: asOwner,
+    }
+  ) as Promise<FetchResult<void>>;
 /*
 const createStationInGroup = (
   groupNameOrId: string | GroupId,

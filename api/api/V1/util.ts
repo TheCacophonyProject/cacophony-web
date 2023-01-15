@@ -32,7 +32,6 @@ import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
 import { Op } from "sequelize";
 import { UnprocessableError } from "@api/customErrors";
-import logger from "@log";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -147,7 +146,7 @@ function multipartUpload(
     // Handle any errors. If this is called, the close handler
     // shouldn't be.
     form.on("error", (err) => {
-      return serverErrorResponse(response, err);
+      return serverErrorResponse(request, response, err);
     });
 
     // This gets called once all fields and parts have been read.
@@ -181,7 +180,7 @@ function multipartUpload(
             },
           });
         if (existingRecordingWithHashForDevice !== null) {
-          log.error(
+          log.warning(
             "Recording with hash %s for device %s already exists, discarding duplicate",
             data.fileHash,
             uploadingDevice.id
@@ -204,7 +203,7 @@ function multipartUpload(
         ]);
         const fileDataArray = new Uint8Array(fileData);
         if (uploadResult instanceof Error) {
-          return serverErrorResponse(response, uploadResult);
+          return serverErrorResponse(request, response, uploadResult);
         }
         log.info("Finished streaming upload to object store. Key: %s", key);
 
@@ -255,7 +254,7 @@ function multipartUpload(
               },
             });
           if (existingRecordingWithHashForDevice !== null) {
-            log.error(
+            log.warning(
               "Recording with hash %s for device %s already exists, discarding duplicate",
               data.fileHash,
               uploadingDevice.id
@@ -296,6 +295,11 @@ function multipartUpload(
           if (dbRecordOrFileKey.type === "audioBait") {
             // FIXME - this is pretty nasty.
             responseUtil.validAudiobaitUpload(response, dbRecordOrFileKey.id);
+          } else if (dbRecordOrFileKey instanceof models.Event) {
+            responseUtil.validEventThumbnailUpload(
+              response,
+              (dbRecordOrFileKey as any).id
+            );
           } else {
             responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
           }
@@ -306,7 +310,7 @@ function multipartUpload(
           return;
         }
       } catch (err) {
-        return serverErrorResponse(response, err);
+        return serverErrorResponse(request, response, err);
       }
     });
 

@@ -181,21 +181,19 @@ describe("Recordings: tag", () => {
 
   it("Can set all valid tag fields", () => {
     const fullTag: ApiRecordingTagRequest = {
-      detail: "blah blah blah",
+      detail: "morepork",
       confidence: 0.9,
       startTime: 13.4,
       duration: 2.3,
-      what: "morepork",
       automatic: true,
       version: 1,
     };
     const expectedTag: ApiRecordingTagResponse = {
       id: -99,
-      detail: "blah blah blah",
+      detail: "morepork",
       confidence: 0.9,
       startTime: 13.4,
       duration: 2.3,
-      what: "morepork",
       automatic: true,
       createdAt: NOT_NULL_STRING,
       taggerId: getCreds("tagGroupAdmin").id,
@@ -226,11 +224,10 @@ describe("Recordings: tag", () => {
 
   it("Correct handling of invalid tag data", () => {
     const fullTag: ApiRecordingTagRequest = {
-      detail: "blah blah blah",
+      detail: "morepork",
       confidence: 0.9,
       startTime: 13.4,
       duration: 2.3,
-      what: "morepork",
       automatic: true,
       version: 1,
     };

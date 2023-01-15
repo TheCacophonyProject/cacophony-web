@@ -17,7 +17,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
       <button
         type="button"
         class="btn toggle-nav d-sm-none"
-        @click.stop.prevent="pinSideNav = true"
+        @click.stop.prevent="pinSideNav = !pinSideNav"
       >
         <font-awesome-icon icon="bars" />
       </button>
@@ -34,6 +34,7 @@ const showGroupName = computed<boolean>(() => !!route.params.groupName);
   left: 0;
   right: 0;
   top: 0;
+  z-index: 1000;
   h2 {
     font-size: 18px;
   }

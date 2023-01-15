@@ -696,6 +696,7 @@ export function TestCreateExpectedHistoryEntry(
     setBy: setBy,
     stationId: getCreds(stationName).id,
     uuid: NOT_NULL,
+    settings: null,
   };
 
   return expectedHistory;

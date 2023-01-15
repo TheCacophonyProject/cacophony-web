@@ -11,7 +11,7 @@ import { logTestDescription } from "../descriptions";
 import { getTestName } from "../names";
 import { testRunOnApi } from "../server";
 import { ApiAlert } from "../types";
-import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
+import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { StationId } from "@typedefs/api/common";
 
 Cypress.Commands.add(
@@ -156,12 +156,11 @@ export function createExpectedAlert(
   alertName: string,
   frequencySeconds: number,
   conditions: ApiAlertCondition[],
-  hasLastAlert: boolean,
-  userName: string
+  hasLastAlert: boolean
 ): any {
   //alertId will have been saved when we created the alert
   const alertId = getCreds(alertName).id;
-  const expectedAlert = {
+  return {
     id: alertId,
     name: alertName,
     alertName: getTestName(alertName),
@@ -169,7 +168,6 @@ export function createExpectedAlert(
     conditions,
     hasLastAlert,
   };
-  return expectedAlert;
 }
 
 function apiDeviceAlertsGet(

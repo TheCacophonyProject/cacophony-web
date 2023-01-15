@@ -8,6 +8,7 @@ export type AlertId = number;
 export type TagId = number;
 export type FileId = number;
 export type UserId = number;
+export type GroupInvitationId = number;
 export type RecordingId = number;
 export type TrackId = number;
 export type TrackTagId = number;
@@ -16,6 +17,7 @@ export type StationId = number;
 export type ScheduleId = number;
 export type SaltId = number;
 export type GroupId = number;
+export type EventId = number;
 export type EndUserAgreementVersion = number;
 
 export interface LatLng {

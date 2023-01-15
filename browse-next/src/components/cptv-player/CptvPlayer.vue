@@ -10,6 +10,7 @@ import type {
 } from "./cptv-decoder/decoder";
 import {
   ColourMaps,
+  formatHeaderInfo,
   renderFrameIntoFrameBuffer,
 } from "./cptv-decoder/frameRenderUtils";
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
@@ -42,21 +43,32 @@ import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
+import { delayMs } from "@/utils";
+import { displayLabelForClassificationLabel } from "@api/Classifications";
 
 const { pixelRatio } = useDevicePixelRatio();
-// eslint-disable-next-line vue/no-setup-props-destructure
 const {
   recording,
   recordingId,
   cptvSize = null,
   currentTrack,
+  userSelectedTrack,
   canSelectTracks = true,
+  exportRequested,
+  hasNext = false,
+  hasPrev = false,
+  displayHeaderInfo = false,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
   recordingId: RecordingId;
   cptvSize?: number | null;
   currentTrack?: ApiTrackResponse;
+  userSelectedTrack?: ApiTrackResponse;
   canSelectTracks?: boolean;
+  hasNext?: boolean;
+  hasPrev?: boolean;
+  displayHeaderInfo?: boolean;
+  exportRequested?: boolean | "advanced";
 }>();
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
@@ -79,8 +91,28 @@ watch(pixelRatio, () => {
 
   // If the pixel ratio changed, we might also be on a monitor with a different refresh rate now.
   polledFps.value = false;
+  while (frameTimes.length) {
+    frameTimes.pop();
+  }
   pollFrameTimes();
 });
+
+const exportProgressZeroOne = ref<number>(0);
+const exportProgress = computed<number>(
+  () => exportProgressZeroOne.value * 100
+);
+watch(
+  () => exportRequested,
+  async (nextVal) => {
+    if (nextVal) {
+      if (nextVal === true) {
+        await exportMp4();
+      } else if (nextVal === "advanced") {
+        // Wait for user input
+      }
+    }
+  }
+);
 
 const playbackTimeChanged = (offset: number) => {
   setTimeAndRedraw({ timeZeroOne: offset });
@@ -102,8 +134,14 @@ const playbackTimeZeroOne = computed<number>(() => {
 const emit = defineEmits<{
   (e: "request-prev-recording"): void;
   (e: "request-next-recording"): void;
-  (e: "track-selected", { trackId }: { trackId: TrackId }): void;
+  (
+    e: "track-selected",
+    { trackId, automatically }: { trackId: TrackId; automatically: boolean }
+  ): void;
   (e: "ready-to-play", header: CptvHeader): void;
+  (e: "export-completed"): void;
+  (e: "request-header-info-display"): void;
+  (e: "dismiss-header-info"): void;
 }>();
 
 // HTML refs
@@ -116,9 +154,28 @@ watch(canvasWidth, () => {
 });
 
 watch(
+  () => userSelectedTrack,
+  async (nextTrack, prevTrack) => {
+    if (nextTrack) {
+      if (
+        !prevTrack ||
+        (prevTrack &&
+          (nextTrack as ApiTrackResponse).id !==
+            (prevTrack as ApiTrackResponse).id)
+      ) {
+        await selectTrack(nextTrack, true, true, true);
+      }
+    }
+    updateOverlayCanvas(frameNum.value);
+  }
+);
+
+watch(
   () => currentTrack,
   () => {
-    updateOverlayCanvas(frameNum.value);
+    if (!playing.value) {
+      updateOverlayCanvas(frameNum.value);
+    }
   }
 );
 
@@ -161,9 +218,13 @@ const motionPaths = computed<MotionPath[]>(() => {
 const persistentBooleanPref = (
   key: string,
   propertyName: string,
-  forceReRender = false
+  forceReRender = false,
+  defaultValue = false
 ): Ref<boolean> => {
-  const variable = ref<boolean>(localStorage.getItem(key) === "true");
+  const initValue =
+    (localStorage.getItem(key) && localStorage.getItem(key) === "true") ||
+    defaultValue;
+  const variable = ref<boolean>(initValue);
   watch(variable, (nextVal: boolean) => {
     localStorage.setItem(key, nextVal.toString());
     setPlayerMessage(`${propertyName} ${nextVal ? "Enabled" : "Disabled"}`);
@@ -197,6 +258,7 @@ const trackHighlightMode = persistentBooleanPref(
 const videoSmoothing = persistentBooleanPref(
   "video-smoothing",
   "Smoothing",
+  true,
   true
 );
 
@@ -221,8 +283,6 @@ const colourMap = ref<[string, Uint32Array]>(ColourMaps[paletteIndex.value]);
 const messageTimeout = ref<number | null>(null);
 const messageAnimationFrame = ref<number>(0);
 
-const displayHeaderInfo = ref<boolean>(false);
-
 const loadedStream = ref<boolean | string>(false);
 const totalFrames = ref<number | null>(null);
 const seekingInProgress = ref<boolean>(false);
@@ -235,16 +295,6 @@ const polledFps = ref<boolean>(false);
 const stopAtFrame = ref<number | null>(null);
 const wasPaused = ref<boolean>(false);
 const trackExportOptions = ref<TrackExportOption[]>([]);
-
-const canGoBackwards = computed<boolean>(() => {
-  // TODO
-  return false;
-});
-
-const canGoForwards = computed<boolean>(() => {
-  // TODO
-  return false;
-});
 
 const setTimeAndRedraw = async ({
   timeZeroOne,
@@ -294,30 +344,42 @@ const onePastLastFrameNumForTrack = (trackId: number): number => {
   return lastTrackFramePlusOne;
 };
 
-const _selectTrack = (force = false, shouldPlay = false) => {
-  if (currentTrack && (!playing.value || force) && recording?.tracks.length) {
+const lastFrameNumForTrack = (trackId: number): number => {
+  const frames = Object.entries(framesByTrack.value[trackId]);
+  const lastTrackFrame = Number(frames[frames.length - 1][0]);
+  if (totalPlayableFrames.value) {
+    return Math.min(totalPlayableFrames.value, lastTrackFrame);
+  }
+  return lastTrackFrame;
+};
+
+const selectTrack = async (
+  track: ApiTrackResponse,
+  force = false,
+  shouldPlay = false,
+  userSelected = false
+) => {
+  if ((!playing.value || force) && recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
     animationTick.value = 0;
-    setTimeAndRedraw({
-      frameNumToDraw: firstFrameNumForTrack(currentTrack.id),
-    });
+    if (userSelected) {
+      await setTimeAndRedraw({
+        frameNumToDraw: firstFrameNumForTrack(track.id),
+      });
+      stopAtFrame.value = lastFrameNumForTrack(track.id);
+    }
     if (shouldPlay) {
       playing.value = true;
     }
-
-    // This is used when a user selects a track from the TrackInfo panel.
-    // In that case we don't want it selecting another track as it plays on from
-    // the selected track, since the user likely wants to tag the track they selected.
-
-    // Any other further user interaction should unset stopAtTime.
-    // TODO - should this actually stop at the last frame number for the track, so that another
-    //  track isn't selected?
-    stopAtFrame.value = onePastLastFrameNumForTrack(currentTrack.id);
   }
 };
 
+const requestHeaderInfoDisplay = () => {
+  emit("request-header-info-display");
+};
+
 const requestPrevRecording = () => {
-  if (canGoBackwards.value) {
+  if (hasPrev) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -328,7 +390,7 @@ const requestPrevRecording = () => {
 };
 
 const requestNextRecording = () => {
-  if (canGoForwards.value) {
+  if (hasNext) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -667,25 +729,28 @@ const elapsedTime = computed<string>(() => {
   return formatTime(currentTime.value);
 });
 
+const headerInfo = computed(() => formatHeaderInfo(header.value));
+
 const getAuthoritativeTagForTrack = (
   trackTags: ApiTrackTagResponse[]
 ): string | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
+    // FIXME - There can be more than one conflicting user tag...
+
+    // TODO: Add an option to also include the AI guess, plus the confidence at each frame.
     return userTags[0].what;
   } else {
-    const tag = trackTags.find(
-      (tag) =>
-        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
-        (typeof tag.data === "object" &&
-          tag.data.name &&
-          tag.data.name === "Master")
+    return (
+      trackTags.find(
+        (tag) =>
+          (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
+          (typeof tag.data === "object" &&
+            tag.data.name &&
+            tag.data.name === "Master")
+      )?.what || null
     );
-    if (tag) {
-      return tag.what;
-    }
   }
-  return null;
 };
 
 // Check if positions is in old format or new and format accordingly
@@ -801,18 +866,195 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
     );
   }
 );
-//
-const _exportMp4 = async () => {
-  if (overlayCanvas.value) {
-    const encoder = new Mp4Encoder();
-    await encoder.init(640, 480, 9);
-    const context = overlayCanvas.value.getContext("2d");
-    if (context) {
-      await encoder.encodeFrame(context.getImageData(0, 0, 640, 480).data);
-    }
-    const _uint8Array = await encoder.finish();
-    encoder.close();
+
+const isExporting = ref<boolean>(false);
+const doAdvancedExport = () => {
+  exportMp4(trackExportOptions.value);
+  isExporting.value = true;
+};
+const cancelExport = () => {
+  isExporting.value = false;
+  emit("export-completed");
+};
+const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
+  if (!header.value) {
+    isExporting.value = false;
+    return;
   }
+  playing.value = false;
+  exportProgressZeroOne.value = 0;
+
+  if (overlayCanvas.value) {
+    const targetWidth = 640;
+    const targetHeight = 480;
+    const encoder = new Mp4Encoder();
+    await encoder.init(targetWidth, targetHeight, 9);
+
+    if (!exportRequested) {
+      // Could have been canceled.
+      encoder.close();
+      isExporting.value = false;
+      return;
+    }
+    const renderCanvas = document.createElement("canvas");
+    renderCanvas.width = targetWidth;
+    renderCanvas.height = targetHeight;
+
+    const renderContext = renderCanvas.getContext("2d", {
+      willReadFrequently: true,
+      desynchronized: true,
+    });
+    const videoCanvas = document.createElement("canvas");
+    videoCanvas.width = header.value.width;
+    videoCanvas.height = header.value.height;
+    const videoContext = videoCanvas.getContext("2d");
+    if (videoContext === null || renderContext === null) {
+      encoder.close();
+      isExporting.value = false;
+      return;
+    }
+    // Make sure everything is loaded to ensure that we have final min/max numbers for normalisation
+    //await ensureEntireFileIsLoaded();
+    await makeSureWeHaveTheFrame(100000);
+
+    if (await cptvDecoder.hasStreamError()) {
+      emit("export-completed");
+      streamLoadError.value = await cptvDecoder.getStreamError();
+      await cptvDecoder.free();
+      frames = [];
+      encoder.close();
+      isExporting.value = false;
+      return;
+    }
+
+    if (!exportRequested) {
+      // Could have been canceled.
+      encoder.close();
+      isExporting.value = false;
+      return;
+    }
+
+    console.assert(totalFrames.value !== null);
+    const numTotalFrames = totalFrames.value || 0;
+    let startFrame = 0;
+    let onePastLastFrame = numTotalFrames;
+    if (
+      trackExportOptions.value.filter((track) => track.includeInExportTime)
+        .length !== 0
+    ) {
+      startFrame = numTotalFrames;
+      onePastLastFrame = 0;
+      for (const { includeInExportTime, trackId } of trackExportOptions.value) {
+        if (includeInExportTime) {
+          const track = (recording as ApiRecordingResponse).tracks.find(
+            (track) => track.id === trackId
+          );
+          if (track) {
+            firstFrameNumForTrack(trackId);
+            onePastLastFrameNumForTrack(trackId);
+            startFrame = Math.min(startFrame, firstFrameNumForTrack(trackId));
+            onePastLastFrame = Math.max(
+              onePastLastFrame,
+              onePastLastFrameNumForTrack(trackId)
+            );
+          }
+        }
+      }
+    }
+    let frameNum = startFrame;
+    while (frameNum < onePastLastFrame) {
+      const frameData = frames[frameNum];
+      const frameHeader = frameData.meta;
+      const [min, max] = minMaxForFrame(frameData);
+      renderFrameIntoFrameBuffer(
+        frameBuffer,
+        frameData.data,
+        colourMap.value[1],
+        min,
+        max
+      );
+      videoContext.putImageData(
+        new ImageData(frameBuffer, header.value.width, header.value.height),
+        0,
+        0
+      );
+      renderContext.imageSmoothingEnabled = videoSmoothing.value;
+      if (videoSmoothing.value) {
+        renderContext.imageSmoothingQuality = "high";
+      }
+      renderContext.drawImage(
+        videoCanvas,
+        0,
+        0,
+        videoCanvas.width,
+        videoCanvas.height,
+        0,
+        0,
+        renderCanvas.width,
+        renderCanvas.height
+      );
+
+      // Draw the overlay
+      let timeSinceLastFFCSeconds = Number.MAX_SAFE_INTEGER;
+      if (frameHeader.lastFfcTimeMs) {
+        timeSinceLastFFCSeconds =
+          (frameHeader.timeOnMs - frameHeader.lastFfcTimeMs) / 1000;
+      }
+
+      renderOverlay(
+        renderContext,
+        renderCanvas.width / videoCanvas.width,
+        timeSinceLastFFCSeconds,
+        true,
+        frameNum,
+        recording?.tracks || [],
+        canSelectTracks,
+        currentTrack,
+        motionPathMode.value ? motionPaths.value : [],
+        1,
+        tracksByFrame.value,
+        framesByTrack.value,
+        useExportOptions
+      );
+
+      await encoder.encodeFrame(
+        renderContext.getImageData(0, 0, targetWidth, targetHeight).data
+      );
+      if (!exportRequested) {
+        encoder.close();
+        // Check for cancellation
+        isExporting.value = false;
+        return;
+      }
+      exportProgressZeroOne.value =
+        (frameNum - startFrame) / (onePastLastFrame - startFrame);
+      frameNum++;
+    }
+    const uint8Array = await encoder.finish();
+    encoder.close();
+    if (!exportRequested) {
+      // Check for cancellation
+      isExporting.value = false;
+      return;
+    }
+    const recordingIdSuffix = `recording_${recordingId}__`;
+    trackExportOptions.value = exportOptions.value;
+    download(
+      URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
+      `${recordingIdSuffix}${new Date(
+        header.value.timestamp / 1000
+      ).toLocaleString()}`
+    );
+    isExporting.value = false;
+    emit("export-completed");
+  }
+};
+
+const download = (url: string, filename: string) => {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename || "download";
+  anchor.click();
 };
 
 const ambientTemperature = computed<string | null>(() => {
@@ -907,7 +1149,7 @@ watch(frameNum, () => {
     const trackId = frameTracks[0][0];
     // If the track is the only track at this time offset, make it the selected track.
     if (currentTrack.id !== trackId) {
-      emit("track-selected", { trackId });
+      emit("track-selected", { trackId, automatically: true });
     }
   }
 });
@@ -917,6 +1159,7 @@ const atEndOfPlayback = computed<boolean>(() => {
 });
 
 const togglePlayback = async (): Promise<void> => {
+  stopAtFrame.value = null;
   if (!playing.value) {
     if (atEndOfPlayback.value) {
       frameNum.value = 0;
@@ -1062,6 +1305,7 @@ const toggleBackground = async (): Promise<void> => {
         0,
         0
       );
+      cancelAnimationFrame(animationFrame.value);
       if (clearOverlay(overlayContext.value)) {
         drawBottomLeftOverlayLabel(
           "Background frame",
@@ -1081,7 +1325,6 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
     .filter(([trackId]) => trackId !== currentTrack?.id)
     .find(
       ([
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         _,
         {
           rect: [left, top, right, bottom],
@@ -1101,6 +1344,7 @@ const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
     if (trackId !== null) {
       emit("track-selected", {
         trackId,
+        automatically: !playing.value,
       });
     }
   }
@@ -1157,7 +1401,8 @@ const frameTimes: number[] = [];
 const pollFrameTimes = () => {
   if (!polledFps.value) {
     frameTimes.push(performance.now());
-    if (frameTimes.length < 10) {
+    if (frameTimes.length < 20) {
+      // Safari iOS seems to take a a little while get up to speed with canvas rendering.
       requestAnimationFrame(pollFrameTimes);
     } else {
       const diffs = [];
@@ -1181,11 +1426,10 @@ const pollFrameTimes = () => {
         raqFps.value = 120;
       }
       polledFps.value = true;
+      // alert(`${1000 / (total / diffs.length) / 30}, ${multiplier}, ${raqFps.value}fps`);
     }
   }
 };
-pollFrameTimes();
-window.addEventListener("load", pollFrameTimes);
 
 onMounted(async () => {
   cptvDecoder = new CptvDecoder();
@@ -1210,6 +1454,7 @@ onMounted(async () => {
   }
 
   await loadNextRecording(recordingId);
+  pollFrameTimes();
 });
 
 const loadedNextRecordingData = async () => {
@@ -1225,10 +1470,10 @@ const loadedNextRecordingData = async () => {
 
 watch(
   () => recording,
-  (nextRecording: ApiRecordingResponse | null) => {
+  async (nextRecording: ApiRecordingResponse | null) => {
     if (nextRecording) {
       trackExportOptions.value = exportOptions.value;
-      loadedNextRecordingData();
+      await loadedNextRecordingData();
     }
   }
 );
@@ -1284,7 +1529,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       canvas.value.width = header.value.width;
       canvas.value.height = header.value.height;
     }
-
+    while (!recording) {
+      // Wait for the recording data to be loaded if it's not,
+      // so that we can seek to the beginning of any track.
+      await delayMs(10);
+    }
     if (recording && recording.id === recordingId) {
       await loadedNextRecordingData();
       emit("ready-to-play", header.value);
@@ -1350,6 +1599,7 @@ const setOverlayCanvasDimensions = () => {
 };
 
 const startSeek = () => {
+  stopAtFrame.value = null;
   wasPaused.value = !playing.value;
   playing.value = false;
 };
@@ -1456,17 +1706,17 @@ const drawFrame = async (
         ]"
       >
         <button
-          @click.stop.prevent="requestPrevRecording"
-          :class="{ disabled: !canGoBackwards }"
+          @click.prevent="requestPrevRecording"
+          :class="{ disabled: !hasPrev }"
         >
           <font-awesome-icon icon="backward" class="replay" />
         </button>
-        <button @click.stop.prevent="togglePlayback">
+        <button @click.prevent="togglePlayback">
           <font-awesome-icon icon="redo-alt" class="replay" rotation="270" />
         </button>
         <button
-          @click.stop.prevent="requestNextRecording"
-          :class="{ disabled: !canGoForwards }"
+          @click.prevent="requestNextRecording"
+          :class="{ disabled: !hasNext }"
         >
           <font-awesome-icon icon="forward" class="replay" />
         </button>
@@ -1474,7 +1724,7 @@ const drawFrame = async (
     </div>
     <div key="playback-nav" class="playback-nav">
       <button
-        @click.stop.prevent="togglePlayback"
+        @click.prevent="togglePlayback"
         ref="playPauseButton"
         :data-tooltip="playing ? 'Pause' : 'Play'"
       >
@@ -1484,7 +1734,7 @@ const drawFrame = async (
       <div class="right-nav">
         <div :class="['advanced-controls', { open: showAdvancedControls }]">
           <button
-            @click.stop.prevent="showAdvancedControls = !showAdvancedControls"
+            @click.prevent="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
             ref="advancedControlsButton"
@@ -1495,7 +1745,7 @@ const drawFrame = async (
             />
           </button>
           <button
-            @click.stop.prevent="showDebugTools = !showDebugTools"
+            @click.prevent="showDebugTools = !showDebugTools"
             ref="debugTools"
             data-tooltip="Debug tools"
             :class="{ selected: showDebugTools }"
@@ -1503,7 +1753,7 @@ const drawFrame = async (
             <font-awesome-icon icon="wrench" />
           </button>
           <button
-            @click.stop.prevent="videoSmoothing = !videoSmoothing"
+            @click.prevent="videoSmoothing = !videoSmoothing"
             ref="toggleSmoothingButton"
             :data-tooltip="
               videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
@@ -1562,14 +1812,14 @@ const drawFrame = async (
             </svg>
           </button>
           <button
-            @click.stop.prevent="incrementPalette"
+            @click.prevent="incrementPalette"
             ref="cyclePalette"
             data-tooltip="Cycle colour map"
           >
             <font-awesome-icon icon="palette" />
           </button>
           <button
-            @click.stop.prevent="displayHeaderInfo = true"
+            @click.prevent="requestHeaderInfoDisplay"
             data-tooltip="Show recording header info"
             :class="{ selected: displayHeaderInfo }"
             ref="showHeader"
@@ -1578,7 +1828,7 @@ const drawFrame = async (
           </button>
         </div>
         <button
-          @click.stop.prevent="incrementSpeed"
+          @click.prevent="incrementSpeed"
           ref="cyclePlaybackSpeed"
           class="playback-speed"
           data-tooltip="Cycle playback speed"
@@ -1594,21 +1844,21 @@ const drawFrame = async (
       </div>
       <div>
         <button
-          @click.stop.prevent="stepBackward"
+          @click.prevent="stepBackward"
           data-tooltip="Go back one frame"
           :disabled="!canStepBackward"
         >
           <font-awesome-icon icon="step-backward" />
         </button>
         <button
-          @click.stop.prevent="stepForward"
+          @click.prevent="stepForward"
           data-tooltip="Go forward one frame"
           :disabled="!canStepForward"
         >
           <font-awesome-icon icon="step-forward" />
         </button>
         <button
-          @click.stop.prevent="showValueInfo = !showValueInfo"
+          @click.prevent="showValueInfo = !showValueInfo"
           :class="{ selected: showValueInfo }"
           :data-tooltip="
             showValueInfo
@@ -1619,7 +1869,7 @@ const drawFrame = async (
           <font-awesome-icon icon="eye-dropper" />
         </button>
         <button
-          @click.stop.prevent="trackHighlightMode = !trackHighlightMode"
+          @click.prevent="trackHighlightMode = !trackHighlightMode"
           :class="{ selected: trackHighlightMode }"
           :data-tooltip="
             trackHighlightMode
@@ -1630,7 +1880,7 @@ const drawFrame = async (
           <font-awesome-icon icon="highlighter" />
         </button>
         <button
-          @click.stop.prevent="polygonEditMode = !polygonEditMode"
+          @click.prevent="polygonEditMode = !polygonEditMode"
           :class="{ selected: polygonEditMode }"
           :data-tooltip="
             polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
@@ -1640,7 +1890,7 @@ const drawFrame = async (
           <!--         draw-polygon, bezier-curve, vector-square -->
         </button>
         <button
-          @click.stop.prevent="silhouetteMode = !silhouetteMode"
+          @click.prevent="silhouetteMode = !silhouetteMode"
           :class="{ selected: silhouetteMode }"
           :data-tooltip="
             silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
@@ -1649,7 +1899,7 @@ const drawFrame = async (
           <font-awesome-icon icon="burst" />
         </button>
         <button
-          @click.stop.prevent="motionPathMode = !motionPathMode"
+          @click.prevent="motionPathMode = !motionPathMode"
           :class="{ selected: motionPathMode }"
           :data-tooltip="
             motionPathMode ? 'Hide motion paths' : 'Show motion paths'
@@ -1662,7 +1912,7 @@ const drawFrame = async (
           ref="showBackgroundFrame"
           :class="{ selected: isShowingBackgroundFrame }"
           data-tooltip="Press to show background frame"
-          @click.stop.prevent="toggleBackground"
+          @click.prevent="toggleBackground"
         >
           <font-awesome-icon icon="image" />
         </button>
@@ -1681,6 +1931,79 @@ const drawFrame = async (
       />
     </div>
   </div>
+  <teleport v-if="displayHeaderInfo" to="#recording-status-modal">
+    <div class="p-3">
+      <pre v-if="header">{{ headerInfo }}</pre>
+      <div class="d-flex">
+        <button
+          type="button"
+          class="btn btn-outline-secondary mt-2 flex-grow-1"
+          @click="() => emit('dismiss-header-info')"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </teleport>
+  <teleport v-if="exportRequested" to="#recording-status-modal">
+    <div v-if="exportRequested === 'advanced' && !isExporting" class="p-3">
+      <b-form-group label="Include tracks in exported timespan">
+        <b-form-checkbox
+          v-for="(track, index) in trackExportOptions"
+          :key="index"
+          v-model="track.includeInExportTime"
+          >Track {{ index + 1 }} ({{
+            displayLabelForClassificationLabel(
+              framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
+                .what || ""
+            )
+          }})</b-form-checkbox
+        >
+      </b-form-group>
+      <b-form-group label="Display track boxes in export">
+        <b-form-checkbox
+          v-for="(track, index) in trackExportOptions"
+          :key="index"
+          v-model="track.displayInExport"
+          >Track {{ index + 1 }} ({{
+            displayLabelForClassificationLabel(
+              framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
+                .what || ""
+            )
+          }})</b-form-checkbox
+        >
+      </b-form-group>
+      <div class="d-flex flex-column">
+        <button
+          type="button"
+          class="btn btn-outline-secondary mt-2 flex-grow-1"
+          @click="doAdvancedExport"
+        >
+          Export
+        </button>
+        <button
+          type="button"
+          class="btn btn-outline-danger mt-2 flex-grow-1"
+          @click="cancelExport"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+    <div v-else class="p-3">
+      <span>Exporting...</span>
+      <b-progress :value="exportProgress" striped animated></b-progress>
+      <div class="d-flex">
+        <button
+          type="button"
+          class="btn btn-outline-danger mt-2 flex-grow-1"
+          @click="cancelExport"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </teleport>
 </template>
 <style scoped lang="less">
 .video-container {

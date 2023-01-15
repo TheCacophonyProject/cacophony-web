@@ -26,7 +26,6 @@ import { generateVisits } from "./monitoringVisit";
 import { successResponse } from "./responseUtil";
 import { query } from "express-validator";
 import { extractJwtAuthorizedUser } from "../extract-middleware";
-import { User } from "models/User";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
 import { GroupId, StationId } from "@typedefs/api/common";
@@ -175,9 +174,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // Extract resources
     // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
-    //  Also don't require pulling out the user
     async (request: Request, response: Response, next: NextFunction) => {
-      const requestUser: User = await models.User.findByPk(
+      const requestUser = await models.User.findByPk(
         response.locals.requestUser.id
       );
 
@@ -209,6 +207,7 @@ export default function (app: Application, baseUrl: string) {
         viewAsSuperAdmin
       );
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
+
       const visits = await generateVisits(
         requestUser.id,
         searchDetails,

@@ -114,8 +114,7 @@ const falsePositive = new TrackLabel(
 );
 
 new TrackLabel(nothing, "none");
-new TrackLabel(notKnown, "unidentified");
-const unknown = new TrackLabel(notKnown, "unknown", "not identifiable");
+const unknown = new TrackLabel(nothing, "unidentified", "not identifiable");
 
 // specified means - can have another specified tag in the search (eg Possum)
 const recordingLabelsBase = [
