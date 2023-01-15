@@ -22,7 +22,7 @@ async function main() {
   );
   const ignoredDevices = config.deviceErrorIgnoreList;
   if (ignoredDevices) {
-    let prunedServiceErrors = {} as ServiceErrorMap;
+    const prunedServiceErrors = {} as ServiceErrorMap;
     for (const [key, serviceError] of Object.entries(serviceErrors)) {
       for (const device of serviceError.devices) {
         if (!ignoredDevices.includes(device)) {
