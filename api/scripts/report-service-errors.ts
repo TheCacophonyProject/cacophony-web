@@ -16,16 +16,16 @@ async function main() {
     endTime: endDate.toDate().toISOString(),
     startTime: startDate.toDate().toISOString(),
   };
-  var serviceErrors = await errors(
+  let serviceErrors = await errors(
     { query: query, res: { locals: { requestUser: {} } } },
     true
   );
   const ignoredDevices = config.deviceErrorIgnoreList;
   if (ignoredDevices) {
-    var prunedServiceErrors = {} as ServiceErrorMap;
+    let prunedServiceErrors = {} as ServiceErrorMap;
     for (const [key, serviceError] of Object.entries(serviceErrors)) {
       for (const device of serviceError.devices) {
-        if (ignoredDevices.indexOf(device) == -1) {
+        if (!ignoredDevices.includes(device)) {
           prunedServiceErrors[key] = serviceError;
           break;
         }
