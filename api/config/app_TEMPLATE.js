@@ -65,6 +65,9 @@ const influx = {
   password: "",
 };
 
+// List of devices to ignore when making the service error report.
+const deviceErrorIgnoreList = []
+
 exports.smtpDetails = smtpDetails;
 exports.server = server;
 exports.fileProcessing = fileProcessing;
@@ -72,6 +75,7 @@ exports.database = database;
 exports.s3Local = s3Local;
 exports.s3Archive = s3Achive;
 exports.influx = influx;
+exports.deviceErrorIgnoreList = deviceErrorIgnoreList;
 
 // This is needed because Sequelize looks for development by default when using db:migrate
 exports.development = database;
@@ -84,4 +88,5 @@ exports.default = {
   fileProcessing: exports.fileProcessing,
   database: exports.database,
   influx: exports.influx,
+  export: exports.deviceErrorIgnoreList,
 };
