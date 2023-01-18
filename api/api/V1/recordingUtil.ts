@@ -935,9 +935,13 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       });
       if ("trap_triggered" in trackMeta) {
         if (trackMeta["trap_triggered"] == true) {
-          await track.addTag(AcceptableTag.DigitalTrigger, 1, true, {
+          const data = {
             frame: trackMeta["trigger_frame"],
-          });
+          };
+          if (trackMeta["trap_tag"]) {
+            data["trap_tag"] = trackMeta["trap_tag"];
+          }
+          await track.addTag(AcceptableTag.DigitalTrigger, 1, true, data);
           trapTriggered = true;
         }
       }
