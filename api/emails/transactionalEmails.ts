@@ -37,8 +37,9 @@ export const sendWelcomeEmailConfirmationEmail = async (
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants(origin);
-    const emailConfirmationUrl = `${common.cacophonyBrowseUrl
-      }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
+    const emailConfirmationUrl = `${
+      common.cacophonyBrowseUrl
+    }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "welcome-confirm-email.html",
       { emailConfirmationUrl, ...common }
@@ -85,8 +86,9 @@ export const sendEmailConfirmationEmailLegacyUser = async (
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants(origin);
-    const emailConfirmationUrl = `${common.cacophonyBrowseUrl
-      }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
+    const emailConfirmationUrl = `${
+      common.cacophonyBrowseUrl
+    }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "confirm-email-legacy-user.html",
       { emailConfirmationUrl, ...common }
@@ -109,8 +111,9 @@ export const sendChangedEmailConfirmationEmail = async (
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
-  const emailConfirmationUrl = `${common.cacophonyBrowseUrl
-    }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
+  const emailConfirmationUrl = `${
+    common.cacophonyBrowseUrl
+  }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "confirm-email-change.html",
     {
@@ -137,11 +140,12 @@ export const sendGroupInviteExistingMemberEmail = async (
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
-  const existingAccountJoinGroupUrl = `${common.cacophonyBrowseUrl
-    }/accept-invite/${existingAccountJoinGroupToken.replace(
-      /\./g,
-      ":"
-    )}?existing-member=1`;
+  const existingAccountJoinGroupUrl = `${
+    common.cacophonyBrowseUrl
+  }/accept-invite/${existingAccountJoinGroupToken.replace(
+    /\./g,
+    ":"
+  )}?existing-member=1`;
   const { text, html } = await createEmailWithTemplate(
     "group-invite-existing-member.html",
     {
@@ -170,16 +174,18 @@ export const sendGroupInviteNewMemberEmail = async (
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
-  const signupAndJoinGroupUrl = `${common.cacophonyBrowseUrl
-    }/register?nextUrl=/accept-invite/${newMemberJoinGroupToken.replace(
-      /\./g,
-      ":"
-    )}`;
-  const existingAccountJoinGroupUrl = `${common.cacophonyBrowseUrl
-    }/accept-invite/${newMemberJoinGroupToken.replace(
-      /\./g,
-      ":"
-    )}?existing-member=1`;
+  const signupAndJoinGroupUrl = `${
+    common.cacophonyBrowseUrl
+  }/register?nextUrl=/accept-invite/${newMemberJoinGroupToken.replace(
+    /\./g,
+    ":"
+  )}`;
+  const existingAccountJoinGroupUrl = `${
+    common.cacophonyBrowseUrl
+  }/accept-invite/${newMemberJoinGroupToken.replace(
+    /\./g,
+    ":"
+  )}?existing-member=1`;
   const { text, html } = await createEmailWithTemplate(
     "group-invite-new-member.html",
     {
@@ -330,8 +336,9 @@ export const sendGroupMembershipRequestEmail = async (
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
-  const acceptToGroupUrl = `${common.cacophonyBrowseUrl
-    }/confirm-group-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
+  const acceptToGroupUrl = `${
+    common.cacophonyBrowseUrl
+  }/confirm-group-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "group-membership-request.html",
     {
@@ -363,13 +370,10 @@ export const sendUserDeletionEmail = async (
     }
   );
 
-  const userEmail = await createEmailWithTemplate(
-    "user-deletion.html",
-    {
-      ...commonInterpolants(origin),
-      userEmailAddress,
-    }
-  );
+  const userEmail = await createEmailWithTemplate("user-deletion.html", {
+    ...commonInterpolants(origin),
+    userEmailAddress,
+  });
 
   await sendEmail(
     adminEmail.html,
@@ -523,8 +527,9 @@ export const sendPasswordResetEmail = async (
 ) => {
   const common = commonInterpolants(origin);
   const accountEmailAddress = userEmailAddress;
-  const passwordResetUrl = `${common.cacophonyBrowseUrl
-    }/reset-password/${resetPasswordToken.replace(/\./g, ":")}`;
+  const passwordResetUrl = `${
+    common.cacophonyBrowseUrl
+  }/reset-password/${resetPasswordToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate("reset-password.html", {
     accountEmailAddress,
     passwordResetUrl,
