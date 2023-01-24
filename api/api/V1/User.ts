@@ -667,7 +667,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  app.post(
+  app.delete(
     `${apiUrl}/request-delete-user`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
