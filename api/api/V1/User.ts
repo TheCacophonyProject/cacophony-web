@@ -676,13 +676,6 @@ export default function (app: Application, baseUrl: string) {
         const requestingUser = await models.User.findByPk(
           response.locals.requestUser.id
         );
-        if (!requestingUser.emailConfirmed) {
-          return next(
-            new ClientError(
-              "Requested and/or requesting user has not activated their account"
-            )
-          );
-        }
         const sendSuccess = await sendUserDeletionEmail(
           request.headers.host,
           requestingUser.email
