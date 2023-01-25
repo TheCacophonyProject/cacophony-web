@@ -386,7 +386,7 @@ export const sendUserDeletionEmail = async (
     userEmail.html,
     userEmail.text,
     userEmailAddress,
-    "Your Cacophony Monitoring account has been deleted",
+    "Your request to delete your Cacophony Monitoring account has been received",
     await commonAttachments()
   );
 };
