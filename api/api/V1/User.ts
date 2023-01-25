@@ -671,7 +671,6 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/request-delete-user`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
-      debugger;
       try {
         const requestingUser = await models.User.findByPk(
           response.locals.requestUser.id

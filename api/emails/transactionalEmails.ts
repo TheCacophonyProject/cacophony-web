@@ -381,6 +381,7 @@ export const sendUserDeletionEmail = async (
     "coredev@cacophony.org.nz",
     `User ${userEmailAddress} has requested deletion of their account`
   );
+
   return await sendEmail(
     userEmail.html,
     userEmail.text,
