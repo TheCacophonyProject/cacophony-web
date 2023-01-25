@@ -671,25 +671,34 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/request-delete-user`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
-      const requestingUser = await models.User.findByPk(
-        response.locals.user.id
-      );
-      if (!requestingUser.emailConfirmed) {
-        return next(
-          new ClientError(
-            "Requested and/or requesting user has not activated their account"
-          )
+      debugger;
+      try {
+        const requestingUser = await models.User.findByPk(
+          response.locals.requestUser.id
         );
-      }
-      const sendSuccess = await sendUserDeletionEmail(
-        request.headers.host,
-        requestingUser.email
-      );
-      if (sendSuccess) {
-        return successResponse(response, "Sent delete user request to user");
-      } else {
+        if (!requestingUser.emailConfirmed) {
+          return next(
+            new ClientError(
+              "Requested and/or requesting user has not activated their account"
+            )
+          );
+        }
+        const sendSuccess = await sendUserDeletionEmail(
+          request.headers.host,
+          requestingUser.email
+        );
+        if (sendSuccess) {
+          return successResponse(response, "Sent delete user request to user");
+        } else {
+          return next(
+            new FatalError("Failed sending delete user request email to user")
+          );
+        }
+      } catch (e) {
         return next(
-          new FatalError("Failed sending delete user request email to user")
+          new FatalError(
+            "Failed sending delete user request email to user " + e
+          )
         );
       }
     }
