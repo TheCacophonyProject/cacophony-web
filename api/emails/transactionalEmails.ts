@@ -358,6 +358,39 @@ export const sendGroupMembershipRequestEmail = async (
   );
 };
 
+export const sendUserDeletionEmail = async (
+  origin: string,
+  userEmailAddress: string
+) => {
+  const adminEmail = await createEmailWithTemplate(
+    "user-deletion-request.html",
+    {
+      ...commonInterpolants(origin),
+      userEmailAddress,
+    }
+  );
+
+  const userEmail = await createEmailWithTemplate("user-deletion.html", {
+    ...commonInterpolants(origin),
+    userEmailAddress,
+  });
+
+  await sendEmail(
+    adminEmail.html,
+    adminEmail.text,
+    "coredev@cacophony.org.nz",
+    `User ${userEmailAddress} has requested deletion of their account`
+  );
+
+  return await sendEmail(
+    userEmail.html,
+    userEmail.text,
+    userEmailAddress,
+    "Your request to delete your Cacophony Monitoring account has been received",
+    await commonAttachments()
+  );
+};
+
 export const sendStoppedDevicesReportEmail = async (
   origin: string,
   groupName: string,
