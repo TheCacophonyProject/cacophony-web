@@ -15,6 +15,7 @@
     "stoat": "all.mammal.mustelid.stoat",
     "weasel": "all.mammal.mustelid.weasel",
     "pig": "all.mammal.pig",
+    "cow": "all.mammal.cow",
     "possum": "all.mammal.possum",
     "rodent": "all.mammal.rodent",
     "mouse": "all.mammal.rodent.mouse",
@@ -148,7 +149,7 @@
     "bar-tailed godwit": "all.bird.godwit.bartailed_godwit",
     "black-tailed godwit": "all.bird.godwit.blacktailed_godwit",
     "hudsonian godwit": "all.bird.godwit.hudsonian_godwit",
-    "golden whistler": "all.bird.golden_whistler",
+    "golden whistler": "all.bird.whistler.golden_whistler",
     "goldfinch": "all.bird.goldfinch",
     "european goldfinch": "all.bird.goldfinch.european_goldfinch",
     "goose": "all.bird.goose",
@@ -244,7 +245,7 @@
     "brown noddy": "all.bird.noddy.brown_noddy",
     "grey noddy": "all.bird.noddy.grey_noddy",
     "norfolk gerygone": "all.bird.norfolk_gerygone",
-    "norfolk golden whistler": "all.bird.norfolk_golden_whistler",
+    "norfolk golden whistler": "all.bird.whistler.norfolk_golden_whistler",
     "norfolk silkeye": "all.bird.norfolk_silkeye",
     "northern shoveler": "all.bird.northern_shoveler",
     "owl": "all.bird.owl",
@@ -531,6 +532,7 @@
     "masked woodswallow": "all.bird.woodswallow.masked_woodswallow",
     "white-browed woodswallow": "all.bird.woodswallow.whitebrowed_woodswallow",
     "wrybill": "all.bird.wrybill",
+    "whistler": "all.bird.whistler",
     "yellowhammer": "all.bird.yellowhammer",
     "yellowhead": "all.bird.yellowhead"
 }

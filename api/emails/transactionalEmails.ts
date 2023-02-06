@@ -358,6 +358,39 @@ export const sendGroupMembershipRequestEmail = async (
   );
 };
 
+export const sendUserDeletionEmail = async (
+  origin: string,
+  userEmailAddress: string
+) => {
+  const adminEmail = await createEmailWithTemplate(
+    "user-deletion-request.html",
+    {
+      ...commonInterpolants(origin),
+      userEmailAddress,
+    }
+  );
+
+  const userEmail = await createEmailWithTemplate("user-deletion.html", {
+    ...commonInterpolants(origin),
+    userEmailAddress,
+  });
+
+  await sendEmail(
+    adminEmail.html,
+    adminEmail.text,
+    "coredev@cacophony.org.nz",
+    `User ${userEmailAddress} has requested deletion of their account`
+  );
+
+  return await sendEmail(
+    userEmail.html,
+    userEmail.text,
+    userEmailAddress,
+    "Your request to delete your Cacophony Monitoring account has been received",
+    await commonAttachments()
+  );
+};
+
 export const sendStoppedDevicesReportEmail = async (
   origin: string,
   groupName: string,
@@ -436,35 +469,35 @@ export const sendAnimalAlertEmail = async (
 };
 
 export const sendAnimalAlertEmailForEvent = async (
-  origin: string,
-  groupName: string,
-  deviceName: string,
-  stationName: string,
-  classification: string,
-  recordingId: number,
-  trackId: number,
-  userEmailAddress: string,
-  recipientTimeZoneOffset: number
+    origin: string,
+    groupName: string,
+    deviceName: string,
+    stationName: string,
+    classification: string,
+    recordingId: number,
+    trackId: number,
+    userEmailAddress: string,
+    recipientTimeZoneOffset: number
 ) => {
   const common = commonInterpolants(origin);
   const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
+      groupName
   )}/my-settings`;
   const targetSpecies =
-    classification.charAt(0).toUpperCase() + classification.slice(1);
+      classification.charAt(0).toUpperCase() + classification.slice(1);
   const cacophonyBrowseUrl = config.server.browse_url;
   const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
+      groupName
   )}/station/${urlNormaliseName(stationName)}`;
   const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
+      groupName
   )}/station/${urlNormaliseName(
-    stationName
+      stationName
   )}/recording/${recordingId}/track/${trackId}`;
 
   const { text, html } = await createEmailWithTemplate("animal-alert.html", {
     targetSpecies:
-      targetSpecies.charAt(0).toUpperCase() + targetSpecies.slice(1),
+        targetSpecies.charAt(0).toUpperCase() + targetSpecies.slice(1),
     emailSettingsUrl,
     groupName,
     recordingUrl,
@@ -473,18 +506,18 @@ export const sendAnimalAlertEmailForEvent = async (
   });
   // FIXME - fetch actual thumbnail
   return await sendEmail(
-    html,
-    text,
-    userEmailAddress,
-    `🎯 ${targetSpecies} alert at '${stationName}'`,
-    [
-      ...(await commonAttachments()),
-      {
-        buffer: await fs.readFile(`${__dirname}/templates/test-thumb.png`),
-        mimeType: "image/png",
-        cid: "thumbnail",
-      },
-    ]
+      html,
+      text,
+      userEmailAddress,
+      `🎯 ${targetSpecies} alert at '${stationName}'`,
+      [
+        ...(await commonAttachments()),
+        {
+          buffer: await fs.readFile(`${__dirname}/templates/test-thumb.png`),
+          mimeType: "image/png",
+          cid: "thumbnail",
+        },
+      ]
   );
 };
 
