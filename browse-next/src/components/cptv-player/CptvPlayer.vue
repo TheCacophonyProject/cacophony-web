@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
 import type {
   CptvFrame,
@@ -45,6 +45,8 @@ import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { DateTime } from "luxon";
+import { timezoneForLocation } from "@models/visitsUtils";
 
 const { pixelRatio } = useDevicePixelRatio();
 const {
@@ -117,6 +119,19 @@ watch(
 const playbackTimeChanged = (offset: number) => {
   setTimeAndRedraw({ timeZeroOne: offset });
 };
+
+const recordingDateTime = computed<DateTime | null>(() => {
+  if (recording) {
+    if (recording.location) {
+      const zone = timezoneForLocation(recording.location);
+      return DateTime.fromISO(recording.recordingDateTime, {
+        zone,
+      });
+    }
+    return DateTime.fromISO(recording.recordingDateTime);
+  }
+  return null;
+});
 
 const playbackTimeZeroOne = computed<number>(() => {
   const fractionalFrame =
@@ -1064,6 +1079,23 @@ const ambientTemperature = computed<string | null>(() => {
   return null;
 });
 
+const currentAbsoluteTime = computed<string | null>(() => {
+  if (recordingDateTime.value) {
+    return (
+      recordingDateTime.value
+        ?.plus({ seconds: currentTime.value })
+        ?.toLocaleString({
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hourCycle: "h12",
+        })
+        .replace(/ /g, "") || "&ndash;"
+    );
+  }
+  return null;
+});
+
 const updateOverlayCanvas = (frameNumToRender: number) => {
   // FIXME - Move this somewhere else, like when the frame advances
   if (overlayContext.value) {
@@ -1091,7 +1123,7 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
       // Draw time and temperature in
       // overlayContext.
       drawBottomLeftOverlayLabel(
-        ambientTemperature.value,
+        currentAbsoluteTime.value,
         overlayContext.value,
         pixelRatio.value
       );
@@ -1431,7 +1463,18 @@ const pollFrameTimes = () => {
   }
 };
 
+const handleKeyboardControls = (event: KeyboardEvent) => {
+  if (event.code === "Space" && !event.repeat) {
+    togglePlayback();
+  } else if (event.code === "ArrowRight") {
+    stepForward();
+  } else if (event.code === "ArrowLeft") {
+    stepBackward();
+  }
+};
+
 onMounted(async () => {
+  window.addEventListener("keydown", handleKeyboardControls);
   cptvDecoder = new CptvDecoder();
   // This makes button active styles work in safari iOS.
   document.addEventListener(
@@ -1455,6 +1498,9 @@ onMounted(async () => {
 
   await loadNextRecording(recordingId);
   pollFrameTimes();
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleKeyboardControls);
 });
 
 const loadedNextRecordingData = async () => {

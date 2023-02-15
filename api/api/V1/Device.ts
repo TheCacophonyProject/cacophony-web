@@ -23,14 +23,15 @@ import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import { ClientError, UnprocessableError } from "../customErrors";
+import { readFileSync } from "fs";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
-  fetchAdminAuthorizedRequiredDeviceById,
+  fetchAdminAuthorizedRequiredDeviceById, fetchAdminAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
-  fetchAuthorizedRequiredGroupById,
+  fetchAuthorizedRequiredGroupById, fetchAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredStationById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredScheduleById,
@@ -58,9 +59,14 @@ import { ApiGroupUserResponse } from "@typedefs/api/group";
 import { jsonSchemaOf } from "@api/schema-validation";
 import { Op } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory";
-import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
+import {DeviceType, HttpStatusCode, RecordingType} from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
+import recordingUtil from "@api/V1/recordingUtil";
+import log from "@log";
+import {streamS3Object} from "@api/V1/signedUrl";
+import modelsUtil from "@models/util/util";
+import {uploadFileStream} from "@api/V1/util";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -124,6 +130,12 @@ interface ApiRegisterDeviceRequestBody {
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
+}
+
+interface ApiCreateProxyDeviceRequestBody {
+  group: string; // Name of group to assign the device to.
+  deviceName: string; // Unique (within group) device name.
+  type: DeviceType;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -225,6 +237,107 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+
+  /**
+   * @api {post} /api/v1/devices/create-proxy-device Create a new (proxy) device
+   * @apiName CreateProxyDevice
+   * @apiGroup Device
+   *
+   * @apiInterface {apiBody::ApiCreateProxyDeviceRequestBody}
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int} id id of device registered
+   * @apiUse V1ResponseError
+   */
+  app.post(
+      `${apiUrl}/create-proxy-device`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        nameOf(body("group")),
+        validNameOf(body("deviceName")),
+        body("type").default("trailcam").optional()
+            .isIn(Object.values(DeviceType))
+      ]),
+      fetchAuthorizedRequiredGroupByNameOrId(body("group")),
+      checkDeviceNameIsUniqueInGroup(body("deviceName")),
+      async (request: Request, response: Response) => {
+
+          const device: Device = await models.Device.create({
+            deviceName: request.body.deviceName,
+            GroupId: response.locals.group.id,
+            kind: request.body.type,
+            password: "no-password"
+          });
+          await Promise.all([
+            device.update({uuid: device.id, saltId: device.id}),
+            // Create the initial entry in the device history table.
+            models.DeviceHistory.create({
+              saltId: device.id,
+              setBy: "register",
+              GroupId: device.GroupId,
+              DeviceId: device.id,
+              fromDateTime: new Date(),
+              deviceName: device.deviceName,
+              uuid: device.id,
+            }),
+          ]);
+          return successResponse(response, "Created new device.", {
+            id: device.id,
+          });
+      }
+  );
+
+  /**
+   * @api {delete} /api/v1/devices/device/:deviceId Delete a device
+   * @apiName DeleteDevice
+   * @apiGroup Device
+   *
+   * @apiDescription Permanently deletes a device if it has no recordings, or sets the active state
+   * to `false` if it does have recordings.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+      `${apiUrl}/device/:deviceId`,
+      extractJwtAuthorizedUser,
+      validateFields([
+          idOf(param("deviceId")),
+          nameOrIdOf(body("group"))
+      ]),
+      fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async (request: Request, response: Response, next: NextFunction) => {
+         // Get the recording count for the device.
+        const deviceId = response.locals.device.id;
+         const hasRecording = await models.Recording.findOne({
+           where: {
+             DeviceId: deviceId,
+             GroupId: response.locals.group.id
+           }
+         });
+         if (hasRecording) {
+           await response.locals.device.update({
+             active: false
+           });
+           return successResponse(response, "Set device inactive", {
+             id: deviceId
+           });
+         } else {
+           await models.DeviceHistory.destroy({
+             where: {
+               uuid: response.locals.device.uuid
+             }
+           });
+           await response.locals.device.destroy();
+           return successResponse(response, "Removed device", {
+             id: deviceId
+           });
+         }
+      }
+  )
 
   /**
    * @api {get} /api/v1/devices Get list of devices
@@ -340,6 +453,150 @@ export default function (app: Application, baseUrl: string) {
         ),
       });
     }
+  );
+
+  /**
+   * @api {get} /api/v1/devices/:deviceId/reference-image Get the reference image (if any) for a device
+   * @apiName GetDeviceReferenceImageAtTime
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
+   * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
+   *
+   * @apiDescription Returns a reference image for a device (if any has been set) at a given point in time, or now,
+   * if no date time is specified
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess binary data of reference image
+   * @apiUse V1ResponseError
+   */
+  app.get(
+      `${apiUrl}/device/:id/reference-image`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(param("id")),
+        query("view-mode").optional().equals("user"),
+        query("at-time").isISO8601().toDate().default(new Date()),
+        query("type").default("pov").optional().isIn(["pov", "in-situ"])
+      ]),
+      fetchAuthorizedRequiredDeviceById(param("id")),
+      async (request: Request, response: Response, next: NextFunction) => {
+        const atTime = request.query['at-time'] as unknown as Date;
+        const device = response.locals.device;
+        const deviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
+          where: {
+            uuid: device.uuid,
+            GroupId: device.GroupId,
+            location: { [Op.ne]: null },
+            fromDateTime: { [Op.lte]: atTime },
+          },
+          order: [["fromDateTime", "DESC"]],
+        });
+
+        // TODO - Handle POV vs in-situ reference images.  POV is default.
+        const kind = request.query.type;
+        let referenceImage;
+        let referenceImageFileSize;
+        if (kind === "pov") {
+          referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
+          referenceImageFileSize = deviceHistoryEntry?.settings?.referenceImagePOVFileSize;
+        } else {
+          referenceImage = deviceHistoryEntry?.settings?.referenceImageInSitu;
+          referenceImageFileSize = deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
+        }
+        const fromTime = deviceHistoryEntry?.fromDateTime;
+        if (referenceImage && fromTime && referenceImageFileSize) {
+          // Get reference image for device at time if any, and return it
+          const mimeType = "image/jpg"; // Or something better
+          const time = fromTime
+              ?.toISOString()
+              .replace(/:/g, "_")
+              .replace(".", "_");
+          const filename = `device-${device.uuid}-reference-image@${time}.jpg`;
+          // Get reference image for device at time if any.
+          return streamS3Object(
+              request,
+              response,
+              referenceImage,
+              filename,
+              mimeType,
+              response.locals.requestUser.id,
+              device.groupId,
+              referenceImageFileSize
+          );
+        }
+        return next(new UnprocessableError("No reference image available for device at time"));
+      }
+  );
+
+  /**
+   * @api {post} /api/v1/devices/:deviceId/reference-image Set the reference image for a device
+   * @apiName GetDeviceReferenceImageAtTime
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
+   * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
+   * @apiBody {Binary} Binary image file for reference image.
+   *
+   * @apiDescription Sets a reference image for a device at a given point in time, or now,
+   * if no date time is specified.  Not that the content-typ
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess binary data of reference image
+   * @apiUse V1ResponseError
+   */
+  app.post(
+      `${apiUrl}/device/:id/reference-image`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(param("id")),
+        query("view-mode").optional().equals("user"),
+        query("at-time").default(new Date()).isISO8601().toDate(),
+        query("type").default("pov").optional().isIn(["pov", "in-situ"])
+      ]),
+      fetchAuthorizedRequiredDeviceById(param("id")),
+      async (request: Request, response: Response) => {
+        // Set the reference image.
+        // If the location hasn't changed, we need to carry this forward whenever we create
+        // another device history entry?
+
+        // TODO: Make some tests for this.
+        const atTime = request.query['at-time'] as unknown as Date;
+        const device = response.locals.device;
+        const previousDeviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
+          where: {
+            uuid: device.uuid,
+            GroupId: device.GroupId,
+            location: { [Op.ne]: null },
+            fromDateTime: { [Op.lt]: atTime },
+          },
+          order: [["fromDateTime", "DESC"]],
+        });
+        if (previousDeviceHistoryEntry) {
+          const { key, size } = await uploadFileStream(request as any, "raw");
+          const newSettings = request.query.type === "pov" ? {
+            referenceImagePovFileSize: 0,
+            referencePovImage: key,
+          } : {
+            referenceImageInSituFileSize: 0,
+            referenceInSituImage: key,
+          };
+          await previousDeviceHistoryEntry.update({
+            settings: {
+              ...previousDeviceHistoryEntry.settings,
+              ...newSettings
+            }
+          });
+          return successResponse(response, {key, size});
+        } else {
+          // We can't add an image, because we don't have a device location.
+          return successResponse(response, "No location for device to tag with reference");
+        }
+      }
   );
 
   /**
@@ -602,8 +859,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {stringOrInt} groupIdOrName Identifier of group device belongs to
    * @apiQuery {Boolean} [only-active=true] Only return active devices
    *
-   * @apiDescription Returns details of the device if the user can access it either through
-   * group membership or direct assignment to the device.
+   * @apiDescription Returns details of the device if the user can access it through
+   * group membership.
    *
    * @apiUse V1UserAuthorizationHeader
    *

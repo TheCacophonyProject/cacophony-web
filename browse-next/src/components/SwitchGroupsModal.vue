@@ -7,7 +7,7 @@ import {
 } from "@models/LoggedInUser";
 import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { urlNormaliseGroupName } from "@/utils";
+import { urlNormaliseName } from "@/utils";
 
 const nextRoute = (groupName: string) => {
   const currentRoute = useRoute();
@@ -16,7 +16,7 @@ const nextRoute = (groupName: string) => {
       ...currentRoute,
       params: {
         ...currentRoute.params,
-        groupName: urlNormaliseGroupName(groupName),
+        groupName: urlNormaliseName(groupName),
       },
     };
   } else {
@@ -26,7 +26,7 @@ const nextRoute = (groupName: string) => {
       name: "dashboard",
       params: {
         ...currentRoute.params,
-        groupName: urlNormaliseGroupName(groupName),
+        groupName: urlNormaliseName(groupName),
       },
     };
   }

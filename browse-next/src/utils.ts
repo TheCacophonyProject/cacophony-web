@@ -3,6 +3,8 @@ import { reactive, watch } from "vue";
 import type { NetworkConnectionErrorSignal } from "@api/fetch";
 import { INITIAL_RETRY_INTERVAL } from "@api/fetch";
 import type { JwtTokenPayload } from "@api/types";
+import type { LatLng } from "@typedefs/api/common";
+import type { ApiStationResponse } from "@typedefs/api/station";
 
 export const isEmpty = (str: string): boolean => str.trim().length === 0;
 
@@ -80,8 +82,29 @@ export const decodeJWT = (jwtString: string): JwtTokenPayload | null => {
   }
 };
 
-export const urlNormaliseGroupName = (name: string): string => {
+export const urlNormaliseName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
+};
+const EPSILON = 0.000000000001;
+export const locationsAreEqual = (a: LatLng, b: LatLng) => {
+  return Math.abs(a.lat - b.lat) < EPSILON && Math.abs(a.lng - b.lng) < EPSILON;
+};
+
+export const lastActiveStationTime = (
+  station: ApiStationResponse
+): Date | null => {
+  const lastThermal =
+    station.lastActiveThermalTime && new Date(station.lastActiveThermalTime);
+  const lastAudio =
+    station.lastActiveAudioTime && new Date(station.lastActiveAudioTime);
+  if (lastThermal && lastAudio) {
+    return lastThermal > lastAudio ? lastThermal : lastAudio;
+  } else if (lastThermal) {
+    return lastThermal;
+  } else if (lastAudio) {
+    return lastAudio;
+  }
+  return null;
 };
 
 export type FormInputValidationState = boolean | undefined;

@@ -1,6 +1,9 @@
 export enum RecordingType {
   ThermalRaw = "thermalRaw",
   Audio = "audio",
+  TrailCamImage = "trailcam-image",
+  TrailCamVideo = "trailcam-video",
+  InfraredVideo = "irRaw"
 }
 
 export enum RecordingPermission {
@@ -54,6 +57,11 @@ export enum AcceptableTag {
 export enum DeviceType {
   Audio = "audio",
   Thermal = "thermal",
+  TrailCam = "trailcam",
+
+  TrapIrCam = "trapcam",
+
+  Hybrid = "hybrid-thermal-audio",
   Unknown = "unknown",
 }
 

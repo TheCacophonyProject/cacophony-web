@@ -62,6 +62,13 @@ import {
   faArrowUp,
   faPencilAlt,
   faEnvelope,
+  faSortDown,
+  faSortUp,
+  faVideo,
+  faMusic,
+  faCamera,
+  faHeart,
+  faHeartBroken,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -144,7 +151,14 @@ library.add(
   faExclamationTriangle,
   faArrowUp,
   faPencilAlt,
-  faEnvelope
+  faEnvelope,
+  faSortUp,
+  faSortDown,
+  faVideo,
+  faMusic,
+  faCamera,
+  faHeart,
+  faHeartBroken
 );
 
 export default FontAwesomeIcon;

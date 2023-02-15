@@ -378,7 +378,13 @@ const checkForUnknownFields = (
   ) as unknown as string[];
 
   // Check for all common request inputs
-  const requestInput = { ...req.query, ...req.params, ...req.body };
+  let requestInput;
+  // TODO Only process the body if the content-type is json
+  if (req.headers["content-type"] !== "application/octet-stream") {
+    requestInput = {...req.query, ...req.params, ...req.body};
+  } else {
+    requestInput = {...req.query, ...req.params};
+  }
   const requestFields = Object.keys(requestInput);
   const unusedAllowedFields = allowedFields.filter(
     (field) => !requestFields.includes(field)

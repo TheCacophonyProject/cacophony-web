@@ -123,7 +123,7 @@ const addPendingTag = async () => {
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-  <h1 class="h5 d-none d-md-block">Manage group tag settings</h1>
+  <h1 class="h5 d-none d-md-block">Group tag settings</h1>
   <div class="d-flex flex-column flex-md-row justify-content-md-between mb-3">
     <p>
       Manage the set of default tags that users see for this group. Users can

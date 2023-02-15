@@ -100,14 +100,16 @@ export const getUsersForGroup = (groupNameOrId: string | number) =>
 
 export const getDevicesForGroup = (
   groupNameOrId: string | number,
-  activeAndInactive = false
+  activeAndInactive = false,
+  NO_ABORT = false
 ) =>
   CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices${
       shouldViewAsSuperUser.value
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`
+    }`,
+    !NO_ABORT
   ) as Promise<FetchResult<{ devices: ApiDeviceResponse[] }>>;
 
 export const getStationsForGroup = (

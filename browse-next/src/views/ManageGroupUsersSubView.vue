@@ -2,6 +2,7 @@
 import {
   currentSelectedGroup as fallibleCurrentSelectedGroup,
   CurrentUser as fallibleCurrentUser,
+  userGroupsLoaded,
 } from "@models/LoggedInUser";
 import type { LoggedInUser, SelectedGroup } from "@models/LoggedInUser";
 import { computed, onBeforeMount, ref } from "vue";
@@ -30,6 +31,7 @@ const CurrentUser = computed<LoggedInUser>(() => {
 
 const loadGroupUsers = async () => {
   loadingUsers.value = true;
+  await userGroupsLoaded();
   const groupUsersResponse = await getUsersForGroup(
     (currentSelectedGroup.value as { groupName: string; id: GroupId }).id
   );

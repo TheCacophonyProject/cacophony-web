@@ -27,6 +27,7 @@ import {
   sideNavIsPinned,
   isSmallScreen,
   showUnimplementedModal,
+  DevicesForCurrentGroup,
 } from "@/models/LoggedInUser";
 import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
 import {
@@ -112,6 +113,18 @@ const pollFrameTimes = () => {
 };
 
 const hideNavBg = ref<boolean>(true);
+
+const someDeviceNeedsAttention = computed<boolean>(() => {
+  if (DevicesForCurrentGroup.value) {
+    return DevicesForCurrentGroup.value.some((device) => {
+      if (!device.hasOwnProperty("isHealthy")) {
+        return false;
+      }
+      return !device.isHealthy;
+    });
+  }
+  return false;
+});
 
 watch(pinSideNav, (next) => {
   if (!next && isSmallScreen.value) {
@@ -351,6 +364,7 @@ onMounted(() => {
                   width="12"
                   height="12"
                   xmlns="http://www.w3.org/2000/svg"
+                  v-if="someDeviceNeedsAttention"
                 >
                   <path
                     d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
@@ -526,6 +540,51 @@ onMounted(() => {
   z-index: 20000;
 }
 @import "./assets/font-sizes.less";
+
+.dropdown-btn {
+  height: 100%;
+  aspect-ratio: 1;
+  &::after {
+    display: none;
+  }
+}
+.btn-hi,
+.dropdown-btn {
+  border: 0;
+  min-width: 44px;
+  z-index: 1;
+  &::before {
+    content: "";
+    position: absolute;
+    display: block;
+    left: 6px;
+    right: 6px;
+    top: 6px;
+    bottom: 6px;
+    border-radius: 3px;
+    background: transparent;
+    z-index: -1;
+    transition: background 0.2s ease-in-out;
+  }
+  &:hover:not(:disabled) {
+    &::before {
+      background: #ddd;
+    }
+  }
+  &:active:not(:disabled) {
+    &::before {
+      background: #aaa;
+    }
+  }
+  &.btn-square {
+    aspect-ratio: 1;
+    &::before {
+      top: 50%;
+      transform: translateY(-50%);
+      aspect-ratio: 1;
+    }
+  }
+}
 </style>
 
 <style lang="less" scoped>

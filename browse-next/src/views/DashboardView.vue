@@ -10,7 +10,7 @@ import {
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
-import RecordingViewModal from "@/components/RecordingViewModal.vue";
+import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import { getStationsForGroup } from "@api/Group";
 import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
@@ -164,23 +164,25 @@ const stationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiStationResponse[]
 >(() => {
   if (stations.value) {
-    return stations.value.filter((station) => {
-      if (audioMode.value) {
-        return (
-          (station.lastActiveAudioTime &&
-            new Date(station.lastActiveAudioTime) > earliestDate.value) ||
-          (station.lastAudioRecordingTime &&
-            new Date(station.lastAudioRecordingTime) > earliestDate.value)
-        );
-      } else {
-        return (
-          (station.lastActiveThermalTime &&
-            new Date(station.lastActiveThermalTime) > earliestDate.value) ||
-          (station.lastThermalRecordingTime &&
-            new Date(station.lastThermalRecordingTime) > earliestDate.value)
-        );
-      }
-    });
+    return stations.value
+      .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
+      .filter((station) => {
+        if (audioMode.value) {
+          return (
+            (station.lastActiveAudioTime &&
+              new Date(station.lastActiveAudioTime) > earliestDate.value) ||
+            (station.lastAudioRecordingTime &&
+              new Date(station.lastAudioRecordingTime) > earliestDate.value)
+          );
+        } else {
+          return (
+            (station.lastActiveThermalTime &&
+              new Date(station.lastActiveThermalTime) > earliestDate.value) ||
+            (station.lastThermalRecordingTime &&
+              new Date(station.lastThermalRecordingTime) > earliestDate.value)
+          );
+        }
+      });
   }
   return [];
 });
@@ -342,7 +344,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
     Species summary
   </h2>
-  <horizontal-overflow-carousel class="species-summary-container mb-sm-5 mb-4">
+  <horizontal-overflow-carousel
+    class="species-summary-container mb-sm-5 mb-4"
+    v-if="hasVisitsForSelectedTimePeriod"
+  >
     <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
       <div
         v-for="[key, val] in Object.entries(speciesSummary)"
@@ -367,7 +372,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   </h2>
   <div class="d-md-flex flex-md-row">
     <group-visits-summary
-      v-if="!isMobileView"
+      v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
       class="mb-5 flex-md-fill"
       :stations="allStations"
       :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
@@ -410,9 +415,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       >
     </div>
   </horizontal-overflow-carousel>
-  <recording-view-modal
+  <inline-view-modal
     @close="selectedVisit = null"
     :fade-in="loadedRouteName === 'dashboard'"
+    :parent-route-name="'dashboard'"
     @shown="() => (loadedRouteName = 'dashboard')"
   />
 </template>

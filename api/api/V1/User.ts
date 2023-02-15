@@ -62,7 +62,6 @@ import {
   sendAddedToGroupNotificationEmail,
   sendChangedEmailConfirmationEmail,
   sendGroupMembershipRequestEmail,
-  sendUserDeletionEmail,
   sendWelcomeEmailConfirmationEmail,
   sendWelcomeEmailWithGroupsAdded,
 } from "@/emails/transactionalEmails";
@@ -662,35 +661,6 @@ export default function (app: Application, baseUrl: string) {
       } else {
         return next(
           new FatalError("Failed sending membership request email to user")
-        );
-      }
-    }
-  );
-
-  app.delete(
-    `${apiUrl}/request-delete-user`,
-    extractJwtAuthorizedUser,
-    async (request: Request, response: Response, next: NextFunction) => {
-      try {
-        const requestingUser = await models.User.findByPk(
-          response.locals.requestUser.id
-        );
-        const sendSuccess = await sendUserDeletionEmail(
-          request.headers.host,
-          requestingUser.email
-        );
-        if (sendSuccess) {
-          return successResponse(response, "Sent delete user request to user");
-        } else {
-          return next(
-            new FatalError("Failed sending delete user request email to user")
-          );
-        }
-      } catch (e) {
-        return next(
-          new FatalError(
-            "Failed sending delete user request email to user " + e
-          )
         );
       }
     }

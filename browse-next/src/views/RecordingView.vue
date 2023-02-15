@@ -30,7 +30,11 @@ import type { NamedPoint } from "@models/mapUtils";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import { useElementSize, useMediaQuery } from "@vueuse/core";
+import {
+  useElementSize,
+  useMediaQuery,
+  useMutationObserver,
+} from "@vueuse/core";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
@@ -71,6 +75,11 @@ const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
 const userSelectedTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentStations = ref<ApiStationResponse[] | null>(stations.value);
 const visitLabel = ref<string>(route.params.visitLabel as string);
+
+const deviceNameSpan = ref<HTMLSpanElement>();
+const stationNameSpan = ref<HTMLSpanElement>();
+const stationNameIsTruncated = ref<boolean>(false);
+const deviceNameIsTruncated = ref<boolean>(false);
 
 watch(
   () => route.params.currentRecordingId,
@@ -432,6 +441,18 @@ const tags = computed<ApiRecordingTagResponse[]>(() => {
   return [];
 });
 
+const checkNameTruncations = () => {
+  stationNameIsTruncated.value =
+    (stationNameSpan.value &&
+      stationNameSpan.value?.offsetWidth <
+        stationNameSpan.value?.scrollWidth) ||
+    false;
+  deviceNameIsTruncated.value =
+    (deviceNameSpan.value &&
+      deviceNameSpan.value?.offsetWidth < deviceNameSpan.value?.scrollWidth) ||
+    false;
+};
+
 const loadRecording = async () => {
   recording.value = null;
   if (currentRecordingId.value) {
@@ -442,6 +463,8 @@ const loadRecording = async () => {
     if (recordingResponse.success) {
       // NOTE: Only handling RAW recordings here, and assuming they always exist.
       recording.value = recordingResponse.result.recording;
+
+      const _ = nextTick(checkNameTruncations);
 
       if (route.params.trackId) {
         currentTrack.value = recording.value?.tracks.find(
@@ -554,11 +577,11 @@ const recordingStartTime = computed<string>(() => {
 });
 
 const currentStationName = computed<string>(() => {
-  return recording.value?.stationName || "";
+  return recording.value?.stationName || " ";
 });
 
 const currentDeviceName = computed<string>(() => {
-  return recording.value?.deviceName || "";
+  return recording.value?.deviceName || " ";
 });
 
 const mapPointForRecording = computed<NamedPoint[]>(() => {
@@ -689,7 +712,6 @@ const deleteRecording = async () => {
     console.log("Delete recording");
   }
 };
-
 const inlineModal = ref<boolean>(false);
 
 // TODO: When we scroll down, can we keep the player at the top of the screen for a while, but reduce the height of it?
@@ -700,7 +722,7 @@ const inlineModal = ref<boolean>(false);
     :class="{ dimmed: inlineModal }"
   >
     <header
-      class="recording-view-header d-flex justify-content-between px-sm-3 px-2 py-sm-1"
+      class="recording-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
     >
       <div v-if="isInVisitContext">
         <span class="recording-header-type text-uppercase fw-bold">Visit</span>
@@ -718,7 +740,7 @@ const inlineModal = ref<boolean>(false);
       </div>
       <button
         type="button"
-        class="btn"
+        class="btn btn-square btn-hi"
         @click.stop.prevent="() => emit('close')"
       >
         <font-awesome-icon icon="xmark" />
@@ -757,7 +779,7 @@ const inlineModal = ref<boolean>(false);
               class="recording-location-map"
               :points="mapPointForRecording"
               :active-points="mapPointForRecording"
-              :highlighted-point="ref(null)"
+              :highlighted-point="null"
               :is-interactive="false"
               :markers-are-interactive="false"
               :has-attribution="false"
@@ -766,10 +788,16 @@ const inlineModal = ref<boolean>(false);
               :radius="30"
             />
             <div class="recording-details d-flex flex-column flex-fill">
-              <div class="fw-bolder">
+              <div
+                class="fw-bolder"
+                :class="{
+                  'recording-details-hover':
+                    stationNameIsTruncated || deviceNameIsTruncated,
+                }"
+              >
                 <div
-                  class="station-name pt-3 px-3 text-truncate d-inline-block"
-                  style="max-width: 50%"
+                  class="station-name pt-3 px-3 text-truncate d-inline-flex"
+                  :class="{ 'is-truncated': stationNameIsTruncated }"
                 >
                   <font-awesome-icon
                     icon="map-marker-alt"
@@ -777,13 +805,13 @@ const inlineModal = ref<boolean>(false);
                     class="me-2"
                     color="rgba(0, 0, 0, 0.7)"
                   />
-                  <span class="text-truncate">
+                  <span class="text-truncate" ref="stationNameSpan">
                     {{ currentStationName }}
                   </span>
                 </div>
                 <div
-                  class="device-name pt-3 pe-2 text-truncate d-inline-block"
-                  style="max-width: 50%"
+                  class="device-name pt-3 pe-2 text-truncate d-inline-flex"
+                  :class="{ 'is-truncated': deviceNameIsTruncated }"
                 >
                   <font-awesome-icon
                     icon="microchip"
@@ -791,7 +819,7 @@ const inlineModal = ref<boolean>(false);
                     class="me-2"
                     color="rgba(0, 0, 0, 0.7)"
                   />
-                  <span class="text-truncate">
+                  <span class="text-truncate" ref="deviceNameSpan">
                     {{ currentDeviceName }}
                   </span>
                 </div>
@@ -899,7 +927,7 @@ const inlineModal = ref<boolean>(false);
                 class="recording-location-map"
                 :points="mapPointForRecording"
                 :active-points="mapPointForRecording"
-                :highlighted-point="ref(null)"
+                :highlighted-point="null"
                 :is-interactive="false"
                 :markers-are-interactive="false"
                 :has-attribution="false"
@@ -979,10 +1007,10 @@ const inlineModal = ref<boolean>(false);
           }"
         ></div>
       </div>
-      <nav class="d-flex py-1 footer-nav flex-fill">
+      <nav class="d-flex footer-nav flex-fill">
         <button
           type="button"
-          class="btn d-flex flex-row-reverse align-items-center prev-button"
+          class="btn d-flex flex-row-reverse align-items-center prev-button btn-hi"
           :disabled="!hasPreviousRecording && !hasPreviousVisit"
           @click.prevent="gotoPreviousRecordingOrVisit"
         >
@@ -1032,7 +1060,7 @@ const inlineModal = ref<boolean>(false);
         />
         <button
           type="button"
-          class="btn d-flex align-items-center next-button"
+          class="btn d-flex align-items-center next-button btn-hi"
           :disabled="!hasNextRecording && !hasNextVisit"
           @click.prevent="gotoNextRecordingOrVisit"
         >
@@ -1103,6 +1131,7 @@ const inlineModal = ref<boolean>(false);
 .footer-nav {
   flex-direction: row;
   justify-content: center;
+  align-items: stretch;
   position: relative;
 
   @media screen and (min-width: 576px) {
@@ -1110,13 +1139,17 @@ const inlineModal = ref<boolean>(false);
   }
   min-height: 48px;
 }
+.next-button,
 .prev-button {
   position: absolute;
-  left: 0;
+  top: 0;
+  bottom: 0;
 }
 .next-button {
-  position: absolute;
   right: 0;
+}
+.prev-button {
+  left: 0;
 }
 
 .recording-tracks {
@@ -1179,7 +1212,7 @@ const inlineModal = ref<boolean>(false);
   //flex-basis: min-content;
 }
 .recording-location-map {
-  @media screen and (max-width: 1040px) {
+  @media screen and (max-width: 1039px) {
     width: 100%;
     height: 180px;
   }
@@ -1195,9 +1228,60 @@ const inlineModal = ref<boolean>(false);
 .recording-date-time {
   color: #444;
 }
+@media screen and (min-width: 1041px) {
+  .recording-details-hover {
+    &:hover {
+      position: relative;
+      .device-name,
+      .station-name {
+        transition: all 0.2s ease-in-out;
+        opacity: 0.25;
+        &:hover {
+          opacity: 1;
+        }
+      }
+      .device-name:hover {
+        transform: translateX(-90%);
+        > span {
+          min-width: 270px;
+        }
+      }
+    }
+  }
+}
+
+.device-name span {
+  transition: background-color 1s ease-in;
+  background-color: transparent;
+}
+
 .device-name,
 .station-name {
-  max-width: 100%;
+  max-width: 50%;
+  width: 50%;
+  cursor: default;
+  padding-top: 0;
+  align-items: center;
+  background-color: transparent;
+  @media screen and (min-width: 1041px) {
+    &:hover {
+      z-index: 1;
+      background: #f6f6f6;
+      > span {
+        background: #f6f6f6;
+        border-radius: 3px;
+      }
+
+      > .text-truncate {
+        overflow: unset;
+        white-space: unset;
+        word-break: break-all;
+        z-index: 1;
+      }
+
+      overflow: visible;
+    }
+  }
 }
 
 .nav-tabs {

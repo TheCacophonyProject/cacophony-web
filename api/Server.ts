@@ -126,6 +126,11 @@ const checkS3Connection = (): Promise<void> => {
       },
     })
   );
+  app.use(express.raw({
+    inflate: true,
+    limit: '50Mb',
+    type: 'application/octet-stream'
+  }));
   app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
   app.use(express.json({ limit: "2Mb" }));
   app.use(passport.initialize());

@@ -527,8 +527,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
-
-  // TODO(jon): Would be nicer as /api/v1/groups/:groupName/users or something
   app.post(
     `${apiUrl}/users`,
     extractJwtAuthorizedUser,

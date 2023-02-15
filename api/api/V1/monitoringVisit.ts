@@ -387,7 +387,7 @@ async function getRecordings(
   viewAsSuperUser: boolean
 ) {
   const where: any = {
-    duration: { [Op.gte]: "0" },
+    duration: { [Op.gte]: "3" }, // Ignore our 2 second health-check recordings
     type: RecordingType.ThermalRaw,
     deletedAt: { [Op.eq]: null },
     recordingDateTime: { [Op.gt]: from, [Op.lt]: until },

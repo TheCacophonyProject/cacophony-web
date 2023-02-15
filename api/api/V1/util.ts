@@ -28,10 +28,12 @@ import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
 import { User } from "@models/User";
 import stream, { Stream } from "stream";
+import { createWriteStream , readFile} from "fs";
 import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
 import { Op } from "sequelize";
 import { UnprocessableError } from "@api/customErrors";
+import { ManagedUpload } from "aws-sdk/clients/s3";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, any>;
@@ -49,6 +51,51 @@ const stream2Buffer = (stream: Stream): Promise<Buffer> => {
     stream.on("error", (err) => reject(err));
   });
 };
+
+export const uploadFileStream = async (request: Request, keyPrefix?: string, fullKey?: string): Promise<{
+  size: number,
+  key: string,
+  hash: string
+}> => {
+  if (!fullKey && !keyPrefix) {
+    throw new Error("Must supply either key or keyPrefix");
+  }
+  if (!fullKey) {
+    fullKey = `${keyPrefix}/${moment().format("YYYY/MM/DD/")}${uuidv4()}`;
+  }
+
+  const hash = crypto
+      .createHash("sha1")
+
+  const pass = new stream.PassThrough();
+  let dataLength = 0;
+  if (request.body && request.body.length) {
+    dataLength = request.body.length;
+  }
+
+  pass.on("data", (d) => {
+    dataLength += d.length;
+    hash.update(d, "binary");
+  });
+  request.pipe(pass);
+  const upload = modelsUtil
+      .openS3()
+      .upload({ Key: fullKey, Body: pass });
+  // upload.on("httpUploadProgress", (p) => {
+  //   console.log(p);
+  // });
+  await
+    upload
+      .promise()
+      .catch((err) => {
+        return err;
+      })
+  return {
+    hash: hash.digest("hex"),
+    key: fullKey,
+    size: dataLength
+  };
+}
 
 function multipartUpload(
   keyPrefix: string,

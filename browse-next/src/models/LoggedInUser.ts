@@ -4,7 +4,7 @@ import type {
 } from "@typedefs/api/user";
 import type { Ref } from "vue";
 import type { ErrorResult, JwtTokenPayload } from "@api/types";
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId } from "@typedefs/api/common";
 import type {
@@ -12,15 +12,17 @@ import type {
   ApiGroupSettings,
   ApiGroupUserSettings,
 } from "@typedefs/api/group";
-import { decodeJWT, urlNormaliseGroupName } from "@/utils";
+import { decodeJWT, urlNormaliseName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
 import {
+  getDevicesForGroup,
   getGroups,
   saveGroupSettings,
   saveGroupUserSettings,
 } from "@api/Group";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
 
 export interface LoggedInUserAuth {
   apiToken: string;
@@ -35,9 +37,10 @@ export interface PendingRequest {
   errors?: ErrorResult;
 }
 
-export const CurrentUserCreds: Ref<LoggedInUserAuth | null> = ref(null);
-export const CurrentUser: Ref<LoggedInUser | null> = ref(null);
-export const UserGroups: Ref<ApiGroupResponse[] | null> = ref(null);
+export const CurrentUserCreds = ref<LoggedInUserAuth | null>(null);
+export const CurrentUser = ref<LoggedInUser | null>(null);
+export const UserGroups = ref<ApiGroupResponse[] | null>(null);
+export const DevicesForCurrentGroup = ref<ApiDeviceResponse[] | null>(null);
 
 export const nonPendingUserGroups = computed<ApiGroupResponse[]>(() => {
   if (UserGroups.value === null) {
@@ -65,6 +68,12 @@ export const userIsLoggedIn = computed<boolean>({
       CurrentUser.value = null;
     }
   },
+});
+
+watch(userIsLoggedIn, (next) => {
+  if (!next) {
+    debugger;
+  }
 });
 
 export const userHasGroups = computed<boolean>(() => {
@@ -328,8 +337,14 @@ export type SelectedGroup = {
   userSettings?: ApiGroupUserSettings;
 };
 export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
-  if (userIsLoggedIn.value && currentUserSettings.value) {
+  if (
+    userIsLoggedIn.value &&
+    currentUserSettings.value &&
+    UserGroups.value !== null
+  ) {
+    // Basically don't try to get currentSelectedGroup until UserGroups has loaded?
     if (nonPendingUserGroups.value.length === 0) {
+      debugger;
       return false;
     }
     if (
@@ -342,6 +357,7 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
         ({ id }) => id === potentialGroupId
       );
       if (!matchedGroup) {
+        debugger;
         return false;
       }
       return {
@@ -410,7 +426,7 @@ export const userHasConfirmedEmailAddress = computed<boolean>(() => {
 export const urlNormalisedCurrentGroupName = computed<string>(
   () =>
     (currentSelectedGroup.value &&
-      urlNormaliseGroupName(currentSelectedGroup.value.groupName)) ||
+      urlNormaliseName(currentSelectedGroup.value.groupName)) ||
     ""
 );
 
@@ -488,3 +504,35 @@ export const currentGroupName = computed<string>(() => {
   }
   return "";
 });
+
+export const userGroupsLoaded = async () => {
+  if (UserGroups.value !== null) {
+    return true;
+  } else {
+    return new Promise((resolve, reject) => {
+      watch(UserGroups, (next) => {
+        if (next?.length) {
+          resolve(true);
+        } else {
+          reject();
+        }
+      });
+    });
+  }
+};
+
+export const groupDevicesLoaded = async () => {
+  if (DevicesForCurrentGroup.value !== null) {
+    return true;
+  } else {
+    return new Promise((resolve, reject) => {
+      watch(DevicesForCurrentGroup, (next) => {
+        if (next?.length) {
+          resolve(true);
+        } else {
+          reject();
+        }
+      });
+    });
+  }
+};

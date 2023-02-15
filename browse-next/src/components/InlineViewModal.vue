@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { onBeforeMount, ref, watch } from "vue";
 import { urlNormalisedCurrentGroupName } from "@models/LoggedInUser";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteRecordName } from "vue-router";
@@ -8,13 +8,14 @@ const route = useRoute();
 const router = useRouter();
 const emit = defineEmits(["close", "shown"]);
 
-const { fadeIn } = defineProps<{
+const { fadeIn, parentRouteName } = defineProps<{
   fadeIn: boolean;
+  parentRouteName: string;
 }>();
 
 const closedModal = () => {
   router.push({
-    name: "dashboard",
+    name: parentRouteName,
     params: { groupName: urlNormalisedCurrentGroupName.value },
   });
   emit("close");
@@ -28,9 +29,10 @@ const modal = ref<typeof BModal | null>(null);
 
 // TODO: Provide parent context to return to as a prop or provide
 const isModalRouteName = (name: RouteRecordName) => {
-  return ["dashboard-visit", "dashboard-recording"].some((str) =>
-    (name as string).startsWith(str)
-  );
+  // return ["dashboard-visit", "dashboard-recording"].some((str) =>
+  //   (name as string).startsWith(str)
+  // );
+  return name !== parentRouteName;
 };
 const show = ref(isModalRouteName(route.name as string));
 
@@ -58,8 +60,8 @@ const onShown = () => {
       @hidden="closedModal"
       @shown="onShown"
       body-class="p-0"
-      content-class="recording-view-modal"
-      dialog-class="recording-view-dialog m-0 m-sm-auto modal-fullscreen-sm-down"
+      content-class="inline-view-modal"
+      dialog-class="inline-view-dialog m-0 m-sm-auto modal-fullscreen-sm-down"
     >
       <component :is="Component" @close="show = false" />
     </b-modal>
@@ -67,13 +69,13 @@ const onShown = () => {
 </template>
 
 <style lang="less">
-.recording-view-modal {
+.inline-view-modal {
   border-radius: 2px;
   box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
 
   // TODO What's the best way to set the width of this at different breakpoints?
 }
-.recording-view-dialog {
+.inline-view-dialog {
   max-width: 1080px;
 }
 </style>

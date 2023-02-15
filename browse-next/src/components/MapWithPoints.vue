@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted, ref, unref, watch } from "vue";
-import type { Ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import type { CircleMarkerOptions, LatLngTuple } from "leaflet";
@@ -38,15 +37,19 @@ const {
   isInteractive = true,
   markersAreInteractive = true,
   hasAttribution = true,
+  showStationRadius = true,
+  showOnlyActivePoints = true,
   activePoints = [],
   focusedPoint,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
   points: NamedPoint[];
-  highlightedPoint: Ref<NamedPoint | null>;
+  highlightedPoint: NamedPoint | null;
   activePoints: NamedPoint[];
   focusedPoint?: NamedPoint;
   radius?: number;
+  showStationRadius?: boolean;
+  showOnlyActivePoints?: boolean;
   zoom?: boolean;
   canChangeBaseMap?: boolean;
   isInteractive?: boolean;
@@ -65,8 +68,12 @@ interface LeafletInternalRawMarker {
 const loading = ref(true);
 const mapEl = ref<HTMLDivElement | null>(null);
 
-const pointKey = (point: NamedPoint) =>
-  `${point.group}|${point.name}|${point.location.lat}|${point.location.lng}`;
+const pointKey = (point: NamedPoint) => {
+  if (!point.location) {
+    debugger;
+  }
+  return `${point.group}|${point.name}|${point.location.lat}|${point.location.lng}`;
+};
 
 const lerp = (targetValue: number, progressZeroOne: number) => {
   return targetValue * progressZeroOne;
@@ -104,55 +111,63 @@ const updateMarkerRadius = (marker: CircleMarkerGroup, radius: number) => {
   }
 };
 
-const highlightMarker = (marker: CircleMarkerGroup) => {
+const markerAnimationFrames: Record<string, number> = {};
+const highlightMarker = (marker: CircleMarkerGroup, key: string) => {
   const currentRadius = marker.foregroundMarker.getRadius();
   const numFrames = Math.ceil(rafFps.value * 0.3);
   const initialRadius = 5;
   const enlargeBy = 5;
-
   if (currentRadius < initialRadius + enlargeBy) {
     const progress = iLerp(enlargeBy, currentRadius - initialRadius);
     const newRadius =
       initialRadius + lerp(enlargeBy, Math.min(1, progress + 1 / numFrames));
-    requestAnimationFrame(() => {
+    cancelAnimationFrame(markerAnimationFrames[key]);
+    markerAnimationFrames[key] = requestAnimationFrame(() => {
       const rawMarker =
         marker.foregroundMarker as unknown as LeafletInternalRawMarker;
       if (!rawMarker._path.classList.contains("pulse")) {
         rawMarker._path.classList.add("pulse");
       }
       updateMarkerRadius(marker, newRadius);
-      highlightMarker(marker);
+      highlightMarker(marker, key);
     });
   }
 };
 
-const unHighlightMarker = (marker: CircleMarkerGroup) => {
+const unhighlightImmediately = (marker: CircleMarkerGroup) => {
+  const rawMarker =
+    marker.foregroundMarker as unknown as LeafletInternalRawMarker;
+  if (rawMarker._path.classList.contains("pulse")) {
+    (rawMarker._path as SVGPathElement).classList.remove("pulse");
+  }
+  marker.foregroundMarker.setRadius(5);
+};
+
+const unHighlightMarker = (marker: CircleMarkerGroup, key: string) => {
   const currentRadius = marker.foregroundMarker.getRadius();
   if (currentRadius > 5) {
-    requestAnimationFrame(() => {
+    cancelAnimationFrame(markerAnimationFrames[key]);
+    markerAnimationFrames[key] = requestAnimationFrame(() => {
       const rawMarker =
         marker.foregroundMarker as unknown as LeafletInternalRawMarker;
       if (rawMarker._path.classList.contains("pulse")) {
         (rawMarker._path as SVGPathElement).classList.remove("pulse");
       }
-      // TODO - Lerp this number properly.
       marker.foregroundMarker.setRadius(currentRadius - 1);
-      unHighlightMarker(marker);
+      unHighlightMarker(marker, key);
     });
   }
 };
 
 watch(
-  highlightedPoint,
-  (newPoint: NamedPoint | null, oldPoint: NamedPoint | null) => {
-    const newP = unref(newPoint);
-    const oldP = unref(oldPoint);
-    if (newP) {
-      const pointMarker = markers[pointKey(newP)];
-      if (pointMarker) {
+  () => highlightedPoint,
+  (newP: NamedPoint | null) => {
+    const key = (newP && pointKey(newP)) || "";
+    for (const [markerKey, pointMarker] of Object.entries(markers)) {
+      if (key === markerKey) {
         // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
         pointMarker.foregroundMarker.bringToFront();
-        highlightMarker(pointMarker);
+        highlightMarker(pointMarker, markerKey);
         pointMarker.foregroundMarker.openTooltip();
         (
           (pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker)
@@ -160,12 +175,9 @@ watch(
         ).panInside(pointMarker.foregroundMarker.getLatLng(), {
           padding: [100, 30],
         });
-      }
-    }
-    if (oldP) {
-      const pointMarker = markers[pointKey(oldP)];
-      if (pointMarker) {
-        unHighlightMarker(pointMarker);
+      } else {
+        cancelAnimationFrame(markerAnimationFrames[markerKey]);
+        unhighlightImmediately(pointMarker);
         pointMarker.foregroundMarker.closeTooltip();
       }
     }
@@ -190,27 +202,39 @@ const mapLayers = [
 ];
 
 const mapBounds = computed<LatLngBounds | null>(() => {
-  if (activePoints.length === 0) {
+  const boundsPaddingInMeters = 300;
+  if (activePoints.length === 0 || !showOnlyActivePoints) {
     // Calculate the initial map bounds and zoom level from the set of lat/lng points
     return (
       (points.length &&
-        latLngBounds(points.map(({ location }) => location)).pad(0.25)) ||
+        latLngBounds(
+          points.flatMap(({ location }) => {
+            const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
+            return [pBounds.getNorthWest(), pBounds.getSouthEast()];
+          })
+        )) ||
       null
     );
   } else {
     if (focusedPoint) {
       // Give the bounds 300m around the focused location.
-      return latLng(focusedPoint.location).toBounds(300);
+
+      // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
+      return latLng(focusedPoint.location).toBounds(boundsPaddingInMeters);
     }
     if (activePoints.length > 1) {
-      return latLngBounds(activePoints.map(({ location }) => location)).pad(
-        0.25
+      const bounds = latLngBounds(
+        activePoints.flatMap(({ location }) => {
+          const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
+          return [pBounds.getNorthWest(), pBounds.getSouthEast()];
+        })
       );
+      return bounds;
     }
 
     if (activePoints.length === 1) {
       // Give the bounds 300m around the location.
-      return latLng(activePoints[0].location).toBounds(300);
+      return latLng(activePoints[0].location).toBounds(boundsPaddingInMeters);
     }
     return null;
   }
@@ -301,12 +325,12 @@ const addPoints = () => {
       const isFocusedPoint =
         focusedPoint && pointKey(focusedPoint) === thisPointKey;
       if (!isAnActivePoint) {
-        colour.fillColor = "#aaa";
+        colour.fillColor = "#666";
       }
       let fillOpacityMultiplier = 1;
       let pointScaleMultiplier = 1;
       if (!isAnActivePoint) {
-        pointScaleMultiplier = 0.5;
+        pointScaleMultiplier = 1;
         fillOpacityMultiplier = 0.85;
       }
       if (isAnActivePoint && focusedPoint && !isFocusedPoint) {
@@ -410,7 +434,7 @@ onMounted(() => {
     scrollWheelZoom: isInteractive,
     keyboard: isInteractive,
     tap: isInteractive,
-    maxZoom: 15,
+    maxZoom: 16,
     attributionControl: false,
     layers: [tileLayers[currentLayer]], // The default layer
   });

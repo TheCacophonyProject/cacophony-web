@@ -1,4 +1,4 @@
-import type { UserId } from "@typedefs/api/common";
+import type { GroupId, UserId } from "@typedefs/api/common";
 import type { HttpStatusCode } from "@typedefs/api/consts";
 
 export type JwtToken<_T> = string;
@@ -61,6 +61,12 @@ export interface JwtTokenPayload<
 
 export interface JwtUserAuthTokenPayload extends JwtTokenPayload<"user"> {
   id: UserId;
+}
+
+export interface JwtAcceptInviteTokenPayload
+  extends JwtTokenPayload<"invite-new-user" | "invite-existing-user"> {
+  id: UserId | number;
+  group: GroupId;
 }
 
 export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;

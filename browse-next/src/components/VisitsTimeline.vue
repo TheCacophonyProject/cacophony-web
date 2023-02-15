@@ -15,6 +15,7 @@ import {
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { currentlyHighlightedStation } from "@models/SelectionContext";
 
 const { visits, stations, startDate } = defineProps<{
   visits: ApiVisitResponse[];
@@ -143,6 +144,14 @@ const maxTime = computed<number>(() => {
 const dateAndDayOfWeek = (date: DateTime): string => {
   return `${date.weekdayShort} ${date.day}`;
 };
+
+const mouseOverVisit = (visit: ApiVisitResponse) => {
+  currentlyHighlightedStation.value = visit.stationId;
+};
+
+const mouseLeftVisit = (_visit: ApiVisitResponse) => {
+  currentlyHighlightedStation.value = null;
+};
 </script>
 <template>
   <div class="visits-timeline">
@@ -160,6 +169,8 @@ const dateAndDayOfWeek = (date: DateTime): string => {
         <div
           v-for="visit in visits"
           :key="visit.timeStart"
+          @mouseenter="() => mouseOverVisit(visit)"
+          @mouseleave="() => mouseLeftVisit(visit)"
           :title="
             DateTime.fromISO(visit.timeStart, {
               zone: timezoneForActiveStations,

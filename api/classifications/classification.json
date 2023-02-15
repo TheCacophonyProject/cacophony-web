@@ -1,6 +1,6 @@
 {
     "label": "all",
-    "version": "ac408558-9c36-11ed-a8fc-0242ac120002",
+    "version": "35faf19f-cef2-462b-83ba-d1a921145f3",
     "children": [
         {
             "label": "mammal",
@@ -71,9 +71,6 @@
                 },
                 {
                     "label": "sheep"
-                },
-                {
-                    "label": "cow"
                 },
                 {
                     "label": "wallaby"
@@ -521,6 +518,9 @@
                     ]
                 },
                 {
+                    "label": "golden whistler"
+                },
+                {
                     "label": "goldfinch",
                     "children": [
                         {
@@ -853,6 +853,9 @@
                 },
                 {
                     "label": "norfolk gerygone"
+                },
+                {
+                    "label": "norfolk golden whistler"
                 },
                 {
                     "label": "norfolk silkeye"
@@ -1796,17 +1799,6 @@
                 },
                 {
                     "label": "whitehead"
-                },
-                {
-                    "label": "whistler",
-                    "children": [
-                        {
-                            "label": "golden whistler"
-                        },
-                        {
-                            "label": "norfolk golden whistler"
-                        }
-                    ]
                 },
                 {
                     "label": "wild turkey"

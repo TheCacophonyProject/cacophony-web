@@ -6,6 +6,8 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LatLng } from "leaflet";
 import VisitsTimeline from "@/components/VisitsTimeline.vue";
 import type { NamedPoint } from "@models/mapUtils";
+import { currentlyHighlightedStation } from "@models/SelectionContext";
+import { locationsAreEqual } from "@/utils";
 
 const { stations, visits, activeStations, startDate, loading } = defineProps<{
   visits: ApiVisitResponse[];
@@ -14,18 +16,47 @@ const { stations, visits, activeStations, startDate, loading } = defineProps<{
   startDate: Date;
   loading: boolean;
 }>();
-
-const highlightedPoint = ref<NamedPoint | null>(null);
+const highlightedPointInternal = ref<NamedPoint | null>(null);
+const highlightedPoint = computed<NamedPoint | null>(() => {
+  if (
+    stations &&
+    (currentlyHighlightedStation.value || highlightedPointInternal.value)
+  ) {
+    let station: ApiStationResponse | undefined;
+    if (currentlyHighlightedStation.value) {
+      station = stations.find(
+        ({ id }) => id === currentlyHighlightedStation.value
+      );
+    } else {
+      station = stations.find(({ location }) =>
+        locationsAreEqual(
+          location,
+          highlightedPointInternal.value?.location as LatLng
+        )
+      );
+    }
+    if (station) {
+      return {
+        name: station.name,
+        group: station.groupName,
+        location: station.location,
+      };
+    }
+  }
+  return null;
+});
 
 const highlightPoint = (p: NamedPoint | null) => {
-  highlightedPoint.value = p;
+  highlightedPointInternal.value = p;
 };
 const stationsForMap = computed<NamedPoint[]>(() => {
-  return stations.map(({ name, groupName, location }) => ({
-    name,
-    group: groupName,
-    location: location as LatLng,
-  }));
+  return stations
+    .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
+    .map(({ name, groupName, location }) => ({
+      name,
+      group: groupName,
+      location: location as LatLng,
+    }));
 });
 const activeStationsForMap = computed<NamedPoint[]>(() => {
   return activeStations.map(({ name, groupName, location }) => ({
@@ -44,7 +75,7 @@ const hasVisits = computed<boolean>(() => {
       <map-with-points
         :points="stationsForMap"
         :active-points="activeStationsForMap"
-        :highlighted-point="() => ref(highlightedPoint)"
+        :highlighted-point="highlightedPoint"
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
         :radius="30"

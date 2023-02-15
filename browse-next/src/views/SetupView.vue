@@ -11,11 +11,15 @@ import {
   pendingUserGroups,
   refreshUserGroups,
   urlNormalisedCurrentGroupName,
+  setLoggedInUserData,
+  setLoggedInUserCreds,
 } from "@models/LoggedInUser";
 import {
   acceptGroupInvitation,
   changeAccountEmail,
+  debugGetEmailConfirmationToken,
   resendAccountActivationEmail as resendEmail,
+  validateEmailConfirmationToken,
 } from "@api/User";
 import { computed, onBeforeMount, onUnmounted, ref } from "vue";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
@@ -153,34 +157,37 @@ const pendingGroupTableItems = computed(() => {
   });
 });
 
-// const router = useRouter();
-// const debugConfirmEmail = async () => {
-//   const tokenResponse = await debugGetEmailConfirmationToken(
-//     CurrentUser.value?.email as string
-//   );
-//   if (tokenResponse.success) {
-//     const token = tokenResponse.result.token;
-//     const validateTokenResponse = await validateEmailConfirmationToken(token);
-//     if (validateTokenResponse.success) {
-//       const { userData, token, refreshToken, signOutUser } =
-//         validateTokenResponse.result;
-//       if (signOutUser) {
-//         await router.push({ name: "sign-out" });
-//         return;
-//       }
-//       setLoggedInUserData({
-//         ...userData,
-//         apiToken: token,
-//         refreshToken,
-//         refreshingToken: false,
-//       });
-//
-//       await router.push({
-//         path: "/",
-//       });
-//     }
-//   }
-// };
+const isDev = ref<boolean>(import.meta.env.DEV);
+
+const debugConfirmEmail = async () => {
+  const tokenResponse = await debugGetEmailConfirmationToken(
+    CurrentUser.value?.email as string
+  );
+  if (tokenResponse.success) {
+    const token = tokenResponse.result.token;
+    const validateTokenResponse = await validateEmailConfirmationToken(token);
+    if (validateTokenResponse.success) {
+      const { userData, token, refreshToken, signOutUser } =
+        validateTokenResponse.result;
+      if (signOutUser) {
+        await router.push({ name: "sign-out" });
+        return;
+      }
+      setLoggedInUserData({
+        ...userData,
+      });
+      setLoggedInUserCreds({
+        apiToken: token,
+        refreshToken,
+        refreshingToken: false,
+      });
+
+      await router.push({
+        path: "/",
+      });
+    }
+  }
+};
 </script>
 <template>
   <div
@@ -214,6 +221,15 @@ const pendingGroupTableItems = computed(() => {
             <span class="spinner-border spinner-border-sm"></span> Re-sending...
           </span>
           <span v-else> Re-send my confirmation email. </span>
+        </button>
+
+        <button
+          v-if="isDev"
+          type="button"
+          class="btn btn-warning"
+          @click="debugConfirmEmail"
+        >
+          DEBUG confirm email
         </button>
       </p>
       <p class="alert alert-secondary">

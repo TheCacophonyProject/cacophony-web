@@ -10,7 +10,10 @@ import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/root";
-import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
+import {
+  currentlyHighlightedStation,
+  selectedVisit as currentlySelectedVisit,
+} from "@models/SelectionContext";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import ImageLoader from "@/components/ImageLoader.vue";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
@@ -210,6 +213,20 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
     currentlySelectedVisit.value = visit.data;
   }
 };
+
+const highlightedStation = (visit: VisitEventItem | SunEventItem) => {
+  if (visit.type === "visit") {
+    currentlyHighlightedStation.value = visit.data.stationId;
+  }
+};
+const unhighlightedStation = (visit: VisitEventItem | SunEventItem) => {
+  if (
+    visit.type === "visit" &&
+    currentlyHighlightedStation.value === visit.data.stationId
+  ) {
+    currentlyHighlightedStation.value = null;
+  }
+};
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
@@ -264,6 +281,8 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
           },
         ]"
         @click="selectedVisit(visit)"
+        @mouseenter="() => highlightedStation(visit)"
+        @mouseleave="() => unhighlightedStation(visit)"
       >
         <div
           class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
@@ -428,6 +447,9 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   line-height: 14px;
   transition: background-color linear 0.2s;
   border-radius: 3px;
+  > * {
+    pointer-events: none;
+  }
   &:hover:not(&.sun) {
     background: #eee;
   }

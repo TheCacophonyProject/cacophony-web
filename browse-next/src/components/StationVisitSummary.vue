@@ -1,12 +1,13 @@
 <script lang="ts" setup>
 import type { ApiStationResponse } from "@typedefs/api/station";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import { visitsByStation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { currentlyHighlightedStation } from "@models/SelectionContext";
 
 const { station, stations, visits, activeStations } = defineProps<{
   station: ApiStationResponse;
@@ -62,13 +63,29 @@ const thisStationPoint = {
 const speciesSummary = computed<[string, number][]>(() =>
   visitsCountBySpecies(visitsForStation.value)
 );
+
+const highlightedPoint = computed<NamedPoint | null>(() => {
+  if (stations && currentlyHighlightedStation.value) {
+    const station = stations.find(
+      ({ id }) => id === currentlyHighlightedStation.value
+    );
+    if (station) {
+      return {
+        name: station.name,
+        group: station.groupName,
+        location: station.location,
+      };
+    }
+  }
+  return null;
+});
 </script>
 
 <template>
   <div class="station-visit-summary mb-3 mb-sm-0">
     <div class="map-container">
       <map-with-points
-        :highlighted-point="() => ref(null)"
+        :highlighted-point="highlightedPoint"
         :points="stationsForMap"
         :active-points="activeStationsForMap"
         :is-interactive="false"

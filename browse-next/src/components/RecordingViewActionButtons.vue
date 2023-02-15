@@ -110,7 +110,7 @@ const notImplemented = () => {
   <div class="recording-icons d-flex justify-content-between px-sm-2">
     <button
       type="button"
-      class="btn"
+      class="btn btn-square btn-hi"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
@@ -123,7 +123,7 @@ const notImplemented = () => {
     </button>
     <button
       type="button"
-      class="btn"
+      class="btn btn-square btn-hi"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
@@ -139,8 +139,8 @@ const notImplemented = () => {
       dropup
       auto-close
       offset="-92, 7"
-      no-caret
       variant="link"
+      toggle-class="dropdown-btn"
       menu-class="dropdown-indicator"
     >
       <template #button-content>
@@ -172,7 +172,7 @@ const notImplemented = () => {
     </two-step-action-button>
     <button
       type="button"
-      class="btn"
+      class="btn btn-square btn-hi"
       :disabled="!recordingReady"
       @click="() => notImplemented()"
     >

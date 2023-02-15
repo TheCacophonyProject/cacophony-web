@@ -21,7 +21,10 @@ import {
   flatClassifications,
   getClassifications,
 } from "@api/Classifications";
-import type { CardTableRows, CardTableItem } from "@/components/CardTableTypes";
+import type {
+  CardTableRows,
+  GenericCardTableValue,
+} from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
@@ -63,7 +66,7 @@ const userIsGroupAdmin = computed<boolean>(() => {
   );
 });
 
-const taggerDetails = computed<CardTableRows<ApiTrackTagResponse | string>>(
+const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
   () => {
     const tags: ApiTrackTagResponse[] = [...humanTags.value];
     if (masterTag.value) {
@@ -75,7 +78,7 @@ const taggerDetails = computed<CardTableRows<ApiTrackTagResponse | string>>(
     return tags.map((tag: ApiTrackTagResponse) => {
       const item: Record<
         string,
-        CardTableItem<ApiTrackTagResponse | string> | string
+        GenericCardTableValue<string | ApiTrackTagResponse> | string
       > = {
         tag: capitalize(displayLabelForClassificationLabel(tag.what)),
         tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(

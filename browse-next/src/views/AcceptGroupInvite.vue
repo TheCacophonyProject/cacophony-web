@@ -6,14 +6,13 @@ import {
   nonPendingUserGroups,
   refreshUserGroups,
   urlNormalisedCurrentGroupName,
-  UserGroups,
   userIsLoggedIn,
 } from "@models/LoggedInUser";
-import type { ErrorResult } from "@api/types";
+import type { ErrorResult, JwtAcceptInviteTokenPayload } from "@api/types";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
-import { decodeJWT, urlNormaliseGroupName } from "@/utils";
+import { decodeJWT, urlNormaliseName } from "@/utils";
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
 const isValidValidateToken = ref(false);
@@ -26,7 +25,7 @@ onMounted(async () => {
   checkingValidateEmailToken.value = true;
   if (params.token) {
     const token = (params.token as string).replace(/:/g, ".");
-    const jwtToken: any = decodeJWT(token);
+    const jwtToken = decodeJWT(token) as JwtAcceptInviteTokenPayload | null;
     if (jwtToken && jwtToken.group) {
       const alreadyAddedToGroup =
         userIsLoggedIn.value &&
@@ -54,7 +53,7 @@ onMounted(async () => {
           );
           let nextGroupName = urlNormalisedCurrentGroupName.value;
           if (nextGroup) {
-            nextGroupName = urlNormaliseGroupName(nextGroup.groupName);
+            nextGroupName = urlNormaliseName(nextGroup.groupName);
           }
           isValidValidateToken.value = true;
           console.warn("Redirecting to dashboard");

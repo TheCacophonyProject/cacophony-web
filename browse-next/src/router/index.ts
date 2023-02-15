@@ -3,6 +3,7 @@ import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
   currentEUAVersion,
   currentSelectedGroup,
+  DevicesForCurrentGroup,
   forgetUserOnCurrentDevice,
   isFetchingGroups,
   isLoggingInAutomatically,
@@ -19,9 +20,9 @@ import {
   userIsLoggedIn,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
-import { getGroups } from "@api/Group";
+import { getDevicesForGroup, getGroups } from "@api/Group";
 import { nextTick, reactive } from "vue";
-import { decodeJWT, urlNormaliseGroupName } from "@/utils";
+import { decodeJWT, urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 
 // Allows us to abort all pending fetch requests when switching between major views.
@@ -152,6 +153,39 @@ const router = createRouter({
       meta: { requiresLogin: true, title: "Devices belonging to :groupName" },
       component: () => import("@/views/DevicesView.vue"),
       beforeEnter: cancelPendingRequests,
+      children: [
+        {
+          // DeviceView will be rendered inside DevicesViews' <router-view>
+          // when /:groupName/devices/:deviceName is matched
+          path: ":deviceId/:deviceName",
+          name: "device",
+          redirect: { name: "device-diagnostics" }, // Make diagnostics the default tab
+          meta: { title: "Manage device :deviceName" },
+          component: () => import("@/views/DeviceView.vue"),
+          children: [
+            {
+              path: "diagnostics", // Labels also needs to maintain current trackId when we switch to it.
+              name: "device-diagnostics",
+              component: () => import("@/views/DeviceDiagnosticsSubView.vue"),
+            },
+            {
+              path: "setup",
+              name: "device-setup",
+              component: () => import("@/views/DeviceSetupSubView.vue"),
+            },
+            {
+              path: "schedules",
+              name: "device-schedules",
+              component: () => import("@/views/DeviceSchedulesSubView.vue"),
+            },
+            {
+              path: "manual-uploads",
+              name: "device-uploads",
+              component: () => import("@/views/DeviceUploadsSubView.vue"),
+            },
+          ],
+        },
+      ],
     },
     {
       path: "/:groupName/report",
@@ -481,18 +515,45 @@ router.beforeEach(async (to, from, next) => {
       }
     }
     if (potentialGroupName) {
-      potentialGroupName = urlNormaliseGroupName(potentialGroupName);
+      potentialGroupName = urlNormaliseName(potentialGroupName);
       const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
-        ({ groupName }) =>
-          urlNormaliseGroupName(groupName) === potentialGroupName
+        ({ groupName }) => urlNormaliseName(groupName) === potentialGroupName
       );
-      // console.warn("Found match", matchedGroup);
+      console.warn("Found match", matchedGroup);
+      /*
+      if (currentSelectedGroup.value) {
+          getDevicesForGroup(
+              currentSelectedGroup.value.id
+          ).then((devicesResponse) => {
+            if (devicesResponse.success) {
+              console.log("Setting devices");
+              DevicesForCurrentGroup.value = devicesResponse.result.devices;
+            }
+          });
+        } else {
+          DevicesForCurrentGroup.value = null;
+        }
+       */
+
       if (matchedGroup) {
         // Don't persist the admin property in user settings, since that could change
         switchCurrentGroup({
           groupName: matchedGroup.groupName,
           id: matchedGroup.id,
         });
+
+        if (currentSelectedGroup.value) {
+          // Get the devices for the current group.
+          getDevicesForGroup(currentSelectedGroup.value.id, false, true).then(
+            (devicesResponse) => {
+              if (devicesResponse.success) {
+                DevicesForCurrentGroup.value = devicesResponse.result.devices;
+              }
+            }
+          );
+        } else {
+          DevicesForCurrentGroup.value = null;
+        }
       } else {
         if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
           // Group in url not found, redirect to our last selected group.
