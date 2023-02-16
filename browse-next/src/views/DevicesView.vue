@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, onBeforeMount, ref, watch } from "vue";
+import { computed, inject, ref } from "vue";
+import type { Ref } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForGroup } from "@api/Group";
-import {
-  currentSelectedGroup,
-  DevicesForCurrentGroup,
-  UserGroups,
-  userGroupsLoaded,
-} from "@models/LoggedInUser";
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type {
   CardTableItem,
@@ -28,10 +23,16 @@ import { deleteDevice } from "@api/Device";
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
+import { currentSelectedGroup, selectedGroupDevices } from "@models/provides";
+
+const groupDevices = inject(selectedGroupDevices) as Ref<
+  ApiDeviceResponse[] | null
+>;
+const selectedGroup = inject(currentSelectedGroup) as Ref<SelectedGroup>;
 
 const devices = computed<ApiDeviceResponse[]>(() => {
-  if (DevicesForCurrentGroup.value) {
-    return DevicesForCurrentGroup.value;
+  if (groupDevices.value) {
+    return groupDevices.value;
   }
   return [];
 });
@@ -41,21 +42,18 @@ const noWrap = (str: string) => str.replace(/ /g, "&nbsp;");
 
 const loadDevices = async () => {
   loadingDevices.value = true;
-  await userGroupsLoaded();
   const devicesResponse = await getDevicesForGroup(
-    (currentSelectedGroup.value as SelectedGroup).id
+    (selectedGroup.value as SelectedGroup).id
   );
 
   // TODO: If we want to see inactive devices, we might need to reload devices here when that option gets checked.
 
   if (devicesResponse.success) {
-    DevicesForCurrentGroup.value = devicesResponse.result.devices;
+    groupDevices.value = devicesResponse.result.devices;
   }
   loadingDevices.value = false;
   showCreateProxyDevicePrompt.value = false;
 };
-
-//onBeforeMount(loadDevices);
 
 // Last seen, last recording time, current ref image if any, current station, total recordings?, active/inactive, rename?
 // firmware, events
@@ -79,28 +77,30 @@ interface DeviceTableItem {
 const tableItems = computed<
   CardTableRows<string | (Date | null) | ApiDeviceResponse>
 >(() => {
-  return devices.value.map((device: ApiDeviceResponse) => ({
-    deviceName: device.deviceName, // Use device name with icon like we do currently?
-    lastSeen: noWrap(
-      device.lastConnectionTime
-        ? (DateTime.fromJSDate(
-            new Date(device.lastConnectionTime)
-          ).toRelative() as string)
-        : "never (offline device)"
-    ),
-    deviceHealth: device.hasOwnProperty("isHealthy")
-      ? (device.isHealthy as boolean).toString()
-      : "-",
-    _deleteAction: {
-      value: device,
-      cellClasses: ["d-flex", "justify-content-end"],
-    },
-    __type: device.type,
-    __id: device.id.toString(),
-    __lastConnectionTime:
-      (device.lastConnectionTime && new Date(device.lastConnectionTime)) ||
-      null,
-  }));
+  return devices.value
+    .filter((device) => device.active)
+    .map((device: ApiDeviceResponse) => ({
+      deviceName: device.deviceName, // Use device name with icon like we do currently?
+      lastSeen: noWrap(
+        device.lastConnectionTime
+          ? (DateTime.fromJSDate(
+              new Date(device.lastConnectionTime)
+            ).toRelative() as string)
+          : "never (offline device)"
+      ),
+      deviceHealth: device.hasOwnProperty("isHealthy")
+        ? (device.isHealthy as boolean).toString()
+        : "-",
+      _deleteAction: {
+        value: device,
+        cellClasses: ["d-flex", "justify-content-end"],
+      },
+      __type: device.type,
+      __id: device.id.toString(),
+      __lastConnectionTime:
+        (device.lastConnectionTime && new Date(device.lastConnectionTime)) ||
+        null,
+    }));
 });
 
 const deviceLocations = computed<NamedPoint[]>(() => {
@@ -218,10 +218,7 @@ const someDevicesHaveKnownLocations = computed<boolean>(() =>
 );
 
 const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
-  await deleteDevice(
-    (currentSelectedGroup.value as SelectedGroup).id,
-    deviceId
-  );
+  await deleteDevice(selectedGroup.value.id, deviceId);
   await loadDevices();
 };
 const loadedRouteName = ref<string>("");
@@ -285,10 +282,10 @@ const selectDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
         :break-point="0"
       >
         <template #deviceName="{ cell, row }">
-          <device-name :name="cell" :type="row['__type']" />
+          <device-name :name="cell" :type="row['__type']" /> {{ row["__type"] }}
         </template>
         <template #deviceHealth="{ cell, row }">
-          <span v-if="cell === '-'"></span>
+          <span v-if="cell === '-'">N/A</span>
           <span v-else-if="cell === 'true'">
             <font-awesome-icon icon="heart" color="darkgreen" />
           </span>
@@ -298,15 +295,14 @@ const selectDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
         </template>
         <template #_deleteAction="{ cell }">
           <two-step-action-button
+            v-if="!cell.value.lastRecordingTime"
             class="text-end"
             :action="() => deleteOrArchiveDevice(cell.value.id)"
             icon="trash-can"
-            :confirmation-label="`${
-              cell.value.lastRecordingTime ? 'Archive' : 'Delete'
-            } <strong><em>${cell.value.deviceName}</em></strong>`"
+            :confirmation-label="`Delete <strong><em>${cell.value.deviceName}</em></strong>`"
             classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-2"
             alignment="right"
-          />
+          /><span v-else></span>
         </template>
         <template #card="{ card }">
           <h6>{{ card.deviceName }}</h6>

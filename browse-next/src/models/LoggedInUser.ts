@@ -284,7 +284,7 @@ export const forgetUserOnCurrentDevice = () => {
 export const switchCurrentGroup = (newGroup: {
   groupName: string;
   id: GroupId;
-}) => {
+}): boolean => {
   // Save the current (new) group to the local user settings, and persist it to the server.
   const loggedInUser = CurrentUser.value as LoggedInUser;
   if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
@@ -300,7 +300,9 @@ export const switchCurrentGroup = (newGroup: {
         currentSelectedGroup: newGroup,
       },
     });
+    return true;
   }
+  return false;
 };
 
 // User blocking action checks

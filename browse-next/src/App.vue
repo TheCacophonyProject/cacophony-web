@@ -60,7 +60,7 @@ const _loggedInAsAnotherUser = false;
 const _environmentIsProduction = false;
 const hasGitReleaseInfoBar = ref(false);
 
-const currentSelectedGroup = computed<SelectedGroup>(() => {
+const selectedGroup = computed<SelectedGroup>(() => {
   return fallibleCurrentSelectedGroup.value as SelectedGroup;
 });
 
@@ -231,7 +231,7 @@ onMounted(() => {
             v-if="userHasMultipleGroups"
             @click="() => (showSwitchGroup.enabled = true)"
           >
-            {{ currentSelectedGroup.groupName }}
+            {{ selectedGroup.groupName }}
             <span class="switch-label figure ms-1"
               ><font-awesome-icon icon="retweet" class="switch-icon"
             /></span>
@@ -239,7 +239,7 @@ onMounted(() => {
           <span
             v-else
             class="btn current-group d-flex flex-fill me-1 align-items-center"
-            >{{ currentSelectedGroup.groupName }}</span
+            >{{ selectedGroup.groupName }}</span
           >
 
           <div class="dropdown">

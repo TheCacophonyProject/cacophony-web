@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { onBeforeMount, ref, watch } from "vue";
-import { urlNormalisedCurrentGroupName } from "@models/LoggedInUser";
+import { inject, ref, watch } from "vue";
+import type { ComputedRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteRecordName } from "vue-router";
 import { BModal } from "bootstrap-vue-3";
+import { urlNormalisedCurrentSelectedGroupName } from "@models/provides";
 const route = useRoute();
 const router = useRouter();
 const emit = defineEmits(["close", "shown"]);
 
+const urlNormalisedGroupName = inject(
+  urlNormalisedCurrentSelectedGroupName
+) as ComputedRef<string>;
 const { fadeIn, parentRouteName } = defineProps<{
   fadeIn: boolean;
   parentRouteName: string;
@@ -16,7 +20,7 @@ const { fadeIn, parentRouteName } = defineProps<{
 const closedModal = () => {
   router.push({
     name: parentRouteName,
-    params: { groupName: urlNormalisedCurrentGroupName.value },
+    params: { groupName: urlNormalisedGroupName.value },
   });
   emit("close");
 };

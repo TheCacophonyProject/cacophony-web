@@ -82,3 +82,22 @@ export enum HttpStatusCode {
   Unprocessable = 422,
   ServerError = 500,
 }
+
+export const DeviceEventTypes = [
+  "alert",
+  "attiny-sleep",
+  "audioBait",
+  "daytime-power-off",
+  "powered-off",
+  "power-on-test",
+  "rpi-power-on",
+  "salt-update",
+  "systemError",
+  "test",
+  "throttle",
+  "versionData",
+  "config",
+  "bad-thermal-frame",
+] as const;
+
+export type DeviceEventType = typeof DeviceEventTypes[number];

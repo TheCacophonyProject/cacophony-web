@@ -1,6 +1,4 @@
-<script lang="ts" setup>
-
-</script>
+<script lang="ts" setup></script>
 <template>
   <div>
     <ul>
@@ -11,6 +9,5 @@
     </ul>
   </div>
 </template>
-
 
 <style scoped lang="less"></style>

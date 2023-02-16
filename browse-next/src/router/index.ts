@@ -519,7 +519,7 @@ router.beforeEach(async (to, from, next) => {
       const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
         ({ groupName }) => urlNormaliseName(groupName) === potentialGroupName
       );
-      console.warn("Found match", matchedGroup);
+      // console.warn("Found match", matchedGroup);
       /*
       if (currentSelectedGroup.value) {
           getDevicesForGroup(
@@ -537,20 +537,23 @@ router.beforeEach(async (to, from, next) => {
 
       if (matchedGroup) {
         // Don't persist the admin property in user settings, since that could change
-        switchCurrentGroup({
+        const switchedGroup = switchCurrentGroup({
           groupName: matchedGroup.groupName,
           id: matchedGroup.id,
         });
 
         if (currentSelectedGroup.value) {
           // Get the devices for the current group.
-          getDevicesForGroup(currentSelectedGroup.value.id, false, true).then(
-            (devicesResponse) => {
-              if (devicesResponse.success) {
-                DevicesForCurrentGroup.value = devicesResponse.result.devices;
+          if (!DevicesForCurrentGroup.value || switchedGroup) {
+            getDevicesForGroup(currentSelectedGroup.value.id, false, true).then(
+              (devicesResponse) => {
+                if (devicesResponse.success) {
+                  DevicesForCurrentGroup.value = devicesResponse.result.devices;
+                  console.log(DevicesForCurrentGroup.value);
+                }
               }
-            }
-          );
+            );
+          }
         } else {
           DevicesForCurrentGroup.value = null;
         }

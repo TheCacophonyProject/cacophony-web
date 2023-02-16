@@ -32,10 +32,10 @@
         <tr
           v-for="(row, rowIndex) in displayedItems.values"
           :key="rowIndex"
-          @click="e => selectedItem(e, items[rowIndex])"
-          @mouseenter="() => enteredItem(items[rowIndex])"
-          @mouseleave="leftItem(items[rowIndex])"
-          :class="{ highlighted: eq(items[rowIndex], highlightedItem) }"
+          @click="e => selectedItem(e, sortedItems[rowIndex])"
+          @mouseenter="() => enteredItem(sortedItems[rowIndex])"
+          @mouseleave="leftItem(sortedItems[rowIndex])"
+          :class="{ highlighted: eq(sortedItems[rowIndex], highlightedItem) }"
         >
           <td
             :class="[
@@ -48,7 +48,7 @@
           >
             <slot
               :name="headings[index]"
-              v-bind="{ cell, row: items[rowIndex] }"
+              v-bind="{ cell, row: sortedItems[rowIndex] }"
             >
               <span v-if="cell && cell.value" class="text-nowrap" v-html="cell.value" />
               <span v-else-if="cell" class="text-nowrap" v-html="cell" />
@@ -62,11 +62,11 @@
         <!--        TODO -->
       </div>
       <div
-        v-for="(card, cardIndex) in items"
+        v-for="(card, cardIndex) in sortedItems"
         :key="cardIndex"
         @mouseenter="enteredItem(card)"
         @mouseleave="leftItem(card)"
-        @click="() => selectedItem(items[rowIndex])"
+        @click="(e) => selectedItem(e, sortedItems[cardIndex])"
         class="card-table-card py-2 ps-3 pe-2 my-2"
         :class="{ highlighted: eq(card, highlightedItem) }"
       >
@@ -226,29 +226,26 @@ onBeforeMount(() => {
 
 const toggleSorting = (dimensionName: string) => {
   const dimension = sorts[dimensionName];
-  if (dimension.direction === SortDirection.None) {
-    dimension.direction = SortDirection.Down;
-  } else if (dimension.direction === SortDirection.Down) {
-    dimension.direction = SortDirection.Up;
-  } else if (dimension.direction === SortDirection.Up) {
-    dimension.direction = SortDirection.Down;
-  }
-  // Reset other columns, we don't support multi-dimensional sort at this time.
-  for (const [name, dimension] of Object.entries(sorts)) {
-    if (name !== dimensionName) {
-      dimension.direction = SortDirection.None;
+  if (dimension) {
+    if (dimension.direction === SortDirection.None) {
+      dimension.direction = SortDirection.Down;
+    } else if (dimension.direction === SortDirection.Down) {
+      dimension.direction = SortDirection.Up;
+    } else if (dimension.direction === SortDirection.Up) {
+      dimension.direction = SortDirection.Down;
+    }
+    // Reset other columns, we don't support multi-dimensional sort at this time.
+    for (const [name, dimension] of Object.entries(sorts)) {
+      if (name !== dimensionName) {
+        dimension.direction = SortDirection.None;
+      }
     }
   }
 };
 
-const displayedItems = computed<{
-  headings: string[];
-  values: GenericCardTableValue<any>[][];
-}>(() => {
-  // If the heading starts with _, its value is displayed, but we just use "" for the heading.
-  // If the heading starts with __, it's not displayed at all.
+const sortedItems = computed<CardTableRows<any>>(() => {
   const activeSort = Object.values(sorts).find(
-    (sort) => sort.direction !== SortDirection.None
+      (sort) => sort.direction !== SortDirection.None
   );
 
   const itemsCopied = [...items];
@@ -260,6 +257,16 @@ const displayedItems = computed<{
       }
     }
   }
+  return itemsCopied;
+});
+
+const displayedItems = computed<{
+  headings: string[];
+  values: GenericCardTableValue<any>[][];
+}>(() => {
+  // If the heading starts with _, its value is displayed, but we just use "" for the heading.
+  // If the heading starts with __, it's not displayed at all.
+
 
   return {
     headings: headings.value
@@ -267,7 +274,7 @@ const displayedItems = computed<{
       .map((heading) =>
         heading.startsWith("_") ? "" : splitCamelCase(heading)
       ),
-    values: itemsCopied.map((row) =>
+    values: sortedItems.value.map((row) =>
       Object.entries(row)
         .filter(([heading, _value]) => !heading.startsWith("__"))
         .map(([_heading, value]) => value)

@@ -939,7 +939,7 @@ from (
         [tagMode],
         null,
         exclusive
-      )}) IS NOT NULL)`;
+      )} limit 1) IS NOT NULL)`;
       if (tagWhats) {
         sqlQuery = `${sqlQuery} AND (${Recording.queryBuilder.trackTaggedWith(
           tagWhats,

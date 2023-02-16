@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { addNewGroup } from "@api/Group";
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
+import type { Ref } from "vue";
 import type { ErrorResult } from "@api/types";
 import { BModal } from "bootstrap-vue-3";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
 import { createProxyDevice } from "@api/Device";
-import { currentSelectedGroup } from "@models/LoggedInUser";
 import type { SelectedGroup } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
+import { currentSelectedGroup } from "@models/provides";
 
+const selectedGroup = inject(currentSelectedGroup) as Ref<SelectedGroup>;
 const newDeviceName = formFieldInputText();
 const isValidDeviceName = computed<boolean>(
   () => newDeviceName.value.trim().length >= 3
@@ -44,7 +45,7 @@ const createNewDeviceError = ref<ErrorResult | null>(null);
 const createNewProxyDevice = async () => {
   submittingCreateRequest.value = true;
   const deviceName = newDeviceName.value.trim();
-  const groupName = (currentSelectedGroup.value as SelectedGroup).groupName;
+  const groupName = selectedGroup.value.groupName;
   const createProxyDeviceResponse = await createProxyDevice(
     groupName,
     deviceName

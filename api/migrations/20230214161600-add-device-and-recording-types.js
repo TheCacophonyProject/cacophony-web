@@ -17,7 +17,7 @@ module.exports = {
       `create type "enum_Recordings_type" as ENUM('thermalRaw', 'audio', 'irRaw', 'trailcam-video', 'trailcam-image')`
     );
     await queryInterface.sequelize.query(
-      `alter table "Recordings" alter column "type" type "enum_Recordings_type" using "type"::"enum_Recordings_type"`
+      `alter table "Recordings" alter column "type" type "enum_Recordings_type" using ((type::text)::"enum_Recordings_type")`
     );
   },
   down: async function (queryInterface, Sequelize) {

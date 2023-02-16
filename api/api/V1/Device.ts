@@ -23,7 +23,6 @@ import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import { ClientError, UnprocessableError } from "../customErrors";
-import { readFileSync } from "fs";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -67,6 +66,8 @@ import log from "@log";
 import {streamS3Object} from "@api/V1/signedUrl";
 import modelsUtil from "@models/util/util";
 import {uploadFileStream} from "@api/V1/util";
+import {ApiStationResponse} from "@typedefs/api/station";
+import {mapStation} from "@api/V1/Station";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -92,8 +93,11 @@ export const mapDeviceResponse = (
     if (device.lastRecordingTime) {
       mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
-    if (device.heartbeat && device.nextHeartbeat) {
+    if (device.heartbeat && device.nextHeartbeat && device.active) {
+      // NOTE: If the device is inactive, we don't get a health indicator for it.
       mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
+    } else if (device.active && device.kind === "audio") {
+      // TODO: Can we update battery levels for bird monitors to the device, and show some health stats?
     }
     if (device.location) {
       mapped.location = device.location;
@@ -151,6 +155,10 @@ interface ApiDevicesResponseSuccess {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDeviceResponseSuccess {
   device: ApiDeviceResponse;
+}
+
+interface ApiStationResponseSuccess {
+  station: ApiStationResponse;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -261,7 +269,8 @@ export default function (app: Application, baseUrl: string) {
       fetchAuthorizedRequiredGroupByNameOrId(body("group")),
       checkDeviceNameIsUniqueInGroup(body("deviceName")),
       async (request: Request, response: Response) => {
-
+        console.log("here");
+        try {
           const device: Device = await models.Device.create({
             deviceName: request.body.deviceName,
             GroupId: response.locals.group.id,
@@ -284,6 +293,9 @@ export default function (app: Application, baseUrl: string) {
           return successResponse(response, "Created new device.", {
             id: device.id,
           });
+        } catch (e) {
+          console.log(e);
+        }
       }
   );
 
@@ -478,7 +490,7 @@ export default function (app: Application, baseUrl: string) {
       validateFields([
         idOf(param("id")),
         query("view-mode").optional().equals("user"),
-        query("at-time").isISO8601().toDate().default(new Date()),
+        query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
         query("type").default("pov").optional().isIn(["pov", "in-situ"])
       ]),
       fetchAuthorizedRequiredDeviceById(param("id")),
@@ -532,6 +544,64 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+   * @api {get} /api/v1/devices/:deviceId/station Get the reference image (if any) for a device
+   * @apiName GetDeviceStationAtTime
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
+   *
+   * @apiDescription Returns the station for a device at a given point in time, or now,
+   * if no date time is specified
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {apiSuccess::ApiStationResponseSuccess} station Device station details
+   * @apiUse V1ResponseError
+   */
+  app.get(
+      `${apiUrl}/device/:id/station`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(param("id")),
+        query("view-mode").optional().equals("user"),
+        query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      ]),
+      fetchAuthorizedRequiredDeviceById(param("id")),
+      async (request: Request, response: Response, next: NextFunction) => {
+        const atTime = request.query['at-time'] as unknown as Date;
+        const device = response.locals.device;
+        try {
+          const deviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
+            where: {
+              uuid: device.uuid,
+              GroupId: device.GroupId,
+              location: {[Op.ne]: null},
+              fromDateTime: {[Op.lte]: atTime},
+            },
+            order: [["fromDateTime", "DESC"]],
+          });
+          if (deviceHistoryEntry && deviceHistoryEntry.stationId) {
+            const station = await models.Station.findByPk(deviceHistoryEntry.stationId, {
+              include: [{
+                model: models.Group,
+                attributes: ["groupName"],
+              }],
+            });
+            if (station) {
+              return next(successResponse(response, "Got station for device at time", {
+                station: mapStation(station)
+              }));
+            }
+          }
+        } catch (e) {
+          console.log("!!!", e);
+        }
+        return next(new UnprocessableError("No station recorded for device at time"));
+      }
+  );
+
+  /**
    * @api {post} /api/v1/devices/:deviceId/reference-image Set the reference image for a device
    * @apiName GetDeviceReferenceImageAtTime
    * @apiGroup Device
@@ -555,7 +625,7 @@ export default function (app: Application, baseUrl: string) {
       validateFields([
         idOf(param("id")),
         query("view-mode").optional().equals("user"),
-        query("at-time").default(new Date()).isISO8601().toDate(),
+        query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
         query("type").default("pov").optional().isIn(["pov", "in-situ"])
       ]),
       fetchAuthorizedRequiredDeviceById(param("id")),

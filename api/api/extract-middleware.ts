@@ -176,6 +176,8 @@ const deviceAttributes = [
   "kind",
   "ScheduleId",
   "password", // Needed for auth, but not passed through when mapping to response.
+  "heartbeat",
+  "nextHeartbeat"
 ];
 
 const getGroupInclude = (
