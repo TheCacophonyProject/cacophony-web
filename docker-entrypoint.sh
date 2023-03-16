@@ -52,6 +52,12 @@ sudo -i -u postgres psql cacophonytest -f /app/api/db-seed.sql
 
 echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 
+
+echo "---- install npm packages ----"
+
+npm install
+cd ../types && npm install
+cd ../api
 echo "---- update npm packages ----"
 npm i
 

@@ -19,10 +19,5 @@ EXPOSE 5432
 
 COPY docker-entrypoint.sh /
 
-COPY api ./api
-
-COPY types ./types
-
-RUN cd api && npm install
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
