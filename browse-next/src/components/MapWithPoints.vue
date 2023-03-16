@@ -5,7 +5,14 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import type { CircleMarkerOptions, LatLngTuple } from "leaflet";
-import { DomEvent, latLng, Layer, Map as LeafletMap, Point } from "leaflet";
+import {
+  DomEvent,
+  latLng,
+  Layer,
+  Map as LeafletMap,
+  Point,
+  TileLayer,
+} from "leaflet";
 import {
   tileLayer,
   latLngBounds,
@@ -65,14 +72,14 @@ interface LeafletInternalRawMarker {
   _map: LeafletMap;
 }
 
-const loading = ref(true);
+const loading = ref<boolean>(false);
 const mapEl = ref<HTMLDivElement | null>(null);
 
 const pointKey = (point: NamedPoint) => {
   if (!point.location) {
     debugger;
   }
-  return `${point.group}|${point.name}|${point.location.lat}|${point.location.lng}`;
+  return `${point.project}|${point.name}|${point.location.lat}|${point.location.lng}`;
 };
 
 const lerp = (targetValue: number, progressZeroOne: number) => {
@@ -200,13 +207,15 @@ const mapLayers = [
       '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
   },
 ];
-
+const firstLoad = ref<boolean>(true);
 const mapBounds = computed<LatLngBounds | null>(() => {
   const boundsPaddingInMeters = 300;
-  if (activePoints.length === 0 || !showOnlyActivePoints) {
+  if ((firstLoad.value && activePoints.length === 0) || !showOnlyActivePoints) {
+    firstLoad.value = false;
     // Calculate the initial map bounds and zoom level from the set of lat/lng points
     return (
-      (points.length &&
+      (points &&
+        points.length &&
         latLngBounds(
           points.flatMap(({ location }) => {
             const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
@@ -221,20 +230,25 @@ const mapBounds = computed<LatLngBounds | null>(() => {
 
       // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
       return latLng(focusedPoint.location).toBounds(boundsPaddingInMeters);
-    }
-    if (activePoints.length > 1) {
-      const bounds = latLngBounds(
+    } else if (activePoints && activePoints.length === 1) {
+      // Give the bounds 300m around the location.
+      return latLng(activePoints[0].location).toBounds(boundsPaddingInMeters);
+    } else if (activePoints && activePoints.length > 1) {
+      return latLngBounds(
         activePoints.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
         })
       );
-      return bounds;
     }
-
-    if (activePoints.length === 1) {
-      // Give the bounds 300m around the location.
-      return latLng(activePoints[0].location).toBounds(boundsPaddingInMeters);
+    // Otherwise use inactive points for bounds.
+    else if (points && points.length) {
+      return latLngBounds(
+        points.flatMap(({ location }) => {
+          const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
+          return [pBounds.getNorthWest(), pBounds.getSouthEast()];
+        })
+      );
     }
     return null;
   }
@@ -251,7 +265,6 @@ const _hasPoints = computed<boolean>(() => {
   return points && points.length !== 0;
 });
 
-const computedPoints = computed<NamedPoint[]>(() => points);
 const computedLoading = computed<boolean>(() => loading.value);
 
 const _navigateToLocation = (point: NamedPoint) => {
@@ -262,7 +275,7 @@ const _navigateToLocation = (point: NamedPoint) => {
 };
 
 interface CircleMarkerGroup {
-  backgroundRadius: Circle;
+  backgroundRadius?: Circle;
   foregroundMarker: CircleMarker;
 }
 
@@ -303,7 +316,9 @@ const maybeShowAttributionForCurrentLayer = () => {
 const clearCurrentMarkers = () => {
   if (map) {
     for (const [key, marker] of Object.entries(markers)) {
-      map.removeLayer(marker.backgroundRadius);
+      if (marker.backgroundRadius) {
+        map.removeLayer(marker.backgroundRadius);
+      }
       map.removeLayer(marker.foregroundMarker);
       delete markers[key];
     }
@@ -324,8 +339,10 @@ const addPoints = () => {
         activePoints && activePoints.find((p) => pointKey(p) === thisPointKey);
       const isFocusedPoint =
         focusedPoint && pointKey(focusedPoint) === thisPointKey;
-      if (!isAnActivePoint) {
+      if (!point.color && !isAnActivePoint) {
         colour.fillColor = "#666";
+      } else if (point.color) {
+        colour.fillColor = point.color;
       }
       let fillOpacityMultiplier = 1;
       let pointScaleMultiplier = 1;
@@ -340,16 +357,7 @@ const addPoints = () => {
         pointScaleMultiplier = 1.25;
       }
 
-      const marker = {
-        backgroundRadius: circle(point.location, {
-          radius: 30,
-          interactive: false,
-          fillOpacity: 0.25 * fillOpacityMultiplier,
-          fillColor: "",
-          fill: true,
-          stroke: false,
-          ...colour,
-        }),
+      const marker: CircleMarkerGroup = {
         foregroundMarker: circleMarker(point.location, {
           radius: 5 * pointScaleMultiplier,
           stroke: false,
@@ -358,6 +366,17 @@ const addPoints = () => {
           ...colour,
         }),
       };
+      if (!point.type || point.type === "station") {
+        marker.backgroundRadius = circle(point.location, {
+          radius: 30,
+          interactive: false,
+          fillOpacity: 0.25 * fillOpacityMultiplier,
+          fillColor: "",
+          fill: true,
+          stroke: false,
+          ...colour,
+        });
+      }
       markers[pointKey(point)] = marker;
 
       if (markersAreInteractive && isAnActivePoint) {
@@ -376,9 +395,18 @@ const addPoints = () => {
           );
           namedPoint && hoverPoint(namedPoint);
         });
-        marker.foregroundMarker.on("mouseout", leavePoint);
+        marker.foregroundMarker.on("mouseout", () => leavePoint());
+        marker.foregroundMarker.on("click", (e) => {
+          const namedPoint = points.find(
+            (p) =>
+              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+          );
+          namedPoint && selectPoint(namedPoint);
+        });
       }
-      map.addLayer(marker.backgroundRadius);
+      if (marker.backgroundRadius) {
+        map.addLayer(marker.backgroundRadius);
+      }
       map.addLayer(marker.foregroundMarker);
     }
     // Bring active markers to foreground:
@@ -386,20 +414,35 @@ const addPoints = () => {
       for (const point of activePoints) {
         const marker = markers[pointKey(point)];
         if (marker && marker.foregroundMarker.getElement()?.parentNode) {
-          marker.backgroundRadius.bringToFront();
+          if (marker.backgroundRadius) {
+            marker.backgroundRadius.bringToFront();
+          }
           marker.foregroundMarker.bringToFront();
         }
       }
+
+      // TODO: Try and get the contrast with the markers looking better
+      map.eachLayer((layer) => {
+        if ((layer as TileLayer).options.attribution) {
+          (layer as TileLayer).setOpacity(0.15);
+        }
+      });
     }
     if (focusedPoint) {
       const marker = markers[pointKey(focusedPoint)];
       if (marker && marker.foregroundMarker.getElement()?.parentNode) {
-        marker.backgroundRadius.bringToFront();
+        if (marker.backgroundRadius) {
+          marker.backgroundRadius.bringToFront();
+        }
         marker.foregroundMarker.bringToFront();
       }
     }
+    fitMapBounds();
   }
 };
+
+watch(() => activePoints, addPoints);
+watch(() => points, addPoints);
 
 const fitMapBounds = () => {
   if (map && mapBounds.value) {
@@ -414,10 +457,8 @@ const fitMapBounds = () => {
   }
 };
 
-watch(mapBounds, fitMapBounds);
-watch(computedPoints, addPoints);
-
 onMounted(() => {
+  loading.value = true;
   const mapElement = mapEl.value;
 
   for (const layer of mapLayers) {
@@ -425,6 +466,13 @@ onMounted(() => {
       attribution: layer.attribution,
       detectRetina: true,
     });
+    if (layer.visible) {
+      tileLayers[layer.name].on("load", () => {
+        (tileLayers[layer.name] as TileLayer).setOpacity(0.25);
+        loading.value = false;
+        addPoints();
+      });
+    }
   }
 
   // TODO: Add a "Fit to bounds" button.
@@ -482,10 +530,18 @@ onMounted(() => {
 //  haven't had a recording in a while.  Maybe filter stations by what kind of recordings we've seen there too,
 //  so we can show either thermal or audio stations, or both.  Show stations that are more active than others?
 
-const emit = defineEmits(["hover-point", "leave-point"]);
+const emit = defineEmits<{
+  (e: "hover-point", val: NamedPoint): void;
+  (e: "leave-point", val: null): void;
+  (e: "select-point", val: NamedPoint): void;
+}>();
 
 const hoverPoint = (point: NamedPoint) => {
   emit("hover-point", point);
+};
+
+const selectPoint = (point: NamedPoint) => {
+  emit("select-point", point);
 };
 
 const leavePoint = () => {
@@ -510,6 +566,15 @@ const leavePoint = () => {
 </template>
 <style lang="less">
 // TODO: Set a min-height for the map from props.
+.map {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(
+    circle,
+    rgba(230, 230, 230, 1) 0%,
+    rgba(188, 188, 188, 1) 100%
+  );
+}
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -520,7 +585,6 @@ const leavePoint = () => {
 }
 .map.loading {
   background: rgba(140, 140, 140, 0.5);
-  position: relative;
 }
 .pulse {
   animation: pulsate 1s ease-out;

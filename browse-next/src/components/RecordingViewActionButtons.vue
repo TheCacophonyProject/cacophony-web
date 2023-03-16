@@ -3,11 +3,11 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, ref } from "vue";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
 import {
-  currentSelectedGroup,
+  currentSelectedProject,
   CurrentUser,
   showUnimplementedModal,
 } from "@models/LoggedInUser";
-import type { SelectedGroup } from "@models/LoggedInUser";
+import type { SelectedProject } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
@@ -100,7 +100,8 @@ const recordingIsFlagged = computed<boolean>(() => {
   return false;
 });
 
-const userIsGroupAdmin = (currentSelectedGroup.value as SelectedGroup).admin;
+const userIsGroupAdmin = (currentSelectedProject.value as SelectedProject)
+  .admin;
 
 const notImplemented = () => {
   showUnimplementedModal.value = true;

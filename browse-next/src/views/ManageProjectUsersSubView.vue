@@ -1,55 +1,55 @@
 <script setup lang="ts">
+import { userProjectsLoaded } from "@models/LoggedInUser";
+import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
+import { computed, inject, onBeforeMount, ref } from "vue";
+import type { Ref } from "vue";
 import {
-  currentSelectedGroup as fallibleCurrentSelectedGroup,
-  CurrentUser as fallibleCurrentUser,
-  userGroupsLoaded,
-} from "@models/LoggedInUser";
-import type { LoggedInUser, SelectedGroup } from "@models/LoggedInUser";
-import { computed, onBeforeMount, ref } from "vue";
-import {
-  addOrUpdateGroupUser,
-  getUsersForGroup,
-  removeGroupUser,
-} from "@api/Group";
-import type { GroupId } from "@typedefs/api/common";
-import type { ApiGroupUserResponse } from "@typedefs/api/group";
+  addOrUpdateProjectUser,
+  getUsersForProject,
+  removeProjectUser,
+} from "@api/Project";
+import type { GroupId as ProjectId } from "@typedefs/api/common";
+import type { ApiGroupUserResponse as ApiProjectUserResponse } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import type { CardTableRows, CardTableItem } from "@/components/CardTableTypes";
-import LeaveGroupModal from "@/components/LeaveGroupModal.vue";
-import GroupInviteModal from "@/components/GroupInviteModal.vue";
-const groupUsers = ref<ApiGroupUserResponse[]>([]);
+import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
+import ProjectInviteModal from "@/components/ProjectInviteModal.vue";
+import {
+  currentUser as currentUserInfo,
+  currentSelectedProject as selectedProject,
+} from "@models/provides";
+import type { LoadedResource } from "@api/types";
+const projectUsers = ref<LoadedResource<ApiProjectUserResponse[]>>(null);
 const loadingUsers = ref(false);
-
+const fallibleCurrentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
+const fallibleCurrentSelectedProject = inject(
+  selectedProject
+) as Ref<SelectedProject>;
 // NOTE: If this route loaded, these globals are properly set, so we can unwrap the fallible versions.
-const currentSelectedGroup = computed<SelectedGroup>(() => {
-  return fallibleCurrentSelectedGroup.value as SelectedGroup;
+const currentSelectedProject = computed<SelectedProject>(() => {
+  return fallibleCurrentSelectedProject.value as SelectedProject;
 });
-const CurrentUser = computed<LoggedInUser>(() => {
+const currentUser = computed<LoggedInUser>(() => {
   return fallibleCurrentUser.value as LoggedInUser;
 });
 
-const loadGroupUsers = async () => {
+const loadProjectUsers = async () => {
   loadingUsers.value = true;
-  await userGroupsLoaded();
-  const groupUsersResponse = await getUsersForGroup(
-    (currentSelectedGroup.value as { groupName: string; id: GroupId }).id
+  await userProjectsLoaded();
+  projectUsers.value = await getUsersForProject(
+    (currentSelectedProject.value as { groupName: string; id: ProjectId }).id
   );
-  if (groupUsersResponse.success) {
-    groupUsers.value = groupUsersResponse.result.users;
-  } else {
-    // Do something with error.
-  }
   loadingUsers.value = false;
 };
 
 onBeforeMount(async () => {
-  await loadGroupUsers();
+  await loadProjectUsers();
 });
 
 const showEditPermissions = ref<boolean>(false);
-const editPermissionsForUser = ref<ApiGroupUserResponse | null>(null);
-const editUserAdmin = async (user: ApiGroupUserResponse) => {
+const editPermissionsForUser = ref<ApiProjectUserResponse | null>(null);
+const editUserAdmin = async (user: ApiProjectUserResponse) => {
   editPermissionsForUser.value = user;
   showEditPermissions.value = true;
   if (user.admin && user.owner) {
@@ -64,18 +64,18 @@ const editUserAdmin = async (user: ApiGroupUserResponse) => {
 };
 const updateUserPermissions = async () => {
   let updateUserResponse;
-  const user = editPermissionsForUser.value as ApiGroupUserResponse;
+  const user = editPermissionsForUser.value as ApiProjectUserResponse;
   if (user.id) {
-    updateUserResponse = await addOrUpdateGroupUser(
-      (currentSelectedGroup.value as SelectedGroup).groupName,
+    updateUserResponse = await addOrUpdateProjectUser(
+      (currentSelectedProject.value as SelectedProject).groupName,
       permissions.value.includes("admin"),
       permissions.value.includes("owner"),
       user.id
     );
   } else {
     // The user is invited, and the userName field is actually the email
-    updateUserResponse = await addOrUpdateGroupUser(
-      (currentSelectedGroup.value as SelectedGroup).groupName,
+    updateUserResponse = await addOrUpdateProjectUser(
+      (currentSelectedProject.value as SelectedProject).groupName,
       permissions.value.includes("admin"),
       permissions.value.includes("owner"),
       undefined,
@@ -83,67 +83,69 @@ const updateUserPermissions = async () => {
     );
   }
   if (updateUserResponse.success) {
-    await loadGroupUsers();
+    await loadProjectUsers();
   }
 };
 
-const acceptPendingUser = async (user: ApiGroupUserResponse) => {
+const acceptPendingUser = async (user: ApiProjectUserResponse) => {
   // TODO: Loading state
-  const acceptPendingUserResponse = await addOrUpdateGroupUser(
-    (currentSelectedGroup.value as SelectedGroup).groupName,
+  const acceptPendingUserResponse = await addOrUpdateProjectUser(
+    (currentSelectedProject.value as SelectedProject).groupName,
     user.admin,
     user.owner,
     user.id
   );
   if (acceptPendingUserResponse) {
-    await loadGroupUsers();
+    await loadProjectUsers();
   }
 };
 const selectedLeaveGroup = ref(false);
-const removeUser = async (user: ApiGroupUserResponse) => {
-  if (user.id === CurrentUser.value.id) {
+const removeUser = async (user: ApiProjectUserResponse) => {
+  if (user.id === currentUser.value.id) {
     selectedLeaveGroup.value = true;
   } else {
     let removeUserResponse;
     if (user.id) {
-      removeUserResponse = await removeGroupUser(
-        (currentSelectedGroup.value as SelectedGroup).groupName,
+      removeUserResponse = await removeProjectUser(
+        (currentSelectedProject.value as SelectedProject).groupName,
         user.id
       );
     } else {
       // The user is invited, and the userName field is actually the email
-      removeUserResponse = await removeGroupUser(
-        (currentSelectedGroup.value as SelectedGroup).groupName,
+      removeUserResponse = await removeProjectUser(
+        (currentSelectedProject.value as SelectedProject).groupName,
         undefined,
         user.userName
       );
     }
     if (removeUserResponse.success) {
       console.log("Removed user from group");
-      await loadGroupUsers();
+      await loadProjectUsers();
     }
   }
 };
 
-const isLastAdminUser = (user?: ApiGroupUserResponse): boolean => {
+const isLastAdminUser = (user?: ApiProjectUserResponse): boolean => {
   if (!user) {
     return true;
   }
   return (
     user.admin &&
     !user.pending &&
-    groupUsers.value.filter((user) => user.admin && !user.pending).length === 1
+    (projectUsers.value || []).filter((user) => user.admin && !user.pending)
+      .length === 1
   );
 };
 
-const isLastOwnerUser = (user?: ApiGroupUserResponse): boolean => {
+const isLastOwnerUser = (user?: ApiProjectUserResponse): boolean => {
   if (!user) {
     return true;
   }
   return (
     user.owner &&
     !user.pending &&
-    groupUsers.value.filter((user) => user.owner && !user.pending).length === 1
+    (projectUsers.value || []).filter((user) => user.owner && !user.pending)
+      .length === 1
   );
 };
 
@@ -152,13 +154,13 @@ const isLastOwnerUser = (user?: ApiGroupUserResponse): boolean => {
 
 // User activity summary would be cool: Tagging activity and data usage activity.
 
-const userIsCurrentUser = (user: ApiGroupUserResponse) =>
-  user.id === CurrentUser.value.id;
+const userIsCurrentUser = (user: ApiProjectUserResponse) =>
+  user.id === currentUser.value.id;
 
-const tableItems = computed<CardTableRows<ApiGroupUserResponse>>(() => {
-  return groupUsers.value
-    .map((value: ApiGroupUserResponse) => {
-      const item: Record<string, CardTableItem<ApiGroupUserResponse>> = {
+const tableItems = computed<CardTableRows<ApiProjectUserResponse>>(() => {
+  return (projectUsers.value || [])
+    .map((value: ApiProjectUserResponse) => {
+      const item: Record<string, CardTableItem<ApiProjectUserResponse>> = {
         user: {
           value,
           cellClasses: ["w-100"],
@@ -193,12 +195,12 @@ const permissions = ref<string[]>([]);
 const permissionsOptions = computed(() => [
   {
     value: "admin",
-    text: "Group admin",
+    text: "Project admin",
     disabled: isLastAdminUser(editPermissionsForUser.value || undefined),
   },
   {
     value: "owner",
-    text: "Group owner",
+    text: "Project owner",
     disabled: isLastOwnerUser(editPermissionsForUser.value || undefined),
   },
 ]);
@@ -209,7 +211,7 @@ const permissionsOptions = computed(() => [
     class="d-flex flex-column flex-md-row flex-fill mb-3 justify-content-md-between"
   >
     <p class="">
-      Manage the users associated with {{ currentSelectedGroup.groupName }}.
+      Manage the users associated with {{ currentSelectedProject.groupName }}.
     </p>
     <div class="d-flex justify-content-end ms-md-5">
       <button
@@ -308,10 +310,10 @@ const permissionsOptions = computed(() => [
             userIsCurrentUser(card._deleteAction.value)
               ? 'Leave group'
               : card._deleteAction.value.pending === 'requested'
-              ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join group`
+              ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join project`
               : card._deleteAction.value.pending === 'invited'
               ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
-              : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from group`
+              : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
           "
           alignment="right"
         />
@@ -345,7 +347,7 @@ const permissionsOptions = computed(() => [
           class="text-end"
           :action="() => acceptPendingUser(cell.value)"
           icon="check"
-          :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into group`"
+          :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into project`"
           label="Approve request"
           classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-2"
           alignment="centered"
@@ -389,17 +391,20 @@ const permissionsOptions = computed(() => [
           userIsCurrentUser(cell.value)
             ? 'Leave group'
             : cell.value.pending === 'requested'
-            ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join group`
+            ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join project`
             : cell.value.pending === 'invited'
             ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
-            : `Remove <strong><em>${cell.value.userName}</em></strong> from group`
+            : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
         "
         alignment="right"
       />
     </template>
   </card-table>
-  <group-invite-modal v-model="showInviteUserModal" @invited="loadGroupUsers" />
-  <leave-group-modal v-model="selectedLeaveGroup" />
+  <project-invite-modal
+    v-model="showInviteUserModal"
+    @invited="loadProjectUsers"
+  />
+  <leave-project-modal v-model="selectedLeaveGroup" />
   <b-modal
     v-model="showEditPermissions"
     centered
@@ -408,14 +413,15 @@ const permissionsOptions = computed(() => [
     @hidden="permissions = []"
     @ok="updateUserPermissions"
   >
-    <p>You can update a users' group permissions.</p>
+    <p>You can update a users' permissions for this project.</p>
     <p>
-      Making a user into a group admin means they can do destructive actions
-      like delete recordings, and can add and remove group users.
+      Making a user into a project admin means they can do destructive actions
+      like delete recordings, and can add and remove other project users.
     </p>
     <p>
-      Making a user into a group owner designates them as a point-of-contact for
-      the group, and means that they are ultimately responsible for the group.
+      Making a user into a project owner designates them as a point-of-contact
+      for the project, and means that they are ultimately responsible for the
+      project.
     </p>
     <hr />
     <b-form>

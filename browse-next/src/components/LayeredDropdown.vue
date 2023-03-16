@@ -284,17 +284,21 @@ defineExpose({
       </div>
       <div
         v-else-if="multiselect && hasSelection"
-        class="selected-container d-flex flex-wrap"
+        class="selected-container d-flex flex-wrap px-2 pt-2"
       >
         <button
           type="button"
-          class="selected-option btn text-capitalize"
+          class="selected-option btn text-capitalize ps-2 pe-0 py-0 mb-2 d-flex justify-content-center align-items-center"
           :key="option.label"
           v-for="option in multipleSelections"
-          @click="() => removeSelectedOption(option)"
         >
           {{ option.display || option.label }}
-          <font-awesome-icon class="selected-option-icon" icon="times" />
+          <span
+            class="selected-option-icon d-flex justify-content-center align-items-center ms-1 p-1"
+            @click="() => removeSelectedOption(option)"
+          >
+            <font-awesome-icon icon="times" />
+          </span>
         </button>
       </div>
     </div>
@@ -376,10 +380,11 @@ defineExpose({
 
 .input-container {
   width: 100%;
-  height: 2.5rem;
+  min-height: 2.5rem;
+  // TODO: Get consistent focus rings + keyboard navigation happening on this component.
   background: white;
   border: 1px solid #ccc;
-  border-radius: 0.2em;
+  border-radius: 5px;
   &.open {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
@@ -393,25 +398,42 @@ defineExpose({
     line-height: 2.5rem;
     text-indent: 0.5rem;
     color: rgb(128, 128, 128);
-    &:focus {
-      color: rgb(46, 46, 46);
-    }
+    //&:focus {
+    //  color: rgb(46, 46, 46);
+    //  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    //  border-radius: 0.375rem;
+    //  border-color: #86b7fe;
+    //}
   }
 }
 
 .selected-container {
-  gap: 0.4em;
-  margin-top: 0.2em;
-  padding-top: 0.6em;
   border-top: 1px solid rgb(241, 241, 241);
-
+  gap: 0.3em;
   > .selected-option {
     user-select: none;
-    padding: 0.2em 0.6em 0.2em 0.6em;
-    background-color: white;
-    border-radius: 0.4em;
-    box-shadow: 0 0 3px rgba(214, 214, 214, 0.2),
-      0 0 3px rgba(138, 138, 138, 0.2);
+    align-items: center;
+    background: #10b981;
+    border-radius: 4px;
+    display: flex;
+    font-size: 14px;
+    color: white;
+    font-weight: 600;
+    line-height: 1.25rem;
+    white-space: nowrap;
+
+    > .selected-option-icon {
+      border-radius: 4px;
+      aspect-ratio: 1;
+      opacity: 0.8;
+      color: white;
+      margin: 0 2px;
+      font-size: 13px;
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.063);
+        transition: background-color 0.1s ease-in-out;
+      }
+    }
   }
 }
 .single-selection {
@@ -425,18 +447,6 @@ defineExpose({
 .selected-option {
   min-height: 26px;
   cursor: pointer;
-}
-.selected-option:hover {
-  .selected-option-icon {
-    transition: color 0.1s ease-in-out;
-    color: rgb(218, 58, 58);
-  }
-}
-
-.selected-option-icon {
-  margin-left: 0.3em;
-  color: rgba(29, 29, 29, 0.2);
-  width: auto;
 }
 
 .options-display-container {

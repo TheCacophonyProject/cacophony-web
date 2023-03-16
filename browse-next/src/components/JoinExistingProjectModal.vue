@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {
-  joiningNewGroup,
-  refreshUserGroups,
-  UserGroups,
+  joiningNewProject,
+  refreshUserProjects,
+  UserProjects,
 } from "@models/LoggedInUser";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
@@ -42,13 +42,13 @@ const needsValidationAndIsValidEmailAddress =
   );
 
 onMounted(() => {
-  joiningNewGroup.visible = true;
+  joiningNewProject.visible = true;
 });
 
 const resetFormValues = () => {
   groupAdminEmailAddress.touched = false;
   groupAdminEmailAddress.value = "";
-  joiningNewGroup.enabled = false;
+  joiningNewProject.enabled = false;
 };
 
 const joinExistingGroup = async () => {
@@ -59,7 +59,7 @@ const joinExistingGroup = async () => {
   );
   if (joinRequestResponse.success) {
     // Groups changed, reload groups.
-    await refreshUserGroups();
+    await refreshUserProjects();
 
     // TODO Yay
   } else {
@@ -77,7 +77,7 @@ const getGroupsForAdmin = async () => {
     // Filter out any groups we're already a member of.
     const groups = groupsResponse.result.groups.filter(
       ({ id }) =>
-        !(UserGroups.value || []).find(
+        !(UserProjects.value || []).find(
           (existingGroup: ApiGroupResponse) => existingGroup.id === id
         )
     );
@@ -97,7 +97,7 @@ const getGroupsForAdmin = async () => {
 </script>
 <template>
   <b-modal
-    v-model="joiningNewGroup.visible"
+    v-model="joiningNewProject.visible"
     title="Join a group"
     ok-title="Send join request"
     @ok="joinExistingGroup"

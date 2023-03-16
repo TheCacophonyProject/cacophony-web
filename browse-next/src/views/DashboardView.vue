@@ -1,24 +1,21 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, onMounted, provide, ref, watch } from "vue";
+import { computed, inject, onMounted, provide, ref, watch } from "vue";
+import type { Ref, ComputedRef } from "vue";
 import { getAllVisitsForGroup } from "@api/Monitoring";
-import {
-  currentSelectedGroup,
-  showUnimplementedModal,
-  UserGroups,
-} from "@models/LoggedInUser";
-import type { SelectedGroup } from "@models/LoggedInUser";
+import { showUnimplementedModal } from "@models/LoggedInUser";
+import type { SelectedProject } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
 import InlineViewModal from "@/components/InlineViewModal.vue";
-import type { ApiStationResponse } from "@typedefs/api/station";
-import { getStationsForGroup } from "@api/Group";
-import GroupVisitsSummary from "@/components/GroupVisitsSummary.vue";
-import StationVisitSummary from "@/components/StationVisitSummary.vue";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
+import { getLocationsForProject } from "@api/Project";
+import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
+import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { LatLng } from "@typedefs/api/common";
 import { BSpinner } from "bootstrap-vue-3";
-import type { ApiGroupResponse } from "@typedefs/api/group";
+import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import {
   currentVisitsFilter,
@@ -35,12 +32,27 @@ import {
   displayLabelForClassificationLabel,
 } from "@api/Classifications";
 import TagImage from "@/components/TagImage.vue";
+import {
+  activeLocations,
+  currentSelectedProject as currentActiveProject,
+  latLngForActiveLocations,
+  userProjects,
+} from "@models/provides";
+import type { LoadedResource } from "@api/types";
+import BimodalSwitch from "@/components/BimodalSwitch.vue";
 
-const audioMode = ref<boolean>(false);
+const recordingMode = ref<"Thermal" | "Audio">("Thermal");
+const audioMode = computed<boolean>(() => recordingMode.value === "Audio");
 
 const router = useRouter();
 const route = useRoute();
 const isMobileView = useMediaQuery("(max-width: 639px)");
+const availableProjects = inject(userProjects) as Ref<
+  LoadedResource<ApiProjectResponse[]>
+>;
+const currentProject = inject(currentActiveProject) as ComputedRef<
+  SelectedProject | false
+>;
 
 const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
@@ -91,10 +103,10 @@ watch(route, () => {
 // TODO - Reload these from user preferences.
 const timePeriodDays = ref<number>(7);
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
-const speciesOrStations = ref<"species" | "station">("species");
+const speciesOrLocations = ref<"species" | "location">("species");
 const loadingVisitsProgress = ref<number>(0);
 
-const stations = ref<ApiStationResponse[] | null>(null);
+const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 const speciesSummary = computed<Record<string, number>>(() => {
   return maybeFilteredDashboardVisitsContext.value.reduce(
@@ -110,8 +122,8 @@ const speciesSummary = computed<Record<string, number>>(() => {
   );
 });
 
-watch(speciesOrStations, (next) => {
-  if (next === "station") {
+watch(speciesOrLocations, (next) => {
+  if (next === "location") {
     showUnimplementedModal.value = true;
   }
 });
@@ -128,10 +140,10 @@ const earliestDate = computed<Date>(() => {
 });
 
 const loadVisits = async () => {
-  if (currentSelectedGroup.value) {
+  if (currentProject.value) {
     visitsContext.value = null;
     const allVisits = await getAllVisitsForGroup(
-      currentSelectedGroup.value.id,
+      currentProject.value.id,
       timePeriodDays.value,
       (val) => {
         // TODO - Do we want to display loading progress via the UI?
@@ -143,11 +155,11 @@ const loadVisits = async () => {
 };
 
 const reloadDashboard = async () => {
-  await Promise.all([loadStations(), loadVisits()]);
+  await Promise.all([loadLocations(), loadVisits()]);
 };
 
 watch(timePeriodDays, loadVisits);
-watch(currentSelectedGroup, reloadDashboard);
+watch(currentProject, reloadDashboard);
 
 const loadedRouteName = ref<string>("");
 onMounted(async () => {
@@ -160,26 +172,26 @@ onMounted(async () => {
 //watch(visitsOrRecordings, reloadDashboard);
 //watch(speciesOrStations, reloadDashboard);
 // TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
-const stationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
-  ApiStationResponse[]
+const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
+  ApiLocationResponse[]
 >(() => {
-  if (stations.value) {
-    return stations.value
+  if (locations.value) {
+    return locations.value
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
-      .filter((station) => {
-        if (audioMode.value) {
+      .filter((location) => {
+        if (recordingMode.value) {
           return (
-            (station.lastActiveAudioTime &&
-              new Date(station.lastActiveAudioTime) > earliestDate.value) ||
-            (station.lastAudioRecordingTime &&
-              new Date(station.lastAudioRecordingTime) > earliestDate.value)
+            (location.lastActiveAudioTime &&
+              new Date(location.lastActiveAudioTime) > earliestDate.value) ||
+            (location.lastAudioRecordingTime &&
+              new Date(location.lastAudioRecordingTime) > earliestDate.value)
           );
         } else {
           return (
-            (station.lastActiveThermalTime &&
-              new Date(station.lastActiveThermalTime) > earliestDate.value) ||
-            (station.lastThermalRecordingTime &&
-              new Date(station.lastThermalRecordingTime) > earliestDate.value)
+            (location.lastActiveThermalTime &&
+              new Date(location.lastActiveThermalTime) > earliestDate.value) ||
+            (location.lastThermalRecordingTime &&
+              new Date(location.lastThermalRecordingTime) > earliestDate.value)
           );
         }
       });
@@ -188,43 +200,37 @@ const stationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
 });
 
 provide(
-  "activeStationsContext",
-  stationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+  activeLocations,
+  locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
 );
 
-const allStations = computed<ApiStationResponse[]>(() => {
-  if (stations.value) {
-    return stations.value;
+const allLocations = computed<ApiLocationResponse[]>(() => {
+  if (locations.value) {
+    return locations.value;
   }
   return [];
 });
 
-const loadStations = async () => {
-  if (currentSelectedGroup.value) {
-    stations.value = null;
-    const stationsResponse = await getStationsForGroup(
-      currentSelectedGroup.value.id.toString(),
+const loadLocations = async () => {
+  if (currentProject.value) {
+    locations.value = null;
+    locations.value = await getLocationsForProject(
+      currentProject.value.id.toString(),
       true
     );
-    if (stationsResponse.success) {
-      stations.value = stationsResponse.result.stations;
-    } else {
-      // TODO: Handle errors?
-      stations.value = [];
-    }
   }
 };
 
-const canonicalLocationForActiveStations = computed<LatLng>(() => {
-  if (stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length) {
-    return stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value[0]
+const canonicalLatLngForActiveLocations = computed<LatLng>(() => {
+  if (locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length) {
+    return locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value[0]
       .location;
   }
   return { lat: 0, lng: 0 };
 });
 
 // TODO - Maybe this should be some global context variable too.
-provide("locationContext", canonicalLocationForActiveStations);
+provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
 
 onMounted(async () => {
   await reloadDashboard();
@@ -233,20 +239,38 @@ onMounted(async () => {
 });
 
 const isLoading = computed<boolean>(
-  () => stations.value === null || visitsContext.value === null
+  () => locations.value === null || visitsContext.value === null
 );
 
-const currentSelectedGroupHasAudioAndThermal = computed<boolean>(() => {
-  if (currentSelectedGroup.value && UserGroups.value) {
-    const group = UserGroups.value.find(
-      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
+  if (currentProject.value && availableProjects.value) {
+    const project = availableProjects.value.find(
+      ({ id }) => id === (currentProject.value as SelectedProject).id
     );
-    return (
-      (group as ApiGroupResponse).lastAudioRecordingTime !== undefined &&
-      (group as ApiGroupResponse).lastThermalRecordingTime !== undefined
-    );
+    return project || null;
   }
-  return true;
+  return null;
+});
+
+const currentSelectedProjectHasAudio = computed<boolean>(() => {
+  return (
+    !!currentSelectedProject.value &&
+    !!currentSelectedProject.value.lastAudioRecordingTime
+  );
+});
+
+const currentSelectedProjectHasCameras = computed<boolean>(() => {
+  return (
+    !!currentSelectedProject.value &&
+    !!currentSelectedProject.value.lastThermalRecordingTime
+  );
+});
+
+const currentSelectedProjectHasAudioAndThermal = computed<boolean>(() => {
+  return (
+    currentSelectedProjectHasAudio.value &&
+    currentSelectedProjectHasCameras.value
+  );
 });
 
 const _hasSelectedVisit = computed<boolean>({
@@ -258,7 +282,7 @@ const _hasSelectedVisit = computed<boolean>({
       // Return to dashboard from modal.
       router.push({
         name: "dashboard",
-        params: { groupName: route.params.groupName },
+        params: { projectName: route.params.projectName },
       });
       selectedVisit.value = null;
     }
@@ -276,7 +300,7 @@ const showVisitsForTag = (tag: string) => {
 
 const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   return (
-    stationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0
+    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0
   );
 });
 
@@ -286,24 +310,11 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <div class="header-container">
     <section-header>Dashboard</section-header>
     <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <div
-        class="d-flex align-items-center"
-        v-if="currentSelectedGroupHasAudioAndThermal"
-      >
-        <span
-          :class="['toggle-label', 'me-2', { selected: !audioMode }]"
-          @click="audioMode = false"
-          >Thermal</span
-        ><b-form-checkbox
-          class="bi-modal-switch"
-          v-model="audioMode"
-          switch
-        /><span
-          @click="audioMode = true"
-          :class="['toggle-label', { selected: audioMode }]"
-          >Audio</span
-        >
-      </div>
+      <bimodal-switch
+        :modes="['Thermal', 'Audio']"
+        v-model="recordingMode"
+        v-if="currentSelectedProjectHasAudioAndThermal"
+      />
       <div
         class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
       >
@@ -332,10 +343,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
           <span> grouped by </span>
           <select
             class="form-select form-select-sm text-end"
-            v-model="speciesOrStations"
+            v-model="speciesOrLocations"
           >
             <option>species</option>
-            <option>station</option>
+            <option>location</option>
           </select>
         </div>
       </div>
@@ -371,18 +382,18 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     Visits summary
   </h2>
   <div class="d-md-flex flex-md-row">
-    <group-visits-summary
+    <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
       class="mb-5 flex-md-fill"
-      :stations="allStations"
-      :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+      :locations="allLocations"
+      :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
       :visits="maybeFilteredDashboardVisitsContext"
       :start-date="earliestDate"
       :loading="isLoading"
     />
     <visits-breakdown-list
       :visits="maybeFilteredDashboardVisitsContext"
-      :location="canonicalLocationForActiveStations"
+      :location="canonicalLatLngForActiveLocations"
     />
   </div>
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
@@ -395,20 +406,22 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       class="card-group species-summary flex-sm-nowrap"
       v-else-if="hasVisitsForSelectedTimePeriod"
     >
-      <station-visit-summary
+      <location-visit-summary
         v-for="(
           station, index
-        ) in stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-        :station="station"
-        :active-stations="stationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-        :stations="allStations"
+        ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+        :location="station"
+        :active-locations="
+          locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+        "
+        :locations="allLocations"
         :visits="maybeFilteredDashboardVisitsContext"
         :key="index"
       />
     </div>
     <div v-else>
-      There were no active stations in the last {{ timePeriodDays }} days for
-      this group.
+      There were no active locations in the last {{ timePeriodDays }} days for
+      this project.
       <em
         >TODO: Suggest to user that they put out some devices, or make sure the
         batteries are charged?</em
@@ -458,18 +471,6 @@ h2 {
     right: 0;
   }
 }
-.toggle-label {
-  color: #999;
-  font-weight: 500;
-  font-size: 14px;
-  transition: color 0.2s linear;
-  cursor: pointer;
-  user-select: none;
-  &.selected {
-    color: #666;
-  }
-}
-
 .scope-filters {
   font-size: 14px;
   color: #999;
@@ -565,39 +566,6 @@ h2 {
   .fs-6();
   @media screen and (min-width: 576px) {
     font-size: unset;
-  }
-}
-</style>
-<style lang="less">
-.bi-modal-switch.form-check-input,
-.bi-modal-switch.form-check-input:checked,
-.bi-modal-switch.form-check-input:focus {
-  background-color: #0d6efd;
-  border-color: #0d6efd;
-  position: relative;
-  background-image: unset;
-  &::before {
-    position: absolute;
-    height: 100%;
-    width: 14px;
-    display: block;
-    content: " ";
-    background-repeat: no-repeat;
-    background-image: url(../assets/switch-base.svg);
-    background-size: auto 100%;
-    transition: transform 0.15s ease-in-out, left 0.2s ease-in-out;
-  }
-}
-.bi-modal-switch.form-check-input {
-  &::before {
-    left: 0;
-    transform: rotate(-180deg);
-  }
-}
-.bi-modal-switch.form-check-input:checked {
-  &::before {
-    left: 16px;
-    transform: rotate(0);
   }
 }
 </style>

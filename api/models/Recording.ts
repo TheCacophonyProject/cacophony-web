@@ -18,47 +18,41 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "../logging";
 import mime from "mime";
 import moment from "moment-timezone";
-import Sequelize, { FindOptions, Includeable } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
+import Sequelize, {FindOptions, Includeable} from "sequelize";
+import {v4 as uuidv4} from "uuid";
 import config from "../config";
 import util from "./util/util";
 import _ from "lodash";
-import { User } from "./User";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { TagStatic } from "./Tag";
-import { Device, DeviceStatic } from "./Device";
-import { Group } from "./Group";
-import { Track } from "./Track";
-import { Tag } from "./Tag";
+import {User} from "./User";
+import {ModelCommon, ModelStaticCommon} from "./index";
+import {Tag, TagStatic} from "./Tag";
+import {Device, DeviceStatic} from "./Device";
+import {Group} from "./Group";
+import {Track} from "./Track";
 
 import jsonwebtoken from "jsonwebtoken";
-import { TrackTag } from "./TrackTag";
-import { Station } from "./Station";
-import { mapPosition } from "@api/V1/recordingUtil";
+import {TrackTag} from "./TrackTag";
+import {Station} from "./Station";
+import {mapPosition} from "@api/V1/recordingUtil";
 import {
   DeviceId,
   GroupId,
+  IsoFormattedDateString,
+  LatLng,
   RecordingId,
+  StationId,
   TrackId,
   UserId,
-  StationId,
-  LatLng,
-  IsoFormattedDateString,
 } from "@typedefs/api/common";
-import {
-  AcceptableTag,
-  RecordingProcessingState,
-  RecordingType,
-  TagMode,
-} from "@typedefs/api/consts";
-import { DeviceBatteryChargeState } from "@typedefs/api/device";
+import {AcceptableTag, RecordingProcessingState, RecordingType, TagMode,} from "@typedefs/api/consts";
+import {DeviceBatteryChargeState} from "@typedefs/api/device";
 import {
   ApiAudioRecordingMetadataResponse,
   ApiThermalRecordingMetadataResponse,
   CacophonyIndex,
 } from "@typedefs/api/recording";
 import labelPath from "../classifications/label_paths.json";
-import { DetailSnapshotId } from "@models/DetailSnapshot";
+import {DetailSnapshotId} from "@models/DetailSnapshot";
 
 type SqlString = string;
 
@@ -82,6 +76,7 @@ export type RecordingQueryOptions = Partial<{
   exclusive: boolean;
   includeAttributes: boolean;
   attributes: string[];
+  filterModel: string | false;
 }>;
 
 const MaxProcessingRetries = 1;
@@ -754,9 +749,6 @@ from (
   };
 
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
-
-  // TODO(jon): Change recordings queries to be cursor based rather than limit/offset based:
-  //  this will scale better.
   Recording.queryBuilder.prototype.init = function (
     userId: UserId,
     options: RecordingQueryOptions
@@ -794,6 +786,11 @@ from (
       ),
     ];
     const noArchived = { archivedAt: null };
+    const onlyMasterModel = options.filterModel
+      ? {
+          [Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
+        }
+      : {};
     if (hideFiltered) {
       const filteredSQL = `(
 		select
@@ -874,7 +871,7 @@ from (
           include: [
             {
               model: models.TrackTag,
-              where: noArchived,
+              where: { ...noArchived, ...onlyMasterModel },
               attributes: [
                 "id",
                 "what",
@@ -951,29 +948,23 @@ from (
     }
 
     switch (tagMode) {
-      case "any":
+      case TagMode.Any:
         return "";
-      case "untagged":
+      case TagMode.UnTagged:
         return Recording.queryBuilder.notTagOfType(tagWhats, null, exclusive);
-      case "tagged":
+      case TagMode.Tagged:
         return Recording.queryBuilder.tagOfType(tagWhats, null, exclusive);
-      case "human-tagged":
+      case TagMode.HumanTagged:
         return Recording.queryBuilder.tagOfType(tagWhats, humanSQL, exclusive);
-      case "automatic-tagged":
+      case TagMode.AutomaticallyTagged:
         return Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive);
-      case "both-tagged":
-        return `${Recording.queryBuilder.tagOfType(
-          tagWhats,
-          humanSQL,
-          exclusive
-        )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive)}`;
-      case "no-human":
+      case TagMode.NoHuman:
         return Recording.queryBuilder.notTagOfType(
           tagWhats,
           humanSQL,
           exclusive
         );
-      case "automatic-only":
+      case TagMode.AutomaticOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           AISQL,
@@ -983,7 +974,7 @@ from (
           humanSQL,
           exclusive
         )}`;
-      case "human-only":
+      case TagMode.HumanOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,
@@ -993,7 +984,7 @@ from (
           AISQL,
           exclusive
         )}`;
-      case "automatic+human":
+      case TagMode.AutomaticHuman:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,

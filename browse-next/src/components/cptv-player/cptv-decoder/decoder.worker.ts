@@ -65,10 +65,18 @@ class CptvDecoderInterface {
         method: "get",
       };
 
-      this.response = await fetch(
-        `${apiRoot}/api/v1/recordings/raw/${id}`,
-        request as RequestInit
-      );
+      // If in dev env, can we use a local cptv file?
+      if (import.meta.env.DEV) {
+        this.response = await fetch(
+          "/2-second-status.cptv",
+          request as RequestInit
+        );
+      } else {
+        this.response = await fetch(
+          `${apiRoot}/api/v1/recordings/raw/${id}`,
+          request as RequestInit
+        );
+      }
       if (this.response.status === 200) {
         if (this.response.body) {
           this.reader = this.response.body.getReader();

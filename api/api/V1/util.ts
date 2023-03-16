@@ -28,7 +28,7 @@ import { Device } from "@models/Device";
 import models, { ModelCommon } from "@models";
 import { User } from "@models/User";
 import stream, { Stream } from "stream";
-import { createWriteStream , readFile} from "fs";
+import { createWriteStream, readFile } from "fs";
 import { RecordingType } from "@typedefs/api/consts";
 import config from "@config";
 import { Op } from "sequelize";
@@ -52,10 +52,14 @@ const stream2Buffer = (stream: Stream): Promise<Buffer> => {
   });
 };
 
-export const uploadFileStream = async (request: Request, keyPrefix?: string, fullKey?: string): Promise<{
-  size: number,
-  key: string,
-  hash: string
+export const uploadFileStream = async (
+  request: Request,
+  keyPrefix?: string,
+  fullKey?: string
+): Promise<{
+  size: number;
+  key: string;
+  hash: string;
 }> => {
   if (!fullKey && !keyPrefix) {
     throw new Error("Must supply either key or keyPrefix");
@@ -64,8 +68,7 @@ export const uploadFileStream = async (request: Request, keyPrefix?: string, ful
     fullKey = `${keyPrefix}/${moment().format("YYYY/MM/DD/")}${uuidv4()}`;
   }
 
-  const hash = crypto
-      .createHash("sha1")
+  const hash = crypto.createHash("sha1");
 
   const pass = new stream.PassThrough();
   let dataLength = 0;
@@ -78,24 +81,19 @@ export const uploadFileStream = async (request: Request, keyPrefix?: string, ful
     hash.update(d, "binary");
   });
   request.pipe(pass);
-  const upload = modelsUtil
-      .openS3()
-      .upload({ Key: fullKey, Body: pass });
+  const upload = modelsUtil.openS3().upload({ Key: fullKey, Body: pass });
   // upload.on("httpUploadProgress", (p) => {
   //   console.log(p);
   // });
-  await
-    upload
-      .promise()
-      .catch((err) => {
-        return err;
-      })
+  await upload.promise().catch((err) => {
+    return err;
+  });
   return {
     hash: hash.digest("hex"),
     key: fullKey,
-    size: dataLength
+    size: dataLength,
   };
-}
+};
 
 function multipartUpload(
   keyPrefix: string,
@@ -129,8 +127,11 @@ function multipartUpload(
         uploadingDevice = await models.Device.findByPk(
           response.locals.requestDevice.id
         );
-        // Update the last connection time for the uploading device.
-        await uploadingDevice.update({ lastConnectionTime: new Date() });
+        // Update the last connection time for the uploading device, and set the device to active (just in case it's been set inactive)
+        await uploadingDevice.update({
+          lastConnectionTime: new Date(),
+          active: true,
+        });
       }
     }
 

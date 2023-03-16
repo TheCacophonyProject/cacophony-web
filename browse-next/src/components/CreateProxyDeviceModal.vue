@@ -7,11 +7,11 @@ import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
 import { createProxyDevice } from "@api/Device";
-import type { SelectedGroup } from "@models/LoggedInUser";
+import type { SelectedProject } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
-import { currentSelectedGroup } from "@models/provides";
+import { currentSelectedProject } from "@models/provides";
 
-const selectedGroup = inject(currentSelectedGroup) as Ref<SelectedGroup>;
+const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const newDeviceName = formFieldInputText();
 const isValidDeviceName = computed<boolean>(
   () => newDeviceName.value.trim().length >= 3
@@ -45,9 +45,9 @@ const createNewDeviceError = ref<ErrorResult | null>(null);
 const createNewProxyDevice = async () => {
   submittingCreateRequest.value = true;
   const deviceName = newDeviceName.value.trim();
-  const groupName = selectedGroup.value.groupName;
+  const projectName = selectedProject.value.groupName;
   const createProxyDeviceResponse = await createProxyDevice(
-    groupName,
+    projectName,
     deviceName
   );
   if (createProxyDeviceResponse.success) {

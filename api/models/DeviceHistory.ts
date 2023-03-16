@@ -31,15 +31,19 @@ export interface DeviceHistorySettings {
 
   referenceImageInSitu?: string; // S3 Key for a device reference image
   referenceImageInSituFileSize?: number;
-  warp: {
-    dimensions?: { width: number, height: number },
-    origin: [number, number],
-    topLeft: [number, number],
-    topRight: [number, number],
-    bottomLeft: [number, number],
-    bottomRight: [number, number],
-  },
-  maskPolygons: { points: [number, number]; exclude?: boolean, label?: string }[];
+  warp?: {
+    dimensions?: { width: number; height: number };
+    origin: [number, number];
+    topLeft: [number, number];
+    topRight: [number, number];
+    bottomLeft: [number, number];
+    bottomRight: [number, number];
+  };
+  maskPolygons?: {
+    points: [number, number];
+    exclude?: boolean;
+    label?: string;
+  }[];
 }
 
 export interface DeviceHistory
@@ -117,6 +121,11 @@ export default function (
   DeviceHistory.addAssociations = function (models) {
     models.DeviceHistory.belongsTo(models.Device);
     models.DeviceHistory.belongsTo(models.Group);
+    models.DeviceHistory.belongsTo(models.Station, {
+      foreignKey: "stationId",
+      targetKey: "id",
+      foreignKeyConstraint: true,
+    });
   };
 
   return DeviceHistory;

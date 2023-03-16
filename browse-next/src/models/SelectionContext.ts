@@ -4,7 +4,7 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { DeviceId, StationId } from "@typedefs/api/common";
 
 export const selectedVisit = ref<ApiVisitResponse | null>(null);
-export const currentlyHighlightedStation = ref<StationId | null>(null);
+export const currentlyHighlightedLocation = ref<StationId | null>(null);
 
 // TODO - This should come from user state per group.
 const onlyShowPredators = ref<boolean>(true);

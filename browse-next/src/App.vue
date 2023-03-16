@@ -7,19 +7,19 @@ import NetworkConnectionAlertModal from "@/components/NetworkConnectionAlertModa
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 import {
   userIsLoggedIn,
-  userHasGroups,
+  userHasProjects,
   CurrentUser as fallibleCurrentUser,
   euaIsOutOfDate,
-  currentSelectedGroup as fallibleCurrentSelectedGroup,
-  userHasMultipleGroups,
+  currentSelectedProject as fallibleCurrentSelectedProject,
+  userHasMultipleProjects,
   isLoggingInAutomatically,
-  isFetchingGroups,
-  userIsAdminForCurrentSelectedGroup,
+  isFetchingProjects,
+  userIsAdminForCurrentSelectedProject,
   userHasConfirmedEmailAddress,
-  showSwitchGroup,
-  creatingNewGroup,
-  joiningNewGroup,
-  urlNormalisedCurrentGroupName,
+  showSwitchProject,
+  creatingNewProject,
+  joiningNewProject,
+  urlNormalisedCurrentProjectName,
   rafFps,
   pinSideNav,
   showSideNavBg,
@@ -27,9 +27,9 @@ import {
   sideNavIsPinned,
   isSmallScreen,
   showUnimplementedModal,
-  DevicesForCurrentGroup,
+  DevicesForCurrentProject,
 } from "@/models/LoggedInUser";
-import type { SelectedGroup, LoggedInUser } from "@/models/LoggedInUser";
+import type { SelectedProject, LoggedInUser } from "@/models/LoggedInUser";
 import {
   computed,
   defineAsyncComponent,
@@ -39,7 +39,7 @@ import {
   watch,
 } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
-import SwitchGroupsModal from "@/components/SwitchGroupsModal.vue";
+import SwitchProjectsModal from "@/components/SwitchProjectsModal.vue";
 
 const globalSideNav = ref<HTMLDivElement>();
 
@@ -47,12 +47,12 @@ const BlockingUserActionRequiredModal = defineAsyncComponent(
   () => import("@/components/BlockingUserActionRequiredModal.vue")
 );
 
-const CreateGroupModal = defineAsyncComponent(
-  () => import("@/components/CreateGroupModal.vue")
+const CreateProjectModal = defineAsyncComponent(
+  () => import("@/components/CreateProjectModal.vue")
 );
 
-const JoinExistingGroupModal = defineAsyncComponent(
-  () => import("@/components/JoinExistingGroupModal.vue")
+const JoinExistingProjectModal = defineAsyncComponent(
+  () => import("@/components/JoinExistingProjectModal.vue")
 );
 
 const _userIsSuperAdmin = false;
@@ -60,8 +60,8 @@ const _loggedInAsAnotherUser = false;
 const _environmentIsProduction = false;
 const hasGitReleaseInfoBar = ref(false);
 
-const selectedGroup = computed<SelectedGroup>(() => {
-  return fallibleCurrentSelectedGroup.value as SelectedGroup;
+const selectedProject = computed<SelectedProject>(() => {
+  return fallibleCurrentSelectedProject.value as SelectedProject;
 });
 
 const CurrentUser = computed<LoggedInUser>(() => {
@@ -76,6 +76,7 @@ const currentUserName = computed<string>(() => {
 const route = useRoute();
 
 onBeforeMount(() => {
+  console.log("Before mount app");
   // Override bootstrap CSS variables.
   // This has to appear after the original bootstrap CSS variable declarations in the DOM to take effect.
   const styleOverrides = document.createElement("style");
@@ -115,8 +116,8 @@ const pollFrameTimes = () => {
 const hideNavBg = ref<boolean>(true);
 
 const someDeviceNeedsAttention = computed<boolean>(() => {
-  if (DevicesForCurrentGroup.value) {
-    return DevicesForCurrentGroup.value.some((device) => {
+  if (DevicesForCurrentProject.value) {
+    return DevicesForCurrentProject.value.some((device) => {
       if (!device.hasOwnProperty("isHealthy")) {
         return false;
       }
@@ -136,6 +137,7 @@ watch(pinSideNav, (next) => {
   }
 });
 onMounted(() => {
+  console.log("Mounted app");
   // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
   setTimeout(pollFrameTimes, 1000);
   window.addEventListener("click", (e: MouseEvent) => {
@@ -160,19 +162,22 @@ onMounted(() => {
   >
     <div>Sorry, this feature is not yet implemented.</div>
   </b-modal>
-  <switch-groups-modal
-    v-if="showSwitchGroup.enabled"
+  <switch-projects-modal
+    v-if="showSwitchProject.enabled"
     id="switch-groups-modal"
   />
-  <create-group-modal v-if="creatingNewGroup.enabled" id="create-group-modal" />
-  <join-existing-group-modal
-    v-if="joiningNewGroup.enabled"
+  <create-project-modal
+    v-if="creatingNewProject.enabled"
+    id="create-group-modal"
+  />
+  <join-existing-project-modal
+    v-if="joiningNewProject.enabled"
     id="join-group-modal"
   />
   <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
   <main
     class="justify-content-center align-items-center d-flex"
-    v-if="isLoggingInAutomatically || isFetchingGroups"
+    v-if="isLoggingInAutomatically || isFetchingProjects"
   >
     <div
       class="d-flex flex-column align-items-center justify-content-center user-select-none"
@@ -191,7 +196,7 @@ onMounted(() => {
     v-else-if="
       userIsLoggedIn &&
       userHasConfirmedEmailAddress &&
-      userHasGroups &&
+      userHasProjects &&
       !route.meta.nonMainView
     "
   >
@@ -210,7 +215,7 @@ onMounted(() => {
           :to="{
             name: 'dashboard',
             params: {
-              groupName: urlNormalisedCurrentGroupName,
+              projectName: urlNormalisedCurrentProjectName,
             },
           }"
           alt="home"
@@ -228,10 +233,10 @@ onMounted(() => {
         >
           <button
             class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
-            v-if="userHasMultipleGroups"
-            @click="() => (showSwitchGroup.enabled = true)"
+            v-if="userHasMultipleProjects"
+            @click="() => (showSwitchProject.enabled = true)"
           >
-            {{ selectedGroup.groupName }}
+            {{ selectedProject.groupName }}
             <span class="switch-label figure ms-1"
               ><font-awesome-icon icon="retweet" class="switch-icon"
             /></span>
@@ -239,7 +244,7 @@ onMounted(() => {
           <span
             v-else
             class="btn current-group d-flex flex-fill me-1 align-items-center"
-            >{{ selectedGroup.groupName }}</span
+            >{{ selectedProject.groupName }}</span
           >
 
           <div class="dropdown">
@@ -261,7 +266,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="creatingNewGroup.enabled = true"
+                  @click.stop.prevent="creatingNewProject.enabled = true"
                 >
                   Create a new group
                 </button>
@@ -270,7 +275,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  @click.stop.prevent="joiningNewGroup.enabled = true"
+                  @click.stop.prevent="joiningNewProject.enabled = true"
                 >
                   Join an existing group
                 </button>
@@ -285,7 +290,7 @@ onMounted(() => {
             :to="{
               name: 'dashboard',
               params: {
-                groupName: urlNormalisedCurrentGroupName,
+                projectName: urlNormalisedCurrentProjectName,
               },
             }"
             alt="dashboard"
@@ -305,21 +310,21 @@ onMounted(() => {
         <li class="nav-item mb-4">
           <router-link
             :to="{
-              name: 'stations',
+              name: 'locations',
               params: {
-                groupName: urlNormalisedCurrentGroupName,
+                projectName: urlNormalisedCurrentProjectName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
-            data-bs-original-title="Stations"
+            data-bs-original-title="Locations"
           >
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="location-dot" />
             </span>
-            <span>Stations</span>
+            <span>Locations</span>
           </router-link>
         </li>
         <li class="nav-item">
@@ -327,7 +332,7 @@ onMounted(() => {
             :to="{
               name: 'activity',
               params: {
-                groupName: urlNormalisedCurrentGroupName,
+                projectName: urlNormalisedCurrentProjectName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -347,7 +352,7 @@ onMounted(() => {
             :to="{
               name: 'devices',
               params: {
-                groupName: urlNormalisedCurrentGroupName,
+                projectName: urlNormalisedCurrentProjectName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -381,7 +386,7 @@ onMounted(() => {
             :to="{
               name: 'report',
               params: {
-                groupName: urlNormalisedCurrentGroupName,
+                projectName: urlNormalisedCurrentProjectName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -399,9 +404,9 @@ onMounted(() => {
         <li class="nav-item">
           <router-link
             :to="{
-              name: 'user-group-settings',
+              name: 'user-project-settings',
               params: {
-                groupName: urlNormalisedCurrentGroupName,
+                projectName: urlNormalisedCurrentProjectName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
@@ -416,24 +421,24 @@ onMounted(() => {
             <span>My&nbsp;preferences</span>
           </router-link>
         </li>
-        <li class="nav-item" v-if="userIsAdminForCurrentSelectedGroup">
+        <li class="nav-item" v-if="userIsAdminForCurrentSelectedProject">
           <router-link
             :to="{
-              name: 'group-settings',
+              name: 'project-settings',
               params: {
-                groupName: urlNormalisedCurrentGroupName,
+                projectName: urlNormalisedCurrentProjectName,
               },
             }"
             class="nav-link py-3 d-flex flex-row"
             title=""
             data-bs-toggle="tooltip"
             data-bs-placement="right"
-            data-bs-original-title="Manage group"
+            data-bs-original-title="Manage project"
           >
             <span class="nav-icon-wrapper">
               <font-awesome-icon icon="screwdriver-wrench" />
             </span>
-            <span>Manage&nbsp;group</span>
+            <span>Manage&nbsp;project</span>
           </router-link>
         </li>
       </ul>
@@ -490,7 +495,7 @@ onMounted(() => {
   <main
     v-else-if="route.meta.nonMainView"
     :class="[
-      userIsLoggedIn && (!userHasGroups || !userHasConfirmedEmailAddress)
+      userIsLoggedIn && (!userHasProjects || !userHasConfirmedEmailAddress)
         ? 'account-setup'
         : 'logged-out',
       'd-flex',

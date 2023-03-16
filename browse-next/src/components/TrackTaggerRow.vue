@@ -9,11 +9,11 @@ import type {
 } from "@typedefs/api/trackTag";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import {
-  currentSelectedGroup,
+  currentSelectedProject,
   CurrentUser,
   persistUserGroupSettings,
 } from "@models/LoggedInUser";
-import type { SelectedGroup } from "@models/LoggedInUser";
+import type { SelectedProject } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
@@ -60,8 +60,8 @@ const trackDetails = ref<HTMLDivElement>();
 
 const userIsGroupAdmin = computed<boolean>(() => {
   return (
-    (currentSelectedGroup.value &&
-      (currentSelectedGroup.value as SelectedGroup).admin) ||
+    (currentSelectedProject.value &&
+      (currentSelectedProject.value as SelectedProject).admin) ||
     false
   );
 });
@@ -201,8 +201,8 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
 // Default tags is computed from a default list, with overrides coming from the group admin level, and the user group level.
 const defaultTags = computed<string[]>(() => {
   const tags = [];
-  if (currentSelectedGroup.value) {
-    const groupSettings = currentSelectedGroup.value.settings;
+  if (currentSelectedProject.value) {
+    const groupSettings = currentSelectedProject.value.settings;
     if (groupSettings && groupSettings.tags) {
       tags.push(...groupSettings.tags);
     } else {
@@ -216,8 +216,8 @@ const defaultTags = computed<string[]>(() => {
 // These are "pinned" tags.
 const userDefinedTags = computed<Record<string, boolean>>(() => {
   const tags: Record<string, boolean> = {};
-  if (currentSelectedGroup.value) {
-    const userSettings = currentSelectedGroup.value.userSettings;
+  if (currentSelectedProject.value) {
+    const userSettings = currentSelectedProject.value.userSettings;
     if (userSettings && userSettings.tags) {
       // These are any user-defined "pinned" tags for this group.
       for (const tag of userSettings.tags) {
@@ -286,8 +286,8 @@ const rejectAiSuggestedTag = () => {
 };
 
 const pinCustomTag = async (classification: Classification) => {
-  if (currentSelectedGroup.value) {
-    const userGroupSettings: ApiGroupUserSettings = currentSelectedGroup.value
+  if (currentSelectedProject.value) {
+    const userGroupSettings: ApiGroupUserSettings = currentSelectedProject.value
       .userSettings || {
       displayMode: "visits",
       tags: [],

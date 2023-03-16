@@ -171,16 +171,22 @@ export const serverErrorResponse = async (
   try {
     // If the payload was too large, we'd still like to know who the request is from in the logs.
     const token = getVerifiedJWT(request) as DecodedJWTToken;
+
+    const stack = new Error().stack;
     log.error(
       "SERVER ERROR: %s, %s, %s, %s(%s)",
       error.toString(),
-      error.stack,
+      error.stack || stack,
       Object.entries(error).flat(),
       token._type,
       token.id
     );
   } catch (e) {
-    log.error("SERVER ERROR: %s, %s", error.toString(), error.stack);
+    log.error(
+      "SERVER ERROR (JWT token): %s, %s",
+      error.toString(),
+      error.stack
+    );
   }
   return someResponse(
     response,

@@ -37,6 +37,12 @@ export const streamS3Object = async (
   groupId?: GroupId,
   fileSize?: number
 ) => {
+  response.setHeader("Content-disposition", "attachment; filename=" + fileName);
+  response.setHeader("Transfer-Encoding", "chunked");
+  response.setHeader("Content-type", mimeType);
+  if (fileSize) {
+    response.setHeader("Content-Length", fileSize);
+  }
   const s3 = modelsUtil.openS3();
   const s3Request = s3.getObject({
     Key: key,
@@ -83,12 +89,6 @@ export const streamS3Object = async (
   stream.on("data", (chunk) => {
     dataStreamed += chunk.length;
   });
-  response.setHeader("Content-disposition", "attachment; filename=" + fileName);
-  response.setHeader("Transfer-Encoding", "chunked");
-  response.setHeader("Content-type", mimeType);
-  if (fileSize) {
-    response.setHeader("Content-Length", fileSize);
-  }
   stream.pipe(response);
 
   // TODO: We may want to support HTTP range requests, and if we do, we should be able to

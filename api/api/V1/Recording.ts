@@ -93,7 +93,7 @@ import recordingUtil, {
   signedToken,
   uploadRawRecording,
 } from "./recordingUtil";
-import { successResponse } from "./responseUtil";
+import {serverErrorResponse, successResponse} from "./responseUtil";
 import { streamS3Object } from "@api/V1/signedUrl";
 
 const mapTrackTag = (
@@ -140,7 +140,7 @@ const mapTrackTags = (
   return t;
 };
 
-const mapTrack = (track: Track): ApiTrackResponse => {
+export const mapTrack = (track: Track): ApiTrackResponse => {
   const t: ApiTrackResponse = {
     id: track.id,
     start: track.data.start_s,
@@ -157,7 +157,7 @@ const mapTrack = (track: Track): ApiTrackResponse => {
   return t;
 };
 
-const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
+export const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
   const t = tracks.map(mapTrack);
   // Sort tracks by start time
   t.sort((a, b) => a.start - b.start);
@@ -595,13 +595,13 @@ export default (app: Application, baseUrl: string) => {
         .custom((value) => {
           return models.Recording.isValidTagMode(value);
         }),
+      query("filterModel").optional(),
       query("hideFiltered").default(false).isBoolean().toBoolean(),
       query("countAll").default(true).isBoolean().toBoolean(),
     ]),
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
-
     async (request: Request, response: Response) => {
       const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
       const {
@@ -613,6 +613,7 @@ export default (app: Application, baseUrl: string) => {
         countAll,
         exclusive,
         deleted,
+        filterModel,
       } = request.query;
 
       if (request.query.hasOwnProperty("deleted")) {
@@ -622,7 +623,8 @@ export default (app: Application, baseUrl: string) => {
           where.deletedAt = { [Op.eq]: null };
         }
       }
-
+      const useFilteredModel: string | false =
+        (filterModel && (filterModel as string)) || false;
       const result = await recordingUtil.query(
         response.locals.requestUser.id,
         type as RecordingType,
@@ -637,6 +639,7 @@ export default (app: Application, baseUrl: string) => {
           offset: offset && parseInt(offset as string),
           hideFiltered: hideFiltered ? true : false,
           exclusive: exclusive ? true : false,
+          filterModel: useFilteredModel,
         }
       );
       return successResponse(response, "Completed query.", {
@@ -728,7 +731,7 @@ export default (app: Application, baseUrl: string) => {
 
   /**
    * @api {patch} /api/v1/recordings/undelete Restores previously deleted Recordings.
-   * @apiName QueryRecordings
+   * @apiName UndeleteRecordings
    * @apiGroup Recordings
    *
    * @apiUse V1UserAuthorizationHeader
@@ -800,6 +803,28 @@ export default (app: Application, baseUrl: string) => {
       }
     }
   );
+
+  if (config.server.loggerLevel === "debug") {
+    app.get(
+      `${apiUrl}/long-running-query`,
+      extractJwtAuthorizedUser,
+      validateFields([
+          query("seconds").default(20).isNumeric(),
+          query("succeed").default(true).isBoolean().toBoolean()
+      ]),
+      async (request: Request, response: Response, next: NextFunction) => {
+        const timeout = Number(request.query.seconds);
+        await new Promise((resolve, reject) => {
+          setTimeout(resolve, timeout * 1000);
+        });
+        if (request.query.succeed) {
+          return successResponse(response, "Completed query.", {count: 101});
+        } else {
+          return serverErrorResponse(request, response, new Error("Timed out."), {count: 101});
+        }
+      }
+    );
+  }
 
   /**
    * @api {get} /api/v1/recordings/count Query available recording count
@@ -1340,14 +1365,14 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       // FIXME - If this is the *last* recording for a station, and the station is automatic, remove the station,
       //  and the corresponding DeviceHistory entry. (Do we need to worry about undelete then?)
-
+      let softDelete = false;
       if (request.query["soft-delete"]) {
         const recording: Recording = response.locals.recording;
         recording.deletedAt = new Date();
         recording.deletedBy = response.locals.requestUser.id;
 
         await recording.save();
-        return successResponse(response, "Deleted recording.");
+        softDelete = true;
       } else {
         let deleted = false;
         const recording: Recording = response.locals.recording;
@@ -1372,6 +1397,26 @@ export default (app: Application, baseUrl: string) => {
             log.warning(err);
           });
         }
+      }
+      // Check if there are any more device recordings.  If not, set lastRecordingTime to null,
+      // so that the device will appear as deletable.
+      const latestRecording = await models.Recording.findOne({
+        where: { DeviceId: Number(request.params.id), deletedAt: null },
+        order: [["recordingDateTime", "DESC"]],
+      });
+      const device = await models.Device.findByPk(Number(request.params.id));
+      if (!latestRecording) {
+        await device.update({
+          lastRecordingTime: null,
+        });
+      } else if (latestRecording.recordingDateTime > device.lastRecordingTime) {
+        await device.update({
+          lastRecordingTime: latestRecording.recordingDateTime,
+        });
+      }
+      if (softDelete) {
+        return successResponse(response, "Deleted recording.");
+      } else {
         return successResponse(response, "Hard deleted recording.");
       }
     }
@@ -1436,10 +1481,18 @@ export default (app: Application, baseUrl: string) => {
     },
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      await response.locals.recording.update({
+      const recording = response.locals.recording;
+      await recording.update({
         deletedAt: null,
         deletedBy: null,
       });
+      const device = await models.Device.findByPk(recording.DeviceId);
+      if (
+        (device && device.lastRecordingTime === null) ||
+        recording.recordingDateTime > device.lastRecordingTime
+      ) {
+        await device.update({ lastRecordingTime: recording.recordingDateTime });
+      }
       return successResponse(response, "Undeleted recording.");
     }
   );
@@ -1720,7 +1773,7 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiInterface {apiBody::ApiRecordingUpdateRequestBody} updates Object
    * containing the fields to update and their new values.
-   * @apiBody {JSON} [updates] Data containg attributes for tag.
+   * @apiBody {JSON} [updates] Data containing attributes for tag.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.

@@ -32,7 +32,7 @@
         <tr
           v-for="(row, rowIndex) in displayedItems.values"
           :key="rowIndex"
-          @click="e => selectedItem(e, sortedItems[rowIndex])"
+          @click="(e) => selectedItem(e, sortedItems[rowIndex])"
           @mouseenter="() => enteredItem(sortedItems[rowIndex])"
           @mouseleave="leftItem(sortedItems[rowIndex])"
           :class="{ highlighted: eq(sortedItems[rowIndex], highlightedItem) }"
@@ -50,7 +50,11 @@
               :name="headings[index]"
               v-bind="{ cell, row: sortedItems[rowIndex] }"
             >
-              <span v-if="cell && cell.value" class="text-nowrap" v-html="cell.value" />
+              <span
+                v-if="cell && cell.value"
+                class="text-nowrap"
+                v-html="cell.value"
+              />
               <span v-else-if="cell" class="text-nowrap" v-html="cell" />
             </slot>
           </td>
@@ -193,7 +197,7 @@ type SortFn = <T>(a: T, b: T) => number;
 
 const hasSorts = computed<boolean>(() => Object.values(sorts).length !== 0);
 
-const defaultLexicalSort = <T>(a: T, b: T): number => {
+const defaultLexicalSort = (a: any, b: any): number => {
   if (typeof a === "string" && typeof b === "string") {
     const aa = a.toLowerCase();
     const bb = b.toLowerCase();
@@ -245,7 +249,7 @@ const toggleSorting = (dimensionName: string) => {
 
 const sortedItems = computed<CardTableRows<any>>(() => {
   const activeSort = Object.values(sorts).find(
-      (sort) => sort.direction !== SortDirection.None
+    (sort) => sort.direction !== SortDirection.None
   );
 
   const itemsCopied = [...items];
@@ -266,7 +270,6 @@ const displayedItems = computed<{
 }>(() => {
   // If the heading starts with _, its value is displayed, but we just use "" for the heading.
   // If the heading starts with __, it's not displayed at all.
-
 
   return {
     headings: headings.value

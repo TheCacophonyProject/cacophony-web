@@ -2,25 +2,25 @@ import { createRouter, createWebHistory } from "vue-router";
 import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
   currentEUAVersion,
-  currentSelectedGroup,
-  DevicesForCurrentGroup,
+  currentSelectedProject,
+  DevicesForCurrentProject,
   forgetUserOnCurrentDevice,
-  isFetchingGroups,
+  isFetchingProjects,
   isLoggingInAutomatically,
   isResumingSession,
   pinSideNav,
-  refreshUserGroups,
-  switchCurrentGroup,
+  refreshUserProjects,
+  switchCurrentProject,
   tryLoggingInRememberedUser,
-  urlNormalisedCurrentGroupName,
-  UserGroups,
+  urlNormalisedCurrentProjectName,
+  UserProjects,
   userHasConfirmedEmailAddress,
-  userHasGroups,
-  userIsAdminForCurrentSelectedGroup,
+  userHasProjects,
+  userIsAdminForCurrentSelectedProject,
   userIsLoggedIn,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
-import { getDevicesForGroup, getGroups } from "@api/Group";
+import { getDevicesForProject, getProjects } from "@api/Project";
 import { nextTick, reactive } from "vue";
 import { decodeJWT, urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
@@ -51,7 +51,7 @@ const router = createRouter({
       path: "/setup",
       name: "setup",
       meta: {
-        title: "Group setup",
+        title: "Project setup",
         requiresLogin: true,
         nonMainView: true,
         justChangedEmailAddress: false,
@@ -72,30 +72,30 @@ const router = createRouter({
     },
     {
       path: "/accept-invite/:token",
-      name: "accept-group-invite",
+      name: "accept-project-invite",
       meta: {
-        title: "Accept group invitation",
+        title: "Accept project invitation",
         requiresLogin: true,
         nonMainView: true,
       },
-      component: () => import("@/views/AcceptGroupInvite.vue"),
+      component: () => import("@/views/AcceptProjectInvite.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/confirm-group-membership-request/:token",
-      name: "confirm-group-membership-request",
+      path: "/confirm-project-membership-request/:token",
+      name: "confirm-project-membership-request",
       meta: {
-        title: "Confirm group membership request",
+        title: "Confirm project membership request",
         requiresLogin: true,
         nonMainView: true,
       },
-      component: () => import("@/views/ConfirmAddToGroupRequest.vue"),
+      component: () => import("@/views/ConfirmAddToProjectRequest.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName",
+      path: "/:projectName",
       name: "dashboard",
-      meta: { title: ":groupName Dashboard", requiresLogin: true },
+      meta: { title: ":projectName Dashboard", requiresLogin: true },
       component: () => import("@/views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
@@ -131,26 +131,26 @@ const router = createRouter({
       ],
     },
     {
-      path: "/:groupName/stations",
-      name: "stations",
+      path: "/:projectName/locations",
+      name: "locations",
       // route level code-splitting
       // this generates a separate chunk (About.[hash].js) for this route
       // which is lazy-loaded when the route is visited.
-      meta: { requiresLogin: true, title: "Stations for :groupName" },
-      component: () => import("@/views/StationsView.vue"),
+      meta: { requiresLogin: true, title: "Locations for :projectName" },
+      component: () => import("@/views/LocationsView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName/activity",
+      path: "/:projectName/activity",
       name: "activity",
-      meta: { requiresLogin: true, title: "Activity in :groupName" },
+      meta: { requiresLogin: true, title: "Activity in :projectName" },
       component: () => import("@/views/ActivitySearchView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName/devices",
+      path: "/:projectName/devices/:all?",
       name: "devices",
-      meta: { requiresLogin: true, title: "Devices belonging to :groupName" },
+      meta: { requiresLogin: true, title: "Devices belonging to :projectName" },
       component: () => import("@/views/DevicesView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
@@ -183,56 +183,62 @@ const router = createRouter({
               name: "device-uploads",
               component: () => import("@/views/DeviceUploadsSubView.vue"),
             },
+            {
+              path: "insights",
+              name: "device-insights",
+              component: () => import("@/views/DeviceInsightsSubView.vue"),
+            },
           ],
         },
       ],
     },
     {
-      path: "/:groupName/report",
+      path: "/:projectName/report",
       name: "report",
-      meta: { requiresLogin: true, title: "Reporting: :groupName" },
+      meta: { requiresLogin: true, title: "Reporting: :projectName" },
       component: () => import("@/views/ReportingView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName/my-settings",
-      name: "user-group-settings",
-      meta: { requiresLogin: true, title: "My settings for :groupName" },
+      path: "/:projectName/my-settings",
+      name: "user-project-settings",
+      meta: { requiresLogin: true, title: "My settings for :projectName" },
       component: () => import("@/views/UserGroupPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName/settings",
-      name: "group-settings",
+      path: "/:projectName/settings",
+      name: "project-settings",
       meta: {
         requiresLogin: true,
         requiresGroupAdmin: true,
-        title: "Settings for :groupName",
+        title: "Settings for :projectName",
       },
-      redirect: { name: "group-users" },
-      component: () => import("@/views/ManageGroupView.vue"),
+      redirect: { name: "project-users" },
+      component: () => import("@/views/ManageProjectView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
         {
           // ManageGroupUsersSubView will be rendered inside ManageGroupViews's <router-view>
           // when /:groupName/settings/users is matched
-          name: "group-users",
+          name: "project-users",
           path: "users",
-          meta: { title: "Users for :groupName" },
-          component: () => import("@/views/ManageGroupUsersSubView.vue"),
+          meta: { title: "Users for :projectName" },
+          component: () => import("@/views/ManageProjectUsersSubView.vue"),
         },
         {
-          name: "group-tag-settings",
+          name: "project-tag-settings",
           path: "tag-settings",
-          meta: { title: "Tag preferences for :groupName" },
-          component: () => import("@/views/ManageGroupTagSettingsSubView.vue"),
+          meta: { title: "Tag preferences for :projectName" },
+          component: () =>
+            import("@/views/ManageProjectTagSettingsSubView.vue"),
         },
         {
-          name: "fix-station-locations",
-          path: "fix-station-locations",
-          meta: { title: "Fixup station locations for :groupName" },
+          name: "fix-project-locations",
+          path: "fix-project-locations",
+          meta: { title: "Fixup locations for :projectName" },
           component: () =>
-            import("@/views/ManageGroupFixStationLocationsSubView.vue"),
+            import("@/views/ManageProjectFixLocationsSubView.vue"),
         },
       ],
     },
@@ -423,13 +429,13 @@ router.beforeEach(async (to, from, next) => {
     //  in the background without blocking.
     if (
       userIsLoggedIn.value &&
-      !currentSelectedGroup.value &&
-      !isFetchingGroups.value
+      !currentSelectedProject.value &&
+      !isFetchingProjects.value
     ) {
-      const groupsResponse = await refreshUserGroups();
-      if (groupsResponse.status === 401) {
+      const projectsResponse = await refreshUserProjects();
+      if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-      } else if (UserGroups.value?.length === 0) {
+      } else if (UserProjects.value && UserProjects.value?.length === 0) {
         if (to.query.nextUrl) {
           return next({ path: to.query.nextUrl as string });
         } else if (jwtToken) {
@@ -460,14 +466,14 @@ router.beforeEach(async (to, from, next) => {
         (to.name !== "setup" &&
           to.name !== "confirm-email" &&
           !userHasConfirmedEmailAddress.value) ||
-        !userHasGroups.value
+        !userHasProjects.value
       ) {
         return next({ name: "setup" });
       } else {
         return next({
           name: "dashboard",
           params: {
-            groupName: urlNormalisedCurrentGroupName.value,
+            projectName: urlNormalisedCurrentProjectName.value,
           },
         });
       }
@@ -485,28 +491,28 @@ router.beforeEach(async (to, from, next) => {
       return next({ name: "setup" });
     }
     // Check to see if we match the first part of the path to any of our group names:
-    let potentialGroupName = to.path
+    let potentialProjectName = to.path
       .split("/")
       .filter((item) => item !== "")
       .shift();
-    if (userIsLoggedIn.value && !UserGroups.value) {
+    if (userIsLoggedIn.value && !UserProjects.value) {
       // Grab the users' groups, and select the first one.
-      isFetchingGroups.value = true;
+      isFetchingProjects.value = true;
       // console.warn("Fetching user groups");
       const NO_ABORT = false;
-      const groupsResponse = await getGroups(NO_ABORT);
-      if (groupsResponse.success) {
-        UserGroups.value = reactive(groupsResponse.result.groups);
+      const projectsResponse = await getProjects(NO_ABORT);
+      if (projectsResponse.success) {
+        UserProjects.value = reactive(projectsResponse.result.groups);
         // console.warn(
         //   "Fetched user groups",
         //   currentSelectedGroup.value,
         //   JSON.stringify(UserGroups.value)
         // );
       }
-      isFetchingGroups.value = false;
-      if (groupsResponse.status === 401) {
+      isFetchingProjects.value = false;
+      if (projectsResponse.status === 401) {
         return next({ name: "sign-out" });
-      } else if (UserGroups.value?.length === 0) {
+      } else if (UserProjects.value && UserProjects.value?.length === 0) {
         if (to.name !== "setup" && to.name !== "confirm-email") {
           return next({ name: "setup" });
         } else {
@@ -514,10 +520,10 @@ router.beforeEach(async (to, from, next) => {
         }
       }
     }
-    if (potentialGroupName) {
-      potentialGroupName = urlNormaliseName(potentialGroupName);
-      const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
-        ({ groupName }) => urlNormaliseName(groupName) === potentialGroupName
+    if (potentialProjectName) {
+      potentialProjectName = urlNormaliseName(potentialProjectName);
+      const matchedProject = (UserProjects.value as ApiGroupResponse[]).find(
+        ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName
       );
       // console.warn("Found match", matchedGroup);
       /*
@@ -535,27 +541,27 @@ router.beforeEach(async (to, from, next) => {
         }
        */
 
-      if (matchedGroup) {
+      if (matchedProject) {
         // Don't persist the admin property in user settings, since that could change
-        const switchedGroup = switchCurrentGroup({
-          groupName: matchedGroup.groupName,
-          id: matchedGroup.id,
+        const switchedProject = switchCurrentProject({
+          groupName: matchedProject.groupName,
+          id: matchedProject.id,
         });
 
-        if (currentSelectedGroup.value) {
+        if (currentSelectedProject.value) {
           // Get the devices for the current group.
-          if (!DevicesForCurrentGroup.value || switchedGroup) {
-            getDevicesForGroup(currentSelectedGroup.value.id, false, true).then(
-              (devicesResponse) => {
-                if (devicesResponse.success) {
-                  DevicesForCurrentGroup.value = devicesResponse.result.devices;
-                  console.log(DevicesForCurrentGroup.value);
-                }
-              }
+          if (!DevicesForCurrentProject.value || switchedProject) {
+            const devices = await getDevicesForProject(
+              currentSelectedProject.value.id,
+              false,
+              true
             );
+            if (devices) {
+              DevicesForCurrentProject.value = devices;
+            }
           }
         } else {
-          DevicesForCurrentGroup.value = null;
+          DevicesForCurrentProject.value = null;
         }
       } else {
         if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
@@ -563,7 +569,7 @@ router.beforeEach(async (to, from, next) => {
           return next({
             name: "dashboard",
             params: {
-              groupName: urlNormalisedCurrentGroupName.value,
+              projectName: urlNormalisedCurrentProjectName.value,
             },
           });
         }
@@ -571,12 +577,15 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  if (to.meta.requiresGroupAdmin && !userIsAdminForCurrentSelectedGroup.value) {
+  if (
+    to.meta.requiresGroupAdmin &&
+    !userIsAdminForCurrentSelectedProject.value
+  ) {
     console.error("Trying to access admin only route");
     return next({
       name: "dashboard",
       params: {
-        groupName: urlNormalisedCurrentGroupName.value,
+        projectName: urlNormalisedCurrentProjectName.value,
       },
     });
   }
@@ -584,13 +593,13 @@ router.beforeEach(async (to, from, next) => {
   if (
     to.name === "setup" &&
     userIsLoggedIn.value &&
-    userHasGroups.value &&
+    userHasProjects.value &&
     userHasConfirmedEmailAddress.value
   ) {
     return next({
       name: "dashboard",
       params: {
-        groupName: urlNormalisedCurrentGroupName.value,
+        projectName: urlNormalisedCurrentProjectName.value,
       },
     });
   }

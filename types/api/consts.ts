@@ -19,7 +19,6 @@ export enum TagMode {
   Tagged = "tagged",
   HumanTagged = "human-tagged",
   AutomaticallyTagged = "automatic-tagged",
-  BothTagged = "both-tagged",
   NoHuman = "no-human", // untagged or automatic only
   AutomaticOnly = "automatic-only",
   HumanOnly = "human-only",
@@ -83,6 +82,7 @@ export enum HttpStatusCode {
   ServerError = 500,
 }
 
+
 export const DeviceEventTypes = [
   "alert",
   "attiny-sleep",
@@ -98,6 +98,7 @@ export const DeviceEventTypes = [
   "versionData",
   "config",
   "bad-thermal-frame",
+    "stop-reported"
 ] as const;
 
 export type DeviceEventType = typeof DeviceEventTypes[number];

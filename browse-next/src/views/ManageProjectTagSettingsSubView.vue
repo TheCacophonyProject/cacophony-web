@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import {
-  currentSelectedGroup,
-  persistGroupSettings,
-} from "@models/LoggedInUser";
-import { computed, onMounted, ref } from "vue";
+import { persistProjectSettings } from "@models/LoggedInUser";
+import type { SelectedProject } from "@models/LoggedInUser";
+import { computed, inject, onMounted, ref } from "vue";
+import type { Ref } from "vue";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
 import { DEFAULT_TAGS } from "@/consts";
@@ -13,14 +12,15 @@ import {
 } from "@api/Classifications";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import { capitalize } from "@/utils";
+import { currentSelectedProject } from "@models/provides";
 
 // TODO - Also have the ability to define audio tags.
-
+const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const customTags = computed<string[]>(() => {
-  if (currentSelectedGroup.value) {
+  if (selectedProject.value) {
     return (
       (localTags.value.length && localTags.value) ||
-      currentSelectedGroup.value.settings?.tags ||
+      selectedProject.value.settings?.tags ||
       DEFAULT_TAGS
     );
   }
@@ -29,15 +29,15 @@ const customTags = computed<string[]>(() => {
 const localTags = ref<string[]>([]);
 localTags.value = [...customTags.value];
 
-const currentGroupSettings = computed(() => {
-  if (currentSelectedGroup.value) {
-    return currentSelectedGroup.value.settings || {};
+const currentProjectSettings = computed(() => {
+  if (selectedProject.value) {
+    return selectedProject.value.settings || {};
   }
   return {};
 });
 const persistGroupTags = async () =>
-  persistGroupSettings({
-    ...currentGroupSettings.value,
+  persistProjectSettings({
+    ...currentProjectSettings.value,
     tags: localTags.value,
   });
 
@@ -123,10 +123,10 @@ const addPendingTag = async () => {
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-  <h1 class="h5 d-none d-md-block">Group tag settings</h1>
+  <h1 class="h5 d-none d-md-block">Project tag settings</h1>
   <div class="d-flex flex-column flex-md-row justify-content-md-between mb-3">
     <p>
-      Manage the set of default tags that users see for this group. Users can
+      Manage the set of default tags that users see for this project. Users can
       also add and pin their own most-used tags via the tagging interface.
     </p>
     <div class="d-flex align-items-end justify-content-end ms-md-5">

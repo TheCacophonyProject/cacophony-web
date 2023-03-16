@@ -11,7 +11,7 @@ import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/root";
 import {
-  currentlyHighlightedStation,
+  currentlyHighlightedLocation,
   selectedVisit as currentlySelectedVisit,
 } from "@models/SelectionContext";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
@@ -216,15 +216,15 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
 
 const highlightedStation = (visit: VisitEventItem | SunEventItem) => {
   if (visit.type === "visit") {
-    currentlyHighlightedStation.value = visit.data.stationId;
+    currentlyHighlightedLocation.value = visit.data.stationId;
   }
 };
 const unhighlightedStation = (visit: VisitEventItem | SunEventItem) => {
   if (
     visit.type === "visit" &&
-    currentlyHighlightedStation.value === visit.data.stationId
+    currentlyHighlightedLocation.value === visit.data.stationId
   ) {
-    currentlyHighlightedStation.value = null;
+    currentlyHighlightedLocation.value = null;
   }
 };
 </script>

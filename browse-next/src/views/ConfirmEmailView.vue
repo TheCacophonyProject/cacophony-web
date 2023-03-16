@@ -6,8 +6,8 @@ import {
   CurrentUser,
   setLoggedInUserCreds,
   setLoggedInUserData,
-  urlNormalisedCurrentGroupName,
-  userHasGroups,
+  urlNormalisedCurrentProjectName,
+  userHasProjects,
   userIsLoggedIn,
 } from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
@@ -75,12 +75,12 @@ onBeforeMount(async () => {
       });
 
       // NOTE: Should redirect to "setup" if user has no groups
-      if (userHasGroups.value) {
+      if (userHasProjects.value) {
         console.warn("Redirecting to dashboard");
         await router.push({
           name: "dashboard",
           params: {
-            groupName: urlNormalisedCurrentGroupName.value,
+            projectName: urlNormalisedCurrentProjectName.value,
           },
         });
       } else {
@@ -92,11 +92,11 @@ onBeforeMount(async () => {
     checkingValidateEmailToken.value = false;
   } else {
     if (userIsLoggedIn.value) {
-      if (userHasGroups.value) {
+      if (userHasProjects.value) {
         await router.push({
           name: "dashboard",
           params: {
-            groupName: urlNormalisedCurrentGroupName.value,
+            projectName: urlNormalisedCurrentProjectName.value,
           },
         });
       } else {

@@ -6,7 +6,7 @@ import type { ComputedRef, Ref } from "vue";
 import type {
   LatLng,
   RecordingId,
-  StationId,
+  StationId as LocationId,
   TagId,
   TrackId,
 } from "@typedefs/api/common";
@@ -24,30 +24,35 @@ import {
 } from "@models/SelectionContext";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type { ApiStationResponse } from "@typedefs/api/station";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import {
-  useElementSize,
-  useMediaQuery,
-  useMutationObserver,
-} from "@vueuse/core";
+import { useElementSize, useMediaQuery } from "@vueuse/core";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import {
-  CurrentUser,
-  CurrentUserCreds,
-  showUnimplementedModal,
-} from "@models/LoggedInUser";
+import { showUnimplementedModal } from "@models/LoggedInUser";
+import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import type { VisitRecordingTag } from "@typedefs/api/monitoring";
 import { API_ROOT } from "@api/root";
 import { deleteRecording as apiDeleteRecording } from "@api/Recording";
+import {
+  activeLocations,
+  currentUser as currentUserInfo,
+  currentUserCreds as currentUserCredentials,
+  latLngForActiveLocations,
+} from "@models/provides";
+import type { LoadedResource } from "@api/types";
+
+const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
+const currentUserCreds = inject(
+  currentUserCredentials
+) as Ref<LoggedInUserAuth | null>;
 
 const route = useRoute();
 const emit = defineEmits(["close"]);
@@ -60,8 +65,8 @@ watch(inlineModalHeight, (newHeight) => {
   }
 });
 
-const stations: Ref<ApiStationResponse[] | null> =
-  inject("activeStationsContext") || ref(null);
+const locations: Ref<ApiLocationResponse[] | null> =
+  inject(activeLocations) || ref(null);
 
 const recordingIds = ref(
   (() => {
@@ -70,10 +75,10 @@ const recordingIds = ref(
   })()
 );
 const currentRecordingId = ref<number>(Number(route.params.currentRecordingId));
-const _currentStationId = ref<StationId | null>(null);
+const _currentLocationId = ref<LocationId | null>(null);
 const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
 const userSelectedTrack = ref<ApiTrackResponse | undefined>(undefined);
-const currentStations = ref<ApiStationResponse[] | null>(stations.value);
+const currentLocations = ref<ApiLocationResponse[] | null>(locations.value);
 const visitLabel = ref<string>(route.params.visitLabel as string);
 
 const deviceNameSpan = ref<HTMLSpanElement>();
@@ -92,15 +97,17 @@ watch(
 watch(
   () => route.params.trackId,
   (nextTrackId) => {
-    currentTrack.value = recording.value?.tracks.find(
-      ({ id }) => id == Number(nextTrackId)
-    );
+    if (recording.value) {
+      currentTrack.value = recording.value.tracks.find(
+        ({ id }) => id == Number(nextTrackId)
+      );
+    }
   }
 );
 
-watch(stations, (nextStations) => {
+watch(locations, (nextStations) => {
   if (nextStations) {
-    currentStations.value = nextStations;
+    currentLocations.value = nextStations;
   }
 });
 
@@ -387,7 +394,7 @@ const trackTagChanged = async ({
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
         const changedTag = trackToPatch.tags.find(
-          ({ what, userId }) => what === tag && userId === CurrentUser.value?.id
+          ({ what, userId }) => what === tag && userId === currentUser.value?.id
         );
         if (changedTag) {
           await recalculateCurrentVisit(
@@ -418,15 +425,15 @@ const removedRecordingLabel = (labelId: TagId) => {
   }
 };
 
-const locationContext: ComputedRef<LatLng> | undefined =
-  inject("locationContext");
+const locationContext: ComputedRef<LatLng> | undefined = inject(
+  latLngForActiveLocations
+);
 
 const isInGreaterVisitContext = computed<boolean>(() => {
   return !!selectedVisit.value;
 });
 
-const recording = ref<ApiRecordingResponse | null>(null);
-
+const recording = ref<LoadedResource<ApiRecordingResponse>>(null);
 const tracks = computed<ApiTrackResponse[]>(() => {
   if (recording.value) {
     return recording.value.tracks;
@@ -458,12 +465,8 @@ const loadRecording = async () => {
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
-    const recordingResponse = await getRecordingById(currentRecordingId.value);
-
-    if (recordingResponse.success) {
-      // NOTE: Only handling RAW recordings here, and assuming they always exist.
-      recording.value = recordingResponse.result.recording;
-
+    recording.value = await getRecordingById(currentRecordingId.value);
+    if (recording.value) {
       const _ = nextTick(checkNameTruncations);
 
       if (route.params.trackId) {
@@ -482,7 +485,7 @@ const loadRecording = async () => {
         }
       }
     } else {
-      // TODO: Handle recording permissions error
+      // TODO Handle failure to get recording
     }
   }
 };
@@ -496,12 +499,14 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   if (!automatically) {
     // Make the player start playing at the beginning of the selected track,
     // and stop when it reaches the end of that track.
-    userSelectedTrack.value = recording.value?.tracks.find(
-      ({ id }) => id === trackId
-    );
-    await nextTick(() => {
-      userSelectedTrack.value = undefined;
-    });
+    if (recording.value) {
+      userSelectedTrack.value = recording.value.tracks.find(
+        ({ id }) => id === trackId
+      );
+      await nextTick(() => {
+        userSelectedTrack.value = undefined;
+      });
+    }
   } else {
     // TODO: Should this automatically get removed if the selectedTrack has changed due to
     //  the recording playing onto a new track
@@ -576,21 +581,21 @@ const recordingStartTime = computed<string>(() => {
   );
 });
 
-const currentStationName = computed<string>(() => {
-  return recording.value?.stationName || " ";
+const currentLocationName = computed<string>(() => {
+  return (recording.value && recording.value.stationName) || " ";
 });
 
 const currentDeviceName = computed<string>(() => {
-  return recording.value?.deviceName || " ";
+  return (recording.value && recording.value.deviceName) || " ";
 });
 
 const mapPointForRecording = computed<NamedPoint[]>(() => {
-  if (recording.value?.location) {
+  if (recording.value && recording.value.location) {
     return [
       {
-        name: currentStationName.value,
+        name: currentLocationName.value,
         location: recording.value?.location,
-        group: recording.value?.groupName,
+        project: recording.value?.groupName,
       },
     ] as NamedPoint[];
   }
@@ -661,7 +666,7 @@ const requestedDownload = async () => {
       mode: "cors",
       cache: "no-cache",
       headers: {
-        Authorization: CurrentUserCreds.value?.apiToken,
+        Authorization: currentUserCreds.value?.apiToken,
       },
       method: "get",
     };
@@ -806,7 +811,7 @@ const inlineModal = ref<boolean>(false);
                     color="rgba(0, 0, 0, 0.7)"
                   />
                   <span class="text-truncate" ref="stationNameSpan">
-                    {{ currentStationName }}
+                    {{ currentLocationName }}
                   </span>
                 </div>
                 <div
@@ -947,7 +952,7 @@ const inlineModal = ref<boolean>(false);
                       color="rgba(0, 0, 0, 0.7)"
                     />
                     <span class="text-truncate">
-                      {{ currentStationName }}
+                      {{ currentLocationName }}
                     </span>
                   </div>
                   <div class="device-name pe-2 text-truncate">

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { ApiStationResponse } from "@typedefs/api/station";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { computed } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -7,20 +7,20 @@ import type { LatLng } from "leaflet";
 import { visitsByStation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import { currentlyHighlightedStation } from "@models/SelectionContext";
+import { currentlyHighlightedLocation } from "@models/SelectionContext";
 
-const { station, stations, visits, activeStations } = defineProps<{
-  station: ApiStationResponse;
-  stations: ApiStationResponse[] | null;
-  activeStations: ApiStationResponse[];
+const { location, locations, visits, activeLocations } = defineProps<{
+  location: ApiLocationResponse;
+  locations: ApiLocationResponse[] | null;
+  activeLocations: ApiLocationResponse[];
   visits: ApiVisitResponse[];
 }>();
 
-const visitsForStation = computed<ApiVisitResponse[]>(() => {
-  return visits.filter((visit) => visit.stationId === station.id);
+const visitsForLocation = computed<ApiVisitResponse[]>(() => {
+  return visits.filter((visit) => visit.stationId === location.id);
 });
 
-const visitCount = computed<number>(() => visitsForStation.value.length);
+const visitCount = computed<number>(() => visitsForLocation.value.length);
 
 const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
   // The summary bars get scaled by this amount.
@@ -34,46 +34,46 @@ const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
 
 // TODO - We show the point of the station in the center at a specific zoom level, and then
 // any other stations that might be close enough to be included within those bounds.
-const stationsForMap = computed<NamedPoint[]>(() => {
-  if (stations) {
-    return stations.map(({ name, groupName, location }) => ({
+const locationsForMap = computed<NamedPoint[]>(() => {
+  if (locations) {
+    return locations.map(({ name, groupName, location }) => ({
       name,
-      group: groupName,
+      project: groupName,
       location: location as LatLng,
     }));
   }
   return [];
 });
-const activeStationsForMap = computed<NamedPoint[]>(() => {
-  if (activeStations) {
-    return activeStations.map(({ name, groupName, location }) => ({
+const activeLocationsForMap = computed<NamedPoint[]>(() => {
+  if (activeLocations) {
+    return activeLocations.map(({ name, groupName, location }) => ({
       name,
-      group: groupName,
+      project: groupName,
       location: location as LatLng,
     }));
   }
   return [];
 });
-const thisStationPoint = {
-  name: station.name,
-  group: station.groupName,
-  location: station.location as LatLng,
+const thisLocationPoint = {
+  name: location.name,
+  group: location.groupName,
+  location: location.location as LatLng,
 };
 
 const speciesSummary = computed<[string, number][]>(() =>
-  visitsCountBySpecies(visitsForStation.value)
+  visitsCountBySpecies(visitsForLocation.value)
 );
 
 const highlightedPoint = computed<NamedPoint | null>(() => {
-  if (stations && currentlyHighlightedStation.value) {
-    const station = stations.find(
-      ({ id }) => id === currentlyHighlightedStation.value
+  if (locations && currentlyHighlightedLocation.value) {
+    const location = locations.find(
+      ({ id }) => id === currentlyHighlightedLocation.value
     );
-    if (station) {
+    if (location) {
       return {
-        name: station.name,
-        group: station.groupName,
-        location: station.location,
+        name: location.name,
+        project: location.groupName,
+        location: location.location,
       };
     }
   }
@@ -86,19 +86,19 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
     <div class="map-container">
       <map-with-points
         :highlighted-point="highlightedPoint"
-        :points="stationsForMap"
-        :active-points="activeStationsForMap"
+        :points="locationsForMap"
+        :active-points="activeLocationsForMap"
         :is-interactive="false"
         :zoom="false"
         :can-change-base-map="false"
         :has-attribution="false"
         :markers-are-interactive="false"
-        :focused-point="thisStationPoint"
+        :focused-point="thisLocationPoint"
       >
       </map-with-points>
       <div class="overlay me-1">
         <div class="station-name mb-1 p-1 px-sm-1 py-sm-0">
-          {{ station.name }}
+          {{ location.name }}
         </div>
         <div class="visit-count p-1 px-sm-1 py-sm-0">
           {{ visitCount }} visits

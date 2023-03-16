@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { currentSelectedGroup } from "@models/LoggedInUser";
-import type { SelectedGroup } from "@models/LoggedInUser";
+import { currentSelectedProject } from "@models/LoggedInUser";
+import type { SelectedProject } from "@models/LoggedInUser";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, ref } from "vue";
 import { BFormCheckboxGroup } from "bootstrap-vue-3";
-import { inviteSomeoneToGroup } from "@api/Group";
+import { inviteSomeoneToProject } from "@api/Project";
 
 const emit = defineEmits<{
   (e: "invited"): void;
@@ -33,8 +33,8 @@ const resetFormValues = () => {
 
 const invitePendingUser = async () => {
   submittingInvite.value = true;
-  const inviteResponse = await inviteSomeoneToGroup(
-    (currentSelectedGroup.value as SelectedGroup).id,
+  const inviteResponse = await inviteSomeoneToProject(
+    (currentSelectedProject.value as SelectedProject).id,
     inviteeEmailAddress.value,
     permissions.value.includes("admin"),
     permissions.value.includes("owner")
@@ -54,8 +54,8 @@ const invitePendingUser = async () => {
 };
 
 const permissionsOptions = [
-  { value: "admin", text: "Invite as a group admin" },
-  { value: "owner", text: "Invite as a group owner" },
+  { value: "admin", text: "Invite as a project admin" },
+  { value: "owner", text: "Invite as a project owner" },
 ];
 
 const permissions = ref<string[]>([]);
@@ -73,8 +73,9 @@ const permissions = ref<string[]>([]);
   >
     <b-form>
       <p>
-        You can invite someone to this group by entering their email here.
-        They'll be sent an email with a link that will let them join your group.
+        You can invite someone to this project by entering their email here.
+        They'll be sent an email with a link that will let them join your
+        project.
       </p>
       <div class="input-group mb-3">
         <b-form-input

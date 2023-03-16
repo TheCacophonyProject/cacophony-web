@@ -3,25 +3,25 @@ import type {
   ApiUserSettings,
 } from "@typedefs/api/user";
 import type { Ref } from "vue";
-import type { ErrorResult, JwtTokenPayload } from "@api/types";
+import type { ErrorResult, JwtTokenPayload, LoadedResource } from "@api/types";
 import { computed, reactive, ref, watch } from "vue";
 import { login as userLogin, saveUserSettings } from "@api/User";
-import type { GroupId } from "@typedefs/api/common";
+import type { GroupId as ProjectId } from "@typedefs/api/common";
 import type {
-  ApiGroupResponse,
-  ApiGroupSettings,
-  ApiGroupUserSettings,
+  ApiGroupResponse as ApiProjectResponse,
+  ApiGroupSettings as ApiProjectSettings,
+  ApiGroupUserSettings as ApiProjectUserSettings,
 } from "@typedefs/api/group";
 import { decodeJWT, urlNormaliseName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
 import {
-  getDevicesForGroup,
-  getGroups,
-  saveGroupSettings,
-  saveGroupUserSettings,
-} from "@api/Group";
+  getDevicesForProject,
+  getProjects,
+  saveProjectSettings,
+  saveProjectUserSettings,
+} from "@api/Project";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 
 export interface LoggedInUserAuth {
@@ -37,26 +37,27 @@ export interface PendingRequest {
   errors?: ErrorResult;
 }
 
-export const CurrentUserCreds = ref<LoggedInUserAuth | null>(null);
-export const CurrentUser = ref<LoggedInUser | null>(null);
-export const UserGroups = ref<ApiGroupResponse[] | null>(null);
-export const DevicesForCurrentGroup = ref<ApiDeviceResponse[] | null>(null);
+export const CurrentUserCreds = ref<LoadedResource<LoggedInUserAuth>>(null);
+export const CurrentUser = ref<LoadedResource<LoggedInUser>>(null);
+export const UserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
+export const DevicesForCurrentProject =
+  ref<LoadedResource<ApiDeviceResponse[]>>(null);
 
-export const nonPendingUserGroups = computed<ApiGroupResponse[]>(() => {
-  if (UserGroups.value === null) {
+export const nonPendingUserProjects = computed<ApiProjectResponse[]>(() => {
+  if (!UserProjects.value) {
     return [];
   }
-  return UserGroups.value.filter((group) => group.pending === undefined);
+  return UserProjects.value.filter((project) => project.pending === undefined);
 });
 
-export const pendingUserGroups = computed<ApiGroupResponse[]>(() => {
-  if (UserGroups.value === null) {
+export const pendingUserProjects = computed<ApiProjectResponse[]>(() => {
+  if (!UserProjects.value) {
     return [];
   }
-  return UserGroups.value.filter((group) => group.pending !== undefined);
+  return UserProjects.value.filter((project) => project.pending !== undefined);
 });
-export const userHasPendingGroups = computed<boolean>(() => {
-  return pendingUserGroups.value.length !== 0;
+export const userHasPendingProjects = computed<boolean>(() => {
+  return pendingUserProjects.value.length !== 0;
 });
 
 // TODO - Test opening a whole lot of tabs, print who wins the tokenRefresh race in the page title
@@ -70,18 +71,12 @@ export const userIsLoggedIn = computed<boolean>({
   },
 });
 
-watch(userIsLoggedIn, (next) => {
-  if (!next) {
-    debugger;
-  }
+export const userHasProjects = computed<boolean>(() => {
+  return nonPendingUserProjects.value.length !== 0;
 });
 
-export const userHasGroups = computed<boolean>(() => {
-  return nonPendingUserGroups.value.length !== 0;
-});
-
-export const userHasGroupsIncludingPending = computed<boolean>(() => {
-  return UserGroups.value !== null && UserGroups.value?.length !== 0;
+export const userHasProjectsIncludingPending = computed<boolean>(() => {
+  return !!UserProjects.value && UserProjects.value.length !== 0;
 });
 
 export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
@@ -90,27 +85,27 @@ export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
 };
 
 export const persistUserGroupSettings = async (
-  userSettings: ApiGroupUserSettings
+  userSettings: ApiProjectUserSettings
 ) => {
-  if (currentSelectedGroup.value) {
-    const localGroupToUpdate = nonPendingUserGroups.value.find(
-      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+  if (currentSelectedProject.value) {
+    const localProjectToUpdate = nonPendingUserProjects.value.find(
+      ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
     );
-    if (localGroupToUpdate) {
-      localGroupToUpdate.userSettings = userSettings;
-      await saveGroupUserSettings(localGroupToUpdate.id, userSettings);
+    if (localProjectToUpdate) {
+      localProjectToUpdate.userSettings = userSettings;
+      await saveProjectUserSettings(localProjectToUpdate.id, userSettings);
     }
   }
 };
 
-export const persistGroupSettings = async (settings: ApiGroupSettings) => {
-  if (currentSelectedGroup.value) {
-    const localGroupToUpdate = nonPendingUserGroups.value.find(
-      ({ id }) => id === (currentSelectedGroup.value as SelectedGroup).id
+export const persistProjectSettings = async (settings: ApiProjectSettings) => {
+  if (currentSelectedProject.value) {
+    const localProjectToUpdate = nonPendingUserProjects.value.find(
+      ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
     );
-    if (localGroupToUpdate) {
-      localGroupToUpdate.settings = settings;
-      await saveGroupSettings(localGroupToUpdate.id, settings);
+    if (localProjectToUpdate) {
+      localProjectToUpdate.settings = settings;
+      await saveProjectSettings(localProjectToUpdate.id, settings);
     }
   }
 };
@@ -162,6 +157,7 @@ export const login = async (
       refreshingToken: false,
     });
   } else {
+    console.log("Sign in error", loggedInUserResponse.result);
     signInInProgress.errors = loggedInUserResponse.result;
   }
   signInInProgress.requestPending = false;
@@ -242,7 +238,9 @@ const refreshCredentials = async () => {
   );
 
   if (rememberedCredentials) {
-    console.warn("-- Resuming from saved credentials");
+    if (!import.meta.env.DEV) {
+      console.warn("-- Resuming from saved credentials");
+    }
     let currentUserCreds;
     const now = new Date();
     try {
@@ -254,7 +252,9 @@ const refreshCredentials = async () => {
           CurrentUserCreds.value = reactive<LoggedInUserAuth>(currentUserCreds);
         }
         refreshLocallyStoredUser();
-        console.log("Not out of date yet, can use existing user");
+        if (!import.meta.env.DEV) {
+          console.log("Not out of date yet, can use existing user");
+        }
         return;
       } else {
         await maybeRefreshStaleCredentials();
@@ -277,18 +277,18 @@ export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
   window.localStorage.removeItem("saved-login-user-data");
-  UserGroups.value = null;
+  UserProjects.value = null;
   userIsLoggedIn.value = false;
 };
 
-export const switchCurrentGroup = (newGroup: {
+export const switchCurrentProject = (newGroup: {
   groupName: string;
-  id: GroupId;
+  id: ProjectId;
 }): boolean => {
   // Save the current (new) group to the local user settings, and persist it to the server.
   const loggedInUser = CurrentUser.value as LoggedInUser;
   if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
-    if (currentSelectedGroup.value) {
+    if (currentSelectedProject.value) {
       // Abort requests for the previous group.
       console.warn("!!! Abort requests");
       CurrentViewAbortController.newView();
@@ -309,7 +309,7 @@ export const switchCurrentGroup = (newGroup: {
 export const currentEUAVersion = ref(0);
 
 export const hasAcceptedSomeEUA = computed<boolean>(() => {
-  return !!CurrentUser.value?.endUserAgreement;
+  return !!CurrentUser.value && !!CurrentUser.value?.endUserAgreement;
 });
 
 export const euaIsOutOfDate = computed<boolean>(() => {
@@ -331,21 +331,21 @@ export const currentUserSettings = computed<ApiUserSettings | false>(() => {
   return false;
 });
 
-export type SelectedGroup = {
+export interface SelectedProject {
   groupName: string;
-  id: GroupId;
+  id: ProjectId;
   admin?: boolean;
-  settings?: ApiGroupSettings;
-  userSettings?: ApiGroupUserSettings;
-};
-export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
+  settings?: ApiProjectSettings;
+  userSettings?: ApiProjectUserSettings;
+}
+export const currentSelectedProject = computed<SelectedProject | false>(() => {
   if (
     userIsLoggedIn.value &&
     currentUserSettings.value &&
-    UserGroups.value !== null
+    UserProjects.value !== null
   ) {
     // Basically don't try to get currentSelectedGroup until UserGroups has loaded?
-    if (nonPendingUserGroups.value.length === 0) {
+    if (nonPendingUserProjects.value.length === 0) {
       debugger;
       return false;
     }
@@ -355,7 +355,7 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
     ) {
       const potentialGroupId =
         currentUserSettings.value.currentSelectedGroup.id;
-      const matchedGroup = nonPendingUserGroups.value.find(
+      const matchedGroup = nonPendingUserProjects.value.find(
         ({ id }) => id === potentialGroupId
       );
       if (!matchedGroup) {
@@ -372,9 +372,9 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
       };
     }
   }
-  if (nonPendingUserGroups.value.length !== 0) {
+  if (nonPendingUserProjects.value.length !== 0) {
     const { id, groupName, settings, userSettings, admin, owner } =
-      nonPendingUserGroups.value[0];
+      nonPendingUserProjects.value[0];
     return {
       id,
       groupName,
@@ -387,20 +387,21 @@ export const currentSelectedGroup = computed<SelectedGroup | false>(() => {
   return false;
 });
 
-export const userIsAdminForCurrentSelectedGroup = computed<boolean>(() => {
-  if (currentSelectedGroup.value && UserGroups.value) {
-    const currentGroup = UserGroups.value.find(
+export const userIsAdminForCurrentSelectedProject = computed<boolean>(() => {
+  if (currentSelectedProject.value && UserProjects.value) {
+    const currentGroup = UserProjects.value.find(
       ({ id }) =>
         id ===
-        (currentSelectedGroup.value as { groupName: string; id: GroupId }).id
+        (currentSelectedProject.value as { groupName: string; id: ProjectId })
+          .id
     );
     return (currentGroup && !!currentGroup.admin) || false;
   }
   return false;
 });
 
-export const userHasMultipleGroups = computed<boolean>(() => {
-  return (UserGroups.value && UserGroups.value?.length > 1) || false;
+export const userHasMultipleProjects = computed<boolean>(() => {
+  return (UserProjects.value && UserProjects.value?.length > 1) || false;
 });
 
 export const shouldViewAsSuperUser = computed<boolean>(() => {
@@ -413,52 +414,52 @@ export const shouldViewAsSuperUser = computed<boolean>(() => {
 // TODO - If viewing other user as super user, return appropriate name
 export const userDisplayName = computed<string>(() => {
   if (userIsLoggedIn.value) {
-    return CurrentUser.value?.userName || "";
+    return (!!CurrentUser.value && CurrentUser.value?.userName) || "";
   }
   return "";
 });
 
 export const userHasConfirmedEmailAddress = computed<boolean>(() => {
   if (userIsLoggedIn.value) {
-    return CurrentUser.value?.emailConfirmed || false;
+    return (!!CurrentUser.value && CurrentUser.value?.emailConfirmed) || false;
   }
   return false;
 });
 
-export const urlNormalisedCurrentGroupName = computed<string>(
+export const urlNormalisedCurrentProjectName = computed<string>(
   () =>
-    (currentSelectedGroup.value &&
-      urlNormaliseName(currentSelectedGroup.value.groupName)) ||
+    (currentSelectedProject.value &&
+      urlNormaliseName(currentSelectedProject.value.groupName)) ||
     ""
 );
 
 export const isResumingSession = ref(false);
 
 export const isLoggingInAutomatically = ref(false);
-export const isFetchingGroups = ref(false);
+export const isFetchingProjects = ref(false);
 
-export const refreshUserGroups = async () => {
+export const refreshUserProjects = async () => {
   // Grab the users' groups, and select the first one.
-  isFetchingGroups.value = true;
-  console.warn("Fetching user groups");
+  isFetchingProjects.value = true;
+  console.warn("Fetching user projects");
   const NO_ABORT = false;
-  const groupsResponse = await getGroups(NO_ABORT);
-  if (groupsResponse.success) {
-    UserGroups.value = reactive(groupsResponse.result.groups);
+  const projectsResponse = await getProjects(NO_ABORT);
+  if (projectsResponse.success) {
+    UserProjects.value = reactive(projectsResponse.result.groups);
     //console.warn("Fetched user groups", currentSelectedGroup.value, JSON.stringify(UserGroups.value));
   }
-  isFetchingGroups.value = false;
-  return groupsResponse;
+  isFetchingProjects.value = false;
+  return projectsResponse;
 };
 
 // Global modal control
-export const creatingNewGroup = reactive({ enabled: false, visible: false });
+export const creatingNewProject = reactive({ enabled: false, visible: false });
 export const showEUAOutOfDate = computed<{
   enabled: boolean;
   visible: boolean;
 }>(() => ({ enabled: euaIsOutOfDate.value, visible: false }));
-export const joiningNewGroup = reactive({ enabled: false, visible: false });
-export const showSwitchGroup = reactive({ enabled: false, visible: false });
+export const joiningNewProject = reactive({ enabled: false, visible: false });
+export const showSwitchProject = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
 
 const windowDimensions = useWindowSize();
@@ -501,19 +502,19 @@ export const rafFps = ref(60);
 }
 
 export const currentGroupName = computed<string>(() => {
-  if (currentSelectedGroup.value) {
-    return currentSelectedGroup.value.groupName;
+  if (currentSelectedProject.value) {
+    return currentSelectedProject.value.groupName;
   }
   return "";
 });
 
-export const userGroupsLoaded = async () => {
-  if (UserGroups.value !== null) {
+export const userProjectsLoaded = async () => {
+  if (UserProjects.value !== null) {
     return true;
   } else {
     return new Promise((resolve, reject) => {
-      watch(UserGroups, (next) => {
-        if (next?.length) {
+      watch(UserProjects, (next) => {
+        if (next && next?.length) {
           resolve(true);
         } else {
           reject();
@@ -523,13 +524,13 @@ export const userGroupsLoaded = async () => {
   }
 };
 
-export const groupDevicesLoaded = async () => {
-  if (DevicesForCurrentGroup.value !== null) {
+export const projectDevicesLoaded = async () => {
+  if (DevicesForCurrentProject.value !== null) {
     return true;
   } else {
     return new Promise((resolve, reject) => {
-      watch(DevicesForCurrentGroup, (next) => {
-        if (next?.length) {
+      watch(DevicesForCurrentProject, (next) => {
+        if (next && next?.length) {
           resolve(true);
         } else {
           reject();

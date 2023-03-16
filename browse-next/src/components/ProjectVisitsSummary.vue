@@ -2,44 +2,44 @@
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { computed, ref } from "vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { ApiStationResponse } from "@typedefs/api/station";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { LatLng } from "leaflet";
 import VisitsTimeline from "@/components/VisitsTimeline.vue";
 import type { NamedPoint } from "@models/mapUtils";
-import { currentlyHighlightedStation } from "@models/SelectionContext";
+import { currentlyHighlightedLocation } from "@models/SelectionContext";
 import { locationsAreEqual } from "@/utils";
 
-const { stations, visits, activeStations, startDate, loading } = defineProps<{
+const { locations, visits, activeLocations, startDate, loading } = defineProps<{
   visits: ApiVisitResponse[];
-  stations: ApiStationResponse[];
-  activeStations: ApiStationResponse[];
+  locations: ApiLocationResponse[];
+  activeLocations: ApiLocationResponse[];
   startDate: Date;
   loading: boolean;
 }>();
 const highlightedPointInternal = ref<NamedPoint | null>(null);
 const highlightedPoint = computed<NamedPoint | null>(() => {
   if (
-    stations &&
-    (currentlyHighlightedStation.value || highlightedPointInternal.value)
+    locations &&
+    (currentlyHighlightedLocation.value || highlightedPointInternal.value)
   ) {
-    let station: ApiStationResponse | undefined;
-    if (currentlyHighlightedStation.value) {
-      station = stations.find(
-        ({ id }) => id === currentlyHighlightedStation.value
+    let location: ApiLocationResponse | undefined;
+    if (currentlyHighlightedLocation.value) {
+      location = locations.find(
+        ({ id }) => id === currentlyHighlightedLocation.value
       );
     } else {
-      station = stations.find(({ location }) =>
+      location = locations.find(({ location }) =>
         locationsAreEqual(
           location,
           highlightedPointInternal.value?.location as LatLng
         )
       );
     }
-    if (station) {
+    if (location) {
       return {
-        name: station.name,
-        group: station.groupName,
-        location: station.location,
+        name: location.name,
+        project: location.groupName,
+        location: location.location,
       };
     }
   }
@@ -49,19 +49,19 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 const highlightPoint = (p: NamedPoint | null) => {
   highlightedPointInternal.value = p;
 };
-const stationsForMap = computed<NamedPoint[]>(() => {
-  return stations
+const locationsForMap = computed<NamedPoint[]>(() => {
+  return locations
     .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
     .map(({ name, groupName, location }) => ({
       name,
-      group: groupName,
+      project: groupName,
       location: location as LatLng,
     }));
 });
-const activeStationsForMap = computed<NamedPoint[]>(() => {
-  return activeStations.map(({ name, groupName, location }) => ({
+const activeLocationsForMap = computed<NamedPoint[]>(() => {
+  return activeLocations.map(({ name, groupName, location }) => ({
     name,
-    group: groupName,
+    project: groupName,
     location: location as LatLng,
   }));
 });
@@ -73,8 +73,8 @@ const hasVisits = computed<boolean>(() => {
   <div>
     <div class="map-and-timeline">
       <map-with-points
-        :points="stationsForMap"
-        :active-points="activeStationsForMap"
+        :points="locationsForMap"
+        :active-points="activeLocationsForMap"
         :highlighted-point="highlightedPoint"
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
@@ -87,7 +87,7 @@ const hasVisits = computed<boolean>(() => {
       <visits-timeline
         v-if="hasVisits"
         :visits="visits"
-        :stations="activeStationsForMap"
+        :locations="activeLocationsForMap"
         :start-date="startDate"
       />
       <div v-else-if="!loading">

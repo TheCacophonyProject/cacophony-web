@@ -109,7 +109,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       {
         method: "PATCH",
-        url: v1ApiPath(`devices/fix-location/${deviceId}`),
+        url: v1ApiPath(`devices/${deviceId}/fix-location`),
         body,
       },
       userName,

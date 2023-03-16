@@ -1,7 +1,7 @@
 <template>
   <card-table
     compact
-    :items="stations"
+    :items="locations"
     @entered-item="enteredTableItem"
     @left-item="leftTableItem"
     :highlighted-item="highlightedItem"
@@ -10,46 +10,46 @@
       <span>
         {{ card.name }}
       </span>
-      <div v-html="activeBetween(card as ApiStationResponse)" />
+      <div v-html="activeBetween(card as ApiLocationResponse)" />
     </template>
   </card-table>
 </template>
 
 <script setup lang="ts">
-import type { ApiStationResponse } from "@typedefs/api/station";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import CardTable from "@/components/CardTable.vue";
-import { lastActiveStationTime } from "@/utils";
+import { lastActiveLocationTime } from "@/utils";
 import { DateTime } from "luxon";
 const noWrap = (str: string) => str.replace(/ /g, "&nbsp;");
-const lastSeenAt = (station: ApiStationResponse): string => {
-  const lastTime = lastActiveStationTime(station);
+const lastSeenAt = (location: ApiLocationResponse): string => {
+  const lastTime = lastActiveLocationTime(location);
   return noWrap(
     lastTime
       ? (DateTime.fromJSDate(lastTime).toRelative() as string)
-      : "never (empty station)"
+      : "never (empty location)"
   );
 };
 
-const activeBetween = (station: ApiStationResponse): string => {
+const activeBetween = (station: ApiLocationResponse): string => {
   return `${DateTime.fromJSDate(
     new Date(station.activeAt)
   ).toRelative()} &ndash; ${lastSeenAt(station)}`;
 };
 
-const { stations, highlightedItem } = defineProps<{
-  stations: ApiStationResponse[];
-  highlightedItem: ApiStationResponse | null;
+const { locations, highlightedItem } = defineProps<{
+  locations: ApiLocationResponse[];
+  highlightedItem: ApiLocationResponse | null;
 }>();
 
 const emit = defineEmits<{
-  (e: "entered-item", payload: ApiStationResponse): void;
-  (e: "left-item", payload: ApiStationResponse): void;
+  (e: "entered-item", payload: ApiLocationResponse): void;
+  (e: "left-item", payload: ApiLocationResponse): void;
 }>();
-const enteredTableItem = (item: ApiStationResponse) => {
+const enteredTableItem = (item: ApiLocationResponse) => {
   emit("entered-item", item);
 };
 
-const leftTableItem = (item: ApiStationResponse) => {
+const leftTableItem = (item: ApiLocationResponse) => {
   emit("left-item", item);
 };
 </script>

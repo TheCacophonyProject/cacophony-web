@@ -4,23 +4,32 @@ import type { ComputedRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteRecordName } from "vue-router";
 import { BModal } from "bootstrap-vue-3";
-import { urlNormalisedCurrentSelectedGroupName } from "@models/provides";
+import { urlNormalisedCurrentSelectedProjectName } from "@models/provides";
 const route = useRoute();
 const router = useRouter();
 const emit = defineEmits(["close", "shown"]);
 
 const urlNormalisedGroupName = inject(
-  urlNormalisedCurrentSelectedGroupName
+  urlNormalisedCurrentSelectedProjectName
 ) as ComputedRef<string>;
-const { fadeIn, parentRouteName } = defineProps<{
+const {
+  fadeIn,
+  parentRouteName,
+  showInactive = false,
+} = defineProps<{
   fadeIn: boolean;
   parentRouteName: string;
+  showInactive?: boolean;
 }>();
 
 const closedModal = () => {
+  const params = { groupName: urlNormalisedGroupName.value };
+  if (parentRouteName === "devices" && showInactive) {
+    (params as any).all = "all";
+  }
   router.push({
     name: parentRouteName,
-    params: { groupName: urlNormalisedGroupName.value },
+    params,
   });
   emit("close");
 };

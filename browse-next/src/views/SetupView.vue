@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import {
-  creatingNewGroup,
+  creatingNewProject,
   CurrentUser,
-  joiningNewGroup,
+  joiningNewProject,
   refreshLocallyStoredUserActivation,
   userDisplayName,
   userHasConfirmedEmailAddress,
-  userHasGroups,
-  userHasPendingGroups,
-  pendingUserGroups,
-  refreshUserGroups,
-  urlNormalisedCurrentGroupName,
+  userHasProjects,
+  userHasPendingProjects,
+  pendingUserProjects,
+  refreshUserProjects,
+  urlNormalisedCurrentProjectName,
   setLoggedInUserData,
   setLoggedInUserCreds,
 } from "@models/LoggedInUser";
 import {
-  acceptGroupInvitation,
+  acceptProjectInvitation,
   changeAccountEmail,
   debugGetEmailConfirmationToken,
   resendAccountActivationEmail as resendEmail,
@@ -25,7 +25,7 @@ import { computed, onBeforeMount, onUnmounted, ref } from "vue";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 import { formFieldInputText } from "@/utils";
 import CardTable from "@/components/CardTable.vue";
-import type { ApiGroupResponse } from "@typedefs/api/group";
+import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 
 // TODO: Stop admins adding users without confirmed email addresses.
@@ -102,15 +102,15 @@ const updateEmailAddress = async () => {
 };
 
 const acceptingInvite = ref<boolean>(false);
-const acceptInvitationToGroup = async (group: ApiGroupResponse) => {
+const acceptInvitationToProject = async (project: ApiProjectResponse) => {
   acceptingInvite.value = true;
-  const acceptInviteResponse = await acceptGroupInvitation(group.id);
+  const acceptInviteResponse = await acceptProjectInvitation(project.id);
   if (acceptInviteResponse.success) {
-    await refreshUserGroups();
+    await refreshUserProjects();
     await router.push({
       name: "dashboard",
       params: {
-        groupName: urlNormalisedCurrentGroupName.value,
+        projectName: urlNormalisedCurrentProjectName.value,
       },
     });
   }
@@ -140,12 +140,12 @@ const needsValidationAndIsValidEmailAddress =
     newUserEmailAddress.touched ? isValidEmailAddress.value : undefined
   );
 
-const pendingGroupTableItems = computed(() => {
-  return pendingUserGroups.value.map((group) => {
+const pendingProjectTableItems = computed(() => {
+  return pendingUserProjects.value.map((group) => {
     const item: {
       groupName: string;
-      status: { value: ApiGroupResponse };
-      permissions?: { value: ApiGroupResponse };
+      status: { value: ApiProjectResponse };
+      permissions?: { value: ApiProjectResponse };
     } = {
       groupName: group.groupName,
       status: { value: group },
@@ -192,7 +192,9 @@ const debugConfirmEmail = async () => {
 <template>
   <div
     class="setup-form p-4 pb-3"
-    :class="{ 'groups-setup': userHasConfirmedEmailAddress && !userHasGroups }"
+    :class="{
+      'groups-setup': userHasConfirmedEmailAddress && !userHasProjects,
+    }"
     v-if="CurrentUser"
   >
     <h1>Finish setting up your account</h1>
@@ -201,7 +203,7 @@ const debugConfirmEmail = async () => {
         Kia ora <span>{{ userDisplayName }}</span>
       </span>
     </div>
-    <div v-if="!userHasConfirmedEmailAddress && !userHasGroups">
+    <div v-if="!userHasConfirmedEmailAddress && !userHasProjects">
       <p class="mt-3">
         Welcome to your new Cacophony account. You should have received an email
         with a link to confirm your email address
@@ -335,40 +337,40 @@ const debugConfirmEmail = async () => {
       </p>
     </div>
     <div v-else class="flex-fill">
-      <h2 class="h3">You don't belong to any groups ... yet.</h2>
+      <h2 class="h3">You don't belong to any projects ... yet.</h2>
       <p>
-        Groups are a <em>collection</em> of recording devices out in the field
+        Projects are a <em>collection</em> of recording devices out in the field
         gathering data, and users (like you) who can access the recordings and
         reporting from those devices.
       </p>
       <div class="d-flex flex-column flex-md-row">
         <div class="card mb-3 me-md-3 option-item">
           <div class="card-body d-flex flex-column justify-content-between">
-            <h5 class="card-title">Start a new group</h5>
+            <h5 class="card-title">Start a new project</h5>
             <p>
               If you are the person setting up a new device, first create a new
-              group. All the devices you manage will be linked together through
-              this group, so choose a name for your group that relates to your
-              organisation, project or property.
+              project. All the devices you manage will be linked together
+              through this project, so choose a name for your project that
+              relates to your organisation, project or property.
             </p>
             <button
               class="btn btn-primary"
               type="button"
-              data-cy="create new group button"
-              @click="creatingNewGroup.enabled = true"
+              data-cy="create new project button"
+              @click="creatingNewProject.enabled = true"
             >
-              <font-awesome-icon icon="plus" /> Create a new group
+              <font-awesome-icon icon="plus" /> Create a new project
             </button>
           </div>
         </div>
         <div class="card mb-3 option-item">
           <div
             class="card-body d-flex flex-column"
-            v-if="userHasPendingGroups"
+            v-if="userHasPendingProjects"
             data-cy="pending group memberships"
           >
-            <h5 class="card-title">Pending group memberships</h5>
-            <card-table :items="pendingGroupTableItems">
+            <h5 class="card-title">Pending project memberships</h5>
+            <card-table :items="pendingProjectTableItems">
               <template #card="{ card }">
                 <div>
                   <div
@@ -376,15 +378,15 @@ const debugConfirmEmail = async () => {
                   >
                     <h6>{{ card.groupName }}</h6>
                     <div v-if="card.status.value.pending === 'requested'">
-                      Waiting for approval from group admin
+                      Waiting for approval from project admin
                     </div>
                     <div v-else-if="card.status.value.pending === 'invited'">
                       <button
                         type="button"
-                        data-cy="accept group invitation button"
+                        data-cy="accept project invitation button"
                         class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
                         @click.prevent="
-                          () => acceptInvitationToGroup(card.status.value)
+                          () => acceptInvitationToProject(card.status.value)
                         "
                         :disabled="acceptingInvite"
                       >
@@ -417,13 +419,13 @@ const debugConfirmEmail = async () => {
               </template>
               <template #status="{ cell }">
                 <div v-if="cell.value.pending === 'requested'">
-                  Waiting for approval from group admin
+                  Waiting for approval from project admin
                 </div>
                 <div v-else-if="cell.value.pending === 'invited'">
                   <button
                     type="button"
                     class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
-                    @click.prevent="() => acceptInvitationToGroup(cell.value)"
+                    @click.prevent="() => acceptInvitationToProject(cell.value)"
                     :disabled="acceptingInvite"
                   >
                     <font-awesome-icon icon="thumbs-up" />
@@ -450,20 +452,20 @@ const debugConfirmEmail = async () => {
             </card-table>
           </div>
           <div class="card-body d-flex flex-column">
-            <h5 class="card-title">Join a group</h5>
+            <h5 class="card-title">Join a project</h5>
             <p class="flex-fill">
-              Alternately, you can ask to become a member of an existing group.
-              Once granted permission by a group administrator, you'll be able
-              to see all of the recording data from that group.
+              Alternately, you can ask to become a member of an existing
+              project. Once granted permission by a project administrator,
+              you'll be able to see all of the recording data from that project.
             </p>
             <button
               class="btn btn-secondary"
               type="button"
-              data-cy="join existing group button"
-              @click="joiningNewGroup.enabled = true"
+              data-cy="join existing project button"
+              @click="joiningNewProject.enabled = true"
             >
               <font-awesome-icon icon="question" /> Ask to join an existing
-              group
+              project
             </button>
           </div>
         </div>

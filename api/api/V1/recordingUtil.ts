@@ -245,9 +245,9 @@ async function getThumbnail(rec: Recording, trackId?: number) {
 }
 
 const THUMBNAIL_SIZE = 64;
-const THUMBNAIL_PALETTE = "Viridis";
+export const THUMBNAIL_PALETTE = "Viridis";
 // Gets a raw cptv frame from a recording
-async function getCPTVFrames(
+export async function getCPTVFrames(
   recording: Recording,
   frameNumbers: Set<number>
 ): Promise<any | undefined> {
@@ -1064,7 +1064,8 @@ async function query(
 async function bulkDelete(
   requestUserId: UserId,
   type: RecordingType,
-  options: RecordingQueryOptions
+  options: RecordingQueryOptions,
+  actuallyDelete: boolean = false // FIXME - Make recordings actually be deleted?
 ): Promise<number[]> {
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };

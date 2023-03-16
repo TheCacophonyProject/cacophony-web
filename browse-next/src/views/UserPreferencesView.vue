@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { CurrentUser, setLoggedInUserData } from "@models/LoggedInUser";
-import { computed, ref } from "vue";
+import { setLoggedInUserData } from "@models/LoggedInUser";
+import type { LoggedInUser } from "@models/LoggedInUser";
+import { computed, inject, ref } from "vue";
+import type { Ref } from "vue";
 import { formFieldInputText, isValidName } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 import type { ErrorResult, FieldValidationError } from "@api/types";
 import { updateUserFields } from "@api/User";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import router from "@/router";
+import { currentUser as currentUserInfo } from "@models/provides";
+
+const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 
 const changeDisplayNameModal = ref<boolean>(false);
 const changeEmailModal = ref<boolean>(false);
@@ -134,9 +139,9 @@ const updateUserDisplayName = async () => {
   const updatedUserResponse = await updateUserFields({ userName: name });
 
   if (updatedUserResponse.success) {
-    const currentUser = CurrentUser.value || {};
+    const currentUserInfo = currentUser.value || {};
     setLoggedInUserData({
-      ...(currentUser as ApiLoggedInUserResponse),
+      ...(currentUserInfo as ApiLoggedInUserResponse),
       userName: name,
     });
   } else {
@@ -157,9 +162,9 @@ const updateUserEmailAddress = async () => {
   const updatedUserResponse = await updateUserFields({ email: emailAddress });
 
   if (updatedUserResponse.success) {
-    const currentUser = CurrentUser.value || {};
+    const currentUserInfo = currentUser.value || {};
     setLoggedInUserData({
-      ...(currentUser as ApiLoggedInUserResponse),
+      ...(currentUserInfo as ApiLoggedInUserResponse),
       email: emailAddress,
       emailConfirmed: false,
     });
@@ -184,7 +189,7 @@ const updateUserEmailAddress = async () => {
     <div>
       <span>My display name</span>
       <div class="d-flex align-items-center">
-        <span data-cy="user display name">{{ CurrentUser?.userName }}</span>
+        <span data-cy="user display name">{{ currentUser?.userName }}</span>
         <button
           type="button"
           class="btn ms-2"
@@ -198,7 +203,7 @@ const updateUserEmailAddress = async () => {
     <div>
       <span>My email (you use this when you sign in)</span>
       <div class="d-flex align-items-center">
-        <span cy-data="user email">{{ CurrentUser?.email }}</span>
+        <span cy-data="user email">{{ currentUser?.email }}</span>
         <button
           type="button"
           class="btn ms-2"

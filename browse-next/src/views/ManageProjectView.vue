@@ -11,46 +11,50 @@ const activeTabName = computed(() => {
 const navLinkClasses = ["nav-item", "nav-link", "border-0"];
 </script>
 <template>
-  <section-header>Manage group</section-header>
+  <section-header>Manage project</section-header>
   <div class="px-3 p-md-0">
     <p>
-      Administrate group to add or remove users who have access to this group,
-      change the default tags that users of this group see when tagging tracks.
+      Administrate project to add or remove users who have access to this
+      project, change the default tags that users of this project see when
+      tagging tracks.
     </p>
     <p>
       If I'm the only user, and there are no devices, and no recordings, then we
       should show the setup screen
     </p>
-    <p>TODO: Would be nice to have the option of renaming the group here?</p>
+    <p>TODO: Would be nice to have the option of renaming the project here?</p>
   </div>
   <ul class="nav nav-tabs justify-content-md-center justify-content-evenly">
     <router-link
-      :class="[...navLinkClasses, { active: activeTabName === 'group-users' }]"
+      :class="[
+        ...navLinkClasses,
+        { active: activeTabName === 'project-users' },
+      ]"
       title="Users"
       :to="{
-        name: 'group-users',
+        name: 'project-users',
       }"
       >Users</router-link
     >
     <router-link
       :class="[
         ...navLinkClasses,
-        { active: activeTabName === 'group-tag-settings' },
+        { active: activeTabName === 'project-tag-settings' },
       ]"
       title="Tag settings"
       :to="{
-        name: 'group-tag-settings',
+        name: 'project-tag-settings',
       }"
       >Tag settings</router-link
     >
     <router-link
       :class="[
         ...navLinkClasses,
-        { active: activeTabName === 'fix-station-locations' },
+        { active: activeTabName === 'fix-project-locations' },
       ]"
       title="Fix locations"
       :to="{
-        name: 'fix-station-locations',
+        name: 'fix-project-locations',
       }"
       >Fix locations</router-link
     >

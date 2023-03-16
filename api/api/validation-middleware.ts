@@ -5,7 +5,7 @@ import { oneOf, Result, ValidationChain } from "express-validator";
 import { expectedTypeOf } from "./middleware";
 import { Middleware } from "express-validator/src/base";
 import { extractValFromRequest } from "./extract-middleware";
-import {urlNormaliseName} from "@/emails/htmlEmailUtils";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils";
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
@@ -26,23 +26,34 @@ export const checkDeviceNameIsUniqueInGroup =
     if (nameIsFree) {
       // Check the url normalised version
       nameIsFree = await models.Device.freeDeviceName(
-          urlNormaliseName(deviceName),
-          response.locals.group.id
+        urlNormaliseName(deviceName),
+        response.locals.group.id
       );
     }
 
     if (nameIsFree) {
       // Check that the device name is not a reserved api path fragment:
-      if ([
+      if (
+        [
           "create-proxy-device",
           "fix-location",
           "users",
           "assign-schedule",
           "remove-schedule",
+          "cacophony-index",
+          "cacophony-index-histogram",
           "reregister",
           "heartbeat",
-          "history"
-      ].includes(deviceName)) {
+          "history",
+          "locations",
+          "location",
+          "in-group",
+          "reference-image",
+          "location-history",
+          "unique-track-tags",
+          "tracks-with-tag"
+        ].includes(deviceName)
+      ) {
         return next(new ClientError(`Device name ${deviceName} reserved`));
       }
     }

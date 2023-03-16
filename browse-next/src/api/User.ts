@@ -172,7 +172,7 @@ export const requestToJoinGroup = (
     abortable
   ) as Promise<FetchResult<void>>;
 
-export const acceptGroupInvitation = (groupId: GroupId, abortable = false) =>
+export const acceptProjectInvitation = (groupId: GroupId, abortable = false) =>
   CacophonyApi.post(
     `/api/v1/groups/${groupId}/accept-invitation`,
     {},

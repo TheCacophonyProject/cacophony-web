@@ -17,7 +17,9 @@
       "@views/*": ["./src/views/*"],
       "@models/*": ["./src/models/*"],
       "@typedefs/*":  ["../types/*"]
-    }
+    },
+//    "moduleResolution": "bundler",
+//    "allowImportingTsExtensions": true
   },
 
   "references": [

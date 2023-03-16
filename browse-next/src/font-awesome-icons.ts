@@ -54,7 +54,7 @@ import {
   faBurst,
   faThumbsUp as faThumbsUpSolid,
   faThumbsDown as faThumbsDownSolid,
-  faCheckCircle,
+  faCheckCircle as faCheckCircleSolid,
   faAngleDoubleRight,
   faEllipsis,
   faThumbTack,
@@ -69,6 +69,9 @@ import {
   faCamera,
   faHeart,
   faHeartBroken,
+  faCircleMinus,
+  faPowerOff,
+  faLeftRight,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -80,6 +83,8 @@ import {
   faThumbsDown,
   faFile,
   faFileVideo,
+  faCircle,
+  faCircleCheck,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -142,7 +147,7 @@ library.add(
   faThumbsUpSolid,
   faThumbsDown,
   faThumbsDownSolid,
-  faCheckCircle,
+  faCheckCircleSolid,
   faAngleDoubleRight,
   faEllipsis,
   faThumbTack,
@@ -158,7 +163,12 @@ library.add(
   faMusic,
   faCamera,
   faHeart,
-  faHeartBroken
+  faHeartBroken,
+  faCircleMinus,
+  faPowerOff,
+  faLeftRight,
+  faCircle,
+  faCircleCheck
 );
 
 export default FontAwesomeIcon;

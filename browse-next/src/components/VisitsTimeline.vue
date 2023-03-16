@@ -15,11 +15,11 @@ import {
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import { currentlyHighlightedStation } from "@models/SelectionContext";
+import { currentlyHighlightedLocation } from "@models/SelectionContext";
 
-const { visits, stations, startDate } = defineProps<{
+const { visits, locations, startDate } = defineProps<{
   visits: ApiVisitResponse[];
-  stations: NamedPoint[];
+  locations: NamedPoint[];
   startDate: Date;
 }>();
 
@@ -77,9 +77,9 @@ onBeforeUnmount(() => {
 });
 
 const timezoneForActiveStations = computed<string>(() => {
-  if (stations.length) {
-    const station = stations[0];
-    return timezoneForLocation(station.location);
+  if (locations.length) {
+    const location = locations[0];
+    return timezoneForLocation(location.location);
   }
   return "Auckland/Pacific";
 });
@@ -146,11 +146,11 @@ const dateAndDayOfWeek = (date: DateTime): string => {
 };
 
 const mouseOverVisit = (visit: ApiVisitResponse) => {
-  currentlyHighlightedStation.value = visit.stationId;
+  currentlyHighlightedLocation.value = visit.stationId;
 };
 
 const mouseLeftVisit = (_visit: ApiVisitResponse) => {
-  currentlyHighlightedStation.value = null;
+  currentlyHighlightedLocation.value = null;
 };
 </script>
 <template>

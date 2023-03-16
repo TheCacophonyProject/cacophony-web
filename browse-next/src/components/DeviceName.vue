@@ -1,4 +1,6 @@
-<template><font-awesome-icon :icon="deviceTypeIcon" /> {{ name }}</template>
+<template>
+  <font-awesome-icon :icon="deviceTypeIcon" class="me-2" /> {{ name }}
+</template>
 
 <script lang="ts" setup>
 import { computed } from "vue";

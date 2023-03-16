@@ -35,6 +35,12 @@ interface SuccessFetchResult<SUCCESS> {
   success: true;
 }
 
+interface WrappedSuccessFetchResult<SUCCESS> {
+  result: Record<string, SUCCESS>;
+  status: HttpSuccessCode;
+  success: true;
+}
+
 interface FailureFetchResult<FAILURE = ErrorResult> {
   result: FAILURE;
   status: HttpFailureCode;
@@ -70,3 +76,9 @@ export interface JwtAcceptInviteTokenPayload
 }
 
 export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;
+export type WrappedFetchResult<T> =
+  | WrappedSuccessFetchResult<T>
+  | FailureFetchResult;
+
+// NOTE: null means uninitialised, false means a failure occurred, undefined means loading in progress
+export type LoadedResource<T> = null | false | undefined | T;

@@ -1,5 +1,4 @@
 import registerAliases from "../module-aliases";
-registerAliases();
 import config from "../config";
 import log from "../logging";
 import { Device } from "@models/Device";
@@ -8,6 +7,9 @@ import moment from "moment";
 import models from "../models";
 import { sendEmail } from "@/emails/sendEmail";
 import { Op } from "sequelize";
+import { DeviceType } from "@typedefs/api/consts";
+
+registerAliases();
 
 async function getUserEvents(devices: Device[]) {
   const groupAdmins = {};
@@ -35,21 +37,37 @@ async function main() {
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
-  let devices = await models.Device.stoppedDevices();
   const stoppedEvents = await models.Event.latestEvents(null, null, {
     useCreatedDate: false,
     admin: true,
     eventType: ["stop-reported"],
   });
 
-  //filter devices which have already been alerted on
-  devices = devices.filter(
-    (device) =>
-      !stoppedEvents.find(
-        (event) =>
-          event.DeviceId == device.id && event.dateTime > device.nextHeartbeat
-      )
-  );
+  // filter devices which have already been alerted on
+  const devices = (await models.Device.stoppedDevices()).filter((device) => {
+    if (device.kind === DeviceType.Thermal) {
+      // NOTE: Replicate the deviance of 1 minute from `models.Device.stoppedDevices()` above
+      const nextHeartbeatMinusOneMin = new Date(device.nextHeartbeat);
+      nextHeartbeatMinusOneMin.setMinutes(
+        nextHeartbeatMinusOneMin.getMinutes() - 1
+      );
+      const hasAlerted =
+        stoppedEvents.find(
+          (event) =>
+            event.DeviceId == device.id &&
+            event.dateTime > nextHeartbeatMinusOneMin
+        ) !== undefined;
+      return !hasAlerted;
+    } else if (device.kind === DeviceType.Audio) {
+      const hasAlerted =
+        stoppedEvents.find(
+          (event) =>
+            event.DeviceId == device.id &&
+            event.dateTime > device.lastConnectionTime
+        ) !== undefined;
+      return !hasAlerted;
+    }
+  });
 
   if (devices.length == 0) {
     log.info("No new stopped devices");

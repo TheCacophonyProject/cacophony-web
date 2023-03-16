@@ -23,14 +23,17 @@ import { successResponse } from "./responseUtil";
 import { body, param, query } from "express-validator";
 import { Application, NextFunction, Request, Response } from "express";
 import { ClientError, UnprocessableError } from "../customErrors";
+import { dynamicImportESM } from "@/dynamic-import-esm";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
-  fetchAdminAuthorizedRequiredDeviceById, fetchAdminAuthorizedRequiredGroupByNameOrId,
+  fetchAdminAuthorizedRequiredDeviceById,
+  fetchAdminAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
-  fetchAuthorizedRequiredGroupById, fetchAuthorizedRequiredGroupByNameOrId,
+  fetchAuthorizedRequiredGroupById,
+  fetchAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredStationById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredScheduleById,
@@ -57,17 +60,25 @@ import logging from "@log";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 import { jsonSchemaOf } from "@api/schema-validation";
 import { Op } from "sequelize";
-import { DeviceHistory } from "@models/DeviceHistory";
-import {DeviceType, HttpStatusCode, RecordingType} from "@typedefs/api/consts";
+import {DeviceHistory, DeviceHistorySettings} from "@models/DeviceHistory";
+import {
+  DeviceType,
+  HttpStatusCode,
+  RecordingType,
+} from "@typedefs/api/consts";
 import { Recording } from "@models/Recording";
 import config from "@config";
-import recordingUtil from "@api/V1/recordingUtil";
+import recordingUtil, {
+  getCPTVFrames,
+  THUMBNAIL_PALETTE,
+} from "@api/V1/recordingUtil";
 import log from "@log";
-import {streamS3Object} from "@api/V1/signedUrl";
-import modelsUtil from "@models/util/util";
-import {uploadFileStream} from "@api/V1/util";
-import {ApiStationResponse} from "@typedefs/api/station";
-import {mapStation} from "@api/V1/Station";
+import { streamS3Object } from "@api/V1/signedUrl";
+import modelsUtil, {deleteFile} from "@models/util/util";
+import { uploadFileStream } from "@api/V1/util";
+import { ApiStationResponse } from "@typedefs/api/station";
+import { mapStation } from "@api/V1/Station";
+import { mapTrack, mapTracks } from "@api/V1/Recording";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -98,6 +109,12 @@ export const mapDeviceResponse = (
       mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
     } else if (device.active && device.kind === "audio") {
       // TODO: Can we update battery levels for bird monitors to the device, and show some health stats?
+      const twelveHoursAgo = new Date();
+      twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+      mapped.isHealthy =
+        (device.lastConnectionTime &&
+          device.lastConnectionTime.getTime() > twelveHoursAgo.getTime()) ||
+        false;
     }
     if (device.location) {
       mapped.location = device.location;
@@ -159,6 +176,18 @@ interface ApiDeviceResponseSuccess {
 
 interface ApiStationResponseSuccess {
   station: ApiStationResponse;
+}
+
+interface ApiStationsResponseSuccess {
+  stations: ApiStationResponse[];
+}
+
+interface ApiLocationResponseSuccess {
+  location: ApiStationResponse;
+}
+
+interface ApiLocationsResponseSuccess {
+  locations: { fromDateTime: Date; location: ApiStationResponse }[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -258,49 +287,51 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-      `${apiUrl}/create-proxy-device`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        nameOf(body("group")),
-        validNameOf(body("deviceName")),
-        body("type").default("trailcam").optional()
-            .isIn(Object.values(DeviceType))
-      ]),
-      fetchAuthorizedRequiredGroupByNameOrId(body("group")),
-      checkDeviceNameIsUniqueInGroup(body("deviceName")),
-      async (request: Request, response: Response) => {
-        console.log("here");
-        try {
-          const device: Device = await models.Device.create({
-            deviceName: request.body.deviceName,
-            GroupId: response.locals.group.id,
-            kind: request.body.type,
-            password: "no-password"
-          });
-          await Promise.all([
-            device.update({uuid: device.id, saltId: device.id}),
-            // Create the initial entry in the device history table.
-            models.DeviceHistory.create({
-              saltId: device.id,
-              setBy: "register",
-              GroupId: device.GroupId,
-              DeviceId: device.id,
-              fromDateTime: new Date(),
-              deviceName: device.deviceName,
-              uuid: device.id,
-            }),
-          ]);
-          return successResponse(response, "Created new device.", {
-            id: device.id,
-          });
-        } catch (e) {
-          console.log(e);
-        }
+    `${apiUrl}/create-proxy-device`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOf(body("group")),
+      validNameOf(body("deviceName")),
+      body("type")
+        .default("trailcam")
+        .optional()
+        .isIn(Object.values(DeviceType)),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(body("group")),
+    checkDeviceNameIsUniqueInGroup(body("deviceName")),
+    async (request: Request, response: Response) => {
+      console.log("here");
+      try {
+        const device: Device = await models.Device.create({
+          deviceName: request.body.deviceName,
+          GroupId: response.locals.group.id,
+          kind: request.body.type,
+          password: "no-password",
+        });
+        await Promise.all([
+          device.update({ uuid: device.id, saltId: device.id }),
+          // Create the initial entry in the device history table.
+          models.DeviceHistory.create({
+            saltId: device.id,
+            setBy: "register",
+            GroupId: device.GroupId,
+            DeviceId: device.id,
+            fromDateTime: new Date(),
+            deviceName: device.deviceName,
+            uuid: device.id,
+          }),
+        ]);
+        return successResponse(response, "Created new device.", {
+          id: device.id,
+        });
+      } catch (e) {
+        console.log(e);
       }
+    }
   );
 
   /**
-   * @api {delete} /api/v1/devices/device/:deviceId Delete a device
+   * @api {delete} /api/v1/devices/:deviceId Delete a device
    * @apiName DeleteDevice
    * @apiGroup Device
    *
@@ -313,43 +344,40 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.delete(
-      `${apiUrl}/device/:deviceId`,
-      extractJwtAuthorizedUser,
-      validateFields([
-          idOf(param("deviceId")),
-          nameOrIdOf(body("group"))
-      ]),
-      fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
-      fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      async (request: Request, response: Response, next: NextFunction) => {
-         // Get the recording count for the device.
-        const deviceId = response.locals.device.id;
-         const hasRecording = await models.Recording.findOne({
-           where: {
-             DeviceId: deviceId,
-             GroupId: response.locals.group.id
-           }
-         });
-         if (hasRecording) {
-           await response.locals.device.update({
-             active: false
-           });
-           return successResponse(response, "Set device inactive", {
-             id: deviceId
-           });
-         } else {
-           await models.DeviceHistory.destroy({
-             where: {
-               uuid: response.locals.device.uuid
-             }
-           });
-           await response.locals.device.destroy();
-           return successResponse(response, "Removed device", {
-             id: deviceId
-           });
-         }
+    `${apiUrl}/:deviceId`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("deviceId")), nameOrIdOf(body("group"))]),
+    fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // Get the recording count for the device.
+      const deviceId = response.locals.device.id;
+      const hasRecording = await models.Recording.findOne({
+        where: {
+          DeviceId: deviceId,
+          GroupId: response.locals.group.id,
+        },
+      });
+      if (hasRecording) {
+        await response.locals.device.update({
+          active: false,
+        });
+        return successResponse(response, "Set device inactive", {
+          id: deviceId,
+        });
+      } else {
+        await models.DeviceHistory.destroy({
+          where: {
+            uuid: response.locals.device.uuid,
+          },
+        });
+        await response.locals.device.destroy();
+        return successResponse(response, "Removed device", {
+          id: deviceId,
+        });
       }
-  )
+    }
+  );
 
   /**
    * @api {get} /api/v1/devices Get list of devices
@@ -467,6 +495,30 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  // Alias of /api/v1/devices/:deviceId for consistency reasons
+  app.get(
+      `${apiUrl}/:id`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(param("id")),
+        query("view-mode").optional().equals("user"),
+        deprecatedField(query("where")), // Sidekick
+        anyOf(
+            query("onlyActive").optional().isBoolean().toBoolean(),
+            query("only-active").optional().isBoolean().toBoolean()
+        ),
+      ]),
+      fetchAuthorizedRequiredDeviceById(param("id")),
+      async (request: Request, response: Response) => {
+        return successResponse(response, "Completed get device query.", {
+          device: mapDeviceResponse(
+              response.locals.device,
+              response.locals.viewAsSuperUser
+          ),
+        });
+      }
+  );
+
   /**
    * @api {get} /api/v1/devices/:deviceId/reference-image Get the reference image (if any) for a device
    * @apiName GetDeviceReferenceImageAtTime
@@ -485,19 +537,23 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-      `${apiUrl}/device/:id/reference-image`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id")),
-        query("view-mode").optional().equals("user"),
-        query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
-        query("type").default("pov").optional().isIn(["pov", "in-situ"])
-      ]),
-      fetchAuthorizedRequiredDeviceById(param("id")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        const atTime = request.query['at-time'] as unknown as Date;
-        const device = response.locals.device;
-        const deviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
+    `${apiUrl}/:id/reference-image`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      query("at-time").isISO8601().toDate().optional(),
+      query("type").optional().isIn(["pov", "in-situ"]),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const atTime =
+        (request.query["at-time"] &&
+          (request.query["at-time"] as unknown as Date)) ||
+        new Date();
+      const device = response.locals.device;
+      const deviceHistoryEntry: DeviceHistory =
+        await models.DeviceHistory.findOne({
           where: {
             uuid: device.uuid,
             GroupId: device.GroupId,
@@ -507,98 +563,339 @@ export default function (app: Application, baseUrl: string) {
           order: [["fromDateTime", "DESC"]],
         });
 
-        // TODO - Handle POV vs in-situ reference images.  POV is default.
-        const kind = request.query.type;
-        let referenceImage;
-        let referenceImageFileSize;
-        if (kind === "pov") {
-          referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
-          referenceImageFileSize = deviceHistoryEntry?.settings?.referenceImagePOVFileSize;
-        } else {
-          referenceImage = deviceHistoryEntry?.settings?.referenceImageInSitu;
-          referenceImageFileSize = deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
-        }
-        const fromTime = deviceHistoryEntry?.fromDateTime;
-        if (referenceImage && fromTime && referenceImageFileSize) {
-          // Get reference image for device at time if any, and return it
-          const mimeType = "image/jpg"; // Or something better
-          const time = fromTime
-              ?.toISOString()
-              .replace(/:/g, "_")
-              .replace(".", "_");
-          const filename = `device-${device.uuid}-reference-image@${time}.jpg`;
-          // Get reference image for device at time if any.
-          return streamS3Object(
-              request,
-              response,
-              referenceImage,
-              filename,
-              mimeType,
-              response.locals.requestUser.id,
-              device.groupId,
-              referenceImageFileSize
-          );
-        }
-        return next(new UnprocessableError("No reference image available for device at time"));
+      const kind = request.query.type || "pov";
+      let referenceImage;
+      let referenceImageFileSize;
+      if (kind === "pov") {
+        referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
+        referenceImageFileSize =
+          deviceHistoryEntry?.settings?.referenceImagePOVFileSize;
+      } else {
+        referenceImage = deviceHistoryEntry?.settings?.referenceImageInSitu;
+        referenceImageFileSize =
+          deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
       }
+      const fromTime = deviceHistoryEntry?.fromDateTime;
+      if (referenceImage && fromTime && referenceImageFileSize) {
+        // Get reference image for device at time if any, and return it
+        const mimeType = "image/webp"; // Or something better
+        const time = fromTime
+          ?.toISOString()
+          .replace(/:/g, "_")
+          .replace(".", "_");
+        const filename = `device-${device.uuid}-reference-image@${time}.webp`;
+        // Get reference image for device at time if any.
+        return streamS3Object(
+          request,
+          response,
+          referenceImage,
+          filename,
+          mimeType,
+          response.locals.requestUser.id,
+          device.groupId,
+          referenceImageFileSize
+        );
+      }
+      return next(
+        new UnprocessableError(
+          "No reference image available for device at time"
+        )
+      );
+    }
   );
 
   /**
-   * @api {get} /api/v1/devices/:deviceId/station Get the reference image (if any) for a device
-   * @apiName GetDeviceStationAtTime
+   * @api {get} /api/v1/devices/:deviceId/location Get the location for a device at a given time
+   * @apiName GetDeviceLocationAtTime
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
    * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
    *
-   * @apiDescription Returns the station for a device at a given point in time, or now,
+   * @apiDescription Returns the location (station) for a device at a given point in time, or now,
    * if no date time is specified
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {apiSuccess::ApiStationResponseSuccess} station Device station details
+   * @apiSuccess {apiSuccess::ApiLocationResponseSuccess} station Device location details
    * @apiUse V1ResponseError
    */
   app.get(
-      `${apiUrl}/device/:id/station`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id")),
-        query("view-mode").optional().equals("user"),
-        query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
-      ]),
-      fetchAuthorizedRequiredDeviceById(param("id")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        const atTime = request.query['at-time'] as unknown as Date;
-        const device = response.locals.device;
-        try {
-          const deviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
-            where: {
-              uuid: device.uuid,
-              GroupId: device.GroupId,
-              location: {[Op.ne]: null},
-              fromDateTime: {[Op.lte]: atTime},
-            },
-            order: [["fromDateTime", "DESC"]],
-          });
-          if (deviceHistoryEntry && deviceHistoryEntry.stationId) {
-            const station = await models.Station.findByPk(deviceHistoryEntry.stationId, {
-              include: [{
+    `${apiUrl}/:id/location`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      query("at-time").isISO8601().toDate().optional(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const atTime =
+        (request.query["at-time"] &&
+          (request.query["at-time"] as unknown as Date)) ||
+        new Date();
+      const device = response.locals.device;
+      const deviceHistoryEntry = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          GroupId: device.GroupId,
+          location: { [Op.ne]: null },
+          fromDateTime: { [Op.lte]: atTime },
+        },
+        include: [
+          {
+            model: models.Station,
+            include: [
+              {
                 model: models.Group,
                 attributes: ["groupName"],
-              }],
-            });
-            if (station) {
-              return next(successResponse(response, "Got station for device at time", {
-                station: mapStation(station)
-              }));
-            }
-          }
-        } catch (e) {
-          console.log("!!!", e);
-        }
-        return next(new UnprocessableError("No station recorded for device at time"));
+              },
+            ],
+          },
+        ],
+        order: [["fromDateTime", "DESC"]],
+      });
+      if (deviceHistoryEntry && deviceHistoryEntry.Station) {
+        const station = deviceHistoryEntry.Station;
+        return successResponse(response, "Got station for device at time", {
+          location: mapStation(deviceHistoryEntry.Station),
+        });
       }
+      return next(
+        new UnprocessableError("No station recorded for device at time")
+      );
+    }
+  );
+
+  app.get(
+    `${apiUrl}/:id/tracks-with-tag/:tag`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      param("tag").isString(),
+      query("view-mode").optional().equals("user"),
+      query("from-time").isISO8601().toDate().optional(),
+      query("until-time").isISO8601().toDate().optional(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const fromTime =
+        request.query["from-time"] &&
+        (request.query["from-time"] as unknown as Date);
+      const untilTime =
+        (request.query["until-time"] &&
+          (request.query["until-time"] as unknown as Date)) ||
+        new Date();
+
+      const timeWindow = {};
+      if (fromTime) {
+        (timeWindow as any).recordingDateTime = {
+          [Op.and]: [{ [Op.gt]: fromTime }, { [Op.lte]: untilTime }],
+        };
+      }
+      const tag = request.params.tag;
+      const tracks = await models.Track.findAll({
+        raw: true,
+        where: {
+          archivedAt: { [Op.eq]: null },
+        },
+        include: [
+          {
+            model: models.TrackTag,
+            required: true,
+            where: {
+              [Op.and]: {
+                [Op.or]: [
+                  { automatic: { [Op.eq]: true }, "data.name": "Master" },
+                  { automatic: { [Op.eq]: false } },
+                ],
+              },
+            },
+            attributes: ['automatic', 'what']
+          },
+          {
+            model: models.Recording,
+            required: true,
+            where: {
+              DeviceId: response.locals.device.id,
+              GroupId: response.locals.device.GroupId,
+              ...timeWindow,
+            },
+            attributes: [],
+          },
+        ],
+        order: [["id", "DESC"]],
+      });
+
+      const tracksById = new Map();
+      for (const userTrack of tracks.filter(track => !track['TrackTags.automatic'])) {
+        tracksById.set(userTrack.id, userTrack);
+      }
+      for (const autoTrack of tracks.filter(track => track['TrackTags.automatic'] && track['TrackTags.what'] === tag)) {
+        if (!(tracksById.has(autoTrack.id) && tracksById.get(autoTrack.id)['TrackTags.what'] !== tag)) {
+          tracksById.set(autoTrack.id, autoTrack);
+        }
+      }
+      const filteredTracks = Array.from(tracksById.values()).filter(track => track['TrackTags.what'] === tag);
+      return successResponse(response, "Got tracks with tag", {
+        tracks: filteredTracks.map(mapTrack),
+      });
+    }
+  );
+
+  // Use this with device location history to work out what animals a device has seen in a given time window, and/or at a given station.
+  app.get(
+    `${apiUrl}/:id/unique-track-tags`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      query("from-time").isISO8601().toDate().optional(),
+      query("until-time").isISO8601().toDate().optional(),
+      idOf(query("stationId")).optional(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const fromTime =
+        request.query["from-time"] &&
+        (request.query["from-time"] as unknown as Date);
+      const untilTime =
+        (request.query["until-time"] &&
+          (request.query["until-time"] as unknown as Date)) ||
+        new Date();
+
+      // We only want to get tracks that are not falsified by a human.
+      const timeWindow = {};
+      if (fromTime) {
+        (timeWindow as any).recordingDateTime = {
+          [Op.and]: [{ [Op.gt]: fromTime }, { [Op.lte]: untilTime }],
+        };
+      }
+      const tracks = await models.Track.findAll({
+        raw: true,
+        where: {
+          archivedAt: { [Op.eq]: null },
+        },
+        include: [
+          {
+            model: models.TrackTag,
+            required: true,
+            where: {
+              [Op.and]: {
+                [Op.or]: [
+                  { automatic: { [Op.eq]: true }, "data.name": "Master" },
+                  { automatic: { [Op.eq]: false } },
+                ],
+              },
+            },
+            attributes: ['automatic', 'what', 'path']
+          },
+          {
+            model: models.Recording,
+            required: true,
+            where: {
+              DeviceId: response.locals.device.id,
+              GroupId: response.locals.device.GroupId,
+              ...timeWindow,
+            },
+            attributes: [],
+          },
+        ]
+      });
+
+      const tracksById = new Map();
+      for (const userTrack of tracks.filter(track => !track['TrackTags.automatic'])) {
+        tracksById.set(userTrack.id, userTrack);
+      }
+      for (const autoTrack of tracks.filter(track => track['TrackTags.automatic'])) {
+        if (!(tracksById.has(autoTrack.id) && tracksById.get(autoTrack.id)['TrackTags.what'] !== autoTrack['TrackTags.what'])) {
+          tracksById.set(autoTrack.id, autoTrack);
+        }
+      }
+      const uniqueTags = {};
+      for (const track of tracksById.values()) {
+        const what = track["TrackTags.what"];
+        if (!uniqueTags[what]) {
+          uniqueTags[what] = {what, path: track["TrackTags.path"], count: 1};
+        } else {
+          uniqueTags[what].count += 1;
+        }
+      }
+      return successResponse(response, "Got used track-tags", {
+        trackTags: Object.values(uniqueTags),
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/devices/:deviceId/location-history Get the location history for a device
+   * @apiName GetDeviceStations
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   *
+   * @apiDescription Returns the all stations that a device has been part of, in reverse chronological order
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {apiSuccess::ApiLocationsResponseSuccess} stations Device station details
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/location-history`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const device = response.locals.device;
+      const deviceLocations = await models.DeviceHistory.findAll({
+        where: {
+          uuid: device.uuid,
+          GroupId: device.GroupId,
+          location: { [Op.ne]: null },
+        },
+        include: [
+          {
+            model: models.Station,
+            include: [
+              {
+                model: models.Group,
+                attributes: ["groupName"],
+              },
+            ],
+          },
+        ],
+        order: [["fromDateTime", "DESC"]],
+      });
+
+      const locations = Object.values(
+        deviceLocations
+          .map(({ Station, fromDateTime }) => ({
+            fromDateTime,
+            location: mapStation(Station),
+          }))
+          .reduce((acc, item) => {
+            acc[item.location.id] = item;
+            return acc;
+          }, {})
+      ).sort(
+        (
+          a: { fromDateTime: Date; location: ApiStationResponse },
+          b: { fromDateTime: Date; location: ApiStationResponse }
+        ) => {
+          return (
+            new Date(b.fromDateTime).getTime() -
+            new Date(a.fromDateTime).getTime()
+          );
+        }
+      );
+      return successResponse(response, "Got locations for device", {
+        locations,
+      });
+    }
   );
 
   /**
@@ -620,24 +917,25 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-      `${apiUrl}/device/:id/reference-image`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id")),
-        query("view-mode").optional().equals("user"),
-        query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
-        query("type").default("pov").optional().isIn(["pov", "in-situ"])
-      ]),
-      fetchAuthorizedRequiredDeviceById(param("id")),
-      async (request: Request, response: Response) => {
-        // Set the reference image.
-        // If the location hasn't changed, we need to carry this forward whenever we create
-        // another device history entry?
-
-        // TODO: Make some tests for this.
-        const atTime = request.query['at-time'] as unknown as Date;
-        const device = response.locals.device;
-        const previousDeviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
+    `${apiUrl}/:id/reference-image`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      query("type").optional().isIn(["pov", "in-situ"]),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response) => {
+      // Set the reference image.
+      // If the location hasn't changed, we need to carry this forward whenever we create
+      // another device history entry?
+      const referenceType = request.query.type || "pov";
+      // TODO: Make some tests for this.
+      const atTime = request.query["at-time"] as unknown as Date;
+      const device = response.locals.device;
+      const previousDeviceHistoryEntry: DeviceHistory =
+        await models.DeviceHistory.findOne({
           where: {
             uuid: device.uuid,
             GroupId: device.GroupId,
@@ -646,31 +944,59 @@ export default function (app: Application, baseUrl: string) {
           },
           order: [["fromDateTime", "DESC"]],
         });
-        if (previousDeviceHistoryEntry) {
-          const { key, size } = await uploadFileStream(request as any, "raw");
-          const newSettings = request.query.type === "pov" ? {
-            referenceImagePovFileSize: 0,
-            referencePovImage: key,
-          } : {
-            referenceImageInSituFileSize: 0,
-            referenceInSituImage: key,
-          };
-          await previousDeviceHistoryEntry.update({
-            settings: {
-              ...previousDeviceHistoryEntry.settings,
-              ...newSettings
+      if (previousDeviceHistoryEntry) {
+        // If there was a previous reference image for this location entry, delete it.
+        const previousSettings: DeviceHistorySettings = previousDeviceHistoryEntry.settings || {};
+        if (previousSettings) {
+          if (referenceType === "pov" && previousSettings.referenceImagePOV) {
+            try {
+              await deleteFile(previousSettings.referenceImagePOV);
+              delete previousSettings.referenceImagePOV;
+              delete previousSettings.referenceImagePOVFileSize;
+            } catch (e) {
+              // ...
             }
-          });
-          return successResponse(response, {key, size});
-        } else {
-          // We can't add an image, because we don't have a device location.
-          return successResponse(response, "No location for device to tag with reference");
+          } else if (referenceType === "in-situ" && previousSettings.referenceImageInSitu) {
+            try {
+              await deleteFile(previousSettings.referenceImageInSitu);
+              delete previousSettings.referenceImageInSitu;
+              delete previousSettings.referenceImageInSituFileSize;
+            } catch (e) {
+              // ...
+            }
+          }
         }
+
+        const { key, size } = await uploadFileStream(request as any, "ref");
+        const newSettings =
+          referenceType === "pov"
+            ? {
+                referenceImagePOVFileSize: size,
+                referenceImagePOV: key,
+              }
+            : {
+                referenceImageInSituFileSize: size,
+                referenceImageInSitu: key,
+              };
+        await previousDeviceHistoryEntry.update({
+          settings: {
+            ...previousSettings,
+            ...newSettings,
+          },
+        });
+        return successResponse(response, { key, size });
+      } else {
+        // We can't add an image, because we don't have a device location.
+        return successResponse(
+          response,
+          "No location for device to tag with reference"
+        );
       }
+    }
   );
 
   /**
-   * @api {patch} /api/v1/devices/fix-location/:deviceId Fix a device location at a given time
+   * @api {patch} /api/v1/devices/:deviceId/fix-location Fix a device location at a given time
    * @apiName FixupDeviceLocationAtTimeById
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
@@ -689,7 +1015,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.patch(
-    `${apiUrl}/fix-location/:id`,
+    `${apiUrl}/:id/fix-location`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
@@ -985,6 +1311,32 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  const getUsersFns = [
+    async (request, response, next) => {
+      await fetchAuthorizedRequiredGroupById(response.locals.device.GroupId)(
+          request,
+          response,
+          next
+      );
+    },
+    async (request: Request, response: Response) => {
+      const users = (
+          await response.locals.group.getUsers({
+            attributes: ["id", "userName"],
+            through: {
+              where: { removedAt: { [Op.eq]: null, pending: { [Op.eq]: null } } },
+            },
+          })
+      ).map((user) => ({
+        userName: user.userName,
+        id: user.id,
+        admin: (user as any).GroupUsers.admin,
+        owner: (user as any).GroupUsers.admin,
+      }));
+      return successResponse(response, "OK.", { users });
+    }
+  ];
+
   /**
    * @api {get} /api/v1/devices/users Get all users who can access a device.
    * @apiName GetDeviceUsers
@@ -1019,33 +1371,25 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
-    async (request, response, next) => {
-      await fetchAuthorizedRequiredGroupById(response.locals.device.GroupId)(
-        request,
-        response,
-        next
-      );
-    },
-    async (request: Request, response: Response) => {
-      const users = (
-        await response.locals.group.getUsers({
-          attributes: ["id", "userName"],
-          through: {
-            where: { removedAt: { [Op.eq]: null, pending: { [Op.eq]: null } } },
-          },
-        })
-      ).map((user) => ({
-        userName: user.userName,
-        id: user.id,
-        admin: (user as any).GroupUsers.admin,
-        owner: (user as any).GroupUsers.admin,
-      }));
-      return successResponse(response, "OK.", { users });
-    }
+    ...getUsersFns
+  );
+
+  // Alias of /api/v1/devices/users for consistency reasons
+  app.get(
+      `${apiUrl}/:deviceId/users`,
+      extractJwtAuthorizedUser,
+      validateFields([
+        idOf(param("deviceId")),
+        query("only-active").optional().isBoolean().toBoolean(),
+        query("view-mode").optional().equals("user"),
+      ]),
+      // Should this require admin access to the device?
+      fetchAdminAuthorizedRequiredDeviceById(param("deviceId")),
+      ...getUsersFns
   );
 
   /**
-   * @api {post} /api/v1/devices/assign-schedule Assign a schedule to a device.
+   * @api {post} /api/v1/devices/:deviceId/assign-schedule Assign a schedule to a device.
    * @apiName AssignScheduleToDevice
    * @apiGroup Schedules
    * @apiDescription This call assigns a schedule to a device.
@@ -1061,11 +1405,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-    `${apiUrl}/assign-schedule`,
+    `${apiUrl}/:deviceId/assign-schedule`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(body("scheduleId")),
-      idOf(body("deviceId")),
+      idOf(param("deviceId")),
       // Allow adding a schedule to an inactive device by default
       query("only-active").default(false).isBoolean().toBoolean(),
       query("view-mode").optional().equals("user"),
@@ -1096,7 +1440,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/devices/remove-schedule Remove a schedule from a device.
+   * @api {post} /api/v1/devices/:deviceId/remove-schedule Remove a schedule from a device.
    * @apiName RemoveScheduleFromDevice
    * @apiGroup Schedules
    * @apiDescription This call removes a schedule from a device.
@@ -1112,11 +1456,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-    `${apiUrl}/remove-schedule`,
+    `${apiUrl}/:deviceId/remove-schedule`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(body("scheduleId")),
-      idOf(body("deviceId")),
+      idOf(param("deviceId")),
       // Allow adding a schedule to an inactive device by default
       query("only-active").default(false).isBoolean().toBoolean(),
       query("view-mode").optional().equals("user"),
@@ -1198,7 +1542,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/devices/{:deviceId}/cacophony-index Get the cacophony index for a device
+   * @api {get} /api/v1/devices/:deviceId/cacophony-index Get the cacophony index for a device
    * @apiName cacophony-index
    * @apiGroup Device
    * @apiDescription Get a single number Cacophony Index
@@ -1276,13 +1620,13 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-     * @api {post} /api/v1/devices/heartbeat send device heartbeat
+     * @api {post} /api/v1/devices/heartbeat Send device heartbeat
      * @apiName heartbeat
      * @apiGroup Device
      *
      * @apiUse V1DeviceAuthorizationHeader
      *
-     * @apiBody {Date} nextHeartbeat time next heart beat is expected
+     * @apiBody {Date} nextHeartbeat time next heartbeat is expected
 
      * @apiUse V1ResponseSuccess
      * @apiUse V1ResponseError
@@ -1305,7 +1649,7 @@ export default function (app: Application, baseUrl: string) {
     //  not available in production builds.
 
     /**
-     * @api {post} /api/v1/devices/history/:deviceId Get device history
+     * @api {post} /api/v1/:deviceId/history Get device history
      * @apiName history
      * @apiGroup Device
      *
@@ -1315,7 +1659,7 @@ export default function (app: Application, baseUrl: string) {
      * @apiUse V1ResponseError
      */
     app.get(
-      `${apiUrl}/history/:deviceId`,
+      `${apiUrl}/:deviceId/history`,
       extractJwtAuthorizedUser,
       validateFields([idOf(param("deviceId"))]),
       fetchAuthorizedRequiredDeviceById(param("deviceId")),

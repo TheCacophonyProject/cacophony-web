@@ -1,5 +1,10 @@
 import { fetch } from "./fetch";
 import { API_ROOT } from "@api/root";
+import type {
+  FetchResult,
+  LoadedResource,
+  WrappedFetchResult,
+} from "@api/types";
 
 // TODO - Handle getting all the revision information like the current version of browse does.
 
@@ -53,7 +58,22 @@ export default {
    * The result field is the JSON blob from the response body.
    * These fields can easily be resolved using object destructuring to directly assign the required information.
    * @param {string} endpoint - The cacophony API endpoint to target, for example `/api/v1/users`.
-   * @param {*} [body] - An object to go in the request body that will be sent as JSON.
+   * @param {*} [body] - An object to go in the request body that will be sent as Binary data.
+   * @param {boolean} [abortable] - Whether this is a request for the current view, and if so should be aborted when the view changes.
+   * @returns {Promise<{result: *, success: boolean, status: number}>}
+   */
+  postBinaryData: async (
+    endpoint: string,
+    body: ArrayBuffer,
+    abortable?: boolean
+  ) => fetch(`${API_ROOT}${endpoint}`, { method: "POST", body }, abortable),
+
+  /**
+   * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
+   * The result field is the JSON blob from the response body.
+   * These fields can easily be resolved using object destructuring to directly assign the required information.
+   * @param {string} endpoint - The cacophony API endpoint to target, for example `/api/v1/users`.
+   * @param {*} [body] - An object to go in the request body that will be sent as FormData.
    * @param {boolean} [abortable] - Whether this is a request for the current view, and if so should be aborted when the view changes.
    * @returns {Promise<{result: *, success: boolean, status: number}>} */
   postMultipartFormData: async (
@@ -85,4 +105,26 @@ export default {
    */
   delete: async (endpoint: string, body?: object, abortable?: boolean) =>
     fetchJsonWithMethod(endpoint, "DELETE", body, abortable),
+};
+
+export const optionalQueryString = (params: URLSearchParams) => {
+  if (Array.from(params.entries()).length) {
+    return `?${params}`;
+  }
+  return "";
+};
+
+export const unwrapLoadedResource = <T>(
+  apiCall: Promise<WrappedFetchResult<T>>,
+  responseKey: string
+): Promise<LoadedResource<T>> => {
+  return new Promise((resolve) => {
+    apiCall.then((response) => {
+      if (response && response.success) {
+        resolve((response.result as any)[responseKey] as T);
+      } else {
+        resolve(false);
+      }
+    });
+  });
 };

@@ -7,14 +7,24 @@ import BootstrapVue3 from "bootstrap-vue-3";
 import FontAwesomeIcon from "./font-awesome-icons";
 import { BToastPlugin } from "bootstrap-vue-3";
 import {
-  currentSelectedGroup,
-  selectedGroupDevices,
-  urlNormalisedCurrentSelectedGroupName,
+  currentSelectedProject,
+  currentUser,
+  currentUserCreds,
+  selectedProjectDevices,
+  urlNormalisedCurrentSelectedProjectName,
+  userIsLoggedIn,
+  userIsProjectAdmin,
+  userProjects,
 } from "@models/provides";
 import {
-  currentSelectedGroup as fallibleCurrentSelectedGroup,
-  DevicesForCurrentGroup,
-  urlNormalisedCurrentGroupName,
+  currentSelectedProject as fallibleCurrentSelectedProject,
+  CurrentUser,
+  CurrentUserCreds,
+  DevicesForCurrentProject,
+  urlNormalisedCurrentProjectName,
+  userIsAdminForCurrentSelectedProject,
+  userIsLoggedIn as hasLoggedInUser,
+  UserProjects,
 } from "@models/LoggedInUser";
 
 const app = createApp(App);
@@ -23,11 +33,16 @@ app.use(router);
 app.use(BootstrapVue3);
 app.use(BToastPlugin);
 
-app.provide(selectedGroupDevices, DevicesForCurrentGroup);
-app.provide(currentSelectedGroup, fallibleCurrentSelectedGroup);
+app.provide(selectedProjectDevices, DevicesForCurrentProject);
+app.provide(currentSelectedProject, fallibleCurrentSelectedProject);
 app.provide(
-  urlNormalisedCurrentSelectedGroupName,
-  urlNormalisedCurrentGroupName
+  urlNormalisedCurrentSelectedProjectName,
+  urlNormalisedCurrentProjectName
 );
+app.provide(currentUser, CurrentUser);
+app.provide(currentUserCreds, CurrentUserCreds);
+app.provide(userIsProjectAdmin, userIsAdminForCurrentSelectedProject);
+app.provide(userIsLoggedIn, hasLoggedInUser);
+app.provide(userProjects, UserProjects);
 
 app.mount("#app");

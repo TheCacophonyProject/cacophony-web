@@ -63,7 +63,7 @@ function getDeviceById(
   activeAndInactive = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/device/${id}${
+    `/api/v1/devices/${id}${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
@@ -78,13 +78,12 @@ const assignScheduleToDevice = (
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
-    `/api/v1/devices/assign-schedule${
+    `/api/v1/devices/${deviceId}/assign-schedule${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`,
     {
-      deviceId,
       scheduleId,
     },
     suppressGlobalMessaging
@@ -98,13 +97,12 @@ const removeScheduleFromDevice = (
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
-    `/api/v1/devices/remove-schedule${
+    `/api/v1/devices/${deviceId}/remove-schedule${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`,
     {
-      deviceId,
       scheduleId,
     },
     suppressGlobalMessaging

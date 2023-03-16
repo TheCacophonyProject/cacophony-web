@@ -251,14 +251,34 @@ export default function (
   };
 
   Device.stoppedDevices = async function () {
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    const oneMinuteAgo = new Date();
+    oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
     return this.findAll({
       where: {
-        nextHeartbeat: {
-          [Op.and]: [
-            { [Op.lt]: new Date(Date.now() - 1000 * 60) }, //60 seconds deviance
-            { [Op.ne]: null },
-          ],
-        },
+        [Op.or]: [
+          {
+            [Op.and]: [
+              {
+                nextHeartbeat: {
+                  [Op.and]: [{ [Op.lt]: oneMinuteAgo }, { [Op.ne]: null }],
+                },
+              },
+              { kind: DeviceType.Thermal },
+            ],
+          },
+          {
+            [Op.and]: [
+              {
+                lastConnectionTime: {
+                  [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
+                },
+              },
+              { kind: DeviceType.Audio },
+            ],
+          },
+        ],
       },
       include: [
         {

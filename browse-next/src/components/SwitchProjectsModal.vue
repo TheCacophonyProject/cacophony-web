@@ -1,22 +1,22 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { BModal } from "bootstrap-vue-3";
 import {
-  UserGroups,
-  currentSelectedGroup,
-  showSwitchGroup,
+  UserProjects,
+  currentSelectedProject,
+  showSwitchProject,
 } from "@models/LoggedInUser";
 import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 
-const nextRoute = (groupName: string) => {
+const nextRoute = (projectName: string) => {
   const currentRoute = useRoute();
   if (currentRoute.params.groupName) {
     return {
       ...currentRoute,
       params: {
         ...currentRoute.params,
-        groupName: urlNormaliseName(groupName),
+        projectName: urlNormaliseName(projectName),
       },
     };
   } else {
@@ -26,47 +26,48 @@ const nextRoute = (groupName: string) => {
       name: "dashboard",
       params: {
         ...currentRoute.params,
-        groupName: urlNormaliseName(groupName),
+        projectName: urlNormaliseName(projectName),
       },
     };
   }
 };
-const currentGroupName = computed<string>(() => {
+const currentProjectName = computed<string>(() => {
   return (
-    (currentSelectedGroup.value && currentSelectedGroup.value.groupName) || ""
+    (currentSelectedProject.value && currentSelectedProject.value.groupName) ||
+    ""
   );
 });
 
 onMounted(() => {
-  showSwitchGroup.visible = true;
+  showSwitchProject.visible = true;
 });
 
 // TODO: Add icons for a) the kinds of devices in the group, and b) If there are recent recordings in the last 24 hours for each device type.
 </script>
 <template>
   <b-modal
-    title="Switch group"
-    v-model="showSwitchGroup.visible"
+    title="Switch project"
+    v-model="showSwitchProject.visible"
     centered
     hide-footer
-    @hidden="showSwitchGroup.enabled = false"
+    @hidden="showSwitchProject.enabled = false"
   >
     <div class="list-group">
       <router-link
         :class="[
           'list-group-item',
-          { 'list-group-item-action': groupName !== currentGroupName },
-          { disabled: groupName === currentGroupName },
+          { 'list-group-item-action': groupName !== currentProjectName },
+          { disabled: groupName === currentProjectName },
         ]"
-        v-for="({ groupName, id }, index) in UserGroups"
+        v-for="({ groupName, id }, index) in UserProjects"
         :key="id"
         :to="nextRoute(groupName)"
-        :aria-disabled="groupName === currentGroupName"
-        :tabindex="groupName === currentGroupName ? -1 : index"
-        @click="showSwitchGroup.visible = false"
+        :aria-disabled="groupName === currentProjectName"
+        :tabindex="groupName === currentProjectName ? -1 : index"
+        @click="showSwitchProject.visible = false"
       >
         {{ groupName }}
-        <span v-if="groupName === currentGroupName">(selected)</span>
+        <span v-if="groupName === currentProjectName">(selected)</span>
       </router-link>
     </div>
   </b-modal>

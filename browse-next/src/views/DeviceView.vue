@@ -1,33 +1,34 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { computed, onBeforeMount, ref } from "vue";
-import {
-  DevicesForCurrentGroup,
-  groupDevicesLoaded,
-  userGroupsLoaded,
-} from "@models/LoggedInUser";
-import { getDeviceById } from "@api/Device";
+import { computed, inject, onBeforeMount, ref } from "vue";
+import type { Ref } from "vue";
+import { projectDevicesLoaded, userProjectsLoaded } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
+import { selectedProjectDevices } from "@models/provides";
+import DeviceName from "@/components/DeviceName.vue";
+import { DeviceType } from "@typedefs/api/consts.ts";
 const route = useRoute();
 const emit = defineEmits(["close"]);
+
+const groupDevices = inject(selectedProjectDevices) as Ref<
+  ApiDeviceResponse[] | null
+>;
 
 const deviceLoading = ref<boolean>(false);
 const device = ref<ApiDeviceResponse | null>(null);
 const loadDevice = async (deviceId: DeviceId) => {
   deviceLoading.value = true;
-  await Promise.all([userGroupsLoaded(), groupDevicesLoaded()]);
-
-  if (DevicesForCurrentGroup.value) {
-    const targetDevice = DevicesForCurrentGroup.value.find(
-      ({ id }) => id === deviceId
-    );
+  await Promise.all([userProjectsLoaded(), projectDevicesLoaded()]);
+  if (groupDevices.value) {
+    const targetDevice = groupDevices.value.find(({ id }) => id === deviceId);
     if (targetDevice) {
       device.value = targetDevice;
     } else {
       // TODO: Device not found
     }
   }
+
   // TODO: Get the device station
   // TODO: Get the device events
   // TODO: Get the device software version info.
@@ -42,6 +43,22 @@ const activeTabName = computed(() => {
   return route.name;
 });
 const navLinkClasses = ["nav-item", "nav-link", "border-0"];
+
+const deviceType = computed<string>(() => {
+  if (device.value) {
+    switch (device.value.type) {
+      case DeviceType.Thermal:
+        return "Thermal camera";
+      case DeviceType.Audio:
+        return "Bird monitor";
+      case DeviceType.TrailCam:
+        return "Trail camera";
+      case DeviceType.TrapIrCam:
+        return "Trap IR camera";
+    }
+  }
+  return "Device";
+});
 </script>
 <template>
   <div class="device-view d-flex flex-column">
@@ -49,9 +66,11 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       class="device-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
     >
       <div>
-        <span class="device-header-type text-uppercase fw-bold">Device</span>
+        <span class="device-header-type text-uppercase fw-bold">{{
+          deviceType
+        }}</span>
         <div class="device-header-details mb-1 mb-sm-0" v-if="!deviceLoading">
-          {{ device.deviceName }}
+          <device-name :name="device.deviceName" :type="device.type" />
         </div>
       </div>
       <button
@@ -63,7 +82,10 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       </button>
     </header>
     <div>
-      <ul class="nav nav-tabs justify-content-md-center justify-content-evenly">
+      <ul
+        class="nav nav-tabs justify-content-md-center justify-content-evenly"
+        v-if="!deviceLoading"
+      >
         <router-link
           :class="[
             ...navLinkClasses,
@@ -74,6 +96,18 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
             name: 'device-diagnostics',
           }"
           >Diagnostics</router-link
+        >
+        <router-link
+          v-if="device.type === 'thermal'"
+          :class="[
+            ...navLinkClasses,
+            { active: activeTabName === 'device-insights' },
+          ]"
+          title="Insights"
+          :to="{
+            name: 'device-insights',
+          }"
+          >Insights</router-link
         >
         <router-link
           :class="[
@@ -88,6 +122,7 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
         >
 
         <router-link
+          v-if="device.type === 'thermal'"
           :class="[
             ...navLinkClasses,
             { active: activeTabName === 'device-schedules' },
@@ -148,5 +183,9 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
     left: 0;
     right: 0;
   }
+}
+.nav-item.active {
+  background: unset;
+  border-bottom: 3px solid #6dbd4b !important;
 }
 </style>

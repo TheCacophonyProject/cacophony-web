@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
 import { login } from "@models/LoggedInUser";
+import type { PendingRequest } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRoute, useRouter } from "vue-router";
@@ -37,17 +38,23 @@ const hasError = computed({
 const router = useRouter();
 const route = useRoute();
 const submitLogin = async () => {
+  delete (signInInProgress as PendingRequest).errors;
   await login(userEmailAddress.value, userPassword.value, signInInProgress);
-  const nextUrl = route.query.nextUrl;
-  const to: RouteLocationRaw = {
-    path: "/",
-  };
-  if (nextUrl) {
-    to.query = {
-      nextUrl,
+  if ((signInInProgress as PendingRequest).errors) {
+    signInErrorMessage.value =
+      (signInInProgress as PendingRequest).errors?.messages[0] || "";
+  } else {
+    const nextUrl = route.query.nextUrl;
+    const to: RouteLocationRaw = {
+      path: "/",
     };
+    if (nextUrl) {
+      to.query = {
+        nextUrl,
+      };
+    }
+    await router.push(to);
   }
-  await router.push(to);
 };
 
 const isValidEmailAddress = computed<boolean>(() => {

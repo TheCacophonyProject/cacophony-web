@@ -1,11 +1,11 @@
 <script lang="ts" setup>
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { acceptGroupInvitation } from "@api/User";
+import { acceptProjectInvitation } from "@api/User";
 import {
-  nonPendingUserGroups,
-  refreshUserGroups,
-  urlNormalisedCurrentGroupName,
+  nonPendingUserProjects,
+  refreshUserProjects,
+  urlNormalisedCurrentProjectName,
   userIsLoggedIn,
 } from "@models/LoggedInUser";
 import type { ErrorResult, JwtAcceptInviteTokenPayload } from "@api/types";
@@ -16,7 +16,7 @@ import { decodeJWT, urlNormaliseName } from "@/utils";
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
 const isValidValidateToken = ref(false);
-const alreadyPartOfGroup = ref(false);
+const alreadyPartOfProject = ref(false);
 const validateError = ref<ErrorResult | null>(null);
 const router = useRouter();
 const { params } = useRoute();
@@ -27,11 +27,11 @@ onMounted(async () => {
     const token = (params.token as string).replace(/:/g, ".");
     const jwtToken = decodeJWT(token) as JwtAcceptInviteTokenPayload | null;
     if (jwtToken && jwtToken.group) {
-      const alreadyAddedToGroup =
+      const alreadyAddedToProject =
         userIsLoggedIn.value &&
-        nonPendingUserGroups.value.find(({ id }) => id === jwtToken.group);
-      if (!alreadyAddedToGroup) {
-        const validateTokenResponse = await acceptGroupInvitation(
+        nonPendingUserProjects.value.find(({ id }) => id === jwtToken.group);
+      if (!alreadyAddedToProject) {
+        const validateTokenResponse = await acceptProjectInvitation(
           jwtToken.group
         );
         if (!validateTokenResponse.success) {
@@ -47,26 +47,26 @@ onMounted(async () => {
             validateError.value = validateTokenResponse.result;
           }
         } else {
-          await refreshUserGroups();
-          const nextGroup = nonPendingUserGroups.value.find(
+          await refreshUserProjects();
+          const nextProject = nonPendingUserProjects.value.find(
             ({ id }) => id === jwtToken.group
           );
-          let nextGroupName = urlNormalisedCurrentGroupName.value;
-          if (nextGroup) {
-            nextGroupName = urlNormaliseName(nextGroup.groupName);
+          let nextProjectName = urlNormalisedCurrentProjectName.value;
+          if (nextProject) {
+            nextProjectName = urlNormaliseName(nextProject.groupName);
           }
           isValidValidateToken.value = true;
           console.warn("Redirecting to dashboard");
           await router.push({
             name: "dashboard",
             params: {
-              groupName: nextGroupName,
+              projectName: nextProjectName,
             },
           });
         }
         checkingValidateEmailToken.value = false;
       } else {
-        alreadyPartOfGroup.value = true;
+        alreadyPartOfProject.value = true;
       }
     }
   }
@@ -80,7 +80,7 @@ onMounted(async () => {
     <span>Error: Accepting invite failed</span>
     {{ validateError }}
   </div>
-  <div v-else-if="alreadyPartOfGroup">
-    <span>You're already a member of this group</span>
+  <div v-else-if="alreadyPartOfProject">
+    <span>You're already a member of this project</span>
   </div>
 </template>
