@@ -102,6 +102,19 @@
           :recordings-query="recordingQueryFinal"
         />
       </tab-list-item>
+
+      <tab-list-item lazy title="Analysis" v-if="hasAudioOrUnknownDevices">
+        <template #title>
+          <TabTemplate
+            title="Analysis"
+          />
+        </template>
+        <AnalysisTab
+          :group-name="groupName"
+          :group-id="groupId"
+        />
+      </tab-list-item>
+
       <!--      <b-tab lazy v-if="!limitedView">-->
       <!--        <template #title>-->
       <!--          <TabTemplate-->
@@ -128,10 +141,11 @@ import UsersTab from "@/components/Groups/UsersTab.vue";
 import DevicesTab from "@/components/Groups/DevicesTab.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
+import AnalysisTab from "@/components/Groups/AnalysisTab.vue";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
-import MonitoringTab from "@/components/MonitoringTab.vue";
+import MonitoringTab from "@/components/MonitoringTab.vue"; 
 import GroupLink from "@/components/GroupLink.vue";
 import TabListItem from "@/components/TabListItem.vue";
 import TabList from "@/components/TabList.vue";
@@ -156,7 +170,8 @@ export default {
     MonitoringTab,
     TabList,
     ManualRecordingUploads,
-  },
+    AnalysisTab
+},
   data(): Record<string, any> & GroupViewData {
     return {
       stationsLoading: false,
@@ -208,12 +223,13 @@ export default {
             "devices",
             "stations",
             "recordings",
+            "analysis"
           ];
         } else {
-          return ["users", "visits", "devices", "stations", "recordings"];
+          return ["users", "visits", "devices", "stations", "recordings", "analysis"];
         }
       }
-      return ["visits", "devices", "stations", "recordings"];
+      return ["visits", "devices", "stations", "recordings", "analysis"];
     },
     nonRetiredStationsCount(): number {
       return (
