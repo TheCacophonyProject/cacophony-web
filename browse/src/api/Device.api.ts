@@ -58,6 +58,21 @@ function getDevice(
   );
 }
 
+function getDeviceCacophonyIndex(
+  id: DeviceId,
+  from: String,
+  windowsize: Number,
+  activeAndInactive = false
+): Promise<FetchResult<{ index: Number }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/cacophony-index?from=${from}?window-size=${windowsize}${
+      shouldViewAsSuperUser()
+        ? `?only-active=${activeAndInactive ? "false" : "true"}`
+        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  )
+}
+
 function getDeviceById(
   id: DeviceId,
   activeAndInactive = false
@@ -118,6 +133,7 @@ function getLatestSoftwareVersion(deviceId: number) {
   };
   return getLatestEvents(deviceId, params);
 }
+
 
 export const DeviceEventTypes = [
   "alert",
@@ -192,4 +208,5 @@ export default {
   getType,
   assignScheduleToDevice,
   removeScheduleFromDevice,
+  getDeviceCacophonyIndex
 };
