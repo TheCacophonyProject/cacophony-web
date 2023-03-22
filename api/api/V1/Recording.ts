@@ -118,6 +118,7 @@ const mapTrackTag = (
     trackId: trackTag.TrackId,
     updatedAt: trackTag.updatedAt?.toISOString(),
     what: trackTag.what,
+    path: trackTag.path
   };
   if (trackTag.automatic) {
     (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;

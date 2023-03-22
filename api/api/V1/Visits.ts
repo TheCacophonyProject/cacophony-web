@@ -64,6 +64,9 @@ export function getCanonicalTrackTag(
   const animalTags = manualTags.filter(
     (tag) => !NON_ANIMAL_TAGS.includes(tag.what)
   );
+
+  // FIXME - Conflicting tags aren't actually conflicts if users agree on the super-species of the tag to some extent:
+  //  i.e. Rodent + mouse shouldn't be counted as conflicting, but mammal + rodent or mammal + mouse would be?
   const uniqueTags = new Set(animalTags.map((tag) => tag.what));
   if (uniqueTags.size > 1) {
     const conflict = {

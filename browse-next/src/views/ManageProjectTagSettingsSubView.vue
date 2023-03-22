@@ -110,12 +110,12 @@ const resetTags = async () => {
 };
 
 const showAddTagModal = ref<boolean>(false);
-const pendingTag = ref<string | null>(null);
+const pendingTag = ref<string[]>([]);
 
 const addPendingTag = async () => {
-  if (pendingTag.value) {
-    await addTag(pendingTag.value);
-    pendingTag.value = null;
+  if (pendingTag.value.length) {
+    await addTag(pendingTag.value[0]);
+    pendingTag.value = [];
   }
 };
 
@@ -174,7 +174,7 @@ const addPendingTag = async () => {
   <b-modal
     v-model="showAddTagModal"
     title="Add group tag"
-    @cancel="() => (pendingTag = null)"
+    @cancel="() => (pendingTag = [])"
     @ok="addPendingTag"
     ok-title="Add tag"
     ok-variant="secondary"
@@ -183,10 +183,9 @@ const addPendingTag = async () => {
   >
     <hierarchical-tag-select
       class="flex-grow-1"
-      @change="(tag) => (pendingTag = tag.label)"
+      v-model="pendingTag"
       :open-on-mount="false"
       :disabled-tags="customTags"
-      :selected-item="pendingTag || undefined"
     />
   </b-modal>
 </template>

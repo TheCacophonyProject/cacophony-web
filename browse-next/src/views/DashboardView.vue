@@ -40,6 +40,7 @@ import {
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
 import BimodalSwitch from "@/components/BimodalSwitch.vue";
+import { canonicalLatLngForLocations } from "@/helpers/Location";
 
 const recordingMode = ref<"Thermal" | "Audio">("Thermal");
 const audioMode = computed<boolean>(() => recordingMode.value === "Audio");
@@ -179,7 +180,7 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
     return locations.value
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
       .filter((location) => {
-        if (recordingMode.value) {
+        if (audioMode.value) {
           return (
             (location.lastActiveAudioTime &&
               new Date(location.lastActiveAudioTime) > earliestDate.value) ||
@@ -221,13 +222,9 @@ const loadLocations = async () => {
   }
 };
 
-const canonicalLatLngForActiveLocations = computed<LatLng>(() => {
-  if (locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length) {
-    return locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value[0]
-      .location;
-  }
-  return { lat: 0, lng: 0 };
-});
+const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
+  locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+);
 
 // TODO - Maybe this should be some global context variable too.
 provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);

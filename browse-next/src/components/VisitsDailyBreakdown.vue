@@ -3,7 +3,7 @@ import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { computed, ref } from "vue";
 import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
-  visitTimeAtLocation,
+  timeAtLocation,
   visitDuration,
 } from "@models/visitsUtils";
 import type { DateTime } from "luxon";
@@ -29,7 +29,7 @@ const { visits, startTime, isNocturnal, location } = defineProps<{
 }>();
 
 const endTime = computed<DateTime>(() => startTime.plus({ day: 1 }));
-const visitCountBySpecies = computed<[string, number][]>(() =>
+const visitCountBySpecies = computed<[string, string, number][]>(() =>
   visitsCountBySpeciesCalc(visits)
 );
 
@@ -199,7 +199,7 @@ const hasVisits = computed<boolean>(() => {
 });
 
 const visitTime = (timeIsoString: string) =>
-  visitTimeAtLocation(timeIsoString, location);
+  timeAtLocation(timeIsoString, location);
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   if (visit.recordings.length) {
@@ -214,12 +214,12 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   }
 };
 
-const highlightedStation = (visit: VisitEventItem | SunEventItem) => {
+const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (visit.type === "visit") {
     currentlyHighlightedLocation.value = visit.data.stationId;
   }
 };
-const unhighlightedStation = (visit: VisitEventItem | SunEventItem) => {
+const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (
     visit.type === "visit" &&
     currentlyHighlightedLocation.value === visit.data.stationId
@@ -256,9 +256,9 @@ const unhighlightedStation = (visit: VisitEventItem | SunEventItem) => {
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
       <div v-else class="visits-species-count p-3 pb-1 user-select-none">
         <div
-          v-for="([classification, count], index) in visitCountBySpecies"
+          v-for="([classification, path, count], index) in visitCountBySpecies"
           class="fs-8 visit-species-count"
-          :class="[classification]"
+          :class="[classification, ...path.split('.')]"
           :key="index"
         >
           <span class="count text-capitalize">{{ count }}</span>
@@ -281,8 +281,8 @@ const unhighlightedStation = (visit: VisitEventItem | SunEventItem) => {
           },
         ]"
         @click="selectedVisit(visit)"
-        @mouseenter="() => highlightedStation(visit)"
-        @mouseleave="() => unhighlightedStation(visit)"
+        @mouseenter="() => highlightedLocation(visit)"
+        @mouseleave="() => unhighlightedLocation(visit)"
       >
         <div
           class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"

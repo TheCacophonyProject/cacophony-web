@@ -15,7 +15,7 @@ module.exports = {
     try {
       await queryInterface.sequelize.query(
         'drop type "enum_Recordings_type";'
-      )
+      );
     } catch (e) {
       console.log(e);
     }

@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import type { RouteParamsRaw } from "vue-router";
-import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  inject,
+  nextTick,
+  onMounted,
+  provide,
+  ref,
+  watch,
+} from "vue";
 import type { ComputedRef, Ref } from "vue";
 import type {
   LatLng,
@@ -11,9 +19,10 @@ import type {
   TrackId,
 } from "@typedefs/api/common";
 import {
-  timezoneForLocation,
+  timezoneForLatLng,
   visitDuration,
-  visitTimeAtLocation,
+  timeAtLocation,
+  formatDuration,
 } from "@models/visitsUtils";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
@@ -68,18 +77,51 @@ watch(inlineModalHeight, (newHeight) => {
 const locations: Ref<ApiLocationResponse[] | null> =
   inject(activeLocations) || ref(null);
 
+const loadedRecordingIds = inject(
+  "loadedRecordingIds",
+  computed(() => [])
+) as ComputedRef<RecordingId[]>;
+const canLoadMoreRecordingsInPast = inject(
+  "canLoadMoreRecordingsInPast",
+  ref(false)
+) as ComputedRef<boolean>;
+const requestLoadMoreRecordingsInPast = inject(
+  "requestLoadMoreRecordingsInPast",
+  () => {
+    //
+  }
+) as () => void;
+const currentRecordingCount = inject(
+  "currentRecordingCount",
+  ref(0)
+) as ComputedRef<number>;
+const canExpandCurrentQueryIntoPast = inject(
+  "canExpandCurrentQueryInPast",
+  computed(() => false)
+) as ComputedRef<boolean>;
+const updatedRecording = inject("updatedRecording", (recording: ApiRecordingResponse) => {
+  //
+}) as (recording: ApiRecordingResponse) => void;
+
 const recordingIds = ref(
   (() => {
     const ids = route.params.recordingIds;
     return (ids && (ids as string).split(",").map(Number)) || [];
   })()
 );
+
+const allRecordingIds = computed<RecordingId[]>(() => {
+  return recordingIds.value.length
+    ? recordingIds.value
+    : loadedRecordingIds.value;
+});
+
 const currentRecordingId = ref<number>(Number(route.params.currentRecordingId));
 const _currentLocationId = ref<LocationId | null>(null);
 const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
 const userSelectedTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentLocations = ref<ApiLocationResponse[] | null>(locations.value);
-const visitLabel = ref<string>(route.params.visitLabel as string);
+const visitLabel = ref<string>((route.params.visitLabel as string) || "");
 
 const deviceNameSpan = ref<HTMLSpanElement>();
 const stationNameSpan = ref<HTMLSpanElement>();
@@ -149,8 +191,22 @@ const previousVisit = computed<ApiVisitResponse | null>(() => {
   );
 });
 
+const previousRecordingId = computed<RecordingId | null>(() => {
+  if (previousRecordingIndex.value !== null) {
+    return allRecordingIds.value[previousRecordingIndex.value];
+  }
+  return null;
+});
+
+const nextRecordingId = computed<RecordingId | null>(() => {
+  if (nextRecordingIndex.value !== null) {
+    return allRecordingIds.value[nextRecordingIndex.value];
+  }
+  return null;
+});
+
 const currentRecordingIndex = computed<number | null>(() => {
-  const index = recordingIds.value.indexOf(currentRecordingId.value);
+  const index = allRecordingIds.value.indexOf(currentRecordingId.value);
   if (index === -1) {
     return null;
   }
@@ -158,21 +214,37 @@ const currentRecordingIndex = computed<number | null>(() => {
 });
 
 const nextRecordingIndex = computed<number | null>(() => {
+  const total = recordingIds.value.length || loadedRecordingIds.value.length;
   if (currentRecordingIndex.value !== null) {
-    if (currentRecordingIndex.value + 1 >= recordingIds.value.length) {
-      return null;
+    if (recordingViewContext === "activity-recording") {
+      if (currentRecordingIndex.value - 1 < 0) {
+        return null;
+      }
+      return currentRecordingIndex.value - 1;
+    } else {
+      if (currentRecordingIndex.value + 1 >= total) {
+        return null;
+      }
+      return currentRecordingIndex.value + 1;
     }
-    return currentRecordingIndex.value + 1;
   }
   return null;
 });
 
 const previousRecordingIndex = computed<number | null>(() => {
   if (currentRecordingIndex.value !== null) {
-    if (currentRecordingIndex.value - 1 < 0) {
-      return null;
+    if (recordingViewContext === "activity-recording") {
+      const total = loadedRecordingIds.value.length;
+      if (currentRecordingIndex.value + 1 >= total) {
+        return null;
+      }
+      return currentRecordingIndex.value + 1;
+    } else {
+      if (currentRecordingIndex.value - 1 < 0) {
+        return null;
+      }
+      return currentRecordingIndex.value - 1;
     }
-    return currentRecordingIndex.value - 1;
   }
   return null;
 });
@@ -210,16 +282,14 @@ const hasPreviousVisit = computed<boolean>(() => {
 const gotoNextRecordingOrVisit = () => {
   if (hasNextRecording.value) {
     gotoNextRecording();
-  } else {
+  } else if (isInVisitContext.value) {
     gotoNextVisit();
   }
 };
 
 const gotoNextRecording = () => {
-  if (hasNextRecording.value) {
-    const nextRecordingId =
-      recordingIds.value[nextRecordingIndex.value as number];
-    gotoRecording(nextRecordingId);
+  if (nextRecordingId.value) {
+    gotoRecording(nextRecordingId.value);
   }
 };
 
@@ -233,7 +303,7 @@ const gotoNextVisit = () => {
 const gotoPreviousRecordingOrVisit = () => {
   if (hasPreviousRecording.value) {
     gotoPreviousRecording();
-  } else {
+  } else if (isInVisitContext.value) {
     gotoPreviousVisit();
   }
 };
@@ -241,10 +311,14 @@ const gotoPreviousRecordingOrVisit = () => {
 const gotoRecording = (recordingId: RecordingId) => {
   const params = {
     ...route.params,
-    recordingIds: recordingIds.value.join(","),
-    visitLabel: visitLabel.value,
     currentRecordingId: recordingId,
   };
+  if (recordingIds.value.length) {
+    (params as any).recordingIds = recordingIds.value.join(",");
+  }
+  if (visitLabel.value) {
+    (params as any).visitLabel = visitLabel.value;
+  }
   delete (params as RouteParamsRaw).trackId;
   delete (params as RouteParamsRaw).detail;
   router.push({
@@ -276,10 +350,14 @@ const gotoVisit = (visit: ApiVisitResponse, startOfVisit: boolean) => {
 };
 
 const gotoPreviousRecording = () => {
-  if (hasPreviousRecording.value) {
-    const previousRecordingId =
-      recordingIds.value[previousRecordingIndex.value as number];
-    gotoRecording(previousRecordingId);
+  if (previousRecordingId.value) {
+    if (
+      previousRecordingIndex.value === allRecordingIds.value.length - 5 &&
+      canLoadMoreRecordingsInPast.value
+    ) {
+      requestLoadMoreRecordingsInPast();
+    }
+    gotoRecording(previousRecordingId.value);
   }
 };
 
@@ -290,8 +368,53 @@ const gotoPreviousVisit = () => {
   }
 };
 
-// TODO - Handle previous visits
+const visitForRecording = computed<string>(() => {
+  if (recording.value) {
+    const humanTags: Record<string, number> = {};
+    const aiTags: Record<string, number> = {};
+    for (const track of recording.value.tracks) {
+      for (const tag of track.tags) {
+        if (!tag.automatic) {
+          humanTags[tag.what] = humanTags[tag.what] || 0;
+          humanTags[tag.what] += 1;
+        } else {
+          aiTags[tag.what] = aiTags[tag.what] || 0;
+          aiTags[tag.what] += 1;
+        }
+      }
+    }
 
+    const humanTagCounts = Object.entries(humanTags);
+    if (humanTagCounts.length) {
+      let bestHumanTagCount = 0;
+      let bestHumanTag;
+      for (const [tag, count] of humanTagCounts) {
+        if (count > bestHumanTagCount) {
+          bestHumanTagCount = count;
+          bestHumanTag = tag;
+        }
+      }
+      return bestHumanTag || "";
+    } else {
+      const aiTagCounts = Object.entries(aiTags);
+      if (aiTagCounts.length) {
+        let bestAiTagCount = 0;
+        let bestAiTag;
+        for (const [tag, count] of aiTagCounts) {
+          if (count > bestAiTagCount) {
+            bestAiTagCount = count;
+            bestAiTag = tag;
+          }
+        }
+        return bestAiTag || "";
+      }
+    }
+    return "No Tracks";
+  }
+  return "";
+});
+
+// TODO - Handle previous visits
 const recalculateCurrentVisit = async (
   track: ApiTrackResponse,
   addedTag?: ApiHumanTrackTagResponse,
@@ -407,6 +530,9 @@ const trackTagChanged = async ({
       } else if (action === "remove") {
         await recalculateCurrentVisit(track, undefined, tag);
       }
+      if (!isInVisitContext.value) {
+        updatedRecording(recording.value);
+      }
     }
   }
 };
@@ -414,6 +540,9 @@ const trackTagChanged = async ({
 const addedRecordingLabel = (label: ApiRecordingTagResponse) => {
   if (recording.value) {
     recording.value.tags.push(label);
+    if (!isInVisitContext.value) {
+      updatedRecording(recording.value);
+    }
   }
 };
 
@@ -422,6 +551,9 @@ const removedRecordingLabel = (labelId: TagId) => {
     recording.value.tags = recording.value.tags.filter(
       (tag) => tag.id !== labelId
     );
+    if (!isInVisitContext.value) {
+      updatedRecording(recording.value);
+    }
   }
 };
 
@@ -532,12 +664,38 @@ onMounted(async () => {
 const visitDurationString = computed<string>(() => {
   if (selectedVisit.value && locationContext && locationContext.value) {
     const duration = visitDuration(selectedVisit.value, true);
-    let visitStart = visitTimeAtLocation(
+    let visitStart = timeAtLocation(
       selectedVisit.value.timeStart,
       locationContext.value
     );
-    const visitEnd = visitTimeAtLocation(
+    const visitEnd = timeAtLocation(
       selectedVisit.value.timeEnd,
+      locationContext.value
+    );
+    if (visitStart === visitEnd) {
+      return `${visitStart} (${duration})`;
+    }
+    if (visitStart.slice(-2) === visitEnd.slice(-2)) {
+      // If visitStart has the same suffix as visitEnd, omit it.
+      visitStart = visitStart.replace("am", "").replace("pm", "");
+    }
+    return `${visitStart}&ndash;${visitEnd} (${duration})`;
+  }
+  return "";
+});
+
+const recordingDurationString = computed<string>(() => {
+  if (recording.value && locationContext && locationContext.value) {
+    const durationMs = recording.value.duration * 1000;
+    const duration = formatDuration(durationMs, true);
+    let visitStart = timeAtLocation(
+      recording.value.recordingDateTime,
+      locationContext.value
+    );
+    const visitEnd = timeAtLocation(
+      new Date(
+        new Date(recording.value.recordingDateTime).getTime() + durationMs
+      ).toISOString(),
       locationContext.value
     );
     if (visitStart === visitEnd) {
@@ -555,7 +713,7 @@ const visitDurationString = computed<string>(() => {
 const recordingDateTime = computed<DateTime | null>(() => {
   if (recording.value) {
     if (recording.value.location) {
-      const zone = timezoneForLocation(recording.value.location);
+      const zone = timezoneForLatLng(recording.value.location);
       return DateTime.fromISO(recording.value.recordingDateTime, {
         zone,
       });
@@ -612,7 +770,7 @@ const isMobileView = computed<boolean>(() => {
   return !desktop.value;
 });
 
-const recordingViewContext = "dashboard-visit";
+const recordingViewContext = route.meta.context;
 
 const recordingInfo = ref<HTMLDivElement>();
 const playerContainer = ref<HTMLDivElement>();
@@ -738,6 +896,21 @@ const inlineModal = ref<boolean>(false);
           <span
             v-if="isInGreaterVisitContext"
             v-html="visitDurationString"
+            class="ms-sm-3 ms-2 recording-header-time"
+            style="color: #444"
+          />
+        </div>
+      </div>
+      <div v-else>
+        <span class="recording-header-type text-uppercase fw-bold"
+          >Recording</span
+        >
+        <div class="recording-header-details mb-1 mb-sm-0">
+          <span class="recording-header-label fw-bold text-capitalize">{{
+            visitForRecording
+          }}</span>
+          <span
+            v-html="recordingDurationString"
             class="ms-sm-3 ms-2 recording-header-time"
             style="color: #444"
           />
@@ -1028,7 +1201,8 @@ const inlineModal = ref<boolean>(false);
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
             <span class="fs-9" v-if="previousRecordingIndex !== null"
-              >{{ previousRecordingIndex + 1 }}/ {{ recordingIds.length }}</span
+              >{{ previousRecordingIndex + 1 }}/
+              {{ currentRecordingCount || allRecordingIds.length }}</span
             >
             <span class="fs-9" v-else-if="previousVisit">
               <span class="text-capitalize fw-bold">{{
@@ -1078,7 +1252,9 @@ const inlineModal = ref<boolean>(false);
             >
             <span class="fs-8" v-else v-html="'&nbsp;'"></span>
             <span class="fs-9" v-if="nextRecordingIndex !== null"
-              >{{ nextRecordingIndex + 1 }}/{{ recordingIds.length }}</span
+              >{{ nextRecordingIndex + 1 }}/{{
+                currentRecordingCount || allRecordingIds.length
+              }}</span
             >
             <span class="fs-9" v-else-if="nextVisit">
               <span class="text-capitalize fw-bold">{{
@@ -1213,8 +1389,7 @@ const inlineModal = ref<boolean>(false);
   .standard-shadow();
 }
 .recording-details {
-  //flex: 0.1;
-  //flex-basis: min-content;
+  max-width: 318px;
 }
 .recording-location-map {
   @media screen and (max-width: 1039px) {
@@ -1283,7 +1458,6 @@ const inlineModal = ref<boolean>(false);
         word-break: break-all;
         z-index: 1;
       }
-
       overflow: visible;
     }
   }

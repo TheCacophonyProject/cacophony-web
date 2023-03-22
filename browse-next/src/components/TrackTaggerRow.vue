@@ -7,13 +7,10 @@ import type {
   Classification,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
-import {
-  currentSelectedProject,
-  CurrentUser,
-  persistUserGroupSettings,
-} from "@models/LoggedInUser";
-import type { SelectedProject } from "@models/LoggedInUser";
+import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import type { Ref } from "vue";
+import { persistUserGroupSettings } from "@models/LoggedInUser";
+import type { SelectedProject, LoggedInUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
@@ -32,6 +29,11 @@ import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
 import TagImage from "@/components/TagImage.vue";
+import {
+  currentSelectedProject as currentProject,
+  currentUser,
+} from "@models/provides";
+import type { LoadedResource } from "@api/types";
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
   index: number;
@@ -57,6 +59,9 @@ const showClassificationSearch = ref<boolean>(false);
 const showTaggerDetails = ref<boolean>(false);
 const tagSelect = ref<typeof HierarchicalTagSelect>();
 const trackDetails = ref<HTMLDivElement>();
+
+const currentSelectedProject = inject(currentProject) as Ref<SelectedProject>;
+const CurrentUser = inject(currentUser) as Ref<LoadedResource<LoggedInUser>>;
 
 const userIsGroupAdmin = computed<boolean>(() => {
   return (
@@ -184,14 +189,44 @@ const humanTags = computed<ApiHumanTrackTagResponse[]>(() => {
   ) as ApiHumanTrackTagResponse[];
 });
 
-const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(() =>
-  humanTags.value.find((tag) => tag.userId === CurrentUser.value?.id)
+const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(
+  () =>
+    (CurrentUser.value &&
+      humanTags.value.find(
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+      )) ||
+    undefined
 );
 
-const otherUserTags = computed<string[]>(() =>
-  humanTags.value
-    .filter((tag) => tag.userId !== CurrentUser.value?.id)
-    .map(({ what }) => what)
+const selectedUserTagLabel = computed<string[]>({
+  get: () => {
+    const label =
+      CurrentUser.value &&
+      humanTags.value.find(
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+      );
+    if (label) {
+      return [label.what];
+    }
+    return [];
+  },
+  set: (val: string[]) => {
+    if (val.length) {
+      emit("add-or-remove-user-tag", {
+        trackId: track.id,
+        tag: val[0],
+      });
+    }
+  },
+});
+
+const otherUserTags = computed<string[]>(
+  () =>
+    (CurrentUser.value &&
+      humanTags.value
+        .filter((tag) => tag.userId !== (CurrentUser.value as LoggedInUser).id)
+        .map(({ what }) => what)) ||
+    []
 );
 
 const thisUsersTagAgreesWithAiClassification = computed<boolean>(
@@ -311,17 +346,6 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
   }
   return !defaultTags.value.includes(thisUserTag.value.what);
 });
-
-const setCustomTag = async (classification: Classification | null) => {
-  if (classification) {
-    // Add the tag, remove the current one.
-    emit("add-or-remove-user-tag", {
-      trackId: track.id,
-      tag: classification.label,
-    });
-  }
-};
-
 const addCustomTag = () => {
   showClassificationSearch.value = true;
   tagSelect.value && tagSelect.value.open();
@@ -488,12 +512,11 @@ onMounted(async () => {
       <hierarchical-tag-select
         v-if="currentlySelectedTagCanBePinned || showClassificationSearch"
         class="flex-grow-1"
-        @change="setCustomTag"
         @pin="pinCustomTag"
         @options-change="resizeDetails"
         @deselected="showClassificationSearch = false"
         ref="tagSelect"
-        :selected-item="thisUserTag && thisUserTag.what"
+        v-model="selectedUserTagLabel"
         :can-be-pinned="currentlySelectedTagCanBePinned"
         :pinned-items="userDefinedTagLabels"
       />

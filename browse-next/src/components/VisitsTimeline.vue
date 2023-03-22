@@ -9,12 +9,12 @@ import {
   watch,
 } from "vue";
 import {
-  timezoneForLocation,
+  timezoneForLatLng,
   visitsBySpecies as visitsBySpeciesCalc,
 } from "@models/visitsUtils";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import {displayLabelForClassificationLabel, getPathForLabel} from "@api/Classifications";
 import { currentlyHighlightedLocation } from "@models/SelectionContext";
 
 const { visits, locations, startDate } = defineProps<{
@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
 const timezoneForActiveStations = computed<string>(() => {
   if (locations.length) {
     const location = locations[0];
-    return timezoneForLocation(location.location);
+    return timezoneForLatLng(location.location);
   }
   return "Auckland/Pacific";
 });
@@ -188,7 +188,7 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
               maxTime
             )}%`,
           }"
-          :class="['event-item-visit', visit.classification]"
+          :class="['event-item-visit', visit.classification, ...(getPathForLabel(visit.classification) || '').split('.')]"
         />
         <div
           v-for="(date, index) in dates"

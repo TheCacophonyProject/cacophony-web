@@ -22,7 +22,7 @@ export const DEFAULT_TAGS = [
 export const RecordingLabels = [
   { text: "Cool", description: "Mark this as a cool or interesting recording" },
   {
-    text: "Flag for review",
+    text: "Flagged for review",
     value: "requires review",
     description:
       "Flag this recording for review due to low confidence IDing track(s)",

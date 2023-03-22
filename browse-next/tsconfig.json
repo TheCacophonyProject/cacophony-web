@@ -18,8 +18,8 @@
       "@models/*": ["./src/models/*"],
       "@typedefs/*":  ["../types/*"]
     },
-//    "moduleResolution": "bundler",
-//    "allowImportingTsExtensions": true
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true
   },
 
   "references": [

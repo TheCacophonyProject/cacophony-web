@@ -875,6 +875,7 @@ from (
               attributes: [
                 "id",
                 "what",
+                "path",
                 "automatic",
                 "TrackId",
                 "confidence",

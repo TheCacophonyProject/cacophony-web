@@ -92,3 +92,15 @@ export const displayLabelForClassificationLabel = (label: string) => {
   const classifications = flatClassifications.value || {};
   return (classifications[label] && classifications[label].display) || label;
 };
+
+export const getPathForLabel = (label: string): string => {
+  label = label.toLowerCase();
+  const classifications = flatClassifications.value || {};
+  return classifications[label] && classifications[label].path;
+};
+
+export const getClassificationForLabel = (label: string): Classification => {
+  label = label.toLowerCase();
+  const classifications = flatClassifications.value || {};
+  return classifications[label];
+};

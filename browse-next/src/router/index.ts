@@ -43,6 +43,47 @@ const cancelPendingRequests = (
   CurrentViewAbortController.newView();
   return next();
 };
+const recordingModalTabChildren = (grandParent: string, parent: string) => [
+  {
+    path: "labels/:trackId?/:detail?", // Labels also needs to maintain current trackId when we switch to it.
+    name: `${grandParent}-${parent}-labels`,
+    component: () => import("@/components/RecordingViewLabels.vue"),
+  },
+  {
+    path: "tracks/:trackId?/:detail?",
+    name: `${grandParent}-${parent}-tracks`,
+    component: () => import("@/components/RecordingViewTracks.vue"),
+  },
+];
+
+const recordingModalChildren = (parent: string) => [
+  {
+    // RecordingView will be rendered inside Dashboards' <router-view>
+    // when /:projectName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
+    path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
+    name: `${parent}-visit`,
+    redirect: { name: `${parent}-visit-tracks` }, // Make tracks the default tab
+    meta: {
+      title: ":visitLabel visit, #:currentRecordingId",
+      context: `${parent}-visit`,
+    },
+    component: () => import("@/views/RecordingView.vue"),
+    children: recordingModalTabChildren(parent, "visit"),
+  },
+  {
+    // RecordingView will be rendered inside Dashboards' <router-view>
+    // when /:projectName/recordings/:recordingIds is matched
+    path: "recording/:currentRecordingId/:recordingIds?",
+    meta: {
+      title: "Recording #:currentRecordingId",
+      context: `${parent}-recording`,
+    },
+    redirect: { name: `${parent}-recording-tracks` }, // Make tracks the default tab
+    name: `${parent}-recording`,
+    component: () => import("@/views/RecordingView.vue"),
+    children: recordingModalTabChildren(parent, "recording"),
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -98,37 +139,7 @@ const router = createRouter({
       meta: { title: ":projectName Dashboard", requiresLogin: true },
       component: () => import("@/views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
-      children: [
-        {
-          // RecordingView will be rendered inside Dashboards' <router-view>
-          // when /:groupName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
-          path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
-          name: "dashboard-visit",
-          redirect: { name: "dashboard-visit-tracks" }, // Make tracks the default tab
-          meta: { title: ":visitLabel visit, #:currentRecordingId" },
-          component: () => import("@/views/RecordingView.vue"),
-          children: [
-            {
-              path: "labels/:trackId?/:detail?", // Labels also needs to maintain current trackId when we switch to it.
-              name: "dashboard-visit-labels",
-              component: () => import("@/components/RecordingViewLabels.vue"),
-            },
-            {
-              path: "tracks/:trackId?/:detail?",
-              name: "dashboard-visit-tracks",
-              component: () => import("@/components/RecordingViewTracks.vue"),
-            },
-          ],
-        },
-        {
-          // RecordingView will be rendered inside Dashboards' <router-view>
-          // when /:groupName/recordings/:recordingIds is matched
-          path: "recording/:currentRecordingId/:recordingIds?",
-          meta: { title: "Recording #:currentRecordingId" },
-          name: "dashboard-recording",
-          component: () => import("@/views/RecordingView.vue"),
-        },
-      ],
+      children: recordingModalChildren("dashboard"),
     },
     {
       path: "/:projectName/locations",
@@ -146,6 +157,7 @@ const router = createRouter({
       meta: { requiresLogin: true, title: "Activity in :projectName" },
       component: () => import("@/views/ActivitySearchView.vue"),
       beforeEnter: cancelPendingRequests,
+      children: recordingModalChildren("activity"),
     },
     {
       path: "/:projectName/devices/:all?",

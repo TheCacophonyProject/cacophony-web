@@ -22,6 +22,7 @@ export interface TrackTagData extends ApiTrackTagAttributes {
 
 export interface ApiTrackTagResponse {
   what: string;
+  path: string;
   id: TrackTagId;
   trackId: TrackId;
   confidence: number;

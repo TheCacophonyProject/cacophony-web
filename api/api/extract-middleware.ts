@@ -941,6 +941,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
         attributes: [
           "id",
           "what",
+          "path",
           "automatic",
           "confidence",
           "data",

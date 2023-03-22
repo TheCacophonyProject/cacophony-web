@@ -9,6 +9,7 @@ import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import { removeTrackTag, replaceTrackTag } from "@api/Recording";
 import { CurrentUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
+import {getPathForLabel} from "@api/Classifications";
 const route = useRoute();
 const router = useRouter();
 const { recording } = defineProps<{
@@ -145,6 +146,7 @@ const addOrRemoveUserTag = async ({
           trackId,
           id: -1,
           what: tag,
+          path: getPathForLabel(tag),
           userId: CurrentUser.value?.id,
           userName: CurrentUser.value?.userName,
           automatic: false,

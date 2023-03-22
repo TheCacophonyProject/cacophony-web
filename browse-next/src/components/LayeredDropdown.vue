@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 import { onClickOutside } from "@vueuse/core";
+import { getClassificationForLabel } from "@api/Classifications";
 
 const {
   options,
@@ -10,7 +11,7 @@ const {
   canBePinned = false,
   pinnedItems = [],
   placeholder = "Search",
-  selectedItem,
+  selectedItems = [],
   openOnMount = true,
   disabledTags = [],
 } = defineProps<{
@@ -21,7 +22,7 @@ const {
   placeholder: string;
   canBePinned: boolean;
   pinnedItems: string[];
-  selectedItem?: string;
+  selectedItems: string[];
   openOnMount?: boolean;
 }>();
 
@@ -30,8 +31,8 @@ const optionsList = ref<HTMLDivElement>();
 const optionsContainerRef = ref<HTMLDivElement>();
 const inputRef = ref<HTMLInputElement>();
 
-const singleSelection = ref<Classification | null>(null);
-const multipleSelections = ref<Classification[]>([]);
+//const singleSelection = ref<Classification | null>(null);
+const selections = ref<Classification[]>([]);
 
 const currPath = ref<string[]>([]);
 // Search
@@ -39,7 +40,7 @@ const searchTerm = ref("");
 const showOptions = ref<boolean>(false);
 
 const emit = defineEmits<{
-  (e: "change", value: Classification | Classification[] | null): void;
+  (e: "change", value: Classification[]): void;
   (e: "pin", value: Classification | Classification[] | null): void;
   (e: "options-change"): void; // When the option changes, the height changes, and we may want to let the parent element know about this.
   (e: "deselected"): void;
@@ -61,6 +62,12 @@ const openSelect = () => {
   emit("options-change");
 };
 
+const maybeOpenSelect = () => {
+  if (!showOptions.value) {
+    showOptions.value = true;
+  }
+};
+
 const closeSelect = () => {
   showOptions.value = false;
   searchTerm.value = "";
@@ -68,30 +75,49 @@ const closeSelect = () => {
   emit("options-change");
 };
 
+const maybeCloseSelect = () => {
+  // if (!showOptions.value) {
+  //   showOptions.value = true;
+  // }
+};
+
 watch(
-  () => selectedItem,
-  (nextLabel) => {
-    if (nextLabel) {
-      showOptions.value = false;
-      searchTerm.value = (nextLabel as string) || "";
-      addSearchTermOnSubmit();
-      currPath.value =
-        optionsMap.value.get((nextLabel as string).toLowerCase())?.path || [];
-    } else {
-      singleSelection.value = null;
+  () => selectedItems,
+  (nextSelected: string[]) => {
+    if (!multiselect) {
+      console.assert(nextSelected.length <= 1);
     }
+    const nextSelections = [];
+    for (const label of nextSelected) {
+      const canonicalClassification = getClassificationForLabel(
+        label.toLowerCase()
+      );
+      nextSelections.push(canonicalClassification);
+    }
+    selections.value = nextSelections;
   }
 );
+
+onMounted(() => {
+  const nextSelections = [];
+  for (const label of selectedItems) {
+    const canonicalClassification = getClassificationForLabel(
+      label.toLowerCase()
+    );
+    nextSelections.push(canonicalClassification);
+  }
+  selections.value = nextSelections;
+});
 
 watch(
   () => options,
   () => {
-    if (selectedItem && pinnedItems.includes(selectedItem)) {
+    if (selectedItems.length === 1 && pinnedItems.includes(selectedItems[0])) {
       showOptions.value = false;
-      searchTerm.value = (selectedItem as string) || "";
+      searchTerm.value = selectedItems[0];
       addSearchTermOnSubmit();
       currPath.value =
-        optionsMap.value.get(selectedItem.toLowerCase())?.path || [];
+        optionsMap.value.get(selectedItems[0].toLowerCase())?.path || [];
     } else if (openOnMount) {
       openSelect();
     }
@@ -142,26 +168,29 @@ const optionsMap = computed<Map<string, PathOption>>(
 );
 
 const hasSelection = computed<boolean>(() => {
-  return multipleSelections.value.length !== 0;
+  return selections.value.length !== 0;
 });
 
 const addSelectedOption = (option: Classification) => {
   if (option.label === "No results") {
     return;
   }
-  if (!multiselect && singleSelection.value !== option) {
-    singleSelection.value = option;
-    emit("change", singleSelection.value);
-  } else if (!multipleSelections.value.includes(option)) {
-    multipleSelections.value.push(option);
-    emit("change", multipleSelections.value);
+  const canonicalOption = getClassificationForLabel(option.label.toLowerCase());
+
+  if (!multiselect && selections.value[0] !== canonicalOption) {
+    emit("change", [canonicalOption]);
+    closeSelect();
+  } else if (!selections.value.includes(canonicalOption)) {
+    (inputRef.value as HTMLInputElement).focus();
+    emit("change", [...selections.value, canonicalOption]);
+  } else {
+    closeSelect();
   }
-  closeSelect();
 };
 
 const pinCurrentSelection = (_option: Classification) => {
-  if (singleSelection.value) {
-    emit("pin", singleSelection.value);
+  if (selections.value.length === 1) {
+    emit("pin", selections.value[0]);
   }
 };
 
@@ -183,19 +212,15 @@ const handleEscapeDismiss = () => {
 };
 
 const removeSelectedOption = (option: Classification) => {
-  if (!multiselect) {
-    singleSelection.value = null;
-  } else {
-    multipleSelections.value = multipleSelections.value.filter(
-      (o) => o !== option
-    );
-  }
+  selections.value = selections.value.filter((o) => o !== option);
+  (inputRef.value as HTMLInputElement).focus();
+  emit("change", selections.value);
 };
 
 const singleSelectionIsPinned = computed<boolean>(
   () =>
-    singleSelection.value !== null &&
-    pinnedItems.includes(singleSelection.value.label)
+    selections.value.length === 1 &&
+    pinnedItems.includes(selections.value[0].label)
 );
 
 const setToPath = (label: string) => {
@@ -241,6 +266,7 @@ onClickOutside(optionsContainerRef, () => {
 defineExpose({
   open: openSelect,
 });
+//
 </script>
 <template>
   <div ref="optionsContainerRef" class="options-container">
@@ -249,10 +275,16 @@ defineExpose({
       :class="{ open: showOptions }"
     >
       <input
-        v-if="multiselect || showOptions || (!multiselect && !singleSelection)"
+        v-if="
+          multiselect ||
+          showOptions ||
+          (!multiselect && selections.length === 0)
+        "
         @keyup.enter.stop.prevent="addSearchTermOnSubmit"
         @keydown.esc.stop.prevent="handleEscapeDismiss"
         @focus="openSelect"
+        @blur="(e) => maybeCloseSelect"
+        @input="maybeOpenSelect"
         type="text"
         ref="inputRef"
         v-model="searchTerm"
@@ -260,15 +292,16 @@ defineExpose({
         :disabled="disabled"
       />
       <div
-        v-if="!showOptions && singleSelection"
+        v-if="!showOptions && !multiselect && selections.length === 1"
         class="d-flex single-selection align-items-center"
       >
         <button
           type="button"
+          tabindex="-1"
           class="btn selected-option text-start text-capitalize flex-grow-1 px-0"
           @click="openSelect"
         >
-          {{ singleSelection.display || singleSelection.label }}
+          {{ selections[0].display || selections[0].label }}
         </button>
         <button
           type="button"
@@ -284,13 +317,13 @@ defineExpose({
       </div>
       <div
         v-else-if="multiselect && hasSelection"
-        class="selected-container d-flex flex-wrap px-2 pt-2"
+        class="selected-container d-flex flex-wrap p-2"
       >
         <button
           type="button"
-          class="selected-option btn text-capitalize ps-2 pe-0 py-0 mb-2 d-flex justify-content-center align-items-center"
+          class="selected-option-badge btn text-capitalize ps-2 pe-0 py-0 d-flex justify-content-center align-items-center"
           :key="option.label"
-          v-for="option in multipleSelections"
+          v-for="option in selections"
         >
           {{ option.display || option.label }}
           <span
@@ -363,9 +396,7 @@ defineExpose({
   padding-left: 0.4em;
   color: rgb(128, 128, 128);
   background: rgb(248, 248, 248);
-  border: 1px solid #ccc;
-  border-top: 0;
-  border-bottom: 0;
+  border-bottom: 1px solid #ccc;
 
   :last-child {
     color: rgb(91, 199, 97);
@@ -376,6 +407,13 @@ defineExpose({
   margin-right: 5px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.options-container:focus-within {
+  color: rgb(46, 46, 46);
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  border-radius: 0.375rem;
+  border-color: #86b7fe;
 }
 
 .input-container {
@@ -398,19 +436,13 @@ defineExpose({
     line-height: 2.5rem;
     text-indent: 0.5rem;
     color: rgb(128, 128, 128);
-    //&:focus {
-    //  color: rgb(46, 46, 46);
-    //  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-    //  border-radius: 0.375rem;
-    //  border-color: #86b7fe;
-    //}
   }
 }
 
 .selected-container {
   border-top: 1px solid rgb(241, 241, 241);
   gap: 0.3em;
-  > .selected-option {
+  > .selected-option-badge {
     user-select: none;
     align-items: center;
     background: #10b981;
@@ -445,19 +477,24 @@ defineExpose({
 }
 
 .selected-option {
-  min-height: 26px;
+  min-height: 40px;
+  height: 100%;
   cursor: pointer;
 }
 
 .options-display-container {
   width: 100%;
   background-color: white;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+  border: 1px solid #ccc;
+  border-top-width: 0;
+  overflow: hidden;
 }
 
 .options-list-container {
   width: 100%;
   background-color: white;
-  border: 1px solid #ccc;
   max-height: 10em;
   overflow-y: auto;
 }
@@ -479,14 +516,15 @@ defineExpose({
   }
 }
 
-.options-list-child:hover {
+.options-list-child:hover,
+.options-list-child:focus {
   background-color: #dfdfdf;
   svg {
     color: rgb(46, 46, 46);
   }
 }
 
-.options-list-item:hover {
+.options-list-item:hover, .options-list-item:focus-within {
   background-color: #f1f1f1;
   transition: background-color 0.2s ease-in-out;
 }

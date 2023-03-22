@@ -68,6 +68,7 @@ export const currentVisitsFilterComputed = computed<
   }
 });
 
+// TODO: Move to provides/inject
 export const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
     return visitsContext.value.filter(currentVisitsFilterComputed.value);

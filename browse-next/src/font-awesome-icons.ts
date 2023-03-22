@@ -72,6 +72,8 @@ import {
   faCircleMinus,
   faPowerOff,
   faLeftRight,
+  faStream,
+  faUserCog,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -168,7 +170,9 @@ library.add(
   faPowerOff,
   faLeftRight,
   faCircle,
-  faCircleCheck
+  faCircleCheck,
+  faStream,
+  faUserCog
 );
 
 export default FontAwesomeIcon;

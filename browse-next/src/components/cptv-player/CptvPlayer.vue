@@ -46,7 +46,7 @@ import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
-import { timezoneForLocation } from "@models/visitsUtils";
+import { timezoneForLatLng } from "@models/visitsUtils";
 
 const { pixelRatio } = useDevicePixelRatio();
 const {
@@ -123,7 +123,7 @@ const playbackTimeChanged = (offset: number) => {
 const recordingDateTime = computed<DateTime | null>(() => {
   if (recording) {
     if (recording.location) {
-      const zone = timezoneForLocation(recording.location);
+      const zone = timezoneForLatLng(recording.location);
       return DateTime.fromISO(recording.recordingDateTime, {
         zone,
       });

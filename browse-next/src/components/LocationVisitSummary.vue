@@ -27,7 +27,7 @@ const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
   let max = 0;
   for (const stationVisits of Object.values(visitsByStation(visits))) {
     const visitsCount = visitsCountBySpecies(stationVisits);
-    max = Math.max(...visitsCount.map(([_, count]) => count), max);
+    max = Math.max(...visitsCount.map(([_label, _path, count]) => count), max);
   }
   return max;
 });
@@ -54,13 +54,13 @@ const activeLocationsForMap = computed<NamedPoint[]>(() => {
   }
   return [];
 });
-const thisLocationPoint = {
+const thisLocationPoint: NamedPoint = {
   name: location.name,
-  group: location.groupName,
+  project: location.groupName,
   location: location.location as LatLng,
 };
 
-const speciesSummary = computed<[string, number][]>(() =>
+const speciesSummary = computed<[string, string, number][]>(() =>
   visitsCountBySpecies(visitsForLocation.value)
 );
 
@@ -108,7 +108,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
     <div class="visit-species-breakdown d-flex justify-content-between">
       <div class="names my-2">
         <div
-          v-for="([species, count], index) in speciesSummary"
+          v-for="([species, path, count], index) in speciesSummary"
           :class="['species-count', 'ps-1']"
           :key="index"
         >
@@ -120,8 +120,8 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       </div>
       <div class="values flex-fill px-2 my-2">
         <div
-          v-for="([species, count], index) in speciesSummary"
-          :class="[species, 'species-value']"
+          v-for="([species, path, count], index) in speciesSummary"
+          :class="[species, 'species-value', ...(path.split('.'))]"
           :style="{
             width: `calc(max(5px, ${
               (count / maxVisitsForAnySpeciesInAnyStation) * 100

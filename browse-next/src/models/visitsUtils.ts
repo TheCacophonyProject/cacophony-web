@@ -1,9 +1,11 @@
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { LatLng } from "@typedefs/api/common";
+import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
+import {onBeforeMount} from "vue";
+import {getClassifications, getPathForLabel} from "@api/Classifications";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -18,6 +20,12 @@ const tagPrecedence = [
   "rodent",
   "leporidae",
 ];
+
+
+onBeforeMount(async () => {
+  await getClassifications();
+});
+
 
 export const visitsByStation = (
   visits: ApiVisitResponse[]
@@ -65,17 +73,19 @@ export const visitsBySpecies = (
   );
 };
 
+
 export const visitsCountBySpecies = (
   visits: ApiVisitResponse[]
-): [string, number][] =>
+): [string, string, number][] =>
   (
     visitsBySpecies(visits).map(([classification, visits]) => [
       classification,
+      getPathForLabel(classification) || "",
       visits.length,
-    ]) as [string, number][]
+    ]) as [string, string, number][]
   ).sort((a, b) => {
     // Sort by count and break ties by name alphabetically
-    const order = b[1] - a[1];
+    const order = b[2] - a[2];
     if (order === 0) {
       return a[0] > b[0] ? 1 : -1;
     }
@@ -117,7 +127,7 @@ export const visitsByNightAtLocation = (
   visits: ApiVisitResponse[],
   location: LatLng
 ): [DateTime, ApiVisitResponse[]][] => {
-  const zone = timezoneForLocation(location);
+  const zone = timezoneForLatLng(location);
   const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
   for (const visit of visits) {
     // If the visit is after sunset, and before sunrise, it goes to the current day
@@ -169,7 +179,7 @@ export const visitsByDayAtLocation = (
 
   // Note that we count visits as being on the day that they started:  A visit that straddles midnight
   // will only be counted on the previous day.
-  const zone = timezoneForLocation(location);
+  const zone = timezoneForLatLng(location);
   const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
 
   // FIXME - the first chunk will not be a full day at the moment, since we're not going back to the beginning of the
@@ -198,18 +208,16 @@ export const visitsByDayAtLocation = (
   return visitsChunked;
 };
 
-export const timezoneForLocation = (location: LatLng) =>
+export const timezoneForLatLng = (location: LatLng) =>
   tzLookup(location.lat, location.lng);
-export const timezoneForStation = (station: ApiStationResponse) =>
-  timezoneForLocation(station.location);
+export const timezoneForLocation = (station: ApiStationResponse) =>
+  timezoneForLatLng(station.location);
 
-export const visitDuration = (
-  visit: ApiVisitResponse,
+export const formatDuration = (
+  milliseconds: number,
   longForm = false
 ): string => {
-  const millis =
-    new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
-  const minsSecs = Duration.fromMillis(millis).shiftTo("minutes", "seconds");
+  const minsSecs = Duration.fromMillis(milliseconds).shiftTo("minutes", "seconds");
   if (minsSecs.minutes > 0) {
     if (Math.floor(minsSecs.seconds) > 0) {
       return longForm
@@ -224,11 +232,19 @@ export const visitDuration = (
     ? minsSecs.toFormat("s 'seconds'")
     : minsSecs.toFormat("ss's'");
 };
-export const visitTimeAtLocation = (
+export const visitDuration = (
+  visit: ApiVisitResponse,
+  longForm = false
+): string => {
+  const millis =
+    new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
+  return formatDuration(millis, longForm);
+};
+export const timeAtLocation = (
   timeIsoString: string,
   location: LatLng
 ): string => {
-  const zone = timezoneForLocation(location);
+  const zone = timezoneForLatLng(location);
   const localTime = DateTime.fromISO(timeIsoString, { zone });
   return localTime
     .toLocaleString({
