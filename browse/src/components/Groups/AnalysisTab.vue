@@ -12,13 +12,13 @@
             </div>
             <div class="grid-item">
                 <slot name="index-visuals">
-                    <index-time-comparisons v-if="recordings" :recordings="recordings" :groupName="groupName"></index-time-comparisons>
+                    <index-time-comparisons :groupId="groupId" :groupName="groupName"></index-time-comparisons>
                 </slot>
             </div>
             <div class="grid-item">
-                <slot name="index-visuals">
-                    <index-time-comparisons v-if="recordings" :recordings="recordings" :groupName="groupName"></index-time-comparisons>
-                </slot>
+                <!-- <slot name="index-visuals">
+                    <index-time-comparisons :groupId="groupId" :groupName="groupName"></index-time-comparisons>
+                </slot> -->
             </div>
             <div class="grid-item">
                 <slot name="index-visuals">
@@ -34,7 +34,6 @@
 import Help from "@/components/Help.vue"
 import IndexComparisons from "../Visuals/IndexComparisons.vue"
 import IndexTimeComparisons from "../Visuals/IndexTimeComparisons.vue"
-import Chart from "chart.js/auto"
 import api from "@/api"
 
 export default {

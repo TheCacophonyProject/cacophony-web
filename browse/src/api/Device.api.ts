@@ -65,10 +65,10 @@ function getDeviceCacophonyIndex(
   activeAndInactive = false
 ): Promise<FetchResult<{ index: Number }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/${id}/cacophony-index?from=${from}?window-size=${windowsize}${
+    `/api/v1/devices/${id}/cacophony-index?from=${from}&window-size=${windowsize}${
       shouldViewAsSuperUser()
-        ? `?only-active=${activeAndInactive ? "false" : "true"}`
-        : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`
   )
 }
