@@ -24,6 +24,8 @@ class Visit {
   classification?: string;
   classificationAi?: string;
   classFromUserTag?: boolean;
+
+  userTagsConflict?: boolean;
   incomplete?: boolean;
   timeStart?: Moment;
   timeEnd?: Moment;
@@ -93,6 +95,9 @@ class Visit {
           // Only prefer human tags for visit labels if they're not false-positives.
           this.classification = bestHumanTags[0][0];
           this.classFromUserTag = true;
+          if (bestHumanTags[0][1].some(tag => tag.userTagsConflict)) {
+            this.userTagsConflict = true;
+          }
         } else {
           // Use AI tags instead for visit.
           const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
@@ -157,7 +162,7 @@ class Visit {
         (tag) => tag.data === aiModel && tag.automatic
       );
 
-      newVisitRecording.tracks.push({
+      const thisTrack: VisitTrack = {
         id: track.id,
         tag: bestTag ? bestTag.what : null,
         isAITagged: bestTag ? bestTag.automatic : false,
@@ -165,10 +170,15 @@ class Visit {
         start: track.data ? track.data.start_s : "",
         end: track.data ? track.data.end_s : "",
         mass:
-          (track.positions &&
-            track.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
-          0,
-      });
+            (track.positions &&
+                track.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+            0,
+      };
+      if (bestTag && bestTag.data && typeof bestTag.data === "object" && bestTag.data.userTagsConflict) {
+        thisTrack.userTagsConflict = true;
+      }
+
+      newVisitRecording.tracks.push(thisTrack);
     }
     return newVisitRecording;
   }
@@ -279,6 +289,7 @@ interface VisitTrack {
   start: string;
   end: string;
   mass: number; // For tie-breaking purposes with AI only visits
+  userTagsConflict?: boolean;
 }
 
 export async function generateVisits(

@@ -4,8 +4,9 @@ import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
-import {onBeforeMount} from "vue";
-import {getClassifications, getPathForLabel} from "@api/Classifications";
+import { onBeforeMount } from "vue";
+import {classifications, flatClassifications, getClassifications, getPathForLabel} from "@api/Classifications";
+import type {Classification} from "@typedefs/api/trackTag";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -21,11 +22,22 @@ const tagPrecedence = [
   "leporidae",
 ];
 
-
-onBeforeMount(async () => {
+(async () => {
   await getClassifications();
-});
-
+  // Fill in tagPrecedence with any children of pre-set tags:
+  if (flatClassifications.value) {
+    for (let i = 0; i < tagPrecedence.length; i++) {
+      const tag = tagPrecedence[i];
+      const classification = flatClassifications.value[tag] as { label: string; display: string; path: string, node: Classification };
+      if (classification && classification.node.children) {
+        for (const child of classification.node.children) {
+          tagPrecedence.splice(i + 1, 0, child.label);
+          i++;
+        }
+      }
+    }
+  }
+})();
 
 export const visitsByStation = (
   visits: ApiVisitResponse[]
@@ -36,6 +48,21 @@ export const visitsByStation = (
     return acc;
   }, {} as Record<number, ApiVisitResponse[]>);
 
+export const sortTagPrecedence = (a: string, b: string): number => {
+  const aPriority = tagPrecedence.indexOf(a);
+  const bPriority = tagPrecedence.indexOf(b);
+  if (aPriority === -1 && bPriority > -1) {
+    return 1;
+  } else if (bPriority === -1 && aPriority > -1) {
+    return -1;
+  } else if (aPriority === -1 && bPriority === -1) {
+    if (a === b) {
+      return 0;
+    }
+    return a > b ? 1 : -1;
+  }
+  return aPriority - bPriority;
+};
 export const visitsBySpecies = (
   visits: ApiVisitResponse[]
 ): [string, ApiVisitResponse[]][] => {
@@ -55,24 +82,9 @@ export const visitsBySpecies = (
   );
   // NOTE: Order by "badness" of predator
   return Object.entries(summary).sort(
-    (a: [string, ApiVisitResponse[]], b: [string, ApiVisitResponse[]]) => {
-      const aPriority = tagPrecedence.indexOf(a[0]);
-      const bPriority = tagPrecedence.indexOf(b[0]);
-      if (aPriority === -1 && bPriority > -1) {
-        return 1;
-      } else if (bPriority === -1 && aPriority > -1) {
-        return -1;
-      } else if (aPriority === -1 && bPriority === -1) {
-        if (a[0] === b[0]) {
-          return 0;
-        }
-        return a[0] > b[0] ? 1 : -1;
-      }
-      return aPriority - bPriority;
-    }
+      ([a], [b]) => sortTagPrecedence(a, b)
   );
 };
-
 
 export const visitsCountBySpecies = (
   visits: ApiVisitResponse[]
@@ -83,7 +95,8 @@ export const visitsCountBySpecies = (
       getPathForLabel(classification) || "",
       visits.length,
     ]) as [string, string, number][]
-  ).sort((a, b) => {
+  )
+  .sort((a, b) => {
     // Sort by count and break ties by name alphabetically
     const order = b[2] - a[2];
     if (order === 0) {
@@ -217,7 +230,10 @@ export const formatDuration = (
   milliseconds: number,
   longForm = false
 ): string => {
-  const minsSecs = Duration.fromMillis(milliseconds).shiftTo("minutes", "seconds");
+  const minsSecs = Duration.fromMillis(milliseconds).shiftTo(
+    "minutes",
+    "seconds"
+  );
   if (minsSecs.minutes > 0) {
     if (Math.floor(minsSecs.seconds) > 0) {
       return longForm

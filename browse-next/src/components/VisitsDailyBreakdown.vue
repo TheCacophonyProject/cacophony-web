@@ -367,6 +367,13 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
                   style="padding-bottom: 2px"
                 />
               </span>
+              <span
+                v-if="visit.data.userTagsConflict"
+                class="visit-species-tag px-1 mb-1 text-capitalize ms-1 bg-warning text-black"
+              >
+                <font-awesome-icon icon="exclamation-triangle" />
+                Controversial
+              </span>
             </div>
             <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
               ><font-awesome-icon

@@ -31,6 +31,8 @@ export interface TrackTagData {
   message?: string;
   gender?: "male" | "female" | null;
   maturity?: "juvenile" | "adult" | null;
+
+  userTagsConflict?: boolean;
 }
 
 export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {

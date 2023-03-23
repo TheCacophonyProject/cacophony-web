@@ -13,13 +13,14 @@ const loadedClassificationsThisSession = ref(false);
 export const classifications = ref<Classification | null>(null);
 
 const flattenNodes = (
-  acc: Record<string, { label: string; display: string; path: string }>,
+  acc: Record<string, { label: string; display: string; path: string, node: Classification }>,
   node: Classification
 ) => {
   for (const child of node.children || []) {
     acc[child.label] = {
       label: child.label,
       display: child.display || child.label,
+      node: child,
       path: `${node.path || node.label}.${child.label}`,
     };
     flattenNodes(acc, child);
@@ -87,8 +88,11 @@ export const getClassifications = async (
   return classifications.value;
 };
 
-export const displayLabelForClassificationLabel = (label: string) => {
+export const displayLabelForClassificationLabel = (label: string, aiTag = false) => {
   label = label.toLowerCase();
+  if (label === "unidentified" && aiTag) {
+    return "Unidentified";
+  }
   const classifications = flatClassifications.value || {};
   return (classifications[label] && classifications[label].display) || label;
 };

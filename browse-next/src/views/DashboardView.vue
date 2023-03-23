@@ -41,6 +41,7 @@ import {
 import type { LoadedResource } from "@api/types";
 import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
+import { sortTagPrecedence } from "@models/visitsUtils";
 
 const recordingMode = ref<"Thermal" | "Audio">("Thermal");
 const audioMode = computed<boolean>(() => recordingMode.value === "Audio");
@@ -120,6 +121,12 @@ const speciesSummary = computed<Record<string, number>>(() => {
       return acc;
     },
     {}
+  );
+});
+
+const speciesSummarySorted = computed(() => {
+  return Object.entries(speciesSummary.value).sort(([a], [b]) =>
+    sortTagPrecedence(a, b)
   );
 });
 
@@ -358,7 +365,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   >
     <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
       <div
-        v-for="[key, val] in Object.entries(speciesSummary)"
+        v-for="[key, val] in speciesSummarySorted"
         :key="key"
         class="card d-flex flex-row species-summary-item align-items-center"
         @click="showVisitsForTag(key)"

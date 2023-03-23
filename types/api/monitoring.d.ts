@@ -37,6 +37,8 @@ export interface ApiVisitResponse {
   classFromUserTag?: boolean; // is the best guess derived from a user tag?
   classification?: string; // what was the best guess overall?
   classificationAi?: string; // what was the best guess from the AI?
+
+  userTagsConflict?: boolean;
   device: string;
   deviceId: number;
   stationId: number;

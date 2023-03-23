@@ -34,7 +34,7 @@ import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware";
 import { AuthorizationError } from "@api/customErrors";
 import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
-import classification from "../../classifications/classification.json";
+import classification from "@/classifications/classification.json";
 import { User } from "@models/User";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {

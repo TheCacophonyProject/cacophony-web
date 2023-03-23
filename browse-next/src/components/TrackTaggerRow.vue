@@ -85,7 +85,9 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
         string,
         GenericCardTableValue<string | ApiTrackTagResponse> | string
       > = {
-        tag: capitalize(displayLabelForClassificationLabel(tag.what)),
+        tag: capitalize(
+          displayLabelForClassificationLabel(tag.what, tag.automatic)
+        ),
         tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(
           " ",
           "&nbsp;"
@@ -167,6 +169,9 @@ const uniqueUserTags = computed<string[]>(() => {
 });
 
 const consensusUserTag = computed<string | null>(() => {
+  if (uniqueUserTags.value.length !== 1) {
+    return null;
+  }
   return (
     displayLabelForClassificationLabel(uniqueUserTags.value[0] || "") || null
   );
@@ -271,7 +276,11 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
   const tags: Record<string, { label: string; display: string }> = {};
-  const allTags = [...defaultTags.value, ...userDefinedTagLabels.value];
+  const allTags = [
+    ...defaultTags.value,
+    ...userDefinedTagLabels.value,
+    ...Object.values(uniqueUserTags.value),
+  ];
   if (thisUserTag.value && !allTags.includes(thisUserTag.value.what)) {
     allTags.push(thisUserTag.value.what);
   }
@@ -414,7 +423,9 @@ onMounted(async () => {
             !uniqueUserTags.includes(masterTag.what)
           "
           >{{
-            uniqueUserTags.map(displayLabelForClassificationLabel).join(", ")
+            uniqueUserTags
+              .map((tag) => displayLabelForClassificationLabel(tag))
+              .join(", ")
           }}
           <span class="strikethrough">{{ masterTag?.what }}</span></span
         >
@@ -422,7 +433,9 @@ onMounted(async () => {
           class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
           v-else-if="!consensusUserTag && masterTag"
           >{{
-            uniqueUserTags.map(displayLabelForClassificationLabel).join(", ")
+            uniqueUserTags
+              .map((tag) => displayLabelForClassificationLabel(tag))
+              .join(", ")
           }}</span
         >
       </span>

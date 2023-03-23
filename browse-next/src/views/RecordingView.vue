@@ -99,9 +99,12 @@ const canExpandCurrentQueryIntoPast = inject(
   "canExpandCurrentQueryInPast",
   computed(() => false)
 ) as ComputedRef<boolean>;
-const updatedRecording = inject("updatedRecording", (recording: ApiRecordingResponse) => {
-  //
-}) as (recording: ApiRecordingResponse) => void;
+const updatedRecording = inject(
+  "updatedRecording",
+  (recording: ApiRecordingResponse) => {
+    //
+  }
+) as (recording: ApiRecordingResponse) => void;
 
 const recordingIds = ref(
   (() => {
@@ -394,19 +397,29 @@ const visitForRecording = computed<string>(() => {
           bestHumanTag = tag;
         }
       }
-      return bestHumanTag || "";
+      return (
+        (bestHumanTag &&
+          displayLabelForClassificationLabel(bestHumanTag, false)) ||
+        ""
+      );
     } else {
       const aiTagCounts = Object.entries(aiTags);
       if (aiTagCounts.length) {
         let bestAiTagCount = 0;
         let bestAiTag;
+
+        // TODO: If the counts are the same, prefer non-other based tags.
+
         for (const [tag, count] of aiTagCounts) {
           if (count > bestAiTagCount) {
             bestAiTagCount = count;
             bestAiTag = tag;
           }
         }
-        return bestAiTag || "";
+        return (
+          (bestAiTag && displayLabelForClassificationLabel(bestAiTag, true)) ||
+          ""
+        );
       }
     }
     return "No Tracks";

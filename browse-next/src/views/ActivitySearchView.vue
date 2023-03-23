@@ -552,7 +552,7 @@ const commonDateRanges = computed<
   return ranges as { value: [Date, Date] | "custom"; label: string }[];
 });
 
-const displayMode = ref<"visits" | "recordings">("recordings");
+const displayMode = ref<"visits" | "recordings">("visits");
 
 const taggedBy = ref<("AI" | "human")[]>([]);
 const taggedByOptions = [
@@ -681,6 +681,8 @@ onMounted(async () => {
 
 const getVisitsForCurrentQuery = async () => {
   // Fetch visits in time-range, optionally filtered on one or more animal tags.
+  // TODO:
+
 };
 
 interface RecordingQueryCursor {
@@ -782,8 +784,6 @@ const getCurrentQueryHash = () => {
 
 // NOTE: We try to load at most one month at a time.
 const getRecordingsForCurrentQuery = async () => {
-  // TODO: Make earliest part of range be on a midnight boundary in the current timezone.
-
   if (currentProject.value) {
     // TODO: Dedupe code
     const untilDateTime = combinedDateRange.value[1];
@@ -894,23 +894,28 @@ const getRecordingsForCurrentQuery = async () => {
               prevItem = prevDay.items[prevDay.items.length - 1];
             }
             if (prevItem && prevItem.type === "recording") {
+              const prevRecordingDate = new Date(
+                prevItem.data.recordingDateTime
+              );
               // See if we can insert sunset/rise
               if (
-                sunrise < new Date(prevItem.data.recordingDateTime) &&
-                sunrise > recordingDate
-              ) {
-                prevDay.items.push({
-                  type: "sunrise",
-                  data: sunrise.toISOString(),
-                });
-              }
-              if (
-                sunset < new Date(prevItem.data.recordingDateTime) &&
+                sunset.getDate() === recordingDate.getDate() &&
+                sunset < prevRecordingDate &&
                 sunset > recordingDate
               ) {
                 prevDay.items.push({
                   type: "sunset",
                   data: sunset.toISOString(),
+                });
+              }
+              if (
+                sunrise.getDate() === recordingDate.getDate() &&
+                sunrise < prevRecordingDate &&
+                sunrise > recordingDate
+              ) {
+                prevDay.items.push({
+                  type: "sunrise",
+                  data: sunrise.toISOString(),
                 });
               }
             }
@@ -1053,10 +1058,13 @@ const maybeUnselectedOtherLabels = (val: boolean) => {
 const fromDateMinusIncrement = computed<Date>(() => {
   // What was the selected increment?  One day? One month?  One year?
   // Use that initial increment to expand search backwards in time by that amount.
+  //const currentInc =
+
   const fromDateTime = new Date(combinedDateRange.value[0]);
+  const setBackFourWeeks = fromDateTime.setDate(fromDateTime.getDate() - 28);
   const from = Math.max(
     minDateForSelectedLocations.value.getTime(),
-    fromDateTime.setMonth(fromDateTime.getMonth() - 1)
+    new Date(setBackFourWeeks).getTime()
   );
   return new Date(from);
 });
@@ -1068,10 +1076,10 @@ const relativeTimeIncrementInPast = computed<string>(() => {
   ) {
     return "the earliest available date for this selection";
   }
-  // TODO: Make sure the relative time has changed from the previous.
-  return DateTime.fromJSDate(
-    fromDateMinusIncrement.value
-  ).toRelative() as string;
+  return DateTime.fromJSDate(fromDateMinusIncrement.value).toRelative({
+    round: true,
+    padding: 1000 * 60 * 60 * 24 * 14,
+  }) as string;
 });
 
 const route = useRoute();
@@ -1085,10 +1093,10 @@ const currentlySelectedRecording = computed<RecordingId | null>(
 // TODO: Load offset date from url params, and have the ability to also scroll upwards and load more,
 //  as well as expand the search forwards in time.
 
-const adjustTimespanBackwards = () => {
+const adjustTimespanBackwards = async () => {
   // FIXME - when we adjust the timespan backwards, we need to make sure we keep the existing
   //  locations selection.
-
+  //debugger;
   if (selectedDateRange.value === "custom") {
     if (customDateRange.value) {
       customDateRange.value[0] = fromDateMinusIncrement.value;
@@ -1096,13 +1104,18 @@ const adjustTimespanBackwards = () => {
       // Error
     }
   } else {
-    // Fixme: this is wrong?
     const initialSelectedDateRangeUntil = new Date(selectedDateRange.value[1]);
     customAutomaticallySet = true;
     selectedDateRange.value = "custom";
     if (customDateRange.value) {
       customDateRange.value[0] = fromDateMinusIncrement.value;
     } else {
+      customDateRange.value = [
+        fromDateMinusIncrement.value,
+        initialSelectedDateRangeUntil,
+      ];
+      // NOTE: We need to wait a tick for computed items to resolve.
+      await nextTick();
       customDateRange.value = [
         fromDateMinusIncrement.value,
         initialSelectedDateRangeUntil,
@@ -1117,7 +1130,7 @@ const adjustTimespanBackwards = () => {
 
   // TODO - When we expand a search, we need to issue another count request for the span added, so we
   // can update the total.
-  doSearch();
+  await doSearch();
 };
 const router = useRouter();
 
@@ -1485,7 +1498,7 @@ const loadedRouteName = ref<string>("");
             v-for="day in chunkedRecordings"
             :key="day.dateTime.day"
           >
-            <div class="day-header">
+            <div class="day-header fw-bold px-2 pb-2">
               {{ day.dateTime.toLocaleString(DateTime.DATE_FULL) }}
             </div>
 
@@ -1594,7 +1607,7 @@ const loadedRouteName = ref<string>("");
                       :class="tag.path.split('.')"
                       :key="tag.what"
                       v-for="(tag, index) in tagsForRecording(item.data)"
-                      >{{ displayLabelForClassificationLabel(tag.what) }}
+                      >{{ displayLabelForClassificationLabel(tag.what, tag.automatic && !tag.human) }}
                       <font-awesome-icon
                         icon="check"
                         size="xs"
@@ -1675,9 +1688,9 @@ const loadedRouteName = ref<string>("");
           <button
             @click="adjustTimespanBackwards"
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-outline-secondary"
           >
-            Expand the search range back to
+            Expand the search start back to
             {{ relativeTimeIncrementInPast }}
           </button>
         </div>
@@ -1951,5 +1964,13 @@ const loadedRouteName = ref<string>("");
 }
 img.image-loading {
   background: red;
+}
+.day-header {
+  position: sticky;
+  top: 0;
+  background: rgba(246, 246, 246, 0.85);
+  padding-top: 12px;
+  z-index: 1;
+  border-bottom: 1px solid #ddd;
 }
 </style>

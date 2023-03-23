@@ -19,6 +19,33 @@ import moment, { Moment } from "moment";
 import { Event } from "@models/Event";
 import { DeviceId, StationId } from "@typedefs/api/common";
 
+import Classifications from "@/classifications/classification.json";
+import {Classification} from "@typedefs/api/trackTag";
+
+const flattenNodes = (
+    acc: Record<string, { label: string; display: string; path: string }>,
+    node: Classification,
+    parentPath: string
+) => {
+  for (const child of node.children || []) {
+    acc[child.label] = {
+      label: child.label,
+      display: child.display || child.label,
+      path: `${parentPath}.${child.label}`,
+    };
+    flattenNodes(acc, child, acc[child.label].path);
+  }
+  return acc;
+};
+
+const flatClassifications = (() => {
+    const nodes = flattenNodes({}, Classifications, "all");
+    if (nodes.unknown) {
+      nodes["unidentified"] = nodes["unknown"];
+    }
+    return nodes;
+})();
+
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
 const conflictTag = "conflicting tags";
@@ -50,6 +77,26 @@ function sortTracks(tracks: Track[]) {
   });
 }
 
+const getCommonAncestorForTags = (tags: string[]): string => {
+  // Find common root, if any below mammal or bird.
+  const classes = tags.map(tag => flatClassifications[tag]).filter(classification => classification !== undefined);
+  const commonAncestors = new Set();
+  for (const classification of classes) {
+    const path = classification.path.split(".");
+    while (path.length) {
+      const piece = path.pop();
+      if (commonAncestors.has(piece)) {
+        // We found a common ancestor
+        return piece;
+      }
+      // Only add the piece if all classes agree on it.
+      const allOthersAgree = classes.filter(c => c !== classification && !c.path.includes(piece)).length === 0;
+      if (allOthersAgree) {
+        commonAncestors.add(piece);
+      }
+    }
+  }
+};
 // From all tags return a single tag by precedence:
 // first, this users tag, or any other humans tag, else the original AI
 export function getCanonicalTrackTag(
@@ -65,14 +112,16 @@ export function getCanonicalTrackTag(
     (tag) => !NON_ANIMAL_TAGS.includes(tag.what)
   );
 
-  // FIXME - Conflicting tags aren't actually conflicts if users agree on the super-species of the tag to some extent:
-  //  i.e. Rodent + mouse shouldn't be counted as conflicting, but mammal + rodent or mammal + mouse would be?
+  // NOTE - Conflicting tags aren't actually conflicts if users agree on the super-species of the tag to some extent:
+  //  i.e. Rodent + mouse shouldn't be counted as conflicting, but mammal + rodent or mammal + mouse should be.
   const uniqueTags = new Set(animalTags.map((tag) => tag.what));
   if (uniqueTags.size > 1) {
+    const commonAncestor = getCommonAncestorForTags(Array.from(uniqueTags.values()));
     const conflict = {
-      what: conflictTag,
+      what: commonAncestor === "all" ? conflictTag : commonAncestor,
       confidence: manualTags[0].confidence,
       automatic: false,
+      data: { userTagsConflict: true }
     };
     return conflict as TrackTag;
   }
