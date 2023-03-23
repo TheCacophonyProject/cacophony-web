@@ -2,7 +2,7 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, inject, onMounted, provide, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
-import { getAllVisitsForGroup } from "@api/Monitoring";
+import { getAllVisitsForProject } from "@api/Monitoring";
 import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
@@ -150,7 +150,7 @@ const earliestDate = computed<Date>(() => {
 const loadVisits = async () => {
   if (currentProject.value) {
     visitsContext.value = null;
-    const allVisits = await getAllVisitsForGroup(
+    const allVisits = await getAllVisitsForProject(
       currentProject.value.id,
       timePeriodDays.value,
       (val) => {

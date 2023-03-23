@@ -1,5 +1,5 @@
 import { shouldViewAsSuperUser } from "@models/LoggedInUser";
-import type { GroupId } from "@typedefs/api/common";
+import type { GroupId as ProjectId, StationId as LocationId } from "@typedefs/api/common";
 import type { FetchResult } from "@api/types";
 import CacophonyApi from "./api";
 import type {
@@ -13,27 +13,30 @@ export interface VisitsQueryResult {
   params: MonitoringPageCriteria;
 }
 export type ProgressUpdater = (progress: number) => void;
-const getVisitsForGroup = async (
-  groupId: GroupId,
+export const getVisitsForProject = async (
+  projectId: ProjectId,
   fromDate: Date,
-  untilDate: Date
+  untilDate: Date,
+  limit = 100,
+  locations?: LocationId[]
 ) => {
   const params = new URLSearchParams();
-  params.append("groups", groupId.toString());
+  params.append("groups", projectId.toString());
   params.append("from", fromDate.toISOString());
   params.append("until", untilDate.toISOString());
   params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
-  params.append("page-size", "100");
-  if (!shouldViewAsSuperUser) {
+  params.append("page-size", limit.toString());
+  if (!shouldViewAsSuperUser.value) {
     params.append("view-mode", "user");
   }
   return (await CacophonyApi.get(
-    `/api/v1/monitoring/page?${params.toString()}`
+    `/api/v1/monitoring/page?${params}`
   )) as FetchResult<VisitsQueryResult>;
 };
 
-export const getAllVisitsForGroup = async (
-  groupId: GroupId,
+// Load *all* of a date range at once.
+export const getAllVisitsForProject = async (
+  projectId: ProjectId,
   numDays: number,
   progressUpdaterFn?: ProgressUpdater // progress updates caller with how far through the request it is[0, 1]
 ): Promise<{
@@ -52,7 +55,7 @@ export const getAllVisitsForGroup = async (
   while (morePagesExist && requestNumber < 100) {
     // We only allow up to 100 pages...
     requestNumber++;
-    const response = await getVisitsForGroup(groupId, fromDate, untilDate);
+    const response = await getVisitsForProject(projectId, fromDate, untilDate);
     if (response && response.success) {
       const {
         result: {

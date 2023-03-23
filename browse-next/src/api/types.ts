@@ -29,7 +29,7 @@ type HttpFailureCode =
   | HttpStatusCode.Unprocessable
   | HttpStatusCode.ServerError;
 
-interface SuccessFetchResult<SUCCESS> {
+export interface SuccessFetchResult<SUCCESS> {
   result: SUCCESS;
   status: HttpSuccessCode;
   success: true;

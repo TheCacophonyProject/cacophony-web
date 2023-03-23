@@ -24,7 +24,11 @@ import {
   userProjects,
 } from "@models/provides";
 import type { SelectedProject } from "@models/LoggedInUser";
-import type { LoadedResource } from "@api/types";
+import type {
+  FetchResult,
+  LoadedResource,
+  SuccessFetchResult,
+} from "@api/types";
 import { RecordingLabels } from "@/consts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import ImageLoader from "@/components/ImageLoader.vue";
@@ -44,19 +48,17 @@ import {
 } from "@vueuse/core";
 import type { MaybeElement } from "@vueuse/core";
 import { DateTime } from "luxon";
-import {
-  timezoneForLatLng,
-  formatDuration,
-  timeAtLocation,
-} from "@models/visitsUtils";
-import { canonicalLatLngForLocations } from "../helpers/Location";
+import { timezoneForLatLng } from "@models/visitsUtils";
+import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { API_ROOT } from "@api/root";
 import * as sunCalc from "suncalc";
-import {
-  displayLabelForClassificationLabel,
-  getClassifications,
-} from "@api/Classifications";
+import { getClassifications } from "@api/Classifications";
 import { useRoute, useRouter } from "vue-router";
+import RecordingsList from "@/components/RecordingsList.vue";
+import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
+import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import { getVisitsForProject } from "@api/Monitoring";
+import type { VisitsQueryResult } from "@api/Monitoring";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -648,6 +650,8 @@ const chunkedRecordings = ref<
   }[]
 >([]);
 
+const chunkedVisits = ref<ApiVisitResponse[]>([]);
+
 const format = (dates: Date[]) => {
   return dates
     .map((date) => {
@@ -678,12 +682,6 @@ onMounted(async () => {
   }
   loading.value = false;
 });
-
-const getVisitsForCurrentQuery = async () => {
-  // Fetch visits in time-range, optionally filtered on one or more animal tags.
-  // TODO:
-
-};
 
 interface RecordingQueryCursor {
   fromDateTime: Date;
@@ -755,199 +753,237 @@ onUpdated(() => {
   }
 });
 
-const getCurrentQueryHash = () => {
-  const untilDateTime = combinedDateRange.value[1];
+const getCurrentQueryHash = (): string => {
   // Keep track of the recordingState/cursor using a hash of the query,
-  const isAnyLocation = selectedLocations.value[0] === "any";
-  // const locations = isAnyLocation
-  //   ? locationsInSelectedTimespan.value.map((loc) => loc.id)
-  //   : selectedLocations.value.map((loc) => (loc as ApiLocationResponse).id);
+  const fromDateTime = combinedDateRange.value[0];
+  const untilDateTime = combinedDateRange.value[1];
+  return JSON.stringify({
+    ...getCurrentQuery(),
+    displayMode: displayMode.value,
+    fromDateTime,
+    untilDateTime,
+  });
+};
+
+const getCurrentQuery = (): any => {
   const query = {
     type:
       recordingMode.value === "cameras"
         ? RecordingType.ThermalRaw // TODO: Modify to include all camera types
         : RecordingType.Audio,
   };
+  const isAnyLocation = selectedLocations.value[0] === "any";
   if (!isAnyLocation) {
     (query as any).locations = selectedLocations.value.map(
       (loc) => (loc as ApiLocationResponse).id
     );
   }
-  const fromDateTime = combinedDateRange.value[0];
-  const queryHash = JSON.stringify({
-    ...query,
+  return query;
+};
+
+const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
+  for (const recording of recordings) {
+    // Get the location local day:
+    if (recording.location) {
+      const recordingDate = new Date(recording.recordingDateTime);
+      const dateTime = DateTime.fromJSDate(recordingDate, {
+        zone: timezoneForLatLng(recording.location),
+      });
+
+      const { sunrise, sunset } = sunCalc.getTimes(
+        recordingDate,
+        canonicalLatLngForActiveLocations.value.lat,
+        canonicalLatLngForActiveLocations.value.lng
+      );
+
+      let prevDay;
+      if (chunkedRecordings.value.length !== 0) {
+        prevDay = chunkedRecordings.value[chunkedRecordings.value.length - 1];
+      }
+      if (
+        !prevDay ||
+        (prevDay &&
+          prevDay.dateTime.toFormat("dd/MM/yyyy") !==
+            dateTime.toFormat("dd/MM/yyyy"))
+      ) {
+        chunkedRecordings.value.push({
+          dateTime,
+          items: [],
+        });
+      }
+      prevDay = chunkedRecordings.value[chunkedRecordings.value.length - 1];
+      let prevItem;
+      if (prevDay.items.length) {
+        prevItem = prevDay.items[prevDay.items.length - 1];
+      }
+      if (prevItem && prevItem.type === "recording") {
+        const prevRecordingDate = new Date(prevItem.data.recordingDateTime);
+        // See if we can insert sunset/rise
+        if (
+          sunset.getDate() === recordingDate.getDate() &&
+          sunset < prevRecordingDate &&
+          sunset > recordingDate
+        ) {
+          prevDay.items.push({
+            type: "sunset",
+            data: sunset.toISOString(),
+          });
+        }
+        if (
+          sunrise.getDate() === recordingDate.getDate() &&
+          sunrise < prevRecordingDate &&
+          sunrise > recordingDate
+        ) {
+          prevDay.items.push({
+            type: "sunrise",
+            data: sunrise.toISOString(),
+          });
+        }
+      }
+      prevDay.items.push({
+        type: "recording",
+        data: recording,
+      });
+    }
+  }
+};
+
+const resetQuery = (
+  newQueryHash: string,
+  fromDateTime: Date,
+  untilDateTime: Date
+) => {
+  while (loadedRecordings.value.length) {
+    loadedRecordings.value.pop();
+  }
+  while (loadedRecordingIds.value.length) {
+    loadedRecordingIds.value.pop();
+  }
+  while (chunkedRecordings.value.length) {
+    chunkedRecordings.value.pop();
+  }
+  while (chunkedVisits.value.length) {
+    chunkedVisits.value.pop();
+  }
+  currentQueryHash.value = newQueryHash;
+  currentQueryLoaded.value = 0;
+  completedCurrentQuery.value = false;
+  // NOTE: If it's the first load for a given query, lazily get the count as a separate query.
+  // TODO Also, make it abortable if we change queries.
+  currentQueryCount.value = undefined;
+  currentQueryCursor.value = {
     fromDateTime,
     untilDateTime,
-  });
-  return queryHash;
+  };
 };
 
 // NOTE: We try to load at most one month at a time.
-const getRecordingsForCurrentQuery = async () => {
+const getRecordingsOrVisitsForCurrentQuery = async () => {
   if (currentProject.value) {
-    // TODO: Dedupe code
-    const untilDateTime = combinedDateRange.value[1];
-    // Keep track of the recordingState/cursor using a hash of the query,
-    const query = {
-      type:
-        recordingMode.value === "cameras"
-          ? RecordingType.ThermalRaw // TODO: Modify to include all camera types
-          : RecordingType.Audio,
-    };
-    if (selectedLocations.value[0] !== "any") {
-      (query as any).locations = selectedLocations.value.map(
-        (loc) => (loc as ApiLocationResponse).id
-      );
-    }
     const fromDateTime = combinedDateRange.value[0];
+    const untilDateTime = combinedDateRange.value[1];
+    const query = getCurrentQuery();
     const queryHash = getCurrentQueryHash();
-    if (queryHash !== currentQueryHash.value) {
-      while (loadedRecordings.value.length) {
-        loadedRecordings.value.pop();
+    const isNewQuery = queryHash !== currentQueryHash.value;
+    if (isNewQuery) {
+      resetQuery(queryHash, fromDateTime, untilDateTime);
+      if (displayMode.value === "recordings") {
+        // Load total recording count for query lazily, so we
+        // don't block the main rendering query.
+        queryRecordingsInProject(currentProject.value.id, {
+          ...query,
+          limit: 1,
+          countAll: true,
+          fromDateTime,
+          untilDateTime,
+        }).then((response) => {
+          if (response.success) {
+            currentQueryCount.value = response.result.count;
+          } else {
+            currentQueryCount.value = null;
+          }
+        });
+      } else {
+        currentQueryCount.value = null;
       }
-      while (loadedRecordingIds.value.length) {
-        loadedRecordingIds.value.pop();
-      }
-      while (chunkedRecordings.value.length) {
-        chunkedRecordings.value.pop();
-      }
-      currentQueryHash.value = queryHash;
-      currentQueryLoaded.value = 0;
-      completedCurrentQuery.value = false;
-      // NOTE: If it's the first load for a given query, lazily get the count as a separate query.
-      // TODO Also, make it abortable if we change queries.
-      currentQueryCount.value = undefined;
-      currentQueryCursor.value = {
-        fromDateTime,
-        untilDateTime,
-      };
-      queryRecordingsInProject(currentProject.value.id, {
-        ...query,
-        limit: 1,
-        countAll: true,
-        fromDateTime,
-        untilDateTime,
-      }).then((response) => {
-        if (response.success) {
-          currentQueryCount.value = response.result.count;
-        } else {
-          currentQueryCount.value = null;
-        }
-      });
     }
-    if (
+    const hasNotLoadedAllOfQueryTimeRange =
       currentQueryCursor.value.fromDateTime <
-      currentQueryCursor.value.untilDateTime
-    ) {
+      currentQueryCursor.value.untilDateTime;
+    if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
-      const twoPagesWorth = Math.ceil(windowHeight.value / 80) * 2;
-      const recordingsResponse = await queryRecordingsInProject(
-        currentProject.value.id,
-        {
+      const itemHeight = 80;
+      const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
+      let response;
+      if (displayMode.value === "recordings") {
+        response = await queryRecordingsInProject(currentProject.value.id, {
           ...query,
           limit: twoPagesWorth,
           fromDateTime: currentQueryCursor.value.fromDateTime,
           untilDateTime: currentQueryCursor.value.untilDateTime,
-        }
-      );
-      if (recordingsResponse.success) {
-        const rows = recordingsResponse.result.rows;
-
-        loadedRecordings.value.push(...rows);
-        loadedRecordingIds.value.push(...rows.map(({ id }) => id));
-        // TODO: Insert sunrise/sunset times.
-        for (const recording of rows) {
-          // Get the location local day:
-          if (recording.location) {
-            const recordingDate = new Date(recording.recordingDateTime);
-            const dateTime = DateTime.fromJSDate(recordingDate, {
-              zone: timezoneForLatLng(recording.location),
-            });
-
-            const { sunrise, sunset } = sunCalc.getTimes(
-              recordingDate,
-              canonicalLatLngForActiveLocations.value.lat,
-              canonicalLatLngForActiveLocations.value.lng
+        });
+      } else {
+        response = await getVisitsForProject(
+          currentProject.value.id,
+          currentQueryCursor.value.fromDateTime,
+          currentQueryCursor.value.untilDateTime,
+          twoPagesWorth,
+          (query as any).locations
+        );
+      }
+      if (response.success) {
+        let loadedFewerItemsThanRequested;
+        let gotUntilDate: Date | undefined;
+        if (displayMode.value === "recordings") {
+          const recordingsResponse = response as SuccessFetchResult<{
+            rows: ApiRecordingResponse[];
+            limit: number;
+            count: number;
+          }>;
+          loadedFewerItemsThanRequested =
+            recordingsResponse.result.count < recordingsResponse.result.limit;
+          const recordings = recordingsResponse.result.rows;
+          loadedRecordings.value.push(...recordings);
+          loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
+          appendRecordingsChunkedByDay(recordings);
+          currentQueryLoaded.value += recordings.length;
+          if (recordings.length !== 0) {
+            gotUntilDate = new Date(
+              recordings[recordings.length - 1].recordingDateTime
             );
-
-            let prevDay;
-            if (chunkedRecordings.value.length !== 0) {
-              prevDay =
-                chunkedRecordings.value[chunkedRecordings.value.length - 1];
-            }
-            if (
-              !prevDay ||
-              (prevDay &&
-                prevDay.dateTime.toFormat("dd/MM/yyyy") !==
-                  dateTime.toFormat("dd/MM/yyyy"))
-            ) {
-              chunkedRecordings.value.push({
-                dateTime,
-                items: [],
-              });
-            }
-            prevDay =
-              chunkedRecordings.value[chunkedRecordings.value.length - 1];
-            let prevItem;
-            if (prevDay.items.length) {
-              prevItem = prevDay.items[prevDay.items.length - 1];
-            }
-            if (prevItem && prevItem.type === "recording") {
-              const prevRecordingDate = new Date(
-                prevItem.data.recordingDateTime
-              );
-              // See if we can insert sunset/rise
-              if (
-                sunset.getDate() === recordingDate.getDate() &&
-                sunset < prevRecordingDate &&
-                sunset > recordingDate
-              ) {
-                prevDay.items.push({
-                  type: "sunset",
-                  data: sunset.toISOString(),
-                });
-              }
-              if (
-                sunrise.getDate() === recordingDate.getDate() &&
-                sunrise < prevRecordingDate &&
-                sunrise > recordingDate
-              ) {
-                prevDay.items.push({
-                  type: "sunrise",
-                  data: sunrise.toISOString(),
-                });
-              }
-            }
-            prevDay.items.push({
-              type: "recording",
-              data: recording,
-            });
+          }
+        } else if (displayMode.value === "visits") {
+          const visitsResponse =
+            response as SuccessFetchResult<VisitsQueryResult>;
+          const visits = visitsResponse.result.visits;
+          console.log(
+            visitsResponse.result.visits,
+            visitsResponse.result.params
+          );
+          // TODO: Append new visits.
+          if (visits.length !== 0) {
+            gotUntilDate = new Date(visits[visits.length - 1].timeStart);
           }
         }
-        // Increment the cursor.
-        currentQueryLoaded.value += rows.length;
-        if (rows.length) {
-          const gotUntilDate = new Date(
-            rows[rows.length - 1].recordingDateTime
-          );
+        if (gotUntilDate) {
+          // Increment the cursor.
+          // NOTE: Not sure if this offsetting is necessary?
           gotUntilDate.setMilliseconds(gotUntilDate.getMilliseconds() - 1);
-          currentQueryCursor.value.untilDateTime = new Date(
-            gotUntilDate.setMilliseconds(gotUntilDate.getMilliseconds() - 1)
-          );
-          if (
-            recordingsResponse.result.count < recordingsResponse.result.limit
-          ) {
-            if (
+          currentQueryCursor.value.untilDateTime = gotUntilDate;
+
+          if (loadedFewerItemsThanRequested) {
+            const reachedMinDateForSelectedLocations =
               currentQueryCursor.value.fromDateTime.getTime() ===
-              minDateForSelectedLocations.value.getTime()
-            ) {
+              minDateForSelectedLocations.value.getTime();
+            if (reachedMinDateForSelectedLocations) {
               console.log("!!! stopping any observers");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
             } else {
               // We're at the end of the current time range, but can expand it back further
+              // and load more.
               currentQueryCursor.value.fromDateTime = new Date(
                 currentQueryCursor.value.untilDateTime
               );
@@ -969,11 +1005,7 @@ const searching = ref<boolean>(false);
 const doSearch = async () => {
   searching.value = true;
   await getClassifications();
-  if (displayMode.value === "visits") {
-    await getVisitsForCurrentQuery();
-  } else if (displayMode.value === "recordings") {
-    await getRecordingsForCurrentQuery();
-  }
+  await getRecordingsOrVisitsForCurrentQuery();
   searching.value = false;
 };
 
@@ -1134,106 +1166,18 @@ const adjustTimespanBackwards = async () => {
 };
 const router = useRouter();
 
-const selectedRecording = (recording: SunItem | RecordingItem) => {
-  if (recording.type === "recording") {
-    router.push({
-      name: "activity-recording",
-      params: {
-        currentRecordingId: (recording as RecordingItem).data.id,
-      },
-    });
-  }
+const selectedRecording = (recordingId: RecordingId) => {
+  router.push({
+    name: "activity-recording",
+    params: {
+      currentRecordingId: recordingId,
+    },
+  });
 };
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
 
-const highlightedLocation = (item: RecordingItem | SunItem) => {
-  if (item.type === "recording") {
-    currentlyHighlightedLocation.value = (item.data as ApiRecordingResponse)
-      .stationId as number;
-  }
-};
-const unhighlightedLocation = (item: RecordingItem | SunItem) => {
-  if (
-    item.type === "recording" &&
-    currentlyHighlightedLocation.value ===
-      (item.data as ApiRecordingResponse).stationId
-  ) {
-    currentlyHighlightedLocation.value = null;
-  }
-};
-
 const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
   return `${API_ROOT}/api/v1/recordings/${recording.id}/thumbnail`;
-};
-
-interface TagItem {
-  human?: boolean;
-  automatic?: boolean;
-  what: string;
-  path?: string;
-  displayName: string;
-}
-const tagsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
-  // Get unique tags for recording, and compile the taggers.
-  const uniqueTags: Record<string, TagItem> = {};
-  for (const track of recording.tracks) {
-    const uniqueTrackTags: Record<string, TagItem> = {};
-    let isHumanTagged = false;
-    for (const tag of track.tags) {
-      uniqueTrackTags[tag.what] = uniqueTrackTags[tag.what] || {
-        human: false,
-        automatic: false,
-        what: tag.what,
-        path: tag.path,
-        displayName: tag.what,
-      };
-      const existingTag = uniqueTrackTags[tag.what];
-      if (!existingTag.human && !tag.automatic) {
-        isHumanTagged = true;
-        existingTag.human = !tag.automatic;
-      }
-      if (!existingTag.automatic && tag.automatic) {
-        existingTag.automatic = tag.automatic;
-      }
-    }
-    for (const tag of Object.values(uniqueTrackTags)) {
-      if ((isHumanTagged && tag.human) || (!isHumanTagged && tag.automatic)) {
-        uniqueTags[tag.what] = uniqueTags[tag.what] || tag;
-      }
-    }
-    // Just take the human tags for the track, fall back to automatic.
-  }
-  return Object.values(uniqueTags);
-};
-
-const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
-  // Get unique tags for recording, and compile the taggers.
-  const uniqueLabels: Record<string, TagItem> = {};
-  for (const tag of recording.tags) {
-    let isHumanTagged = false;
-    uniqueLabels[tag.detail] = uniqueLabels[tag.detail] || {
-      human: false,
-      automatic: false,
-      what: tag.detail,
-      displayName: tag.detail,
-    };
-    const existingTag = uniqueLabels[tag.detail];
-    if (!existingTag.human && !tag.automatic) {
-      isHumanTagged = true;
-      existingTag.human = !tag.automatic;
-    }
-    if (!existingTag.automatic && tag.automatic) {
-      existingTag.automatic = tag.automatic;
-    }
-
-    for (const tag of Object.values(uniqueLabels)) {
-      if ((isHumanTagged && tag.human) || (!isHumanTagged && tag.automatic)) {
-        uniqueLabels[tag.what] = uniqueLabels[tag.what] || tag;
-      }
-    }
-    // Just take the human tags for the track, fall back to automatic.
-  }
-  return Object.values(uniqueLabels);
 };
 
 const loadedRouteName = ref<string>("");
@@ -1485,192 +1429,22 @@ const loadedRouteName = ref<string>("");
         <div v-else-if="currentQueryCount || currentQueryCount === 0">
           Loaded {{ currentQueryLoaded }} / Total {{ currentQueryCount }}
         </div>
-        <!--        <div-->
-        <!--          class="box mb-3 list-item"-->
-        <!--          v-for="recording in loadedRecordings"-->
-        <!--          :key="recording.recordingDateTime"-->
-        <!--        >-->
-        <!--          {{ recording.id }}, {{ recording.stationName }}-->
-        <!--        </div>-->
         <div class="search-items-container">
-          <div
-            class="mb-3 day-container"
-            v-for="day in chunkedRecordings"
-            :key="day.dateTime.day"
-          >
-            <div class="day-header fw-bold px-2 pb-2">
-              {{ day.dateTime.toLocaleString(DateTime.DATE_FULL) }}
-            </div>
-
-            <div
-              v-for="(item, index) in day.items"
-              :key="index"
-              class="list-item d-flex user-select-none fs-8"
-              :class="[
-                item.type,
-                {
-                  selected:
-                    item.type === 'recording' &&
-                    item.data.id === currentlySelectedRecording,
-                },
-              ]"
-              @click="selectedRecording(item)"
-              @mouseenter="() => highlightedLocation(item)"
-              @mouseleave="() => unhighlightedLocation(item)"
-            >
-              <div
-                class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
-              >
-                <span class="pb-1" v-if="item.type === 'recording'">{{
-                  timeAtLocation(
-                    item.data.recordingDateTime,
-                    canonicalLatLngForActiveLocations
-                  )
-                }}</span>
-                <span class="pb-1" v-else>{{
-                  timeAtLocation(item.data, canonicalLatLngForActiveLocations)
-                }}</span>
-                <span
-                  class="duration fs-8"
-                  v-if="item.type === 'recording'"
-                  v-html="formatDuration(item.data.duration * 1000)"
-                ></span>
-              </div>
-              <div class="visit-timeline">
-                <svg
-                  viewBox="0 0 32 36"
-                  class="sun-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  v-if="item.type === 'sunrise'"
-                >
-                  <rect x="-2" y="-2" width="36" height="40" fill="#f6f6f6" />
-                  <g
-                    transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)"
-                  >
-                    <path
-                      fill="currentColor"
-                      d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
-                    />
-                    <path
-                      fill="currentColor"
-                      d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
-                      style="fill-rule: nonzero"
-                    />
-                  </g>
-                </svg>
-                <svg
-                  viewBox="0 0 32 36"
-                  class="sun-icon"
-                  xmlns="http://www.w3.org/2000/svg"
-                  v-else-if="item.type === 'sunset'"
-                >
-                  <rect x="-2" y="-2" width="36" height="40" fill="#f6f6f6" />
-                  <g
-                    transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)"
-                  >
-                    <path
-                      fill="currentColor"
-                      d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
-                    />
-                    <path
-                      fill="currentColor"
-                      class="sun-arrow"
-                      d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
-                      style="fill-rule: nonzero"
-                    />
-                  </g>
-                </svg>
-                <div v-else class="circle"></div>
-              </div>
-              <div
-                v-if="item.type !== 'recording'"
-                class="py-2 ps-3 text-capitalize"
-              >
-                {{ item.type }}
-              </div>
-              <div
-                v-else
-                class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden recording-detail my-1 me-1"
-              >
-                <div class="visit-thumb">
-                  <image-loader
-                    :src="thumbnailSrcForRecording(item.data)"
-                    alt="Thumbnail for first recording of this visit"
-                    width="45"
-                    height="45"
-                  />
-                </div>
-                <div class="ps-3 d-flex flex-column text-truncate flex-wrap">
-                  <div class="tags-container d-flex flex-wrap">
-                    <span
-                      class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                      :class="tag.path.split('.')"
-                      :key="tag.what"
-                      v-for="(tag, index) in tagsForRecording(item.data)"
-                      >{{ displayLabelForClassificationLabel(tag.what, tag.automatic && !tag.human) }}
-                      <font-awesome-icon
-                        icon="check"
-                        size="xs"
-                        v-if="tag.human && tag.automatic"
-                        class="mx-1 align-middle"
-                        style="padding-bottom: 2px"
-                      />
-                      <font-awesome-icon
-                        icon="user"
-                        size="xs"
-                        v-else-if="tag.human"
-                        class="mx-1 align-middle"
-                        style="padding-bottom: 2px"
-                      />
-                      <font-awesome-icon
-                        icon="cog"
-                        size="xs"
-                        v-else-if="tag.automatic"
-                        class="mx-1 align-middle"
-                        style="padding-bottom: 2px"
-                      />
-                    </span>
-                    <span
-                      class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                      :class="[label.what]"
-                      :key="label.what"
-                      v-for="(label, index) in labelsForRecording(item.data)"
-                      >{{ label.what }}
-                    </span>
-                  </div>
-                  <span
-                    class="visit-station-name text-truncate flex-shrink-1 pe-2"
-                    ><font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="station-icon pe-1 text"
-                    />{{ item.data.stationName }}</span
-                  >
-                  <span
-                    class="visit-station-name text-truncate flex-shrink-1 pe-2"
-                    ><font-awesome-icon
-                      icon="video"
-                      size="xs"
-                      class="station-icon pe-1 text"
-                    />{{ item.data.deviceName }}</span
-                  >
-                  <span
-                    class="visit-station-name text-truncate flex-shrink-1 pe-2"
-                    ><font-awesome-icon
-                      icon="stream"
-                      size="xs"
-                      class="station-icon pe-1 text"
-                    /><span v-if="item.data.tracks.length === 0">No tracks</span
-                    ><span v-else-if="item.data.tracks.length === 1"
-                      >1 track</span
-                    ><span v-else
-                      >{{ item.data.tracks.length }} tracks</span
-                    ></span
-                  >
-                </div>
-              </div>
-            </div>
-          </div>
+          <recordings-list
+            v-if="displayMode === 'recordings'"
+            :recordings-by-day="chunkedRecordings"
+            @change-highlighted-location="
+              (loc) => (currentlyHighlightedLocation = loc)
+            "
+            @selected-recording="selectedRecording"
+            :currently-selected-recording-id="currentlySelectedRecording"
+            :canonical-location="canonicalLatLngForActiveLocations"
+          />
+          <visits-breakdown-list
+            v-else
+            :visits="chunkedVisits"
+            :location="canonicalLatLngForActiveLocations"
+          />
         </div>
         <div
           v-if="searching"
@@ -1780,197 +1554,3 @@ const loadedRouteName = ref<string>("");
 </style>
 <style src="@vueform/multiselect/themes/default.css"></style>
 <style src="@vuepic/vue-datepicker/dist/main.css"></style>
-
-<style scoped lang="less">
-.visits-daily-breakdown {
-  background: white;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-
-  .header {
-    border-bottom: 1px solid #eee;
-    font-weight: 500;
-  }
-  .visit-species-count {
-    border-radius: 2px;
-    color: #444444;
-    display: inline-block;
-    height: 24px;
-    line-height: 24px;
-    margin-bottom: 10px;
-    &:not(:last-child) {
-      margin-right: 21px;
-    }
-    .species {
-      padding: 0 5px;
-    }
-    .count {
-      background: #7d7d7d;
-      border-top-left-radius: 2px;
-      border-bottom-left-radius: 2px;
-      color: white;
-      text-align: center;
-      padding: 0 2px;
-      min-width: 21px;
-      font-weight: 500;
-      display: inline-block;
-    }
-    background: rgba(125, 125, 125, 0.1);
-    &.mustelid {
-      background: rgba(173, 0, 0, 0.1);
-      .count {
-        background: #ad0000;
-      }
-    }
-    &.possum,
-    &.cat {
-      background: rgba(163, 0, 20, 0.1);
-      .count {
-        background: #a30014;
-      }
-    }
-    &.rodent,
-    &.hedgehog {
-      background: rgba(163, 96, 0, 0.1);
-      .count {
-        background: #a36000;
-      }
-    }
-  }
-}
-.sunrise,
-.sunset {
-  color: #aaa;
-}
-.night-icon {
-  color: rgba(0, 0, 0, 0.2);
-}
-.list-item {
-  line-height: 14px;
-  transition: background-color linear 0.2s;
-  border-radius: 3px;
-  > * {
-    pointer-events: none;
-  }
-  &:hover:not(&[class*="sun"]) {
-    background: #eee;
-  }
-  &.selected {
-    background: #aaa;
-  }
-  .visit-time-duration {
-    width: 70px;
-    color: #666;
-    text-align: right;
-  }
-  &.sunrise,
-  &.sunset {
-    .visit-time-duration {
-      color: #aaa;
-    }
-  }
-  .visit-thumb {
-    min-width: 45px;
-    max-width: 45px;
-    width: 45px;
-    height: 45px;
-    overflow: hidden;
-    position: relative;
-    background: #aaa;
-    .num-recordings {
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      position: absolute;
-      bottom: 0;
-      left: 0;
-    }
-  }
-  .visit-timeline {
-    border-left: 1px solid #ddd;
-    .circle {
-      margin-top: 12px;
-      width: 6px;
-      height: 6px;
-      border-radius: 3px;
-      background: white;
-      transform: translateX(-3.5px);
-      border: 1px solid #ddd;
-    }
-    .sun-icon {
-      margin-top: 12px;
-      width: 6px;
-      height: 6px;
-      color: #ccc;
-      background: white;
-      transform: translateX(-3.5px) scale(3.5);
-      .sun-arrow {
-        transform-box: fill-box;
-        transform-origin: center;
-        transform: rotate(180deg);
-      }
-    }
-  }
-  &:first-child,
-  &:last-child {
-    .visit-timeline {
-      position: relative;
-      &::before {
-        position: absolute;
-        display: block;
-        content: " ";
-        height: 50%;
-        width: 1px;
-        left: -1px;
-        border-left: 1px dashed white;
-      }
-    }
-  }
-  &:last-child {
-    .visit-timeline {
-      &::before {
-        top: 15px;
-        height: unset;
-        bottom: 0;
-      }
-    }
-  }
-  .visit-species-tag {
-    background: #999;
-    color: white;
-    display: inline-block;
-    border-radius: 3px;
-    line-height: 20px;
-    font-weight: 500;
-    &.mustelid {
-      background: #ad0000;
-    }
-    &.possum,
-    &.cat {
-      background: #a30014;
-    }
-    &.rodent,
-    &.hedgehog {
-      background: #a36000;
-    }
-  }
-  .station-icon {
-    color: rgba(0, 0, 0, 0.5);
-  }
-
-  .recording-detail {
-    max-width: 469px;
-    background: white;
-    border-radius: 3px;
-  }
-}
-img.image-loading {
-  background: red;
-}
-.day-header {
-  position: sticky;
-  top: 0;
-  background: rgba(246, 246, 246, 0.85);
-  padding-top: 12px;
-  z-index: 1;
-  border-bottom: 1px solid #ddd;
-}
-</style>
