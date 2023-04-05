@@ -13,51 +13,46 @@
       name: 'DateRangePicker',
       props: {
         fromDate: {
-          type: String,
+          type: Date,
           required: true
         },
         toDate: {
-          type: String,
+          type: Date,
           required: true
         }
     },
-    computed: {
-        fromDateValue: {
-            get() {
-                return this.fromDate;
-            },
-            set(value) {
-                this.$emit('from-date-selected', value);
-            }
-        },
-        toDateValue: {
-            get() {
-                return this.toDate;
-            },
-            set(value) {
-                this.$emit('to-date-selected', value);
-            }
-        }
+    data() {
+      return {
+        fromDateValue: null,
+        toDateValue: null
+      }
+    },
+    created() {
+      this.fromDateValue = this.formatDate(this.fromDate);
+      this.toDateValue = this.formatDate(this.toDate);
     },
     methods: {
-        updateFromDate(event) {
-            this.$emit('date-range-selected', {
-                fromDate: event.target.value,
-                toDate: this.toDate
-            })
-        },
-        updateToDate(event) {
-            this.$emit('date-range-selected', {
-                fromDate: this.fromDate,
-                toDate: event.target.value
-            })
-        }
-    }
+      formatDate(date) {
+        const month = ("0"+(date.getMonth()+1)).slice(-2)
+        const day = ("0" + date.getDate()).slice(-2)
+        var dateString =  date.getFullYear() + "-" + month + "-" + day
+       
+        return dateString
+        // return date.toISOString().substr(0, 10);
+        // Format the date however you want
+      },
+      updateFromDate(event) {
+        this.$emit('update:fromDate', new Date(event.target.value));
+      },
+      updateToDate(event) {
+        this.$emit('update:toDate', new Date(event.target.value));
+      }
+  }
 }
   </script>
   
   <style scoped>
-    .date-range-picker {
+    /* .date-range-picker {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -72,6 +67,6 @@
       padding: 5px;
       border: 1px solid #ccc;
       border-radius: 3px;
-    }
+    } */
   </style>
   

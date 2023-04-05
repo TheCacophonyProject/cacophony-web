@@ -1,20 +1,61 @@
 <template>
     <div class="index-chart-container">
-        <canvas :ref="'index-chart'"></canvas>
+        <!-- <canvas :ref="'index-chart'"></canvas> -->
+        <IndexComparisonsChart :data="chartData" :options="chartOptions" ></IndexComparisonsChart>
     </div>
   </template>
   
   <script lang="ts">
   import Chart from "chart.js/auto"
+  import api from "@/api"
+  import IndexComparisonsChart from "./IndexComparisonsChart.vue"
+
+
   export default {
     name: "index-comparisons",
+    components: {
+        IndexComparisonsChart,
+    },
     data() {
         return {
-            deviceAverages: {},
-            deviceNames: {},
-            deviceMap: {},
-            totalDeviceCount: 0,
-            totalIndexSum: 0
+            loading: false,
+            // devices: [],
+            datasets: [],
+            labels: [],
+            chartOptions: {
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.dataset.label || ''
+                                const value = context.parsed.y.toFixed(0)
+                                return `${value}%`
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: "Cacophony Index By Device (%)",
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                    }, 
+                    x: {
+                        barSpacing: 10
+                    }
+                }
+            },
+            chartData: {
+                labels: [],
+                datasets: []
+            }
         }
     },
     props: {
@@ -22,117 +63,120 @@
             type: String,
              required: true
         },
-        recordings: {
-            type: Array,
+        groupId: {
+            type: Number,
             required: true
         },
-        overallAverage: { 
-            type: Number, 
-            required: false 
+        devices: {
+            type: Array,
+            default: () => []
         },
-    },
-    mounted() {
-        this.deviceAverages = this.getDeviceAverages()
-        this.deviceNames = this.getDeviceNames()
-        this.deviceMap = this.getDeviceMap(this.deviceAverages, this.deviceNames)
-        if (Object.keys(this.deviceMap).length >= 2){
-            this.deviceMap[this.groupName + ' average'] = this.totalIndexSum / this.totalDeviceCount
+        deviceColours: {
+            type: Array,
+        },
+        groupingSelection: {
+            type: String,
+            required: true
+        },
+        fromDate: {
+            type: Date,
+            required: true
+        },
+        toDate: {
+            type: Date,
+            required: true
         }
-        this.renderBarChart()
+    },
+    async mounted() {
+        if (this.groupingSelection == "device") {
+            await this.getDevicesCacophonyIndex()
+            this.chartData = {
+                "datasets": this.datasets,
+                "labels": this.labels
+            }
+        }
+    },
+    watch: {
+        fromDate: async function() {
+            this.handleParameterChange()
+        },
+        toDate: async function() {
+            this.handleParameterChange()
+        },
+        groupingSelection: async function() {
+            this.handleParameterChange()
+        },
+        devices: async function() {
+            this.handleParameterChange()
+        }
     },
     methods: {
-        getDeviceAverages() {
-            let deviceCounts: { [id : number] : number } = {}
-            let deviceIndexSum: { [id : number] : number } = {}
-            let deviceAverage: { [id : number] : number } = {}
-            for (var key in this.recordings) {
-                let deviceId: number = this.recordings[key]['deviceId']
-                if ('cacophonyIndex' in this.recordings[key]) {
-                let averageIndex: number = 0
-                let indexes: Array<Object> = this.recordings[key]['cacophonyIndex']
-                for (var section in indexes) {
-                    averageIndex += indexes[section]['index_percent']
-                }
-                averageIndex = averageIndex/Object.keys(indexes).length
-                if (deviceId in deviceCounts) {
-                    deviceCounts[deviceId] += 1
-                    deviceIndexSum[deviceId] += averageIndex
-                } else {
-                    deviceCounts[deviceId] = 1
-                    deviceIndexSum[deviceId] = averageIndex
-                }
-                this.totalDeviceCount += 1
-                this.totalIndexSum += averageIndex
-                }
+        async getDevicesCacophonyIndex() {
+            var requests = []
+            var windowSize = Math.ceil((this.toDate.getTime() - this.fromDate.getTime()) / 3600000)
+            for (var device of this.devices) {
+                requests.push({
+                        "id": device.id,
+                        "name": device.deviceName,
+                        "from": this.fromDate.toISOString(),
+                        "window-size": windowSize
+                    })
             }
-            for (var key in deviceCounts) {
-                deviceAverage[key] = deviceIndexSum[key]/deviceCounts[key]
-            }
-            return deviceAverage
-        },
-        getDeviceNames(): { [id : number] : string } {
-            let deviceNames: { [id : number] : string } = {}
-            for (var key in this.recordings) {
-                let deviceId: number = this.recordings[key]['deviceId']
-                let deviceName: string = this.recordings[key]['deviceName']
-                if (!(deviceName in deviceNames)) {
-                deviceNames[deviceId] = deviceName
-                }
-            }
-            return deviceNames 
-        },
-        getDeviceMap(deviceAverages, deviceNames) {
-            var deviceMap: { [id: string] : number} = {}
-            for (var id in deviceAverages) {
-                deviceMap[deviceNames[id]] = deviceAverages[id]
-            }
-            return deviceMap
-        },
-        renderBarChart() {
-            const ctx = this.$refs['index-chart']
-            const columnCount = Object.keys(this.deviceMap).length
-            const colourArray = Array(columnCount).fill('#B5DF96')
-            if (columnCount > 1) {
-                colourArray[columnCount-1] = '#81a667'
-            }
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: Object.keys(this.deviceMap),
-                    datasets: [{
-                        data: Object.keys(this.deviceMap).map((key) => this.deviceMap[key]),
-                        backgroundColor: colourArray
-                    }]
-                },
-                options: {
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const label = context.dataset.label || ''
-                                    const value = context.parsed.y.toFixed(0)
-                                    return `${value}%`
-                                }
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: "Cacophony Index By Device (%)",
-                            position: 'top'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                        }
+
+            const response = await Promise.all(
+                requests.map(async req => {
+                    const res = await api.device.getDeviceCacophonyIndex(req["id"], req["from"], req["window-size"])
+                    var index: number
+                    if (res.result.cacophonyIndex !== undefined) {
+                        index = res.result.cacophonyIndex
+                    } else {
+                        index = null
                     }
+                    return {
+                        "name": req["name"],
+                        "cacophonyIndex": index,
+                        "from": req["from"],
+                        "window Size": req["window-size"]
+                    }
+                })
+            )
+
+            var data = []
+            var labels = []
+            for (var res of response) {
+                if (res.cacophonyIndex !== null) {
+                    data.push(res.cacophonyIndex)
+                    labels.push(res.name)
                 }
-            })
-        }
+            }
+            if (data.length > 1) {
+                const average = data.reduce((a, b) => a + b) / data.length;
+                data.push(average)
+                labels.push("Group Average")
+                this.deviceColours.push('#148226')
+            }
+            
+            this.datasets = [{
+                "data": data,
+                "backgroundColor": this.deviceColours,
+            }]
+            this.labels = labels
+        },
+        async handleParameterChange() {
+            this.loading = true
+            if (this.groupingSelection == "device") {
+                this.labels = []
+                this.indexData = []
+                await this.getDevicesCacophonyIndex()
+                this.chartData = {
+                    "datasets": this.datasets,
+                    "labels": this.labels
+                }   
+            } else if (this.groupingSelection == "station") {
+
+            }
+            this.loading = false   
+        },
     }
 }
 </script>

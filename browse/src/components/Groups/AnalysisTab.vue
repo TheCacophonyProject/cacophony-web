@@ -4,26 +4,54 @@
         Analysis
         <help>Analysis for {{groupName}} devices</help>
         </h2>
+        <p>Display data for range:</p>
+        <div class="date-range-picker-container">
+            <DateRangePicker :from-date="fromDate" :to-date="toDate" @update:fromDate="fromDateUpdated" @update:toDate="toDateUpdated"></DateRangePicker>
+        </div>
+        <div class="grouping-selector-container">
+            <label for="grouping-selector">Show per:</label>
+                <select id="grouping-selector" v-model="groupingSelection" >
+                    <option v-for="option in groupingOptions" :key="option" :value="option">{{ option }}</option>
+                </select>
+        </div>
+        <div class="grouping-selector-container">
+            <label for="interval-selector">Group by:</label>
+                <select id="interval-selector" v-model="intervalSelection" >
+                    <option v-for="option in intervalOptions" :key="option" :value="option">{{ option }}</option>
+                </select>
+        </div>
         <div class="visuals-container">
             <div class="grid-item">
                 <slot name="index-visuals">
-                    <index-comparisons v-if="recordings" :recordings="recordings" :groupName="groupName" ></index-comparisons>
+                    <index-comparisons 
+                        :groupName="groupName" 
+                        :groupId="groupId"
+                        :devices="devices"
+                        :deviceColours="deviceColours"
+                        :groupingSelection="groupingSelection"
+                        :fromDate="fromDateRounded"
+                        :toDate="toDateRounded">
+                    </index-comparisons>
                 </slot>
             </div>
             <div class="grid-item">
                 <slot name="index-visuals">
-                    <index-time-comparisons :groupId="groupId" :groupName="groupName"></index-time-comparisons>
+                    <index-time-comparisons 
+                        :groupId="groupId" 
+                        :devices="devices"
+                        :deviceColours="deviceColours"
+                        :fromDate="fromDateRounded" 
+                        :toDate="toDateRounded" 
+                        :groupingSelection="groupingSelection" 
+                        :intervalSelection="intervalSelection">
+                    </index-time-comparisons>
                 </slot>
             </div>
             <div class="grid-item">
-                <!-- <slot name="index-visuals">
-                    <index-time-comparisons :groupId="groupId" :groupName="groupName"></index-time-comparisons>
-                </slot> -->
+       
             </div>
             <div class="grid-item">
-                <slot name="index-visuals">
-                    <index-comparisons v-if="recordings" :recordings="recordings" :groupName="groupName"></index-comparisons>
-                </slot>
+               
             </div>
         </div>
         
@@ -35,42 +63,56 @@ import Help from "@/components/Help.vue"
 import IndexComparisons from "../Visuals/IndexComparisons.vue"
 import IndexTimeComparisons from "../Visuals/IndexTimeComparisons.vue"
 import api from "@/api"
+import DateRangePicker from "../Visuals/DateRangePicker.vue"
 
 export default {
     name: "AnalysisTab",
     components: {
-        Help,
-        IndexComparisons,
-        IndexTimeComparisons
-    },
+    Help,
+    IndexComparisons,
+    IndexTimeComparisons,
+    DateRangePicker
+},
     props: {
         groupName: { type: String, required: true },
         groupId: { type: Number, required: true },
         
     },
     data() {
+        const to = new Date()
+        const from = new Date()
+        to.setDate(to.getDate() - 1)
+        from.setDate(from.getDate() - 7)
         return {
             loading: true,
             recordings: null,
-            recordingCount: 1
+            recordingCount: 1,
+            fromDate: from,
+            toDate: to,
+            devices: [],
+            deviceColours: [],
+            groupingOptions: ["device", "station"],
+            groupingSelection: "device",
+            intervalOptions: ["hours", "days", "weeks", "months", "years"],
+            intervalSelection: "days"
         }
     },
     async mounted() {
-        await this.fetchRecordingData()
+        if (this.groupingSelection = "device") {
+            await this.getDevices()
+        }
+        const deviceColours = []
+        for (let i = 0; i < this.devices.length; i++) {
+            deviceColours.push('#' + Math.random().toString(16).substr(-6))
+        }
+        this.deviceColours = deviceColours
+        this.intervalOptions = ["hours", "days"]
         this.loading = false
     },
     methods: {
-        async fetchRecordingData() {
-            this.loading = true
-            const recordingsResponse = await api.recording.query(this.recordingQuery())
-            if (recordingsResponse.success) {
-                const {
-                    result: { rows, count },
-                } = recordingsResponse
-                this.recordingCount = count
-                this.recordings = rows
-            }
-            this.loading = false
+        async getDevices() {
+            const result = await api.groups.getDevicesForGroup(this.groupId, this.inactiveAndActive)
+            this.devices = result.result.devices
         },
         recordingQuery() {
             return {
@@ -81,7 +123,52 @@ export default {
                 days: "all",
                 group: [this.groupId],
             }
+        },
+        fromDateUpdated(newFromDate) {
+            this.fromDate = newFromDate
+            const differenceDays = Math.ceil((this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24))
+            if (differenceDays < 1) {
+                this.invertalOptions = ["hours"]
+            } else if (differenceDays < 7) {
+                this.intervalOptions = ["hours", "days"]
+            } else if (differenceDays < 31) {
+                this.intervalOptions = ["hours", "days", "weeks"]
+            } else if (differenceDays < 365) {
+                this.intervalOptions = ["hours", "days", "weeks", "months"]
+            } else {
+                this.intervalOptions = ["days", "weeks", "months", "years"]
+            }
+            console.log(differenceDays)
+
+        },
+        toDateUpdated(newToDate) {
+            this.toDate = newToDate
+            const differenceDays = Math.ceil((this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24))
+            if (differenceDays < 1) {
+                this.invertalOptions = ["hours"]
+            } else if (differenceDays < 7) {
+                this.intervalOptions = ["hours", "days"]
+            } else if (differenceDays < 31) {
+                this.intervalOptions = ["hours", "days", "weeks"]
+            } else if (differenceDays < 365) {
+                this.intervalOptions = ["hours", "days", "weeks", "months"]
+            } else {
+                this.intervalOptions = ["days", "weeks", "months", "years"]
+            }
+            console.log(differenceDays)
         }
+    },
+    computed: {
+        fromDateRounded() {
+            const roundedDate = new Date(this.fromDate)
+            roundedDate.setHours(0, 0, 0, 0)
+            return roundedDate
+        },
+        toDateRounded() {
+            const roundedDate = new Date(this.toDate)
+            roundedDate.setHours(23, 59, 59, 999)
+            return roundedDate
+        },
     }
 }
 </script>
@@ -102,6 +189,18 @@ export default {
 .grid-item {
   background-color: #fff;
   padding: 10px;
+}
+
+.date-range-picker-container {
+    /* display: flex; */
+    top: 0;
+    left: 0;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.grouping-selector-container {
+    display: flex;
 }
 
 </style>

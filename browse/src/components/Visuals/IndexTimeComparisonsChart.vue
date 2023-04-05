@@ -9,14 +9,22 @@
   
   export default {
     name: "IndexTimeComparisonsChart",
-    props: ['data', 'options'],
+    props: {
+        data: {
+            type: Object,
+            required: true
+        },
+        options: {
+            type: Object,
+            required: true
+        }
+    },
     data() {
         return {
             chartInstance: null
         }
     },
     mounted() {
-      
       this.createChart();
     },
     methods: {

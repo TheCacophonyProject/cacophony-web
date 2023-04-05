@@ -288,20 +288,21 @@ export default function (
     console.log(`authUser: ${authUser},\ndevice: ${device},\nfrom: ${from},\nwindow-size: ${windowSizeInHours}`)
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
+    console.log(windowEndTimestampUtc)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [result, _] = (await sequelize.query(
-      `select round((avg(scores))::numeric, 2) as cacophonyIndex from
-(select
-	(jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
-from
+  `select round((avg(scores))::numeric, 2) as index from
+    (select
+      (jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
+  from
 	"Recordings"
 where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex;`
-    )) as [{ cacophonyIndex: number }[], unknown];
-    
-    const index = result[0].cacophonyIndex;
+	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') and (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' + interval '${windowSizeInHours} hours')) as cacophonyIndex`
+    )) as [{ index: number }[], unknown]
+
+    const index = result[0].index;
     if (index !== null) {
       return Number(index);
     }
