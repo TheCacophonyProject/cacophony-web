@@ -66,6 +66,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
+  
   freeDeviceName: (name: string, id: GroupId) => Promise<boolean>;
   getFromId: (id: DeviceId) => Promise<Device>;
   findDevice: (
@@ -93,6 +94,12 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     from: Date,
     windowSize: number
   ) => Promise<{ hour: number; index: number }[]>;
+  getSpeciesCounts: (
+    authUser: User,
+    deviceId: DeviceId,
+    from: Date,
+    windowSize: number
+  ) => Promise<{ what: string; count: number }[]>;
   stoppedDevices: () => Promise<Device[]>;
 }
 
@@ -345,6 +352,43 @@ order by hour;
       index: Number(item.index),
     }));
   };
+
+
+  interface TagCount {
+    what: String,
+    count: number
+  }
+
+  Device.getSpeciesCounts = async function( 
+    authUser,
+    deviceId,
+    from,
+    windowSizeInHours
+  ): Promise<{ what: string; count: number }[]> {
+    windowSizeInHours = Math.abs(windowSizeInHours);
+    // We need to take the time down to the previous hour, so remove 1 second
+    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
+    // Get a spread of 24 results with each result falling into an hour bucket.
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [results, _] = await sequelize.query(`SELECT tt.what, count(*) as count 
+      FROM "Recordings" r 
+      JOIN "Tracks" t ON r.id = t."RecordingId" 
+      JOIN "TrackTags" tt ON t.id = tt."TrackId" 
+      WHERE r."DeviceId" = 1 
+      GROUP BY tt.what;
+    `) as  [{ what: string; count: number }[], unknown];
+
+    return results.map((item) => ({
+      what: String(item.what),
+      count: Number(item.count),
+    }));
+  }
+
+
+
+
+
 
   // Fields that are directly settable by the API.
   Device.apiSettableFields = ["location", "newConfig"];

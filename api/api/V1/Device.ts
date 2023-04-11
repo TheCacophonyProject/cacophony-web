@@ -948,6 +948,45 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+
+  /**
+   * @api {get} /api/v1/devices/{:deviceId}/species-counts Get the species breakdown for a device
+   * @apiName species-breakdown
+   * @apiGroup Device
+   * @apiDescription Get a species breakdown 
+   * for a given device, showing the proportion of recordings that are of each species. 
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} deviceId ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Object} #TODO
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:deviceId/species-counts`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request: Request, response: Response) {
+      const speciesCounts = await models.Device.getSpeciesCounts(
+        response.locals.requestUser,
+        response.locals.device.id,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number
+      );
+      return successResponse(response, { speciesCounts });
+    }
+  );
+
   /**
      * @api {post} /api/v1/devices/heartbeat send device heartbeat
      * @apiName heartbeat

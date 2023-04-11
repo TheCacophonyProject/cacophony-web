@@ -219,7 +219,7 @@ export default {
                 }
                 setLabels = true
             }
-            console.log(requests)
+            
             const response = await Promise.all(
                 requests.map(async req => {
                     var res = null
@@ -242,7 +242,7 @@ export default {
                     }
                 })
             )
-
+  
             var data = {
             }
             for (var res of response) {
@@ -270,11 +270,9 @@ export default {
             this.datasets = datasets
         },
         updateStationGraphData() {
-            console.log("updating station graph data")
+            
             var datasets = []
             var i = 0
-            console.log(this.stations)
-            console.log(this.indexData)
             for (var station of this.stations) {
                 if (this.indexData[station.name] != null) {
                     datasets.push({
@@ -285,7 +283,6 @@ export default {
                     i += 1
                 }
             }
-            console.log(datasets)
             this.datasets = datasets
         },
         async handleParameterChange() {
