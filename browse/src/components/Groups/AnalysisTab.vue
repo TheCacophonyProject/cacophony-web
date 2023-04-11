@@ -27,7 +27,8 @@
                         :groupName="groupName" 
                         :groupId="groupId"
                         :devices="devices"
-                        :deviceColours="deviceColours"
+                        :stations="stations"
+                        :colours="colours"
                         :groupingSelection="groupingSelection"
                         :fromDate="fromDateRounded"
                         :toDate="toDateRounded">
@@ -39,7 +40,8 @@
                     <index-time-comparisons 
                         :groupId="groupId" 
                         :devices="devices"
-                        :deviceColours="deviceColours"
+                        :stations="stations"
+                        :colours="colours"
                         :fromDate="fromDateRounded" 
                         :toDate="toDateRounded" 
                         :groupingSelection="groupingSelection" 
@@ -90,7 +92,8 @@ export default {
             fromDate: from,
             toDate: to,
             devices: [],
-            deviceColours: [],
+            colours: [],
+            stations: [],
             groupingOptions: ["device", "station"],
             groupingSelection: "device",
             intervalOptions: ["hours", "days", "weeks", "months", "years"],
@@ -98,31 +101,42 @@ export default {
         }
     },
     async mounted() {
-        if (this.groupingSelection = "device") {
-            await this.getDevices()
-        }
-        const deviceColours = []
+        await this.getDevices()
+        var colours = []
         for (let i = 0; i < this.devices.length; i++) {
-            deviceColours.push('#' + Math.random().toString(16).substr(-6))
+            colours.push('#' + Math.random().toString(16).substr(-6))
         }
-        this.deviceColours = deviceColours
+        this.colours = colours
+    
         this.intervalOptions = ["hours", "days"]
+        await this.getStations()
         this.loading = false
+    },
+    watch: {
+        groupingSelection: async function() {
+            var objCount = 0
+            if (this.groupingSelection == "device") {
+                await this.getDevices()
+                objCount = this.devices.length
+            } else if (this.groupingSelection == "station") {
+                await this.getStations()
+                objCount = this.stations.length
+            }
+            var colours = []
+            for (let i = 0; i < objCount; i++) {
+                colours.push('#' + Math.random().toString(16).substr(-6))
+            }
+            this.colours = colours
+        }
     },
     methods: {
         async getDevices() {
-            const result = await api.groups.getDevicesForGroup(this.groupId, this.inactiveAndActive)
-            this.devices = result.result.devices
+            const resultDevices = await api.groups.getDevicesForGroup(this.groupId, this.inactiveAndActive)
+            this.devices = resultDevices.result.devices
         },
-        recordingQuery() {
-            return {
-                tagMode: "any",
-                offset: 0,
-                limit: null,
-                page: null,
-                days: "all",
-                group: [this.groupId],
-            }
+        async getStations() {
+            const resultStations = await api.groups.getStationsForGroup(this.groupId, this.inactiveAndActive)
+            this.stations = resultStations.result.stations
         },
         fromDateUpdated(newFromDate) {
             this.fromDate = newFromDate
@@ -138,7 +152,6 @@ export default {
             } else {
                 this.intervalOptions = ["days", "weeks", "months", "years"]
             }
-            console.log(differenceDays)
 
         },
         toDateUpdated(newToDate) {
@@ -155,7 +168,6 @@ export default {
             } else {
                 this.intervalOptions = ["days", "weeks", "months", "years"]
             }
-            console.log(differenceDays)
         }
     },
     computed: {

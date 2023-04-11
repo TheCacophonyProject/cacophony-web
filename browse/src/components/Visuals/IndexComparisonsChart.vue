@@ -25,7 +25,6 @@ export default {
         }
     },
     mounted() {
-        console.log(this.options)
         this.createChart()
     },
     methods: {
@@ -43,7 +42,6 @@ export default {
     },
     watch: {
       data(newData, oldData) {
-        console.log(newData)
         if (newData !== oldData) {
             this.createChart()
         }

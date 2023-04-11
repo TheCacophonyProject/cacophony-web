@@ -15,7 +15,7 @@ import {
   ApiStationResponse,
   ApiStationSettings,
 } from "@typedefs/api/station";
-import { booleanOf, idOf } from "../validation-middleware";
+import { booleanOf, idOf, integerOfWithDefault } from "../validation-middleware";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json";
 import { stationLocationHasChanged } from "@models/Group";
@@ -455,4 +455,43 @@ export default function (app: Application, baseUrl: string) {
       }
     }
   );
+
+  /**
+  * @api {get} /api/v1/stations/:stationId/cacophony-index Get the cacophony index for a station
+  * @apiName cacophony-index-Station
+  * @apiGroup Station
+  * @apiDescription Get a single number Cacophony Index
+  * for a given station.  This number is the average of all the Cacophony Index values from a
+  * given time (defaulting to 'Now'), within a given timespan (defaulting to 3 months)
+  *
+  * @apiUse V1UserAuthorizationHeader
+  *
+  * @apiParam {Integer} station ID of the device.
+  * @apiQuery {String} [from=now] ISO8601 date string
+  * @apiQuery {Integer} [window-size=2160] length of rolling window in hours.  Default is 2160 (90 days)
+  * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+  * @apiSuccess {Float} cacophonyIndex A number representing the average index over the period `from` minus `window-size`
+  * @apiUse V1ResponseSuccess
+  * @apiUse V1ResponseError
+  */
+  app.get(
+    `${apiUrl}/:stationId/cacophony-index`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("stationId")),
+    async (request: Request, response: Response) => {
+      const cacophonyIndex = await models.Station.getCacophonyIndex(
+        response.locals.requestUser,
+        response.locals.station.id,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number
+      )
+      return successResponse(response, { cacophonyIndex })
+    }
+  )
 }

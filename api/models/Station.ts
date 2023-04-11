@@ -62,6 +62,12 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     fromTime?: Date,
     untilTime?: Date
   ) => Promise<Station[]>;
+  getCacophonyIndex: (
+    authUser,
+    stationId,
+    from,
+    windowSizeInHours
+  ) => Promise<number>;
 }
 export default function (
   sequelize: Sequelize.Sequelize,
@@ -181,6 +187,30 @@ export default function (
       },
     });
   };
+
+
+  Station.getCacophonyIndex = async function (
+    authUser,
+    stationId,
+    from,
+    windowSizeInHours
+  ) {
+    console.log(`authUser: ${authUser},\nstation: ${stationId},\nfrom: ${from},\nwindow-size: ${windowSizeInHours}`)
+    windowSizeInHours = Math.abs(windowSizeInHours);
+    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
+    const [result, _] = (await sequelize.query(
+      `select round((avg(scores))::numeric, 2) as index from
+      (select
+        (jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
+    from
+    "Recordings"
+  where
+    "StationId" = ${stationId}
+    and "type" = 'audio'
+    and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') and (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' + interval '${windowSizeInHours} hours')) as cacophonyIndex`
+        )) as [{ index: number }[], unknown]
+    return result[0].index;
+  }
 
   return Station;
 }

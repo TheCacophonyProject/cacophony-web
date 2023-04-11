@@ -65,7 +65,10 @@ export default {
         devices: {
             type: Array,
         },
-        deviceColours: {
+        stations: {
+            type: Array,
+        },
+        colours: {
             type: Array
         },
         groupingSelection: {
@@ -88,18 +91,18 @@ export default {
     async mounted() {
         this.dateRange = this.toDate - this.fromDate // days
         this.loading = true
+        this.labels = []
+        this.indexData = []
+        await this.getIndexData()
         if (this.groupingSelection == "device") {
-            this.labels = []
-            this.indexData = []
-            await this.getIndexData()
             this.updateDeviceGraphData()
-            this.chartData = {
-                "datasets": this.datasets,
-                "labels": this.labels
-            }   
         } else if (this.groupingSelection == "station") {
-
+            this.updateStationGraphData()
         }
+        this.chartData = {
+            "datasets": this.datasets,
+            "labels": this.labels
+        }   
         this.loading = false   
     },
     watch: {
@@ -116,7 +119,6 @@ export default {
             this.handleParameterChange()
         },
         devices: async function() {
-            console.log("devices changed")
             this.handleParameterChange()
         }
     },
@@ -159,10 +161,15 @@ export default {
             this.windowSize = (toDateRounded.getTime() - fromDateRounded.getTime()) / 3600000
             var steps = Math.round(this.windowSize/interval)
             const requests = []
-            console.log(`from: ${fromDateRounded.toLocaleDateString()}, to: ${toDateRounded.toLocaleDateString()}, steps: ${steps}, interval: ${interval}, windowSize: ${this.windowSize}`)
             var startDate = new Date(fromDateRounded)
             var setLabels = false
-            for (var device of this.devices) {
+            var iterable = []
+            if (this.groupingSelection == "device") {
+                iterable = this.devices
+            } else if (this.groupingSelection == "station") {
+                iterable = this.stations
+            }
+            for (var obj of iterable) {
                 for (var i = 0; i < steps; i++) {
                     startDate = new Date(fromDateRounded)
                     switch(this.intervalSelection) {
@@ -182,12 +189,21 @@ export default {
                             startDate.setFullYear(startDate.getFullYear() + i)
                             break;
                     }
-                    requests.push({
-                        "id": device.id,
-                        "name": device.deviceName,
+                    if (this.groupingSelection == "device") {
+                        requests.push({
+                        "id": obj.id,
+                        "name": obj.deviceName,
                         "from": startDate.toISOString(),
                         "window-size": interval
-                    })
+                        })
+                    } else if (this.groupingSelection == "station") {
+                        requests.push({
+                            "id": obj.id,
+                            "name": obj.name,
+                            "from": startDate.toISOString(),
+                            "window-size": interval
+                        })
+                    }
                     if (!setLabels) {
                         if (this.intervalSelection == "weeks") {
                             startDate.setDate(startDate.getDate() + 6)
@@ -203,9 +219,15 @@ export default {
                 }
                 setLabels = true
             }
+            console.log(requests)
             const response = await Promise.all(
                 requests.map(async req => {
-                    const res = await api.device.getDeviceCacophonyIndex(req["id"], req["from"], req["window-size"])
+                    var res = null
+                    if (this.groupingSelection == "device") {
+                        res = await api.device.getDeviceCacophonyIndex(req["id"], req["from"], req["window-size"])
+                    } else if (this.groupingSelection == "station") {
+                        res = await api.station.getStationCacophonyIndex(req["id"], req["from"], req["window-size"])
+                    }
                     var index: number
                     if (res.result.cacophonyIndex !== undefined) {
                         index = res.result.cacophonyIndex
@@ -236,29 +258,52 @@ export default {
             var datasets = []
             var i = 0
             for (var device of this.devices) {
-                datasets.push({
-                    data: this.indexData[device.deviceName],
-                    label: device.deviceName,   
-                    borderColor: this.deviceColours[i]
-                })
-                i += 1
+                if (this.indexData[device.deviceName] != null) {
+                    datasets.push({
+                        data: this.indexData[device.deviceName],
+                        label: device.deviceName,   
+                        borderColor: this.colours[i]
+                    })
+                    i += 1
+                }
             }
+            this.datasets = datasets
+        },
+        updateStationGraphData() {
+            console.log("updating station graph data")
+            var datasets = []
+            var i = 0
+            console.log(this.stations)
+            console.log(this.indexData)
+            for (var station of this.stations) {
+                if (this.indexData[station.name] != null) {
+                    datasets.push({
+                        data: this.indexData[station.name],
+                        label: station.name,   
+                        borderColor: this.colours[i]
+                    })
+                    i += 1
+                }
+            }
+            console.log(datasets)
             this.datasets = datasets
         },
         async handleParameterChange() {
             this.loading = true
+            this.labels = []
+            this.indexData = []
+            await this.getIndexData()
             if (this.groupingSelection == "device") {
-                this.labels = []
-                this.indexData = []
-                await this.getIndexData()
                 this.updateDeviceGraphData()
-                this.chartData = {
-                    "datasets": this.datasets,
-                    "labels": this.labels
-                }   
+                this.chartOptions.plugins.title.text = "Change in Cacophony Index By Device (%)"
             } else if (this.groupingSelection == "station") {
-
+                this.updateStationGraphData()
+                this.chartOptions.plugins.title.text = "Change in Cacophony Index By Station (%)"
             }
+            this.chartData = {
+                "datasets": this.datasets,
+                "labels": this.labels
+            }  
             this.loading = false   
         }
         

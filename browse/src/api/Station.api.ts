@@ -66,6 +66,19 @@ function renameStationById(
   });
 }
 
+function getStationCacophonyIndex(
+  stationId: StationId,
+  from: string,
+  windowsize: Number,
+  activeAndInactive = false
+): Promise<FetchResult<{ cacophonyIndex: number }>> {
+  return CacophonyApi.get(`/api/v1/stations/${stationId}/cacophony-index?from=${from}&window-size=${windowsize}${
+    shouldViewAsSuperUser()
+      ? `&only-active=${activeAndInactive ? "false" : "true"}`
+      : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+  }`);
+}
+
 function uploadReferenceImage(
   stationId: StationId,
   imageData: Blob
@@ -106,4 +119,5 @@ export default {
   uploadReferenceImage,
   getReferenceImage,
   deleteReferenceImage,
+  getStationCacophonyIndex
 };
