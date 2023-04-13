@@ -94,7 +94,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     from: Date,
     windowSize: number
   ) => Promise<{ hour: number; index: number }[]>;
-  getSpeciesCounts: (
+  getSpeciesCount: (
     authUser: User,
     deviceId: DeviceId,
     from: Date,
@@ -292,10 +292,8 @@ export default function (
     from,
     windowSizeInHours
   ) {
-    console.log(`authUser: ${authUser},\ndevice: ${device},\nfrom: ${from},\nwindow-size: ${windowSizeInHours}`)
     windowSizeInHours = Math.abs(windowSizeInHours);
-    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    console.log(windowEndTimestampUtc)
+    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [result, _] = (await sequelize.query(
   `select round((avg(scores))::numeric, 2) as index from
@@ -306,7 +304,7 @@ export default function (
 where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') and (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' + interval '${windowSizeInHours} hours')) as cacophonyIndex`
+	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`
     )) as [{ index: number }[], unknown]
 
     const index = result[0].index;
@@ -359,7 +357,7 @@ order by hour;
     count: number
   }
 
-  Device.getSpeciesCounts = async function( 
+  Device.getSpeciesCount = async function( 
     authUser,
     deviceId,
     from,
@@ -375,7 +373,8 @@ order by hour;
       FROM "Recordings" r 
       JOIN "Tracks" t ON r.id = t."RecordingId" 
       JOIN "TrackTags" tt ON t.id = tt."TrackId" 
-      WHERE r."DeviceId" = 1 
+      WHERE r."DeviceId" = ${deviceId} 
+      AND r."recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
       GROUP BY tt.what;
     `) as  [{ what: string; count: number }[], unknown];
 

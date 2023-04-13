@@ -111,7 +111,6 @@
             this.handleParameterChange()
         },
         groupingSelection: async function() {
-            console.log(`grouping selection changed to ${this.groupingSelection}`)
             this.handleParameterChange()
         },
         devices: async function() {
@@ -127,7 +126,7 @@
                     requests.push({
                             "id": device.id,
                             "name": device.deviceName,
-                            "from": this.fromDate.toISOString(),
+                            "from": this.toDate.toISOString(),
                             "window-size": windowSize
                         })
                 }
@@ -136,15 +135,20 @@
                 requests.push({
                         "id": station.id,
                         "name": station.name,
-                        "from": this.fromDate.toISOString(),
+                        "from": this.toDate.toISOString(),
                         "window-size": windowSize
                     })
-            }
+                }
             }
             
             const response = await Promise.all(
                 requests.map(async req => {
-                    const res = await api.device.getDeviceCacophonyIndex(req["id"], req["from"], req["window-size"])
+                    var res = null
+                    if (this.groupingSelection == "device") {
+                        res = await api.device.getDeviceCacophonyIndex(req["id"], req["from"], req["window-size"])
+                    } else if (this.groupingSelection == "station") {
+                        res = await api.station.getStationCacophonyIndex(req["id"], req["from"], req["window-size"])
+                    }
                     var index: number
                     if (res.result.cacophonyIndex !== undefined) {
                         index = res.result.cacophonyIndex
@@ -186,24 +190,16 @@
         },
         async handleParameterChange() {
             this.loading = true
-            
+            this.labels = []
+            this.indexData = []
+            await this.getDevicesCacophonyIndex()
+            this.chartData = {
+                "datasets": this.datasets,
+                "labels": this.labels
+            }   
             if (this.groupingSelection == "device") {
-                this.labels = []
-                this.indexData = []
-                await this.getDevicesCacophonyIndex()
-                this.chartData = {
-                    "datasets": this.datasets,
-                    "labels": this.labels
-                }   
                 this.chartOptions.plugins.title.text = "Cacophony Index By Device (%)"
             } else if (this.groupingSelection == "station") {
-                this.labels = []
-                this.indexData = []
-                await this.getDevicesCacophonyIndex()
-                this.chartData = {
-                    "datasets": this.datasets,
-                    "labels": this.labels
-                }
                 this.chartOptions.plugins.title.text = "Cacophony Index By Station (%)"
             }
             this.loading = false   

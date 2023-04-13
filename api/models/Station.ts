@@ -68,6 +68,13 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     from,
     windowSizeInHours
   ) => Promise<number>;
+  getSpeciesCount: (
+    authUser,
+    stationId,
+    from,
+    windowSizeInHours
+  ) => Promise<{ what: string; count: number }[]>;
+  
 }
 export default function (
   sequelize: Sequelize.Sequelize,
@@ -195,7 +202,6 @@ export default function (
     from,
     windowSizeInHours
   ) {
-    console.log(`authUser: ${authUser},\nstation: ${stationId},\nfrom: ${from},\nwindow-size: ${windowSizeInHours}`)
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
     const [result, _] = (await sequelize.query(
@@ -207,10 +213,40 @@ export default function (
   where
     "StationId" = ${stationId}
     and "type" = 'audio'
-    and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') and (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' + interval '${windowSizeInHours} hours')) as cacophonyIndex`
+    and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`
         )) as [{ index: number }[], unknown]
     return result[0].index;
   }
+
+
+  Station.getSpeciesCount = async function( 
+    authUser,
+    stationId,
+    from,
+    windowSizeInHours
+  ): Promise<{ what: string; count: number }[]> {
+    windowSizeInHours = Math.abs(windowSizeInHours);
+    // We need to take the time down to the previous hour, so remove 1 second
+    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
+    // Get a spread of 24 results with each result falling into an hour bucket.
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [results, _] = await sequelize.query(`SELECT tt.what, count(*) as count 
+      FROM "Recordings" r 
+      JOIN "Tracks" t ON r.id = t."RecordingId" 
+      JOIN "TrackTags" tt ON t.id = tt."TrackId" 
+      WHERE r."StationId" = ${stationId} 
+      AND r."recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
+      GROUP BY tt.what;
+    `) as  [{ what: string; count: number }[], unknown];
+    
+    return results.map((item) => ({
+      what: String(item.what),
+      count: Number(item.count),
+    }));
+  }
+
+
 
   return Station;
 }

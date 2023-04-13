@@ -950,7 +950,7 @@ export default function (app: Application, baseUrl: string) {
 
 
   /**
-   * @api {get} /api/v1/devices/{:deviceId}/species-counts Get the species breakdown for a device
+   * @api {get} /api/v1/devices/{:deviceId}/species-count Get the species breakdown for a device
    * @apiName species-breakdown
    * @apiGroup Device
    * @apiDescription Get a species breakdown 
@@ -967,7 +967,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:deviceId/species-counts`,
+    `${apiUrl}/:deviceId/species-count`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
@@ -977,13 +977,13 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
-      const speciesCounts = await models.Device.getSpeciesCounts(
+      const speciesCount = await models.Device.getSpeciesCount(
         response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number
       );
-      return successResponse(response, { speciesCounts });
+      return successResponse(response, { speciesCount });
     }
   );
 

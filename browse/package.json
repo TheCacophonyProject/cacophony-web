@@ -22,6 +22,7 @@
     "bootstrap": "^4.5.3",
     "bootstrap-vue": "^2.21.2",
     "chart.js": "^3.6.2",
+    "chroma-js": "^2.4.2",
     "colormap": "^2.3.2",
     "cptv-decoder": "github:TheCacophonyProject/cptv-rs#v1.3.1",
     "cptv-player-vue": "github:TheCacophonyProject/cptv-player-vue#v1.3.1",

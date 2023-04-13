@@ -161,7 +161,7 @@ export default {
             this.windowSize = (toDateRounded.getTime() - fromDateRounded.getTime()) / 3600000
             var steps = Math.round(this.windowSize/interval)
             const requests = []
-            var startDate = new Date(fromDateRounded)
+            var startDate = new Date(toDateRounded)
             var setLabels = false
             var iterable = []
             if (this.groupingSelection == "device") {
@@ -171,22 +171,22 @@ export default {
             }
             for (var obj of iterable) {
                 for (var i = 0; i < steps; i++) {
-                    startDate = new Date(fromDateRounded)
+                    startDate = new Date(toDateRounded)
                     switch(this.intervalSelection) {
                         case 'hours': 
-                            startDate.setHours(startDate.getHours() + i)
+                            startDate.setHours(startDate.getHours() - i)
                             break;
                         case 'days':
-                            startDate.setDate(startDate.getDate() + i)
+                            startDate.setDate(startDate.getDate() - i)
                             break;
                         case 'weeks':
-                            startDate.setDate(startDate.getDate() + (i*7))
+                            startDate.setDate(startDate.getDate() - (i*7))
                             break;
                         case 'months':
-                            startDate.setMonth(startDate.getMonth() + i)
+                            startDate.setMonth(startDate.getMonth() - i)
                             break;
                         case 'years':
-                            startDate.setFullYear(startDate.getFullYear() + i)
+                            startDate.setFullYear(startDate.getFullYear() - i)
                             break;
                     }
                     if (this.groupingSelection == "device") {
@@ -219,7 +219,14 @@ export default {
                 }
                 setLabels = true
             }
-            
+            requests.reverse()
+            this.labels.reverse()
+
+            if (requests.length > 600) {
+                this.loading = false
+                this.$emit("tooManyRequests")
+                return
+            }
             const response = await Promise.all(
                 requests.map(async req => {
                     var res = null

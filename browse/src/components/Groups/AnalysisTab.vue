@@ -50,7 +50,18 @@
                 </slot>
             </div>
             <div class="grid-item">
-       
+                <slot name="index-visuals">
+                    <species-comparisons 
+                        :groupName="groupName" 
+                        :groupId="groupId"
+                        :devices="devices"
+                        :stations="stations"
+                        :colours="colours"
+                        :groupingSelection="groupingSelection"
+                        :fromDate="fromDateRounded"
+                        :toDate="toDateRounded">
+                    </species-comparisons>
+                </slot>
             </div>
             <div class="grid-item">
                
@@ -66,6 +77,7 @@ import IndexComparisons from "../Visuals/IndexComparisons.vue"
 import IndexTimeComparisons from "../Visuals/IndexTimeComparisons.vue"
 import api from "@/api"
 import DateRangePicker from "../Visuals/DateRangePicker.vue"
+import SpeciesComparisons from "../Visuals/SpeciesComparisons.vue"
 
 export default {
     name: "AnalysisTab",
@@ -73,7 +85,8 @@ export default {
     Help,
     IndexComparisons,
     IndexTimeComparisons,
-    DateRangePicker
+    DateRangePicker,
+    SpeciesComparisons
 },
     props: {
         groupName: { type: String, required: true },
@@ -101,6 +114,7 @@ export default {
         }
     },
     async mounted() {
+        this.loading = true
         await this.getDevices()
         var colours = []
         for (let i = 0; i < this.devices.length; i++) {
@@ -193,14 +207,14 @@ export default {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
-  gap: 10px;
+  gap: 5px;
   width: 100%;
   height: 100%;
 }
 
 .grid-item {
   background-color: #fff;
-  padding: 10px;
+  padding: 5px;
 }
 
 .date-range-picker-container {
