@@ -942,14 +942,14 @@ app.get(
   ]),
   fetchAuthorizedRequiredDeviceById(param("deviceId")),
   async function (request: Request, response: Response) {
-    const cacohponyIndexBulk = await models.Device.getCacophonyIndexBulk(
+    const cacophonyIndexBulk = await models.Device.getCacophonyIndexBulk(
       response.locals.requestUser,
       response.locals.device, 
       request.query.from as unknown as Date, 
       request.query.steps as unknown as number,
       request.query.interval as unknown as String
     );
-    return successResponse(response, { cacohponyIndexBulk });
+    return successResponse(response, { cacophonyIndexBulk });
   }
 );
 

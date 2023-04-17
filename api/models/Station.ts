@@ -68,12 +68,26 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     from,
     windowSizeInHours
   ) => Promise<number>;
+  getCacophonyIndexBulk: (
+    authUser,
+    stationId: StationId,
+    from: Date,
+    steps: number,
+    interval: String
+  ) => Promise<{ stationId: StationId, from: string; cacophonyIndex: number }[]>;
   getSpeciesCount: (
     authUser,
     stationId,
     from,
     windowSizeInHours
   ) => Promise<{ what: string; count: number }[]>;
+  getSpeciesCountBulk: (
+    authUser,
+    stationId: StationId,
+    from: Date,
+    steps: number,
+    interval: String,
+  ) => Promise<{ stationId: StationId, from: string; what: string; count: number }[]>;
   
 }
 export default function (
@@ -204,6 +218,7 @@ export default function (
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
+    console.log(`cacophonyIndex: stationId: ${stationId}, from: ${from}, windowSizeInHours: ${windowSizeInHours}, windowEndTimestampUtc: ${windowEndTimestampUtc}`)
     const [result, _] = (await sequelize.query(
       `select round((avg(scores))::numeric, 2) as index from
       (select
@@ -217,6 +232,49 @@ export default function (
         )) as [{ index: number }[], unknown]
     return result[0].index;
   }
+
+
+  Station.getCacophonyIndexBulk = async function (
+    authUser,
+    stationId,
+    from,
+    steps,
+    interval):
+    Promise<{ stationId: StationId, from: string, cacophonyIndex: number }[]> {
+      const counts = [];
+      let stepSizeInMs;
+      switch (interval) {
+        case 'hours':
+          stepSizeInMs = 60 * 60 * 1000;
+          break;
+        case 'days':
+          stepSizeInMs = 24 * 60 * 60 * 1000;
+          break;
+        case 'weeks':
+          stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+          break;
+        case 'months':
+          const currMonthDays = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+          stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+          break;
+        case 'years':
+          const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+          stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+          break;
+        default:
+          throw new Error(`Invalid interval: ${interval}`);
+      }
+      const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
+      console.log(`stationId: ${stationId}, from: ${from}, steps: ${steps}, interval: ${interval}, stepSizeInMs: ${stepSizeInMs}, stepSizeInHours: ${stepSizeInHours}`)
+      for (let i = 0; i < steps; i++) {
+        const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
+        const result = await Station.getCacophonyIndex(authUser, stationId, windowEnd, stepSizeInHours);
+        counts.push({ stationId: stationId, from: windowEnd.toISOString(), cacophonyIndex: result});
+      }
+      console.log('asfd')
+      return counts;
+    }
+
 
 
   Station.getSpeciesCount = async function( 
@@ -245,6 +303,48 @@ export default function (
       count: Number(item.count),
     }));
   }
+
+
+  Station.getSpeciesCountBulk = async function( 
+    authUser,
+    stationId,
+    from,
+    steps,
+    interval
+  ): Promise<{ stationId: StationId, from: string, what: string; count: number }[]> {
+    const counts = [];
+    let stepSizeInMs;
+    switch (interval) {
+      case 'hours':
+        stepSizeInMs = 60 * 60 * 1000;
+        break;
+      case 'days':
+        stepSizeInMs = 24 * 60 * 60 * 1000;
+        break;
+      case 'weeks':
+        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+        break;
+      case 'months':
+        const currMonthDays = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+        break;
+      case 'years':
+        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+        break;
+      default:
+        throw new Error(`Invalid interval: ${interval}`);
+    }
+    const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
+    console.log(`stepSizeInHours: ${stepSizeInHours} steps: ${steps} interval: ${interval} from: ${from}`)
+    for (let i = 0; i < steps; i++) {
+      const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
+      const result = await Station.getSpeciesCount(authUser, stationId, windowEnd, stepSizeInHours);
+      counts.push(...result.map((item) => ({ deviceId: stationId, from: windowEnd.toISOString(), what: item.what, count: item.count })));
+    }
+    return counts;
+  }
+
 
 
 

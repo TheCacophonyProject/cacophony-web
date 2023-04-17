@@ -200,14 +200,13 @@ export default {
                     if (this.groupingSelection == "device") {
                         res = await api.device.getDeviceSpeciesCountBulk(req["id"], req["from"], req["steps"], req["interval"])
                     } else if (this.groupingSelection == "station") {
-                        // res = await api.device.getStationSpeciesCountBulk(req["id"], req["from"], req["steps"], req["interval"])
+                        res = await api.station.getStationSpeciesCountBulk(req["id"], req["from"], req["steps"], req["interval"])
                     }
                     return res
                 })
             )
-            
+            console.log(response)
             const stepSizeInMs = this.getStepSizeInMs(toDateRounded, this.intervalSelection)
-
             const windowEnds = Array.from({length: steps}, (_, i) => new Date(toDateRounded.getTime() - i * stepSizeInMs)).reverse();
             const windowStarts = windowEnds.map((windowEnd) => new Date(windowEnd.getTime() - stepSizeInMs));
 
@@ -216,12 +215,9 @@ export default {
                     .reduce((acc, curr) => acc.concat(curr), [])
             )];
 
-       
             const scale = chroma.scale([chroma('rgba(255, 99, 132, 1)'), chroma('rgba(54, 162, 235, 1)'),  chroma('rgba(255, 206, 86, 1)')])
                 .colors(animalList.length)
                 .map(color => chroma(color).rgba())
-
-
 
             const datasets = animalList.map((animal, j) => {
                 const reducedAlphaColor = scale[j].slice(0, 3).concat([0.2])

@@ -15,7 +15,7 @@ import {
   ApiStationResponse,
   ApiStationSettings,
 } from "@typedefs/api/station";
-import { booleanOf, idOf, integerOfWithDefault } from "../validation-middleware";
+import { booleanOf, idOf, integerOfWithDefault, stringOf } from "../validation-middleware";
 import { jsonSchemaOf } from "@api/schema-validation";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json";
 import { stationLocationHasChanged } from "@models/Group";
@@ -496,6 +496,49 @@ export default function (app: Application, baseUrl: string) {
   )
 
 
+/**
+  * @api {get} /api/v1/stations/:stationId/cacophony-index-bulk Get the cacophony index for a station across a give range of times frames
+  * @apiName cacophony-index-Station-bulk
+  * @apiGroup Station
+  * @apiDescription Get multiple Cacophony Index values
+  * for a given station.  These numbers are the averages of all the Cacophony Index values from a
+  * given time (defaulting to 'Now'), within the time frames specified by windowsize and steps.
+  *
+  * @apiUse V1UserAuthorizationHeader
+  *
+  * @apiParam {Integer} station ID of the device.
+  * @apiQuery {String} [from=now] ISO8601 date string
+  * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
+  * @apiQuery {String} [interval=days] description of each time frame size
+  * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+  * @apiSuccess {Object} #TODO
+  * @apiUse V1ResponseSuccess
+  * @apiUse V1ResponseError
+  */
+app.get(
+  `${apiUrl}/:stationId/cacophony-index-bulk`,
+  extractJwtAuthorizedUser,
+  validateFields([
+    idOf(param("stationId")),
+    query("from").isISO8601().toDate().default(new Date()),
+    integerOfWithDefault(query("steps"), 7), // Default to 7 day window
+    stringOf(query("interval")).default("days"),
+    query("only-active").optional().isBoolean().toBoolean(),
+  ]),
+  fetchAdminAuthorizedRequiredStationById(param("stationId")),
+  async (request: Request, response: Response) => {
+    console.log('hi')
+    const cacophonyIndexBulk = await models.Station.getCacophonyIndexBulk(
+      response.locals.requestUser,
+      response.locals.station.id, 
+      request.query.from as unknown as Date, 
+      request.query.steps as unknown as number,
+      request.query.interval as unknown as String
+    );
+    return successResponse(response, { cacophonyIndexBulk });
+  }
+)
+
 
 
   /**
@@ -535,4 +578,50 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, { speciesCount });
     }
   );
+
+
+ /**
+   * @api {get} /api/v1/stations/{:stationId}/species-count-bulk Get the species breakdown for a station across a given range of time frames
+   * @apiName species-count-Station-bulk
+   * @apiGroup Station
+   * @apiDescription Get a species count 
+   * for a given station, showing the count of recordings that are of each species across a give range of time frames
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} stationId ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
+   * @apiQuery {String} [interval=days] description of each time frame size
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Object} #TODO
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+ app.get(
+  `${apiUrl}/:stationId/species-count-bulk`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
+      stringOf(query("interval")).default("days"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("stationId")),
+    async function (request: Request, response: Response) {
+      const speciesCountBulk = await models.Station.getSpeciesCountBulk(
+        response.locals.requestUser,
+        response.locals.station.id, 
+        request.query.from as unknown as Date, 
+        request.query.steps as unknown as number,
+        request.query.interval as unknown as String
+      );
+      return successResponse(response, { speciesCountBulk });
+    }
+  );
+
+
 }
+
+

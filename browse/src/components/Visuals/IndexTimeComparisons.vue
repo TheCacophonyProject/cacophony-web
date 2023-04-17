@@ -16,6 +16,15 @@ import IndexTimeComparisonsChart from "./IndexTimeComparisonsChart.vue"
 import DateRangePicker from "./DateRangePicker.vue"
 
 
+const TIME_VALUES = {
+  hours: {value: 1, stepSizeInMs: 60 * 60 * 1000},
+  days: {value: 24, stepSizeInMs: 24 * 60 * 60 * 1000},
+  weeks: {value: 168, stepSizeInMs: 7 * 24 * 60 * 60 * 1000},
+  months: {value: 730}, // stepSizeInMs will be calculated later
+  years: {value: 8766}, // stepSizeInMs will be calculated later
+}
+
+
 export default {
     name: "index-time-comparisons",
     components: {
@@ -125,19 +134,18 @@ export default {
     },
     methods: {
         async getIndexData() {
-            // Setting up range of data
             const fromDateRounded = new Date(this.fromDate)
             var toDateRounded = new Date(this.toDate)
             var interval = 1
 
-            // Choosing the graph interval and rounding the start date to give clean sepeartion of points
+            // Choosing the graph interval and rounding the start date to give clean separation of points
             switch(this.intervalSelection) {
                 case 'hours': 
                     interval = 1
-                    break;
+                    break
                 case 'days':
                     interval = 24
-                    break;
+                    break
                 case 'weeks':
                     var day = fromDateRounded.getDay()
                     if (day != 1) {
@@ -148,119 +156,87 @@ export default {
                         toDateRounded.setDate(toDateRounded.getDate() + (7 - toDay))
                     }
                     interval = 168
-                    break;
+                    break
                 case 'months':
                     fromDateRounded.setDate(0)
                     interval = 730
-                    break; 
+                    break 
                 case 'years':
                     fromDateRounded.setDate(0)
                     fromDateRounded.setMonth(0)
                     interval = 8766
-                    break;
+                    break
             }
+
             this.windowSize = (toDateRounded.getTime() - fromDateRounded.getTime()) / 3600000
             var steps = Math.round(this.windowSize/interval)
-            const requests = []
-            var startDate = new Date(toDateRounded)
-            var setLabels = false
+            
             var iterable = []
             if (this.groupingSelection == "device") {
                 iterable = this.devices
             } else if (this.groupingSelection == "station") {
                 iterable = this.stations
             }
-            for (var obj of iterable) {
-                for (var i = 0; i < steps; i++) {
-                    startDate = new Date(toDateRounded)
-                    switch(this.intervalSelection) {
-                        case 'hours': 
-                            startDate.setHours(startDate.getHours() - i)
-                            break;
-                        case 'days':
-                            startDate.setDate(startDate.getDate() - i)
-                            break;
-                        case 'weeks':
-                            startDate.setDate(startDate.getDate() - (i*7))
-                            break;
-                        case 'months':
-                            startDate.setMonth(startDate.getMonth() - i)
-                            break;
-                        case 'years':
-                            startDate.setFullYear(startDate.getFullYear() - i)
-                            break;
-                    }
-                    if (this.groupingSelection == "device") {
-                        requests.push({
-                        "id": obj.id,
-                        "name": obj.deviceName,
-                        "from": startDate.toISOString(),
-                        "window-size": interval
-                        })
-                    } else if (this.groupingSelection == "station") {
-                        requests.push({
-                            "id": obj.id,
-                            "name": obj.name,
-                            "from": startDate.toISOString(),
-                            "window-size": interval
-                        })
-                    }
-                    if (!setLabels) {
-                        if (this.intervalSelection == "weeks") {
-                            startDate.setDate(startDate.getDate() + 6)
-                            this.labels.push("Week ending " + startDate.toLocaleDateString("en-GB"))
-                        } else if (this.intervalSelection == "months") {
-                            startDate.setMonth(startDate.getMonth() + 1)
-                            this.labels.push(startDate.toLocaleDateString("en-GB").substring(3,))
-                        } else {
-                            this.labels.push(startDate.toLocaleDateString("en-GB"))
-                        }
-                        
-                    }
-                }
-                setLabels = true
-            }
-            requests.reverse()
-            this.labels.reverse()
 
-            if (requests.length > 600) {
-                this.loading = false
-                this.$emit("tooManyRequests")
-                return
-            }
+            const requests = iterable.map((source) => {
+                const name = source.deviceName ? source.deviceName : source.name
+                return {
+                    "id": source.id,
+                    "name": name,
+                    "from": toDateRounded.toISOString(),
+                    "steps": steps,
+                    "interval": this.intervalSelection,
+                }
+            })
+            
             const response = await Promise.all(
                 requests.map(async req => {
                     var res = null
                     if (this.groupingSelection == "device") {
-                        res = await api.device.getDeviceCacophonyIndex(req["id"], req["from"], req["window-size"])
+                        res = await api.device.getDeviceCacophonyIndexBulk(req["id"], req["from"], req["steps"], req["interval"])
                     } else if (this.groupingSelection == "station") {
-                        res = await api.station.getStationCacophonyIndex(req["id"], req["from"], req["window-size"])
+                        res = await api.station.getStationCacophonyIndexBulk(req["id"], req["from"], req["steps"], req["interval"])
                     }
-                    var index: number
-                    if (res.result.cacophonyIndex !== undefined) {
-                        index = res.result.cacophonyIndex
-                    } else {
-                        index = null
-                    }
-                    return {
-                        "name": req["name"],
-                        "cacophonyIndex": index,
-                        "from": req["from"],
-                        "window Size": req["window-size"]
+                    return {...res,
+                        name: req["name"]
                     }
                 })
             )
-  
-            var data = {
-            }
-            for (var res of response) {
-                if (res["name"] in data) {
-                    data[res["name"]].push(res["cacophonyIndex"])
-                } else {
-                    data[res["name"]] = [res["cacophonyIndex"]]
+            
+            const stepSizeInMs = this.getStepSizeInMs(toDateRounded, this.intervalSelection)
+            const windowEnds = Array.from({length: steps}, (_, i) => new Date(toDateRounded.getTime() - i * stepSizeInMs)).reverse();
+            const windowStarts = windowEnds.map((windowEnd) => new Date(windowEnd.getTime() - stepSizeInMs));
+
+            const data = {}
+            for (const res of response) {
+                const name = res.name
+                if (!(name in data)) {
+                    data[name] = Array(windowEnds.length).fill(null)
+                }
+                for (let i = 0; i < windowEnds.length; i++) {
+                    const index = res.result.cacophonyIndexBulk.findIndex(
+                        (item) => item.from === windowEnds[i].toISOString()
+                    )
+                    if (index !== -1) {
+                        data[name][i] = res.result.cacophonyIndexBulk[index].cacophonyIndex
+                    }
                 }
             }
+            
+            const labels = windowStarts.map((item) => {
+                if (this.intervalSelection == "weeks") {
+                    item.setDate(item.getDate() + 6)
+                    return "Week ending " + item.toLocaleDateString("en-GB")
+                } else if (this.intervalSelection == "months") {
+                    item.setMonth(item.getMonth() + 1)
+                    return item.toLocaleDateString("en-GB").substring(3,)
+                } else {
+                    return item.toLocaleDateString("en-GB")
+                }
+            })
+            
             this.indexData = data
+            this.labels = labels
         },
         updateDeviceGraphData() {
             var datasets = []
@@ -310,6 +286,21 @@ export default {
                 "labels": this.labels
             }  
             this.loading = false   
+        },
+        getStepSizeInMs(toDateRounded, intervalSelection) {
+            if (TIME_VALUES[intervalSelection].stepSizeInMs) {
+                return TIME_VALUES[intervalSelection].stepSizeInMs;
+            }
+            switch (intervalSelection) {
+                case 'months':
+                    const currMonthDays = new Date(toDateRounded.getFullYear(), toDateRounded.getMonth() + 1, 0).getDate();
+                    return currMonthDays * 24 * 60 * 60 * 1000;
+                case 'years':
+                    const currYearDays = new Date(toDateRounded.getFullYear(), 11, 31).getDate();
+                    return currYearDays * 24 * 60 * 60 * 1000;
+                default:
+                    throw new Error(`Invalid interval: ${intervalSelection}`);
+            }
         }
         
     }
