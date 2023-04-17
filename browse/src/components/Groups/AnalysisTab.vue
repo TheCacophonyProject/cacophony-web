@@ -64,7 +64,19 @@
                 </slot>
             </div>
             <div class="grid-item">
-               
+               <slot name="index-visuals">
+                    <species-time-comparisons
+                        :groupName="groupName" 
+                        :groupId="groupId"
+                        :devices="devices"
+                        :stations="stations"
+                        :groupingSelection="groupingSelection"
+                        :fromDate="fromDateRounded"
+                        :toDate="toDateRounded"
+                        :intervalSelection="intervalSelection"
+                    >
+                    </species-time-comparisons>
+               </slot>
             </div>
         </div>
         
@@ -78,6 +90,7 @@ import IndexTimeComparisons from "../Visuals/IndexTimeComparisons.vue"
 import api from "@/api"
 import DateRangePicker from "../Visuals/DateRangePicker.vue"
 import SpeciesComparisons from "../Visuals/SpeciesComparisons.vue"
+import SpeciesTimeComparisons from "../Visuals/SpeciesTimeComparisons.vue"
 
 export default {
     name: "AnalysisTab",
@@ -86,7 +99,8 @@ export default {
     IndexComparisons,
     IndexTimeComparisons,
     DateRangePicker,
-    SpeciesComparisons
+    SpeciesComparisons,
+    SpeciesTimeComparisons
 },
     props: {
         groupName: { type: String, required: true },
@@ -97,7 +111,7 @@ export default {
         const to = new Date()
         const from = new Date()
         to.setDate(to.getDate() - 1)
-        from.setDate(from.getDate() - 7)
+        from.setMonth(from.getMonth() - 1)
         return {
             loading: true,
             recordings: null,
@@ -110,7 +124,8 @@ export default {
             groupingOptions: ["device", "station"],
             groupingSelection: "device",
             intervalOptions: ["hours", "days", "weeks", "months", "years"],
-            intervalSelection: "days"
+            intervalSelection: "days",
+            
         }
     },
     async mounted() {
@@ -122,7 +137,7 @@ export default {
         }
         this.colours = colours
     
-        this.intervalOptions = ["hours", "days"]
+        this.intervalOptions = ["days", "weeks"]
         await this.getStations()
         this.loading = false
     },
@@ -155,32 +170,32 @@ export default {
         fromDateUpdated(newFromDate) {
             this.fromDate = newFromDate
             const differenceDays = Math.ceil((this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24))
-            if (differenceDays < 1) {
+            if (differenceDays < 2) {
                 this.invertalOptions = ["hours"]
             } else if (differenceDays < 7) {
-                this.intervalOptions = ["hours", "days"]
+                this.intervalOptions = ["days"]
             } else if (differenceDays < 31) {
-                this.intervalOptions = ["hours", "days", "weeks"]
+                this.intervalOptions = ["days", "weeks"]
             } else if (differenceDays < 365) {
-                this.intervalOptions = ["hours", "days", "weeks", "months"]
+                this.intervalOptions = ["days", "weeks", "months"]
             } else {
-                this.intervalOptions = ["days", "weeks", "months", "years"]
+                this.intervalOptions = ["weeks", "months", "years"]
             }
 
         },
         toDateUpdated(newToDate) {
             this.toDate = newToDate
             const differenceDays = Math.ceil((this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24))
-            if (differenceDays < 1) {
+            if (differenceDays < 2) {
                 this.invertalOptions = ["hours"]
             } else if (differenceDays < 7) {
-                this.intervalOptions = ["hours", "days"]
+                this.intervalOptions = ["days"]
             } else if (differenceDays < 31) {
-                this.intervalOptions = ["hours", "days", "weeks"]
+                this.intervalOptions = ["days", "weeks"]
             } else if (differenceDays < 365) {
-                this.intervalOptions = ["hours", "days", "weeks", "months"]
+                this.intervalOptions = ["days", "weeks", "months"]
             } else {
-                this.intervalOptions = ["days", "weeks", "months", "years"]
+                this.intervalOptions = ["weeks", "months", "years"]
             }
         }
     },

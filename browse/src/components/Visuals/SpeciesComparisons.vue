@@ -36,7 +36,8 @@ export default {
                     title: {
                         display: true,
                         text: "Percentage of Identified Species per Device (%)",
-                        position: 'top'
+                        position: 'top',
+                        font: {size: 18}
                     },
                     tooltip: {
                         callbacks: {
@@ -165,7 +166,6 @@ export default {
                 })
             )
 
-            
 
             const labels = response.map(res => res.name)
             const allWhats = new Set()
@@ -183,7 +183,8 @@ export default {
                 }, 0)
             })
 
-            const colors = chroma.scale('set2').colors(allWhats.size);
+            const colors = chroma.scale([chroma('rgba(255, 99, 132, 1)'), chroma('rgba(54, 162, 235, 1)'),  chroma('rgba(255, 206, 86, 1)')])
+                .colors(allWhats.size)
            
             const datasets = [...allWhats].map((what, i) => {
                 return {
@@ -197,7 +198,7 @@ export default {
                     backgroundColor: colors[i]
                 }
             })
-
+            // Make this work for all devices
             this.chartData = {
                 labels: labels,
                 datasets: datasets

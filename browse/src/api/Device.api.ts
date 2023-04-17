@@ -88,6 +88,22 @@ function getDeviceSpeciesCount(
   )
 }
 
+function getDeviceSpeciesCountBulk(
+  id: DeviceId,
+  from: String,
+  steps: Number,
+  interval: String,
+  activeAndInactive = false
+): Promise<FetchResult<{ speciesCounts: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  )
+}
+
 
 
 
@@ -227,5 +243,6 @@ export default {
   assignScheduleToDevice,
   removeScheduleFromDevice,
   getDeviceCacophonyIndex,
-  getDeviceSpeciesCount
+  getDeviceSpeciesCount,
+  getDeviceSpeciesCountBulk
 };

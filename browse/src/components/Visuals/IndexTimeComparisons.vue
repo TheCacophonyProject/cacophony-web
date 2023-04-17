@@ -35,13 +35,14 @@ export default {
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'right'
+                        position: 'top'
                         
                     },
                     title: {
                         display: true,
                         text: "Change in Cacophony Index By Device (%)",
-                        position: 'top'
+                        position: 'top',
+                        font: {size: 18}
                     }
                 },
                 scales: {

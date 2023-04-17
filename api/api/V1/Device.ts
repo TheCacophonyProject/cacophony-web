@@ -44,6 +44,7 @@ import {
   integerOfWithDefault,
   nameOf,
   nameOrIdOf,
+  stringOf,
   validNameOf,
   validPasswordOf,
 } from "../validation-middleware";
@@ -909,6 +910,50 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+
+/**
+   * @api {get} /api/v1/devices/{:deviceId}/cacophony-index-bulk Get the cacophony index for a device across a given range of time frames
+   * @apiName cacophony-index-bulk
+   * @apiGroup Device
+   * @apiDescription Get multiple Cacophony Index values 
+   * for a given device.  These numbers are the averages of all the Cacophony Index values within the
+   * given windows of time.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} deviceId ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
+   * @apiQuery {String} [interval=days] description of each time frame size
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Object} #TODO
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+app.get(
+  `${apiUrl}/:deviceId/cacophony-index-bulk`,
+  extractJwtAuthorizedUser,
+  validateFields([
+    idOf(param("deviceId")),
+    query("from").isISO8601().toDate().default(new Date()),
+    integerOfWithDefault(query("steps"), 7), // Default to 7 day window
+    stringOf(query("interval")).default("days"),
+    query("only-active").optional().isBoolean().toBoolean(),
+  ]),
+  fetchAuthorizedRequiredDeviceById(param("deviceId")),
+  async function (request: Request, response: Response) {
+    const cacohponyIndexBulk = await models.Device.getCacophonyIndexBulk(
+      response.locals.requestUser,
+      response.locals.device, 
+      request.query.from as unknown as Date, 
+      request.query.steps as unknown as number,
+      request.query.interval as unknown as String
+    );
+    return successResponse(response, { cacohponyIndexBulk });
+  }
+);
+
+
   /**
    * @api {get} /api/v1/devices/{:deviceId}/cacophony-index-histogram Get the cacophony index 24hr histogram for a device
    * @apiName cacophony-index-histogram
@@ -951,10 +996,10 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {get} /api/v1/devices/{:deviceId}/species-count Get the species breakdown for a device
-   * @apiName species-breakdown
+   * @apiName species-count
    * @apiGroup Device
-   * @apiDescription Get a species breakdown 
-   * for a given device, showing the proportion of recordings that are of each species. 
+   * @apiDescription Get a species count 
+   * for a given device, showing the count of recordings that are of each species. 
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -980,12 +1025,57 @@ export default function (app: Application, baseUrl: string) {
       const speciesCount = await models.Device.getSpeciesCount(
         response.locals.requestUser,
         response.locals.device.id,
-        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query.from as unknown as Date, 
         request.query["window-size"] as unknown as number
       );
       return successResponse(response, { speciesCount });
     }
   );
+
+
+  /**
+   * @api {get} /api/v1/devices/{:deviceId}/species-count-bulk Get the species breakdown for a device across a given range of time frames
+   * @apiName species-count-bulk
+   * @apiGroup Device
+   * @apiDescription Get a species count 
+   * for a given device, showing the count of recordings that are of each species across a give range of time frames
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} deviceId ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
+   * @apiQuery {String} [interval=days] description of each time frame size
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Object} #TODO
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:deviceId/species-count-bulk`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
+      stringOf(query("interval")).default("days"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request: Request, response: Response) {
+      const speciesCountBulk = await models.Device.getSpeciesCountBulk(
+        response.locals.requestUser,
+        response.locals.device.id, 
+        request.query.from as unknown as Date, 
+        request.query.steps as unknown as number,
+        request.query.interval as unknown as String
+      );
+      return successResponse(response, { speciesCountBulk });
+    }
+  );
+
+
+
 
   /**
      * @api {post} /api/v1/devices/heartbeat send device heartbeat

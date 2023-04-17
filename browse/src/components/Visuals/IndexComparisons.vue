@@ -44,7 +44,8 @@
                     title: {
                         display: true,
                         text: "Cacophony Index By Device (%)",
-                        position: 'top'
+                        position: 'top',
+                        font: {size: 18}
                     }
                 },
                 scales: {

@@ -88,6 +88,13 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     from: Date,
     windowSize: number
   ) => Promise<number>;
+  getCacophonyIndexBulk: (
+    authUser: User,
+    deviceId: Device,
+    from: Date,
+    steps: number,
+    interval: String
+  ) => Promise<{ deviceId: DeviceId, from: string; cacophonyIndex: number }[]>;
   getCacophonyIndexHistogram: (
     authUser: User,
     deviceId: DeviceId,
@@ -100,6 +107,13 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     from: Date,
     windowSize: number
   ) => Promise<{ what: string; count: number }[]>;
+  getSpeciesCountBulk: (
+    authUser: User,
+    deviceId: DeviceId,
+    from: Date,
+    steps: number,
+    interval: String,
+  ) => Promise<{ deviceId: DeviceId, from: string; what: string; count: number }[]>;
   stoppedDevices: () => Promise<Device[]>;
 }
 
@@ -294,6 +308,7 @@ export default function (
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000)
+    console.log(`windowEndTimestampUtc: ${windowEndTimestampUtc}, device: ${device.id}, windowSizeInHours: ${windowSizeInHours}`)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [result, _] = (await sequelize.query(
   `select round((avg(scores))::numeric, 2) as index from
@@ -306,13 +321,58 @@ where
 	and "type" = 'audio'
 	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`
     )) as [{ index: number }[], unknown]
-
+    
     const index = result[0].index;
     if (index !== null) {
       return Number(index);
     }
     return index;
   };
+
+
+
+  Device.getCacophonyIndexBulk = async function (
+    authUser,
+    device,
+    from,
+    steps,
+    interval):
+    Promise<{ deviceId: DeviceId, from: string, cacophonyIndex: number }[]> {
+      const counts = [];
+      let stepSizeInMs;
+      switch (interval) {
+        case 'hours':
+          stepSizeInMs = 60 * 60 * 1000;
+          break;
+        case 'days':
+          stepSizeInMs = 24 * 60 * 60 * 1000;
+          break;
+        case 'weeks':
+          stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+          break;
+        case 'months':
+          const currMonthDays = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+          stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+          break;
+        case 'years':
+          const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+          stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+          break;
+        default:
+          throw new Error(`Invalid interval: ${interval}`);
+      }
+      const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
+      
+      for (let i = 0; i < steps; i++) {
+        const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
+        const result = await Device.getCacophonyIndex(authUser, device, windowEnd, stepSizeInHours);
+        counts.push({ deviceId: device.id, from: windowEnd.toISOString(), cacophonyIndex: result});
+      }
+      return counts;
+    }
+
+
+
 
   Device.getCacophonyIndexHistogram = async function (
     authUser,
@@ -382,6 +442,47 @@ order by hour;
       what: String(item.what),
       count: Number(item.count),
     }));
+  }
+  
+
+  Device.getSpeciesCountBulk = async function( 
+    authUser,
+    deviceId,
+    from,
+    steps,
+    interval
+  ): Promise<{ deviceId: DeviceId, from: string, what: string; count: number }[]> {
+    const counts = [];
+    let stepSizeInMs;
+    switch (interval) {
+      case 'hours':
+        stepSizeInMs = 60 * 60 * 1000;
+        break;
+      case 'days':
+        stepSizeInMs = 24 * 60 * 60 * 1000;
+        break;
+      case 'weeks':
+        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+        break;
+      case 'months':
+        const currMonthDays = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+        break;
+      case 'years':
+        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+        break;
+      default:
+        throw new Error(`Invalid interval: ${interval}`);
+    }
+    const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
+    console.log(`stepSizeInHours: ${stepSizeInHours} steps: ${steps} interval: ${interval} from: ${from}`)
+    for (let i = 0; i < steps; i++) {
+      const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
+      const result = await Device.getSpeciesCount(authUser, deviceId, windowEnd, stepSizeInHours);
+      counts.push(...result.map((item) => ({ deviceId: deviceId, from: windowEnd.toISOString(), what: item.what, count: item.count })));
+    }
+    return counts;
   }
 
 
