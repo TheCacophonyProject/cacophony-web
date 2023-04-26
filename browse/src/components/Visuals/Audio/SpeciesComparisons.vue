@@ -12,7 +12,7 @@
 
 <script lang="ts">
 import api from "@/api"
-import SpeciesComparisonsChart from "../Visuals/SpeciesComparisonsChart.vue"
+import SpeciesComparisonsChart from "../Audio/SpeciesComparisonsChart.vue"
 import chroma from 'chroma-js'
 
 export default {
@@ -149,9 +149,9 @@ export default {
                 requests.map(async req => {
                     var res = null
                     if (this.groupingSelection == "device") {
-                        res = await api.device.getDeviceSpeciesCount(req["id"], req["from"], req["window-size"])
+                        res = await api.device.getDeviceSpeciesCount(req["id"], req["from"], req["window-size"], false, 'audio')
                     } else if (this.groupingSelection == "station") {
-                        res = await api.station.getStationSpeciesCount(req["id"], req["from"], req["window-size"])
+                        res = await api.station.getStationSpeciesCount(req["id"], req["from"], req["window-size"], false, 'audio')
                     }
                     const result = res.result
                     if (result.success) {

@@ -22,7 +22,7 @@
 
 <script lang="ts">
 import api from "@/api"
-import SpeciesTimeComparisonsChart from "../Visuals/SpeciesTimeComparisonsChart.vue"
+import SpeciesTimeComparisonsChart from "../Audio/SpeciesTimeComparisonsChart.vue"
 import Multiselect from "vue-multiselect"
 import chroma from 'chroma-js'
 
@@ -198,9 +198,9 @@ export default {
                 requests.map(async req => { 
                     var res = null
                     if (this.groupingSelection == "device") {
-                        res = await api.device.getDeviceSpeciesCountBulk(req["id"], req["from"], req["steps"], req["interval"])
+                        res = await api.device.getDeviceSpeciesCountBulk(req["id"], req["from"], req["steps"], req["interval"], false, 'audio')
                     } else if (this.groupingSelection == "station") {
-                        res = await api.station.getStationSpeciesCountBulk(req["id"], req["from"], req["steps"], req["interval"])
+                        res = await api.station.getStationSpeciesCountBulk(req["id"], req["from"], req["steps"], req["interval"], false, 'audio')
                     }
                     return res
                 })

@@ -79,7 +79,8 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     authUser,
     stationId,
     from,
-    windowSizeInHours
+    windowSizeInHours,
+    type
   ) => Promise<{ what: string; count: number }[]>;
   getSpeciesCountBulk: (
     authUser,
@@ -87,6 +88,7 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     from: Date,
     steps: number,
     interval: String,
+    type: string
   ) => Promise<{ stationId: StationId, from: string; what: string; count: number }[]>;
   
 }
@@ -281,7 +283,8 @@ export default function (
     authUser,
     stationId,
     from,
-    windowSizeInHours
+    windowSizeInHours,
+    type
   ): Promise<{ what: string; count: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
@@ -294,6 +297,7 @@ export default function (
       JOIN "Tracks" t ON r.id = t."RecordingId" 
       JOIN "TrackTags" tt ON t.id = tt."TrackId" 
       WHERE r."StationId" = ${stationId} 
+      AND r."type" = '${type}'
       AND r."recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
       GROUP BY tt.what;
     `) as  [{ what: string; count: number }[], unknown];
@@ -310,7 +314,8 @@ export default function (
     stationId,
     from,
     steps,
-    interval
+    interval,
+    type
   ): Promise<{ stationId: StationId, from: string, what: string; count: number }[]> {
     const counts = [];
     let stepSizeInMs;
@@ -339,7 +344,7 @@ export default function (
     console.log(`stepSizeInHours: ${stepSizeInHours} steps: ${steps} interval: ${interval} from: ${from}`)
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-      const result = await Station.getSpeciesCount(authUser, stationId, windowEnd, stepSizeInHours);
+      const result = await Station.getSpeciesCount(authUser, stationId, windowEnd, stepSizeInHours, type);
       counts.push(...result.map((item) => ({ deviceId: stationId, from: windowEnd.toISOString(), what: item.what, count: item.count })));
     }
     return counts;

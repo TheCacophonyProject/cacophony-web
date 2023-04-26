@@ -101,10 +101,11 @@ function getStationSpeciesCount(
   stationId: StationId,
   from: String,
   windowsize: Number,
-  activeAndInactive = false
+  activeAndInactive = false,
+  recordingType = "audio"
 ): Promise<FetchResult<{ speciesCount: Object }>> {
   return CacophonyApi.get(
-    `/api/v1/stations/${stationId}/species-count?from=${from}&window-size=${windowsize}${
+    `/api/v1/stations/${stationId}/species-count?from=${from}&window-size=${windowsize}&type=${recordingType}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
@@ -117,11 +118,12 @@ function getStationSpeciesCountBulk(
   from: String,
   steps: Number,
   interval: String,
-  activeAndInactive = false
+  activeAndInactive = false,
+  recordingType = "audio"
 ): Promise<FetchResult<{ cacophonyIndexBulk : Object }>> {
   console.log(`stationId: ${stationId}`)
   return CacophonyApi.get(
-    `/api/v1/stations/${stationId}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}${
+    `/api/v1/stations/${stationId}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}&type=${recordingType}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`

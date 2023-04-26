@@ -1006,6 +1006,7 @@ app.get(
    * @apiParam {Integer} deviceId ID of the device.
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [type=audio] Type of recording to count
    * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Object} #TODO
    * @apiUse V1ResponseSuccess
@@ -1018,6 +1019,7 @@ app.get(
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      stringOf(query("type")).default("audio"),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -1026,7 +1028,8 @@ app.get(
         response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date, 
-        request.query["window-size"] as unknown as number
+        request.query["window-size"] as unknown as number,
+        request.query.type as unknown as string
       );
       return successResponse(response, { speciesCount });
     }
@@ -1046,6 +1049,7 @@ app.get(
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
    * @apiQuery {String} [interval=days] description of each time frame size
+   * @apiQuery {Boolean} [type=audio] Type of recording to count
    * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Object} #TODO
    * @apiUse V1ResponseSuccess
@@ -1059,6 +1063,7 @@ app.get(
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       stringOf(query("interval")).default("days"),
+      stringOf(query("type")).default("audio"),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -1068,9 +1073,46 @@ app.get(
         response.locals.device.id, 
         request.query.from as unknown as Date, 
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String
+        request.query.interval as unknown as String,
+        request.query.type as unknown as string
       );
       return successResponse(response, { speciesCountBulk });
+    }
+  );
+
+
+  /**
+   * @api {get} /api/v1/devices/{:deviceId}/active-days Get the number of days a device was active across a given date range
+   * @apiName active-days
+   * @apiGroup Device
+   * @apiDescription Get the number of days a device was active across a given date range
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} deviceId ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiSuccess {Integer} Number of active days
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:deviceId/days-active`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request: Request, response: Response) {
+      const activeDaysCount = await models.Device.getDaysActive(
+        response.locals.requestUser,
+        response.locals.device.id, 
+        request.query.from as unknown as Date, 
+        request.query["window-size"] as unknown as number,
+      );
+      return successResponse(response, { activeDaysCount });
     }
   );
 

@@ -2,8 +2,9 @@
     <div class="container" style="padding: 0">
         <h2>
         Analysis
-        <help>Analysis for {{groupName}} devices</help>
+        <help>Analysis for {{groupName}}</help>
         </h2>
+        <toggle-switch v-model="isAudioAnalysis" label-on="Audio" label-off="Video"></toggle-switch>
         <p>Display data for range:</p>
         <div class="date-range-picker-container">
             <DateRangePicker :from-date="fromDate" :to-date="toDate" @update:fromDate="fromDateUpdated" @update:toDate="toDateUpdated"></DateRangePicker>
@@ -20,77 +21,91 @@
                     <option v-for="option in intervalOptions" :key="option" :value="option">{{ option }}</option>
                 </select>
         </div>
-        <div class="visuals-container">
-            <div class="grid-item">
+        <div class="audio-analysis-container" v-if="isAudioAnalysis">
+            <div class="visuals-container">
+                <div class="grid-item">
+                    <slot name="index-visuals">
+                        <index-comparisons 
+                            :groupName="groupName" 
+                            :groupId="groupId"
+                            :devices="devices"
+                            :stations="stations"
+                            :colours="colours"
+                            :groupingSelection="groupingSelection"
+                            :fromDate="fromDateRounded"
+                            :toDate="toDateRounded">
+                        </index-comparisons>
+                    </slot>
+                </div>
+                <div class="grid-item">
+                    <slot name="index-visuals">
+                        <index-time-comparisons 
+                            :groupId="groupId" 
+                            :devices="devices"
+                            :stations="stations"
+                            :colours="colours"
+                            :fromDate="fromDateRounded" 
+                            :toDate="toDateRounded" 
+                            :groupingSelection="groupingSelection" 
+                            :intervalSelection="intervalSelection">
+                        </index-time-comparisons>
+                    </slot>
+                </div>
+                <div class="grid-item">
+                    <slot name="index-visuals">
+                        <species-comparisons 
+                            :groupName="groupName" 
+                            :groupId="groupId"
+                            :devices="devices"
+                            :stations="stations"
+                            :colours="colours"
+                            :groupingSelection="groupingSelection"
+                            :fromDate="fromDateRounded"
+                            :toDate="toDateRounded">
+                        </species-comparisons>
+                    </slot>
+                </div>
+                <div class="grid-item">
                 <slot name="index-visuals">
-                    <index-comparisons 
-                        :groupName="groupName" 
-                        :groupId="groupId"
-                        :devices="devices"
-                        :stations="stations"
-                        :colours="colours"
-                        :groupingSelection="groupingSelection"
-                        :fromDate="fromDateRounded"
-                        :toDate="toDateRounded">
-                    </index-comparisons>
+                        <species-time-comparisons
+                            :groupName="groupName" 
+                            :groupId="groupId"
+                            :devices="devices"
+                            :stations="stations"
+                            :groupingSelection="groupingSelection"
+                            :fromDate="fromDateRounded"
+                            :toDate="toDateRounded"
+                            :intervalSelection="intervalSelection"
+                        >
+                        </species-time-comparisons>
                 </slot>
-            </div>
-            <div class="grid-item">
-                <slot name="index-visuals">
-                    <index-time-comparisons 
-                        :groupId="groupId" 
-                        :devices="devices"
-                        :stations="stations"
-                        :colours="colours"
-                        :fromDate="fromDateRounded" 
-                        :toDate="toDateRounded" 
-                        :groupingSelection="groupingSelection" 
-                        :intervalSelection="intervalSelection">
-                    </index-time-comparisons>
-                </slot>
-            </div>
-            <div class="grid-item">
-                <slot name="index-visuals">
-                    <species-comparisons 
-                        :groupName="groupName" 
-                        :groupId="groupId"
-                        :devices="devices"
-                        :stations="stations"
-                        :colours="colours"
-                        :groupingSelection="groupingSelection"
-                        :fromDate="fromDateRounded"
-                        :toDate="toDateRounded">
-                    </species-comparisons>
-                </slot>
-            </div>
-            <div class="grid-item">
-               <slot name="index-visuals">
-                    <species-time-comparisons
-                        :groupName="groupName" 
-                        :groupId="groupId"
-                        :devices="devices"
-                        :stations="stations"
-                        :groupingSelection="groupingSelection"
-                        :fromDate="fromDateRounded"
-                        :toDate="toDateRounded"
-                        :intervalSelection="intervalSelection"
-                    >
-                    </species-time-comparisons>
-               </slot>
+                </div>
             </div>
         </div>
-        
+        <div v-else-if="!isAudioAnalysis">
+            <average-species-visits
+                :groupId="groupId"
+                :devices="devices"
+                :stations="stations"
+                :groupingSelection="groupingSelection"
+                :fromDate="fromDateRounded"
+                :toDate="toDateRounded"
+                :intervalSelection="intervalSelection"
+            ></average-species-visits>
+        </div>
     </div>
 </template>
 
 <script lang="ts">
 import Help from "@/components/Help.vue"
-import IndexComparisons from "../Visuals/IndexComparisons.vue"
-import IndexTimeComparisons from "../Visuals/IndexTimeComparisons.vue"
 import api from "@/api"
 import DateRangePicker from "../Visuals/DateRangePicker.vue"
-import SpeciesComparisons from "../Visuals/SpeciesComparisons.vue"
-import SpeciesTimeComparisons from "../Visuals/SpeciesTimeComparisons.vue"
+import IndexComparisons from "../Visuals/Audio/IndexComparisons.vue"
+import IndexTimeComparisons from "../Visuals/Audio/IndexTimeComparisons.vue"
+import SpeciesComparisons from "../Visuals/Audio/SpeciesComparisons.vue"
+import SpeciesTimeComparisons from "../Visuals/Audio/SpeciesTimeComparisons.vue"
+import ToggleSwitch from "../Visuals/ToggleSwitch.vue"
+import AverageSpeciesVisits from "../Visuals/Video/AverageSpeciesVisits.vue"
 
 export default {
     name: "AnalysisTab",
@@ -100,7 +115,9 @@ export default {
     IndexTimeComparisons,
     DateRangePicker,
     SpeciesComparisons,
-    SpeciesTimeComparisons
+    SpeciesTimeComparisons,
+    ToggleSwitch,
+    AverageSpeciesVisits
 },
     props: {
         groupName: { type: String, required: true },
@@ -125,6 +142,7 @@ export default {
             groupingSelection: "device",
             intervalOptions: ["hours", "days", "weeks", "months", "years"],
             intervalSelection: "days",
+            isAudioAnalysis: true
             
         }
     },

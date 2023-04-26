@@ -12,8 +12,8 @@
 <script lang="ts">
 import Chart from "chart.js/auto"
 import api from "@api"
-import IndexTimeComparisonsChart from "./IndexTimeComparisonsChart.vue"
-import DateRangePicker from "./DateRangePicker.vue"
+import IndexTimeComparisonsChart from "../Audio/IndexTimeComparisonsChart.vue"
+
 
 
 const TIME_VALUES = {
@@ -29,7 +29,6 @@ export default {
     name: "index-time-comparisons",
     components: {
         IndexTimeComparisonsChart,
-        DateRangePicker
     },
     data() {
         return {
@@ -206,7 +205,7 @@ export default {
             const stepSizeInMs = this.getStepSizeInMs(toDateRounded, this.intervalSelection)
             const windowEnds = Array.from({length: steps}, (_, i) => new Date(toDateRounded.getTime() - i * stepSizeInMs)).reverse();
             const windowStarts = windowEnds.map((windowEnd) => new Date(windowEnd.getTime() - stepSizeInMs));
-
+            
             const data = {}
             for (const res of response) {
                 const name = res.name
@@ -223,7 +222,7 @@ export default {
                 }
             }
             
-            const labels = windowStarts.map((item) => {
+            const labels = windowEnds.map((item) => {
                 if (this.intervalSelection == "weeks") {
                     item.setDate(item.getDate() + 6)
                     return "Week ending " + item.toLocaleDateString("en-GB")

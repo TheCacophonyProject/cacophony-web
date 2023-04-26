@@ -553,6 +553,7 @@ app.get(
    * @apiParam {Integer} stationId ID of the device.
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
    * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Object} #TODO
    * @apiUse V1ResponseSuccess
@@ -565,6 +566,7 @@ app.get(
       idOf(param("stationId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      query("type").optional().isString().default("audio"),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
@@ -573,7 +575,8 @@ app.get(
         response.locals.requestUser,
         response.locals.station.id,
         request.query.from as unknown as Date, // Get the current cacophony index
-        request.query["window-size"] as unknown as number
+        request.query["window-size"] as unknown as number,
+        request.query.type as unknown as string
       );
       return successResponse(response, { speciesCount });
     }
@@ -593,6 +596,7 @@ app.get(
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
    * @apiQuery {String} [interval=days] description of each time frame size
+   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
    * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
    * @apiSuccess {Object} #TODO
    * @apiUse V1ResponseSuccess
@@ -606,6 +610,7 @@ app.get(
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       stringOf(query("interval")).default("days"),
+      query("type").optional().isString().default("audio"),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
@@ -615,7 +620,8 @@ app.get(
         response.locals.station.id, 
         request.query.from as unknown as Date, 
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String
+        request.query.interval as unknown as String,
+        request.query.type as unknown as string
       );
       return successResponse(response, { speciesCountBulk });
     }

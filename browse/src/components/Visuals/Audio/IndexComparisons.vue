@@ -13,7 +13,7 @@
   <script lang="ts">
   import Chart from "chart.js/auto"
   import api from "@/api"
-  import IndexComparisonsChart from "./IndexComparisonsChart.vue"
+  import IndexComparisonsChart from "../Audio/IndexComparisonsChart.vue"
 
 
   export default {

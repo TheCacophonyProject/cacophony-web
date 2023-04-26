@@ -94,10 +94,11 @@ function getDeviceSpeciesCount(
   id: DeviceId,
   from: String,
   windowsize: Number,
-  activeAndInactive = false
+  activeAndInactive = false,
+  recordingType = 'audio'
 ): Promise<FetchResult<{ speciesCount: Object }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/${id}/species-count?from=${from}&window-size=${windowsize}${
+    `/api/v1/devices/${id}/species-count?from=${from}&window-size=${windowsize}&type=${recordingType}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
@@ -110,14 +111,26 @@ function getDeviceSpeciesCountBulk(
   from: String,
   steps: Number,
   interval: String,
-  activeAndInactive = false
+  activeAndInactive = false,
+  recordingType = 'audio'
 ): Promise<FetchResult<{ speciesCount: Object }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/${id}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}${
+    `/api/v1/devices/${id}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}&type=${recordingType}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`
+  )
+}
+
+
+function getDeviceDaysActive(
+  id: DeviceId,
+  from: String,
+  windowsize: Number,
+): Promise<FetchResult<{ daysActive: Number }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/days-active?from=${from}&window-size=${windowsize}`
   )
 }
 
@@ -262,5 +275,6 @@ export default {
   getDeviceCacophonyIndex,
   getDeviceCacophonyIndexBulk,
   getDeviceSpeciesCount,
-  getDeviceSpeciesCountBulk
+  getDeviceSpeciesCountBulk,
+  getDeviceDaysActive
 };
