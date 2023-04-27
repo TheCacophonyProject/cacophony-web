@@ -90,6 +90,12 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     interval: String,
     type: string
   ) => Promise<{ stationId: StationId, from: string; what: string; count: number }[]>;
+  getDaysActive: (
+    authUser, 
+    stationId: StationId, 
+    from: Date, 
+    windowSizeInHours: number
+  ) => Promise<number>;
   
 }
 export default function (
@@ -273,7 +279,6 @@ export default function (
         const result = await Station.getCacophonyIndex(authUser, stationId, windowEnd, stepSizeInHours);
         counts.push({ stationId: stationId, from: windowEnd.toISOString(), cacophonyIndex: result});
       }
-      console.log('asfd')
       return counts;
     }
 
@@ -347,7 +352,56 @@ export default function (
       const result = await Station.getSpeciesCount(authUser, stationId, windowEnd, stepSizeInHours, type);
       counts.push(...result.map((item) => ({ deviceId: stationId, from: windowEnd.toISOString(), what: item.what, count: item.count })));
     }
+    Station.getDaysActive(authUser, 2, new Date("2023-04-20T05:02:07.000Z"), 168)
     return counts;
+  }
+
+
+  Station.getDaysActive = async function (
+    authUser,
+    stationId,
+    from,
+    windowSizeInHours
+  ): Promise<number> {
+    windowSizeInHours = Math.abs(windowSizeInHours);
+    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
+    const timezoneOffset = from.getTimezoneOffset() * 60;
+    const query = `
+      SELECT DISTINCT DATE("recordingDateTime" AT TIME ZONE 'UTC' AT TIME ZONE INTERVAL '${timezoneOffset} seconds') as DATE
+      FROM "Recordings"
+      WHERE "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
+      AND "StationId" = ${stationId}
+      ORDER BY DATE DESC
+    `
+    const [results, _] = (await sequelize.query(query)) as [{ date: string, has_recordings: boolean }[], unknown];
+    console.log('````````````')
+    console.log(results)
+
+    const eventQuery = `
+    SELECT DISTINCT DATE(e."dateTime" AT TIME ZONE 'UTC' AT TIME ZONE INTERVAL '${timezoneOffset} seconds') as DATE
+    FROM "Events" e
+    JOIN "Recordings" r ON e."DeviceId" = r."DeviceId"
+    WHERE r."StationId" = ${stationId}
+    AND e."dateTime" AT TIME ZONE 'UTC' BETWEEN
+        (to_timestamp(${windowEndTimestampUtc}) AT TIME ZONE 'UTC' - INTERVAL '${windowSizeInHours} hours') AND
+        to_timestamp(${windowEndTimestampUtc}) AT TIME ZONE 'UTC'
+    AND e."dateTime" >= r."recordingDateTime"
+    AND NOT EXISTS (
+        SELECT 1
+        FROM "Recordings" r2
+        WHERE r2."DeviceId" = r."DeviceId"
+        AND r2."recordingDateTime" > r."recordingDateTime"
+        AND r2."recordingDateTime" <= e."dateTime"
+    )
+    `
+    console.log('hi`')
+    const [eventResults, __] = (await sequelize.query(eventQuery)) as [{ date: string, has_recordings: boolean }[], unknown];
+    console.log(eventResults)
+    const activeDates = new Set();
+    results.forEach((item) => activeDates.add(item.date));
+    eventResults.forEach((item) => activeDates.add(item.date));
+    console.log(activeDates)
+    return activeDates.size
   }
 
 

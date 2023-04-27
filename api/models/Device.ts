@@ -375,8 +375,6 @@ where
         const result = await Device.getCacophonyIndex(authUser, device, windowEnd, stepSizeInHours);
         counts.push({ deviceId: device.id, from: windowEnd.toISOString(), cacophonyIndex: result});
       }
-
-      Device.getDaysActive(authUser, 1, new Date("2023-04-20T06:49:25.000Z"), 168)
       return counts;
     }
 
