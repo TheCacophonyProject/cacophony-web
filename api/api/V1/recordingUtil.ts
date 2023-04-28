@@ -1037,7 +1037,7 @@ async function query(
   countAll: boolean,
   options: RecordingQueryOptions
 ): Promise<{ rows: Recording[]; count: number }> {
-  console.log(`where: ${JSON.stringify(options.where)}`)
+  console.log(`where: ${JSON.stringify(options.where)}`);
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };
   }

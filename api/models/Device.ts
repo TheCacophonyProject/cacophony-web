@@ -93,7 +93,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     from: Date,
     steps: number,
     interval: String
-  ) => Promise<{ deviceId: DeviceId, from: string; cacophonyIndex: number }[]>;
+  ) => Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]>;
   getCacophonyIndexHistogram: (
     authUser: User,
     deviceId: DeviceId,
@@ -114,13 +114,15 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     steps: number,
     interval: String,
     recordingType: string
-  ) => Promise<{ deviceId: DeviceId, from: string; what: string; count: number }[]>;
+  ) => Promise<
+    { deviceId: DeviceId; from: string; what: string; count: number }[]
+  >;
   getDaysActive: (
-    authUser: any, 
-    deviceId: any, 
-    from: any, 
+    authUser: any,
+    deviceId: any,
+    from: any,
     windowSizeInHours: any
-    ) => Promise<number>;
+  ) => Promise<number>;
   stoppedDevices: () => Promise<Device[]>;
 }
 
@@ -314,11 +316,13 @@ export default function (
     windowSizeInHours
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
-    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000)
-    console.log(`from: ${from} windowEndTimestampUtc: ${windowEndTimestampUtc}, device: ${device.id}, windowSizeInHours: ${windowSizeInHours}`)
+    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
+    console.log(
+      `from: ${from} windowEndTimestampUtc: ${windowEndTimestampUtc}, device: ${device.id}, windowSizeInHours: ${windowSizeInHours}`
+    );
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [result, _] = (await sequelize.query(
-  `select round((avg(scores))::numeric, 2) as index from
+      `select round((avg(scores))::numeric, 2) as index from
     (select
       (jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
   from
@@ -327,59 +331,66 @@ where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
 	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`
-    )) as [{ index: number }[], unknown]
+    )) as [{ index: number }[], unknown];
     const index = result[0].index;
     if (index !== null) {
       return Number(index);
     }
     return index;
-    
   };
-
-
 
   Device.getCacophonyIndexBulk = async function (
     authUser,
     device,
     from,
     steps,
-    interval):
-    Promise<{ deviceId: DeviceId, from: string, cacophonyIndex: number }[]> {
-      const counts = [];
-      let stepSizeInMs;
-      switch (interval) {
-        case 'hours':
-          stepSizeInMs = 60 * 60 * 1000;
-          break;
-        case 'days':
-          stepSizeInMs = 24 * 60 * 60 * 1000;
-          break;
-        case 'weeks':
-          stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-          break;
-        case 'months':
-          const currMonthDays = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
-          stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-          break;
-        case 'years':
-          const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-          stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-          break;
-        default:
-          throw new Error(`Invalid interval: ${interval}`);
-      }
-      const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-      
-      for (let i = 0; i < steps; i++) {
-        const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-        const result = await Device.getCacophonyIndex(authUser, device, windowEnd, stepSizeInHours);
-        counts.push({ deviceId: device.id, from: windowEnd.toISOString(), cacophonyIndex: result});
-      }
-      return counts;
+    interval
+  ): Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]> {
+    const counts = [];
+    let stepSizeInMs;
+    switch (interval) {
+      case "hours":
+        stepSizeInMs = 60 * 60 * 1000;
+        break;
+      case "days":
+        stepSizeInMs = 24 * 60 * 60 * 1000;
+        break;
+      case "weeks":
+        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+        break;
+      case "months":
+        const currMonthDays = new Date(
+          from.getFullYear(),
+          from.getMonth() + 1,
+          0
+        ).getDate();
+        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+        break;
+      case "years":
+        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+        break;
+      default:
+        throw new Error(`Invalid interval: ${interval}`);
     }
+    const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
 
-
-
+    for (let i = 0; i < steps; i++) {
+      const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
+      const result = await Device.getCacophonyIndex(
+        authUser,
+        device,
+        windowEnd,
+        stepSizeInHours
+      );
+      counts.push({
+        deviceId: device.id,
+        from: windowEnd.toISOString(),
+        cacophonyIndex: result,
+      });
+    }
+    return counts;
+  };
 
   Device.getCacophonyIndexHistogram = async function (
     authUser,
@@ -418,13 +429,12 @@ order by hour;
     }));
   };
 
-
   interface TagCount {
-    what: String,
-    count: number
+    what: String;
+    count: number;
   }
 
-  Device.getSpeciesCount = async function( 
+  Device.getSpeciesCount = async function (
     authUser,
     deviceId,
     from,
@@ -437,7 +447,8 @@ order by hour;
     // Get a spread of 24 results with each result falling into an hour bucket.
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [results, _] = await sequelize.query(`SELECT tt.what, count(*) as count 
+    const [results, _] =
+      (await sequelize.query(`SELECT tt.what, count(*) as count 
       FROM "Recordings" r 
       JOIN "Tracks" t ON r.id = t."RecordingId" 
       JOIN "TrackTags" tt ON t.id = tt."TrackId" 
@@ -445,40 +456,45 @@ order by hour;
       AND r."type" = '${recordingType}'
       AND r."recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
       GROUP BY tt.what;
-    `) as  [{ what: string; count: number }[], unknown];
+    `)) as [{ what: string; count: number }[], unknown];
 
     return results.map((item) => ({
       what: String(item.what),
       count: Number(item.count),
     }));
-  }
-  
+  };
 
-  Device.getSpeciesCountBulk = async function( 
+  Device.getSpeciesCountBulk = async function (
     authUser,
     deviceId,
     from,
     steps,
     interval,
     recordingType
-  ): Promise<{ deviceId: DeviceId, from: string, what: string; count: number }[]> {
+  ): Promise<
+    { deviceId: DeviceId; from: string; what: string; count: number }[]
+  > {
     const counts = [];
     let stepSizeInMs;
     switch (interval) {
-      case 'hours':
+      case "hours":
         stepSizeInMs = 60 * 60 * 1000;
         break;
-      case 'days':
+      case "days":
         stepSizeInMs = 24 * 60 * 60 * 1000;
         break;
-      case 'weeks':
+      case "weeks":
         stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
         break;
-      case 'months':
-        const currMonthDays = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+      case "months":
+        const currMonthDays = new Date(
+          from.getFullYear(),
+          from.getMonth() + 1,
+          0
+        ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
-      case 'years':
+      case "years":
         const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
         stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
         break;
@@ -486,15 +502,29 @@ order by hour;
         throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-    console.log(`stepSizeInHours: ${stepSizeInHours} steps: ${steps} interval: ${interval} from: ${from}`)
+    console.log(
+      `stepSizeInHours: ${stepSizeInHours} steps: ${steps} interval: ${interval} from: ${from}`
+    );
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-      const result = await Device.getSpeciesCount(authUser, deviceId, windowEnd, stepSizeInHours, recordingType);
-      counts.push(...result.map((item) => ({ deviceId: deviceId, from: windowEnd.toISOString(), what: item.what, count: item.count })));
+      const result = await Device.getSpeciesCount(
+        authUser,
+        deviceId,
+        windowEnd,
+        stepSizeInHours,
+        recordingType
+      );
+      counts.push(
+        ...result.map((item) => ({
+          deviceId: deviceId,
+          from: windowEnd.toISOString(),
+          what: item.what,
+          count: item.count,
+        }))
+      );
     }
     return counts;
-  }
-
+  };
 
   Device.getDaysActive = async function (
     authUser,
@@ -502,7 +532,9 @@ order by hour;
     from,
     windowSizeInHours
   ): Promise<number> {
-    console.log(`getDaysActive: deviceId: ${deviceId} from: ${from} windowSizeInHours: ${windowSizeInHours}`)
+    console.log(
+      `getDaysActive: deviceId: ${deviceId} from: ${from} windowSizeInHours: ${windowSizeInHours}`
+    );
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
     const timezoneOffset = from.getTimezoneOffset() * 60;
@@ -512,10 +544,13 @@ order by hour;
       WHERE "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
       AND "DeviceId" = ${deviceId}
       ORDER BY DATE DESC
-    `
-    const [results, _] = (await sequelize.query(query)) as [{ date: string, has_recordings: boolean }[], unknown];
-    console.log('````````````')
-    console.log(results)
+    `;
+    const [results, _] = (await sequelize.query(query)) as [
+      { date: string; has_recordings: boolean }[],
+      unknown
+    ];
+    console.log("````````````");
+    console.log(results);
 
     const eventQuery = `
       SELECT DISTINCT DATE("dateTime" AT TIME ZONE 'UTC' AT TIME ZONE INTERVAL '${timezoneOffset} seconds') as DATE
@@ -523,19 +558,17 @@ order by hour;
       WHERE "dateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
       AND "DeviceId" = ${deviceId}
       ORDER BY DATE DESC
-    `
-    const [eventResults, __] = (await sequelize.query(eventQuery)) as [{ date: string, has_recordings: boolean }[], unknown];
-    console.log(eventResults)
+    `;
+    const [eventResults, __] = (await sequelize.query(eventQuery)) as [
+      { date: string; has_recordings: boolean }[],
+      unknown
+    ];
+    console.log(eventResults);
     const activeDates = new Set();
     results.forEach((item) => activeDates.add(item.date));
     eventResults.forEach((item) => activeDates.add(item.date));
-    return activeDates.size
-  }
-
-
-
-
-
+    return activeDates.size;
+  };
 
   // Fields that are directly settable by the API.
   Device.apiSettableFields = ["location", "newConfig"];
