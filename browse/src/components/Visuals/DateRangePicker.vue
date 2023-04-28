@@ -1,58 +1,68 @@
 <template>
-    <div class="date-range-picker">
-      <label for="from-date">From:</label>
-      <input type="date" id="from-date" v-model="fromDateValue" @input="updateFromDate">
-  
-      <label for="to-date">To:</label>
-      <input type="date" id="to-date" v-model="toDateValue" @input="updateToDate">
-    </div>
-  </template>
-  
-  <script>
-    export default {
-      name: 'DateRangePicker',
-      props: {
-        fromDate: {
-          type: Date,
-          required: true
-        },
-        toDate: {
-          type: Date,
-          required: true
-        }
+  <div class="date-range-picker">
+    <label for="from-date">From:</label>
+    <input
+      type="date"
+      id="from-date"
+      v-model="fromDateValue"
+      @input="updateFromDate"
+    />
+    <label for="to-date">To:</label>
+    <input
+      type="date"
+      id="to-date"
+      v-model="toDateValue"
+      @input="updateToDate"
+    />
+    />
+  </div>
+</template>
+
+<script>
+export default {
+  name: "DateRangePicker",
+  props: {
+    fromDate: {
+      type: Date,
+      required: true,
     },
-    data() {
-      return {
-        fromDateValue: null,
-        toDateValue: null
-      }
+    toDate: {
+      type: Date,
+      required: true,
     },
-    created() {
-      this.fromDateValue = this.formatDate(this.fromDate);
-      this.toDateValue = this.formatDate(this.toDate);
+  },
+  data() {
+    return {
+      fromDateValue: null,
+      toDateValue: null,
+    };
+  },
+  created() {
+    this.fromDateValue = this.formatDate(this.fromDate);
+    this.toDateValue = this.formatDate(this.toDate);
+  },
+  methods: {
+    formatDate(date) {
+      const month = ("0" + (date.getMonth() + 1)).slice(-2);
+      const day = ("0" + date.getDate()).slice(-2);
+      var dateString = date.getFullYear() + "-" + month + "-" + day;
+
+      return dateString;
+      // return date.toISOString().substr(0, 10);
+      // Format the date however you want
     },
-    methods: {
-      formatDate(date) {
-        const month = ("0"+(date.getMonth()+1)).slice(-2)
-        const day = ("0" + date.getDate()).slice(-2)
-        var dateString =  date.getFullYear() + "-" + month + "-" + day
-       
-        return dateString
-        // return date.toISOString().substr(0, 10);
-        // Format the date however you want
-      },
-      updateFromDate(event) {
-        this.$emit('update:fromDate', new Date(event.target.value));
-      },
-      updateToDate(event) {
-        this.$emit('update:toDate', new Date(event.target.value));
-      }
-  }
-}
-  </script>
-  
-  <style scoped>
-    /* .date-range-picker {
+    updateFromDate(event) {
+      this.$emit("update:fromDate", new Date(event.target.value));
+    },
+    updateToDate(event) {
+      this.$emit("update:toDate", new Date(event.target.value));
+    },
+  },
+};
+</script>
+
+<style scoped>
+/* .date-range-picker {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -68,5 +78,4 @@
       border: 1px solid #ccc;
       border-radius: 3px;
     } */
-  </style>
-  
+</style>

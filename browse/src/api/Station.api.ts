@@ -72,11 +72,13 @@ function getStationCacophonyIndex(
   windowsize: Number,
   activeAndInactive = false
 ): Promise<FetchResult<{ cacophonyIndex: number }>> {
-  return CacophonyApi.get(`/api/v1/stations/${stationId}/cacophony-index?from=${from}&window-size=${windowsize}${
-    shouldViewAsSuperUser()
-      ? `&only-active=${activeAndInactive ? "false" : "true"}`
-      : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-  }`);
+  return CacophonyApi.get(
+    `/api/v1/stations/${stationId}/cacophony-index?from=${from}&window-size=${windowsize}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
 }
 
 function getStationCacophonyIndexBulk(
@@ -85,17 +87,15 @@ function getStationCacophonyIndexBulk(
   steps: Number,
   interval: String,
   activeAndInactive = false
-): Promise<FetchResult<{ cacophonyIndexBulk : Object }>> {
-return CacophonyApi.get(
-  `/api/v1/stations/${id}/cacophony-index-bulk?from=${from}&steps=${steps}&interval=${interval}${
-    shouldViewAsSuperUser()
-      ? `&only-active=${activeAndInactive ? "false" : "true"}`
-      : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-  }`
-)
+): Promise<FetchResult<{ cacophonyIndexBulk: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/stations/${id}/cacophony-index-bulk?from=${from}&steps=${steps}&interval=${interval}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
 }
-
-
 
 function getStationSpeciesCount(
   stationId: StationId,
@@ -110,7 +110,7 @@ function getStationSpeciesCount(
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`
-  )
+  );
 }
 
 function getStationSpeciesCountBulk(
@@ -120,17 +120,15 @@ function getStationSpeciesCountBulk(
   interval: String,
   activeAndInactive = false,
   recordingType = "audio"
-): Promise<FetchResult<{ cacophonyIndexBulk : Object }>> {
-  console.log(`stationId: ${stationId}`)
+): Promise<FetchResult<{ cacophonyIndexBulk: Object }>> {
   return CacophonyApi.get(
     `/api/v1/stations/${stationId}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}&type=${recordingType}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`
-  )
+  );
 }
-
 
 function uploadReferenceImage(
   stationId: StationId,
@@ -175,5 +173,5 @@ export default {
   getStationCacophonyIndex,
   getStationCacophonyIndexBulk,
   getStationSpeciesCount,
-  getStationSpeciesCountBulk
+  getStationSpeciesCountBulk,
 };

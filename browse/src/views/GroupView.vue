@@ -105,14 +105,9 @@
 
       <tab-list-item lazy title="Analysis" v-if="hasAudioOrUnknownDevices">
         <template #title>
-          <TabTemplate
-            title="Analysis"
-          />
+          <TabTemplate title="Analysis" />
         </template>
-        <AnalysisTab
-          :group-name="groupName"
-          :group-id="groupId"
-        />
+        <AnalysisTab :group-name="groupName" :group-id="groupId" />
       </tab-list-item>
 
       <!--      <b-tab lazy v-if="!limitedView">-->
@@ -145,7 +140,7 @@ import AnalysisTab from "@/components/Groups/AnalysisTab.vue";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
 import { DeviceType } from "@typedefs/api/consts";
-import MonitoringTab from "@/components/MonitoringTab.vue"; 
+import MonitoringTab from "@/components/MonitoringTab.vue";
 import GroupLink from "@/components/GroupLink.vue";
 import TabListItem from "@/components/TabListItem.vue";
 import TabList from "@/components/TabList.vue";
@@ -170,8 +165,8 @@ export default {
     MonitoringTab,
     TabList,
     ManualRecordingUploads,
-    AnalysisTab
-},
+    AnalysisTab,
+  },
   data(): Record<string, any> & GroupViewData {
     return {
       stationsLoading: false,
@@ -223,10 +218,17 @@ export default {
             "devices",
             "stations",
             "recordings",
-            "analysis"
+            "analysis",
           ];
         } else {
-          return ["users", "visits", "devices", "stations", "recordings", "analysis"];
+          return [
+            "users",
+            "visits",
+            "devices",
+            "stations",
+            "recordings",
+            "analysis",
+          ];
         }
       }
       return ["visits", "devices", "stations", "recordings", "analysis"];
