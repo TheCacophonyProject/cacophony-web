@@ -255,8 +255,6 @@ export default {
 };
 </script>
 
-
-
 <style scoped>
 .visuals-container {
   display: grid;
