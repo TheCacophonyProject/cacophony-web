@@ -12,7 +12,6 @@
   </div>
 </template>
 
-
 <script lang="ts">
 import api from "@/api";
 import SpeciesComparisonsChart from "../Audio/SpeciesComparisonsChart.vue";

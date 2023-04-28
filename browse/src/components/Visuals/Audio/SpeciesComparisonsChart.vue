@@ -3,7 +3,7 @@
     <canvas ref="speciesComparisonChart"></canvas>
   </div>
 </template>
-  
+
 <script>
 import Chart from "chart.js/auto";
 

@@ -11,8 +11,8 @@
     </div>
   </div>
 </template>
-  
-  <script>
+
+<script>
 export default {
   props: {
     value: Boolean,
@@ -31,8 +31,8 @@ export default {
   },
 };
 </script>
-  
-  <style scoped>
+
+<style scoped>
 .switch-wrapper {
   display: flex;
   align-items: center;
@@ -76,4 +76,3 @@ export default {
   font-weight: bold;
 }
 </style>
-  

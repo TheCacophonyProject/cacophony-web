@@ -3,8 +3,8 @@
     <canvas ref="indexTimeComparisonsChart"></canvas>
   </div>
 </template>
-  
-  <script>
+
+<script>
 import Chart from "chart.js/auto";
 
 export default {
