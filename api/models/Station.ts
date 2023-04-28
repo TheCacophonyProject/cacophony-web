@@ -228,9 +228,6 @@ export default function (
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    console.log(
-      `cacophonyIndex: stationId: ${stationId}, from: ${from}, windowSizeInHours: ${windowSizeInHours}, windowEndTimestampUtc: ${windowEndTimestampUtc}`
-    );
     const [result, _] = (await sequelize.query(
       `select round((avg(scores))::numeric, 2) as index from
       (select
@@ -264,7 +261,7 @@ export default function (
       case "weeks":
         stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
         break;
-      case "months":
+      case "months": {
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
@@ -272,17 +269,17 @@ export default function (
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
-      case "years":
+      }
+      case "years": {
         const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
         stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
         break;
+      }
       default:
         throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-    console.log(
-      `stationId: ${stationId}, from: ${from}, steps: ${steps}, interval: ${interval}, stepSizeInMs: ${stepSizeInMs}, stepSizeInHours: ${stepSizeInHours}`
-    );
+
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
       const result = await Station.getCacophonyIndex(
@@ -352,7 +349,7 @@ export default function (
       case "weeks":
         stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
         break;
-      case "months":
+      case "months": {
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
@@ -360,17 +357,17 @@ export default function (
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
-      case "years":
+      }
+      case "years": {
         const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
         stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
         break;
+      }
       default:
         throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-    console.log(
-      `stepSizeInHours: ${stepSizeInHours} steps: ${steps} interval: ${interval} from: ${from}`
-    );
+
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
       const result = await Station.getSpeciesCount(
@@ -418,8 +415,6 @@ export default function (
       { date: string; has_recordings: boolean }[],
       unknown
     ];
-    console.log("````````````");
-    console.log(results);
 
     const eventQuery = `
     SELECT DISTINCT DATE(e."dateTime" AT TIME ZONE 'UTC' AT TIME ZONE INTERVAL '${timezoneOffset} seconds') as DATE
@@ -438,16 +433,13 @@ export default function (
         AND r2."recordingDateTime" <= e."dateTime"
     )
     `;
-    console.log("hi`");
     const [eventResults, __] = (await sequelize.query(eventQuery)) as [
       { date: string; has_recordings: boolean }[],
       unknown
     ];
-    console.log(eventResults);
     const activeDates = new Set();
     results.forEach((item) => activeDates.add(item.date));
     eventResults.forEach((item) => activeDates.add(item.date));
-    console.log(activeDates);
     return activeDates.size;
   };
 

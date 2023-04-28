@@ -317,9 +317,6 @@ export default function (
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    console.log(
-      `from: ${from} windowEndTimestampUtc: ${windowEndTimestampUtc}, device: ${device.id}, windowSizeInHours: ${windowSizeInHours}`
-    );
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [result, _] = (await sequelize.query(
       `select round((avg(scores))::numeric, 2) as index from
@@ -358,7 +355,7 @@ where
       case "weeks":
         stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
         break;
-      case "months":
+      case "months": {
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
@@ -366,10 +363,12 @@ where
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
-      case "years":
+      }
+      case "years": {
         const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
         stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
         break;
+      }
       default:
         throw new Error(`Invalid interval: ${interval}`);
     }
@@ -486,7 +485,7 @@ order by hour;
       case "weeks":
         stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
         break;
-      case "months":
+      case "months": {
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
@@ -494,17 +493,16 @@ order by hour;
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
-      case "years":
+      }
+      case "years": {
         const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
         stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
         break;
+      }
       default:
         throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-    console.log(
-      `stepSizeInHours: ${stepSizeInHours} steps: ${steps} interval: ${interval} from: ${from}`
-    );
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
       const result = await Device.getSpeciesCount(
@@ -532,9 +530,6 @@ order by hour;
     from,
     windowSizeInHours
   ): Promise<number> {
-    console.log(
-      `getDaysActive: deviceId: ${deviceId} from: ${from} windowSizeInHours: ${windowSizeInHours}`
-    );
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
     const timezoneOffset = from.getTimezoneOffset() * 60;
@@ -545,12 +540,11 @@ order by hour;
       AND "DeviceId" = ${deviceId}
       ORDER BY DATE DESC
     `;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [results, _] = (await sequelize.query(query)) as [
       { date: string; has_recordings: boolean }[],
       unknown
     ];
-    console.log("````````````");
-    console.log(results);
 
     const eventQuery = `
       SELECT DISTINCT DATE("dateTime" AT TIME ZONE 'UTC' AT TIME ZONE INTERVAL '${timezoneOffset} seconds') as DATE
@@ -559,11 +553,11 @@ order by hour;
       AND "DeviceId" = ${deviceId}
       ORDER BY DATE DESC
     `;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [eventResults, __] = (await sequelize.query(eventQuery)) as [
       { date: string; has_recordings: boolean }[],
       unknown
     ];
-    console.log(eventResults);
     const activeDates = new Set();
     results.forEach((item) => activeDates.add(item.date));
     eventResults.forEach((item) => activeDates.add(item.date));
