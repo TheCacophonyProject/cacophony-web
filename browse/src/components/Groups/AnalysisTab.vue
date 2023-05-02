@@ -9,11 +9,18 @@
       label-on="Audio"
       label-off="Video"
     ></toggle-switch>
-    <p>Display data for range:</p>
+
     <div class="date-range-picker-container">
+      <Label class="form-label">Date Range</Label>
+      <b-form-select
+        class="date-range-selector"
+        v-model="dateRange"
+        :options="dateRangeOptions"
+      />
       <DateRangePicker
-        :from-date="fromDate"
-        :to-date="toDate"
+        v-if="dateRange == 'Custom'"
+        :from-date="customFromDate"
+        :to-date="customToDate"
         @update:fromDate="fromDateUpdated"
         @update:toDate="toDateUpdated"
       ></DateRangePicker>
@@ -45,8 +52,8 @@
               :stations="stations"
               :colours="colours"
               :groupingSelection="groupingSelection"
-              :fromDate="fromDateRounded"
-              :toDate="toDateRounded"
+              :fromDate="fromDate"
+              :toDate="toDate"
             >
             </index-comparisons>
           </slot>
@@ -58,8 +65,8 @@
               :devices="devices"
               :stations="stations"
               :colours="colours"
-              :fromDate="fromDateRounded"
-              :toDate="toDateRounded"
+              :fromDate="fromDate"
+              :toDate="toDate"
               :groupingSelection="groupingSelection"
               :intervalSelection="intervalSelection"
             >
@@ -75,8 +82,8 @@
               :stations="stations"
               :colours="colours"
               :groupingSelection="groupingSelection"
-              :fromDate="fromDateRounded"
-              :toDate="toDateRounded"
+              :fromDate="fromDate"
+              :toDate="toDate"
             >
             </species-comparisons>
           </slot>
@@ -89,8 +96,8 @@
               :devices="devices"
               :stations="stations"
               :groupingSelection="groupingSelection"
-              :fromDate="fromDateRounded"
-              :toDate="toDateRounded"
+              :fromDate="fromDate"
+              :toDate="toDate"
               :intervalSelection="intervalSelection"
             >
             </species-time-comparisons>
@@ -104,8 +111,8 @@
         :devices="devices"
         :stations="stations"
         :groupingSelection="groupingSelection"
-        :fromDate="fromDateRounded"
-        :toDate="toDateRounded"
+        :fromDate="fromDate"
+        :toDate="toDate"
         :intervalSelection="intervalSelection"
       ></average-species-visits>
     </div>
@@ -140,16 +147,23 @@ export default {
     groupId: { type: Number, required: true },
   },
   data() {
-    const to = new Date();
-    const from = new Date();
-    to.setDate(to.getDate() - 1);
-    from.setMonth(from.getMonth() - 1);
+    const toDate = new Date();
+    const fromDate = new Date();
+    fromDate.setDate(fromDate.getDate() - 30);
     return {
       loading: true,
       recordings: null,
       recordingCount: 1,
-      fromDate: from,
-      toDate: to,
+      dateRange: "Last 30 days",
+      dateRangeOptions: [
+        "Last 30 days",
+        "Last 90 days",
+        "Last 12 months",
+        "All time",
+        "Custom",
+      ],
+      customToDate: toDate,
+      customFromDate: fromDate,
       devices: [],
       colours: [],
       stations: [],
@@ -189,6 +203,11 @@ export default {
       }
       this.colours = colours;
     },
+    dateRange: function () {
+      this.updateIntervalSelection();
+      this.customToDate = this.toDate;
+      this.customFromDate = this.fromDate;
+    },
   },
   methods: {
     async getDevices() {
@@ -206,49 +225,59 @@ export default {
       this.stations = resultStations.result.stations;
     },
     fromDateUpdated(newFromDate) {
-      this.fromDate = newFromDate;
-      const differenceDays = Math.ceil(
-        (this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24)
-      );
-      if (differenceDays < 2) {
-        this.invertalOptions = ["hours"];
-      } else if (differenceDays < 7) {
-        this.intervalOptions = ["days"];
-      } else if (differenceDays < 31) {
-        this.intervalOptions = ["days", "weeks"];
-      } else if (differenceDays < 365) {
-        this.intervalOptions = ["days", "weeks", "months"];
-      } else {
-        this.intervalOptions = ["weeks", "months", "years"];
-      }
+      this.customFromDate = new Date(newFromDate);
+      this.updateIntervalSelection();
     },
     toDateUpdated(newToDate) {
-      this.toDate = newToDate;
+      this.customToDate = new Date(newToDate);
+      this.updateIntervalSelection();
+    },
+    updateIntervalSelection() {
       const differenceDays = Math.ceil(
         (this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24)
       );
-      if (differenceDays < 2) {
-        this.invertalOptions = ["hours"];
-      } else if (differenceDays < 7) {
-        this.intervalOptions = ["days"];
-      } else if (differenceDays < 31) {
-        this.intervalOptions = ["days", "weeks"];
-      } else if (differenceDays < 365) {
-        this.intervalOptions = ["days", "weeks", "months"];
+      if (differenceDays < 33) {
+        this.intervalOptions = ["hours", "days", "weeks"];
+        this.intervalSelection = "days";
+      } else if (differenceDays < 95) {
+        this.intervalOptions = ["hours", "days", "weeks", "months"];
+        this.intervalSelection = "weeks";
+      } else if (differenceDays < 1095) {
+        this.intervalOptions = ["days", "weeks", "months", "years"];
+        this.intervalSelection = "months";
       } else {
         this.intervalOptions = ["weeks", "months", "years"];
+        this.intervalSelection = "years";
       }
     },
   },
   computed: {
-    fromDateRounded() {
-      const roundedDate = new Date(this.fromDate);
-      roundedDate.setHours(0, 0, 0, 0);
-      return roundedDate;
+    toDate() {
+      if (this.dateRange != "Custom") {
+        const toDate = new Date();
+        toDate.setDate(toDate.getDate() - 1);
+        const roundedDate = new Date(toDate);
+        roundedDate.setHours(23, 59, 59, 999);
+        return roundedDate;
+      } else if (this.dateRange == "Custom") {
+        return this.customToDate;
+      }
     },
-    toDateRounded() {
-      const roundedDate = new Date(this.toDate);
-      roundedDate.setHours(23, 59, 59, 999);
+    fromDate() {
+      var fromDate = new Date();
+      if (this.dateRange == "Last 30 days") {
+        fromDate.setDate(fromDate.getDate() - 31);
+      } else if (this.dateRange == "Last 90 days") {
+        fromDate.setDate(fromDate.getDate() - 91);
+      } else if (this.dateRange == "Last 12 months") {
+        fromDate.setDate(fromDate.getDate() - 366);
+      } else if (this.dateRange == "All time") {
+        fromDate.setDate(fromDate.getDate() - 366);
+      } else if (this.dateRange == "Custom") {
+        fromDate = this.customFromDate;
+      }
+      const roundedDate = new Date(fromDate);
+      roundedDate.setHours(0, 0, 0, 0);
       return roundedDate;
     },
   },
@@ -271,14 +300,23 @@ export default {
 }
 
 .date-range-picker-container {
-  /* display: flex; */
   top: 0;
   left: 0;
   margin-top: 10px;
   margin-bottom: 20px;
+  max-width: 500px;
 }
 
 .grouping-selector-container {
+  display: flex;
+}
+
+.date-range-selector {
+  margin-bottom: 10px;
+  max-width: 300px;
+}
+
+.form-label {
   display: flex;
 }
 </style>

@@ -1,16 +1,18 @@
 <template>
   <div class="date-range-picker">
-    <label for="from-date">From:</label>
+    <label for="from-date" class="date-label">From:</label>
     <input
       type="date"
       id="from-date"
+      class="form-control from-date-input"
       v-model="fromDateValue"
       @input="updateFromDate"
     />
-    <label for="to-date">To:</label>
+    <label for="to-date" class="date-label">To:</label>
     <input
       type="date"
       id="to-date"
+      class="form-control"
       v-model="toDateValue"
       @input="updateToDate"
     />
@@ -47,8 +49,6 @@ export default {
       var dateString = date.getFullYear() + "-" + month + "-" + day;
 
       return dateString;
-      // return date.toISOString().substr(0, 10);
-      // Format the date however you want
     },
     updateFromDate(event) {
       this.$emit("update:fromDate", new Date(event.target.value));
@@ -61,20 +61,25 @@ export default {
 </script>
 
 <style scoped>
-/* .date-range-picker {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-  
-    label {
-      margin-right: 10px;
-    }
-  
-    input {
-      padding: 5px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-    } */
+.date-range-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.from-date-input {
+  margin-right: 10px;
+}
+
+input {
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
+
+.date-label {
+  margin-right: 10px;
+  padding-top: 6px;
+}
 </style>
