@@ -170,7 +170,10 @@ export default {
 
       var iterable = [];
       if (this.groupingSelection == "device") {
-        iterable = this.devices;
+        const audioDevices = this.devices.filter(
+          (device) => device.type == "audio"
+        );
+        iterable = audioDevices;
       } else if (this.groupingSelection == "station") {
         iterable = this.stations;
       }
@@ -251,7 +254,10 @@ export default {
     updateDeviceGraphData() {
       var datasets = [];
       var i = 0;
-      for (var device of this.devices) {
+      const audioDevices = this.devices.filter(
+        (device) => device.type == "audio"
+      );
+      for (var device of audioDevices) {
         if (this.indexData[device.deviceName] != null) {
           datasets.push({
             data: this.indexData[device.deviceName],

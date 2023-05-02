@@ -128,9 +128,12 @@ export default {
       var windowSize = Math.ceil(
         (this.toDate.getTime() - this.fromDate.getTime()) / 3600000
       );
+      const audioDevices = this.devices.filter(
+        (device) => device.type == "audio"
+      );
 
       if (this.groupingSelection == "device") {
-        for (var device of this.devices) {
+        for (var device of audioDevices) {
           requests.push({
             id: device.id,
             name: device.deviceName,
@@ -228,7 +231,10 @@ export default {
     },
     updateSelectOptions() {
       if (this.groupingSelection == "device") {
-        this.selectOptions = this.devices.map((device) => ({
+        const audioDevices = this.devices.filter(
+          (device) => device.type == "audio"
+        );
+        this.selectOptions = audioDevices.map((device) => ({
           name: `${device.deviceName.slice(0, 25)}${
             device.deviceName.length > 25 ? "..." : ""
           }`,

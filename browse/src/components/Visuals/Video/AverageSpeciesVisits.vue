@@ -87,7 +87,7 @@ export default {
     async getSpeciesData() {
       this.loading = true;
       const thermalDevices = this.devices.filter(
-        (device) => device.type == "audio"
+        (device) => device.type == "thermal"
       );
       const iterable =
         this.groupingSelection == "device" ? thermalDevices : this.stations;

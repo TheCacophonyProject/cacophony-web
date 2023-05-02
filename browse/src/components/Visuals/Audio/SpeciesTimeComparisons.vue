@@ -323,7 +323,10 @@ export default {
   computed: {
     selectOptions() {
       if (this.groupingSelection == "device") {
-        return this.devices.map((device) => {
+        const audioDevices = this.devices.filter((device) => {
+          return device.type == "audio";
+        });
+        return audioDevices.map((device) => {
           return {
             id: device.id,
             name: device.deviceName,

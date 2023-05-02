@@ -14,7 +14,6 @@
       v-model="toDateValue"
       @input="updateToDate"
     />
-    />
   </div>
 </template>
 
