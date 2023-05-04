@@ -26,20 +26,28 @@
       ></DateRangePicker>
     </div>
     <div class="grouping-selector-container">
-      <label for="grouping-selector">Show per:</label>
-      <select id="grouping-selector" v-model="groupingSelection">
+      <label for="grouping-selector" class="form-label">Show per</label>
+      <b-form-select
+        id="grouping-selector"
+        v-model="groupingSelection"
+        class="grouping-selector"
+      >
         <option v-for="option in groupingOptions" :key="option" :value="option">
           {{ option }}
         </option>
-      </select>
+      </b-form-select>
     </div>
     <div class="grouping-selector-container">
-      <label for="interval-selector">Group by:</label>
-      <select id="interval-selector" v-model="intervalSelection">
+      <label for="interval-selector" class="form-label">Group by</label>
+      <b-form-select
+        id="interval-selector"
+        v-model="intervalSelection"
+        class="grouping-selector"
+      >
         <option v-for="option in intervalOptions" :key="option" :value="option">
           {{ option }}
         </option>
-      </select>
+      </b-form-select>
     </div>
     <div class="audio-analysis-container" v-if="isAudioAnalysis">
       <div class="visuals-container">
@@ -262,6 +270,7 @@ export default {
       } else if (this.dateRange == "Custom") {
         return this.customToDate;
       }
+      return new Date();
     },
     fromDate() {
       var fromDate = new Date();
@@ -300,15 +309,14 @@ export default {
 }
 
 .date-range-picker-container {
-  top: 0;
-  left: 0;
   margin-top: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   max-width: 500px;
 }
 
 .grouping-selector-container {
   display: flex;
+  max-width: 500px;
 }
 
 .date-range-selector {
@@ -316,7 +324,14 @@ export default {
   max-width: 300px;
 }
 
+.grouping-selector {
+  margin-bottom: 10px;
+  max-width: 300px;
+}
+
 .form-label {
   display: flex;
+  margin-right: 5px;
+  margin-top: 5px;
 }
 </style>

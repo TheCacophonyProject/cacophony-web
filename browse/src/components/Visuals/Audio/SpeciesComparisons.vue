@@ -7,6 +7,7 @@
       <species-comparisons-chart
         :data="chartData"
         :options="chartOptions"
+        :originalLabels="originalLabels"
       ></species-comparisons-chart>
     </div>
   </div>
@@ -29,12 +30,13 @@ export default {
         labels: [],
         datasets: [{}],
       },
+      originalLabels: [],
       chartOptions: {
         responsive: true,
         plugins: {
-          // legend: {
-          //   position: "bottom",
-          // },
+          legend: {
+            position: "bottom",
+          },
           title: {
             display: true,
             text: "Percentage of Identified Species per Device (%)",
@@ -45,7 +47,6 @@ export default {
             callbacks: {
               label: function (context) {
                 const label = context.dataset.label || "";
-                const value = context.parsed.y.toFixed(1);
                 return `${label}`;
               },
             },
@@ -58,6 +59,22 @@ export default {
           y: {
             stacked: true,
           },
+        },
+        onHover: (event, chartElements, chart) => {
+          const nearestElements = chart.getElementsAtEventForMode(
+            event,
+            "nearest",
+            { intersect: true },
+            true
+          );
+          if (nearestElements.length > 0) {
+            const dataIndex = nearestElements[0].index;
+            chart.data.datasets.forEach((dataset, index) => {
+              const value = dataset.data[dataIndex];
+              dataset.label = `${this.originalLabels[index]}: ${value}%`;
+            });
+            chart.update();
+          }
         },
       },
     };
@@ -92,6 +109,9 @@ export default {
   },
   async mounted() {
     await this.getSpeciesCounts();
+    this.originalLabels = this.chartData.datasets.map(
+      (dataset) => dataset.label
+    );
   },
   watch: {
     groupingSelection: function () {

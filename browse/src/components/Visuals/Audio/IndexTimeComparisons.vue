@@ -211,13 +211,11 @@ export default {
         })
       );
 
-      console.log(response);
       response = response.filter((res) =>
         res.result.cacophonyIndexBulk.some(
           (item) => item.cacophonyIndex != null
         )
       );
-      console.log(response);
       const stepSizeInMs = this.getStepSizeInMs(
         toDateRounded,
         this.intervalSelection
