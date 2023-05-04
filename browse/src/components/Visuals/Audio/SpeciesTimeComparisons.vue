@@ -63,13 +63,22 @@ export default {
             intersect: false,
             mode: "index",
           },
+          legend: {
+            position: "bottom",
+            labels: {
+              usePointStyle: true,
+              pointStyle: "line",
+              boxWidth: 100,
+              pointStyleWidth: 100,
+            },
+          },
         },
         scales: {
           x: {
             stacked: true,
           },
           y: {
-            stacked: true,
+            stacked: false,
           },
         },
       },
@@ -249,14 +258,16 @@ export default {
         .map((color) => chroma(color).rgba());
 
       const datasets = animalList.map((animal, j) => {
-        const reducedAlphaColor = scale[j].slice(0, 3).concat([0.2]);
         return {
           label: animal,
           data: Array(windowEnds.length).fill(0),
-          backgroundColor: `rgba(${reducedAlphaColor.join(",")})`,
+          backgroundColor: `rgba(${scale[j].join(",")})`,
           borderColor: `rgba(${scale[j].join(",")})`,
           borderWidth: 1,
-          fill: "origin",
+          pointRadius: 3,
+          pointbackgroundColor: `rgba(${scale[j].join(",")})`,
+          pointborderColor: `rgba(${scale[j].join(",")})`,
+          fill: "none",
         };
       });
 
@@ -277,14 +288,20 @@ export default {
       }
 
       const labels = windowStarts.map((item) => {
-        if (this.intervalSelection == "weeks") {
+        if (this.intervalSelection == "hours") {
+          let hours = item.getHours();
+          const ampm = hours >= 12 ? "pm" : "am";
+          hours = hours % 12 == 0 ? 12 : hours % 12;
+          return hours + ampm + " " + this.formatDate(item).slice(0, -5);
+        } else if (this.intervalSelection == "weeks") {
           item.setDate(item.getDate() + 6);
-          return "Week ending " + item.toLocaleDateString("en-GB");
+          return this.formatDate(item);
         } else if (this.intervalSelection == "months") {
           item.setMonth(item.getMonth() + 1);
-          return item.toLocaleDateString("en-GB").substring(3);
+          const parts = this.formatDate(item).split(" ");
+          return parts[1] + " " + parts[2];
         } else {
-          return item.toLocaleDateString("en-GB");
+          return this.formatDate(item);
         }
       });
 
@@ -294,6 +311,39 @@ export default {
       };
     },
     updateSelectOptions() {},
+    formatDate(date) {
+      const day = date.getDate();
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      const ordinalSuffix = (day) => {
+        if (day % 10 === 1 && day !== 11) {
+          return day + "st";
+        } else if (day % 10 === 2 && day !== 12) {
+          return day + "nd";
+        } else if (day % 10 === 3 && day !== 13) {
+          return day + "rd";
+        } else {
+          return day + "th";
+        }
+      };
+
+      return `${ordinalSuffix(day)} ${monthNames[month]} ${year}`;
+    },
     getStepSizeInMs(toDateRounded, intervalSelection) {
       if (TIME_VALUES[intervalSelection].stepSizeInMs) {
         return TIME_VALUES[intervalSelection].stepSizeInMs;

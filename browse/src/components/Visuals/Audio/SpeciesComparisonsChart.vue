@@ -1,11 +1,12 @@
 <template>
   <div>
-    <canvas ref="speciesComparisonChart"></canvas>
+    <canvas ref="speciesComparisonChart" @mouseleave="resetLabels"></canvas>
   </div>
 </template>
 
 <script>
 import Chart from "chart.js/auto";
+import { chart } from "highcharts";
 
 export default {
   name: "SpeciesComparisonChart",
@@ -22,9 +23,15 @@ export default {
   data() {
     return {
       chartInstance: null,
+      originalLabels: [],
     };
   },
   mounted() {
+    this.originalLabels = this.data.datasets.map((dataset) => dataset.label);
+    this.options.plugins.legend = {
+      position: "bottom",
+    };
+    this.addLabelHover();
     this.createChart();
   },
   methods: {
@@ -38,6 +45,32 @@ export default {
         data: this.data,
         options: this.options,
       });
+    },
+    addLabelHover() {
+      this.options.onHover = (event, chartElements, chart) => {
+        const nearestElements = chart.getElementsAtEventForMode(
+          event,
+          "nearest",
+          { intersect: true },
+          true
+        );
+        if (nearestElements.length > 0) {
+          const dataIndex = nearestElements[0].index;
+          chart.data.datasets.forEach((dataset, index) => {
+            const value = dataset.data[dataIndex];
+            dataset.label = `${this.originalLabels[index]}: ${value}%`;
+          });
+          chart.update();
+        } else {
+          this.resetLabels();
+        }
+      };
+    },
+    resetLabels() {
+      this.chartInstance.data.datasets.forEach((dataset, index) => {
+        dataset.label = this.originalLabels[index];
+      });
+      this.chartInstance.update();
     },
   },
   watch: {

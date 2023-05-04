@@ -32,9 +32,9 @@ export default {
       chartOptions: {
         responsive: true,
         plugins: {
-          legend: {
-            position: "bottom",
-          },
+          // legend: {
+          //   position: "bottom",
+          // },
           title: {
             display: true,
             text: "Percentage of Identified Species per Device (%)",
@@ -46,7 +46,7 @@ export default {
               label: function (context) {
                 const label = context.dataset.label || "";
                 const value = context.parsed.y.toFixed(1);
-                return `${label}: ${value}%`;
+                return `${label}`;
               },
             },
           },
@@ -185,7 +185,8 @@ export default {
         })
       );
 
-      const labels = response.map((res) => res.name);
+      response = response.filter((res) => res.what.length != 0);
+      var labels = response.map((res) => res.name);
       const allWhats = new Set();
 
       response.forEach((entry) => {

@@ -189,7 +189,7 @@ export default {
         };
       });
 
-      const response = await Promise.all(
+      var response = await Promise.all(
         requests.map(async (req) => {
           var res = null;
           if (this.groupingSelection == "device") {
@@ -211,6 +211,13 @@ export default {
         })
       );
 
+      console.log(response);
+      response = response.filter((res) =>
+        res.result.cacophonyIndexBulk.some(
+          (item) => item.cacophonyIndex != null
+        )
+      );
+      console.log(response);
       const stepSizeInMs = this.getStepSizeInMs(
         toDateRounded,
         this.intervalSelection
@@ -237,14 +244,20 @@ export default {
       }
 
       const labels = windowEnds.map((item) => {
-        if (this.intervalSelection == "weeks") {
+        if (this.intervalSelection == "hours") {
+          let hours = item.getHours();
+          const ampm = hours >= 12 ? "pm" : "am";
+          hours = hours % 12 == 0 ? 12 : hours % 12;
+          return hours + ampm + " " + this.formatDate(item).slice(0, -5);
+        } else if (this.intervalSelection == "weeks") {
           item.setDate(item.getDate() + 6);
-          return "Week ending " + item.toLocaleDateString("en-GB");
+          return this.formatDate(item);
         } else if (this.intervalSelection == "months") {
           item.setMonth(item.getMonth() + 1);
-          return item.toLocaleDateString("en-GB").substring(3);
+          const parts = this.formatDate(item).split(" ");
+          return parts[1] + " " + parts[2];
         } else {
-          return item.toLocaleDateString("en-GB");
+          return this.formatDate(item);
         }
       });
 
@@ -303,6 +316,39 @@ export default {
         labels: this.labels,
       };
       this.loading = false;
+    },
+    formatDate(date) {
+      const day = date.getDate();
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      const ordinalSuffix = (day) => {
+        if (day % 10 === 1 && day !== 11) {
+          return day + "st";
+        } else if (day % 10 === 2 && day !== 12) {
+          return day + "nd";
+        } else if (day % 10 === 3 && day !== 13) {
+          return day + "rd";
+        } else {
+          return day + "th";
+        }
+      };
+
+      return `${ordinalSuffix(day)} ${monthNames[month]} ${year}`;
     },
     getStepSizeInMs(toDateRounded, intervalSelection) {
       if (TIME_VALUES[intervalSelection].stepSizeInMs) {
