@@ -453,16 +453,15 @@ describe("Device: fix-location of device and/or recordings", () => {
               fifthName
             ).then(() => {
               cy.log(
-                  "Check pre-existing recording is correctly added to manual station"
+                "Check pre-existing recording is correctly added to manual station"
               );
               checkRecordingLocationAndStation(
-                  Josie,
-                  fifthName,
-                  newLocation,
-                  getTestName(manualStationName)
+                Josie,
+                fifthName,
+                newLocation,
+                getTestName(manualStationName)
               );
             });
-
 
             cy.log(
               "Update first and subsequent recording's location to match manual station"

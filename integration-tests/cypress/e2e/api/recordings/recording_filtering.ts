@@ -71,7 +71,7 @@ describe("Recording filtering", () => {
     automatic: true,
     trackId: NOT_NULL,
     what: "cat",
-    path: "all"
+    path: "all",
   };
 
   before(() => {

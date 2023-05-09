@@ -449,7 +449,11 @@ export const refreshUserProjects = async () => {
   const projectsResponse = await getProjects(NO_ABORT);
   if (projectsResponse.success) {
     UserProjects.value = reactive(projectsResponse.result.groups);
-    console.warn("Fetched user projects", currentSelectedProject.value, JSON.stringify(UserProjects.value));
+    console.warn(
+      "Fetched user projects",
+      currentSelectedProject.value,
+      JSON.stringify(UserProjects.value)
+    );
   } else {
     console.log("res", projectsResponse);
   }

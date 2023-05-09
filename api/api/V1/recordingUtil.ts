@@ -42,7 +42,10 @@ import modelsUtil, { locationsAreEqual } from "@models/util/util";
 import { dynamicImportESM } from "@/dynamic-import-esm";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Device } from "@models/Device";
-import deviceHistory, { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
+import deviceHistory, {
+  DeviceHistory,
+  DeviceHistorySetBy,
+} from "@models/DeviceHistory";
 import { Tag } from "@models/Tag";
 import { Track } from "@models/Track";
 import {

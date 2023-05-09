@@ -91,7 +91,7 @@ watch(route, async (next) => {
 });
 
 const loadDevices = async () => {
-    console.warn("RELOAD DEVICES");
+  console.warn("RELOAD DEVICES");
   loadingDevices.value = true;
   const devicesResponse = await getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
@@ -524,7 +524,9 @@ const openSelectedDevice = async () => {
       Thermal cameras or bird monitors can be either directly connected to the
       Cacophony platform via internet connection, or may be offline or out of
       coverage, and managed via the sidekick companion app.
-      <a href="#TODO">Find out how to register a thermal camera or a bird monitor.</a>
+      <a href="#TODO"
+        >Find out how to register a thermal camera or a bird monitor.</a
+      >
       <br /><br />
       You can also register a trailcam. This represents a third-party trailcam
       device that you plan to manually upload data for via this web

@@ -35,7 +35,7 @@ const processFile = async (
   derivedFile: ArrayBuffer;
   thumbFile: ArrayBuffer;
   recordingDateTime: Date;
-  additionalMetadata?: Record<string, string | number>,
+  additionalMetadata?: Record<string, string | number>;
 }> => {
   const additionalMetadata = {};
   if (!ocr) {
@@ -75,7 +75,7 @@ const processFile = async (
   // Right, so jpeg tran completely strips out exif data.  Probably explains savings.
 
   const exif = EXIF.readFromBinaryFile(fileBytes);
-  console.log(JSON.stringify(exif, null, '\t'));
+  console.log(JSON.stringify(exif, null, "\t"));
   const model = (exif.Model || "").trim();
   const width = exif.PixelXDimension;
   const height = exif.PixelYDimension;

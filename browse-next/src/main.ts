@@ -15,7 +15,7 @@ import {
   userIsLoggedIn,
   userIsProjectAdmin,
   userProjects,
-  userHasProjects
+  userHasProjects,
 } from "@models/provides";
 import {
   currentSelectedProject as fallibleCurrentSelectedProject,

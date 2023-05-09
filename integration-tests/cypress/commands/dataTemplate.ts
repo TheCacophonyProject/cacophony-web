@@ -173,7 +173,7 @@ export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
       confidence: 1,
       trackId: NOT_NULL,
       id: NOT_NULL,
-      path: "all"
+      path: "all",
     },
   ],
 };
@@ -249,7 +249,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
       confidence: 0.97,
       trackId: NOT_NULL,
       id: NOT_NULL,
-      path: "all"
+      path: "all",
     },
   ],
 };

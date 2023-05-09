@@ -84,7 +84,13 @@ const isBusy = ref<boolean>(false);
         'inline-view-modal': true,
         disabled: isBusy,
       }"
-      :dialog-class="['inline-view-dialog', 'm-0', 'm-sm-auto', 'modal-fullscreen-sm-down', {disabled: isBusy}]"
+      :dialog-class="[
+        'inline-view-dialog',
+        'm-0',
+        'm-sm-auto',
+        'modal-fullscreen-sm-down',
+        { disabled: isBusy },
+      ]"
     >
       <component
         :is="Component"

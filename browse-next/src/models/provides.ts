@@ -2,7 +2,9 @@ export const selectedProjectDevices = Symbol("selected project devices");
 
 export const userProjects = Symbol("projects for current user");
 
-export const userHasProjects = Symbol("current user belongs to one or more projects");
+export const userHasProjects = Symbol(
+  "current user belongs to one or more projects"
+);
 export const currentSelectedProject = Symbol(
   "currently selected project (if any)"
 );
@@ -22,7 +24,7 @@ export const activeLocations = Symbol(
 );
 
 export const allHistoricLocations = Symbol(
-    "all known locations for this project"
+  "all known locations for this project"
 );
 export const latLngForActiveLocations = Symbol(
   "a single canonical lat/lng to represent all active devices in the current time window used for timezone sunrise/sunset calcs"

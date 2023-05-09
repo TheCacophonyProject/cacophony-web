@@ -534,7 +534,9 @@ router.beforeEach(async (to, from, next) => {
     }
     if (potentialProjectName) {
       potentialProjectName = urlNormaliseName(potentialProjectName);
-      const matchedProject = ((UserProjects.value as ApiGroupResponse[]) || []).find(
+      const matchedProject = (
+        (UserProjects.value as ApiGroupResponse[]) || []
+      ).find(
         ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName
       );
       // console.warn("Found match", matchedGroup);

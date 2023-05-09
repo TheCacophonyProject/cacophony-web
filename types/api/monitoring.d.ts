@@ -1,5 +1,5 @@
 import { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common";
-import {RecordingType} from "./consts";
+import { RecordingType } from "./consts";
 
 export interface MonitoringRequest {
   perPage?: number;
@@ -22,7 +22,12 @@ export interface MonitoringPageCriteria {
   pageUntil?: Date;
   searchFrom?: Date;
   searchUntil?: Date;
-  types?: (RecordingType.ThermalRaw | RecordingType.Audio | RecordingType.TrailCamVideo | RecordingType.TrailCamImage)[],
+  types?: (
+    | RecordingType.ThermalRaw
+    | RecordingType.Audio
+    | RecordingType.TrailCamVideo
+    | RecordingType.TrailCamImage
+  )[];
 }
 
 interface VisitRecordingTag {

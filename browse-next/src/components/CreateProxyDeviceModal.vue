@@ -80,8 +80,8 @@ const hasError = computed<boolean>(() => {
           Trailcam name cannot be blank
         </span>
         <span v-else-if="newDeviceName.value.trim().length < 3">
-          Trailcam name must be at least 3 characters // TODO - device name regex
-          (include macrons)
+          Trailcam name must be at least 3 characters // TODO - device name
+          regex (include macrons)
         </span>
       </b-form-invalid-feedback>
     </b-form>
@@ -99,7 +99,9 @@ const hasError = computed<boolean>(() => {
           v-if="submittingCreateRequest"
           class="spinner-border spinner-border-sm"
         ></span>
-        {{ submittingCreateRequest ? "Registering trailcam" : "Register trailcam" }}
+        {{
+          submittingCreateRequest ? "Registering trailcam" : "Register trailcam"
+        }}
       </button>
     </template>
   </b-modal>

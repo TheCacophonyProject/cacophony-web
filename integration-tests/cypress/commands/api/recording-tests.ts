@@ -700,7 +700,7 @@ export function trackResponseFromSet(
             data: tpreddata[0],
             confidence: track.predictions[0].confidence,
             id: 0,
-            path: "all"
+            path: "all",
           },
         ];
       }

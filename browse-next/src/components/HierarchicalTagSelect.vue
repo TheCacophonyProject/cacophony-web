@@ -46,7 +46,10 @@ const emit = defineEmits<{
 }>();
 
 const updateModel = (val: Classification[]) => {
-  emit("update:modelValue", val.map(({label}) => label));
+  emit(
+    "update:modelValue",
+    val.map(({ label }) => label)
+  );
 };
 
 const layeredDropdown = ref<typeof LayeredDropdown>();

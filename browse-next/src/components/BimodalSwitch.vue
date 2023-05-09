@@ -24,7 +24,11 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;
 }>();
 
-const { modes, modelValue, spread = false } = defineProps<{
+const {
+  modes,
+  modelValue,
+  spread = false,
+} = defineProps<{
   modelValue: string;
   modes: [string, string];
   spread?: boolean;

@@ -18,5 +18,3 @@ interface SelectedRecordingsContext {
 }
 
 // We can be viewing a list of visits, or a list of recordings
-
-

@@ -115,7 +115,7 @@ declare namespace Cypress {
       groupName: string,
       data: ApiRecordingSet,
       recordingName?: string,
-      fileName?: string | { filename: string, key: string }[],
+      fileName?: string | { filename: string; key: string }[],
       statusCode?: number,
       additionalChecks?: any
     ): Cypress.Chainable<RecordingId>;
@@ -128,7 +128,7 @@ declare namespace Cypress {
     apiRecordingAdd(
       deviceName: string,
       data: ApiRecordingSet,
-      fileName?: string | { filename: string, key: string }[],
+      fileName?: string | { filename: string; key: string }[],
       recordingName?: string,
       statusCode?: number,
       additionalChecks?: any

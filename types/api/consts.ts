@@ -3,7 +3,7 @@ export enum RecordingType {
   Audio = "audio",
   TrailCamImage = "trailcam-image",
   TrailCamVideo = "trailcam-video",
-  InfraredVideo = "irRaw"
+  InfraredVideo = "irRaw",
 }
 
 export enum RecordingPermission {
@@ -82,7 +82,6 @@ export enum HttpStatusCode {
   ServerError = 500,
 }
 
-
 export const DeviceEventTypes = [
   "alert",
   "attiny-sleep",
@@ -98,7 +97,7 @@ export const DeviceEventTypes = [
   "versionData",
   "config",
   "bad-thermal-frame",
-    "stop-reported"
+  "stop-reported",
 ] as const;
 
 export type DeviceEventType = typeof DeviceEventTypes[number];

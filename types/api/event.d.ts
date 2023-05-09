@@ -23,45 +23,44 @@ export interface DeviceEvent {
 }
 
 export interface DeviceConfigDetail {
-  audio: null,
+  audio: null;
   battery: {
-    "no-battery-reading": number,
-    "low-battery-reading": number,
-    "full-battery-reading": number,
-    "enable-voltage-readings": boolean
-  },
+    "no-battery-reading": number;
+    "low-battery-reading": number;
+    "full-battery-reading": number;
+    "enable-voltage-readings": boolean;
+  };
   device: {
-    id: DeviceId,
-    name: string,
-    group: string,
-    server: "https://api.cacophony.org.nz",
-    updated: IsoFormattedString
-  },
-  gpio: null,
-  lepton: null,
+    id: DeviceId;
+    name: string;
+    group: string;
+    server: "https://api.cacophony.org.nz";
+    updated: IsoFormattedString;
+  };
+  gpio: null;
+  lepton: null;
   location: {
-    accuracy: number,
-    altitude: number,
-    latitude: number,
-    longitude: number,
-    timestamp: IsoFormattedString,
-    updated: IsoFormattedString
-  },
+    accuracy: number;
+    altitude: number;
+    latitude: number;
+    longitude: number;
+    timestamp: IsoFormattedString;
+    updated: IsoFormattedString;
+  };
   modemd: {
-    updated: IsoFormattedString,
-    "initial-on-duration": "0s"
-  },
-  ports: null,
-  "test-hosts": null,
-  "thermal-motion": null,
-  "thermal-recorder": null,
-  "thermal-throttler": null,
+    updated: IsoFormattedString;
+    "initial-on-duration": "0s";
+  };
+  ports: null;
+  "test-hosts": null;
+  "thermal-motion": null;
+  "thermal-recorder": null;
+  "thermal-throttler": null;
   windows: {
-    updated: IsoFormattedString,
-    "power-on"?: string,
-    "power-off"?: string,
-    "stop-recording"?: string,
-    "start-recording"?: string
-  }
-
+    updated: IsoFormattedString;
+    "power-on"?: string;
+    "power-off"?: string;
+    "stop-recording"?: string;
+    "start-recording"?: string;
+  };
 }

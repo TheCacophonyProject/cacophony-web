@@ -25,7 +25,9 @@ const flattenNodes = (
       label: child.label,
       display: child.display || child.label,
       node: child,
-      path: `${(parent && parent.path) || node.path || node.label}.${child.label}`,
+      path: `${(parent && parent.path) || node.path || node.label}.${
+        child.label
+      }`,
     };
     if (child.aliases) {
       for (const alias of child.aliases) {

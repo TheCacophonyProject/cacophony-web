@@ -191,9 +191,7 @@ describe("Monitoring : tracks and tags", () => {
       cy.testUserTagRecording(recID, 0, Damian, "possum");
       cy.testUserTagRecording(recID, 0, Gerry, "rat");
       checkRecording(Damian, recID, (recording) => {
-        cy.checkMonitoringTags(Damian, recording.stationId, [
-          "mammal",
-        ]);
+        cy.checkMonitoringTags(Damian, recording.stationId, ["mammal"]);
       });
     });
   });

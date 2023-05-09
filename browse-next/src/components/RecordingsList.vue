@@ -35,7 +35,10 @@
         }}</span>
         <span
           class="duration fs-8"
-          v-if="item.type === 'recording' && item.data.type === RecordingType.ThermalRaw"
+          v-if="
+            item.type === 'recording' &&
+            item.data.type === RecordingType.ThermalRaw
+          "
           v-html="formatDuration(item.data.duration * 1000)"
         ></span>
       </div>
@@ -158,9 +161,13 @@
               icon="stream"
               size="xs"
               class="station-icon pe-1 text"
-            /><span v-if="(item as RecordingItem).data.tracks.length === 0">No tracks</span
-            ><span v-else-if="(item as RecordingItem).data.tracks.length === 1">1 track</span
-            ><span v-else>{{ (item as RecordingItem).data.tracks.length }} tracks</span></span
+            /><span v-if="(item as RecordingItem).data.tracks.length === 0"
+              >No tracks</span
+            ><span v-else-if="(item as RecordingItem).data.tracks.length === 1"
+              >1 track</span
+            ><span v-else
+              >{{ (item as RecordingItem).data.tracks.length }} tracks</span
+            ></span
           >
         </div>
       </div>
@@ -169,15 +176,19 @@
 </template>
 
 <script lang="ts" setup>
-import {displayLabelForClassificationLabel} from "@/api/Classifications";
-import {formatDuration, timeAtLocation} from "@/models/visitsUtils";
-import {DateTime} from "luxon";
-import type {LatLng, RecordingId, StationId as LocationId} from "@typedefs/api/common";
-import type {ApiRecordingResponse} from "@typedefs/api/recording";
-import {API_ROOT} from "@api/root";
-import {ref} from "vue";
+import { displayLabelForClassificationLabel } from "@/api/Classifications";
+import { formatDuration, timeAtLocation } from "@/models/visitsUtils";
+import { DateTime } from "luxon";
+import type {
+  LatLng,
+  RecordingId,
+  StationId as LocationId,
+} from "@typedefs/api/common";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import { API_ROOT } from "@api/root";
+import { ref } from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
-import {RecordingType} from "@typedefs/api/consts.ts";
+import { RecordingType } from "@typedefs/api/consts.ts";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };

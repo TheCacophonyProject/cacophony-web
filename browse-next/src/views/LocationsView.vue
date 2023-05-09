@@ -159,9 +159,10 @@ const locationForHighlightedPoint = computed<ApiLocationResponse | null>(() => {
 });
 
 const projectHasLocations = computed<boolean>(() => {
-   return locations.value && (locations.value as ApiLocationResponse[]).length !== 0;
+  return (
+    locations.value && (locations.value as ApiLocationResponse[]).length !== 0
+  );
 });
-
 </script>
 <template>
   <div>
@@ -177,7 +178,9 @@ const projectHasLocations = computed<boolean>(() => {
       class="d-flex flex-md-row flex-column-reverse justify-content-between"
       v-else
     >
-      <div v-if="!projectHasLocations">There are no existing locations for this project</div>
+      <div v-if="!projectHasLocations">
+        There are no existing locations for this project
+      </div>
       <div v-else>
         <!--        <h6>Things that need to appear here:</h6>-->
         <!--        <ul>-->

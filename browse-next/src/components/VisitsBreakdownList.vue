@@ -30,9 +30,9 @@ const isNocturnal = computed<boolean>(() =>
 
 const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
   if (isNocturnal.value) {
-    return visitsByNightAtLocation(visits, location);//.reverse();
+    return visitsByNightAtLocation(visits, location); //.reverse();
   } else {
-    return visitsByDayAtLocation(visits, location);//.reverse();
+    return visitsByDayAtLocation(visits, location); //.reverse();
   }
 });
 const hasVisits = computed<boolean>(() => visits.length !== 0);
@@ -48,7 +48,9 @@ const hasVisits = computed<boolean>(() => visits.length !== 0);
       :location="location"
       :currently-highlighed-location="highlightedLocation"
       @selected-visit="(visit) => emit('selected-visit', visit)"
-      @change-highlighted-location="(loc) => emit('change-highlighted-location', loc)"
+      @change-highlighted-location="
+        (loc) => emit('change-highlighted-location', loc)
+      "
     />
   </div>
 </template>

@@ -1,13 +1,24 @@
 /// <reference path="../../../support/index.d.ts" />
-import {EXCLUDE_IDS} from "@commands/constants";
+import { EXCLUDE_IDS } from "@commands/constants";
 
-import {ApiRecordingSet} from "@commands/types";
-import {getCreds} from "@commands/server";
+import { ApiRecordingSet } from "@commands/types";
+import { getCreds } from "@commands/server";
 
-import {checkRecording, TestCreateExpectedRecordingData, TestCreateRecordingData,} from "@commands/api/recording-tests";
-import {ApiThermalRecordingResponse} from "@typedefs/api/recording";
-import {HttpStatusCode, RecordingProcessingState, RecordingType} from "@typedefs/api/consts";
-import {TEMPLATE_THERMAL_RECORDING, TEMPLATE_THERMAL_RECORDING_RESPONSE,} from "@commands/dataTemplate";
+import {
+  checkRecording,
+  TestCreateExpectedRecordingData,
+  TestCreateRecordingData,
+} from "@commands/api/recording-tests";
+import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+} from "@commands/dataTemplate";
 
 describe("Recordings (thermal): add, get, delete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
@@ -601,30 +612,33 @@ describe("Recordings (thermal): add, get, delete", () => {
     let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Add recording as device");
-    cy.apiRecordingAddOnBehalfUsingGroup("raGroupAdmin",
+    cy.apiRecordingAddOnBehalfUsingGroup(
+      "raGroupAdmin",
+      "raCamera1",
+      "raGroup",
+      recording1,
+      "tcRecording1",
+      [
+        { filename: "trailcam-image.jpeg", key: "file" },
+        { filename: "trailcam-image-resized.webp", key: "derived" },
+      ]
+    ).then(() => {
+      expectedRecording1 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "tcRecording1",
         "raCamera1",
-        "raGroup", recording1, "tcRecording1", [
-      { filename: "trailcam-image.jpeg", key: "file" },
-      { filename: "trailcam-image-resized.webp", key: "derived" }
-    ]).then(
-        () => {
-          expectedRecording1 = TestCreateExpectedRecordingData(
-              templateExpectedRecording,
-              "tcRecording1",
-              "raCamera1",
-              "raGroup",
-              null,
-              recording1
-          );
-          cy.log("Check recording can be viewed correctly");
-          cy.apiRecordingCheck(
-              "raGroupAdmin",
-              "tcRecording1",
-              expectedRecording1,
-              EXCLUDE_IDS
-          );
-        }
-    );
+        "raGroup",
+        null,
+        recording1
+      );
+      cy.log("Check recording can be viewed correctly");
+      cy.apiRecordingCheck(
+        "raGroupAdmin",
+        "tcRecording1",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
+    });
   });
 
   it("Zero sized recordings are rejected", () => {
@@ -633,25 +647,28 @@ describe("Recordings (thermal): add, get, delete", () => {
     let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log("Add recording as device");
-    cy.apiRecordingAdd("raCamera1", recording1, "zero-sized.cptv", "raRecording1").then(
-        () => {
-          expectedRecording1 = TestCreateExpectedRecordingData(
-              templateExpectedRecording,
-              "raRecording1",
-              "raCamera1",
-              "raGroup",
-              null,
-              recording1
-          );
-          expectedRecording1.processingState = RecordingProcessingState.Corrupt;
-          cy.log("Check recording can be viewed correctly");
-          cy.apiRecordingCheck(
-              "raGroupAdmin",
-              "raRecording1",
-              expectedRecording1,
-              EXCLUDE_IDS
-          );
-        }
-    );
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recording1,
+      "zero-sized.cptv",
+      "raRecording1"
+    ).then(() => {
+      expectedRecording1 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "raRecording1",
+        "raCamera1",
+        "raGroup",
+        null,
+        recording1
+      );
+      expectedRecording1.processingState = RecordingProcessingState.Corrupt;
+      cy.log("Check recording can be viewed correctly");
+      cy.apiRecordingCheck(
+        "raGroupAdmin",
+        "raRecording1",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
+    });
   });
 });

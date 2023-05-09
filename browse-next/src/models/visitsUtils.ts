@@ -5,8 +5,13 @@ import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
 import { onBeforeMount } from "vue";
-import {classifications, flatClassifications, getClassifications, getPathForLabel} from "@api/Classifications";
-import type {Classification} from "@typedefs/api/trackTag";
+import {
+  classifications,
+  flatClassifications,
+  getClassifications,
+  getPathForLabel,
+} from "@api/Classifications";
+import type { Classification } from "@typedefs/api/trackTag";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -28,7 +33,12 @@ const tagPrecedence = [
   if (flatClassifications.value) {
     for (let i = 0; i < tagPrecedence.length; i++) {
       const tag = tagPrecedence[i];
-      const classification = flatClassifications.value[tag] as { label: string; display: string; path: string, node: Classification };
+      const classification = flatClassifications.value[tag] as {
+        label: string;
+        display: string;
+        path: string;
+        node: Classification;
+      };
       if (classification && classification.node.children) {
         for (const child of classification.node.children) {
           tagPrecedence.splice(i + 1, 0, child.label);
@@ -81,9 +91,7 @@ export const visitsBySpecies = (
     {}
   );
   // NOTE: Order by "badness" of predator
-  return Object.entries(summary).sort(
-      ([a], [b]) => sortTagPrecedence(a, b)
-  );
+  return Object.entries(summary).sort(([a], [b]) => sortTagPrecedence(a, b));
 };
 
 export const visitsCountBySpecies = (
@@ -95,8 +103,7 @@ export const visitsCountBySpecies = (
       getPathForLabel(classification) || "",
       visits.length,
     ]) as [string, string, number][]
-  )
-  .sort((a, b) => {
+  ).sort((a, b) => {
     // Sort by count and break ties by name alphabetically
     const order = b[2] - a[2];
     if (order === 0) {

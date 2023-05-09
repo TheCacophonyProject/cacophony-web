@@ -524,7 +524,8 @@ defineExpose({
   }
 }
 
-.options-list-item:hover, .options-list-item:focus-within {
+.options-list-item:hover,
+.options-list-item:focus-within {
   background-color: #f1f1f1;
   transition: background-color 0.2s ease-in-out;
 }

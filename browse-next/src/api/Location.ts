@@ -12,7 +12,7 @@ export const createNewLocationForProject = async (
   location: LatLng,
   automatic = false,
   applyFromDate?: Date,
-  applyUntilDate?: Date,
+  applyUntilDate?: Date
 ): Promise<LoadedResource<{ locationId: LocationId }>> => {
   const payload: {
     station: string;

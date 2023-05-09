@@ -1,24 +1,30 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
-  computed, inject,
+  computed,
+  inject,
   nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
   watch,
 } from "vue";
-import type {Ref} from "vue";
+import type { Ref } from "vue";
 import {
   timezoneForLatLng,
   visitsBySpecies as visitsBySpeciesCalc,
 } from "@models/visitsUtils";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
-import {displayLabelForClassificationLabel, getPathForLabel} from "@api/Classifications";
-import type {StationId as LocationId} from "@typedefs/api/common";
+import {
+  displayLabelForClassificationLabel,
+  getPathForLabel,
+} from "@api/Classifications";
+import type { StationId as LocationId } from "@typedefs/api/common";
 
-const currentlyHighlightedLocation = inject("currentlyHighlightedLocation") as Ref<LocationId | null>;
+const currentlyHighlightedLocation = inject(
+  "currentlyHighlightedLocation"
+) as Ref<LocationId | null>;
 
 const { visits, locations, startDate } = defineProps<{
   visits: ApiVisitResponse[];
@@ -191,7 +197,11 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
               maxTime
             )}%`,
           }"
-          :class="['event-item-visit', visit.classification, ...(getPathForLabel(visit.classification) || '').split('.')]"
+          :class="[
+            'event-item-visit',
+            visit.classification,
+            ...(getPathForLabel(visit.classification) || '').split('.'),
+          ]"
         />
         <div
           v-for="(date, index) in dates"
