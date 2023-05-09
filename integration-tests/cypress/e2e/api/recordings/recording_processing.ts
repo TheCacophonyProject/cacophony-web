@@ -554,7 +554,7 @@ describe("Recordings - processing tests", () => {
         cy.apiRecordingAdd(
           "rpCamera1",
           recording11,
-          "60sec-audio.mp4",
+          "60sec-audio.m4a",
           "rpRecording11"
         ).then(() => {
           cy.apiRecordingAdd(
@@ -566,7 +566,7 @@ describe("Recordings - processing tests", () => {
             cy.apiRecordingAdd(
               "rpCamera1",
               recording13,
-              "60sec-audio.mp4",
+              "60sec-audio.m4a",
               "rpRecording13"
             ).then(() => {
               const expectedProcessing10 = TestCreateExpectedProcessingData(
@@ -728,6 +728,7 @@ describe("Recordings - processing tests", () => {
                 tags: [
                   {
                     what: "possum",
+                    path: "all",
                     automatic: true,
                     trackId: getCreds("rpTrack18").id,
                     confidence: 0.9,
@@ -848,6 +849,7 @@ describe("Recordings - processing tests", () => {
                 tags: [
                   {
                     what: "possum",
+                    path: "all",
                     automatic: true,
                     trackId: getCreds("rpTrack19").id,
                     confidence: 0.9,
@@ -1143,7 +1145,7 @@ describe("Recordings - processing tests", () => {
       cy.apiRecordingAdd(
         "rpCamera1",
         recording21,
-        "60sec-audio.mp4",
+        "60sec-audio.m4a",
         "rpRecording21"
       ).then(() => {
         expectedRecording21 = TestCreateExpectedRecordingData(
@@ -1163,7 +1165,7 @@ describe("Recordings - processing tests", () => {
 
         cy.log("Check recording status is 'toMp3'");
         expectedRecording21.processingState = RecordingProcessingState.ToMp3;
-        expectedRecording21.rawMimeType = "video/mp4";
+        expectedRecording21.rawMimeType = "audio/mp4";
         cy.apiRecordingCheck(
           "rpGroupAdmin",
           "rpRecording21",
@@ -1193,7 +1195,7 @@ describe("Recordings - processing tests", () => {
           );
           expectedRecording21b.processingState = RecordingProcessingState.ToMp3;
           expectedRecording21b.processing = true;
-          expectedRecording21b.rawMimeType = "video/mp4";
+          expectedRecording21b.rawMimeType = "audio/mp4";
           cy.apiRecordingCheck(
             "rpGroupAdmin",
             "rpRecording21",
@@ -1206,7 +1208,7 @@ describe("Recordings - processing tests", () => {
             cy.log("Check recording status is 'analyse'");
             expectedRecording21.processingState =
               RecordingProcessingState.Analyse;
-            expectedRecording21.rawMimeType = "video/mp4";
+            expectedRecording21.rawMimeType = "audio/mp4";
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording21",
@@ -1238,7 +1240,7 @@ describe("Recordings - processing tests", () => {
               expectedRecording21b.processingState =
                 RecordingProcessingState.Analyse;
               expectedRecording21b.processing = true;
-              expectedRecording21b.rawMimeType = "video/mp4";
+              expectedRecording21b.rawMimeType = "audio/mp4";
               cy.apiRecordingCheck(
                 "rpGroupAdmin",
                 "rpRecording21",
@@ -1261,7 +1263,7 @@ describe("Recordings - processing tests", () => {
                   expectedRecording21c.processingState =
                     RecordingProcessingState.Finished;
                   expectedRecording21c.processing = false;
-                  expectedRecording21c.rawMimeType = "video/mp4";
+                  expectedRecording21c.rawMimeType = "audio/mp4";
                   expectedRecording21c.tracks = [];
                   cy.apiRecordingCheck(
                     "rpGroupAdmin",
@@ -1488,7 +1490,7 @@ describe("Recordings - processing tests", () => {
             expectedRecording23c.processingState =
               RecordingProcessingState.Finished;
             expectedRecording23c.processing = false;
-            expectedRecording23c.rawMimeType = "video/mp4";
+            expectedRecording23c.rawMimeType = "audio/mp4";
             expectedRecording23c.tracks = [];
             cy.apiRecordingCheck(
               "rpGroupAdmin",

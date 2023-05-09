@@ -1,6 +1,6 @@
 {
     "label": "all",
-    "version": "35faf19f-cef2-462b-83ba-d1a921145f3",
+    "version": "35faf19f-cef2-462b-83ba-d1a921145f4",
     "children": [
         {
             "label": "mammal",
@@ -686,6 +686,7 @@
                 },
                 {
                     "label": "kiwi",
+                    "aliases": ["bird/kiwi"],
                     "children": [
                         {
                             "label": "great spotted kiwi"

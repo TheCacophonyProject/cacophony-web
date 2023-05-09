@@ -13,21 +13,31 @@ const loadedClassificationsThisSession = ref(false);
 export const classifications = ref<Classification | null>(null);
 
 const flattenNodes = (
-  acc: Record<string, { label: string; display: string; path: string, node: Classification }>,
+  acc: Record<
+    string,
+    { label: string; display: string; path: string; node: Classification }
+  >,
   node: Classification
 ) => {
   for (const child of node.children || []) {
+    const parent = acc[node.label];
     acc[child.label] = {
       label: child.label,
       display: child.display || child.label,
       node: child,
-      path: `${node.path || node.label}.${child.label}`,
+      path: `${(parent && parent.path) || node.path || node.label}.${child.label}`,
     };
+    if (child.aliases) {
+      for (const alias of child.aliases) {
+        acc[alias] = acc[child.label];
+      }
+    }
     flattenNodes(acc, child);
   }
   return acc;
 };
 
+// TODO: Move to provide/inject at App level
 export const flatClassifications = computed<
   Record<string, { label: string; display: string; path: string }>
 >(() => {
@@ -88,7 +98,13 @@ export const getClassifications = async (
   return classifications.value;
 };
 
-export const displayLabelForClassificationLabel = (label: string, aiTag = false) => {
+export const displayLabelForClassificationLabel = (
+  label: string,
+  aiTag = false
+) => {
+  if (!label) {
+    debugger;
+  }
   label = label.toLowerCase();
   if (label === "unidentified" && aiTag) {
     return "Unidentified";

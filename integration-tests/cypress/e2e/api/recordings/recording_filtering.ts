@@ -59,6 +59,7 @@ describe("Recording filtering", () => {
     automatic: false,
     trackId: NOT_NULL,
     what: "cat",
+    path: "all",
     userName: NOT_NULL_STRING,
     userId: NOT_NULL,
   };
@@ -70,6 +71,7 @@ describe("Recording filtering", () => {
     automatic: true,
     trackId: NOT_NULL,
     what: "cat",
+    path: "all"
   };
 
   before(() => {

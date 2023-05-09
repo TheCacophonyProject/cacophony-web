@@ -35,7 +35,7 @@
         }}</span>
         <span
           class="duration fs-8"
-          v-if="item.type === 'recording'"
+          v-if="item.type === 'recording' && item.data.type === RecordingType.ThermalRaw"
           v-html="formatDuration(item.data.duration * 1000)"
         ></span>
       </div>
@@ -102,7 +102,7 @@
               class="visit-species-tag px-1 mb-1 text-capitalize me-1"
               :class="tag.path.split('.')"
               :key="tag.what"
-              v-for="(tag, index) in tagsForRecording(item.data)"
+              v-for="tag in tagsForRecording(item.data)"
               >{{
                 displayLabelForClassificationLabel(
                   tag.what,
@@ -135,7 +135,7 @@
               class="visit-species-tag px-1 mb-1 text-capitalize me-1"
               :class="[label.what]"
               :key="label.what"
-              v-for="(label, index) in labelsForRecording(item.data)"
+              v-for="label in labelsForRecording((item as RecordingItem).data)"
               >{{ label.what }}
             </span>
           </div>
@@ -144,23 +144,23 @@
               icon="map-marker-alt"
               size="xs"
               class="station-icon pe-1 text"
-            />{{ item.data.stationName }}</span
+            />{{ (item as RecordingItem).data.stationName }}</span
           >
           <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
             ><font-awesome-icon
               icon="video"
               size="xs"
               class="station-icon pe-1 text"
-            />{{ item.data.deviceName }}</span
+            />{{ (item as RecordingItem).data.deviceName }}</span
           >
           <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
             ><font-awesome-icon
               icon="stream"
               size="xs"
               class="station-icon pe-1 text"
-            /><span v-if="item.data.tracks.length === 0">No tracks</span
-            ><span v-else-if="item.data.tracks.length === 1">1 track</span
-            ><span v-else>{{ item.data.tracks.length }} tracks</span></span
+            /><span v-if="(item as RecordingItem).data.tracks.length === 0">No tracks</span
+            ><span v-else-if="(item as RecordingItem).data.tracks.length === 1">1 track</span
+            ><span v-else>{{ (item as RecordingItem).data.tracks.length }} tracks</span></span
           >
         </div>
       </div>
@@ -169,15 +169,15 @@
 </template>
 
 <script lang="ts" setup>
-import { displayLabelForClassificationLabel } from "@/api/Classifications";
-import { formatDuration, timeAtLocation } from "@/models/visitsUtils";
-import { DateTime } from "luxon";
-import type { LatLng, RecordingId } from "@typedefs/api/common";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { API_ROOT } from "@api/root";
-import { ref } from "vue";
-import type { StationId as LocationId } from "@typedefs/api/common";
+import {displayLabelForClassificationLabel} from "@/api/Classifications";
+import {formatDuration, timeAtLocation} from "@/models/visitsUtils";
+import {DateTime} from "luxon";
+import type {LatLng, RecordingId, StationId as LocationId} from "@typedefs/api/common";
+import type {ApiRecordingResponse} from "@typedefs/api/recording";
+import {API_ROOT} from "@api/root";
+import {ref} from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
+import {RecordingType} from "@typedefs/api/consts.ts";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -186,18 +186,19 @@ interface TagItem {
   human?: boolean;
   automatic?: boolean;
   what: string;
-  path?: string;
+  path: string;
   displayName: string;
 }
 
-const { recordingsByDay } = defineProps<{
-  recordingsByDay: {
-    dateTime: DateTime;
-    items: (RecordingItem | SunItem)[];
-  }[];
-  canonicalLocation: LatLng;
-  currentlySelectedRecordingId: RecordingId;
-}>();
+const { recordingsByDay, canonicalLocation, currentlySelectedRecordingId } =
+  defineProps<{
+    recordingsByDay: {
+      dateTime: DateTime;
+      items: (RecordingItem | SunItem)[];
+    }[];
+    canonicalLocation: LatLng;
+    currentlySelectedRecordingId: RecordingId | null;
+  }>();
 
 const emit = defineEmits<{
   (e: "selected-recording", id: RecordingId): void;
@@ -247,6 +248,7 @@ const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
       automatic: false,
       what: tag.detail,
       displayName: tag.detail,
+      path: "",
     };
     const existingTag = uniqueLabels[tag.detail];
     if (!existingTag.human && !tag.automatic) {

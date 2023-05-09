@@ -304,7 +304,7 @@ export default function (app: Application, baseUrl: string) {
       deprecatedField(query("where")), // Sidekick
     ]),
     fetchAuthorizedRequiredGroups,
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       let groups: ApiGroupResponse[] = mapGroups(
         response.locals.groups,
         response.locals.viewAsSuperUser
@@ -319,6 +319,9 @@ export default function (app: Application, baseUrl: string) {
         const actualUser = await models.User.findByPk(
           response.locals.requestUser.id
         );
+        if (!actualUser) {
+          return next(new AuthorizationError("User not found"));
+        }
         if (actualUser.createdAt > oneWeekAgo) {
           // Check invites that haven't expired
           const invites = await models.GroupInvites.findAll({
@@ -838,6 +841,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiInterface {apiBody::ApiCreateSingleStationDataBody} station ApiStation
    * @apiParam {Date} [from-date] Start (active from) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
    * @apiParam {Date} [until-date] End (retirement) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParam {Boolean} [automatic] Station is treated as automatically created, such that the from/until dates are flexible and can be moved if earlier
+   * recordings are seen.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Integer} stationId StationId id of new station.
@@ -850,6 +855,7 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
       body("station").exists().custom(jsonSchemaOf(ApiCreateStationDataSchema)),
       body("from-date").isISO8601().toDate().optional(),
+      booleanOf(body("automatic")).optional().default(false),
       body("until-date").isISO8601().toDate().optional(),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
@@ -901,7 +907,7 @@ export default function (app: Application, baseUrl: string) {
         location,
         activeAt: fromTime,
         retiredAt: untilTime || null,
-        automatic: false,
+        automatic: request.body.automatic || false,
         lastUpdatedById: userId,
         GroupId: groupId,
       });

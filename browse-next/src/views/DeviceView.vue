@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { computed, inject, onBeforeMount, ref } from "vue";
 import type { Ref } from "vue";
+import { computed, inject, onBeforeMount, ref } from "vue";
 import { projectDevicesLoaded, userProjectsLoaded } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import DeviceName from "@/components/DeviceName.vue";
 import { DeviceType } from "@typedefs/api/consts.ts";
+
 const route = useRoute();
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
 
 const groupDevices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -21,7 +22,9 @@ const loadDevice = async (deviceId: DeviceId) => {
   deviceLoading.value = true;
   await Promise.all([userProjectsLoaded(), projectDevicesLoaded()]);
   if (groupDevices.value) {
-    const targetDevice = groupDevices.value.find(({ id }) => id === deviceId);
+    const targetDevice = (groupDevices.value as ApiDeviceResponse[]).find(
+      ({ id }) => id === deviceId
+    );
     if (targetDevice) {
       device.value = targetDevice;
     } else {
@@ -46,7 +49,7 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
 
 const deviceType = computed<string>(() => {
   if (device.value) {
-    switch (device.value.type) {
+    switch ((device.value as ApiDeviceResponse).type) {
       case DeviceType.Thermal:
         return "Thermal camera";
       case DeviceType.Audio:
@@ -70,7 +73,10 @@ const deviceType = computed<string>(() => {
           deviceType
         }}</span>
         <div class="device-header-details mb-1 mb-sm-0" v-if="!deviceLoading">
-          <device-name :name="device.deviceName" :type="device.type" />
+          <device-name
+            :name="(device as ApiDeviceResponse).deviceName"
+            :type="(device as ApiDeviceResponse).type"
+          />
         </div>
       </div>
       <button
@@ -98,7 +104,7 @@ const deviceType = computed<string>(() => {
           >Diagnostics</router-link
         >
         <router-link
-          v-if="device.type === 'thermal'"
+          v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
           :class="[
             ...navLinkClasses,
             { active: activeTabName === 'device-insights' },
@@ -110,6 +116,7 @@ const deviceType = computed<string>(() => {
           >Insights</router-link
         >
         <router-link
+          v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
           :class="[
             ...navLinkClasses,
             { active: activeTabName === 'device-setup' },
@@ -122,7 +129,7 @@ const deviceType = computed<string>(() => {
         >
 
         <router-link
-          v-if="device.type === 'thermal'"
+          v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
           :class="[
             ...navLinkClasses,
             { active: activeTabName === 'device-schedules' },
@@ -146,9 +153,10 @@ const deviceType = computed<string>(() => {
           >Manual Uploads</router-link
         >
       </ul>
-      <div class="py-3">
-        <router-view />
-      </div>
+      <router-view
+        @start-blocking-work="() => emit('start-blocking-work')"
+        @end-blocking-work="() => emit('end-blocking-work')"
+      />
     </div>
   </div>
 </template>

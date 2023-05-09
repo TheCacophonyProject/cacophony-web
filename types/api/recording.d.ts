@@ -70,7 +70,7 @@ export interface ApiAudioRecordingMetadataResponse {
 
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   additionalMetadata?: ApiThermalRecordingMetadataResponse;
-  type: RecordingType.ThermalRaw;
+  type: RecordingType.ThermalRaw | RecordingType.InfraredVideo | RecordingType.TrailCamVideo | RecordingType.TrailCamImage;
 }
 
 export interface CacophonyIndex {

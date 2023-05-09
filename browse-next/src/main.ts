@@ -15,6 +15,7 @@ import {
   userIsLoggedIn,
   userIsProjectAdmin,
   userProjects,
+  userHasProjects
 } from "@models/provides";
 import {
   currentSelectedProject as fallibleCurrentSelectedProject,
@@ -24,6 +25,7 @@ import {
   urlNormalisedCurrentProjectName,
   userIsAdminForCurrentSelectedProject,
   userIsLoggedIn as hasLoggedInUser,
+  userHasProjects as hasProjects,
   UserProjects,
 } from "@models/LoggedInUser";
 
@@ -44,5 +46,6 @@ app.provide(currentUserCreds, CurrentUserCreds);
 app.provide(userIsProjectAdmin, userIsAdminForCurrentSelectedProject);
 app.provide(userIsLoggedIn, hasLoggedInUser);
 app.provide(userProjects, UserProjects);
+app.provide(userHasProjects, hasProjects);
 
 app.mount("#app");

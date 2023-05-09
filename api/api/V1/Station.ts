@@ -243,10 +243,15 @@ export default function (app: Application, baseUrl: string) {
         uploadingDevice,
         uploadingUser,
         data,
-        key,
-        uploadedFileData,
+        keys,
+        uploadedFileDatas,
         locals
       ): Promise<string> => {
+        console.assert(
+          keys.length === 1,
+          "Only expected 1 file-attachment for this end-point"
+        );
+        const key = keys[0];
         const station = locals.station;
         const stationSettings: ApiStationSettings = { ...station.settings };
         stationSettings.referenceImages = [

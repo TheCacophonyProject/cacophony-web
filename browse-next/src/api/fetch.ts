@@ -236,6 +236,24 @@ export async function fetch<T>(
   let result;
   if (isJSON) {
     result = await response.json();
+
+    if (
+      response.status === HttpStatusCode.Forbidden &&
+      result.errorType === "authorization" &&
+      !response.url.endsWith("/api/v1/users/authenticate")
+    ) {
+      forgetUserOnCurrentDevice();
+      return {
+        result: {
+          errors: ["Unauthorized"],
+          messages: ["You must be logged in to access this API."],
+          errorType: "Client",
+        },
+        status: HttpStatusCode.AuthorizationError,
+        success: false,
+      };
+    }
+
     if (result.cwVersion) {
       const lastApiVersion = window.localStorage.getItem("last-api-version");
       if (lastApiVersion && lastApiVersion !== result.cwVersion) {

@@ -9,7 +9,7 @@
       "node_modules/typescript/lib/lib.dom.d.ts"
   ],
   "compilerOptions": {
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],

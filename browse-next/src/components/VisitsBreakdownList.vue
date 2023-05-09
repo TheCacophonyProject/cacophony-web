@@ -4,6 +4,7 @@
 
 import { computed } from "vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import type { StationId as LocationId } from "@typedefs/api/common";
 import VisitsDailyBreakdown from "@/components/VisitsDailyBreakdown.vue";
 import {
   visitsAreNocturnalOnlyAtLocation,
@@ -16,6 +17,11 @@ import type { DateTime } from "luxon";
 const { visits, location } = defineProps<{
   visits: ApiVisitResponse[];
   location: LatLng;
+  highlightedLocation: LocationId | null;
+}>();
+const emit = defineEmits<{
+  (e: "selected-visit", payload: ApiVisitResponse): void;
+  (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
 const isNocturnal = computed<boolean>(() =>
@@ -24,9 +30,9 @@ const isNocturnal = computed<boolean>(() =>
 
 const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
   if (isNocturnal.value) {
-    return visitsByNightAtLocation(visits, location).reverse();
+    return visitsByNightAtLocation(visits, location);//.reverse();
   } else {
-    return visitsByDayAtLocation(visits, location).reverse();
+    return visitsByDayAtLocation(visits, location);//.reverse();
   }
 });
 const hasVisits = computed<boolean>(() => visits.length !== 0);
@@ -40,6 +46,9 @@ const hasVisits = computed<boolean>(() => visits.length !== 0);
       :visits="visits"
       :is-nocturnal="isNocturnal"
       :location="location"
+      :currently-highlighed-location="highlightedLocation"
+      @selected-visit="(visit) => emit('selected-visit', visit)"
+      @change-highlighted-location="(loc) => emit('change-highlighted-location', loc)"
     />
   </div>
 </template>

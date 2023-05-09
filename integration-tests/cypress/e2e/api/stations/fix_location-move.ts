@@ -399,7 +399,7 @@ describe("Device: fix-location of device and/or recordings", () => {
     });
   });
 
-  it("correct location: Move all recordings from auto to manual, before current lastRecTime", () => {
+  it.only("correct location: Move all recordings from auto to manual, before current lastRecTime", () => {
     const deviceName = "new-device-3";
     const manualStationName = "Josie-station-3";
 
@@ -451,7 +451,18 @@ describe("Device: fix-location of device and/or recordings", () => {
               deviceName,
               { ...newLocation, time: fifthTime },
               fifthName
-            );
+            ).then(() => {
+              cy.log(
+                  "Check pre-existing recording is correctly added to manual station"
+              );
+              checkRecordingLocationAndStation(
+                  Josie,
+                  fifthName,
+                  newLocation,
+                  getTestName(manualStationName)
+              );
+            });
+
 
             cy.log(
               "Update first and subsequent recording's location to match manual station"

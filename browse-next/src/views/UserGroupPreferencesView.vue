@@ -7,6 +7,7 @@ import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
 
 const selectedLeaveProject = ref(false);
 const alerts = ref<ApiAlertResponse[]>([]);
+const isNotOnlyProjectOwnerOrAdmin = ref<true>;
 
 onMounted(async () => {
   const response = await getAlertsForCurrentUser();
@@ -33,6 +34,7 @@ onMounted(async () => {
     class="btn btn-outline-danger"
     type="button"
     @click="selectedLeaveProject = true"
+    v-if="!isNotOnlyProjectOwnerOrAdmin"
   >
     Leave this project
   </button>

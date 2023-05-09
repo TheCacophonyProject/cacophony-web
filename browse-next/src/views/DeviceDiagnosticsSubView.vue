@@ -38,7 +38,7 @@ const deviceId = Number(route.params.deviceId) as DeviceId;
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
-      devices.value.find(
+      (devices.value as ApiDeviceResponse[]).find(
         (device: ApiDeviceResponse) => device.id === deviceId
       )) ||
     null
@@ -54,12 +54,12 @@ const isLoading = (val: Ref<LoadedResource<any>>) =>
   computed<boolean>(() => val.value === null);
 const configInfoLoading = isLoading(deviceConfig);
 const versionInfoLoading = isLoading(versionInfo);
-const stationInfoLoading = isLoading(currentLocationForDevice);
+const locationInfoLoading = isLoading(currentLocationForDevice);
 
 const records247 = computed<boolean>(() => {
   // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
   if (deviceConfig.value) {
-    const windows = deviceConfig.value.windows;
+    const windows = (deviceConfig.value as DeviceConfigDetail).windows;
     const start = (windows && windows["start-recording"]) || "-30m";
     const end = (windows && windows["stop-recording"]) || "+30m";
     if (!start.endsWith("m") || !end.endsWith("m")) {
@@ -72,7 +72,7 @@ const records247 = computed<boolean>(() => {
 const poweredOn247 = computed<boolean>(() => {
   // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
   if (deviceConfig.value) {
-    const windows = deviceConfig.value.windows;
+    const windows = (deviceConfig.value as DeviceConfigDetail).windows;
     const start = (windows && windows["power-on"]) || "-30m";
     const end = (windows && windows["power-off"]) || "+30m";
     if (!start.endsWith("m") || !end.endsWith("m")) {
@@ -114,13 +114,14 @@ const scheduledPowerOffTime = computed<Date | null>(() => {
 
 const scheduledRecordStartTime = computed<Date | null>(() => {
   if (deviceConfig.value && device.value) {
-    const windows = deviceConfig.value.windows;
+    const windows = (deviceConfig.value as DeviceConfigDetail).windows;
+    const thisDevice = device.value as ApiDeviceResponse;
     const end = (windows && windows["start-recording"]) || "-30m";
-    if (device.value.location) {
+    if (thisDevice.location) {
       const { sunset } = sunCalc.getTimes(
         new Date(),
-        device.value.location.lat,
-        device.value.location.lng
+        thisDevice.location.lat,
+        thisDevice.location.lng
       );
       return absoluteTime(end, sunset);
     }
@@ -130,13 +131,14 @@ const scheduledRecordStartTime = computed<Date | null>(() => {
 
 const scheduledRecordEndTime = computed<Date | null>(() => {
   if (deviceConfig.value && device.value) {
-    const windows = deviceConfig.value.windows;
+    const windows = (deviceConfig.value as DeviceConfigDetail).windows;
+    const thisDevice = device.value as ApiDeviceResponse;
     const end = (windows && windows["stop-recording"]) || "+30m";
-    if (device.value.location) {
+    if (thisDevice.location) {
       const { sunrise } = sunCalc.getTimes(
         new Date(),
-        device.value.location.lat,
-        device.value.location.lng
+        thisDevice.location.lat,
+        thisDevice.location.lng
       );
       const off = absoluteTime(end, sunrise);
       if (scheduledPowerOnTime.value && off > scheduledPowerOnTime.value) {
@@ -146,8 +148,8 @@ const scheduledRecordEndTime = computed<Date | null>(() => {
         tomorrow.setDate(tomorrow.getDate() + 1);
         const { sunrise } = sunCalc.getTimes(
           tomorrow,
-          device.value.location.lat,
-          device.value.location.lng
+          thisDevice.location.lat,
+          thisDevice.location.lng
         );
         return absoluteTime(end, sunrise);
       }
@@ -191,7 +193,7 @@ const recordingWindow = computed<string | null>(() => {
   if (records247.value) {
     return "Set to be ready to record 24/7";
   } else if (deviceConfig.value) {
-    const windows = deviceConfig.value.windows;
+    const windows = (deviceConfig.value as DeviceConfigDetail).windows;
     const start = (windows && windows["start-recording"]) || "-30m";
     const end = (windows && windows["stop-recording"]) || "+30m";
     let startTime = "";
@@ -221,7 +223,7 @@ const poweredOnWindow = computed<string | null>(() => {
   if (poweredOn247.value) {
     return "Set to be powered on 24/7";
   } else if (deviceConfig.value) {
-    const windows = deviceConfig.value.windows;
+    const windows = (deviceConfig.value as DeviceConfigDetail).windows;
     const start = (windows && windows["power-on"]) || "-30m";
     const end = (windows && windows["power-off"]) || "+30m";
     let startTime = "";
@@ -301,6 +303,7 @@ onMounted(async () => {
     await projectDevicesLoaded();
   }
   if (device.value) {
+    const thisDevice = device.value as ApiDeviceResponse;
     const thermalEvents = [
       getDeviceConfig,
       getDeviceVersionInfo,
@@ -308,7 +311,7 @@ onMounted(async () => {
       getDeviceLastPoweredOff,
     ].map((fn) => fn(deviceId));
     const infoRequests = [];
-    if (device.value.type === "thermal") {
+    if (thisDevice.type === "thermal") {
       infoRequests.push(...thermalEvents);
     } else {
       infoRequests.push(
@@ -335,10 +338,10 @@ onMounted(async () => {
 
     //Now we can work out if the device is currently on?
 
-    if (device.value.type === "thermal") {
+    if (thisDevice.type === "thermal") {
       const latestStatus = await getLatestStatusRecordingForDevice(
-        device.value.id,
-        device.value.groupId
+        thisDevice.id,
+        thisDevice.groupId
       );
       if (latestStatus) {
         latestStatusRecording.value = latestStatus;
@@ -392,18 +395,20 @@ const versionInfoTable = computed<CardTableRows<any>>(() =>
 
 const deviceLocationPoints = computed<NamedPoint[]>(() => {
   if (currentLocationForDevice.value && device.value) {
+    const thisDevice = device.value as ApiDeviceResponse;
+    const thisLocation = currentLocationForDevice.value as ApiLocationResponse;
     return [
       {
-        location: device.value?.location || { lat: 0, lng: 0 },
-        name: device.value.deviceName,
-        id: device.value.id,
-        project: device.value.groupName,
+        location: thisDevice?.location || { lat: 0, lng: 0 },
+        name: thisDevice.deviceName,
+        id: thisDevice.id,
+        project: thisDevice.groupName,
       },
       {
-        location: currentLocationForDevice.value.location,
-        name: currentLocationForDevice.value.name,
-        id: currentLocationForDevice.value.id,
-        project: currentLocationForDevice.value.groupName,
+        location: thisLocation.location,
+        name: thisLocation.name,
+        id: thisLocation.id,
+        project: thisLocation.groupName,
       },
     ];
   } else {
@@ -412,7 +417,7 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
 });
 </script>
 <template>
-  <div v-if="device">
+  <div v-if="device" class="p-3">
     <div class="d-flex justify-content-between">
       <div class="flex-grow-1" v-if="device.type === 'thermal'">
         <div v-if="versionInfoLoading">Loading version info</div>
@@ -497,7 +502,7 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
         <h6>Current location:</h6>
         <!-- Show the device "inside" its station if possible -->
         <div v-if="device.location">
-          <div v-if="stationInfoLoading">Loading location info</div>
+          <div v-if="locationInfoLoading">Loading location info</div>
           <div v-else-if="currentLocationForDevice">
             <map-with-points
               :points="deviceLocationPoints"
@@ -507,17 +512,17 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
               :is-interactive="false"
               :zoom="false"
               :can-change-base-map="false"
-              :loading="stationInfoLoading"
+              :loading="locationInfoLoading"
               style="min-height: 200px"
             />
           </div>
-          <div v-else>Device is not currently at a known station</div>
+          <div v-else>Device is not currently at a known location</div>
         </div>
         <div v-else>Device does not currently have a known location</div>
       </div>
     </div>
   </div>
-  <div v-else>Device not found in group.</div>
+  <div v-else class="p-3">Device not found in group.</div>
 </template>
 
 <style scoped lang="less"></style>

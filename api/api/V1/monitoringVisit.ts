@@ -9,6 +9,8 @@ import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts";
 import { Station } from "@models/Station";
 import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import { TrackTag } from "@models/TrackTag";
+import logger from "@log";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -80,7 +82,7 @@ class Visit {
     return true;
   }
 
-  calculateTags(aiModel: string) {
+  calculateTags(aiModel: string, dontSplit: boolean = false) {
     this.recordings = (this.rawRecordings || []).map((rec) =>
       this.calculateTrackTags(rec, aiModel)
     );
@@ -95,7 +97,7 @@ class Visit {
           // Only prefer human tags for visit labels if they're not false-positives.
           this.classification = bestHumanTags[0][0];
           this.classFromUserTag = true;
-          if (bestHumanTags[0][1].some(tag => tag.userTagsConflict)) {
+          if (bestHumanTags[0][1].some((tag) => tag.userTagsConflict)) {
             this.userTagsConflict = true;
           }
         } else {
@@ -106,6 +108,12 @@ class Visit {
           this.classFromUserTag = false;
         }
       } else {
+        if (dontSplit) {
+          this.classification = bestHumanTags[0][0];
+          //this.userTagsConflict = true;
+          this.classFromUserTag = true;
+          return { split: false };
+        }
         return { split: this, rawRecordings: this.rawRecordings };
       }
     } else {
@@ -170,12 +178,20 @@ class Visit {
         start: track.data ? track.data.start_s : "",
         end: track.data ? track.data.end_s : "",
         mass:
-            (track.positions &&
-                track.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
-            0,
+          (track.positions &&
+            track.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+          0,
       };
-      if (bestTag && bestTag.data && typeof bestTag.data === "object" && bestTag.data.userTagsConflict) {
+      if (
+        bestTag &&
+        bestTag.data &&
+        typeof bestTag.data === "object" &&
+        bestTag.data.userTagsConflict
+      ) {
         thisTrack.userTagsConflict = true;
+        if (bestTag.what === "") {
+          thisTrack.tag = "conflicting tags";
+        }
       }
 
       newVisitRecording.tracks.push(thisTrack);
@@ -217,7 +233,7 @@ function getBestGuessOverall(
   allTracks: VisitTrack[],
   isAi: boolean
 ): [TagName, VisitTrack[]][] {
-  let tracks;
+  let tracks: VisitTrack[];
   if (!isAi) {
     // Make sure we don't count user false-positive tags, unless that is the *only* user tag.
     // If a user tags one track as a cat, and two tracks as false positive, we should always say the visit was a cat!
@@ -239,7 +255,7 @@ function getBestGuessOverall(
     }
   }
 
-  const counts = {};
+  const counts: Record<string, VisitTrack[]> = {};
   tracks.forEach((track) => {
     const tag = track.tag;
     if (tag) {
@@ -248,7 +264,31 @@ function getBestGuessOverall(
     }
   });
 
-  return getBestGuess(Object.entries(counts));
+  const countBreakdown = Object.entries(counts);
+  const bestGuess = getBestGuess(countBreakdown);
+  if (!isAi && bestGuess.length > 1) {
+    // We may be able to tie-break best guesses for multiple human tags that have the same ancestor.
+    // Add hierarchical tag parents here, so that if a user tags a track with mustelid, and another with
+    // stoat, the best guess tag will be the common ancestor.
+    const allTrackTags: any[] = [];
+    for (const track of tracks) {
+      allTrackTags.push({
+        id: track.id,
+        automatic: track.isAITagged,
+        what: track.tag,
+      });
+    }
+    if (allTracks.some((track) => track.tag === "pukeko")) {
+      debugger;
+    }
+    const commonUserTag = getCanonicalTrackTag(allTrackTags as TrackTag[]);
+    if (commonUserTag && commonUserTag.what in counts) {
+      return getBestGuess(
+        Object.entries(counts).filter(([key]) => key === commonUserTag.what)
+      );
+    }
+  }
+  return bestGuess;
 }
 
 function getBestGuess(
@@ -377,7 +417,8 @@ export async function generateVisits(
       }
       for (const aVisit of actualVisits) {
         if (aVisit.rawRecordings) {
-          aVisit.calculateTags(search.compareAi);
+          aVisit.calculateTags(search.compareAi, true);
+          delete aVisit.rawRecordings;
         }
         aVisit.markIfPossiblyIncomplete(incompleteCutoff);
       }
@@ -397,9 +438,21 @@ async function getRecordings(
   until: Moment,
   viewAsSuperUser: boolean
 ) {
+  const types = [];
+  const allowedTypes = [
+    RecordingType.Audio,
+    RecordingType.ThermalRaw,
+    RecordingType.TrailCamImage,
+    RecordingType.TrailCamVideo,
+  ];
+  for (const type of params.types) {
+    if (allowedTypes.includes(type)) {
+      types.push(type);
+    }
+  }
   const where: any = {
     duration: { [Op.gte]: "3" }, // Ignore our 2 second health-check recordings
-    type: RecordingType.ThermalRaw,
+    type: { [Op.in]: types },
     deletedAt: { [Op.eq]: null },
     recordingDateTime: { [Op.gt]: from, [Op.lt]: until },
   };

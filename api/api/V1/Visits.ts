@@ -20,12 +20,12 @@ import { Event } from "@models/Event";
 import { DeviceId, StationId } from "@typedefs/api/common";
 
 import Classifications from "@/classifications/classification.json";
-import {Classification} from "@typedefs/api/trackTag";
+import { Classification } from "@typedefs/api/trackTag";
 
 const flattenNodes = (
-    acc: Record<string, { label: string; display: string; path: string }>,
-    node: Classification,
-    parentPath: string
+  acc: Record<string, { label: string; display: string; path: string }>,
+  node: Classification,
+  parentPath: string
 ) => {
   for (const child of node.children || []) {
     acc[child.label] = {
@@ -39,11 +39,11 @@ const flattenNodes = (
 };
 
 const flatClassifications = (() => {
-    const nodes = flattenNodes({}, Classifications, "all");
-    if (nodes.unknown) {
-      nodes["unidentified"] = nodes["unknown"];
-    }
-    return nodes;
+  const nodes = flattenNodes({}, Classifications, "all");
+  if (nodes.unknown) {
+    nodes["unidentified"] = nodes["unknown"];
+  }
+  return nodes;
 })();
 
 let visitID = 1;
@@ -78,24 +78,41 @@ function sortTracks(tracks: Track[]) {
 }
 
 const getCommonAncestorForTags = (tags: string[]): string => {
-  // Find common root, if any below mammal or bird.
-  const classes = tags.map(tag => flatClassifications[tag]).filter(classification => classification !== undefined);
-  const commonAncestors = new Set();
+  // Find common parents of classifications.
+  const classes = tags
+    .map((tag) => flatClassifications[tag])
+    .filter((classification) => classification !== undefined);
+  const commonAncestors = new Map();
   for (const classification of classes) {
     const path = classification.path.split(".");
+    while (path.length > 2) {
+      path.shift();
+    }
     while (path.length) {
+      // Don't include all
       const piece = path.pop();
-      if (commonAncestors.has(piece)) {
-        // We found a common ancestor
-        return piece;
-      }
       // Only add the piece if all classes agree on it.
-      const allOthersAgree = classes.filter(c => c !== classification && !c.path.includes(piece)).length === 0;
-      if (allOthersAgree) {
-        commonAncestors.add(piece);
+      const someOthersAgree = classes.some(
+        (c) => c !== classification && c.path.includes(piece)
+      );
+      if (someOthersAgree) {
+        if (commonAncestors.has(piece)) {
+          commonAncestors.set(piece, commonAncestors.get(piece) + 1);
+        } else {
+          commonAncestors.set(piece, 1);
+        }
       }
     }
   }
+  let bestCount = 0;
+  let bestKey = "";
+  for (const [key, count] of commonAncestors) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestKey = key;
+    }
+  }
+  return bestKey;
 };
 // From all tags return a single tag by precedence:
 // first, this users tag, or any other humans tag, else the original AI
@@ -116,12 +133,14 @@ export function getCanonicalTrackTag(
   //  i.e. Rodent + mouse shouldn't be counted as conflicting, but mammal + rodent or mammal + mouse should be.
   const uniqueTags = new Set(animalTags.map((tag) => tag.what));
   if (uniqueTags.size > 1) {
-    const commonAncestor = getCommonAncestorForTags(Array.from(uniqueTags.values()));
+    const commonAncestor = getCommonAncestorForTags(
+      Array.from(uniqueTags.values())
+    );
     const conflict = {
       what: commonAncestor === "all" ? conflictTag : commonAncestor,
       confidence: manualTags[0].confidence,
       automatic: false,
-      data: { userTagsConflict: true }
+      data: { userTagsConflict: true },
     };
     return conflict as TrackTag;
   }

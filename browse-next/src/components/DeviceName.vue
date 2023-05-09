@@ -4,15 +4,17 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
+import type { DeviceType } from "@typedefs/api/consts.ts";
+import { DeviceType as ConcreteDeviceType } from "@typedefs/api/consts.ts";
 
 // NOTE: For some reason importing this enum from global consts fails :-/
-enum DeviceType {
-  Audio = "audio",
-  Thermal = "thermal",
-
-  Trailcam = "trailcam",
-  Unknown = "unknown",
-}
+// enum DeviceType {
+//   Audio = "audio",
+//   Thermal = "thermal",
+//
+//   Trailcam = "trailcam",
+//   Unknown = "unknown",
+// }
 
 const { name, type } = defineProps<{
   name: string;
@@ -21,13 +23,13 @@ const { name, type } = defineProps<{
 
 const deviceTypeIcon = computed<string>(() => {
   switch (type) {
-    case DeviceType.Audio:
+    case ConcreteDeviceType.Audio:
       return "music";
-    case DeviceType.Thermal:
+    case ConcreteDeviceType.Thermal:
       return "video";
-    case DeviceType.Unknown:
+    case ConcreteDeviceType.Unknown:
       return "question";
-    case DeviceType.Trailcam:
+    case ConcreteDeviceType.TrailCam:
       return "camera";
   }
   return "";

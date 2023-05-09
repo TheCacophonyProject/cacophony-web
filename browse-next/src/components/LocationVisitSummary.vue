@@ -1,13 +1,18 @@
 <script lang="ts" setup>
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { computed } from "vue";
+import { computed, inject } from "vue";
+import type { Ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import { visitsByStation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import { currentlyHighlightedLocation } from "@models/SelectionContext";
+import type { StationId as LocationId } from "@typedefs/api/common";
+
+const currentlyHighlightedLocation = inject(
+  "currentlyHighlightedLocation"
+) as Ref<LocationId | null>;
 
 const { location, locations, visits, activeLocations } = defineProps<{
   location: ApiLocationResponse;
@@ -82,7 +87,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 </script>
 
 <template>
-  <div class="station-visit-summary mb-3 mb-sm-0">
+  <div class="location-visit-summary mb-3 mb-sm-0">
     <div class="map-container">
       <map-with-points
         :highlighted-point="highlightedPoint"
@@ -121,7 +126,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       <div class="values flex-fill px-2 my-2">
         <div
           v-for="([species, path, count], index) in speciesSummary"
-          :class="[species, 'species-value', ...(path.split('.'))]"
+          :class="[species, 'species-value', ...path.split('.')]"
           :style="{
             width: `calc(max(5px, ${
               (count / maxVisitsForAnySpeciesInAnyStation) * 100
@@ -140,7 +145,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 .map {
   height: 150px;
 }
-.station-visit-summary {
+.location-visit-summary {
   background: white;
   border-radius: 2px;
   width: 300px;

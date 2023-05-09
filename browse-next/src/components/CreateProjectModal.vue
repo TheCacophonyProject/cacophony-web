@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { addNewProject } from "@api/Group";
+import { addNewProject } from "@api/Project";
 import {
   UserProjects,
   switchCurrentProject,
@@ -48,12 +48,13 @@ const createNewProject = async () => {
       UserProjects.value.sort((a, b) => a.groupName.localeCompare(b.groupName));
       switchCurrentProject({ groupName: projectName, id: newProjectId });
       await router.push({
-        name: "group-settings",
+        name: "project-settings",
         params: { projectName: urlNormalisedCurrentProjectName.value },
       });
       creatingNewProject.visible = false;
     } else {
       // User groups doesn't exist?
+      // FIXME -- Existing group name needs error message.
       console.error("FIXME");
     }
   } else {
@@ -105,7 +106,7 @@ const createNewProject = async () => {
           v-if="submittingCreateRequest"
           class="spinner-border spinner-border-sm"
         ></span>
-        {{ submittingCreateRequest ? "Creating group" : "Create group" }}
+        {{ submittingCreateRequest ? "Creating project" : "Create project" }}
       </button>
     </template>
   </b-modal>

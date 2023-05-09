@@ -42,7 +42,7 @@ import modelsUtil, { locationsAreEqual } from "@models/util/util";
 import { dynamicImportESM } from "@/dynamic-import-esm";
 import { DetailSnapshotId } from "@models/DetailSnapshot";
 import { Device } from "@models/Device";
-import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
+import deviceHistory, { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
 import { Tag } from "@models/Tag";
 import { Track } from "@models/Track";
 import {
@@ -75,10 +75,7 @@ import { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3";
 import { AWSError } from "aws-sdk";
 import { CptvHeader } from "cptv-decoder";
 import log from "@log";
-import {
-  sendAnimalAlertEmail,
-  sendAnimalAlertEmailForEvent,
-} from "@/emails/transactionalEmails";
+import AllModels from "@models";
 
 let CptvDecoder;
 (async () => {
@@ -121,7 +118,8 @@ export async function tryToMatchLocationToStationInGroup(
     stations = await models.Station.activeInGroupDuringTimeRange(
       groupId,
       activeFromDate,
-      new Date()
+      new Date(),
+      lookForwards
     );
   } else {
     stations = await models.Station.activeInGroupAtTime(
@@ -206,12 +204,19 @@ export async function tryToMatchRecordingToStation(
 
 async function getThumbnail(rec: Recording, trackId?: number) {
   let thumbKey: string;
+  let fileKey = rec.rawFileKey;
+  if (
+    rec.type === RecordingType.TrailCamImage ||
+    rec.type == RecordingType.TrailCamVideo
+  ) {
+    fileKey = rec.fileKey;
+  }
   if (trackId) {
-    thumbKey = `${rec.rawFileKey}-${trackId}-thumb`;
+    thumbKey = `${fileKey}-${trackId}-thumb`;
   } else {
     const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
     if (thumbedTracks.length > 0) {
-      // choose best track based of visit tag and highest score
+      // choose best track based off visit tag and highest score
       const recVisit = new Visit(rec, 0, thumbedTracks);
       const commonTag = recVisit.mostCommonTag();
       const trackIds = recVisit.events
@@ -228,15 +233,15 @@ async function getThumbnail(rec: Recording, trackId?: number) {
           ? 1
           : -1;
       });
-      thumbKey = `${rec.rawFileKey}-${bestTracks[0].id}-thumb`;
+      thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
     } else {
-      thumbKey = `${rec.rawFileKey}-thumb`;
+      thumbKey = `${fileKey}-thumb`;
     }
   }
 
   const s3 = modelsUtil.openS3();
   if (thumbKey.startsWith("a_")) {
-    thumbKey = thumbKey.substr(2);
+    thumbKey = thumbKey.slice(2);
   }
   const params = {
     Key: thumbKey,
@@ -308,6 +313,13 @@ async function saveThumbnailInfo(
   tracks: Track[],
   clip_thumbnail: TrackFramePosition
 ): Promise<ManagedUpload.SendData[] | Error[]> {
+  let fileKey = recording.rawFileKey;
+  if (
+    recording.type === RecordingType.TrailCamImage ||
+    recording.type == RecordingType.TrailCamVideo
+  ) {
+    fileKey = recording.fileKey;
+  }
   const thumbnailTracks = tracks.filter(
     (track) => track.data?.thumbnail?.region
   );
@@ -338,7 +350,7 @@ async function saveThumbnailInfo(
       await modelsUtil
         .openS3()
         .upload({
-          Key: `${recording.rawFileKey}-${track.id}-thumb`,
+          Key: `${fileKey}-${track.id}-thumb`,
           Body: thumb.data,
           Metadata: thumb.meta,
         })
@@ -357,12 +369,12 @@ async function saveThumbnailInfo(
       );
     } else {
       const thumb = await createThumbnail(frame, clip_thumbnail);
-      console.log("saving", `${recording.rawFileKey}-thumb`);
+      console.log("saving", `${fileKey}-thumb`);
       frameUploads.push(
         await modelsUtil
           .openS3()
           .upload({
-            Key: `${recording.rawFileKey}-thumb`,
+            Key: `${fileKey}-thumb`,
             Body: thumb.data,
             Metadata: thumb.meta,
           })
@@ -709,7 +721,6 @@ export const maybeUpdateDeviceHistory = async (
 
       (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
       // Insert this location.
-
       const newDeviceHistory = await models.DeviceHistory.create(
         newDeviceHistoryEntry
       );
@@ -761,6 +772,9 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
   fileData: Uint8Array,
   recording: Recording
 ): Promise<boolean> => {
+  if (fileData.length === 0) {
+    return true;
+  }
   if (data.type === RecordingType.ThermalRaw) {
     // Read the file back out from s3 and decode/parse it.
     const { metadata, fileIsCorrupt: isCorrupt } = await tryDecodeCptvMetadata(
@@ -849,21 +863,36 @@ export const uploadRawRecording = util.multipartUpload(
     uploader: "device" | "user",
     uploadingDevice: Device,
     uploadingUser: User | null,
-    data: any, // FIXME - At least partially validate this data
-    key: string,
-    uploadedFileData: Uint8Array
+    data: any,
+    keys: string[],
+    uploadedFileDatas: { key: string; data: Uint8Array; filename: string }[]
   ): Promise<Recording> => {
     const recording = models.Recording.buildSafely(data);
     // Add the filehash if present
     if (data.fileHash) {
       recording.rawFileHash = data.fileHash;
     }
-
-    // TODO - if a fileHash isn't supplied, lets create one anyway.
-
-    recording.rawFileSize = uploadedFileData.length;
-    recording.rawFileKey = key;
-    recording.rawMimeType = guessRawMimeType(data.type, data.filename);
+    const uploadedFileDataRaw = uploadedFileDatas.find(({ key }) =>
+      key.startsWith("raw")
+    );
+    recording.rawFileSize = uploadedFileDataRaw.data.length;
+    recording.rawFileKey = uploadedFileDataRaw.key;
+    recording.rawMimeType = guessRawMimeType(
+      data.type,
+      uploadedFileDataRaw.filename
+    );
+    if (uploadedFileDatas.length !== 1) {
+      const uploadedFileDataNonRaw = uploadedFileDatas.find(({ key }) =>
+        key.startsWith("web")
+      );
+      // Add the non-raw derived file details.
+      recording.fileKey = uploadedFileDataNonRaw.key;
+      recording.fileSize = uploadedFileDataNonRaw.data.length;
+      recording.fileMimeType = guessRawMimeType(
+        data.type,
+        uploadedFileDataNonRaw.filename
+      );
+    }
 
     if (uploader === "device") {
       recording.DeviceId = uploadingDevice.id;
@@ -877,12 +906,19 @@ export const uploadRawRecording = util.multipartUpload(
     let deviceId: DeviceId;
     let groupId: DeviceId;
     // Check if the file is corrupt and use file metadata if it can be parsed.
+    const uploadedFileData = uploadedFileDataRaw.data;
+
     const fileIsCorrupt = await parseAndMergeEmbeddedFileMetadataIntoRecording(
       data,
       uploadedFileData,
       recording
     );
-
+    const cameraTypes = [
+      RecordingType.ThermalRaw,
+      RecordingType.InfraredVideo,
+      RecordingType.TrailCamImage,
+      RecordingType.TrailCamVideo,
+    ];
     const recordingLocation = recording.location;
     if (recordingLocation) {
       const { stationToAssignToRecording, deviceHistoryEntry } =
@@ -905,7 +941,7 @@ export const uploadRawRecording = util.multipartUpload(
             recording.recordingDateTime;
           await stationToAssignToRecording.save();
         } else if (
-          recording.type === RecordingType.ThermalRaw &&
+          cameraTypes.includes(recording.type) &&
           (!stationToAssignToRecording.lastThermalRecordingTime ||
             recording.recordingDateTime >
               stationToAssignToRecording.lastThermalRecordingTime)
@@ -951,7 +987,7 @@ export const uploadRawRecording = util.multipartUpload(
         // Update the last recording time for the group if necessary, to give us a quick and easy way
         // to see which groups have new recordings, and of what kind.
         if (
-          recording.type === RecordingType.ThermalRaw &&
+          cameraTypes.includes(recording.type) &&
           (!group.lastThermalRecordingTime ||
             group.lastThermalRecordingTime < recording.recordingDateTime)
         ) {
@@ -971,15 +1007,20 @@ export const uploadRawRecording = util.multipartUpload(
       }
       if (uploadingDevice.kind === DeviceType.Unknown) {
         // If this is the first recording we've gotten from a device, we can set its type.
-        const deviceType =
-          recording.type === RecordingType.ThermalRaw ? "thermal" : "audio";
+        const typeMappings = {
+          [RecordingType.Audio]: "audio",
+          [RecordingType.ThermalRaw]: "thermal",
+          [RecordingType.TrailCamVideo]: "trailcam",
+          [RecordingType.TrailCamImage]: "trailcam",
+          [RecordingType.InfraredVideo]: "trapcam",
+        };
+        const deviceType = typeMappings[recording.type];
         await uploadingDevice.update({ kind: deviceType });
       }
     }
 
     // We need to reconcile the recording state in the DB to run these next bits.
     await recording.save();
-
     {
       let tracked = false;
       if (data.metadata) {
@@ -996,13 +1037,19 @@ export const uploadRawRecording = util.multipartUpload(
 
         // FIXME - This logic still looks a little suspect.
         if (!fileIsCorrupt) {
-          if (tracked && recording.type !== RecordingType.Audio) {
+          if (tracked && recording.type === RecordingType.ThermalRaw) {
             recording.processingState = RecordingProcessingState.AnalyseThermal;
             // already have done tracking pi skip to analyse state
-          } else {
+          } else if (
+            recording.type !== RecordingType.TrailCamImage &&
+            recording.type !== RecordingType.TrailCamVideo
+          ) {
             recording.processingState = models.Recording.uploadedState(
               data.type as RecordingType
             );
+          } else {
+            // Trailcam and others
+            recording.processingState = RecordingProcessingState.Finished;
           }
         } else {
           // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
@@ -1399,9 +1446,9 @@ function guessRawMimeType(type, filename) {
     return mimeType;
   }
   switch (type) {
-    case "thermalRaw":
+    case RecordingType.ThermalRaw:
       return "application/x-cptv";
-    case "audio":
+    case RecordingType.Audio:
       return "audio/mpeg";
     default:
       return "application/octet-stream";
@@ -1863,6 +1910,7 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
       "StationId",
       "GroupId",
       "rawFileKey",
+      "fileKey",
     ],
   };
   // @ts-ignore

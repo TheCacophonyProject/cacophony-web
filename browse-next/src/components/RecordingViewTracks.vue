@@ -1,26 +1,25 @@
 <script setup lang="ts">
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type {ApiRecordingResponse} from "@typedefs/api/recording";
 import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
-import { TagColours } from "@/consts";
-import { computed, inject, onMounted, provide, ref, watch } from "vue";
-import type { Ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import type { ApiTrackResponse } from "@typedefs/api/track";
-import type { TrackId, TrackTagId } from "@typedefs/api/common";
-import { removeTrackTag, replaceTrackTag } from "@api/Recording";
-import type { LoggedInUser } from "@models/LoggedInUser";
-import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
-import {
-  displayLabelForClassificationLabel,
-  getPathForLabel,
-} from "@api/Classifications";
+import {TagColours} from "@/consts";
+import type {Ref} from "vue";
+import {computed, inject, onMounted, ref, watch} from "vue";
+import {useRoute, useRouter} from "vue-router";
+import type {ApiTrackResponse} from "@typedefs/api/track";
+import type {TrackId, TrackTagId} from "@typedefs/api/common";
+import {removeTrackTag, replaceTrackTag} from "@api/Recording";
+import type {LoggedInUser} from "@models/LoggedInUser";
+import type {ApiHumanTrackTagResponse} from "@typedefs/api/trackTag";
+import {displayLabelForClassificationLabel, getPathForLabel,} from "@api/Classifications";
+import {currentUser as currentUserInfo} from "@models/provides";
+import {RecordingType} from "@typedefs/api/consts.ts";
+
 const route = useRoute();
 const router = useRouter();
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
 }>();
 
-import { currentUser as currentUserInfo } from "@models/provides";
 // eslint-disable-next-line no-undef
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
@@ -68,6 +67,11 @@ watch(
     cloneLocalTracks(nextRecording?.tracks || []);
     if (route.params.trackId) {
       currentTrack.value = getTrackById(currentTrackId.value);
+    }
+    if (nextRecording?.type === RecordingType.TrailCamImage) {
+        // Select the only dummy track
+        //currentTrack.value = getTrackById()
+        expandedItemChanged(nextRecording.tracks[0].id, true);
     }
   }
 );
@@ -186,6 +190,7 @@ const addOrRemoveUserTag = async ({
         }
       }
     }
+    cloneLocalTracks(recording.tracks);
     updatingTags.value = false;
   }
 };

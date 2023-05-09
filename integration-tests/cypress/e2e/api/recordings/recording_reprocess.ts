@@ -436,7 +436,7 @@ describe("Recordings - reprocessing tests", () => {
       cy.apiRecordingAdd(
         "rrpCamera1",
         recording1,
-        "60sec-audio.mp4",
+        "60sec-audio.m4a",
         "rrpRecording11"
       ).then(() => {
         expectedRecording1 = TestCreateExpectedRecordingData(
@@ -617,6 +617,7 @@ describe("Recordings - reprocessing tests", () => {
                   tags: [
                     {
                       what: "possum",
+                      path: "all",
                       automatic: true,
                       trackId: getCreds("rrpTrack18").id,
                       confidence: 0.9,

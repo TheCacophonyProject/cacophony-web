@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { computed, ref } from "vue";
+import type { StationId as LocationId } from "@typedefs/api/common";
+import { computed, inject, ref } from "vue";
+import type { Ref } from "vue";
 import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
   timeAtLocation,
@@ -11,21 +13,36 @@ import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/root";
 import {
-  currentlyHighlightedLocation,
-  selectedVisit as currentlySelectedVisit,
-} from "@models/SelectionContext";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+  displayLabelForClassificationLabel,
+  getClassificationForLabel,
+} from "@api/Classifications";
 import ImageLoader from "@/components/ImageLoader.vue";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
 
+const currentlySelectedVisit = inject(
+  "currentlySelectedVisit"
+) as Ref<ApiVisitResponse | null>;
+
 const now = new Date();
-const { visits, startTime, isNocturnal, location } = defineProps<{
+const {
+  visits,
+  startTime,
+  isNocturnal,
+  location,
+  currentlyHighlightedLocation,
+} = defineProps<{
   visits: ApiVisitResponse[];
   startTime: DateTime;
   isNocturnal: boolean;
   location: LatLng;
+  currentlyHighlightedLocation?: LocationId;
+}>();
+
+const emit = defineEmits<{
+  (e: "selected-visit", payload: ApiVisitResponse): void;
+  (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
 const endTime = computed<DateTime>(() => startTime.plus({ day: 1 }));
@@ -61,6 +78,13 @@ interface SunEventItem extends EventItem {
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
+
+  for (const visit of visits) {
+    if (!visit.classification) {
+      debugger;
+    }
+  }
+
   const events: (VisitEventItem | SunEventItem)[] = visits.map(
     (visit) =>
       ({
@@ -210,21 +234,21 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   if (visit.type === "visit") {
-    currentlySelectedVisit.value = visit.data;
+    emit("selected-visit", visit.data);
   }
 };
 
 const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (visit.type === "visit") {
-    currentlyHighlightedLocation.value = visit.data.stationId;
+    emit("change-highlighted-location", visit.data.stationId);
   }
 };
 const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (
     visit.type === "visit" &&
-    currentlyHighlightedLocation.value === visit.data.stationId
+    currentlyHighlightedLocation === visit.data.stationId
   ) {
-    currentlyHighlightedLocation.value = null;
+    emit("change-highlighted-location", null);
   }
 };
 </script>
@@ -358,7 +382,12 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
             <div>
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
-                :class="[visit.name]"
+                :class="[
+                  visit.name,
+                  ...(getClassificationForLabel(visit.name)?.path || '').split(
+                    '.'
+                  ),
+                ]"
                 >{{ displayLabelForClassificationLabel(visit.name) }}
                 <font-awesome-icon
                   icon="check"

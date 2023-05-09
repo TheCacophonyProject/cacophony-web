@@ -25,7 +25,6 @@ import { Recording } from "@models/Recording";
 import { Tag } from "@models/Tag";
 import { Track } from "@models/Track";
 import { TrackTag } from "@models/TrackTag";
-import ApiRecordingResponseSchema from "@schemas/api/recording/ApiRecordingResponse.schema.json";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
 import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json";
@@ -57,7 +56,6 @@ import { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
 // @ts-ignore
 import * as csv from "fast-csv";
-import { Validator } from "jsonschema";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json";
@@ -93,8 +91,9 @@ import recordingUtil, {
   signedToken,
   uploadRawRecording,
 } from "./recordingUtil";
-import {serverErrorResponse, successResponse} from "./responseUtil";
+import { serverErrorResponse, successResponse } from "./responseUtil";
 import { streamS3Object } from "@api/V1/signedUrl";
+import fs from "fs/promises";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -118,7 +117,7 @@ const mapTrackTag = (
     trackId: trackTag.TrackId,
     updatedAt: trackTag.updatedAt?.toISOString(),
     what: trackTag.what,
-    path: trackTag.path
+    path: trackTag.path,
   };
   if (trackTag.automatic) {
     (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
@@ -202,6 +201,12 @@ const ifNotNull = (val: any | null) => {
 const mapRecordingResponse = (
   recording: Recording
 ): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
+  const cameraTypes = [
+    RecordingType.ThermalRaw,
+    RecordingType.TrailCamVideo,
+    RecordingType.TrailCamImage,
+    RecordingType.InfraredVideo,
+  ];
   try {
     const commonRecording: ApiRecordingResponse = {
       id: recording.id,
@@ -223,13 +228,13 @@ const mapRecordingResponse = (
       tags: recording.Tags && mapTags(recording.Tags),
       tracks: recording.Tracks && mapTracks(recording.Tracks),
     };
-    if (recording.type === RecordingType.ThermalRaw) {
+    if (cameraTypes.includes(recording.type)) {
       return {
         ...commonRecording,
         type: recording.type,
         additionalMetadata:
           recording.additionalMetadata as ApiThermalRecordingMetadataResponse, // TODO - strip and map metadata?
-      };
+      } as ApiThermalRecordingResponse;
     } else if (recording.type === RecordingType.Audio) {
       return {
         ...commonRecording,
@@ -810,8 +815,8 @@ export default (app: Application, baseUrl: string) => {
       `${apiUrl}/long-running-query`,
       extractJwtAuthorizedUser,
       validateFields([
-          query("seconds").default(20).isNumeric(),
-          query("succeed").default(true).isBoolean().toBoolean()
+        query("seconds").default(20).isNumeric(),
+        query("succeed").default(true).isBoolean().toBoolean(),
       ]),
       async (request: Request, response: Response, next: NextFunction) => {
         const timeout = Number(request.query.seconds);
@@ -819,9 +824,14 @@ export default (app: Application, baseUrl: string) => {
           setTimeout(resolve, timeout * 1000);
         });
         if (request.query.succeed) {
-          return successResponse(response, "Completed query.", {count: 101});
+          return successResponse(response, "Completed query.", { count: 101 });
         } else {
-          return serverErrorResponse(request, response, new Error("Timed out."), {count: 101});
+          return serverErrorResponse(
+            request,
+            response,
+            new Error("Timed out."),
+            { count: 101 }
+          );
         }
       }
     );
@@ -1239,12 +1249,24 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
+      // NOTE: If the recording type is trailcam, then actually want to return "derived" rather than "raw" files
       const recordingItem = response.locals.recording;
-      if (!recordingItem.rawFileKey) {
+      let fileKey = recordingItem.rawFileKey;
+      let fileMimeType = recordingItem.rawMimeType;
+      let fileSize = recordingItem.rawFileSize;
+      if (
+        recordingItem.type === RecordingType.TrailCamImage ||
+        recordingItem.type === RecordingType.TrailCamVideo
+      ) {
+        fileKey = recordingItem.fileKey;
+        fileMimeType = recordingItem.fileMimeType;
+        fileSize = recordingItem.fileSize;
+      }
+      if (!fileKey) {
         return next(new ClientError("Recording has no raw file key."));
       }
       let fileExt: string = "raw";
-      switch (recordingItem.rawMimeType) {
+      switch (fileMimeType) {
         case "audio/ogg":
           fileExt = "ogg";
           break;
@@ -1260,6 +1282,12 @@ export default (app: Application, baseUrl: string) => {
         case "audio/mpeg":
           fileExt = "mp3";
           break;
+        case "image/webp":
+          fileExt = "webp";
+          break;
+        case "image/jpeg":
+          fileExt = "jpg";
+          break;
         case "application/x-cptv":
           fileExt = "cptv";
           break;
@@ -1268,15 +1296,34 @@ export default (app: Application, baseUrl: string) => {
         ?.toISOString()
         .replace(/:/g, "_")
         .replace(".", "_");
+      const fileName = `${recordingItem.id}@${time}.${fileExt}`;
+
+      if (
+        config.server.loggerLevel === "debug" &&
+        fileMimeType === "application/x-cptv"
+      ) {
+        const file = await fs.readFile("./debug-files/2-second-status.cptv");
+        response.setHeader(
+          "Content-disposition",
+          "attachment; filename=" + fileName
+        );
+        response.setHeader(
+          "Content-type",
+          fileMimeType || "application/octet-stream"
+        );
+        response.setHeader("Content-Length", file.byteLength);
+        response.write(file, "binary");
+        return response.end(null, "binary");
+      }
       return streamS3Object(
         request,
         response,
-        recordingItem.rawFileKey,
-        `${recordingItem.id}@${time}.${fileExt}`,
-        recordingItem.rawMimeType || "application/octet-stream",
+        fileKey,
+        fileName,
+        fileMimeType || "application/octet-stream",
         response.locals.requestUser.id,
         recordingItem.GroupId,
-        recordingItem.rawFileSize
+        fileSize
       );
     }
   );
@@ -1305,18 +1352,46 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
-      const mimeType = "image/png";
-      if (!rec.rawFileKey) {
+      let fileKey = rec.rawFileKey;
+      let mimeType = "image/png";
+      let ext = "png";
+      if (
+        rec.type === RecordingType.TrailCamVideo ||
+        rec.type === RecordingType.TrailCamImage
+      ) {
+        fileKey = rec.fileKey;
+        mimeType = "image/webp";
+        ext = "webp";
+      }
+
+      if (!fileKey) {
         return next(new ClientError("Rec has no raw file key."));
       }
       let trackId;
       let filename;
       if (request.query.trackId) {
         trackId = request.query.trackId as unknown as number;
-        filename = `${rec.id}-${trackId}-thumb.png`;
+        filename = `${rec.id}-${trackId}-thumb.${ext}`;
       } else {
-        filename = `${rec.id}-thumb.png`;
+        filename = `${rec.id}-thumb.${ext}`;
       }
+
+      /*
+      NOTE: Enable to serve a dummy thumbnail in debug mode - but will cause tests to fail.
+      if (config.server.loggerLevel === "debug") {
+        // Return a placeholder thumbnail in debug.
+        const thumb = await fs.readFile("./debug-files/dummy-thumb.png");
+        response.setHeader(
+            "Content-disposition",
+            "attachment; filename=" + filename
+        );
+        response.setHeader("Content-type", mimeType);
+        response.setHeader("Content-Length", thumb.byteLength);
+        response.write(thumb, "binary");
+        return response.end(null, "binary");
+      }
+       */
+
       recordingUtil
         .getThumbnail(rec, trackId)
         .then((data) => {
@@ -1367,18 +1442,23 @@ export default (app: Application, baseUrl: string) => {
       // FIXME - If this is the *last* recording for a station, and the station is automatic, remove the station,
       //  and the corresponding DeviceHistory entry. (Do we need to worry about undelete then?)
       let softDelete = false;
+      const recording: Recording = response.locals.recording;
       if (request.query["soft-delete"]) {
-        const recording: Recording = response.locals.recording;
         recording.deletedAt = new Date();
         recording.deletedBy = response.locals.requestUser.id;
-
         await recording.save();
         softDelete = true;
       } else {
         let deleted = false;
-        const recording: Recording = response.locals.recording;
         const rawFileKey = recording.rawFileKey;
         const fileKey = recording.fileKey;
+        let thumbKey = `${rawFileKey}-thumb`;
+        if (
+          recording.type === RecordingType.TrailCamVideo ||
+          RecordingType.TrailCamImage
+        ) {
+          thumbKey = `${fileKey}-thumb`;
+        }
         try {
           await recording.destroy({ force: true });
           deleted = true;
@@ -1389,12 +1469,15 @@ export default (app: Application, baseUrl: string) => {
           await util.deleteS3Object(rawFileKey).catch((err) => {
             log.warning(err);
           });
-          await util.deleteS3Object(`${rawFileKey}-thumb`).catch((err) => {
-            log.warning(err);
-          });
         }
         if (deleted && fileKey) {
           await util.deleteS3Object(fileKey).catch((err) => {
+            log.warning(err);
+          });
+        }
+        if (deleted && thumbKey) {
+          // TODO: There can be other thumbnails related to appending tracks, and we should probably delete those too.
+          await util.deleteS3Object(thumbKey).catch((err) => {
             log.warning(err);
           });
         }
@@ -1402,10 +1485,10 @@ export default (app: Application, baseUrl: string) => {
       // Check if there are any more device recordings.  If not, set lastRecordingTime to null,
       // so that the device will appear as deletable.
       const latestRecording = await models.Recording.findOne({
-        where: { DeviceId: Number(request.params.id), deletedAt: null },
+        where: { DeviceId: recording.DeviceId, deletedAt: null },
         order: [["recordingDateTime", "DESC"]],
       });
-      const device = await models.Device.findByPk(Number(request.params.id));
+      const device = recording.Device;
       if (!latestRecording) {
         await device.update({
           lastRecordingTime: null,

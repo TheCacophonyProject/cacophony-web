@@ -191,7 +191,7 @@ const debugConfirmEmail = async () => {
 </script>
 <template>
   <div
-    class="setup-form p-4 pb-3"
+    class="setup-form p-4 pb-3 container-sm"
     :class="{
       'groups-setup': userHasConfirmedEmailAddress && !userHasProjects,
     }"

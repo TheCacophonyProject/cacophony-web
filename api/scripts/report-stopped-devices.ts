@@ -1,4 +1,5 @@
 import registerAliases from "../module-aliases";
+registerAliases();
 import config from "../config";
 import log from "../logging";
 import { Device } from "@models/Device";
@@ -8,8 +9,6 @@ import models from "../models";
 import { sendEmail } from "@/emails/sendEmail";
 import { Op } from "sequelize";
 import { DeviceType } from "@typedefs/api/consts";
-
-registerAliases();
 
 async function getUserEvents(devices: Device[]) {
   const groupAdmins = {};
@@ -45,7 +44,10 @@ async function main() {
 
   // filter devices which have already been alerted on
   const devices = (await models.Device.stoppedDevices()).filter((device) => {
-    if (device.kind === DeviceType.Thermal) {
+    if (
+      device.kind === DeviceType.Thermal ||
+      device.kind === DeviceType.Unknown
+    ) {
       // NOTE: Replicate the deviance of 1 minute from `models.Device.stoppedDevices()` above
       const nextHeartbeatMinusOneMin = new Date(device.nextHeartbeat);
       nextHeartbeatMinusOneMin.setMinutes(
@@ -66,6 +68,8 @@ async function main() {
             event.dateTime > device.lastConnectionTime
         ) !== undefined;
       return !hasAlerted;
+    } else {
+      return false;
     }
   });
 

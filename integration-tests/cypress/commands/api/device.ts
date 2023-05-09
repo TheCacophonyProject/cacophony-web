@@ -148,7 +148,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: v1ApiPath(`devices/history/${deviceId}`),
+        url: v1ApiPath(`devices/${deviceId}/history`),
       },
       userName,
       statusCode

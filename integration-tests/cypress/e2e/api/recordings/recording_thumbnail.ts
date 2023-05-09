@@ -130,6 +130,7 @@ describe("Recording thumbnails", () => {
                   tags: [
                     {
                       what: "possum",
+                      path: "all",
                       automatic: true,
                       trackId: getCreds("rtTrack01").id,
                       confidence: 0.9,
@@ -273,6 +274,7 @@ describe("Recording thumbnails", () => {
                   tags: [
                     {
                       what: "possum",
+                      path: "all",
                       automatic: true,
                       trackId: getCreds("rtTrack01").id,
                       confidence: 0.9,
@@ -437,6 +439,7 @@ describe("Recording thumbnails", () => {
                   tags: [
                     {
                       what: "possum",
+                      path: "all",
                       automatic: true,
                       trackId: getCreds("rtTrack02").id,
                       confidence: 0.9,
@@ -478,6 +481,6 @@ describe("Recording thumbnails", () => {
       });
     });
   } else {
-    it.skip("NOTE: Thumbnail generation tests skipped superuser diabled in environment variables", () => {});
+    it.skip("NOTE: Thumbnail generation tests skipped superuser disabled in environment variables", () => {});
   }
 });

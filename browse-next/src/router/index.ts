@@ -534,7 +534,7 @@ router.beforeEach(async (to, from, next) => {
     }
     if (potentialProjectName) {
       potentialProjectName = urlNormaliseName(potentialProjectName);
-      const matchedProject = (UserProjects.value as ApiGroupResponse[]).find(
+      const matchedProject = ((UserProjects.value as ApiGroupResponse[]) || []).find(
         ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName
       );
       // console.warn("Found match", matchedGroup);
@@ -638,7 +638,7 @@ router.beforeEach(async (to, from, next) => {
     });
   } else {
     pinSideNav.value = false;
-    console.warn("Navigating to ", to.fullPath, to.name);
+    console.warn(`Navigating to '${String(to.name)}'`, to.fullPath);
     return next();
   }
 });

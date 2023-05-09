@@ -19,7 +19,7 @@ export const DEFAULT_TAGS = [
   "unidentified",
 ];
 
-export const RecordingLabels = [
+export const RecordingLabels: { text: string, value?: string, description: string }[] = [
   { text: "Cool", description: "Mark this as a cool or interesting recording" },
   {
     text: "Flagged for review",

@@ -112,96 +112,257 @@ export const lastActiveLocationTime = (
   return null;
 };
 
-// Convert NZTM2000 to Latitude Longitude
+const NZTM_A = 6378137;
+const NZTM_RF = 298.257222101;
 
-export const convertNZTMtoLatLng = (x: number, y: number): LatLng => {
-  // From https://gis.stackexchange.com/questions/225065/converting-nztm-new-zealand-transverse-mercator-to-lat-long
-  // But may be slightly wrong, check it.
-  const a = 6378137;
-  const f = 1 / 298.257222101;
-  const phizero = 0;
-  const lambdazero = 173;
-  const Nzero = 10000000;
-  const Ezero = 1600000;
-  const kzero = 0.9996;
-  const N = y;
-  const E = x;
-  const b = a * (1 - f);
-  const esq = 2 * f - Math.pow(f, 2);
-  const Z0 =
-    1 - esq / 4 - (3 * Math.pow(esq, 2)) / 64 - (5 * Math.pow(esq, 3)) / 256;
-  const A2 =
-    0.375 * (esq + Math.pow(esq, 2) / 4 + (15 * Math.pow(esq, 3)) / 128);
-  const A4 = (15 * (Math.pow(esq, 2) + (3 * Math.pow(esq, 2)) / 4)) / 256;
-  const A6 = (35 * Math.pow(esq, 3)) / 3072;
-  const Nprime = N - Nzero;
-  const mprime = Nprime / kzero;
-  const smn = (a - b) / (a + b);
-  const G =
-    (a *
-      (1 - smn) *
-      (1 - Math.pow(smn, 2)) *
-      (1 + (9 * Math.pow(smn, 2)) / 4 + (225 * Math.pow(smn, 4)) / 64) *
-      Math.PI) /
-    180.0;
-  const sigma = (mprime * Math.PI) / (180 * G);
-  const phiprime =
-    sigma +
-    ((3 * smn) / 2 - (27 * Math.pow(smn, 3)) / 32) * Math.sin(2 * sigma) +
-    ((21 * Math.pow(smn, 2)) / 16 - (55 * Math.pow(smn, 4)) / 32) *
-      Math.sin(4 * sigma) +
-    ((151 * Math.pow(smn, 3)) / 96) * Math.sin(6 * sigma) +
-    ((1097 * Math.pow(smn, 4)) / 512) * Math.sin(8 * sigma);
-  const rhoprime =
-    (a * (1 - esq)) / Math.pow(Math.pow(1 - esq * Math.sin(phiprime), 2), 1.5);
-  const upsilonprime = a / Math.sqrt(1 - esq * Math.pow(Math.sin(phiprime), 2));
-  const psiprime = upsilonprime / rhoprime;
-  const tprime = Math.tan(phiprime);
-  const Eprime = E - Ezero;
-  const chi = Eprime / (kzero * upsilonprime);
-  const term_1 = (tprime * Eprime * chi) / (kzero * rhoprime * 2);
-  const term_2 =
-    ((term_1 * Math.pow(chi, 2)) / 12) *
-    (-4 * Math.pow(psiprime, 2) +
-      9 * psiprime * (1 - Math.pow(tprime, 2)) +
-      12 * Math.pow(tprime, 2));
-  const term_3 =
-    ((tprime * Eprime * Math.pow(chi, 5)) / (kzero * rhoprime * 720)) *
-    (8 * Math.pow(psiprime, 4) * (11 - 24 * Math.pow(tprime, 2)) -
-      12 * Math.pow(psiprime, 3) * (21 - 71 * Math.pow(tprime, 2)) +
-      15 *
-        Math.pow(psiprime, 2) *
-        (15 - 98 * Math.pow(tprime, 2) + 15 * Math.pow(tprime, 4)) +
-      180 * psiprime * (5 * Math.pow(tprime, 2) - 3 * Math.pow(tprime, 4)) +
-      360 * Math.pow(tprime, 4));
-  const term_4 =
-    ((tprime * Eprime * Math.pow(chi, 7)) / (kzero * rhoprime * 40320)) *
-    (1385 +
-      3633 * Math.pow(tprime, 2) +
-      4095 * Math.pow(tprime, 4) +
-      1575 * Math.pow(tprime, 6));
-  const term1 = chi * (1 / Math.cos(phiprime));
-  const term2 =
-    ((Math.pow(chi, 3) * (1 / Math.cos(phiprime))) / 6) *
-    (psiprime + 2 * Math.pow(tprime, 2));
-  const term3 =
-    ((Math.pow(chi, 5) * (1 / Math.cos(phiprime))) / 120) *
-    (-4 * Math.pow(psiprime, 3) * (1 - 6 * Math.pow(tprime, 2)) +
-      Math.pow(psiprime, 2) * (9 - 68 * Math.pow(tprime, 2)) +
-      72 * psiprime * Math.pow(tprime, 2) +
-      24 * Math.pow(tprime, 4));
-  const term4 =
-    ((Math.pow(chi, 7) * (1 / Math.cos(phiprime))) / 5040) *
-    (61 +
-      662 * Math.pow(tprime, 2) +
-      1320 * Math.pow(tprime, 4) +
-      720 * Math.pow(tprime, 6));
-  const latitude =
-    ((phiprime - term_1 + term_2 - term_3 + term_4) * 180) / Math.PI;
-  const longitude =
-    lambdazero + (180 / Math.PI) * (term1 - term2 + term3 - term4);
+const NZTM_CM = 173.0;
+const NZTM_OLAT = 0.0;
+const NZTM_SF = 0.9996;
+const NZTM_FE = 1600000.0;
+const NZTM_FN = 10000000.0;
+const TWOPI = Math.PI * 2;
+const rad2deg = 180 / Math.PI;
+const degToRad = Math.PI / 180;
 
-  return { lat: latitude, lng: longitude };
+interface TmProjection {
+  meridian: number;
+  scalef: number;
+  orglat: number;
+  falsee: number;
+  falsen: number;
+  utom: number;
+
+  a: number;
+  rf: number;
+  f: number;
+  e2: number;
+  ep2: number;
+  om: number;
+}
+
+const meridianArc = (a: number, e2: number, lt: number): number => {
+  const e4 = e2 * e2;
+  const e6 = e4 * e2;
+
+  const A0 = 1 - e2 / 4.0 - (3.0 * e4) / 64.0 - (5.0 * e6) / 256.0;
+  const A2 = (3.0 / 8.0) * (e2 + e4 / 4.0 + (15.0 * e6) / 128.0);
+  const A4 = (15.0 / 256.0) * (e4 + (3.0 * e6) / 4.0);
+  const A6 = (35.0 * e6) / 3072.0;
+
+  return (
+    a *
+    (A0 * lt -
+      A2 * Math.sin(2 * lt) +
+      A4 * Math.sin(4 * lt) -
+      A6 * Math.sin(6 * lt))
+  );
+};
+
+const getNZTMProjection = () =>
+  ((
+    a: number,
+    rf: number,
+    cm: number,
+    sf: number,
+    lto: number,
+    fe: number,
+    fn: number,
+    utom: number
+  ): TmProjection => {
+    let f = 0;
+    if (rf !== 0) {
+      f = 1 / rf;
+    }
+    const e2 = 2 * f - f * f;
+    return {
+      meridian: cm,
+      scalef: sf,
+      orglat: lto,
+      falsee: fe,
+      falsen: fn,
+      utom,
+      a,
+      rf,
+      f,
+      e2,
+      ep2: e2 / (1 / e2),
+      om: meridianArc(a, e2, lto),
+    };
+  })(
+    NZTM_A,
+    NZTM_RF,
+    NZTM_CM / rad2deg,
+    NZTM_SF,
+    NZTM_OLAT / rad2deg,
+    NZTM_FE,
+    NZTM_FN,
+    1.0
+  );
+
+export const convertLatLngToNZTM = (
+  lngDegrees: number,
+  latDegrees: number
+): { easting: number; northing: number } => {
+  const lng = lngDegrees * degToRad;
+  const lat = latDegrees * degToRad;
+  const { falsen, falsee, scalef, e2, a, meridian, om, utom } =
+    getNZTMProjection();
+  let dlon;
+  let trm1;
+  let trm2;
+  let trm3;
+
+  dlon = lng - meridian;
+  while (dlon > Math.PI) {
+    dlon -= TWOPI;
+  }
+  while (dlon < -Math.PI) {
+    dlon += TWOPI;
+  }
+
+  const m = meridianArc(a, e2, lat);
+
+  const slt = Math.sin(lat);
+
+  const eslt = 1.0 - e2 * slt * slt;
+  const eta = a / Math.sqrt(eslt);
+  const rho = (eta * (1.0 - e2)) / eslt;
+  const psi = eta / rho;
+
+  const clt = Math.cos(lat);
+  const w = dlon;
+
+  const wc = clt * w;
+  const wc2 = wc * wc;
+
+  const t = slt / clt;
+  const t2 = t * t;
+  const t4 = t2 * t2;
+  const t6 = t2 * t4;
+
+  trm1 = (psi - t2) / 6.0;
+
+  trm2 =
+    (((4.0 * (1.0 - 6.0 * t2) * psi + (1.0 + 8.0 * t2)) * psi - 2.0 * t2) *
+      psi +
+      t4) /
+    120.0;
+
+  trm3 = (61 - 479.0 * t2 + 179.0 * t4 - t6) / 5040.0;
+
+  const gce =
+    scalef *
+    eta *
+    dlon *
+    clt *
+    (((trm3 * wc2 + trm2) * wc2 + trm1) * wc2 + 1.0);
+  const easting = gce / utom + falsee;
+
+  trm1 = 1.0 / 2.0;
+
+  trm2 = ((4.0 * psi + 1) * psi - t2) / 24.0;
+
+  trm3 =
+    ((((8.0 * (11.0 - 24.0 * t2) * psi - 28.0 * (1.0 - 6.0 * t2)) * psi +
+      (1.0 - 32.0 * t2)) *
+      psi -
+      2.0 * t2) *
+      psi +
+      t4) /
+    720.0;
+
+  const trm4 = (1385.0 - 3111.0 * t2 + 543.0 * t4 - t6) / 40320.0;
+
+  const gcn =
+    eta * t * ((((trm4 * wc2 + trm3) * wc2 + trm2) * wc2 + trm1) * wc2);
+  const northing = ((gcn + m - om) * scalef) / utom + falsen;
+
+  return { easting, northing };
+};
+
+const footPointLat = (f: number, a: number, m: number) => {
+  const n = f / (2.0 - f);
+  const n2 = n * n;
+  const n3 = n2 * n;
+  const n4 = n2 * n2;
+
+  const g =
+    a * (1.0 - n) * (1.0 - n2) * (1 + (9.0 * n2) / 4.0 + (225.0 * n4) / 64.0);
+  const sig = m / g;
+
+  return (
+    sig +
+    ((3.0 * n) / 2.0 - (27.0 * n3) / 32.0) * Math.sin(2.0 * sig) +
+    ((21.0 * n2) / 16.0 - (55.0 * n4) / 32.0) * Math.sin(4.0 * sig) +
+    ((151.0 * n3) / 96.0) * Math.sin(6.0 * sig) +
+    ((1097.0 * n4) / 512.0) * Math.sin(8.0 * sig)
+  );
+};
+
+export const convertNZTMToLatLng = (
+  eastingMetres: number,
+  northingMetres: number
+): LatLng => {
+  const { falsen, falsee, scalef, e2, a, meridian, om, utom, f } =
+    getNZTMProjection();
+  let trm1;
+  let trm2;
+  let trm3;
+  let trm4;
+
+  const cn1 = ((northingMetres - falsen) * utom) / scalef + om;
+  const fphi = footPointLat(f, a, cn1);
+  const slt = Math.sin(fphi);
+  const clt = Math.cos(fphi);
+
+  const eslt = 1.0 - e2 * slt * slt;
+  const eta = a / Math.sqrt(eslt);
+  const rho = (eta * (1.0 - e2)) / eslt;
+  const psi = eta / rho;
+
+  const E = (eastingMetres - falsee) * utom;
+  const x = E / (eta * scalef);
+  const x2 = x * x;
+
+  const t = slt / clt;
+  const t2 = t * t;
+  const t4 = t2 * t2;
+
+  trm1 = 1.0 / 2.0;
+
+  trm2 = ((-4.0 * psi + 9.0 * (1 - t2)) * psi + 12.0 * t2) / 24.0;
+
+  trm3 =
+    ((((8.0 * (11.0 - 24.0 * t2) * psi - 12.0 * (21.0 - 71.0 * t2)) * psi +
+      15.0 * ((15.0 * t2 - 98.0) * t2 + 15)) *
+      psi +
+      180.0 * ((-3.0 * t2 + 5.0) * t2)) *
+      psi +
+      360.0 * t4) /
+    720.0;
+
+  trm4 = (((1575.0 * t2 + 4095.0) * t2 + 3633.0) * t2 + 1385.0) / 40320.0;
+
+  const lat =
+    fphi +
+    ((t * x * E) / (scalef * rho)) *
+      (((trm4 * x2 - trm3) * x2 + trm2) * x2 - trm1);
+
+  trm1 = 1.0;
+
+  trm2 = (psi + 2.0 * t2) / 6.0;
+
+  trm3 =
+    (((-4.0 * (1.0 - 6.0 * t2) * psi + (9.0 - 68.0 * t2)) * psi + 72.0 * t2) *
+      psi +
+      24.0 * t4) /
+    120.0;
+
+  trm4 = (((720.0 * t2 + 1320.0) * t2 + 662.0) * t2 + 61.0) / 5040.0;
+
+  const lng =
+    meridian - (x / clt) * (((trm4 * x2 - trm3) * x2 + trm2) * x2 - trm1);
+  return { lat: lat * rad2deg, lng: lng * rad2deg };
 };
 
 export type FormInputValidationState = boolean | undefined;

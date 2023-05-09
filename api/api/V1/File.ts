@@ -112,13 +112,17 @@ export default (app: Application, baseUrl: string) => {
         uploadingDevice,
         uploadingUser,
         data,
-        key,
-        uploadedFileData
+        keys,
+        uploadedFileDatas
       ): Promise<File> => {
+        console.assert(
+          keys.length === 1,
+          "Only expected 1 file attachment for this end-point"
+        );
         const dbRecord = models.File.buildSafely(data);
         dbRecord.UserId = (uploadingUser as User).id;
-        dbRecord.fileKey = key;
-        dbRecord.fileSize = uploadedFileData.length;
+        dbRecord.fileKey = keys[0];
+        dbRecord.fileSize = uploadedFileDatas[0].data.length;
         await dbRecord.save();
         return dbRecord;
       }

@@ -588,6 +588,7 @@ describe("Recordings report using where", () => {
         "rreGroup",
         true,
         true,
+        false,
         HttpStatusCode.Ok,
         { useRawUserName: true }
       );

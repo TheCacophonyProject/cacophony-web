@@ -29,6 +29,8 @@ import { extractJwtAuthorizedUser } from "../extract-middleware";
 import models from "@models";
 import { ClientError } from "@api/customErrors";
 import { GroupId, StationId } from "@typedefs/api/common";
+import logger from "@log";
+import { RecordingType } from "@typedefs/api/consts";
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -170,14 +172,22 @@ export default function (app: Application, baseUrl: string) {
       query("ai").optional().isLength({ min: 3 }),
       query("from").optional().isISO8601().toDate(),
       query("until").optional().isISO8601().toDate(),
+      query("types").optional(),
       query("view-mode").optional(),
     ]),
-    // Extract resources
-    // FIXME: Extract resources and check permissions for devices and groups, here rather than in the main business logic
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = await models.User.findByPk(
         response.locals.requestUser.id
       );
+      const types = (((request.query.types as string) &&
+        (request.query.types as string).split(",")) as (
+        | RecordingType.TrailCamImage
+        | RecordingType.ThermalRaw
+        | RecordingType.TrailCamVideo
+        | RecordingType.Audio
+      )[]) || [RecordingType.ThermalRaw];
+      // TODO: Default to thermalRaw for existing api calls, and new api calls can pass through the recording types they want visits
+      //  calculated over.
 
       const stationIds: StationId[] =
         ((request.query.stations as string[]) || []).map(Number) || [];
@@ -192,8 +202,8 @@ export default function (app: Application, baseUrl: string) {
         groups: groupIds,
         page: request.query.page as unknown as number,
         pageSize: request.query["page-size"] as unknown as number,
+        types,
       };
-      // FIXME - page-size is never actually used anywhere
       if (request.query.from) {
         params.from = request.query.from as unknown as Date;
       }
@@ -207,6 +217,7 @@ export default function (app: Application, baseUrl: string) {
         viewAsSuperAdmin
       );
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
+      searchDetails.types = params.types;
 
       const visits = await generateVisits(
         requestUser.id,
@@ -216,6 +227,7 @@ export default function (app: Application, baseUrl: string) {
       if (visits instanceof ClientError) {
         return next(visits);
       }
+
       return successResponse(response, "Completed query.", {
         params: searchDetails,
         visits,

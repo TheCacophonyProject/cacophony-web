@@ -114,8 +114,13 @@ export default function (app: Application) {
     `${apiUrl}/processed`,
     util.multipartUpload(
       "file",
-      async (uploader, uploadingDevice, uploadingUser, data, key) => {
-        return key;
+      async (uploader, uploadingDevice, uploadingUser, data, keys) => {
+        // Expect only one file to be uploaded at a time
+        console.assert(
+          keys.length === 1,
+          "Only expected 1 file attachment for this end-point"
+        );
+        return keys[0];
       }
     )
   );

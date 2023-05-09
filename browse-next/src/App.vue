@@ -6,11 +6,7 @@ import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
 import NetworkConnectionAlertModal from "@/components/NetworkConnectionAlertModal.vue";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 import {
-  userIsLoggedIn,
-  userHasProjects,
-  CurrentUser as fallibleCurrentUser,
   euaIsOutOfDate,
-  currentSelectedProject as fallibleCurrentSelectedProject,
   userHasMultipleProjects,
   isLoggingInAutomatically,
   isFetchingProjects,
@@ -31,15 +27,33 @@ import {
 } from "@/models/LoggedInUser";
 import type { SelectedProject, LoggedInUser } from "@/models/LoggedInUser";
 import {
+  userHasProjects as hasProjects,
+  userIsLoggedIn as hasLoggedInUser,
+  currentUser,
+  currentSelectedProject,
+} from "@models/provides.ts";
+import {
   computed,
   defineAsyncComponent,
+  inject,
   onBeforeMount,
   onMounted,
   ref,
   watch,
 } from "vue";
+import type { ComputedRef, Ref } from "vue";
 import { BSpinner } from "bootstrap-vue-3";
 import SwitchProjectsModal from "@/components/SwitchProjectsModal.vue";
+import type { LoadedResource } from "@api/types.ts";
+
+const fallibleCurrentUser = inject(currentUser) as Ref<
+  LoadedResource<LoggedInUser>
+>;
+const userIsLoggedIn = inject(hasLoggedInUser) as ComputedRef<boolean>;
+const userHasProjects = inject(hasProjects) as ComputedRef<boolean>;
+const fallibleCurrentSelectedProject = inject(
+  currentSelectedProject
+) as ComputedRef<SelectedProject | false>;
 
 const globalSideNav = ref<HTMLDivElement>();
 
@@ -268,7 +282,7 @@ onMounted(() => {
                   type="button"
                   @click.stop.prevent="creatingNewProject.enabled = true"
                 >
-                  Create a new group
+                  Create a new project
                 </button>
               </li>
               <li>
@@ -277,7 +291,7 @@ onMounted(() => {
                   type="button"
                   @click.stop.prevent="joiningNewProject.enabled = true"
                 >
-                  Join an existing group
+                  Join an existing project
                 </button>
               </li>
             </ul>

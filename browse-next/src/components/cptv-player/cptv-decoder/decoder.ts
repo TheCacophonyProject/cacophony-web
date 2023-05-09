@@ -76,18 +76,18 @@ export class CptvDecoder {
    * @param id (Number)
    * @param apiToken (String)
    * @param size (Number)
-   * @returns True on success, or an error string on failure (String | Boolean)
+   * @returns Content type on success, or an error string on failure (String | Boolean)
    */
   async initWithRecordingIdAndKnownSize(
     id: RecordingId,
     size: number,
     apiToken?: string
-  ): Promise<string | boolean> {
+  ): Promise<string | boolean | Blob> {
     await this.init();
     const type = "initWithRecordingIdAndSize";
     decoder &&
       decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
-    return (await this.waitForMessage(type)) as string | boolean;
+    return (await this.waitForMessage(type)) as string | boolean | Blob;
   }
 
   /**

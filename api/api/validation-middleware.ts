@@ -51,7 +51,7 @@ export const checkDeviceNameIsUniqueInGroup =
           "reference-image",
           "location-history",
           "unique-track-tags",
-          "tracks-with-tag"
+          "tracks-with-tag",
         ].includes(deviceName)
       ) {
         return next(new ClientError(`Device name ${deviceName} reserved`));

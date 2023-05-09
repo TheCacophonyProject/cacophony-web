@@ -16,14 +16,16 @@ const {
   fadeIn,
   parentRouteName,
   showInactive = false,
+  noCloseOnBackdrop = false,
 } = defineProps<{
   fadeIn: boolean;
   parentRouteName: string;
   showInactive?: boolean;
+  noCloseOnBackdrop?: boolean;
 }>();
 
 const closedModal = () => {
-  const params = { groupName: urlNormalisedGroupName.value };
+  const params = { projectName: urlNormalisedGroupName.value };
   if (parentRouteName === "devices" && showInactive) {
     (params as any).all = "all";
   }
@@ -58,6 +60,8 @@ const onShown = () => {
   noFadeInternal.value = false;
   emit("shown");
 };
+
+const isBusy = ref<boolean>(false);
 </script>
 <template>
   <router-view v-slot="{ Component }">
@@ -72,21 +76,40 @@ const onShown = () => {
       @hide="show = false"
       @hidden="closedModal"
       @shown="onShown"
+      :cancel-disabled="isBusy"
+      :no-close-on-backdrop="isBusy || noCloseOnBackdrop"
+      :no-close-on-esc="isBusy"
       body-class="p-0"
-      content-class="inline-view-modal"
-      dialog-class="inline-view-dialog m-0 m-sm-auto modal-fullscreen-sm-down"
+      :content-class="{
+        'inline-view-modal': true,
+        disabled: isBusy,
+      }"
+      :dialog-class="['inline-view-dialog', 'm-0', 'm-sm-auto', 'modal-fullscreen-sm-down', {disabled: isBusy}]"
     >
-      <component :is="Component" @close="show = false" />
+      <component
+        :is="Component"
+        @close="show = false"
+        @start-blocking-work="isBusy = true"
+        @end-blocking-work="isBusy = false"
+      />
     </b-modal>
   </router-view>
 </template>
 
 <style lang="less">
+.inline-view-dialog {
+  pointer-events: none;
+  user-select: none;
+}
 .inline-view-modal {
   border-radius: 2px;
   box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
 
   // TODO What's the best way to set the width of this at different breakpoints?
+  &.disabled {
+    pointer-events: none;
+    user-select: none;
+  }
 }
 .inline-view-dialog {
   max-width: 1080px;

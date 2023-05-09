@@ -236,7 +236,7 @@ Cypress.Commands.add(
   (
     deviceName: string,
     data: ApiRecordingSet,
-    fileName: string = "invalid.cptv",
+    fileName: string | {filename: string, key: string}[] = "invalid.cptv",
     recordingName: string = "recording1",
     statusCode: number = 200,
     additionalChecks: any = {}
@@ -493,7 +493,7 @@ Cypress.Commands.add(
     additionalChecks: any = {}
   ) => {
     logTestDescription(`Check recording ${recordingNameOrId} `, {
-      recordingName: recordingNameOrId,
+      recordingName: recordingNameOrId
     });
 
     let recordingId: RecordingId;
@@ -674,7 +674,7 @@ Cypress.Commands.add(
     groupName: string,
     data: ApiRecordingSet,
     recordingName: string,
-    fileName: string = "invalid.cptv",
+    fileName: string | {filename: string, key: string}[] = "invalid.cptv",
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
@@ -729,7 +729,7 @@ Cypress.Commands.add(
     deviceName: string,
     data: ApiRecordingSet,
     recordingName: string = "recording1",
-    fileName: string = "invalid.cptv",
+    fileName: string | {filename: string, key: string}[] = "invalid.cptv",
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {

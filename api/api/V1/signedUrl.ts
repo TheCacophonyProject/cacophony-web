@@ -43,6 +43,7 @@ export const streamS3Object = async (
   if (fileSize) {
     response.setHeader("Content-Length", fileSize);
   }
+
   const s3 = modelsUtil.openS3();
   const s3Request = s3.getObject({
     Key: key,

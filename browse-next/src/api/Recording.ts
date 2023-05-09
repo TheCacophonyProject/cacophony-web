@@ -25,6 +25,7 @@ export const getRecordingById = (
   if (includeDeletedRecordings) {
     params.append("deleted", true.toString());
   }
+  params.append("requires-signed-url", false.toString());
   return unwrapLoadedResource(
     CacophonyApi.get(`/api/v1/recordings/${id}?${params}`) as Promise<
       FetchResult<{
@@ -87,7 +88,12 @@ interface QueryRecordingsOptions {
   durationMinSecs?: number;
   durationMaxSecs?: number;
 
-  type?: RecordingType;
+  types?: (
+    | RecordingType.TrailCamImage
+    | RecordingType.TrailCamVideo
+    | RecordingType.ThermalRaw
+    | RecordingType.Audio
+  )[];
 
   countAll?: boolean;
 }
@@ -98,6 +104,8 @@ export const queryRecordingsInProject = (
 ): Promise<
   FetchResult<{ rows: ApiRecordingResponse[]; limit: number; count: number }>
 > => {
+  // FIXME: Implement guard on types
+
   const params = new URLSearchParams();
   if (options.limit) {
     params.append("limit", options.limit.toString());
@@ -141,7 +149,9 @@ export const queryRecordingsInProject = (
   // TODO: We might want to count-all the first time.
   params.append("countAll", (options.countAll || false).toString());
   params.append("tagMode", options.tagMode || TagMode.Any);
-  params.append("filterModel", "Master");
+  if (options.tagMode && options.tagMode !== TagMode.Any) {
+    params.append("filterModel", "Master");
+  }
   params.append("limit", (options.limit && options.limit.toString()) || "30");
 
   // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
@@ -224,4 +234,30 @@ export const longRunningQuery = (seconds?: number, succeed?: boolean) => {
     `/api/v1/recordings/long-running-query?${params}`,
     abortable
   ) as Promise<FetchResult<{ count: number }>>;
+};
+
+export const uploadRecording = (
+  deviceId: DeviceId,
+  data: { fileHash: string },
+  rawFile: ArrayBuffer,
+  rawFileName: string,
+  derivedFile?: ArrayBuffer,
+  derivedFileName?: string,
+  thumbFile?: ArrayBuffer,
+  thumbFileName?: string
+) => {
+  const formData = new FormData();
+  formData.set("data", JSON.stringify(data));
+  formData.set("file", new Blob([rawFile]), rawFileName);
+  if (derivedFile && derivedFileName) {
+    formData.set("derived", new Blob([derivedFile]), derivedFileName);
+  }
+  if (thumbFile && thumbFileName) {
+    formData.set("thumb", new Blob([thumbFile]), thumbFileName);
+  }
+  return CacophonyApi.postMultipartFormData(
+    `/api/v1/recordings/device/${deviceId}`,
+    formData,
+    true
+  ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
 };

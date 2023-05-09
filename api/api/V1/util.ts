@@ -43,11 +43,17 @@ interface MultiPartFormPart extends stream.Readable {
   byteCount: number;
 }
 
-const stream2Buffer = (stream: Stream): Promise<Buffer> => {
+const stream2Buffer = (
+  stream: Stream,
+  key: string,
+  filename: string
+): Promise<{ key: string; filename: string; buffer: Buffer }> => {
   return new Promise((resolve, reject) => {
     const _buf = [];
     stream.on("data", (chunk) => _buf.push(chunk));
-    stream.on("end", () => resolve(Buffer.concat(_buf)));
+    stream.on("end", () =>
+      resolve({ key, filename, buffer: Buffer.concat(_buf) })
+    );
     stream.on("error", (err) => reject(err));
   });
 };
@@ -102,17 +108,19 @@ function multipartUpload(
     uploadingDevice: Device,
     uploadingUser: User | null,
     data: any,
-    key: string,
-    uploadedFileData: Uint8Array,
+    keys: string[],
+    uploadedFileDatas: { key: string; data: Uint8Array; filename: string }[],
     locals: Record<string, any>
   ) => Promise<ModelCommon<T> | string>
 ) {
   return async (request: Request, response: Response, next: NextFunction) => {
-    const key = keyPrefix + "/" + moment().format("YYYY/MM/DD/") + uuidv4();
+    const key = `${keyPrefix}/${moment().format("YYYY/MM/DD")}/${uuidv4()}`;
     let data;
-    let filename;
-    let uploadPromise;
-    let fileDataPromise;
+    const uploadPromises = {};
+    const fileDataPromises: Record<
+      string,
+      Promise<{ key: string; buffer: Buffer }>
+    > = {};
 
     let uploadingDevice =
       response.locals.requestDevice || response.locals.device;
@@ -166,11 +174,14 @@ function multipartUpload(
 
     // Handle the "file" part.
     form.on("part", (part: MultiPartFormPart) => {
-      if (part.name !== "file") {
+      if (
+        part.name !== "file" &&
+        part.name !== "derived" &&
+        part.name !== "thumb"
+      ) {
         part.resume();
         return;
       }
-      filename = part.filename;
       const uploadStream = (Key) => {
         const pass = new stream.PassThrough();
         return {
@@ -184,10 +195,21 @@ function multipartUpload(
             }),
         };
       };
-      const { writeStream, promise } = uploadStream(key);
-      uploadPromise = promise;
+      let partKey = key;
+      if (part.name === "derived") {
+        partKey = key.replace("raw", "web");
+      }
+      if (part.name === "thumb") {
+        partKey = `${key.replace("raw", "web")}-thumb`;
+      }
+      const { writeStream, promise } = uploadStream(partKey);
+      uploadPromises[part.filename] = promise;
       part.pipe(writeStream);
-      fileDataPromise = stream2Buffer(writeStream);
+      fileDataPromises[partKey] = stream2Buffer(
+        writeStream,
+        partKey,
+        part.filename
+      );
       log.debug("Started streaming upload to bucket...");
     });
 
@@ -207,7 +229,7 @@ function multipartUpload(
         );
         return;
       }
-      if (!uploadPromise) {
+      if (!Object.values(uploadPromises).length) {
         log.error("Upload was never started.");
         responseUtil.invalidDatapointUpload(
           response,
@@ -244,89 +266,120 @@ function multipartUpload(
 
       let dbRecordOrFileKey: any;
       try {
-        // Wait for the upload to complete.
-        const [uploadResult, fileData] = await Promise.all([
-          uploadPromise,
-          fileDataPromise,
+        const uploadKeys = Object.keys(fileDataPromises);
+        const numUploads = Object.values(uploadPromises).length;
+        // Wait for the upload(s) to complete.
+        const results = await Promise.all([
+          ...Object.values(uploadPromises),
+          ...Object.values(fileDataPromises),
         ]);
-        const fileDataArray = new Uint8Array(fileData);
-        if (uploadResult instanceof Error) {
-          return serverErrorResponse(request, response, uploadResult);
+        for (let i = 0; i < numUploads; i++) {
+          const uploadResult = results[i];
+          if (uploadResult instanceof Error) {
+            return serverErrorResponse(request, response, uploadResult);
+          }
         }
+
+        // We only want to check the fileHash against the raw file part.
+        console.log(results);
+        const fileDataArrays = results
+          .slice(numUploads)
+          .map(
+            ({
+              key,
+              filename,
+              buffer,
+            }: {
+              key: string;
+              buffer: Buffer;
+              filename: string;
+            }) => ({ key, filename, data: new Uint8Array(buffer) })
+          );
         log.info("Finished streaming upload to object store. Key: %s", key);
+        if (keyPrefix === "raw") {
+          const fileDataArray = (
+            fileDataArrays.find(({ key }) => key.startsWith("raw")) as {
+              key: string;
+              data: Uint8Array;
+            }
+          ).data;
+          // Optional file integrity check, opt-in to be backward compatible with existing clients.
+          if (data.fileHash) {
+            log.info("Checking file hash. Key: %s", key);
+            // Hash the full file
+            const checkHash = crypto
+              .createHash("sha1")
+              // @ts-ignore
+              .update(fileDataArray, "binary")
+              .digest("hex");
 
-        // Optional file integrity check, opt-in to be backward compatible with existing clients.
-        if (data.fileHash && keyPrefix === "raw") {
-          log.info("Checking file hash. Key: %s", key);
-          // Hash the full file
-          const checkHash = crypto
-            .createHash("sha1")
-            // @ts-ignore
-            .update(fileDataArray, "binary")
-            .digest("hex");
-          if (data.fileHash !== checkHash) {
-            log.error("File hash check failed, deleting key: %s", key);
-            // Hash check failed, delete the file from s3, and return an error which the client can respond to to decide
-            // whether or not to retry immediately.
-            await modelsUtil
-              .openS3()
-              .deleteObject({
-                Key: key,
-              })
-              .promise()
-              .catch((err) => {
-                return err;
-              });
-            responseUtil.invalidDatapointUpload(
-              response,
-              "Uploaded file integrity check failed, please retry."
-            );
-            return;
-          }
-        } else if (keyPrefix === "raw" && config.productionEnv) {
-          // NOTE: We need to allow duplicate uploads on test currently.
-          // Create a fileHash if we didn't get one from the device upload, and check for
-          // duplicates.
-          data.fileHash = crypto
-            .createHash("sha1")
-            // @ts-ignore
-            .update(fileDataArray, "binary")
-            .digest("hex");
+            if (data.fileHash !== checkHash) {
+              for (const key of uploadKeys) {
+                log.error("File hash check failed, deleting key: %s", key);
+                // Hash check failed, delete the file from s3, and return an error which the client can respond
+                // to in order to decide whether to retry immediately.
+                await modelsUtil
+                  .openS3()
+                  .deleteObject({
+                    Key: key,
+                  })
+                  .promise()
+                  .catch((err) => {
+                    return err;
+                  });
+                responseUtil.invalidDatapointUpload(
+                  response,
+                  "Uploaded file integrity check failed, please retry."
+                );
+              }
+              return;
+            }
+          } else if (config.productionEnv) {
+            // NOTE: We need to allow duplicate uploads on test currently.
+            // Create a fileHash if we didn't get one from the device upload, and check for
+            // duplicates.
+            data.fileHash = crypto
+              .createHash("sha1")
+              // @ts-ignore
+              .update(fileDataArray, "binary")
+              .digest("hex");
 
-          const existingRecordingWithHashForDevice =
-            await models.Recording.findOne({
-              where: {
-                DeviceId: uploadingDevice.id,
-                rawFileHash: data.fileHash,
-                deletedAt: { [Op.eq]: null },
-              },
-            });
-          if (existingRecordingWithHashForDevice !== null) {
-            log.warning(
-              "Recording with hash %s for device %s already exists, discarding duplicate",
-              data.fileHash,
-              uploadingDevice.id
-            );
-            // Remove from s3
-            await modelsUtil
-              .openS3()
-              .deleteObject({
-                Key: key,
-              })
-              .promise()
-              .catch((err) => {
-                return err;
+            const existingRecordingWithHashForDevice =
+              await models.Recording.findOne({
+                where: {
+                  DeviceId: uploadingDevice.id,
+                  rawFileHash: data.fileHash,
+                  deletedAt: { [Op.eq]: null },
+                },
               });
-            responseUtil.validRecordingUpload(
-              response,
-              existingRecordingWithHashForDevice.id,
-              "Duplicate recording found for device"
-            );
-            return;
+            if (existingRecordingWithHashForDevice !== null) {
+              for (const key of uploadKeys) {
+                log.warning(
+                  "Recording with hash %s for device %s already exists, discarding duplicate",
+                  data.fileHash,
+                  uploadingDevice.id
+                );
+                // Remove from s3
+                await modelsUtil
+                  .openS3()
+                  .deleteObject({
+                    Key: key,
+                  })
+                  .promise()
+                  .catch((err) => {
+                    return err;
+                  });
+                responseUtil.validRecordingUpload(
+                  response,
+                  existingRecordingWithHashForDevice.id,
+                  "Duplicate recording found for device"
+                );
+              }
+              return;
+            }
           }
         }
 
-        data.filename = filename;
         // Store a record for the upload.
         const uploader = response.locals.requestDevice ? "device" : "user";
         dbRecordOrFileKey = await onFileUploadComplete(
@@ -334,8 +387,8 @@ function multipartUpload(
           uploadingDevice,
           response.locals.requestUser || null,
           data,
-          key,
-          fileDataArray,
+          uploadKeys,
+          fileDataArrays,
           response.locals
         );
         if (typeof dbRecordOrFileKey !== "string") {

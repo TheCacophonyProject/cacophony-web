@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
-  computed,
+  computed, inject,
   nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
   watch,
 } from "vue";
+import type {Ref} from "vue";
 import {
   timezoneForLatLng,
   visitsBySpecies as visitsBySpeciesCalc,
@@ -15,7 +16,9 @@ import {
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
 import {displayLabelForClassificationLabel, getPathForLabel} from "@api/Classifications";
-import { currentlyHighlightedLocation } from "@models/SelectionContext";
+import type {StationId as LocationId} from "@typedefs/api/common";
+
+const currentlyHighlightedLocation = inject("currentlyHighlightedLocation") as Ref<LocationId | null>;
 
 const { visits, locations, startDate } = defineProps<{
   visits: ApiVisitResponse[];

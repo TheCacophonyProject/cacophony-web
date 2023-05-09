@@ -46,7 +46,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording1,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
@@ -88,7 +88,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording2,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording2"
     ).then(() => {
       expectedRecording2 = TestCreateExpectedRecordingData(
@@ -118,7 +118,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording14,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording14",
       HttpStatusCode.Unprocessable
     );
@@ -133,7 +133,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording15,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording15"
     ).then(() => {
       expectedRecording15 = TestCreateExpectedRecordingData(
@@ -162,7 +162,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording8,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording8",
       HttpStatusCode.Unprocessable
     );
@@ -182,7 +182,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording11,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording11"
     ).then(() => {
       expectedRecording11 = TestCreateExpectedRecordingData(
@@ -210,7 +210,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording12,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording12"
     ).then(() => {
       expectedRecording12 = TestCreateExpectedRecordingData(
@@ -237,7 +237,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording13,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording13"
     ).then(() => {
       expectedRecording13 = TestCreateExpectedRecordingData(
@@ -264,7 +264,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording14,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording14"
     ).then(() => {
       expectedRecording14 = TestCreateExpectedRecordingData(
@@ -291,7 +291,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording15,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording15"
     ).then(() => {
       expectedRecording15 = TestCreateExpectedRecordingData(
@@ -318,7 +318,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording16,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording16"
     ).then(() => {
       expectedRecording16 = TestCreateExpectedRecordingData(
@@ -345,7 +345,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording17,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording17"
     ).then(() => {
       expectedRecording17 = TestCreateExpectedRecordingData(
@@ -373,7 +373,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording18,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording18",
       HttpStatusCode.Unprocessable
     );
@@ -383,7 +383,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice2",
       recording19,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording19",
       HttpStatusCode.Unprocessable
     );
@@ -393,7 +393,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice3",
       recording20,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording20",
       HttpStatusCode.Unprocessable
     );
@@ -409,7 +409,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording21,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording21"
     ).then(() => {
       expectedRecording21 = TestCreateExpectedRecordingData(
@@ -437,7 +437,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording22,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording22"
     ).then(() => {
       expectedRecording22 = TestCreateExpectedRecordingData(
@@ -465,7 +465,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording23,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording23"
     ).then(() => {
       expectedRecording23 = TestCreateExpectedRecordingData(
@@ -496,7 +496,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording24,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording24"
     ).then(() => {
       expectedRecording24 = TestCreateExpectedRecordingData(
@@ -524,7 +524,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording25,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording25"
     ).then(() => {
       expectedRecording25 = TestCreateExpectedRecordingData(
@@ -553,7 +553,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording26,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording26"
     ).then(() => {
       expectedRecording26 = TestCreateExpectedRecordingData(
@@ -579,11 +579,11 @@ describe("Recordings - audio recording parameter tests", () => {
     const recording27 = TestCreateRecordingData(templateRecording);
     let expectedRecording27: ApiAudioRecordingResponse;
 
-    recording27.fileHash = "c5d369b40ef6c1cde4a2cfb4eb74ab6a2aa0a1bf"; //shasum output for 60sec-audio.mp4
+    recording27.fileHash = "c5d369b40ef6c1cde4a2cfb4eb74ab6a2aa0a1bf"; //shasum output for 60sec-audio.m4a
     cy.apiRecordingAdd(
       "rarDevice1",
       recording27,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording27"
     ).then(() => {
       expectedRecording27 = TestCreateExpectedRecordingData(
@@ -610,7 +610,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording28,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording28",
       HttpStatusCode.BadRequest,
       { message: "Uploaded file integrity check failed, please retry." }
@@ -624,7 +624,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording29,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording29"
     ).then(() => {
       expectedRecording29 = TestCreateExpectedRecordingData(
@@ -652,7 +652,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording30,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording30"
     ).then(() => {
       expectedRecording30 = TestCreateExpectedRecordingData(
@@ -682,7 +682,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording31,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording31"
     ).then(() => {
       expectedRecording31 = TestCreateExpectedRecordingData(
@@ -713,7 +713,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording32,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording32"
     ).then(() => {
       expectedRecording32 = TestCreateExpectedRecordingData(
@@ -741,7 +741,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording33,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording33"
     ).then(() => {
       expectedRecording33 = TestCreateExpectedRecordingData(
@@ -770,7 +770,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording34,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording34"
     ).then(() => {
       expectedRecording34 = TestCreateExpectedRecordingData(
@@ -827,7 +827,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording35,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording35"
     ).then(() => {
       expectedRecording35 = TestCreateExpectedRecordingData(
@@ -856,7 +856,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording36,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording36"
     ).then(() => {
       expectedRecording36 = TestCreateExpectedRecordingData(
@@ -885,7 +885,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording37,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording37"
     ).then(() => {
       expectedRecording37 = TestCreateExpectedRecordingData(
@@ -916,7 +916,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording38,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording38"
     ).then(() => {
       expectedRecording38 = TestCreateExpectedRecordingData(
@@ -947,7 +947,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording43,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording43",
       HttpStatusCode.Unprocessable
     );
@@ -958,7 +958,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording44,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording44",
       HttpStatusCode.Unprocessable
     );
@@ -974,7 +974,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording39,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording39"
     ).then(() => {
       expectedRecording39 = TestCreateExpectedRecordingData(
@@ -1002,7 +1002,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording40,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording40"
     ).then(() => {
       expectedRecording40 = TestCreateExpectedRecordingData(
@@ -1030,7 +1030,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording41,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording41"
     ).then(() => {
       expectedRecording41 = TestCreateExpectedRecordingData(
@@ -1059,7 +1059,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording42,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording42"
     ).then(() => {
       expectedRecording42 = TestCreateExpectedRecordingData(
@@ -1088,7 +1088,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording45,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording45",
       HttpStatusCode.Unprocessable
     );
@@ -1105,7 +1105,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording46,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording46"
     ).then(() => {
       expectedRecording46 = TestCreateExpectedRecordingData(
@@ -1134,7 +1134,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording47,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording47"
     ).then(() => {
       expectedRecording47 = TestCreateExpectedRecordingData(
@@ -1163,7 +1163,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording48,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording48"
     ).then(() => {
       expectedRecording48 = TestCreateExpectedRecordingData(
@@ -1192,7 +1192,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording49,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording49"
     ).then(() => {
       expectedRecording49 = TestCreateExpectedRecordingData(
@@ -1221,7 +1221,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording50,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording50"
     ).then(() => {
       expectedRecording50 = TestCreateExpectedRecordingData(
@@ -1252,7 +1252,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording51,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording51"
     ).then(() => {
       expectedRecording51 = TestCreateExpectedRecordingData(
@@ -1284,7 +1284,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording52,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording52",
       HttpStatusCode.Unprocessable
     );
@@ -1295,7 +1295,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       "rarDevice1",
       recording53,
-      "60sec-audio.mp4",
+      "60sec-audio.m4a",
       "rarRecording53",
       HttpStatusCode.Unprocessable
     );

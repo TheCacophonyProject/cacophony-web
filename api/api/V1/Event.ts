@@ -221,10 +221,15 @@ export default function (app: Application, baseUrl: string) {
         uploadingDevice,
         uploadingUser,
         data,
-        key,
-        uploadedFileData,
+        keys,
+        uploadedFileDatas,
         locals
       ): Promise<Event> => {
+        console.assert(
+          keys.length === 1,
+          "Only expected 1 file attachment for this end-point"
+        );
+        const key = keys[0];
         // New event
         const description: EventDescription = {
           type: "classifier",

@@ -5,6 +5,7 @@ import { checkRecording } from "@commands/api/recording-tests";
 describe("Monitoring : tracks and tags", () => {
   const Damian = "Damian";
   const Gerry = "Gerry";
+  const Edward = "Edward";
 
   const group = "MonitoringTags";
 
@@ -176,7 +177,7 @@ describe("Monitoring : tracks and tags", () => {
       });
     });
   });
-  it("User tags conflict", () => {
+  it("User tags conflict: agree on ancestor", () => {
     const camera = "conflicter";
     cy.apiUserAdd(Gerry);
     cy.apiGroupUserAdd(Damian, Gerry, group, true);
@@ -189,6 +190,26 @@ describe("Monitoring : tracks and tags", () => {
     recording.then((recID: number) => {
       cy.testUserTagRecording(recID, 0, Damian, "possum");
       cy.testUserTagRecording(recID, 0, Gerry, "rat");
+      checkRecording(Damian, recID, (recording) => {
+        cy.checkMonitoringTags(Damian, recording.stationId, [
+          "mammal",
+        ]);
+      });
+    });
+  });
+  it("User tags conflict: disagree on ancestor", () => {
+    const camera = "conflicter-ancestors-disagree";
+    cy.apiUserAdd(Edward);
+    cy.apiGroupUserAdd(Damian, Edward, group, true);
+    cy.apiDeviceAdd(camera, group);
+    const location11 = { lat: -45.5, lng: 175.7 };
+    const recording = cy.testUploadRecording(camera, {
+      tags: ["possum", "rabbit"],
+      ...location11,
+    });
+    recording.then((recID: number) => {
+      cy.testUserTagRecording(recID, 0, Damian, "possum");
+      cy.testUserTagRecording(recID, 0, Gerry, "vehicle");
       checkRecording(Damian, recID, (recording) => {
         cy.checkMonitoringTags(Damian, recording.stationId, [
           "conflicting tags",

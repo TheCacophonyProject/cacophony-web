@@ -30,7 +30,7 @@ onMounted(async () => {
 
 const locationsForMap = computed<NamedPoint[]>(() => {
   if (locations.value) {
-    return locations.value
+    return (locations.value as ApiLocationResponse[])
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
       .map(({ name, groupName, location }) => ({
         name,
@@ -124,7 +124,7 @@ const locationsNotActiveInLastYear = computed<ApiLocationResponse[]>(() => {
 
 const retiredLocations = computed<ApiLocationResponse[]>(() => {
   if (locations.value) {
-    return locations.value
+    return (locations.value as ApiLocationResponse[])
       .filter((location) => !!location.retiredAt)
       .sort(sortLastActive);
   }
@@ -157,6 +157,11 @@ const locationForHighlightedPoint = computed<ApiLocationResponse | null>(() => {
   }
   return null;
 });
+
+const projectHasLocations = computed<boolean>(() => {
+   return locations.value && (locations.value as ApiLocationResponse[]).length !== 0;
+});
+
 </script>
 <template>
   <div>
@@ -172,7 +177,8 @@ const locationForHighlightedPoint = computed<ApiLocationResponse | null>(() => {
       class="d-flex flex-md-row flex-column-reverse justify-content-between"
       v-else
     >
-      <div>
+      <div v-if="!projectHasLocations">There are no existing locations for this project</div>
+      <div v-else>
         <!--        <h6>Things that need to appear here:</h6>-->
         <!--        <ul>-->
         <!--          <li>-->
@@ -229,6 +235,7 @@ const locationForHighlightedPoint = computed<ApiLocationResponse | null>(() => {
         />
       </div>
       <map-with-points
+        v-if="projectHasLocations"
         :points="locationsForMap"
         :active-points="locationsForMap"
         :highlighted-point="highlightedPoint"

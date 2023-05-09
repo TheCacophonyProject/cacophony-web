@@ -1,16 +1,8 @@
 <script setup lang="ts">
-import { useRoute } from "vue-router";
 import type { RouteParamsRaw } from "vue-router";
-import {
-  computed,
-  inject,
-  nextTick,
-  onMounted,
-  provide,
-  ref,
-  watch,
-} from "vue";
+import { useRoute } from "vue-router";
 import type { ComputedRef, Ref } from "vue";
+import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type {
   LatLng,
   RecordingId,
@@ -19,19 +11,18 @@ import type {
   TrackId,
 } from "@typedefs/api/common";
 import {
+  formatDuration,
+  timeAtLocation,
   timezoneForLatLng,
   visitDuration,
-  timeAtLocation,
-  formatDuration,
 } from "@models/visitsUtils";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
 import { getRecordingById } from "@api/Recording";
-import {
-  selectedVisit,
-  maybeFilteredVisitsContext as visitsContext,
-} from "@models/SelectionContext";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import type {
+  ApiVisitResponse,
+  VisitRecordingTag,
+} from "@typedefs/api/monitoring";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
@@ -44,12 +35,10 @@ import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
+import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
-import type { VisitRecordingTag } from "@typedefs/api/monitoring";
 import { API_ROOT } from "@api/root";
-import { deleteRecording as apiDeleteRecording } from "@api/Recording";
 import {
   activeLocations,
   currentUser as currentUserInfo,
@@ -57,20 +46,28 @@ import {
   latLngForActiveLocations,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
+import { RecordingType } from "@typedefs/api/consts.ts";
+import ImageLoader from "@/components/ImageLoader.vue";
 
+const selectedVisit = inject(
+  "currentlySelectedVisit"
+) as Ref<ApiVisitResponse | null>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
+const visitsContext = inject("visitsContext") as Ref<ApiVisitResponse[] | null>;
 const currentUserCreds = inject(
   currentUserCredentials
 ) as Ref<LoggedInUserAuth | null>;
 
 const route = useRoute();
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
 const inlineModalEl = ref<HTMLDivElement>();
 
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
 watch(inlineModalHeight, (newHeight) => {
   if (inlineModalEl.value) {
-    inlineModalEl.value.style.top = `calc(50% - ${newHeight / 2}px)`;
+    (inlineModalEl.value as HTMLDivElement).style.top = `calc(50% - ${
+      newHeight / 2
+    }px)`;
   }
 });
 
@@ -133,7 +130,7 @@ const deviceNameIsTruncated = ref<boolean>(false);
 
 watch(
   () => route.params.currentRecordingId,
-  (nextRecordingId) => {
+  (nextRecordingId, prev) => {
     currentRecordingId.value = Number(nextRecordingId);
     loadRecording();
   }
@@ -143,9 +140,9 @@ watch(
   () => route.params.trackId,
   (nextTrackId) => {
     if (recording.value) {
-      currentTrack.value = recording.value.tracks.find(
-        ({ id }) => id == Number(nextTrackId)
-      );
+      currentTrack.value = (
+        recording.value as ApiRecordingResponse
+      ).tracks.find(({ id }) => id == Number(nextTrackId));
     }
   }
 );
@@ -178,8 +175,10 @@ const nextVisit = computed<ApiVisitResponse | null>(() => {
   return (
     (currentVisitIndex.value !== null &&
       visitsContext.value &&
-      currentVisitIndex.value < visitsContext.value.length - 1 &&
-      visitsContext.value[currentVisitIndex.value + 1]) ||
+      currentVisitIndex.value !== 0 &&
+      (visitsContext.value as ApiVisitResponse[])[
+        currentVisitIndex.value - 1
+      ]) ||
     null
   );
 });
@@ -188,8 +187,11 @@ const previousVisit = computed<ApiVisitResponse | null>(() => {
   return (
     (currentVisitIndex.value !== null &&
       visitsContext.value &&
-      currentVisitIndex.value !== 0 &&
-      visitsContext.value[currentVisitIndex.value - 1]) ||
+      (currentVisitIndex.value as number) <
+        (visitsContext.value as ApiVisitResponse[]).length &&
+      (visitsContext.value as ApiVisitResponse[])[
+        currentVisitIndex.value + 1
+      ]) ||
     null
   );
 });
@@ -217,14 +219,16 @@ const currentRecordingIndex = computed<number | null>(() => {
 });
 
 const nextRecordingIndex = computed<number | null>(() => {
-  const total = recordingIds.value.length || loadedRecordingIds.value.length;
-  if (currentRecordingIndex.value !== null) {
-    if (recordingViewContext === "activity-recording") {
+  if (recordingViewContext === "activity-recording") {
+    if (currentRecordingIndex.value !== null) {
       if (currentRecordingIndex.value - 1 < 0) {
         return null;
       }
       return currentRecordingIndex.value - 1;
-    } else {
+    }
+  } else {
+    const total = recordingIds.value.length;
+    if (currentRecordingIndex.value !== null) {
       if (currentRecordingIndex.value + 1 >= total) {
         return null;
       }
@@ -235,14 +239,16 @@ const nextRecordingIndex = computed<number | null>(() => {
 });
 
 const previousRecordingIndex = computed<number | null>(() => {
-  if (currentRecordingIndex.value !== null) {
-    if (recordingViewContext === "activity-recording") {
-      const total = loadedRecordingIds.value.length;
+  if (recordingViewContext === "activity-recording") {
+    const total = loadedRecordingIds.value.length;
+    if (currentRecordingIndex.value !== null) {
       if (currentRecordingIndex.value + 1 >= total) {
         return null;
       }
       return currentRecordingIndex.value + 1;
-    } else {
+    }
+  } else {
+    if (currentRecordingIndex.value !== null) {
       if (currentRecordingIndex.value - 1 < 0) {
         return null;
       }
@@ -258,7 +264,9 @@ const isInVisitContext = computed<boolean>(() => {
 
 const currentVisitIndex = computed<number | null>(() => {
   if (visitsContext.value && selectedVisit.value) {
-    const currentVisitIndex = visitsContext.value.indexOf(selectedVisit.value);
+    const currentVisitIndex = (
+      visitsContext.value as ApiVisitResponse[]
+    ).indexOf(selectedVisit.value as ApiVisitResponse);
     if (currentVisitIndex !== -1) {
       return currentVisitIndex;
     }
@@ -292,14 +300,14 @@ const gotoNextRecordingOrVisit = () => {
 
 const gotoNextRecording = () => {
   if (nextRecordingId.value) {
-    gotoRecording(nextRecordingId.value);
+    gotoRecording(nextRecordingId.value as RecordingId);
   }
 };
 
 const gotoNextVisit = () => {
   if (nextVisit.value) {
     selectedVisit.value = nextVisit.value;
-    gotoVisit(selectedVisit.value, true);
+    gotoVisit(selectedVisit.value as ApiVisitResponse, true);
   }
 };
 
@@ -311,7 +319,7 @@ const gotoPreviousRecordingOrVisit = () => {
   }
 };
 
-const gotoRecording = (recordingId: RecordingId) => {
+const gotoRecording = async (recordingId: RecordingId) => {
   const params = {
     ...route.params,
     currentRecordingId: recordingId,
@@ -324,29 +332,29 @@ const gotoRecording = (recordingId: RecordingId) => {
   }
   delete (params as RouteParamsRaw).trackId;
   delete (params as RouteParamsRaw).detail;
-  router.push({
+  await router.push({
     name: route.name as string,
     params,
   });
 };
 
-const gotoVisit = (visit: ApiVisitResponse, startOfVisit: boolean) => {
-  let currentRecordingId;
+const gotoVisit = async (visit: ApiVisitResponse, startOfVisit: boolean) => {
+  let recId;
   if (!startOfVisit) {
-    currentRecordingId = visit.recordings[visit.recordings.length - 1].recId;
+    recId = visit.recordings[visit.recordings.length - 1].recId;
   } else {
-    currentRecordingId = visit.recordings[0].recId;
+    recId = visit.recordings[0].recId;
   }
   const recordingIds = visit.recordings.map(({ recId }) => recId).join(",");
   const params = {
     ...route.params,
     visitLabel: visit.classification,
+    currentRecordingId: recId.toString(),
     recordingIds,
-    currentRecordingId,
   };
   delete (params as RouteParamsRaw).trackId;
   delete (params as RouteParamsRaw).detail;
-  router.push({
+  await router.push({
     name: route.name as string,
     params,
   });
@@ -360,14 +368,14 @@ const gotoPreviousRecording = () => {
     ) {
       requestLoadMoreRecordingsInPast();
     }
-    gotoRecording(previousRecordingId.value);
+    gotoRecording(previousRecordingId.value as RecordingId);
   }
 };
 
 const gotoPreviousVisit = () => {
   if (previousVisit.value) {
     selectedVisit.value = previousVisit.value;
-    gotoVisit(selectedVisit.value, false);
+    gotoVisit(selectedVisit.value as ApiVisitResponse, false);
   }
 };
 
@@ -375,7 +383,7 @@ const visitForRecording = computed<string>(() => {
   if (recording.value) {
     const humanTags: Record<string, number> = {};
     const aiTags: Record<string, number> = {};
-    for (const track of recording.value.tracks) {
+    for (const track of (recording.value as ApiRecordingResponse).tracks) {
       for (const tag of track.tags) {
         if (!tag.automatic) {
           humanTags[tag.what] = humanTags[tag.what] || 0;
@@ -422,7 +430,7 @@ const visitForRecording = computed<string>(() => {
         );
       }
     }
-    return "No Tracks";
+    return "None";
   }
   return "";
 });
@@ -436,11 +444,13 @@ const recalculateCurrentVisit = async (
   if (recording.value) {
     // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
     // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
-    const recordingId = recording.value.id;
+    const recordingId = (recording.value as ApiRecordingResponse).id;
     // Find the visit:
-    const targetVisit = visitsContext.value.find((visit) =>
-      visit.recordings.find(({ recId }) => recId === recordingId)
-    );
+    const targetVisit =
+      visitsContext.value &&
+      (visitsContext.value as ApiVisitResponse[]).find((visit) =>
+        visit.recordings.find(({ recId }) => recId === recordingId)
+      );
     if (targetVisit) {
       const targetVisitRecording = targetVisit.recordings.find(
         ({ recId }) => recId === recordingId
@@ -465,7 +475,7 @@ const recalculateCurrentVisit = async (
         const humanTags: Record<string, number> = {};
         for (const recording of targetVisit.recordings) {
           for (const track of recording.tracks) {
-            if (!track.isAITagged) {
+            if (!track.isAITagged && track.tag !== null) {
               humanTags[track.tag as string] =
                 humanTags[track.tag as string] || 0;
               humanTags[track.tag as string] += 1;
@@ -523,7 +533,7 @@ const trackTagChanged = async ({
   action: "add" | "remove";
 }) => {
   if (recording.value) {
-    const trackToPatch = recording.value.tracks.find(
+    const trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
       ({ id }) => id === track.id
     );
     if (trackToPatch) {
@@ -544,7 +554,7 @@ const trackTagChanged = async ({
         await recalculateCurrentVisit(track, undefined, tag);
       }
       if (!isInVisitContext.value) {
-        updatedRecording(recording.value);
+        updatedRecording(recording.value as ApiRecordingResponse);
       }
     }
   }
@@ -552,20 +562,20 @@ const trackTagChanged = async ({
 
 const addedRecordingLabel = (label: ApiRecordingTagResponse) => {
   if (recording.value) {
-    recording.value.tags.push(label);
+    (recording.value as ApiRecordingResponse).tags.push(label);
     if (!isInVisitContext.value) {
-      updatedRecording(recording.value);
+      updatedRecording(recording.value as ApiRecordingResponse);
     }
   }
 };
 
 const removedRecordingLabel = (labelId: TagId) => {
   if (recording.value) {
-    recording.value.tags = recording.value.tags.filter(
-      (tag) => tag.id !== labelId
-    );
+    (recording.value as ApiRecordingResponse).tags = (
+      recording.value as ApiRecordingResponse
+    ).tags.filter((tag) => tag.id !== labelId);
     if (!isInVisitContext.value) {
-      updatedRecording(recording.value);
+      updatedRecording(recording.value as ApiRecordingResponse);
     }
   }
 };
@@ -579,16 +589,18 @@ const isInGreaterVisitContext = computed<boolean>(() => {
 });
 
 const recording = ref<LoadedResource<ApiRecordingResponse>>(null);
+const recordingFileJWT = ref<LoadedResource<string>>(null);
+const recordingRawJWT = ref<LoadedResource<string>>(null);
 const tracks = computed<ApiTrackResponse[]>(() => {
   if (recording.value) {
-    return recording.value.tracks;
+    return (recording.value as ApiRecordingResponse).tracks;
   }
   return [];
 });
 
 const tags = computed<ApiRecordingTagResponse[]>(() => {
   if (recording.value) {
-    return recording.value.tags;
+    return (recording.value as ApiRecordingResponse).tags;
   }
   return [];
 });
@@ -615,9 +627,9 @@ const loadRecording = async () => {
       const _ = nextTick(checkNameTruncations);
 
       if (route.params.trackId) {
-        currentTrack.value = recording.value?.tracks.find(
-          ({ id }) => id == Number(route.params.trackId)
-        );
+        currentTrack.value = (
+          recording.value as ApiRecordingResponse
+        ).tracks.find(({ id }) => id == Number(route.params.trackId));
       }
 
       if (
@@ -625,8 +637,11 @@ const loadRecording = async () => {
         (route.params.trackId && !currentTrack.value)
       ) {
         // set the default track if not set
-        if (recording.value.tracks.length) {
-          await selectedTrack(recording.value.tracks[0].id, true);
+        if ((recording.value as ApiRecordingResponse).tracks.length) {
+          await selectedTrack(
+            (recording.value as ApiRecordingResponse).tracks[0].id,
+            true
+          );
         }
       }
     } else {
@@ -645,9 +660,9 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
     // Make the player start playing at the beginning of the selected track,
     // and stop when it reaches the end of that track.
     if (recording.value) {
-      userSelectedTrack.value = recording.value.tracks.find(
-        ({ id }) => id === trackId
-      );
+      userSelectedTrack.value = (
+        recording.value as ApiRecordingResponse
+      ).tracks.find(({ id }) => id === trackId);
       await nextTick(() => {
         userSelectedTrack.value = undefined;
       });
@@ -676,15 +691,10 @@ onMounted(async () => {
 
 const visitDurationString = computed<string>(() => {
   if (selectedVisit.value && locationContext && locationContext.value) {
-    const duration = visitDuration(selectedVisit.value, true);
-    let visitStart = timeAtLocation(
-      selectedVisit.value.timeStart,
-      locationContext.value
-    );
-    const visitEnd = timeAtLocation(
-      selectedVisit.value.timeEnd,
-      locationContext.value
-    );
+    const visit = selectedVisit.value as ApiVisitResponse;
+    const duration = visitDuration(visit, true);
+    let visitStart = timeAtLocation(visit.timeStart, locationContext.value);
+    const visitEnd = timeAtLocation(visit.timeEnd, locationContext.value);
     if (visitStart === visitEnd) {
       return `${visitStart} (${duration})`;
     }
@@ -699,15 +709,16 @@ const visitDurationString = computed<string>(() => {
 
 const recordingDurationString = computed<string>(() => {
   if (recording.value && locationContext && locationContext.value) {
-    const durationMs = recording.value.duration * 1000;
+    const rec = recording.value as ApiRecordingResponse;
+    const durationMs = rec.duration * 1000;
     const duration = formatDuration(durationMs, true);
     let visitStart = timeAtLocation(
-      recording.value.recordingDateTime,
+      rec.recordingDateTime,
       locationContext.value
     );
     const visitEnd = timeAtLocation(
       new Date(
-        new Date(recording.value.recordingDateTime).getTime() + durationMs
+        new Date(rec.recordingDateTime).getTime() + durationMs
       ).toISOString(),
       locationContext.value
     );
@@ -725,13 +736,14 @@ const recordingDurationString = computed<string>(() => {
 
 const recordingDateTime = computed<DateTime | null>(() => {
   if (recording.value) {
-    if (recording.value.location) {
-      const zone = timezoneForLatLng(recording.value.location);
-      return DateTime.fromISO(recording.value.recordingDateTime, {
+    const rec = recording.value as ApiRecordingResponse;
+    if (rec.location) {
+      const zone = timezoneForLatLng(rec.location);
+      return DateTime.fromISO(rec.recordingDateTime, {
         zone,
       });
     }
-    return DateTime.fromISO(recording.value.recordingDateTime);
+    return DateTime.fromISO(rec.recordingDateTime);
   }
   return null;
 });
@@ -753,22 +765,32 @@ const recordingStartTime = computed<string>(() => {
 });
 
 const currentLocationName = computed<string>(() => {
-  return (recording.value && recording.value.stationName) || " ";
+  return (
+    (recording.value &&
+      (recording.value as ApiRecordingResponse).stationName) ||
+    " "
+  );
 });
 
 const currentDeviceName = computed<string>(() => {
-  return (recording.value && recording.value.deviceName) || " ";
+  return (
+    (recording.value && (recording.value as ApiRecordingResponse).deviceName) ||
+    " "
+  );
 });
 
 const mapPointForRecording = computed<NamedPoint[]>(() => {
-  if (recording.value && recording.value.location) {
-    return [
-      {
-        name: currentLocationName.value,
-        location: recording.value?.location,
-        project: recording.value?.groupName,
-      },
-    ] as NamedPoint[];
+  if (recording.value) {
+    const rec = recording.value as ApiRecordingResponse;
+    if (rec.location) {
+      return [
+        {
+          name: currentLocationName.value,
+          location: rec.location,
+          project: rec.groupName,
+        },
+      ] as NamedPoint[];
+    }
   }
   return [];
 });
@@ -783,7 +805,8 @@ const isMobileView = computed<boolean>(() => {
   return !desktop.value;
 });
 
-const recordingViewContext = route.meta.context;
+const recordingViewContext: string = (route.meta as Record<string, string>)
+  .context;
 
 const recordingInfo = ref<HTMLDivElement>();
 const playerContainer = ref<HTMLDivElement>();
@@ -791,10 +814,11 @@ const playerContainer = ref<HTMLDivElement>();
 const playerHeight = useElementSize(playerContainer);
 watch(playerHeight.height, (newHeight) => {
   if (recordingInfo.value) {
+    const recordingInfoEl = recordingInfo.value as HTMLDivElement;
     if (desktop.value) {
-      recordingInfo.value.style.maxHeight = `${newHeight}px`;
+      recordingInfoEl.style.maxHeight = `${newHeight}px`;
     } else {
-      recordingInfo.value.style.maxHeight = "auto";
+      recordingInfoEl.style.maxHeight = "auto";
     }
   }
 });
@@ -833,6 +857,7 @@ const requestedAdvancedExport = () => {
 
 const requestedDownload = async () => {
   if (recording.value) {
+    const rec = recording.value as ApiRecordingResponse;
     const request = {
       mode: "cors",
       cache: "no-cache",
@@ -848,7 +873,7 @@ const requestedDownload = async () => {
       anchor.download = filename || "download";
       anchor.click();
     };
-    const recordingId = recording.value.id;
+    const recordingId = rec.id;
     const cptvFileResponse = await window.fetch(
       `${API_ROOT}/api/v1/recordings/raw/${recordingId}`,
       request as RequestInit
@@ -859,11 +884,40 @@ const requestedDownload = async () => {
         new Blob([cptvUintArray], { type: "application/octet-stream" })
       ),
       `recording_${recordingId}${new Date(
-        recording.value.recordingDateTime
+        rec.recordingDateTime
       ).toLocaleString()}.cptv`
     );
   }
 };
+
+const recordingHasRealDuration = computed<boolean>(() => {
+  if (recording.value) {
+    if (
+      (recording.value as ApiRecordingResponse).type ===
+      RecordingType.ThermalRaw
+    ) {
+      return true;
+    }
+  }
+  return false;
+});
+
+const recordingType = computed<RecordingType | null>(() => {
+  if (recording.value) {
+    return (recording.value as ApiRecordingResponse).type;
+  }
+  return null;
+});
+
+const trailcamImageUrl = computed<string>(() => {
+  if (
+    recordingType.value &&
+    recordingType.value === RecordingType.TrailCamImage
+  ) {
+    return `${API_ROOT}/api/v1/recordings/raw/${currentRecordingId.value}`;
+  }
+  return "";
+});
 
 const deleteRecording = async () => {
   if (recording.value) {
@@ -915,14 +969,24 @@ const inlineModal = ref<boolean>(false);
         </div>
       </div>
       <div v-else>
-        <span class="recording-header-type text-uppercase fw-bold"
-          >Recording</span
-        >
+        <span class="recording-header-type text-uppercase fw-bold">
+          <span
+            v-if="recordingType && recordingType === RecordingType.ThermalRaw"
+            >Thermal Recording</span
+          >
+          <span
+            v-else-if="
+              recordingType && recordingType === RecordingType.TrailCamImage
+            "
+            >Trailcam image</span
+          >
+        </span>
         <div class="recording-header-details mb-1 mb-sm-0">
           <span class="recording-header-label fw-bold text-capitalize">{{
             visitForRecording
           }}</span>
           <span
+            v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
             class="ms-sm-3 ms-2 recording-header-time"
             style="color: #444"

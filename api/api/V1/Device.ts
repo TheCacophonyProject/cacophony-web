@@ -60,7 +60,7 @@ import logging from "@log";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 import { jsonSchemaOf } from "@api/schema-validation";
 import { Op } from "sequelize";
-import {DeviceHistory, DeviceHistorySettings} from "@models/DeviceHistory";
+import { DeviceHistory, DeviceHistorySettings } from "@models/DeviceHistory";
 import {
   DeviceType,
   HttpStatusCode,
@@ -74,7 +74,7 @@ import recordingUtil, {
 } from "@api/V1/recordingUtil";
 import log from "@log";
 import { streamS3Object } from "@api/V1/signedUrl";
-import modelsUtil, {deleteFile} from "@models/util/util";
+import modelsUtil, { deleteFile } from "@models/util/util";
 import { uploadFileStream } from "@api/V1/util";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { mapStation } from "@api/V1/Station";
@@ -497,26 +497,26 @@ export default function (app: Application, baseUrl: string) {
 
   // Alias of /api/v1/devices/:deviceId for consistency reasons
   app.get(
-      `${apiUrl}/:id`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("id")),
-        query("view-mode").optional().equals("user"),
-        deprecatedField(query("where")), // Sidekick
-        anyOf(
-            query("onlyActive").optional().isBoolean().toBoolean(),
-            query("only-active").optional().isBoolean().toBoolean()
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
+      anyOf(
+        query("onlyActive").optional().isBoolean().toBoolean(),
+        query("only-active").optional().isBoolean().toBoolean()
+      ),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response) => {
+      return successResponse(response, "Completed get device query.", {
+        device: mapDeviceResponse(
+          response.locals.device,
+          response.locals.viewAsSuperUser
         ),
-      ]),
-      fetchAuthorizedRequiredDeviceById(param("id")),
-      async (request: Request, response: Response) => {
-        return successResponse(response, "Completed get device query.", {
-          device: mapDeviceResponse(
-              response.locals.device,
-              response.locals.viewAsSuperUser
-          ),
-        });
-      }
+      });
+    }
   );
 
   /**
@@ -711,7 +711,7 @@ export default function (app: Application, baseUrl: string) {
                 ],
               },
             },
-            attributes: ['automatic', 'what']
+            attributes: ["automatic", "what"],
           },
           {
             model: models.Recording,
@@ -728,15 +728,27 @@ export default function (app: Application, baseUrl: string) {
       });
 
       const tracksById = new Map();
-      for (const userTrack of tracks.filter(track => !track['TrackTags.automatic'])) {
+      for (const userTrack of tracks.filter(
+        (track) => !track["TrackTags.automatic"]
+      )) {
         tracksById.set(userTrack.id, userTrack);
       }
-      for (const autoTrack of tracks.filter(track => track['TrackTags.automatic'] && track['TrackTags.what'] === tag)) {
-        if (!(tracksById.has(autoTrack.id) && tracksById.get(autoTrack.id)['TrackTags.what'] !== tag)) {
+      for (const autoTrack of tracks.filter(
+        (track) =>
+          track["TrackTags.automatic"] && track["TrackTags.what"] === tag
+      )) {
+        if (
+          !(
+            tracksById.has(autoTrack.id) &&
+            tracksById.get(autoTrack.id)["TrackTags.what"] !== tag
+          )
+        ) {
           tracksById.set(autoTrack.id, autoTrack);
         }
       }
-      const filteredTracks = Array.from(tracksById.values()).filter(track => track['TrackTags.what'] === tag);
+      const filteredTracks = Array.from(tracksById.values()).filter(
+        (track) => track["TrackTags.what"] === tag
+      );
       return successResponse(response, "Got tracks with tag", {
         tracks: filteredTracks.map(mapTrack),
       });
@@ -788,7 +800,7 @@ export default function (app: Application, baseUrl: string) {
                 ],
               },
             },
-            attributes: ['automatic', 'what', 'path']
+            attributes: ["automatic", "what", "path"],
           },
           {
             model: models.Recording,
@@ -800,15 +812,25 @@ export default function (app: Application, baseUrl: string) {
             },
             attributes: [],
           },
-        ]
+        ],
       });
 
       const tracksById = new Map();
-      for (const userTrack of tracks.filter(track => !track['TrackTags.automatic'])) {
+      for (const userTrack of tracks.filter(
+        (track) => !track["TrackTags.automatic"]
+      )) {
         tracksById.set(userTrack.id, userTrack);
       }
-      for (const autoTrack of tracks.filter(track => track['TrackTags.automatic'])) {
-        if (!(tracksById.has(autoTrack.id) && tracksById.get(autoTrack.id)['TrackTags.what'] !== autoTrack['TrackTags.what'])) {
+      for (const autoTrack of tracks.filter(
+        (track) => track["TrackTags.automatic"]
+      )) {
+        if (
+          !(
+            tracksById.has(autoTrack.id) &&
+            tracksById.get(autoTrack.id)["TrackTags.what"] !==
+              autoTrack["TrackTags.what"]
+          )
+        ) {
           tracksById.set(autoTrack.id, autoTrack);
         }
       }
@@ -816,7 +838,7 @@ export default function (app: Application, baseUrl: string) {
       for (const track of tracksById.values()) {
         const what = track["TrackTags.what"];
         if (!uniqueTags[what]) {
-          uniqueTags[what] = {what, path: track["TrackTags.path"], count: 1};
+          uniqueTags[what] = { what, path: track["TrackTags.path"], count: 1 };
         } else {
           uniqueTags[what].count += 1;
         }
@@ -946,7 +968,8 @@ export default function (app: Application, baseUrl: string) {
         });
       if (previousDeviceHistoryEntry) {
         // If there was a previous reference image for this location entry, delete it.
-        const previousSettings: DeviceHistorySettings = previousDeviceHistoryEntry.settings || {};
+        const previousSettings: DeviceHistorySettings =
+          previousDeviceHistoryEntry.settings || {};
         if (previousSettings) {
           if (referenceType === "pov" && previousSettings.referenceImagePOV) {
             try {
@@ -956,7 +979,10 @@ export default function (app: Application, baseUrl: string) {
             } catch (e) {
               // ...
             }
-          } else if (referenceType === "in-situ" && previousSettings.referenceImageInSitu) {
+          } else if (
+            referenceType === "in-situ" &&
+            previousSettings.referenceImageInSitu
+          ) {
             try {
               await deleteFile(previousSettings.referenceImageInSitu);
               delete previousSettings.referenceImageInSitu;
@@ -1314,19 +1340,19 @@ export default function (app: Application, baseUrl: string) {
   const getUsersFns = [
     async (request, response, next) => {
       await fetchAuthorizedRequiredGroupById(response.locals.device.GroupId)(
-          request,
-          response,
-          next
+        request,
+        response,
+        next
       );
     },
     async (request: Request, response: Response) => {
       const users = (
-          await response.locals.group.getUsers({
-            attributes: ["id", "userName"],
-            through: {
-              where: { removedAt: { [Op.eq]: null, pending: { [Op.eq]: null } } },
-            },
-          })
+        await response.locals.group.getUsers({
+          attributes: ["id", "userName"],
+          through: {
+            where: { removedAt: { [Op.eq]: null, pending: { [Op.eq]: null } } },
+          },
+        })
       ).map((user) => ({
         userName: user.userName,
         id: user.id,
@@ -1334,7 +1360,7 @@ export default function (app: Application, baseUrl: string) {
         owner: (user as any).GroupUsers.admin,
       }));
       return successResponse(response, "OK.", { users });
-    }
+    },
   ];
 
   /**
@@ -1376,16 +1402,16 @@ export default function (app: Application, baseUrl: string) {
 
   // Alias of /api/v1/devices/users for consistency reasons
   app.get(
-      `${apiUrl}/:deviceId/users`,
-      extractJwtAuthorizedUser,
-      validateFields([
-        idOf(param("deviceId")),
-        query("only-active").optional().isBoolean().toBoolean(),
-        query("view-mode").optional().equals("user"),
-      ]),
-      // Should this require admin access to the device?
-      fetchAdminAuthorizedRequiredDeviceById(param("deviceId")),
-      ...getUsersFns
+    `${apiUrl}/:deviceId/users`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("deviceId")),
+      query("only-active").optional().isBoolean().toBoolean(),
+      query("view-mode").optional().equals("user"),
+    ]),
+    // Should this require admin access to the device?
+    fetchAdminAuthorizedRequiredDeviceById(param("deviceId")),
+    ...getUsersFns
   );
 
   /**
@@ -1644,7 +1670,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  if (config.server.loggerLevel === "debug") {
+  if (!config.productionEnv) {
     // NOTE: This api is currently for facilitating testing only, and is
     //  not available in production builds.
 

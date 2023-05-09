@@ -551,7 +551,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputRecording.type == "thermalRaw") {
     expected.rawMimeType = "application/x-cptv";
   } else {
-    expected.rawMimeType = "audio/mpeg";
+    expected.rawMimeType = "audio/mp4";
   }
   if (inputRecording.duration !== undefined) {
     expected.duration = inputRecording.duration;
@@ -700,6 +700,7 @@ export function trackResponseFromSet(
             data: tpreddata[0],
             confidence: track.predictions[0].confidence,
             id: 0,
+            path: "all"
           },
         ];
       }

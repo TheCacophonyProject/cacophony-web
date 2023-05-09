@@ -36,11 +36,13 @@ describe("Recordings query using where", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat([
       "[].tracks[].tags[].data",
+      "[].tracks[].tags[].path",
       "[].additionalMetadata",
     ]);
   } else {
     EXCLUDE_PARAMS = EXCLUDE_IDS_ARRAY.concat([
       "[].tracks[].tags[].data",
+      "[].tracks[].tags[].path",
       "[].additionalMetadata",
       "[].processingState",
       "[].processing",
@@ -207,6 +209,7 @@ describe("Recordings query using where", () => {
                   confidence: 0.7,
                   data: "unknown",
                   trackId: -99,
+                  path: "all",
                   id: -1,
                   userName: getTestName("rqGroupAdmin"),
                   userId: getCreds("rqGroupAdmin").id,

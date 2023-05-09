@@ -147,7 +147,7 @@ export const getEUAVersion = () =>
     FetchResult<{ euaVersion: number }>
   >;
 
-export const getGroupsForGroupAdminByEmail = (
+export const getProjectsForProjectAdminByEmail = (
   groupAdminEmail: string,
   abortable = false
 ) =>

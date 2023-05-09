@@ -18,22 +18,22 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "../logging";
 import mime from "mime";
 import moment from "moment-timezone";
-import Sequelize, {FindOptions, Includeable} from "sequelize";
-import {v4 as uuidv4} from "uuid";
+import Sequelize, { FindOptions, Includeable } from "sequelize";
+import { v4 as uuidv4 } from "uuid";
 import config from "../config";
 import util from "./util/util";
 import _ from "lodash";
-import {User} from "./User";
-import {ModelCommon, ModelStaticCommon} from "./index";
-import {Tag, TagStatic} from "./Tag";
-import {Device, DeviceStatic} from "./Device";
-import {Group} from "./Group";
-import {Track} from "./Track";
+import { User } from "./User";
+import { ModelCommon, ModelStaticCommon } from "./index";
+import { Tag, TagStatic } from "./Tag";
+import { Device, DeviceStatic } from "./Device";
+import { Group } from "./Group";
+import { Track } from "./Track";
 
 import jsonwebtoken from "jsonwebtoken";
-import {TrackTag} from "./TrackTag";
-import {Station} from "./Station";
-import {mapPosition} from "@api/V1/recordingUtil";
+import { TrackTag } from "./TrackTag";
+import { Station } from "./Station";
+import { mapPosition } from "@api/V1/recordingUtil";
 import {
   DeviceId,
   GroupId,
@@ -44,15 +44,20 @@ import {
   TrackId,
   UserId,
 } from "@typedefs/api/common";
-import {AcceptableTag, RecordingProcessingState, RecordingType, TagMode,} from "@typedefs/api/consts";
-import {DeviceBatteryChargeState} from "@typedefs/api/device";
+import {
+  AcceptableTag,
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+} from "@typedefs/api/consts";
+import { DeviceBatteryChargeState } from "@typedefs/api/device";
 import {
   ApiAudioRecordingMetadataResponse,
   ApiThermalRecordingMetadataResponse,
   CacophonyIndex,
 } from "@typedefs/api/recording";
 import labelPath from "../classifications/label_paths.json";
-import {DetailSnapshotId} from "@models/DetailSnapshot";
+import { DetailSnapshotId } from "@models/DetailSnapshot";
 
 type SqlString = string;
 

@@ -4,6 +4,7 @@ import {
   faUser,
   faGaugeHigh,
   faLocationDot,
+  faMapLocationDot,
   faMagnifyingGlass,
   faMicrochip,
   faCircleExclamation,
@@ -172,7 +173,8 @@ library.add(
   faCircle,
   faCircleCheck,
   faStream,
-  faUserCog
+  faUserCog,
+  faMapLocationDot
 );
 
 export default FontAwesomeIcon;

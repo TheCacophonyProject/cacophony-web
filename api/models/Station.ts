@@ -60,7 +60,8 @@ export interface StationStatic extends ModelStaticCommon<Station> {
   activeInGroupDuringTimeRange: (
     groupId: GroupId,
     fromTime?: Date,
-    untilTime?: Date
+    untilTime?: Date,
+    orAutomatic?: boolean
   ) => Promise<Station[]>;
 }
 export default function (
@@ -149,7 +150,11 @@ export default function (
     return await models.Station.findAll({
       where: {
         GroupId: groupId,
-        activeAt: { [Op.lte]: atDateTime },
+        // NOTE: If it's an automatic station, we're allowed to move its start time
+        [Op.or]: [
+          { activeAt: { [Op.lte]: atDateTime } },
+          { automatic: { [Op.eq]: true } },
+        ],
         retiredAt: {
           [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: atDateTime }],
         },
@@ -160,24 +165,31 @@ export default function (
   Station.activeInGroupDuringTimeRange = async function (
     groupId: GroupId,
     fromTime: Date = new Date(),
-    untilTime: Date = new Date()
+    untilTime: Date = new Date(),
+    orAutomatic: boolean = false
   ): Promise<Station[]> {
+    const findClause = [
+      {
+        [Op.and]: [
+          { retiredAt: { [Op.eq]: null } },
+          { activeAt: { [Op.lte]: untilTime } },
+        ],
+      },
+      {
+        retiredAt: {
+          [Op.and]: [{ [Op.gte]: fromTime }, { [Op.lt]: untilTime }],
+        },
+      },
+    ];
+    if (orAutomatic) {
+      (findClause as any[]).push({
+        [Op.and]: [{ retiredAt: { [Op.eq]: null } }, { automatic: true }],
+      });
+    }
     return await models.Station.findAll({
       where: {
         GroupId: groupId,
-        [Op.or]: [
-          {
-            [Op.and]: [
-              { retiredAt: { [Op.eq]: null } },
-              { activeAt: { [Op.lte]: untilTime } },
-            ],
-          },
-          {
-            retiredAt: {
-              [Op.and]: [{ [Op.gte]: fromTime }, { [Op.lt]: untilTime }],
-            },
-          },
-        ],
+        [Op.or]: findClause,
       },
     });
   };

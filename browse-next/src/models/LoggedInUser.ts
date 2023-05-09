@@ -17,7 +17,6 @@ import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
 import {
-  getDevicesForProject,
   getProjects,
   saveProjectSettings,
   saveProjectUserSettings,
@@ -293,6 +292,10 @@ export const switchCurrentProject = (newGroup: {
       console.warn("!!! Abort requests");
       CurrentViewAbortController.newView();
     }
+
+    // FIXME - Clear current devices, locations etc from global project scope.
+    DevicesForCurrentProject.value = null;
+
     setLoggedInUserData({
       ...loggedInUser,
       settings: {
@@ -446,7 +449,9 @@ export const refreshUserProjects = async () => {
   const projectsResponse = await getProjects(NO_ABORT);
   if (projectsResponse.success) {
     UserProjects.value = reactive(projectsResponse.result.groups);
-    //console.warn("Fetched user groups", currentSelectedGroup.value, JSON.stringify(UserGroups.value));
+    console.warn("Fetched user projects", currentSelectedProject.value, JSON.stringify(UserProjects.value));
+  } else {
+    console.log("res", projectsResponse);
   }
   isFetchingProjects.value = false;
   return projectsResponse;

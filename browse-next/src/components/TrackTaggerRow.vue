@@ -16,6 +16,7 @@ import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   classifications,
   flatClassifications,
+  getClassificationForLabel,
   getClassifications,
 } from "@api/Classifications";
 import type {
@@ -162,7 +163,9 @@ const uniqueUserTags = computed<string[]>(() => {
     track.tags
       .filter((tag) => !tag.automatic)
       .reduce((acc: Record<string, boolean>, item: ApiTrackTagResponse) => {
-        acc[item.what] = true;
+        const mappedWhat =
+          getClassificationForLabel(item.what)?.label || item.what;
+        acc[mappedWhat] = true;
         return acc;
       }, {})
   );
@@ -183,15 +186,26 @@ const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
       tag.automatic && tag.data && (tag.data as TrackTagData).name === "Master"
   );
   if (tag) {
-    return tag as ApiAutomaticTrackTagResponse;
+    const mappedWhat = getClassificationForLabel(tag.what);
+    return {
+      ...tag,
+      what: mappedWhat.label,
+    } as ApiAutomaticTrackTagResponse;
   }
   return null;
 });
 
+const hasAiTag = computed<boolean>(() => {
+  return masterTag.value !== null;
+});
+
 const humanTags = computed<ApiHumanTrackTagResponse[]>(() => {
-  return track.tags.filter(
-    (tag) => !tag.automatic
-  ) as ApiHumanTrackTagResponse[];
+  return track.tags
+    .filter((tag) => !tag.automatic)
+    .map((tag) => ({
+      ...tag,
+      what: getClassificationForLabel(tag.what)?.label || tag.what,
+    })) as ApiHumanTrackTagResponse[];
 });
 
 const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(
@@ -300,11 +314,15 @@ const toggleTag = (tag: string) => {
   if (tag === "more-classifications") {
     showClassificationSearch.value = !showClassificationSearch.value;
   } else {
-    if (thisUserTag.value && tag === thisUserTag.value.what) {
+    if (
+      thisUserTag.value &&
+      tag === (thisUserTag.value as ApiHumanTrackTagResponse).what
+    ) {
       showClassificationSearch.value = false;
     } else if (
       !thisUserTag.value ||
-      (thisUserTag.value && thisUserTag.value.what !== tag)
+      (thisUserTag.value &&
+        (thisUserTag.value as ApiHumanTrackTagResponse).what !== tag)
     ) {
       showClassificationSearch.value = !defaultTags.value.includes(tag);
     }
@@ -438,9 +456,19 @@ onMounted(async () => {
               .join(", ")
           }}</span
         >
+        <!-- No AI tag, maybe this is a dummy track for a trailcam image? -->
+        <span
+          class="classification text-capitalize d-inline-block fw-bold"
+          v-else-if="consensusUserTag && !hasAiTag"
+          >{{
+            uniqueUserTags
+              .map((tag) => displayLabelForClassificationLabel(tag))
+              .join(", ")
+          }}</span
+        >
       </span>
     </div>
-    <div v-if="!hasUserTag && !expanded">
+    <div v-if="!hasUserTag && hasAiTag && !expanded">
       <button
         type="button"
         class="btn fs-7 confirm-button"
@@ -548,13 +576,13 @@ onMounted(async () => {
         />
       </button>
       <card-table
-        v-if="showTaggerDetails"
+        v-if="showTaggerDetails && taggerDetails.length !== 0"
         :items="taggerDetails"
         class="mb-2"
         compact
         :max-card-width="0"
       >
-        <template #_deleteAction="{ cell }">
+        <template #_deleteAction="{ cell }: { cell: Ref<ApiTrackTagResponse> }">
           <button
             v-if="userIsGroupAdmin && !cell.value.automatic"
             class="btn text-secondary"
@@ -571,6 +599,12 @@ onMounted(async () => {
           <span v-else></span>
         </template>
       </card-table>
+      <div
+        v-else-if="showTaggerDetails && taggerDetails.length === 0"
+        class="fs-7 mb-2"
+      >
+        No tags have been added yet.
+      </div>
     </div>
   </div>
 </template>

@@ -21,6 +21,7 @@ import { QueryTypes } from "sequelize";
 import models from "@models";
 import { GroupId, StationId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
+import { RecordingType } from "@typedefs/api/consts";
 
 export interface MonitoringParams {
   groups: GroupId[];
@@ -29,11 +30,18 @@ export interface MonitoringParams {
   until?: Date;
   page: number;
   pageSize: number;
+  types?: (
+    | RecordingType.ThermalRaw
+    | RecordingType.Audio
+    | RecordingType.TrailCamVideo
+    | RecordingType.TrailCamImage
+  )[];
 }
 
 const GROUPS_AND_STATIONS = "GROUPS_AND_STATIONS";
 const USER_PERMISSIONS = "USER_PERMISSIONS";
 const DATE_SELECTION = "DATE_SELECTION";
+const RECORDING_TYPES = "RECORDING_TYPES";
 const PAGING = "PAGING";
 const BEFORE_CACOPHONY = new Date(2017, 1, 1);
 
@@ -44,8 +52,8 @@ const LAST_TIMES_TABLE = `with lasttimes as
      from "Recordings" 
      where "recordingDateTime" is not NULL
        and "deletedAt" is null 
-       and type = 'thermalRaw' 
-       and duration > 0
+       and ({${RECORDING_TYPES}})
+       and duration > 2.5
        {${GROUPS_AND_STATIONS}}
        {${USER_PERMISSIONS}}
        {${DATE_SELECTION}}
@@ -70,6 +78,22 @@ export async function calculateMonitoringPageCriteria(
   return getDatesForSearch(user, params, viewAsSuperAdmin);
 }
 
+const makeRecordingTypes = (suppliedTypes: string[]): string => {
+  const types = [];
+  const allowedTypes = [
+    RecordingType.Audio,
+    RecordingType.ThermalRaw,
+    RecordingType.TrailCamImage,
+    RecordingType.TrailCamVideo,
+  ];
+  for (const type of suppliedTypes) {
+    if ((allowedTypes as string[]).includes(type)) {
+      types.push(type);
+    }
+  }
+  return types.map((type) => `type = '${type}'`).join(" or ");
+};
+
 async function getDatesForSearch(
   user: User,
   params: MonitoringParams,
@@ -80,13 +104,12 @@ async function getDatesForSearch(
       params.stations,
       params.groups
     ),
-    USER_PERMISSIONS: await makeGroupsAndDevicesPermissions(
-      user,
-      viewAsSuperAdmin
-    ),
+    USER_PERMISSIONS: await makeGroupsPermissions(user, viewAsSuperAdmin),
+    RECORDING_TYPES: makeRecordingTypes(params.types),
     DATE_SELECTION: makeDatesCriteria(params),
     PAGING: null,
   };
+
   const countRet = await models.sequelize.query(
     replaceInSQL(VISITS_COUNT_SQL, replacements),
     { type: QueryTypes.SELECT }
@@ -186,7 +209,7 @@ function toPgDate(date: Date): string {
   return date.toISOString().replace("T", " ").replace("Z", " +00:00");
 }
 
-async function makeGroupsAndDevicesPermissions(
+async function makeGroupsAndStationsPermissions(
   user: User,
   viewAsSuperAdmin: boolean
 ): Promise<string> {
@@ -199,4 +222,16 @@ async function makeGroupsAndDevicesPermissions(
     user.getGroupsIds(),
   ]);
   return makeGroupsAndStationsCriteria(stationIds, groupIds);
+}
+
+async function makeGroupsPermissions(
+  user: User,
+  viewAsSuperAdmin: boolean
+): Promise<string> {
+  if (user.hasGlobalRead() && viewAsSuperAdmin) {
+    return "";
+  }
+
+  const groupIds = await user.getGroupsIds();
+  return makeGroupsAndStationsCriteria([], groupIds);
 }

@@ -13,23 +13,15 @@ import { getLocationsForProject } from "@api/Project";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import type { LatLng } from "@typedefs/api/common";
 import { BSpinner } from "bootstrap-vue-3";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
-import {
-  currentVisitsFilter,
-  maybeFilteredVisitsContext,
-  selectedVisit,
-  visitHasClassification,
-  visitorIsPredator,
-  visitsContext,
-} from "@models/SelectionContext";
 import { useMediaQuery } from "@vueuse/core";
 import {
   classifications,
   getClassifications,
   displayLabelForClassificationLabel,
+  getClassificationForLabel,
 } from "@api/Classifications";
 import TagImage from "@/components/TagImage.vue";
 import {
@@ -42,6 +34,76 @@ import type { LoadedResource } from "@api/types";
 import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
+import type { StationId as LocationId } from "@typedefs/api/common";
+
+const selectedVisit = ref<ApiVisitResponse | null>(null);
+const currentlyHighlightedLocation = ref<LocationId | null>(null);
+const visitsContext = ref<ApiVisitResponse[] | null>(null);
+provide("currentlySelectedVisit", selectedVisit);
+provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
+
+const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
+  null
+);
+
+const currentVisitsFilterComputed = computed<
+  (visit: ApiVisitResponse) => boolean
+>(() => {
+  if (currentVisitsFilter.value === null) {
+    return visitorIsPredator;
+  } else {
+    return currentVisitsFilter.value;
+  }
+});
+
+// TODO: Move to provides/inject
+const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
+  if (visitsContext.value) {
+    return (visitsContext.value as ApiVisitResponse[]).filter(
+      currentVisitsFilterComputed.value
+    );
+  }
+  return [];
+});
+
+provide("visitsContext", maybeFilteredVisitsContext);
+const onlyShowPredators = ref<boolean>(true);
+const ignored: string[] = [
+  "none",
+  //"unidentified",
+  //"false-positive",
+  "bird",
+  "vehicle",
+  "human",
+  "insect",
+];
+const visitorIsPredator = (visit: ApiVisitResponse): boolean => {
+  if (onlyShowPredators.value) {
+    if (visit && visit.classification) {
+      if (ignored.includes(visit.classification)) {
+        return false;
+      }
+      const classification = getClassificationForLabel(visit.classification);
+      if (classification && typeof classification.path === "string") {
+        const parts = classification.path.split(".");
+        for (const part of parts) {
+          if (ignored.includes(part)) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+};
+
+const visitHasClassification =
+  (tag: string) =>
+  (visit: ApiVisitResponse): boolean => {
+    return (visit &&
+      visit.classification &&
+      visit.classification === tag) as boolean;
+  };
 
 const recordingMode = ref<"Thermal" | "Audio">("Thermal");
 const audioMode = computed<boolean>(() => recordingMode.value === "Audio");
@@ -58,7 +120,9 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 
 const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
-    return visitsContext.value.filter(visitorIsPredator);
+    return (visitsContext.value as ApiVisitResponse[]).filter(
+      visitorIsPredator
+    );
   }
   return [];
 });
@@ -99,6 +163,7 @@ watch(
 watch(route, () => {
   loadedRouteName.value = "dashboard";
 });
+
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
 
@@ -125,8 +190,8 @@ const speciesSummary = computed<Record<string, number>>(() => {
 });
 
 const speciesSummarySorted = computed(() => {
-  return Object.entries(speciesSummary.value).sort(([a], [b]) =>
-    sortTagPrecedence(a, b)
+  return Object.entries(speciesSummary.value).sort(
+    ([a]: [string, number], [b]: [string, number]) => sortTagPrecedence(a, b)
   );
 });
 
@@ -151,7 +216,7 @@ const loadVisits = async () => {
   if (currentProject.value) {
     visitsContext.value = null;
     const allVisits = await getAllVisitsForProject(
-      currentProject.value.id,
+      (currentProject.value as SelectedProject).id,
       timePeriodDays.value,
       (val) => {
         // TODO - Do we want to display loading progress via the UI?
@@ -184,7 +249,7 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiLocationResponse[]
 >(() => {
   if (locations.value) {
-    return locations.value
+    return (locations.value as ApiLocationResponse[])
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
       .filter((location) => {
         if (audioMode.value) {
@@ -213,17 +278,14 @@ provide(
 );
 
 const allLocations = computed<ApiLocationResponse[]>(() => {
-  if (locations.value) {
-    return locations.value;
-  }
-  return [];
+  return (locations.value && (locations.value as ApiLocationResponse[])) || [];
 });
 
 const loadLocations = async () => {
   if (currentProject.value) {
     locations.value = null;
     locations.value = await getLocationsForProject(
-      currentProject.value.id.toString(),
+      (currentProject.value as SelectedProject).id.toString(),
       true
     );
   }
@@ -248,7 +310,7 @@ const isLoading = computed<boolean>(
 
 const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
   if (currentProject.value && availableProjects.value) {
-    const project = availableProjects.value.find(
+    const project = (availableProjects.value as ApiProjectResponse[]).find(
       ({ id }) => id === (currentProject.value as SelectedProject).id
     );
     return project || null;
@@ -259,14 +321,14 @@ const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
 const currentSelectedProjectHasAudio = computed<boolean>(() => {
   return (
     !!currentSelectedProject.value &&
-    !!currentSelectedProject.value.lastAudioRecordingTime
+    "lastAudioRecordingTime" in currentSelectedProject.value
   );
 });
 
 const currentSelectedProjectHasCameras = computed<boolean>(() => {
   return (
     !!currentSelectedProject.value &&
-    !!currentSelectedProject.value.lastThermalRecordingTime
+    "lastThermalRecordingTime" in currentSelectedProject.value
   );
 });
 
@@ -367,7 +429,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       <div
         v-for="[key, val] in speciesSummarySorted"
         :key="key"
-        class="card d-flex flex-row species-summary-item align-items-center"
+        class="d-flex flex-row species-summary-item align-items-center"
         @click="showVisitsForTag(key)"
       >
         <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
@@ -398,6 +460,11 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     <visits-breakdown-list
       :visits="maybeFilteredDashboardVisitsContext"
       :location="canonicalLatLngForActiveLocations"
+      :highlighted-location="currentlyHighlightedLocation"
+      @selected-visit="(visit) => (selectedVisit = visit)"
+      @change-highlighted-location="
+        (loc) => (currentlyHighlightedLocation = loc)
+      "
     />
   </div>
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
@@ -426,10 +493,6 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     <div v-else>
       There were no active locations in the last {{ timePeriodDays }} days for
       this project.
-      <em
-        >TODO: Suggest to user that they put out some devices, or make sure the
-        batteries are charged?</em
-      >
     </div>
   </horizontal-overflow-carousel>
   <inline-view-modal
@@ -498,10 +561,11 @@ h2 {
 .species-summary {
   min-height: 68px;
   user-select: none;
-
-  .card {
+  .species-summary-item {
+    border: 1px solid #ccc;
+    // From card
     border-radius: unset;
-    border-width: 0;
+    //border-width: 0;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
     @media screen and (min-width: 576px) {
       box-shadow: unset;
@@ -514,8 +578,8 @@ h2 {
         border-right-width: 0;
       }
     }
-  }
-  .species-summary-item {
+    //
+
     &:nth-child(even) {
       margin: 0 0 4px 2px;
     }
@@ -538,13 +602,14 @@ h2 {
     color: inherit;
     padding: 2px;
     width: calc(50% - 2px);
-    min-width: 130px; // TODO @media breakpoints
+    //min-width: 130px; // TODO @media breakpoints
     transition: background-color 0.2s ease-in-out;
+
     &:hover {
       background-color: #ececec;
     }
     @media screen and (min-width: 576px) {
-      width: unset;
+      //width: unset;
       margin: unset;
     }
 
@@ -570,6 +635,14 @@ h2 {
   .fs-6();
   @media screen and (min-width: 576px) {
     font-size: unset;
+  }
+}
+</style>
+<style lang="less">
+.species-summary-item {
+  > img {
+    min-width: 24px;
+    min-height: 24px;
   }
 }
 </style>

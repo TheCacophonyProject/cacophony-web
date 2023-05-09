@@ -64,11 +64,11 @@ const hasError = computed<boolean>(() => {
 });
 </script>
 <template>
-  <b-modal title="Create a new proxy device" centered @hidden="resetFormValues">
+  <b-modal title="Register a new trailcam" centered @hidden="resetFormValues">
     <b-form @submit.stop.prevent="createNewProxyDevice">
       <b-form-input
         type="text"
-        placeholder="device name"
+        placeholder="Give the trailcam a name"
         data-cy="new device name"
         v-model="newDeviceName.value"
         @blur="newDeviceName.touched = true"
@@ -77,10 +77,10 @@ const hasError = computed<boolean>(() => {
       />
       <b-form-invalid-feedback :state="needsValidationAndIsValidDeviceName">
         <span v-if="newDeviceName.value.trim().length === 0">
-          Device name cannot be blank
+          Trailcam name cannot be blank
         </span>
         <span v-else-if="newDeviceName.value.trim().length < 3">
-          Device name must be at least 3 characters // TODO - device name regex
+          Trailcam name must be at least 3 characters // TODO - device name regex
           (include macrons)
         </span>
       </b-form-invalid-feedback>
@@ -99,7 +99,7 @@ const hasError = computed<boolean>(() => {
           v-if="submittingCreateRequest"
           class="spinner-border spinner-border-sm"
         ></span>
-        {{ submittingCreateRequest ? "Creating device" : "Create device" }}
+        {{ submittingCreateRequest ? "Registering trailcam" : "Register trailcam" }}
       </button>
     </template>
   </b-modal>

@@ -1097,36 +1097,42 @@ const currentAbsoluteTime = computed<string | null>(() => {
 });
 
 const updateOverlayCanvas = (frameNumToRender: number) => {
-  // FIXME - Move this somewhere else, like when the frame advances
-  if (overlayContext.value) {
-    renderOverlay(
-      overlayContext.value,
-      scale.value,
-      secondsSinceLastFFC.value,
-      false,
-      frameNumToRender,
-      recording?.tracks || [],
-      canSelectTracks,
-      currentTrack,
-      motionPathMode.value ? motionPaths.value : [],
-      pixelRatio.value,
-      tracksByFrame.value,
-      framesByTrack.value,
-      trackExportOptions.value
-    );
-
-    {
-      const time = `${elapsedTime.value} / ${formatTime(
-        Math.max(currentTime.value, actualDuration.value)
-      )}`;
-      drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
-      // Draw time and temperature in
-      // overlayContext.
-      drawBottomLeftOverlayLabel(
-        currentAbsoluteTime.value,
+  if (currentRecordingType.value === "cptv") {
+    // FIXME - Move this somewhere else, like when the frame advances
+    if (overlayContext.value) {
+      renderOverlay(
         overlayContext.value,
-        pixelRatio.value
+        scale.value,
+        secondsSinceLastFFC.value,
+        false,
+        frameNumToRender,
+        recording?.tracks || [],
+        canSelectTracks,
+        currentTrack,
+        motionPathMode.value ? motionPaths.value : [],
+        pixelRatio.value,
+        tracksByFrame.value,
+        framesByTrack.value,
+        trackExportOptions.value
       );
+
+      {
+        const time = `${elapsedTime.value} / ${formatTime(
+          Math.max(currentTime.value, actualDuration.value)
+        )}`;
+        drawBottomRightOverlayLabel(
+          time,
+          overlayContext.value,
+          pixelRatio.value
+        );
+        // Draw time and temperature in
+        // overlayContext.
+        drawBottomLeftOverlayLabel(
+          currentAbsoluteTime.value,
+          overlayContext.value,
+          pixelRatio.value
+        );
+      }
     }
   }
 };
@@ -1467,9 +1473,17 @@ const handleKeyboardControls = (event: KeyboardEvent) => {
   if (event.code === "Space" && !event.repeat) {
     togglePlayback();
   } else if (event.code === "ArrowRight") {
-    stepForward();
+    if (!event.altKey) {
+      stepForward();
+    } else {
+      requestNextRecording();
+    }
   } else if (event.code === "ArrowLeft") {
-    stepBackward();
+    if (!event.altKey) {
+      stepBackward();
+    } else {
+      requestPrevRecording();
+    }
   }
 };
 
@@ -1524,6 +1538,8 @@ watch(
   }
 );
 
+const currentRecordingType = ref<"cptv" | "image">("cptv");
+
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
   streamLoadError.value = null;
@@ -1557,6 +1573,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   );
 
   if (loadedStream.value === true) {
+    currentRecordingType.value = "cptv";
     header.value = Object.freeze(await cptvDecoder.getHeader());
     // TODO - Init all the header related info (min/max values etc)
     setDebugFrameInfo(0);
@@ -1575,6 +1592,45 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       canvas.value.width = header.value.width;
       canvas.value.height = header.value.height;
     }
+    while (!recording) {
+      // Wait for the recording data to be loaded if it's not,
+      // so that we can seek to the beginning of any track.
+      await delayMs(10);
+    }
+    if (recording && recording.id === recordingId) {
+      await loadedNextRecordingData();
+      emit("ready-to-play", header.value);
+      playing.value = true;
+    }
+  } else if (loadedStream.value instanceof Blob) {
+    currentRecordingType.value = "image";
+    clearCanvases();
+    let imageBitmap;
+    try {
+      imageBitmap = await createImageBitmap(loadedStream.value);
+      {
+        const ctx = overlayCanvas.value?.getContext("2d");
+        if (ctx) {
+          const imageRatio = imageBitmap.width / imageBitmap.height;
+          const height = (imageBitmap.height / imageRatio) * pixelRatio.value;
+          ctx.drawImage(
+            imageBitmap,
+            0,
+            (ctx.canvas.height - height) / 2 / pixelRatio.value,
+            ctx.canvas.width / pixelRatio.value,
+            height / pixelRatio.value
+          );
+        }
+      }
+    } catch (e) {
+      console.log("Image Error", e);
+    }
+
+    frames = [];
+    header.value = null;
+    resetRecordingNormalisation();
+    buffering.value = false;
+
     while (!recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
@@ -1743,6 +1799,7 @@ const drawFrame = async (
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
       <div
+        v-if="currentRecordingType === 'cptv'"
         key="playback-controls"
         :class="[
           'playback-controls',
@@ -1768,7 +1825,11 @@ const drawFrame = async (
         </button>
       </div>
     </div>
-    <div key="playback-nav" class="playback-nav">
+    <div
+      key="playback-nav"
+      class="playback-nav"
+      v-if="currentRecordingType === 'cptv'"
+    >
       <button
         @click.prevent="togglePlayback"
         ref="playPauseButton"
@@ -1883,7 +1944,11 @@ const drawFrame = async (
         </button>
       </div>
     </div>
-    <div key="debug-nav" :class="['debug-tools', { open: showDebugTools }]">
+    <div
+      key="debug-nav"
+      :class="['debug-tools', { open: showDebugTools }]"
+      v-if="currentRecordingType === 'cptv'"
+    >
       <div class="debug-info">
         <div ref="frameNumField"></div>
         <div ref="ffcSecsAgo"></div>
@@ -1964,7 +2029,7 @@ const drawFrame = async (
         </button>
       </div>
     </div>
-    <div class="tracks-container">
+    <div class="tracks-container" v-if="currentRecordingType === 'cptv'">
       <tracks-scrubber
         class="player-tracks"
         :tracks="tracksIntermediate"

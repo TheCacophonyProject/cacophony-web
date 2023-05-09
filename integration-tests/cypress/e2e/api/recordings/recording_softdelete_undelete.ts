@@ -25,6 +25,7 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 //and only done safely on dev
 const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
   "[].tracks[].tags[].data",
+  "[].tracks[].tags[].path",
 ]);
 
 const EXCLUDE_COLUMNS = ["Date", "Time"];

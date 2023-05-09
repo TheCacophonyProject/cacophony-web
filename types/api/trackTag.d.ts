@@ -47,6 +47,7 @@ export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {
 
 export type Classification = {
   label: string;
+  aliases?: string[];
   display?: string;
   children?: Classification[];
   path?: string | string[];

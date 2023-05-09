@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, inject, onMounted, provide, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForProject } from "@api/Project";
@@ -59,6 +59,7 @@ const showInactiveDevicesInternal = ref<boolean>(showInactiveDevices.value);
 const showInactiveDevicesInternalCheck = ref<boolean>(
   showInactiveDevices.value
 );
+
 const toggleActiveAndInactive = async () => {
   if (!showInactiveDevicesInternal.value) {
     await router.push({
@@ -90,13 +91,14 @@ watch(route, async (next) => {
 });
 
 const loadDevices = async () => {
+    console.warn("RELOAD DEVICES");
   loadingDevices.value = true;
   const devicesResponse = await getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
     showInactiveDevicesInternal.value
   );
-  if (devicesResponse.success) {
-    projectDevices.value = devicesResponse.result.devices;
+  if (devicesResponse) {
+    projectDevices.value = devicesResponse;
   }
   loadingDevices.value = false;
   showCreateProxyDevicePrompt.value = false;
@@ -254,6 +256,8 @@ const deviceLocations = computed<NamedPoint[]>(() => {
     });
 });
 
+//provide("deviceLocations", deviceLocations);
+
 const devicesSeenInThePast24Hours = computed<NamedPoint[]>(() => {
   const oneDayAgo = new Date();
   oneDayAgo.setDate(oneDayAgo.getDate() - 1);
@@ -396,8 +400,10 @@ const openSelectedDevice = async () => {
     await router.push({
       name: "device",
       params: {
-        deviceName: urlNormaliseName(selectedDevice.value.deviceName),
-        deviceId: selectedDevice.value.id,
+        deviceName: urlNormaliseName(
+          (selectedDevice.value as ApiDeviceResponse).deviceName
+        ),
+        deviceId: (selectedDevice.value as ApiDeviceResponse).id,
       },
     });
   }
@@ -443,7 +449,7 @@ const openSelectedDevice = async () => {
           class="btn btn-outline-secondary"
           @click="showCreateProxyDevicePrompt = true"
         >
-          Create a new proxy device
+          Register a trailcam
         </button>
         <b-form-checkbox
           v-model="showInactiveDevicesInternalCheck"
@@ -513,25 +519,22 @@ const openSelectedDevice = async () => {
       </card-table>
     </div>
     <p v-else>
-      There are currently no devices registered with this group.<br /><br />
-      An example of a device that you might register in the system is a thermal
-      camera or a bird monitor that is either directly connected to the
-      internet, or is offline/out of coverage but will be managed via the
-      sidekick companion app.
-      <a href="#TODO">Find out how to add some.</a>
+      There are currently no active thermal cameras or bird monitors registered
+      with this project.<br /><br />
+      Thermal cameras or bird monitors can be either directly connected to the
+      Cacophony platform via internet connection, or may be offline or out of
+      coverage, and managed via the sidekick companion app.
+      <a href="#TODO">Find out how to register a thermal camera or a bird monitor.</a>
       <br /><br />
-      You can also create a "proxy device". A proxy device represents a
-      <em>non-connected</em> device which you plan to manually upload data
-      for.<br />
-      An example of a proxy device is a third-party trail-cam that you are
-      collecting sd-cards from and uploading the collected recording files via a
-      web-browser.<br />
+      You can also register a trailcam. This represents a third-party trailcam
+      device that you plan to manually upload data for via this web
+      interface.<br />
       <button
         type="button"
         class="mt-3 btn btn-outline-secondary"
         @click="showCreateProxyDevicePrompt = true"
       >
-        Create a proxy device
+        Register a trailcam
       </button>
     </p>
   </div>
@@ -543,6 +546,7 @@ const openSelectedDevice = async () => {
   <inline-view-modal
     @close="selectedDevice = null"
     :fade-in="loadedRouteName === 'device'"
+    no-close-on-backdrop
     :parent-route-name="'devices'"
     :show-inactive="showInactiveDevicesInternal"
     @shown="() => (loadedRouteName = 'device')"

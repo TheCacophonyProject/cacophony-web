@@ -28,6 +28,7 @@ import {
 import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
 import { BSpinner } from "bootstrap-vue-3";
+import type { LatLng } from "@typedefs/api/common";
 
 const attribution = control.attribution;
 
@@ -35,11 +36,14 @@ const attribution = control.attribution;
 //  and hard to see.  Maybe make them a minimum size, or give them an outline colour?
 
 const {
-  points,
+  points = [],
   radius = 0,
   navigateToPoint,
   zoom = true,
-  highlightedPoint,
+  zoomLevel,
+  center,
+  minZoom = 5,
+  highlightedPoint = null,
   canChangeBaseMap = true,
   isInteractive = true,
   markersAreInteractive = true,
@@ -48,20 +52,25 @@ const {
   showOnlyActivePoints = true,
   activePoints = [],
   focusedPoint,
+  showCrossHairs = false,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
-  points: NamedPoint[];
-  highlightedPoint: NamedPoint | null;
-  activePoints: NamedPoint[];
-  focusedPoint?: NamedPoint;
+  points?: NamedPoint[];
+  highlightedPoint?: NamedPoint | null;
+  activePoints?: NamedPoint[];
+  focusedPoint?: NamedPoint | null;
   radius?: number;
   showStationRadius?: boolean;
   showOnlyActivePoints?: boolean;
   zoom?: boolean;
+  zoomLevel?: number;
+  minZoom?: number;
+  center?: LatLng;
   canChangeBaseMap?: boolean;
   isInteractive?: boolean;
   markersAreInteractive?: boolean;
   hasAttribution?: boolean;
+  showCrossHairs?: boolean;
 }>();
 
 interface LeafletInternalRawMarker {
@@ -207,27 +216,17 @@ const mapLayers = [
       '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
   },
 ];
-const firstLoad = ref<boolean>(true);
 const mapBounds = computed<LatLngBounds | null>(() => {
   const boundsPaddingInMeters = 300;
-  if ((firstLoad.value && activePoints.length === 0) || !showOnlyActivePoints) {
-    firstLoad.value = false;
-    // Calculate the initial map bounds and zoom level from the set of lat/lng points
-    return (
-      (points &&
-        points.length &&
-        latLngBounds(
-          points.flatMap(({ location }) => {
-            const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
-            return [pBounds.getNorthWest(), pBounds.getSouthEast()];
-          })
-        )) ||
-      null
-    );
-  } else {
+  if (
+    !(
+      !activePoints ||
+      (activePoints && activePoints.length === 0) ||
+      !showOnlyActivePoints
+    )
+  ) {
     if (focusedPoint) {
       // Give the bounds 300m around the focused location.
-
       // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
       return latLng(focusedPoint.location).toBounds(boundsPaddingInMeters);
     } else if (activePoints && activePoints.length === 1) {
@@ -241,17 +240,19 @@ const mapBounds = computed<LatLngBounds | null>(() => {
         })
       );
     }
-    // Otherwise use inactive points for bounds.
-    else if (points && points.length) {
-      return latLngBounds(
+  }
+  // Calculate the initial map bounds and zoom level from the set of lat/lng points
+  return (
+    (points &&
+      points.length &&
+      latLngBounds(
         points.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
         })
-      );
-    }
-    return null;
-  }
+      )) ||
+    null
+  );
 });
 
 const _mapLocationsForRadius = computed<NamedPoint[]>(() => {
@@ -443,6 +444,7 @@ const addPoints = () => {
 
 watch(() => activePoints, addPoints);
 watch(() => points, addPoints);
+watch(() => focusedPoint, addPoints);
 
 const fitMapBounds = () => {
   if (map && mapBounds.value) {
@@ -467,14 +469,15 @@ onMounted(() => {
       detectRetina: true,
     });
     if (layer.visible) {
-      tileLayers[layer.name].on("load", () => {
-        (tileLayers[layer.name] as TileLayer).setOpacity(0.25);
-        loading.value = false;
-        addPoints();
+      tileLayers[layer.name].on("load", (e) => {
+        if (loading.value) {
+          (tileLayers[layer.name] as TileLayer).setOpacity(0.25);
+          loading.value = false;
+          addPoints();
+        }
       });
     }
   }
-
   // TODO: Add a "Fit to bounds" button.
   map = mapConstructor(mapElement as HTMLElement, {
     zoomControl: zoom,
@@ -483,9 +486,26 @@ onMounted(() => {
     keyboard: isInteractive,
     tap: isInteractive,
     maxZoom: 16,
+    minZoom,
     attributionControl: false,
+    center: center || mapBounds.value?.getCenter(),
+    zoom: zoomLevel || 14,
     layers: [tileLayers[currentLayer]], // The default layer
   });
+
+  map.on("move", (event) => {
+    if ("originalEvent" in event) {
+      emit("move-map", map?.getCenter());
+    }
+  });
+  map.on("load", () => {
+    emit("init-map");
+  });
+  if (center) {
+    // map load event won't fire if we manually set center on init.
+    emit("init-map");
+  }
+  map.invalidateSize();
   if (canChangeBaseMap && mapLayers.length > 1) {
     map.addControl(control.layers(tileLayers));
     map.on("baselayerchange", (e) => {
@@ -519,10 +539,23 @@ onMounted(() => {
     };
     map.addControl(attributionToggle);
   }
-
-  fitMapBounds();
+  if (!center) {
+    map.invalidateSize();
+      console.log("Fit map bounds", mapBounds.value);
+    fitMapBounds();
+  }
   addPoints();
 });
+
+watch(
+  () => center,
+  () => {
+    if (center && map) {
+      map.invalidateSize();
+      map.setView(center, zoomLevel);
+    }
+  }
+);
 //  TODO: On point highlight, animate the size/colour of the point.
 //  Suggests that maybe we don't want to use vue-leaflet to manage the lifecycle of the points.
 //  Would also be cool to have the ability to show "group regions" where there is a bubble or shape around a cluster of
@@ -532,8 +565,10 @@ onMounted(() => {
 
 const emit = defineEmits<{
   (e: "hover-point", val: NamedPoint): void;
-  (e: "leave-point", val: null): void;
+  (e: "leave-point", val: NamedPoint | null): void;
   (e: "select-point", val: NamedPoint): void;
+  (e: "move-map", val: LatLng): void;
+  (e: "init-map"): void;
 }>();
 
 const hoverPoint = (point: NamedPoint) => {
@@ -561,6 +596,31 @@ const leavePoint = () => {
       class="d-flex justify-content-center align-items-center loading-overlay"
     >
       <b-spinner />
+    </div>
+    <div
+      v-else-if="showCrossHairs"
+      class="d-flex justify-content-center align-items-center loading-overlay"
+    >
+      <svg
+        fill="#000000"
+        xmlns="http://www.w3.org/2000/svg"
+        width="32px"
+        height="32px"
+        viewBox="0 0 97 97"
+        xml:space="preserve"
+      >
+        <path
+          fill="darkred"
+          d="M95,44.312h-7.518C85.54,26.094,70.906,11.46,52.688,9.517V2c0-1.104-0.896-2-2-2h-4.376c-1.104,0-2,0.896-2,2v7.517l0,0
+		C26.094,11.46,11.46,26.094,9.517,44.312H2c-1.104,0-2,0.896-2,2v4.377c0,1.104,0.896,2,2,2h7.517
+		C11.46,70.906,26.094,85.54,44.312,87.482V95c0,1.104,0.896,2,2,2h4.377c1.104,0,2-0.896,2-2v-7.518l0,0
+		C70.906,85.54,85.54,70.906,87.482,52.688H95c1.104,0,2-0.896,2-2v-4.376C97,45.207,96.104,44.312,95,44.312z M24.896,52.688
+		c1.104,0,2-0.896,2-2v-4.376c0-1.104-0.896-2-2-2h-6.492c1.856-13.397,12.51-24.052,25.907-25.908v6.492c0,1.104,0.896,2,2,2h4.376
+		c1.104,0,2-0.896,2-2v-6.492C66.086,20.26,76.74,30.914,78.596,44.312h-6.492c-1.104,0-2,0.896-2,2v4.377c0,1.104,0.896,2,2,2
+		h6.492C76.74,66.086,66.086,76.74,52.689,78.598v-6.492c0-1.104-0.896-2-2-2h-4.377c-1.104,0-2,0.896-2,2v6.492
+		C30.914,76.74,20.26,66.086,18.404,52.688H24.896z"
+        />
+      </svg>
     </div>
   </div>
 </template>

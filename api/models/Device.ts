@@ -265,7 +265,7 @@ export default function (
                   [Op.and]: [{ [Op.lt]: oneMinuteAgo }, { [Op.ne]: null }],
                 },
               },
-              { kind: DeviceType.Thermal },
+              { kind: { [Op.or]: [DeviceType.Thermal, DeviceType.Unknown] } },
             ],
           },
           {
