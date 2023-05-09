@@ -122,6 +122,9 @@ export const getPathForLabel = (label: string): string => {
 };
 
 export const getClassificationForLabel = (label: string): Classification => {
+  if (!label) {
+    debugger;
+  }
   label = label.toLowerCase();
   const classifications = flatClassifications.value || {};
   return classifications[label];

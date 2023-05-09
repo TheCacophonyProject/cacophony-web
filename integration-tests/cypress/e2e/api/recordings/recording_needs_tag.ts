@@ -97,7 +97,7 @@ describe("Recording needs-tag (power-tagger)", () => {
       cy.log("Verify non-member can view this recording");
       cy.apiRecordingNeedsTagCheck(
         "rntNonMember",
-        undefined,
+        "rntCamera1",
         NO_SAVE_ID,
         [expectedRecording1],
         [],
@@ -127,7 +127,7 @@ describe("Recording needs-tag (power-tagger)", () => {
           cy.log("Verify this recording not returned");
           cy.apiRecordingNeedsTagCheck(
             "rntNonMember",
-            undefined,
+            "rntCamera1",
             NO_SAVE_ID,
             []
           );
@@ -143,7 +143,12 @@ describe("Recording needs-tag (power-tagger)", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     it("Can handle no returned matches", () => {
       cy.log("Verify non-member can view this recording");
-      cy.apiRecordingNeedsTagCheck("rntNonMember", undefined, NO_SAVE_ID, []);
+      cy.apiRecordingNeedsTagCheck(
+        "rntNonMember",
+        "rntCamera1",
+        NO_SAVE_ID,
+        []
+      );
     });
   } else {
     it.skip("Can handle no returned matches", () => {});

@@ -383,14 +383,16 @@ const beginUploadJob = async () => {
   // Return immediately if there are idle workers,
   // Or block if there is no room for more work.
 
-  // NOTE: Do the first (oldest) recording single-threaded first, so we don't have
-  //  race conditions server-side and create a bunch of duplicate device history entries
-  //  because we uploaded stuff in parallel.
-  const job = uploadQueue.value.shift() as UploadJob;
-  await distributeWork(job);
-  await allWorkFinished();
-
   if ("OffscreenCanvas" in window) {
+    {
+      // NOTE: Do the first (oldest) recording single-threaded first, so we don't have
+      //  race conditions server-side and create a bunch of duplicate device history entries
+      //  because we uploaded stuff in parallel.
+      const job = uploadQueue.value.shift() as UploadJob;
+      await distributeWork(job);
+      await allWorkFinished();
+    }
+
     while (uploadQueue.value.length > 1) {
       while (uploadQueue.value.length > 1) {
         const job = uploadQueue.value.shift() as UploadJob;
@@ -404,12 +406,14 @@ const beginUploadJob = async () => {
     }
     await allWorkFinished();
 
-    // NOTE: Do the last (latest) recording single threaded so that we correctly update
-    //  Device.lastRecordingTime
+    {
+      // NOTE: Do the last (latest) recording single threaded so that we correctly update
+      //  Device.lastRecordingTime
 
-    const job = uploadQueue.value.shift() as UploadJob;
-    await distributeWork(job);
-    await allWorkFinished();
+      const job = uploadQueue.value.shift() as UploadJob;
+      await distributeWork(job);
+      await allWorkFinished();
+    }
   } else {
     console.error("Offscreen canvas not supported, use fallback method");
   }
@@ -423,7 +427,6 @@ const beginUploadJob = async () => {
   await Promise.all(pendingUploadApiRequests);
   uploadInProgress.value = false;
   emit("end-blocking-work");
-  console.log("Completed queue");
 };
 
 const onDropFiles = async (e: DragEvent, closerFn: () => void) => {

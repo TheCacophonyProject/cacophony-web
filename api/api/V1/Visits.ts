@@ -52,7 +52,7 @@ const conflictTag = "conflicting tags";
 
 const META_TAGS = ["part", "poor tracking"];
 export const UNIDENTIFIED_TAGS = ["unidentified", "unknown"];
-const NON_ANIMAL_TAGS = [...META_TAGS, ...UNIDENTIFIED_TAGS];
+export const NON_ANIMAL_TAGS = [...META_TAGS, ...UNIDENTIFIED_TAGS];
 
 const audioBaitInterval = 60 * 10;
 

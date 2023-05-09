@@ -435,6 +435,14 @@ const visitForRecording = computed<string>(() => {
   return "";
 });
 
+const negativeThingTags = [
+  "part",
+  "poor tracking",
+  "unidentified",
+  "unknown",
+  "false-positive",
+];
+
 // TODO - Handle previous visits
 const recalculateCurrentVisit = async (
   track: ApiTrackResponse,
@@ -471,7 +479,8 @@ const recalculateCurrentVisit = async (
         }
 
         // Now, recalculate the visit:
-        // If there are any human tags, pick the most numerous one as the classification.
+        // If there are any human tags, pick the most numerous one as the classification,
+        // Unless it is a false-positive or similar, but only if there is another animal tag
         const humanTags: Record<string, number> = {};
         for (const recording of targetVisit.recordings) {
           for (const track of recording.tracks) {
@@ -482,14 +491,24 @@ const recalculateCurrentVisit = async (
             }
           }
         }
+
+        const hasNonFalsePositiveTag =
+          Object.keys(humanTags).filter(
+            (tag) => !negativeThingTags.includes(tag)
+          ).length !== 0;
         const humanTagCounts = Object.entries(humanTags);
         if (humanTagCounts.length) {
           let bestHumanTagCount = 0;
           let bestHumanTag;
           for (const [tag, count] of humanTagCounts) {
-            if (count > bestHumanTagCount) {
-              bestHumanTagCount = count;
-              bestHumanTag = tag;
+            if (
+              (hasNonFalsePositiveTag && !negativeThingTags.includes(tag)) ||
+              !hasNonFalsePositiveTag
+            ) {
+              if (count > bestHumanTagCount) {
+                bestHumanTagCount = count;
+                bestHumanTag = tag;
+              }
             }
           }
           targetVisit.classification = bestHumanTag;

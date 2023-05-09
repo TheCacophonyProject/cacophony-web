@@ -562,7 +562,7 @@ describe("Track Tags: add, check, delete", () => {
         cy.log("Retrieve the recording's JWT");
         cy.apiRecordingNeedsTagCheck(
           "ttaNonMember",
-          undefined,
+          "ttaCamera1",
           "ttaNeedsTag8",
           [expectedRecording1],
           [],

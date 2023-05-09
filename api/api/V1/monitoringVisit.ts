@@ -1,7 +1,11 @@
 import moment, { Moment } from "moment";
 import models from "@models";
 import { Recording } from "@models/Recording";
-import { getCanonicalTrackTag, UNIDENTIFIED_TAGS } from "./Visits";
+import {
+  getCanonicalTrackTag,
+  NON_ANIMAL_TAGS,
+  UNIDENTIFIED_TAGS,
+} from "./Visits";
 import { ClientError } from "../customErrors";
 import { StationId, TrackId, UserId } from "@typedefs/api/common";
 import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
@@ -93,8 +97,16 @@ class Visit {
     if (bestHumanTags.length > 0) {
       if (bestHumanTags.length === 1) {
         const classification = bestHumanTags[0];
-        if (!["false-positive"].includes(classification[0])) {
-          // Only prefer human tags for visit labels if they're not false-positives.
+        const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
+        const aiClassification =
+          bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
+        if (
+          ![...NON_ANIMAL_TAGS, "false-positive"].includes(classification[0]) ||
+          [...NON_ANIMAL_TAGS, "false-positive", "none"].includes(
+            aiClassification
+          )
+        ) {
+          // Only prefer human tags for visit labels if they're not false-positives *or* the only AI tags are nothing/false-positive type tags.
           this.classification = bestHumanTags[0][0];
           this.classFromUserTag = true;
           if (bestHumanTags[0][1].some((tag) => tag.userTagsConflict)) {
@@ -102,9 +114,7 @@ class Visit {
           }
         } else {
           // Use AI tags instead for visit.
-          const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
-          this.classification =
-            bestAiTags.length > 0 ? bestAiTags[0][0] : "none";
+          this.classification = aiClassification;
           this.classFromUserTag = false;
         }
       } else {
@@ -234,21 +244,23 @@ function getBestGuessOverall(
   isAi: boolean
 ): [TagName, VisitTrack[]][] {
   let tracks: VisitTrack[];
+  const nonThingTags = [...NON_ANIMAL_TAGS, "false-positive"];
   if (!isAi) {
     // Make sure we don't count user false-positive tags, unless that is the *only* user tag.
     // If a user tags one track as a cat, and two tracks as false positive, we should always say the visit was a cat!
     const userNonFalsePositiveTags = allTracks.filter(
-      (track) => !track.isAITagged && track.tag !== "false-positive"
+      (track) =>
+        !track.isAITagged && track.tag && !nonThingTags.includes(track.tag)
     );
     if (userNonFalsePositiveTags.length === 0) {
-      tracks = allTracks.filter((track) => !track.isAITagged);
+      tracks = allTracks.filter((track) => !track.isAITagged && track.tag);
     } else {
       tracks = userNonFalsePositiveTags;
     }
   } else {
     // For AI, first prefer non false-positive tags, but if we only have false-positives, then fall back to that.
     tracks = allTracks.filter(
-      (track) => track.isAITagged && track.tag !== "false-positive"
+      (track) => track.isAITagged && !nonThingTags.includes(track.tag)
     );
     if (tracks.length === 0) {
       tracks = allTracks.filter((track) => track.isAITagged);
@@ -277,9 +289,6 @@ function getBestGuessOverall(
         automatic: track.isAITagged,
         what: track.tag,
       });
-    }
-    if (allTracks.some((track) => track.tag === "pukeko")) {
-      debugger;
     }
     const commonUserTag = getCanonicalTrackTag(allTrackTags as TrackTag[]);
     if (commonUserTag && commonUserTag.what in counts) {
@@ -380,7 +389,8 @@ export async function generateVisits(
       for (const recording of (split as Visit).recordings) {
         const userTag = recording.tracks.filter(
           (track) =>
-            track.isAITagged === false && track.tag !== "false-positive"
+            track.isAITagged === false &&
+            ![...NON_ANIMAL_TAGS, "false-positive"].includes(track.tag)
         );
         // In the case where there are two user tags on a single recording (multiple different animals) we'll
         // generate another visit using the same recording.
