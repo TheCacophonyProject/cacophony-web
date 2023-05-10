@@ -458,7 +458,7 @@ const deviceTypeIsKnown = computed<boolean>(() => {
 });
 </script>
 <template>
-  <div class="d-flex flex-row justify-content-between">
+  <div class="d-flex flex-row justify-content-between p-3">
     <div>
       <h6 class="ms-3">Setup checklist</h6>
       <b-list-group>

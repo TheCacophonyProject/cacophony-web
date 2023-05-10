@@ -514,7 +514,7 @@ const openSelectedDevice = async () => {
         <template #card="{ card }">
           <h6>{{ card.deviceName }}</h6>
           <div>{{ card.type }}</div>
-          <div>Last seen <span v-html="card.lastSeen"></span></div>
+          <div>Last seen <span v-html="card.lastSeen"></span> at </div>
         </template>
       </card-table>
     </div>

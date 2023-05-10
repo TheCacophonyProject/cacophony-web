@@ -75,6 +75,7 @@ import {
   faLeftRight,
   faStream,
   faUserCog,
+  faPanorama,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -174,7 +175,8 @@ library.add(
   faCircleCheck,
   faStream,
   faUserCog,
-  faMapLocationDot
+  faMapLocationDot,
+  faPanorama
 );
 
 export default FontAwesomeIcon;

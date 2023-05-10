@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import type { ComputedRef, Ref } from "vue";
 import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type {
+  DeviceId,
   LatLng,
   RecordingId,
   StationId as LocationId,
@@ -47,7 +48,7 @@ import {
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
 import { RecordingType } from "@typedefs/api/consts.ts";
-import ImageLoader from "@/components/ImageLoader.vue";
+import { hasReferenceImageForDeviceAtCurrentLocation } from "@api/Device.ts";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -608,8 +609,7 @@ const isInGreaterVisitContext = computed<boolean>(() => {
 });
 
 const recording = ref<LoadedResource<ApiRecordingResponse>>(null);
-const recordingFileJWT = ref<LoadedResource<string>>(null);
-const recordingRawJWT = ref<LoadedResource<string>>(null);
+
 const tracks = computed<ApiTrackResponse[]>(() => {
   if (recording.value) {
     return (recording.value as ApiRecordingResponse).tracks;
@@ -636,6 +636,56 @@ const checkNameTruncations = () => {
     false;
 };
 
+interface Timespan {
+  fromDateTime: Date;
+  untilDateTime?: Date;
+}
+
+const deviceSettingsMap = new Map<DeviceId, Timespan[]>();
+
+const deviceHasReferencePhotoAtRecordingTime = ref<boolean>(false);
+const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
+  deviceHasReferencePhotoAtRecordingTime.value = false;
+  if (deviceSettingsMap.has(deviceId)) {
+    const validTimespans = deviceSettingsMap.get(deviceId);
+    const matchingTimespan = (validTimespans as Timespan[]).find(
+      (timespan) =>
+        timespan.fromDateTime < atTime &&
+        (!timespan.untilDateTime || timespan.untilDateTime > atTime)
+    );
+    if (matchingTimespan) {
+      deviceHasReferencePhotoAtRecordingTime.value = true;
+      return;
+    }
+  }
+
+  const hasReferenceResponse =
+    await hasReferenceImageForDeviceAtCurrentLocation(deviceId, atTime);
+  if (
+    // We know the earliest time for the reference image, and the location.
+    // We could infer that later recordings for this device at the exact same location
+    // are the same reference image.
+    hasReferenceResponse.success
+  ) {
+    if (!deviceSettingsMap.has(deviceId)) {
+      deviceSettingsMap.set(deviceId, []);
+    }
+    const { fromDateTime, untilDateTime } = hasReferenceResponse.result;
+    const photoValidityTimespan: { untilDateTime?: Date; fromDateTime: Date } =
+      { fromDateTime: new Date(fromDateTime) };
+    if (untilDateTime) {
+      photoValidityTimespan.untilDateTime = new Date(untilDateTime);
+    }
+    (
+      deviceSettingsMap.get(deviceId) as {
+        untilDateTime?: Date;
+        fromDateTime: Date;
+      }[]
+    ).push(photoValidityTimespan);
+    deviceHasReferencePhotoAtRecordingTime.value = true;
+  }
+};
+
 const loadRecording = async () => {
   recording.value = null;
   if (currentRecordingId.value) {
@@ -643,6 +693,16 @@ const loadRecording = async () => {
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
     recording.value = await getRecordingById(currentRecordingId.value);
     if (recording.value) {
+      const rec = recording.value as ApiRecordingResponse;
+      if (rec.type === RecordingType.ThermalRaw) {
+        // If not already known, check if there is a reference image for the recording device at the time
+        // the recording was made.
+        checkReferencePhotoAtTime(
+          rec.deviceId,
+          new Date(rec.recordingDateTime)
+        );
+      }
+
       const _ = nextTick(checkNameTruncations);
 
       if (route.params.trackId) {
@@ -960,16 +1020,6 @@ const recordingType = computed<RecordingType | null>(() => {
   return null;
 });
 
-const trailcamImageUrl = computed<string>(() => {
-  if (
-    recordingType.value &&
-    recordingType.value === RecordingType.TrailCamImage
-  ) {
-    return `${API_ROOT}/api/v1/recordings/raw/${currentRecordingId.value}`;
-  }
-  return "";
-});
-
 const deleteRecording = async () => {
   if (recording.value) {
     // TODO:
@@ -1064,6 +1114,7 @@ const inlineModal = ref<boolean>(false);
             :user-selected-track="userSelectedTrack"
             :export-requested="exportRequested"
             :display-header-info="showHeaderInfo"
+            :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
             @export-completed="exportCompleted"
             @request-next-recording="gotoNextRecordingOrVisit"
             @request-prev-recording="gotoPreviousRecordingOrVisit"
@@ -1294,7 +1345,7 @@ const inlineModal = ref<boolean>(false);
               </div>
             </div>
             <recording-view-labels
-              :recording="recording"
+              :recording="recording as ApiRecordingResponse"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"
               v-if="isMobileView"
@@ -1307,7 +1358,7 @@ const inlineModal = ref<boolean>(false);
       <div class="visit-progress">
         <div
           class="progress-bar"
-          v-if="currentRecordingIndex"
+          v-if="currentRecordingIndex !== null"
           :style="{
             width: `${
               ((currentRecordingIndex + 1) / recordingIds.length) * 100
@@ -1317,41 +1368,19 @@ const inlineModal = ref<boolean>(false);
       </div>
       <nav class="d-flex footer-nav flex-fill">
         <div class="prev-button d-flex">
+          <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
             class="btn d-flex d-sm-none flex-row-reverse align-items-center btn-hi"
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
             @click.prevent="gotoPreviousRecordingOrVisit"
           >
-            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
-                >Previous recording</span
-              >
-              <span class="fs-8 fw-bold" v-else-if="hasPreviousVisit"
-                >Previous visit</span
-              >
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="previousRecordingIndex !== null"
-                >{{ previousRecordingIndex + 1 }}/
-                {{ currentRecordingCount || allRecordingIds.length }}</span
-              >
-              <span class="fs-9" v-else-if="previousVisit">
-                <span class="text-capitalize fw-bold">{{
-                  displayLabelForClassificationLabel(
-                    previousVisit.classification
-                  )
-                }}</span
-                >,&nbsp;<span
-                  >{{ previousVisit.recordings.length }} recording<span
-                    v-if="previousVisit.recordings.length > 1"
-                    >s</span
-                  ></span
-                >
-              </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
-            </span>
             <span class="px-1">
-              <svg :width="hasPreviousRecording ? 10 : 17" height="16" xmlns="http://www.w3.org/2000/svg">
+              <svg
+                :width="hasPreviousRecording ? 10 : 17"
+                height="16"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <path
                   d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
                   fill="#666"
@@ -1365,6 +1394,7 @@ const inlineModal = ref<boolean>(false);
               </svg>
             </span>
           </button>
+          <!-- Desktop only button, advances through visits -->
           <button
             type="button"
             class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
@@ -1407,23 +1437,20 @@ const inlineModal = ref<boolean>(false);
               </svg>
             </span>
           </button>
+          <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
             class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
-            :disabled="!hasPreviousRecording"
+            v-if="hasPreviousRecording"
             @click.prevent="gotoPreviousRecording"
             title="alt &larr;"
           >
             <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
-                >Previous recording</span
-              >
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="previousRecordingIndex !== null"
+              <span class="fs-8 fw-bold">Previous recording</span>
+              <span class="fs-9"
                 >{{ previousRecordingIndex + 1 }}/
                 {{ currentRecordingCount || allRecordingIds.length }}</span
               >
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
             </span>
             <span class="px-1">
               <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
@@ -1438,7 +1465,7 @@ const inlineModal = ref<boolean>(false);
         <recording-view-action-buttons
           class="action-buttons"
           v-if="isMobileView"
-          :recording="recording"
+          :recording="recording as ApiRecordingResponse"
           @added-recording-label="addedRecordingLabel"
           @removed-recording-label="removedRecordingLabel"
           @requested-export="requestedExport"
@@ -1447,24 +1474,21 @@ const inlineModal = ref<boolean>(false);
           @delete-recording="deleteRecording"
         />
         <div class="next-button d-flex">
+          <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
             class="btn d-none d-sm-flex align-items-center btn-hi"
-            :disabled="!hasNextRecording"
+            v-if="hasNextRecording"
             @click.prevent="gotoNextRecording"
             title="alt &rarr;"
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold" v-if="hasNextRecording"
-                >Next recording</span
-              >
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="nextRecordingIndex !== null"
+              <span class="fs-8 fw-bold">Next recording</span>
+              <span class="fs-9"
                 >{{ nextRecordingIndex + 1 }}/{{
                   currentRecordingCount || allRecordingIds.length
                 }}</span
               >
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
             </span>
             <span class="px-1">
               <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
@@ -1475,6 +1499,7 @@ const inlineModal = ref<boolean>(false);
               </svg>
             </span>
           </button>
+          <!-- Desktop only button, advances through visits -->
           <button
             type="button"
             class="btn d-none d-sm-flex align-items-center btn-hi"
@@ -1513,38 +1538,13 @@ const inlineModal = ref<boolean>(false);
               </svg>
             </span>
           </button>
+          <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
             class="btn d-flex d-sm-none align-items-center btn-hi"
             :disabled="!hasNextRecording && !hasNextVisit"
             @click.prevent="gotoNextRecordingOrVisit"
           >
-            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold" v-if="hasNextRecording"
-                >Next recording</span
-              >
-              <span class="fs-8 fw-bold" v-else-if="hasNextVisit"
-                >Next visit</span
-              >
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="nextRecordingIndex !== null"
-                >{{ nextRecordingIndex + 1 }}/{{
-                  currentRecordingCount || allRecordingIds.length
-                }}</span
-              >
-              <span class="fs-9" v-else-if="nextVisit">
-                <span class="text-capitalize fw-bold">{{
-                  displayLabelForClassificationLabel(nextVisit.classification)
-                }}</span
-                >,&nbsp;<span
-                  >{{ nextVisit.recordings.length }} recording<span
-                    v-if="nextVisit.recordings.length > 1"
-                    >s</span
-                  ></span
-                >
-              </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
-            </span>
             <span class="px-1">
               <svg
                 :width="hasNextRecording ? 10 : 17"
@@ -1660,6 +1660,7 @@ const inlineModal = ref<boolean>(false);
     height: 2px;
     background: #e1e1e1;
     .progress-bar {
+      transition: width 0.3s;
       // TODO - make the progress bar proportional to the offset of the recording within the visit timeline.
       // When the video is playing, we could even update it for the duration of the video?
       height: 100%;

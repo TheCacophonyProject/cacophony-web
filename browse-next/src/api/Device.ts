@@ -11,6 +11,7 @@ import type {
   DeviceId,
   GroupId as ProjectId,
   IsoFormattedDateString,
+  LatLng,
 } from "@typedefs/api/common";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { ScheduleId } from "@typedefs/api/common";
@@ -374,8 +375,49 @@ export const updateReferenceImageForDeviceAtCurrentLocation = (
 export const getReferenceImageForDeviceAtCurrentLocation = (
   deviceId: DeviceId
 ) => {
-  // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/reference-image`
   ) as Promise<FetchResult<any>>;
+};
+
+export const getReferenceImageForDeviceAtTime = (
+  deviceId: DeviceId,
+  atTime: Date
+) => {
+  const params = new URLSearchParams();
+  params.append("at-time", atTime.toISOString());
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/reference-image?${params}`
+  ) as Promise<FetchResult<any>>;
+};
+
+export const hasReferenceImageForDeviceAtTime = (
+  deviceId: DeviceId,
+  atTime: Date
+) => {
+  const params = new URLSearchParams();
+  params.append("at-time", atTime.toISOString());
+  // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/reference-image/exists?${params}`
+  ) as Promise<
+    FetchResult<{
+      fromDateTime: IsoFormattedDateString;
+      untilDateTime?: IsoFormattedDateString;
+    }>
+  >;
+};
+
+export const hasReferenceImageForDeviceAtCurrentLocation = (
+  deviceId: DeviceId
+) => {
+  // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/reference-image/exists`
+  ) as Promise<
+    FetchResult<{
+      fromDateTime: IsoFormattedDateString;
+      untilDateTime?: IsoFormattedDateString;
+    }>
+  >;
 };

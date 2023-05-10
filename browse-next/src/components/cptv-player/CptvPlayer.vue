@@ -48,6 +48,11 @@ import { delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
+import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
+import {
+  getReferenceImageForDeviceAtCurrentLocation,
+  getReferenceImageForDeviceAtTime,
+} from "@api/Device.ts";
 
 const { pixelRatio } = useDevicePixelRatio();
 const {
@@ -60,6 +65,7 @@ const {
   exportRequested,
   hasNext = false,
   hasPrev = false,
+  hasReferencePhoto = false,
   displayHeaderInfo = false,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
@@ -70,6 +76,7 @@ const {
   canSelectTracks?: boolean;
   hasNext?: boolean;
   hasPrev?: boolean;
+  hasReferencePhoto?: boolean;
   displayHeaderInfo?: boolean;
   exportRequested?: boolean | "advanced";
 }>();
@@ -1250,6 +1257,25 @@ const togglePlayback = async (): Promise<void> => {
   }
 };
 
+const referenceImageURL = ref<string | null>(null);
+const showingReferencePhoto = ref<boolean>(false);
+const toggleReferencePhotoComparison = async () => {
+  showingReferencePhoto.value = !showingReferencePhoto.value;
+  if (showingReferencePhoto.value) {
+    const rec = recording as ApiRecordingResponse;
+    // Load the reference photo.
+    const referenceImageResponse = await getReferenceImageForDeviceAtTime(
+      rec.deviceId,
+      new Date(rec.recordingDateTime)
+    );
+    if (referenceImageResponse.success) {
+      referenceImageURL.value = URL.createObjectURL(
+        referenceImageResponse.result
+      );
+    }
+  }
+};
+
 const setPlayerMessage = (message: string) => {
   if (messageTimeout.value !== null || playerMessage.value !== null) {
     clearTimeout(messageTimeout.value as number);
@@ -1827,6 +1853,67 @@ const drawFrame = async (
     }
   }
 };
+
+// Reveal slider for reference images:
+
+const revealHandleSelected = ref<boolean>(false);
+let revealGrabOffsetX = 0;
+const revealSlider = ref<HTMLDivElement>();
+const referenceImageContainer = ref<HTMLDivElement>();
+const referenceImage = ref<HTMLImageElement>();
+const { width: referenceImageContainerWidth } = useElementSize(
+  referenceImageContainer
+);
+watch(referenceImageContainerWidth, (width) => {
+  if (referenceImage.value) {
+    (referenceImage.value as HTMLImageElement).width = width;
+  }
+});
+const grabRevealHandle = (event: PointerEvent) => {
+  // NOTE: Maintain the offset of the cursor on the pointer when it's selected.
+  revealGrabOffsetX = event.offsetX;
+  const target = event.currentTarget as HTMLDivElement;
+  target.classList.add("selected");
+  revealHandleSelected.value = true;
+  target.setPointerCapture(event.pointerId);
+};
+const releaseRevealHandle = (event: PointerEvent) => {
+  const target = event.currentTarget as HTMLDivElement;
+  target.classList.remove("selected");
+  revealHandleSelected.value = false;
+  target.releasePointerCapture(event.pointerId);
+};
+
+const moveRevealHandle = (event: PointerEvent) => {
+  if (revealHandleSelected.value) {
+    const target = event.currentTarget as HTMLDivElement;
+    const parentBounds = (
+      target.parentElement as HTMLDivElement
+    ).getBoundingClientRect();
+    const handleBounds = target.getBoundingClientRect();
+    const x = Math.min(
+      Math.max(
+        -(handleBounds.width / 2),
+        event.clientX - parentBounds.left - revealGrabOffsetX
+      ),
+      parentBounds.width - handleBounds.width / 2
+    );
+    if (revealSlider.value) {
+      (revealSlider.value as HTMLDivElement).style.width = `${
+        x + handleBounds.width / 2
+      }px`;
+    }
+    target.style.left = `${x}px`;
+  }
+};
+watch(
+  () => hasReferencePhoto,
+  (hasRef) => {
+    if (!hasRef && showingReferencePhoto.value) {
+      showingReferencePhoto.value = false;
+    }
+  }
+);
 </script>
 <template>
   <div class="cptv-player">
@@ -1842,6 +1929,7 @@ const drawFrame = async (
         :class="['video-canvas', { smoothed: videoSmoothing }]"
       />
       <canvas key="overlay" ref="overlayCanvas" class="overlay-canvas" />
+
       <span
         key="px-value"
         v-show="showValueInfo"
@@ -1882,6 +1970,29 @@ const drawFrame = async (
         >
           <font-awesome-icon icon="forward" class="replay" />
         </button>
+      </div>
+
+      <div
+        class="position-absolute top-0 h-100 w-100 reference-image"
+        ref="referenceImageContainer"
+        v-if="showingReferencePhoto && hasReferencePhoto"
+      >
+        <div class="reveal-slider position-absolute" ref="revealSlider">
+          <img
+            ref="referenceImage"
+            alt="Device point-of-view reference photo at the time of recording"
+            :src="referenceImageURL"
+          />
+        </div>
+        <div
+          class="reveal-handle d-flex align-items-center justify-content-center"
+          ref="revealHandle"
+          @pointerdown="grabRevealHandle"
+          @pointerup="releaseRevealHandle"
+          @pointermove="moveRevealHandle"
+        >
+          <font-awesome-icon icon="left-right" />
+        </div>
       </div>
     </div>
     <div
@@ -1994,6 +2105,16 @@ const drawFrame = async (
           </button>
         </div>
         <button
+          :disabled="!hasReferencePhoto"
+          :class="{ selected: showingReferencePhoto }"
+          @click="toggleReferencePhotoComparison"
+          ref="toggleReferencePhoto"
+          class="reference-photo-btn"
+          data-tooltip="Reference photo"
+        >
+          <font-awesome-icon icon="panorama" />
+        </button>
+        <button
           @click.prevent="incrementSpeed"
           ref="cyclePlaybackSpeed"
           class="playback-speed"
@@ -2029,6 +2150,7 @@ const drawFrame = async (
           <font-awesome-icon icon="step-forward" />
         </button>
         <button
+          class="d-none d-sm-inline-block"
           @click.prevent="showValueInfo = !showValueInfo"
           :class="{ selected: showValueInfo }"
           :data-tooltip="
@@ -2051,6 +2173,7 @@ const drawFrame = async (
           <font-awesome-icon icon="highlighter" />
         </button>
         <button
+          class="d-none d-sm-inline-block"
           @click.prevent="polygonEditMode = !polygonEditMode"
           :class="{ selected: polygonEditMode }"
           :data-tooltip="
@@ -2061,6 +2184,7 @@ const drawFrame = async (
           <!--         draw-polygon, bezier-curve, vector-square -->
         </button>
         <button
+          class="d-none d-sm-inline-block"
           @click.prevent="silhouetteMode = !silhouetteMode"
           :class="{ selected: silhouetteMode }"
           :data-tooltip="
@@ -2187,6 +2311,7 @@ const drawFrame = async (
   aspect-ratio: 4 / 3;
 }
 .cptv-player {
+  user-select: none;
   background: #202731;
   .video-canvas {
     width: 100%;
@@ -2528,5 +2653,49 @@ const drawFrame = async (
     min-height: 30px;
   }
   background: black;
+}
+// Reference image overlay + slider
+.reference-image {
+  z-index: 1;
+  user-select: none;
+}
+.reveal-slider {
+  height: 100%;
+  width: 50%;
+  overflow: hidden;
+  user-select: none;
+  > img {
+    user-select: none;
+    pointer-events: none;
+    //position: absolute;
+    //top: 0;
+    //left: 0;
+    //right: 0;
+    //bottom: 0;
+    //height: auto;
+  }
+}
+.reveal-handle {
+  touch-action: none;
+  user-select: none;
+  content: "";
+  position: absolute;
+  top: calc(50% - 20px);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.5);
+  left: (calc(50% - 20px));
+  font-size: 20px;
+  cursor: grab;
+  &.selected {
+    cursor: grabbing;
+  }
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  &:hover {
+    opacity: 1;
+  }
 }
 </style>
