@@ -106,7 +106,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
 );
 
 const route = useRoute();
-
+const mounting = ref<boolean>(true);
 const expanded = computed<boolean>(() => {
   return (
     Number(route.params.trackId) === track.id &&
@@ -118,14 +118,17 @@ const expanded = computed<boolean>(() => {
 const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
-      trackDetails.value.style.height = `${trackDetails.value.scrollHeight}px`;
+      (trackDetails.value as HTMLDivElement).style.height = `${
+        (trackDetails.value as HTMLDivElement).scrollHeight
+      }px`;
     }
   } else {
     if (trackDetails.value) {
-      trackDetails.value.style.height = "0";
+      (trackDetails.value as HTMLDivElement).style.height = "0";
     }
   }
   expandedInternal.value = isExpanding;
+  setTimeout(() => (mounting.value = false), 200);
 };
 
 watch(expanded, handleExpansion);
@@ -295,8 +298,11 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
     ...userDefinedTagLabels.value,
     ...Object.values(uniqueUserTags.value),
   ];
-  if (thisUserTag.value && !allTags.includes(thisUserTag.value.what)) {
-    allTags.push(thisUserTag.value.what);
+  if (
+    thisUserTag.value &&
+    !allTags.includes((thisUserTag.value as ApiHumanTrackTagResponse).what)
+  ) {
+    allTags.push((thisUserTag.value as ApiHumanTrackTagResponse).what);
   }
   for (const tag of allTags.map(
     (tag) =>
@@ -337,7 +343,7 @@ const confirmAiSuggestedTag = () => {
   if (masterTag.value) {
     emit("add-or-remove-user-tag", {
       trackId: track.id,
-      tag: masterTag.value.what,
+      tag: (masterTag.value as ApiAutomaticTrackTagResponse).what,
     });
   }
 };
@@ -371,11 +377,13 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
   if (!thisUserTag.value) {
     return false;
   }
-  return !defaultTags.value.includes(thisUserTag.value.what);
+  return !defaultTags.value.includes(
+    (thisUserTag.value as ApiHumanTrackTagResponse).what
+  );
 });
 const addCustomTag = () => {
   showClassificationSearch.value = true;
-  tagSelect.value && tagSelect.value.open();
+  tagSelect.value && (tagSelect.value as HierarchicalTagSelect).open();
 };
 
 onMounted(async () => {
@@ -508,7 +516,7 @@ onMounted(async () => {
     </div>
   </div>
   <div
-    :class="[{ expanded }]"
+    :class="[{ expanded, mounting }]"
     class="track-details px-2 pe-2"
     ref="trackDetails"
   >
@@ -620,7 +628,9 @@ onMounted(async () => {
 
 .track-details {
   background: white;
-  transition: height 0.2s ease-in-out;
+  &:not(.mounting) {
+    transition: height 0.2s ease-in-out;
+  }
   height: 0;
   overflow: hidden;
 }

@@ -181,7 +181,8 @@ export const getAllVisitsForProjectBetweenTimes = async (
         visits.length &&
         (visits[0].incomplete || visits[visits.length - 1].incomplete)
       ) {
-        debugger;
+        // FIXME
+        // debugger;
       }
       returnVisits.push(...visits);
       morePagesExist = pagesEstimate > 1;

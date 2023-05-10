@@ -81,7 +81,7 @@ onMounted(async () => {
 
 defineExpose({
   open: () => {
-    layeredDropdown.value && layeredDropdown.value.open();
+    layeredDropdown.value && (layeredDropdown.value as LayeredDropdown).open();
   },
 });
 </script>

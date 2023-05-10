@@ -47,17 +47,23 @@ const emit = defineEmits<{
 }>();
 
 const openSelect = () => {
-  // TODO: Make sure when the select opens, it scrolls into view enough to see the bottom of it.
-
   showOptions.value = true;
   searchTerm.value = "";
   setToPath("all");
   if (!inputRef.value) {
     nextTick(() => {
       inputRef.value?.focus();
+      optionsContainerRef.value?.scrollIntoView({
+        block: "start",
+        inline: "nearest",
+      });
     });
   } else {
     inputRef.value?.focus();
+    optionsContainerRef.value?.scrollIntoView({
+      block: "start",
+      inline: "nearest",
+    });
   }
   emit("options-change");
 };
@@ -282,7 +288,7 @@ defineExpose({
         "
         @keyup.enter.stop.prevent="addSearchTermOnSubmit"
         @keydown.esc.stop.prevent="handleEscapeDismiss"
-        @focus="openSelect"
+        @focus="() => !showOptions && openSelect()"
         @blur="(e) => maybeCloseSelect"
         @input="maybeOpenSelect"
         type="text"
@@ -301,7 +307,10 @@ defineExpose({
           class="btn selected-option text-start text-capitalize flex-grow-1 px-0"
           @click="openSelect"
         >
-          {{ selections[0].display || selections[0].label }}
+          {{
+            (selections[0] && (selections[0].display || selections[0].label)) ||
+            ""
+          }}
         </button>
         <button
           type="button"

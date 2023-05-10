@@ -94,6 +94,7 @@ import recordingUtil, {
 import { serverErrorResponse, successResponse } from "./responseUtil";
 import { streamS3Object } from "@api/V1/signedUrl";
 import fs from "fs/promises";
+import logger from "@log";
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -1241,22 +1242,26 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/raw/:id`,
+    `${apiUrl}/raw/:id/:useArchival?`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
+      param("useArchival").optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      // NOTE: If the recording type is trailcam, then actually want to return "derived" rather than "raw" files
+      // NOTE: If the recording type is trailcam, then actually want to return "derived" rather than "raw" files, unless
+      //  the useArchival param is present
+      const useArchival = request.params.useArchival === "archive";
       const recordingItem = response.locals.recording;
       let fileKey = recordingItem.rawFileKey;
       let fileMimeType = recordingItem.rawMimeType;
       let fileSize = recordingItem.rawFileSize;
       if (
-        recordingItem.type === RecordingType.TrailCamImage ||
-        recordingItem.type === RecordingType.TrailCamVideo
+         !useArchival &&
+          (recordingItem.type === RecordingType.TrailCamImage ||
+        recordingItem.type === RecordingType.TrailCamVideo)
       ) {
         fileKey = recordingItem.fileKey;
         fileMimeType = recordingItem.fileMimeType;
@@ -1286,6 +1291,7 @@ export default (app: Application, baseUrl: string) => {
           fileExt = "webp";
           break;
         case "image/jpeg":
+        case "image/jpg":
           fileExt = "jpg";
           break;
         case "application/x-cptv":

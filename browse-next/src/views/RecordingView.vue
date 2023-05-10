@@ -787,14 +787,14 @@ const currentLocationName = computed<string>(() => {
   return (
     (recording.value &&
       (recording.value as ApiRecordingResponse).stationName) ||
-    " "
+    "–"
   );
 });
 
 const currentDeviceName = computed<string>(() => {
   return (
     (recording.value && (recording.value as ApiRecordingResponse).deviceName) ||
-    " "
+    "–"
   );
 });
 
@@ -874,6 +874,37 @@ const requestedAdvancedExport = () => {
   });
 };
 
+const getExtensionForMimeType = (mimeType: string): string => {
+  let fileExt = "raw";
+  switch (mimeType) {
+    case "audio/ogg":
+      fileExt = "ogg";
+      break;
+    case "audio/wav":
+      fileExt = "wav";
+      break;
+    case "audio/mp4":
+      fileExt = "m4a";
+      break;
+    case "video/mp4":
+      fileExt = "m4v";
+      break;
+    case "audio/mpeg":
+      fileExt = "mp3";
+      break;
+    case "image/webp":
+      fileExt = "webp";
+      break;
+    case "image/jpeg":
+      fileExt = "jpg";
+      break;
+    case "application/x-cptv":
+      fileExt = "cptv";
+      break;
+  }
+  return fileExt;
+};
+
 const requestedDownload = async () => {
   if (recording.value) {
     const rec = recording.value as ApiRecordingResponse;
@@ -893,18 +924,19 @@ const requestedDownload = async () => {
       anchor.click();
     };
     const recordingId = rec.id;
-    const cptvFileResponse = await window.fetch(
-      `${API_ROOT}/api/v1/recordings/raw/${recordingId}`,
+    const downloadedFileResponse = await window.fetch(
+      `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
       request as RequestInit
     );
-    const cptvUintArray = await cptvFileResponse.blob();
+    const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
+    const mimeType = downloadedFileResponse.headers.has("content-type")
+      ? downloadedFileResponse.headers.get("content-type")
+      : "application/octet-stream";
     download(
-      URL.createObjectURL(
-        new Blob([cptvUintArray], { type: "application/octet-stream" })
-      ),
+      URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
       `recording_${recordingId}${new Date(
         rec.recordingDateTime
-      ).toLocaleString()}.cptv`
+      ).toLocaleString()}.${getExtensionForMimeType(mimeType)}`
     );
   }
 };
@@ -1024,7 +1056,7 @@ const inlineModal = ref<boolean>(false);
       <div class="player-and-tagging d-flex">
         <div class="player-container" ref="playerContainer">
           <cptv-player
-            :recording="recording"
+            :recording="recording as ApiRecordingResponse"
             :recording-id="currentRecordingId"
             :current-track="currentTrack"
             :has-next="hasNextRecording || hasNextVisit"
@@ -1035,6 +1067,8 @@ const inlineModal = ref<boolean>(false);
             @export-completed="exportCompleted"
             @request-next-recording="gotoNextRecordingOrVisit"
             @request-prev-recording="gotoPreviousRecordingOrVisit"
+            @request-next-visit="gotoNextVisit"
+            @request-prev-visit="gotoPreviousVisit"
             @request-header-info-display="requestedHeaderInfoDisplay"
             @dismiss-header-info="dismissHeaderInfo"
             @track-selected="
@@ -1282,46 +1316,125 @@ const inlineModal = ref<boolean>(false);
         ></div>
       </div>
       <nav class="d-flex footer-nav flex-fill">
-        <button
-          type="button"
-          class="btn d-flex flex-row-reverse align-items-center prev-button btn-hi"
-          :disabled="!hasPreviousRecording && !hasPreviousVisit"
-          @click.prevent="gotoPreviousRecordingOrVisit"
-        >
-          <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
-            <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
-              >Previous recording</span
-            >
-            <span class="fs-8 fw-bold" v-else-if="hasPreviousVisit"
-              >Previous visit</span
-            >
-            <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="previousRecordingIndex !== null"
-              >{{ previousRecordingIndex + 1 }}/
-              {{ currentRecordingCount || allRecordingIds.length }}</span
-            >
-            <span class="fs-9" v-else-if="previousVisit">
-              <span class="text-capitalize fw-bold">{{
-                previousVisit.classification
-              }}</span
-              >,&nbsp;<span
-                >{{ previousVisit.recordings.length }} recording<span
-                  v-if="previousVisit.recordings.length > 1"
-                  >s</span
-                ></span
+        <div class="prev-button d-flex">
+          <button
+            type="button"
+            class="btn d-flex d-sm-none flex-row-reverse align-items-center btn-hi"
+            :disabled="!hasPreviousRecording && !hasPreviousVisit"
+            @click.prevent="gotoPreviousRecordingOrVisit"
+          >
+            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
+              <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
+                >Previous recording</span
               >
+              <span class="fs-8 fw-bold" v-else-if="hasPreviousVisit"
+                >Previous visit</span
+              >
+              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
+              <span class="fs-9" v-if="previousRecordingIndex !== null"
+                >{{ previousRecordingIndex + 1 }}/
+                {{ currentRecordingCount || allRecordingIds.length }}</span
+              >
+              <span class="fs-9" v-else-if="previousVisit">
+                <span class="text-capitalize fw-bold">{{
+                  displayLabelForClassificationLabel(
+                    previousVisit.classification
+                  )
+                }}</span
+                >,&nbsp;<span
+                  >{{ previousVisit.recordings.length }} recording<span
+                    v-if="previousVisit.recordings.length > 1"
+                    >s</span
+                  ></span
+                >
+              </span>
+              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
             </span>
-            <span class="fs-9" v-else v-html="'&nbsp;'"></span>
-          </span>
-          <span class="px-1">
-            <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                fill="#666"
-              />
-            </svg>
-          </span>
-        </button>
+            <span class="px-1">
+              <svg :width="hasPreviousRecording ? 10 : 17" height="16" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
+                  fill="#666"
+                />
+                <path
+                  v-if="!hasPreviousRecording"
+                  transform="translate(7 0)"
+                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
+                  fill="#666"
+                />
+              </svg>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
+            :disabled="!hasPreviousVisit"
+            @click.prevent="gotoPreviousVisit"
+            v-if="isInGreaterVisitContext"
+            title="alt+shift &larr;"
+          >
+            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
+              <span class="fs-8 fw-bold" v-if="hasPreviousVisit"
+                >Previous visit</span
+              >
+              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
+              <span class="fs-9" v-if="previousVisit">
+                <span class="text-capitalize fw-bold">{{
+                  displayLabelForClassificationLabel(
+                    previousVisit.classification
+                  )
+                }}</span
+                >,&nbsp;<span
+                  >{{ previousVisit.recordings.length }} recording<span
+                    v-if="previousVisit.recordings.length > 1"
+                    >s</span
+                  ></span
+                >
+              </span>
+              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
+            </span>
+            <span class="px-1">
+              <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
+                  fill="#666"
+                />
+                <path
+                  transform="translate(7 0)"
+                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
+                  fill="#666"
+                />
+              </svg>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
+            :disabled="!hasPreviousRecording"
+            @click.prevent="gotoPreviousRecording"
+            title="alt &larr;"
+          >
+            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
+              <span class="fs-8 fw-bold" v-if="hasPreviousRecording"
+                >Previous recording</span
+              >
+              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
+              <span class="fs-9" v-if="previousRecordingIndex !== null"
+                >{{ previousRecordingIndex + 1 }}/
+                {{ currentRecordingCount || allRecordingIds.length }}</span
+              >
+              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
+            </span>
+            <span class="px-1">
+              <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
+                  fill="#666"
+                />
+              </svg>
+            </span>
+          </button>
+        </div>
         <recording-view-action-buttons
           class="action-buttons"
           v-if="isMobileView"
@@ -1333,47 +1446,125 @@ const inlineModal = ref<boolean>(false);
           @requested-download="requestedDownload"
           @delete-recording="deleteRecording"
         />
-        <button
-          type="button"
-          class="btn d-flex align-items-center next-button btn-hi"
-          :disabled="!hasNextRecording && !hasNextVisit"
-          @click.prevent="gotoNextRecordingOrVisit"
-        >
-          <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-            <span class="fs-8 fw-bold" v-if="hasNextRecording"
-              >Next recording</span
-            >
-            <span class="fs-8 fw-bold" v-else-if="hasNextVisit"
-              >Next visit</span
-            >
-            <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-            <span class="fs-9" v-if="nextRecordingIndex !== null"
-              >{{ nextRecordingIndex + 1 }}/{{
-                currentRecordingCount || allRecordingIds.length
-              }}</span
-            >
-            <span class="fs-9" v-else-if="nextVisit">
-              <span class="text-capitalize fw-bold">{{
-                nextVisit.classification
-              }}</span
-              >,&nbsp;<span
-                >{{ nextVisit.recordings.length }} recording<span
-                  v-if="nextVisit.recordings.length > 1"
-                  >s</span
-                ></span
+        <div class="next-button d-flex">
+          <button
+            type="button"
+            class="btn d-none d-sm-flex align-items-center btn-hi"
+            :disabled="!hasNextRecording"
+            @click.prevent="gotoNextRecording"
+            title="alt &rarr;"
+          >
+            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
+              <span class="fs-8 fw-bold" v-if="hasNextRecording"
+                >Next recording</span
               >
+              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
+              <span class="fs-9" v-if="nextRecordingIndex !== null"
+                >{{ nextRecordingIndex + 1 }}/{{
+                  currentRecordingCount || allRecordingIds.length
+                }}</span
+              >
+              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
             </span>
-            <span class="fs-9" v-else v-html="'&nbsp;'"></span>
-          </span>
-          <span class="px-1">
-            <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                fill="#666"
-              />
-            </svg>
-          </span>
-        </button>
+            <span class="px-1">
+              <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
+                  fill="#666"
+                />
+              </svg>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn d-none d-sm-flex align-items-center btn-hi"
+            :disabled="!hasNextVisit"
+            @click.prevent="gotoNextVisit"
+            v-if="isInGreaterVisitContext"
+            title="alt+shift &rarr;"
+          >
+            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
+              <span class="fs-8 fw-bold" v-if="hasNextVisit">Next visit</span>
+              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
+              <span class="fs-9" v-if="nextVisit">
+                <span class="text-capitalize fw-bold">{{
+                  displayLabelForClassificationLabel(nextVisit.classification)
+                }}</span
+                >,&nbsp;<span
+                  >{{ nextVisit.recordings.length }} recording<span
+                    v-if="nextVisit.recordings.length > 1"
+                    >s</span
+                  ></span
+                >
+              </span>
+              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
+            </span>
+            <span class="px-1">
+              <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
+                  fill="#666"
+                />
+                <path
+                  transform="translate(7 0)"
+                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
+                  fill="#666"
+                />
+              </svg>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="btn d-flex d-sm-none align-items-center btn-hi"
+            :disabled="!hasNextRecording && !hasNextVisit"
+            @click.prevent="gotoNextRecordingOrVisit"
+          >
+            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
+              <span class="fs-8 fw-bold" v-if="hasNextRecording"
+                >Next recording</span
+              >
+              <span class="fs-8 fw-bold" v-else-if="hasNextVisit"
+                >Next visit</span
+              >
+              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
+              <span class="fs-9" v-if="nextRecordingIndex !== null"
+                >{{ nextRecordingIndex + 1 }}/{{
+                  currentRecordingCount || allRecordingIds.length
+                }}</span
+              >
+              <span class="fs-9" v-else-if="nextVisit">
+                <span class="text-capitalize fw-bold">{{
+                  displayLabelForClassificationLabel(nextVisit.classification)
+                }}</span
+                >,&nbsp;<span
+                  >{{ nextVisit.recordings.length }} recording<span
+                    v-if="nextVisit.recordings.length > 1"
+                    >s</span
+                  ></span
+                >
+              </span>
+              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
+            </span>
+            <span class="px-1">
+              <svg
+                :width="hasNextRecording ? 10 : 17"
+                height="16"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
+                  fill="#666"
+                />
+                <path
+                  transform="translate(7 0)"
+                  v-if="!hasNextRecording"
+                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
+                  fill="#666"
+                />
+              </svg>
+            </span>
+          </button>
+        </div>
       </nav>
     </footer>
   </div>
@@ -1619,5 +1810,8 @@ const inlineModal = ref<boolean>(false);
   background: white;
   z-index: 401;
   .standard-shadow();
+}
+.player-container {
+  background: black;
 }
 </style>

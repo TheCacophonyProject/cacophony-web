@@ -209,7 +209,20 @@ export async function fetch<T>(
     response.status === HttpStatusCode.AuthorizationError &&
     !response.url.endsWith("/api/v1/users/authenticate")
   ) {
-    debugger;
+    {
+      const isJSON = (
+        Array.from((response.headers as any).entries()) as [string, string][]
+      ).find(
+        ([key, val]: [string, string]) =>
+          key.toLowerCase() === "content-type" &&
+          val.toLowerCase().includes("application/json")
+      );
+      if (isJSON) {
+        const result = await response.json();
+        debugger;
+      }
+    }
+
     forgetUserOnCurrentDevice();
     return {
       result: {
@@ -221,18 +234,13 @@ export async function fetch<T>(
       success: false,
     };
   }
-  const contentType = (
+  const isJSON = (
     Array.from((response.headers as any).entries()) as [string, string][]
   ).find(
-    ([key, val]: [string, string]) => key.toLowerCase() === "content-type"
+    ([key, val]: [string, string]) =>
+      key.toLowerCase() === "content-type" &&
+      val.toLowerCase().includes("application/json")
   );
-  let isJSON = false;
-  if (
-    contentType &&
-    contentType[1].toLowerCase().includes("application/json")
-  ) {
-    isJSON = true;
-  }
   let result;
   if (isJSON) {
     result = await response.json();
