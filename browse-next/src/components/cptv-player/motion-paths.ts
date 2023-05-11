@@ -457,48 +457,51 @@ export const pointsForTrack = ({ positions }: ApiTrackResponse): Point[] => {
 export const motionPathForTrack = (
   track: ApiTrackResponse,
   scale: number
-): MotionPath => {
+): MotionPath | null => {
   const pointsForThisTrack = pointsForTrack(track);
-  // Discard points that aren't far enough from the previous point.
-  let prevPoint = pointsForThisTrack[0];
-  const decimatedPoints = [prevPoint];
-  for (let i = 1; i < pointsForThisTrack.length; i++) {
-    while (
-      i < pointsForThisTrack.length - 1 &&
-      distance(prevPoint, pointsForThisTrack[i]) < 7
-    ) {
-      i++;
+  if (pointsForThisTrack.length > 1) {
+    // Discard points that aren't far enough from the previous point.
+    let prevPoint = pointsForThisTrack[0];
+    const decimatedPoints = [prevPoint];
+    for (let i = 1; i < pointsForThisTrack.length; i++) {
+      while (
+          i < pointsForThisTrack.length - 1 &&
+          distance(prevPoint, pointsForThisTrack[i]) < 7
+          ) {
+        i++;
+      }
+      prevPoint = pointsForThisTrack[i];
+      decimatedPoints.push(prevPoint);
     }
-    prevPoint = pointsForThisTrack[i];
-    decimatedPoints.push(prevPoint);
-  }
-  if (
-    !equal(
-      decimatedPoints[decimatedPoints.length - 1],
-      pointsForThisTrack[pointsForThisTrack.length - 1]
-    )
-  ) {
-    decimatedPoints.push(pointsForThisTrack[pointsForThisTrack.length - 1]);
-  }
-
-  const scaledPoints = smoothLine(
-    decimatedPoints.map((point) => mul(point, scale))
-  );
-
-  // const allPoints = smoothLine(
-  //   pointsForThisTrack.map((point) => mul(point, scale))
-  // );
-
-  return {
-    curve: fitCurve(scaledPoints),
-    tangents: [
-      normalise(sub(scaledPoints[0], scaledPoints[1])),
-      normalise(
-        sub(
-          scaledPoints[scaledPoints.length - 1],
-          scaledPoints[scaledPoints.length - 2]
+    if (
+        !equal(
+            decimatedPoints[decimatedPoints.length - 1],
+            pointsForThisTrack[pointsForThisTrack.length - 1]
         )
-      ),
-    ],
-  };
+    ) {
+      decimatedPoints.push(pointsForThisTrack[pointsForThisTrack.length - 1]);
+    }
+
+    const scaledPoints = smoothLine(
+        decimatedPoints.map((point) => mul(point, scale))
+    );
+
+    // const allPoints = smoothLine(
+    //   pointsForThisTrack.map((point) => mul(point, scale))
+    // );
+
+    return {
+      curve: fitCurve(scaledPoints),
+      tangents: [
+        normalise(sub(scaledPoints[0], scaledPoints[1])),
+        normalise(
+            sub(
+                scaledPoints[scaledPoints.length - 1],
+                scaledPoints[scaledPoints.length - 2]
+            )
+        ),
+      ],
+    };
+  }
+  return null;
 };

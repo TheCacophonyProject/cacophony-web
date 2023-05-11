@@ -69,6 +69,7 @@ const processFile = async (
   const hash = await sha1(new Uint8Array(fileBytes));
   const exif = EXIF.readFromBinaryFile(fileBytes);
 
+  console.log(JSON.stringify(exif, null, '\t'));
   // TODO: If there's no EXIF data, then this isn't a raw trailcam image, and we should return an error
   if (!exif) {
     return {
@@ -256,11 +257,6 @@ const processFile = async (
           background = "white";
           paddingY = 0;
           delete additionalMetadata.model;
-        } else {
-          return {
-            success: false,
-            reason: `Unknown trailcam model '${model}'`,
-          };
         }
       }
     }

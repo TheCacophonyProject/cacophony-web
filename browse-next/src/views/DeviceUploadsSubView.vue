@@ -387,6 +387,9 @@ const beginUploadJob = async () => {
       { type: "thread-id", data: { threadIndex: i, canvas } },
       [canvas]
     );
+    if (Object.keys(uploadErrors.value).length) {
+        console.log("Errors", uploadErrors.value);
+    }
     await waitForMessage(i, "ack");
     uploadWorkers.push(worker);
   }
