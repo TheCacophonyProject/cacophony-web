@@ -76,6 +76,7 @@ interface UploadJob {
   type: "file" | "fileEntry";
 }
 
+const uploadErrors = ref<Record<string, number>>({});
 const completedUploads = ref<number>(0);
 const duplicateCount = ref<number>(0);
 const totalUploads = ref<number>(0);
@@ -218,7 +219,7 @@ const distributeWork = async (job: UploadJob): Promise<boolean> => {
         data: { file: fileBlob, fileName: job.file.name },
       })
     ) {
-      console.log("sent job to", i);
+      //console.log("sent job to", i);
       return true;
     }
   }
@@ -253,6 +254,7 @@ const resetUploadState = () => {
   totalUploads.value = 0;
   duplicateCount.value = 0;
   completedUploads.value = 0;
+  uploadErrors.value = {};
   beganUpload.value = false;
 };
 const beginUploadJob = async () => {
@@ -264,7 +266,7 @@ const beginUploadJob = async () => {
     // NOTE: If we need to create a new location, do that first.
     location = selectedLatLng.value.location;
     const locationResponse = await createNewLocation(selectedLatLng.value);
-    console.log("Created new location");
+    //console.log("Created new location");
   } else {
     location = (selectedLocation.value as ApiLocationResponse).location;
   }
@@ -300,67 +302,77 @@ const beginUploadJob = async () => {
       // console.log(type, data, threadIndex);
       // Type is only ever "finish"
       if (type === "finish") {
-        // We need to upload the job in question, and return a promise for that?
-        // We need the location,
-        // the device id,
-        // the track filled out
-        // the raw file
-        // the derived file
-        const recordingData = {
-          fileHash: data.fileHash,
-          location,
-          type: "trailcam-image",
-          duration: 3, // It's important that we lie and say the duration is > 2.5s, because we filter short recordings out.
-          metadata: {
-            // Dummy track
-            algorithm: "empty-trailcam",
-            tracks: [
-              {
-                start_s: 0,
-                end_s: 1,
-                positions: [
-                  {
-                    x: 0,
-                    y: 0,
-                    width: 1,
-                    height: 1,
-                  },
-                ],
-                frame_start: 1,
-                frame_end: 1,
-                num_frames: 1,
-              },
-            ],
-          },
-          // TODO: additionalMetadata of OCR + EXIF information.
-          // The recordingDateTime should be in the local time, so convert based on location.
-          recordingDateTime: DateTime.fromJSDate(data.recordingDateTime, {
-            zone: timezoneForLatLng(location),
-          })
-            .toJSDate()
-            .toISOString(),
-        };
-        // NOTE: We want back-pressure from the uploads queue.
-        const recordingUploadResponse = await uploadRecording(
-          (device.value as ApiDeviceResponse).id,
-          recordingData,
-          data.rawFile,
-          data.rawFileName,
-          data.derivedFile,
-          data.derivedFileName,
-          data.thumbFile,
-          data.thumbFileName
-        );
-        if (recordingUploadResponse.success) {
-          if (
-            recordingUploadResponse.result.messages[0] ===
-            "Duplicate recording found for device"
-          ) {
-            duplicateCount.value += 1;
+        if (data.success) {
+          // We need to upload the job in question, and return a promise for that?
+          // We need the location,
+          // the device id,
+          // the track filled out
+          // the raw file
+          // the derived file
+          const recordingData = {
+            fileHash: data.fileHash,
+            location,
+            type: "trailcam-image",
+            duration: 3, // It's important that we lie and say the duration is > 2.5s, because we filter short recordings out.
+            metadata: {
+              // Dummy track
+              algorithm: "empty-trailcam",
+              tracks: [
+                {
+                  start_s: 0,
+                  end_s: 1,
+                  positions: [
+                    {
+                      x: 0,
+                      y: 0,
+                      width: 1,
+                      height: 1,
+                    },
+                  ],
+                  frame_start: 1,
+                  frame_end: 1,
+                  num_frames: 1,
+                },
+              ],
+            },
+            additionalMetadata: data.additionalMetadata,
+            // FIXME The recordingDateTime should be in the local time, so convert based on location.
+            recordingDateTime: DateTime.fromJSDate(data.recordingDateTime, {
+              zone: timezoneForLatLng(location),
+            })
+              .toJSDate()
+              .toISOString(),
+          };
+          //console.log("Meta", recordingData.additionalMetadata);
+          // NOTE: We want back-pressure from the uploads queue.
+          const recordingUploadResponse = await uploadRecording(
+            (device.value as ApiDeviceResponse).id,
+            recordingData,
+            data.rawFile,
+            data.rawFileName,
+            data.derivedFile,
+            data.derivedFileName,
+            data.thumbFile,
+            data.thumbFileName
+          );
+          if (recordingUploadResponse.success) {
+            if (
+              recordingUploadResponse.result.messages[0] ===
+              "Duplicate recording found for device"
+            ) {
+              duplicateCount.value += 1;
+            }
+            completedUploads.value += 1;
+          } else {
+            completedUploads.value += 1;
+            const reason = recordingUploadResponse.result.messages.join(", ");
+            uploadErrors.value[reason] = uploadErrors.value[reason] || 0;
+            uploadErrors.value[data.reason] += 1;
           }
-          completedUploads.value += 1;
         } else {
-          // TODO
+          completedUploads.value += 1;
+          uploadErrors.value[data.reason] = uploadErrors.value[data.reason] || 0;
+          uploadErrors.value[data.reason] += 1;
         }
       }
       const resolver = messageQueue[threadIndex][type] as (
@@ -406,7 +418,7 @@ const beginUploadJob = async () => {
     }
     await allWorkFinished();
 
-    {
+    if (uploadQueue.value.length) {
       // NOTE: Do the last (latest) recording single threaded so that we correctly update
       //  Device.lastRecordingTime
 
@@ -426,6 +438,7 @@ const beginUploadJob = async () => {
   }
   await Promise.all(pendingUploadApiRequests);
   uploadInProgress.value = false;
+  // TODO: Show any upload errors.
   emit("end-blocking-work");
 };
 
@@ -437,7 +450,7 @@ const onDropFiles = async (e: DragEvent, closerFn: () => void) => {
     files.sort((a: FileSystemFileEntry, b: FileSystemFileEntry) => {
       return a.fullPath > b.fullPath ? 1 : -1;
     });
-    console.log(files);
+    //console.log(files);
     // TODO: Should we sanity check the embedded deviceName and make sure all files are the same device, or just trust the user?
 
     // TODO: Scan the beginning of each file and work out its mimetype from magic numbers or whatever?
@@ -769,7 +782,7 @@ const clearUploadQueue = () => {
       <div v-else class="d-flex flex-grow-1 flex-column">
         <div>
           Uploading {{ uploadQueue.length }} file<span
-            v-if="uploadQueue.length > 1"
+            v-if="uploadQueue.length !== 1"
             >s</span
           >
           for location '<strong>{{
@@ -805,7 +818,7 @@ const clearUploadQueue = () => {
     <div class="mb-3 d-flex flex-column align-items-center">
       <span
         >Uploaded {{ completedUploads }} of {{ totalUploads }} file<span
-          v-if="totalUploads > 1"
+          v-if="totalUploads !== 1"
           >s</span
         >.</span
       >

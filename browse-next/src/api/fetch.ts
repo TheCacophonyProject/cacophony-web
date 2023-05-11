@@ -280,7 +280,7 @@ export async function fetch<T>(
   } else {
     result = await response.blob();
   }
-  console.log(result);
+  //console.log(result);
   return {
     result,
     status: response.status,

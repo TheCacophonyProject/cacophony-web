@@ -7,18 +7,13 @@ import { supportsFastBuild, createOCREngine } from "tesseract-wasm";
 // @ts-ignore
 import type { OCREngine } from "tesseract-wasm";
 import { encode } from "@jsquash/webp";
-// TODO: Post the jpeg bytes to be compressed here, along with a valid api token (or possibly we request the api token once upload is ready)
+import * as process from "process";
+import { add } from "@/components/cptv-player/motion-paths.ts";
+
 // 1. Do exif decode
 // 2. Do Ocr to find the possible group name.
 // 3. Make cropped and resized image as jpeg (using some decent jpeg encoder, or a more advanced image format.)
-// 5. Upload the "recording", and return progress every 10%?
-// 6. At some stage to a sha1 hash of the file.
-interface UploadJob {
-  file: FileSystemFileEntry;
-  canvas?: HTMLCanvasElement;
-  progress: number;
-}
-//let ocr: OCRClient;
+
 let ocr: OCREngine;
 
 const filePromise = async (file: FileSystemFileEntry): Promise<Blob> => {
@@ -30,14 +25,18 @@ const filePromise = async (file: FileSystemFileEntry): Promise<Blob> => {
 const processFile = async (
   fileBlob: Blob,
   canvas: HTMLCanvasElement
-): Promise<{
-  fileHash: string;
-  derivedFile: ArrayBuffer;
-  thumbFile: ArrayBuffer;
-  recordingDateTime: Date;
-  additionalMetadata?: Record<string, string | number>;
-}> => {
-  const additionalMetadata = {};
+): Promise<
+  | {
+      fileHash: string;
+      derivedFile: ArrayBuffer;
+      thumbFile: ArrayBuffer;
+      recordingDateTime: Date;
+      additionalMetadata?: Record<string, string | number | string[]>;
+      success: true;
+    }
+  | { success: false; reason: string }
+> => {
+  const additionalMetadata: Record<string, string | number | string[]> = {};
   if (!ocr) {
     let wasm;
     if (supportsFastBuild()) {
@@ -55,12 +54,11 @@ const processFile = async (
     ).arrayBuffer();
     await ocr.loadModel(model);
   }
-  const start = performance.now();
   // TODO: Get the JPEG resolution via exif data
   // We may actually want to use the full size decoded image to
 
   // Okay, so based on the model, we know *exactly* where to look for the device name in the image,
-  //  so that we can check it against the proxy device name, or at least ensure that it doesn't change.
+  // so that we can check it against the proxy device name, or at least ensure that it doesn't change.
   // So maybe in device table, we need an aliases field for trailcams, where we list other names it's known by?
 
   // When we first see a new device name from an image where no aliases are set, ask if we'd like to rename the
@@ -68,19 +66,24 @@ const processFile = async (
 
   // If GPS coords exist, and they change, cool.  But if the device itself changes, that is a problem.
   const fileBytes = await fileBlob.arrayBuffer();
-  //console.log("File Bytes", fileBytes.byteLength);
   const hash = await sha1(new Uint8Array(fileBytes));
-  //console.log(hash);
-
-  // Right, so jpeg tran completely strips out exif data.  Probably explains savings.
-
   const exif = EXIF.readFromBinaryFile(fileBytes);
-  console.log(JSON.stringify(exif, null, "\t"));
+
+  // TODO: If there's no EXIF data, then this isn't a raw trailcam image, and we should return an error
+  if (!exif) {
+    return {
+      success: false,
+      reason: "No EXIF data found",
+    };
+  }
   const model = (exif.Model || "").trim();
   const width = exif.PixelXDimension;
   const height = exif.PixelYDimension;
+
+  additionalMetadata.width = width;
+  additionalMetadata.height = height;
+
   const dateTime = exif.DateTime;
-  //console.log(JSON.stringify(exif, null, '\t'));
   let recordingDateTime = new Date();
   if (dateTime) {
     const [[year, month, day], [hour, minute, second]] = dateTime
@@ -91,8 +94,6 @@ const processFile = async (
 
   // Maybe this should be normalised to 0..1.0 coords
   let footerHeight = 47;
-  let deviceNameLeft = 1120;
-  let deviceNameRight = 1570;
   let background = "black";
   let paddingY = 20;
   const ctx = canvas.getContext("2d", {
@@ -103,75 +104,207 @@ const processFile = async (
   let ratio = 0;
 
   // TODO: Should we try and find the bottom slice if we don't have exif data, or don't recognise the model?
+  if (exif.ShutterSpeedValue) {
+    additionalMetadata.shutterSpeed = exif.ShutterSpeedValue;
+  }
+  if (exif.FocalLength) {
+    additionalMetadata.focalLength = exif.FocalLength;
+    if (exif.FocalLengthIn35mmFilm) {
+      additionalMetadata.focalLength += ` (35mm equiv: ${exif.FocalLengthIn35mmFilm})`;
+    }
+  }
+  if (exif.ISOSpeedRatings) {
+    additionalMetadata.ISO = exif.ISOSpeedRatings;
+  }
+  if (exif.Software) {
+    if (Array.isArray(exif.Software)) {
+      additionalMetadata.softwareVersion = exif.Software.map((x: number) =>
+        String.fromCharCode(x)
+      ).join("");
+    } else {
+      additionalMetadata.softwareVersion = exif.Software.trim();
+    }
+  }
+  if (exif.FNumber) {
+    additionalMetadata.fStop = exif.FNumber;
+  }
+  if (exif.ApertureValue) {
+    additionalMetadata.aperture = exif.ApertureValue;
+  }
+  if (exif.ExposureTime) {
+    additionalMetadata.exposureTime = exif.ExposureTime;
+  }
+  if (exif.Model) {
+    additionalMetadata.model = exif.Model.trim();
+  }
+  if (exif.Make) {
+    additionalMetadata.make = exif.Make.trim();
+  }
+  if (exif.DateTime) {
+    additionalMetadata.dateTime = exif.DateTime;
+  }
+  if (exif.GPSInfoIFDPointer) {
+    // TODO: Try to get GPS info out.
+    // Exodus and Bushnells might have this
+  }
 
-  if (model) {
+  const footerTextOffsets = [];
+  if (model || exif.Model) {
     switch (model) {
       case "BTC-6PX": // Browning
         footerHeight = 47;
-        deviceNameLeft = 1120;
-        deviceNameRight = 1570;
+        footerTextOffsets.push({
+          left: 1120,
+          right: 1570,
+          label: "deviceName",
+        });
+        footerTextOffsets.push({
+          left: 700,
+          right: 790,
+          label: "temperatureC",
+        });
+        footerTextOffsets.push({
+          left: 790,
+          right: 887,
+          label: "inHg",
+        });
         background = "black";
         paddingY = 20;
         // Expected width/height: 2688x1504 1:1.78723404
         break;
-      case "119975": // Bushnells
+      case "119975": // Bushnell
         footerHeight = 108;
-        deviceNameLeft = 410;
-        deviceNameRight = 1500;
+        footerTextOffsets.push({
+          left: 410,
+          right: 1500,
+          label: "deviceName",
+        });
+        footerTextOffsets.push({
+          left: 820,
+          right: 939,
+          label: "temperatureC",
+        });
         background = "white";
         paddingY = 0;
         // Expected width/height: 1920x1440 1:1.3333
         break;
       case "LIF": // Exodus
         footerHeight = 146;
-        deviceNameLeft = 3600;
-        deviceNameRight = 4736;
+        footerTextOffsets.push({
+          left: 3600,
+          right: 4736,
+          label: "deviceName",
+        });
+        footerTextOffsets.push({
+          left: 1975,
+          right: 2500,
+          label: "temperature",
+        });
         paddingY = 0;
         background = "black";
         // Expected width/height: 4736x2664 1:1.7777
         break;
       case "Ltl Acorn":
+      case "Ltl5210 For USA":
         footerHeight = 80;
-        deviceNameLeft = 2640;
-        deviceNameRight = 4000;
         paddingY = 0;
-        background = "#dcdcdc";
-        if (exif.Software && exif.Software.trim() === "V1.48") {
-          // TODO - maybe some fuzziness here
-          // Expected width/height: 2560x1920 1:1.333
-        } else if (exif.Software && exif.Software.trim() === "V3.06A") {
-          // Expected width/height: 4000x3000  4:3 1:1.333
+        if (
+          additionalMetadata.softwareVersion &&
+          (additionalMetadata.softwareVersion as string).startsWith("V1")
+        ) {
+          background = "#dddddd";
+          footerTextOffsets.push({
+            left: 1020,
+            right: 1220,
+            label: "temperatureC",
+          });
+        } else {
+          background = "#dcdcdc";
+          if (width === 4000) {
+            footerTextOffsets.push({
+              left: 1320,
+              right: 1660,
+              label: "temperatureC",
+            });
+          } else if (width === 2560) {
+            paddingY = 15;
+            footerTextOffsets.push({
+              left: 1130,
+              right: 1420,
+              label: "temperatureC",
+            });
+          }
         }
+
         // Actually, no device name found, so we mostly just want to trim the footer I think.
         break;
-    }
-
-    const footerLocationY = height - footerHeight;
-    const textFooter = await createImageBitmap(
-      fileBlob,
-      deviceNameLeft,
-      footerLocationY,
-      deviceNameRight - deviceNameLeft,
-      footerHeight
-    );
-    // Add padding if needed:
-    if (paddingY !== 0) {
-      if (ctx) {
-        ctx.fillStyle = background;
-        ctx.fillRect(0, 0, textFooter.width, textFooter.height + paddingY);
-        ctx.drawImage(textFooter, 0, paddingY / 2);
-        ocr.loadImage(
-          ctx.getImageData(0, 0, textFooter.width, textFooter.height + paddingY)
-        );
+      default: {
+        if (exif.Make === "BUSHNEL") {
+          // NOTE, only one L
+          // Model is garbage sometimes:
+          footerHeight = 108;
+          footerTextOffsets.push({
+            left: 275,
+            right: 700,
+            label: "deviceName",
+          });
+          footerTextOffsets.push({
+            left: 820,
+            right: 939,
+            label: "temperatureC",
+          });
+          background = "white";
+          paddingY = 0;
+          delete additionalMetadata.model;
+        } else {
+          return {
+            success: false,
+            reason: `Unknown trailcam model '${model}'`,
+          };
+        }
       }
-    } else {
-      ocr.loadImage(textFooter);
     }
-    const boxes = ocr.getTextBoxes("word");
-    console.log(JSON.stringify(boxes));
-    ocr.clearImage();
+    const footerLocationY = height - footerHeight;
+    for (const { left, right, label } of footerTextOffsets) {
+      const textFooter = await createImageBitmap(
+        fileBlob,
+        left,
+        footerLocationY,
+        right - left,
+        footerHeight
+      );
+      // Add padding if needed:
+      if (paddingY !== 0) {
+        if (ctx) {
+          ctx.fillStyle = background;
+          ctx.fillRect(0, 0, textFooter.width, textFooter.height + paddingY);
+          ctx.drawImage(textFooter, 0, paddingY / 2);
+          ocr.loadImage(
+            ctx.getImageData(
+              0,
+              0,
+              textFooter.width,
+              textFooter.height + paddingY
+            )
+          );
+        }
+      } else {
+        ocr.loadImage(textFooter);
+      }
+
+      const boxes = ocr.getTextBoxes("word");
+      const text = boxes
+        .filter(({ confidence }: { confidence: number }) => confidence > 0.5)
+        .map(({ text }: { text: string }) => text.trim())
+        .filter((text: string) => text !== "")
+        .join(" ");
+      if (text !== "") {
+        additionalMetadata[label] = text;
+      }
+      ocr.clearImage();
+      textFooterHeight = textFooter.height;
+    }
     ratio = height / width;
-    textFooterHeight = textFooter.height;
   }
   let croppedImage;
   if (textFooterHeight !== 0) {
@@ -205,7 +338,6 @@ const processFile = async (
     webp = await encode(imageData, {
       quality: 50, // Default is 75?
     });
-    //console.log("Webp size", webp.byteLength);
   }
 
   let thumbWebp;
@@ -217,16 +349,14 @@ const processFile = async (
     thumbWebp = await encode(imageData, {
       quality: 50, // Default is 75?
     });
-    //console.log("Thumb Webp size", thumbWebp.byteLength);
   }
-
-  //console.log("Took", performance.now() - start);
   return {
     fileHash: hash,
     derivedFile: webp || new ArrayBuffer(0),
     thumbFile: thumbWebp || new ArrayBuffer(0),
     additionalMetadata,
     recordingDateTime,
+    success: true,
   };
 };
 
@@ -249,23 +379,42 @@ self.addEventListener("message", async ({ data: { type, data } }) => {
         thumbFileName.pop();
         thumbFileName[thumbFileName.length - 1] += "-thumb";
         thumbFileName.push("webp");
-        const { fileHash, derivedFile, thumbFile, recordingDateTime } =
-          await processFile(data.file, canvas);
-        self.postMessage({
-          type: "finish",
-          data: {
-            type,
-            rawFile: data.file,
-            derivedFile,
+        const processResult = await processFile(data.file, canvas);
+        if (processResult.success) {
+          const {
             fileHash,
-            rawFileName,
-            derivedFileName: derivedFileName.join("."),
+            derivedFile,
             thumbFile,
-            thumbFileName: thumbFileName.join("."),
             recordingDateTime,
-          },
-          threadIndex,
-        });
+            additionalMetadata,
+          } = processResult;
+          self.postMessage({
+            type: "finish",
+            data: {
+              type,
+              rawFile: data.file,
+              derivedFile,
+              fileHash,
+              rawFileName,
+              derivedFileName: derivedFileName.join("."),
+              thumbFile,
+              thumbFileName: thumbFileName.join("."),
+              recordingDateTime,
+              additionalMetadata,
+              success: true,
+            },
+            threadIndex,
+          });
+        } else {
+          self.postMessage({
+            type: "finish",
+            data: {
+              success: false,
+              reason: processResult.reason,
+            },
+            threadIndex,
+          });
+        }
       }
       break;
   }

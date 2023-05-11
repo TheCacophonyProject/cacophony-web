@@ -153,7 +153,6 @@ onMounted(() => {
   // }
 });
 const initMap = () => {
-  console.log("INIT MAP");
   setInitialMapCenter([defaultCenter]);
 };
 

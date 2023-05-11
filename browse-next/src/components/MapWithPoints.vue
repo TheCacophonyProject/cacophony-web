@@ -541,7 +541,6 @@ onMounted(() => {
   }
   if (!center) {
     map.invalidateSize();
-    console.log("Fit map bounds", mapBounds.value);
     fitMapBounds();
   }
   addPoints();
