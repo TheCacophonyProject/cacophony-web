@@ -59,8 +59,8 @@ module.exports = {
       // console.log(e);
     }
 
-    await queryInterface.sequelize.query(`DROP CONSTRAINT "DeviceHistory_stationId_fkey"`);
-    await queryInterface.sequelize.query(`DROP CONSTRAINT "GroupInvites_invitedBy_fkey"`);
-    await queryInterface.sequelize.query(`DROP CONSTRAINT "UserSessions_userId_fkey"`);
+    await queryInterface.sequelize.query(`ALTER TABLE "DeviceHistory" DROP CONSTRAINT "DeviceHistory_stationId_fkey"`);
+    await queryInterface.sequelize.query(`ALTER TABLE "GroupInvites" DROP CONSTRAINT "GroupInvites_invitedBy_fkey"`);
+    await queryInterface.sequelize.query(`ALTER TABLE "UserSessions" DROP CONSTRAINT "UserSessions_userId_fkey"`);
   },
 };
