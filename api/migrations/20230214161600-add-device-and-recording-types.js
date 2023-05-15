@@ -15,9 +15,11 @@ module.exports = {
     await queryInterface.sequelize.query(
       `create type "enum_Recordings_type" as ENUM('thermalRaw', 'audio', 'irRaw', 'trailcam-video', 'trailcam-image');`
     );
+    await queryInterface.sequelize.query(`alter table "Recordings" alter column "type" drop default;`);
     await queryInterface.sequelize.query(
       `alter table "Recordings" alter column "type" type "enum_Recordings_type" using ((type::text)::"enum_Recordings_type");`
     );
+    await queryInterface.sequelize.query(`alter table "Recordings" alter column "type" set default null;`);
 
     await queryInterface.sequelize.query(`ALTER TABLE "DeviceHistory" ADD CONSTRAINT "DeviceHistory_stationId_fkey" FOREIGN KEY ("stationId") REFERENCES "Stations" (id) ON DELETE SET NULL;`);
     await queryInterface.sequelize.query(`ALTER TABLE "GroupInvites" ADD CONSTRAINT "GroupInvites_invitedBy_fkey" FOREIGN KEY ("invitedBy") REFERENCES "Users" (id) ON DELETE SET NULL;`);
