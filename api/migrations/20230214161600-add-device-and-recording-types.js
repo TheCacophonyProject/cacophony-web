@@ -12,14 +12,6 @@ module.exports = {
       `alter type "enum_Devices_kind" add value 'hybrid-thermal-audio';`
     );
 
-    try {
-      await queryInterface.sequelize.query(
-        'drop type "enum_Recordings_type";'
-      );
-    } catch (e) {
-      console.log(e);
-    }
-
     await queryInterface.sequelize.query(
       `create type "enum_Recordings_type" as ENUM('thermalRaw', 'audio', 'irRaw', 'trailcam-video', 'trailcam-image');`
     );
@@ -32,6 +24,38 @@ module.exports = {
     await queryInterface.sequelize.query(`ALTER TABLE "UserSessions" ADD CONSTRAINT "UserSessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "Users" (id) ON delete cascade;`);
   },
   down: async function (queryInterface, Sequelize) {
-    // No going back
+    // Device kinds
+    await queryInterface.sequelize.query(
+      'alter type "enum_Devices_kind" rename to "enum_Devices_kind_old";'
+    );
+    await queryInterface.sequelize.query(
+      `create type "enum_Devices_kind" as ENUM('thermal', 'audio', 'unknown');`
+    );
+    await queryInterface.sequelize.query(`alter table "Devices" alter column "kind" drop default;`);
+    await queryInterface.sequelize.query(`alter table "Devices" alter column "kind" type "enum_Devices_kind" using ((type::text)::"enum_Devices_kind"`);
+    await queryInterface.sequelize.query(`alter table "Devices" alter column "kind" set default 'unknown'::"enum_Devices_kind";`);
+    try {
+      await queryInterface.sequelize.query(
+        'drop type "enum_Devices_kind_old";'
+      );
+    } catch (e) {
+      // console.log(e);
+    }
+
+    // Recordings types
+    await queryInterface.sequelize.query(
+      'alter type "enum_Recordings_type" rename to "enum_Recordings_type_old";'
+    );
+    await queryInterface.sequelize.query(
+      `alter table "Recordings" alter column "type" type varchar(255)`
+    );
+    await queryInterface.sequelize.query(`alter table "Recordings" alter column "type" set default null;`);
+    try {
+      await queryInterface.sequelize.query(
+        'drop type "enum_Recordings_type_old";'
+      );
+    } catch (e) {
+      // console.log(e);
+    }
   },
 };
