@@ -52,7 +52,7 @@ onMounted(() => {
     hide-footer
     @hidden="showSwitchProject.enabled = false"
   >
-    <div class="list-group">
+    <div class="list-group" v-if="UserProjects">
       <router-link
         :class="[
           'list-group-item',

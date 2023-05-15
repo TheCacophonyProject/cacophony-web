@@ -38,7 +38,7 @@ const {
   pinnedItems?: string[];
   openOnMount?: boolean;
   disabledTags?: string[];
-  modelValue?: string[] | string;
+  modelValue?: string[];
 }>();
 
 const emit = defineEmits<{

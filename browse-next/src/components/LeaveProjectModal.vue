@@ -3,6 +3,10 @@ import { computed } from "vue";
 import { currentSelectedProject } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
 
+const { modelValue } = defineProps<{
+  modelValue: boolean;
+}>();
+
 const leaveProject = () => {
   //  If we're not an admin of the group, or we're an admin but not the *last* admin
   // If we leave the group, redirect to the next group, or setup screen.

@@ -583,41 +583,54 @@ export default function (app: Application, baseUrl: string) {
         if (checkIfExists) {
           // We want to return the earliest time after creation that this reference image is valid for too, so that the client only
           // needs to query this API occasionally.
-          const laterDeviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
-            where: [{
-              uuid: device.uuid,
-              GroupId: device.GroupId,
-              fromDateTime: { [Op.gt]: fromTime }
-            },
-              models.sequelize.where(models.Sequelize.fn("ST_X", models.Sequelize.col("location")), {[Op.ne]: deviceHistoryEntry.location.lng }),
-              models.sequelize.where(models.Sequelize.fn("ST_Y", models.Sequelize.col("location")), {[Op.ne]: deviceHistoryEntry.location.lat }),
-            ] as any,
-            order: [["fromDateTime", "ASC"]],
-          });
-          const payload: {fromDateTime: Date, untilDateTime?: Date } = { fromDateTime: fromTime };
+          const laterDeviceHistoryEntry: DeviceHistory =
+            await models.DeviceHistory.findOne({
+              where: [
+                {
+                  uuid: device.uuid,
+                  GroupId: device.GroupId,
+                  fromDateTime: { [Op.gt]: fromTime },
+                },
+                models.sequelize.where(
+                  models.Sequelize.fn("ST_X", models.Sequelize.col("location")),
+                  { [Op.ne]: deviceHistoryEntry.location.lng }
+                ),
+                models.sequelize.where(
+                  models.Sequelize.fn("ST_Y", models.Sequelize.col("location")),
+                  { [Op.ne]: deviceHistoryEntry.location.lat }
+                ),
+              ] as any,
+              order: [["fromDateTime", "ASC"]],
+            });
+          const payload: { fromDateTime: Date; untilDateTime?: Date } = {
+            fromDateTime: fromTime,
+          };
           if (laterDeviceHistoryEntry) {
             payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
           }
-          return successResponse(response, "Reference image exists at supplied time", payload);
+          return successResponse(
+            response,
+            "Reference image exists at supplied time",
+            payload
+          );
         } else {
-
           // Get reference image for device at time if any, and return it
           const mimeType = "image/webp"; // Or something better
           const time = fromTime
-              ?.toISOString()
-              .replace(/:/g, "_")
-              .replace(".", "_");
+            ?.toISOString()
+            .replace(/:/g, "_")
+            .replace(".", "_");
           const filename = `device-${device.uuid}-reference-image@${time}.webp`;
           // Get reference image for device at time if any.
           return streamS3Object(
-              request,
-              response,
-              referenceImage,
-              filename,
-              mimeType,
-              response.locals.requestUser.id,
-              device.groupId,
-              referenceImageFileSize
+            request,
+            response,
+            referenceImage,
+            filename,
+            mimeType,
+            response.locals.requestUser.id,
+            device.groupId,
+            referenceImageFileSize
           );
         }
       }

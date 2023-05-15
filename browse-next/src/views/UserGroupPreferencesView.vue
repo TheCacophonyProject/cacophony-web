@@ -7,7 +7,7 @@ import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
 
 const selectedLeaveProject = ref(false);
 const alerts = ref<ApiAlertResponse[]>([]);
-const isNotOnlyProjectOwnerOrAdmin = ref<true>;
+const isNotOnlyProjectOwnerOrAdmin = ref<true>(true);
 
 onMounted(async () => {
   const response = await getAlertsForCurrentUser();

@@ -465,25 +465,25 @@ export const motionPathForTrack = (
     const decimatedPoints = [prevPoint];
     for (let i = 1; i < pointsForThisTrack.length; i++) {
       while (
-          i < pointsForThisTrack.length - 1 &&
-          distance(prevPoint, pointsForThisTrack[i]) < 7
-          ) {
+        i < pointsForThisTrack.length - 1 &&
+        distance(prevPoint, pointsForThisTrack[i]) < 7
+      ) {
         i++;
       }
       prevPoint = pointsForThisTrack[i];
       decimatedPoints.push(prevPoint);
     }
     if (
-        !equal(
-            decimatedPoints[decimatedPoints.length - 1],
-            pointsForThisTrack[pointsForThisTrack.length - 1]
-        )
+      !equal(
+        decimatedPoints[decimatedPoints.length - 1],
+        pointsForThisTrack[pointsForThisTrack.length - 1]
+      )
     ) {
       decimatedPoints.push(pointsForThisTrack[pointsForThisTrack.length - 1]);
     }
 
     const scaledPoints = smoothLine(
-        decimatedPoints.map((point) => mul(point, scale))
+      decimatedPoints.map((point) => mul(point, scale))
     );
 
     // const allPoints = smoothLine(
@@ -495,10 +495,10 @@ export const motionPathForTrack = (
       tangents: [
         normalise(sub(scaledPoints[0], scaledPoints[1])),
         normalise(
-            sub(
-                scaledPoints[scaledPoints.length - 1],
-                scaledPoints[scaledPoints.length - 2]
-            )
+          sub(
+            scaledPoints[scaledPoints.length - 1],
+            scaledPoints[scaledPoints.length - 2]
+          )
         ),
       ],
     };

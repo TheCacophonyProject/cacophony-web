@@ -44,7 +44,7 @@ const { modelValue, existingLocations } = defineProps<{
 const latInternal = ref<number | undefined>();
 const lngInternal = ref<number | undefined>();
 
-const lat = computed<number, undefined>({
+const lat = computed<number | undefined>({
   get() {
     return latInternal.value;
   },
@@ -57,7 +57,7 @@ const lat = computed<number, undefined>({
   },
 });
 
-const lng = computed<number, undefined>({
+const lng = computed<number | undefined>({
   get() {
     return lngInternal.value;
   },

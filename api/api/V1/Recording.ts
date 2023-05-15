@@ -1259,9 +1259,9 @@ export default (app: Application, baseUrl: string) => {
       let fileMimeType = recordingItem.rawMimeType;
       let fileSize = recordingItem.rawFileSize;
       if (
-         !useArchival &&
-          (recordingItem.type === RecordingType.TrailCamImage ||
-        recordingItem.type === RecordingType.TrailCamVideo)
+        !useArchival &&
+        (recordingItem.type === RecordingType.TrailCamImage ||
+          recordingItem.type === RecordingType.TrailCamVideo)
       ) {
         fileKey = recordingItem.fileKey;
         fileMimeType = recordingItem.fileMimeType;

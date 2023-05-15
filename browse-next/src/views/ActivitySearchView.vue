@@ -1522,7 +1522,7 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
     <div class="search-results flex-grow-1 d-flex justify-content-center pb-3">
       <div class="search-results-inner">
         <div class="search-description">
-          Blurb describing the search parameters.
+          &lt;&lt; Blurb describing the search parameters. &gt;&gt;
         </div>
 
         <div v-if="currentQueryCount === undefined">

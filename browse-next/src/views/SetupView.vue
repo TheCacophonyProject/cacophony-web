@@ -14,6 +14,7 @@ import {
   setLoggedInUserData,
   setLoggedInUserCreds,
 } from "@models/LoggedInUser";
+import type { LoggedInUser } from "@models/LoggedInUser";
 import {
   acceptProjectInvitation,
   changeAccountEmail,
@@ -68,7 +69,10 @@ const checkForActivatedUser = () => {
   // NOTE: The user can click the email confirmation link, which opens up in another window, and should
   //  update the localStorage user.  So, this page should try to refresh the user from localStorage regularly,
   //  to respond when that happens.
-  if (!CurrentUser.value?.emailConfirmed) {
+  if (
+    !CurrentUser.value ||
+    (CurrentUser.value && !(CurrentUser.value as LoggedInUser).emailConfirmed)
+  ) {
     const userIsActivated = refreshLocallyStoredUserActivation();
     if (userIsActivated) {
       clearInterval(userChecker);

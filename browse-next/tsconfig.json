@@ -19,7 +19,8 @@
       "@typedefs/*":  ["../types/*"]
     },
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "ignoreDeprecations": "5.0"
   },
 
   "references": [

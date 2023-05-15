@@ -371,7 +371,8 @@ const beginUploadJob = async () => {
           }
         } else {
           completedUploads.value += 1;
-          uploadErrors.value[data.reason] = uploadErrors.value[data.reason] || 0;
+          uploadErrors.value[data.reason] =
+            uploadErrors.value[data.reason] || 0;
           uploadErrors.value[data.reason] += 1;
         }
       }
@@ -388,7 +389,7 @@ const beginUploadJob = async () => {
       [canvas]
     );
     if (Object.keys(uploadErrors.value).length) {
-        console.log("Errors", uploadErrors.value);
+      console.log("Errors", uploadErrors.value);
     }
     await waitForMessage(i, "ack");
     uploadWorkers.push(worker);

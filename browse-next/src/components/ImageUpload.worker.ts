@@ -6,15 +6,37 @@ import { supportsFastBuild, createOCREngine } from "tesseract-wasm";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import type { OCREngine } from "tesseract-wasm";
-import { encode } from "@jsquash/webp";
-import * as process from "process";
-import { add } from "@/components/cptv-player/motion-paths.ts";
-
 // 1. Do exif decode
 // 2. Do Ocr to find the possible group name.
 // 3. Make cropped and resized image as jpeg (using some decent jpeg encoder, or a more advanced image format.)
+import * as webpEncoderFast from "@jsquash/webp/codec/enc/webp_enc_simd";
+import * as webpEncoder from "@jsquash/webp/codec/enc/webp_enc";
+// TODO: Only load the wasm once, and share it between workers as a Webassembly.Module object
+
+import { defaultOptions } from "@jsquash/webp/meta";
+import { initEmscriptenModule } from "@jsquash/webp/utils";
+let emscriptenModule: any;
+async function initWebpEncode(module: any) {
+  if (supportsFastBuild()) {
+    emscriptenModule = initEmscriptenModule(webpEncoderFast.default, module);
+    return emscriptenModule;
+  }
+  emscriptenModule = initEmscriptenModule(webpEncoder.default, module);
+  return emscriptenModule;
+}
+
+async function encode(data: ImageData, options = {}) {
+  const _options = { ...defaultOptions, ...options };
+  const module = await emscriptenModule;
+  const result = module.encode(data.data, data.width, data.height, _options);
+  if (!result) {
+    throw new Error("Encoding error.");
+  }
+  return result.buffer;
+}
 
 let ocr: OCREngine;
+let webp_wasm: ArrayBuffer;
 
 const filePromise = async (file: FileSystemFileEntry): Promise<Blob> => {
   return new Promise((resolve, reject) => {
@@ -37,22 +59,38 @@ const processFile = async (
   | { success: false; reason: string }
 > => {
   const additionalMetadata: Record<string, string | number | string[]> = {};
+
   if (!ocr) {
     let wasm;
     if (supportsFastBuild()) {
       wasm = await (
         await fetch("/tesseract/tesseract-core.wasm")
       ).arrayBuffer();
+      webp_wasm = await (
+        await fetch("/webp-enc/webp_enc_simd.wasm")
+      ).arrayBuffer();
     } else {
       wasm = await (
         await fetch("/tesseract/tesseract-core-fallback.wasm")
       ).arrayBuffer();
+      webp_wasm = await (await fetch("/webp-enc/webp_enc.wasm")).arrayBuffer();
     }
+
     ocr = await createOCREngine({ wasmBinary: wasm });
     const model = await (
       await fetch("/tesseract/eng.traineddata")
     ).arrayBuffer();
     await ocr.loadModel(model);
+  }
+  if (!emscriptenModule) {
+    if (supportsFastBuild()) {
+      webp_wasm = await (
+        await fetch("/webp-enc/webp_enc_simd.wasm")
+      ).arrayBuffer();
+    } else {
+      webp_wasm = await (await fetch("/webp-enc/webp_enc.wasm")).arrayBuffer();
+    }
+    await initWebpEncode(new WebAssembly.Module(webp_wasm as ArrayBuffer));
   }
   // TODO: Get the JPEG resolution via exif data
   // We may actually want to use the full size decoded image to
@@ -69,7 +107,7 @@ const processFile = async (
   const hash = await sha1(new Uint8Array(fileBytes));
   const exif = EXIF.readFromBinaryFile(fileBytes);
 
-  console.log(JSON.stringify(exif, null, '\t'));
+  //console.log(JSON.stringify(exif, null, "\t"));
   // TODO: If there's no EXIF data, then this isn't a raw trailcam image, and we should return an error
   if (!exif) {
     return {

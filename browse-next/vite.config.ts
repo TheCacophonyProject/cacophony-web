@@ -27,15 +27,4 @@ export default defineConfig({
       "@typedefs": fileURLToPath(new URL("../types", import.meta.url)),
     },
   },
-  optimizeDeps: {
-    exclude: ["@jsquash/webp"],
-  },
-  // build: {
-  //   rollupOptions: {
-  //     output: {
-  //       inlineDynamicImports: false,
-  //       format: "iife",
-  //     },
-  //   },
-  // },
 });
