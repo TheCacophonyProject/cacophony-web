@@ -32,7 +32,7 @@ module.exports = {
       `create type "enum_Devices_kind" as ENUM('thermal', 'audio', 'unknown');`
     );
     await queryInterface.sequelize.query(`alter table "Devices" alter column "kind" drop default;`);
-    await queryInterface.sequelize.query(`alter table "Devices" alter column "kind" type "enum_Devices_kind" using ((type::text)::"enum_Devices_kind"`);
+    await queryInterface.sequelize.query(`alter table "Devices" alter column "kind" type "enum_Devices_kind" using ((kind::text)::"enum_Devices_kind")`);
     await queryInterface.sequelize.query(`alter table "Devices" alter column "kind" set default 'unknown'::"enum_Devices_kind";`);
     try {
       await queryInterface.sequelize.query(
@@ -41,7 +41,6 @@ module.exports = {
     } catch (e) {
       // console.log(e);
     }
-
     // Recordings types
     await queryInterface.sequelize.query(
       'alter type "enum_Recordings_type" rename to "enum_Recordings_type_old";'
