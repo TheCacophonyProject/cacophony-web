@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // Validate that input is a valid [longitude, latitude]
 import type { LatLng } from "@typedefs/api/common.js";
 import logger from "@log";
-import {canonicalLatLng} from "@models/util/locationUtils.js";
+import { canonicalLatLng } from "@models/util/locationUtils.js";
 
 export function isLatLon(
   point: { coordinates: [number, number] } | [number, number] | LatLng

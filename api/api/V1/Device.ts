@@ -59,7 +59,10 @@ import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import Sequelize, { Op } from "sequelize";
-import type { DeviceHistory, DeviceHistorySettings } from "@models/DeviceHistory.js";
+import type {
+  DeviceHistory,
+  DeviceHistorySettings,
+} from "@models/DeviceHistory.js";
 import {
   DeviceType,
   HttpStatusCode,
@@ -73,7 +76,7 @@ import { uploadFileStream } from "@api/V1/util.js";
 import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
 import { mapTrack, mapTracks } from "@api/V1/Recording.js";
-import {createEntityJWT} from "@api/auth.js";
+import { createEntityJWT } from "@api/auth.js";
 
 const models = await modelsInit();
 

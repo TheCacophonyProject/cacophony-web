@@ -41,7 +41,7 @@ import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
 import { mapUser } from "@api/V1/User.js";
 import type { User } from "@models/User.js";
 import modelsInit from "@/models/index.js";
-import type {IsoFormattedDateString, UserId} from "@typedefs/api/common.js";
+import type { IsoFormattedDateString, UserId } from "@typedefs/api/common.js";
 import jwt from "jsonwebtoken";
 import config from "@config";
 import { randomUUID } from "crypto";
@@ -208,7 +208,10 @@ export default function (app: Application, baseUrl: string) {
       if (result.length) {
         // if valid token, create new token to return, and update existing token.
         // create a new short-lived JWT token for user.
-        const validToken = result[0] as { updatedAt: IsoFormattedDateString; userId: UserId };
+        const validToken = result[0] as {
+          updatedAt: IsoFormattedDateString;
+          userId: UserId;
+        };
 
         // Best practices taken from auth0 say that we should revoke refresh tokens after 15 days of inactivity:
         // https://auth0.com/blog/achieving-a-seamless-user-experience-with-refresh-token-inactivity-lifetimes/

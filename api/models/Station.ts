@@ -16,13 +16,18 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type { BuildOptions, ModelAttributes} from "sequelize";
+import type { BuildOptions, ModelAttributes } from "sequelize";
 import type Sequelize from "sequelize";
 import { Op } from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { GroupId, LatLng, StationId, UserId } from "@typedefs/api/common.js";
+import type {
+  GroupId,
+  LatLng,
+  StationId,
+  UserId,
+} from "@typedefs/api/common.js";
 import type { ApiStationSettings } from "@typedefs/api/station.js";
-import {locationField} from "@models/util/util.js";
+import { locationField } from "@models/util/util.js";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {
@@ -399,12 +404,7 @@ export default function (
         }))
       );
     }
-    this.getDaysActive(
-      authUser,
-      2,
-      new Date("2023-04-20T05:02:07.000Z"),
-      168
-    );
+    this.getDaysActive(authUser, 2, new Date("2023-04-20T05:02:07.000Z"), 168);
     return counts;
   };
 

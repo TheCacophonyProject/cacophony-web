@@ -31,7 +31,7 @@ import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middlewa
 import type { Device } from "models/Device.js";
 import { AuthenticationError, ClientError } from "../customErrors.js";
 import type { DeviceId } from "@typedefs/api/common.js";
-import {createEntityJWT} from "@api/auth.js";
+import { createEntityJWT } from "@api/auth.js";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateDeviceRequestBody {

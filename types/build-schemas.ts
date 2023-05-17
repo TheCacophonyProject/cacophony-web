@@ -10,7 +10,7 @@ import {
   createProgram,
   createParser,
   SchemaGenerator,
-  ts
+  ts,
 } from "ts-json-schema-generator";
 import fs from "fs/promises";
 import crypto from "crypto";
@@ -244,7 +244,9 @@ class IsoFormattedDateStringParser implements SubNodeParser {
           }
         }
         await fs.writeFile(
-          `../api/json-schemas/${subdirNames.join("/")}/${exportedName}.schema.json`,
+          `../api/json-schemas/${subdirNames.join(
+            "/"
+          )}/${exportedName}.schema.json`,
           schemaString
         );
         updatedSchemas.push(typedefFile);
@@ -256,7 +258,10 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   }
   if (updatedSchemas.length) {
     console.log(`Built ${updatedSchemas.length} json schemas`);
-    await fs.writeFile("../api/schema-cache.json", JSON.stringify(changes, null, 2));
+    await fs.writeFile(
+      "../api/schema-cache.json",
+      JSON.stringify(changes, null, 2)
+    );
   }
   process.exit();
 })();

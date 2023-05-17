@@ -30,7 +30,7 @@ import { idOf } from "../validation-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
 import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
 import { ClientError } from "@api/customErrors.js";
-import {addTag} from "@api/V1/recordingUtil.js";
+import { addTag } from "@api/V1/recordingUtil.js";
 
 const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {

@@ -23,7 +23,7 @@ import type { TrackTag } from "./TrackTag.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import type { DeviceId, StationId, UserId } from "@typedefs/api/common.js";
 import logger from "../logging.js";
-import {alertBody, sendEmail} from "@/emails/sendEmail.js";
+import { alertBody, sendEmail } from "@/emails/sendEmail.js";
 //
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -34,8 +34,6 @@ export interface AlertCondition {
 export function isAlertCondition(condition: any) {
   return condition.hasOwnProperty("tag");
 }
-
-
 
 export interface Alert extends Sequelize.Model, ModelCommon<Alert> {
   id: AlertId;

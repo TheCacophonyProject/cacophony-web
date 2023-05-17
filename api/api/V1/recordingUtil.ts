@@ -30,17 +30,11 @@ import type { Recording, RecordingQueryOptions } from "@models/Recording.js";
 import type { Event, QueryOptions } from "@models/Event.js";
 import type { User } from "@models/User.js";
 import Sequelize, { Op } from "sequelize";
-import type {
-  DeviceVisitMap,
-  VisitEvent,
-  VisitSummary} from "./Visits.js";
-import {
-  DeviceSummary,
-  Visit
-} from "./Visits.js";
-import type {Station} from "@models/Station.js";
+import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
+import { DeviceSummary, Visit } from "./Visits.js";
+import type { Station } from "@models/Station.js";
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
-import type {Device} from "@models/Device.js";
+import type { Device } from "@models/Device.js";
 import type {
   DeviceHistory,
   DeviceHistorySetBy,
@@ -79,16 +73,15 @@ import type { CptvHeader } from "cptv-decoder";
 import log from "@log";
 import {
   locationsAreEqual,
-  tryToMatchLocationToStationInGroup
+  tryToMatchLocationToStationInGroup,
 } from "@models/util/locationUtils.js";
-import {openS3} from "@models/util/util.js";
-import type {ModelsDictionary} from "@models";
+import { openS3 } from "@models/util/util.js";
+import type { ModelsDictionary } from "@models";
 
 let CptvDecoder;
 (async () => {
   CptvDecoder = (await import("cptv-decoder")).CptvDecoder;
 })();
-
 
 export async function getThumbnail(rec: Recording, trackId?: number) {
   let thumbKey: string;
@@ -588,7 +581,10 @@ export const maybeUpdateDeviceHistory = async (
         false
       );
       if (stationToAssign) {
-        log.warning("~~ StationToAssign %s", JSON.stringify(stationToAssign.get({plain: true})));
+        log.warning(
+          "~~ StationToAssign %s",
+          JSON.stringify(stationToAssign.get({ plain: true }))
+        );
         log.warning("~~ DateTime %s", dateTime);
       }
       if (stationToAssign && stationToAssign.activeAt > dateTime) {
@@ -749,40 +745,41 @@ const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
   return { deviceId: device.id, groupId: device.GroupId };
 };
 
-export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUpload(
-  "raw",
-  async (
-    uploader: "device" | "user",
-    uploadingDevice: Device,
-    uploadingUser: User | null,
-    data: any,
-    keys: string[],
-    uploadedFileDatas: { key: string; data: Uint8Array; filename: string }[],
-  ): Promise<Recording> => {
+export const uploadRawRecording = (models: ModelsDictionary) =>
+  util.multipartUpload(
+    "raw",
+    async (
+      uploader: "device" | "user",
+      uploadingDevice: Device,
+      uploadingUser: User | null,
+      data: any,
+      keys: string[],
+      uploadedFileDatas: { key: string; data: Uint8Array; filename: string }[]
+    ): Promise<Recording> => {
       const recording = models.Recording.buildSafely(data);
       // Add the filehash if present
       if (data.fileHash) {
         recording.rawFileHash = data.fileHash;
       }
-      const uploadedFileDataRaw = uploadedFileDatas.find(({key}) =>
-          key.startsWith("raw")
+      const uploadedFileDataRaw = uploadedFileDatas.find(({ key }) =>
+        key.startsWith("raw")
       );
       recording.rawFileSize = uploadedFileDataRaw.data.length;
       recording.rawFileKey = uploadedFileDataRaw.key;
       recording.rawMimeType = guessRawMimeType(
-          data.type,
-          uploadedFileDataRaw.filename
+        data.type,
+        uploadedFileDataRaw.filename
       );
       if (uploadedFileDatas.length !== 1) {
-        const uploadedFileDataNonRaw = uploadedFileDatas.find(({key}) =>
-            key.startsWith("web")
+        const uploadedFileDataNonRaw = uploadedFileDatas.find(({ key }) =>
+          key.startsWith("web")
         );
         // Add the non-raw derived file details.
         recording.fileKey = uploadedFileDataNonRaw.key;
         recording.fileSize = uploadedFileDataNonRaw.data.length;
         recording.fileMimeType = guessRawMimeType(
-            data.type,
-            uploadedFileDataNonRaw.filename
+          data.type,
+          uploadedFileDataNonRaw.filename
         );
       }
 
@@ -794,17 +791,18 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
       }
       recording.uploader = uploader;
       recording.uploaderId =
-          uploader === "device" ? uploadingDevice.id : (uploadingUser as User).id;
+        uploader === "device" ? uploadingDevice.id : (uploadingUser as User).id;
       let deviceId: DeviceId;
       let groupId: DeviceId;
       // Check if the file is corrupt and use file metadata if it can be parsed.
       const uploadedFileData = uploadedFileDataRaw.data;
 
-      const fileIsCorrupt = await parseAndMergeEmbeddedFileMetadataIntoRecording(
+      const fileIsCorrupt =
+        await parseAndMergeEmbeddedFileMetadataIntoRecording(
           data,
           uploadedFileData,
           recording
-      );
+        );
       const cameraTypes = [
         RecordingType.ThermalRaw,
         RecordingType.InfraredVideo,
@@ -813,34 +811,34 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
       ];
       const recordingLocation = recording.location;
       if (recordingLocation) {
-        const {stationToAssignToRecording, deviceHistoryEntry} =
-            await maybeUpdateDeviceHistory(
-                models,
-                uploadingDevice,
-                recordingLocation,
-                recording.recordingDateTime
-            );
+        const { stationToAssignToRecording, deviceHistoryEntry } =
+          await maybeUpdateDeviceHistory(
+            models,
+            uploadingDevice,
+            recordingLocation,
+            recording.recordingDateTime
+          );
         recording.StationId = stationToAssignToRecording.id;
 
         {
           // Update station lastRecordingTimes if needed.
           if (
-              recording.type === RecordingType.Audio &&
-              (!stationToAssignToRecording.lastAudioRecordingTime ||
-                  recording.recordingDateTime >
-                  stationToAssignToRecording.lastAudioRecordingTime)
+            recording.type === RecordingType.Audio &&
+            (!stationToAssignToRecording.lastAudioRecordingTime ||
+              recording.recordingDateTime >
+                stationToAssignToRecording.lastAudioRecordingTime)
           ) {
             stationToAssignToRecording.lastAudioRecordingTime =
-                recording.recordingDateTime;
+              recording.recordingDateTime;
             await stationToAssignToRecording.save();
           } else if (
-              cameraTypes.includes(recording.type) &&
-              (!stationToAssignToRecording.lastThermalRecordingTime ||
-                  recording.recordingDateTime >
-                  stationToAssignToRecording.lastThermalRecordingTime)
+            cameraTypes.includes(recording.type) &&
+            (!stationToAssignToRecording.lastThermalRecordingTime ||
+              recording.recordingDateTime >
+                stationToAssignToRecording.lastThermalRecordingTime)
           ) {
             stationToAssignToRecording.lastThermalRecordingTime =
-                recording.recordingDateTime;
+              recording.recordingDateTime;
             await stationToAssignToRecording.save();
           }
         }
@@ -850,12 +848,12 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
 
       if (!deviceId && !groupId) {
         // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
-        const {deviceId: d, groupId: g} =
-            await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
-                models,
-                uploadingDevice,
-                recording.recordingDateTime
-            );
+        const { deviceId: d, groupId: g } =
+          await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
+            models,
+            uploadingDevice,
+            recording.recordingDateTime
+          );
         deviceId = d;
         groupId = g;
       }
@@ -868,8 +866,8 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
         // if the recording time is *later* than the last recording time, or there
         // is no last recording time
         if (
-            !uploadingDevice.lastRecordingTime ||
-            uploadingDevice.lastRecordingTime < recording.recordingDateTime
+          !uploadingDevice.lastRecordingTime ||
+          uploadingDevice.lastRecordingTime < recording.recordingDateTime
         ) {
           await uploadingDevice.update({
             location: recording.location,
@@ -881,17 +879,17 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
           // Update the last recording time for the group if necessary, to give us a quick and easy way
           // to see which groups have new recordings, and of what kind.
           if (
-              cameraTypes.includes(recording.type) &&
-              (!group.lastThermalRecordingTime ||
-                  group.lastThermalRecordingTime < recording.recordingDateTime)
+            cameraTypes.includes(recording.type) &&
+            (!group.lastThermalRecordingTime ||
+              group.lastThermalRecordingTime < recording.recordingDateTime)
           ) {
             await group.update({
               lastThermalRecordingTime: recording.recordingDateTime,
             });
           } else if (
-              recording.type === RecordingType.Audio &&
-              (!group.lastAudioRecordingTime ||
-                  group.lastAudioRecordingTime < recording.recordingDateTime)
+            recording.type === RecordingType.Audio &&
+            (!group.lastAudioRecordingTime ||
+              group.lastAudioRecordingTime < recording.recordingDateTime)
           ) {
             group.lastAudioRecordingTime = recording.recordingDateTime;
             await group.update({
@@ -909,7 +907,7 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
             [RecordingType.InfraredVideo]: "trapcam",
           };
           const deviceType = typeMappings[recording.type];
-          await uploadingDevice.update({kind: deviceType});
+          await uploadingDevice.update({ kind: deviceType });
         }
       }
 
@@ -932,14 +930,15 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
           // FIXME - This logic still looks a little suspect.
           if (!fileIsCorrupt) {
             if (tracked && recording.type === RecordingType.ThermalRaw) {
-              recording.processingState = RecordingProcessingState.AnalyseThermal;
+              recording.processingState =
+                RecordingProcessingState.AnalyseThermal;
               // already have done tracking pi skip to analyse state
             } else if (
-                recording.type !== RecordingType.TrailCamImage &&
-                recording.type !== RecordingType.TrailCamVideo
+              recording.type !== RecordingType.TrailCamImage &&
+              recording.type !== RecordingType.TrailCamVideo
             ) {
               recording.processingState = models.Recording.uploadedState(
-                  data.type as RecordingType
+                data.type as RecordingType
               );
             } else {
               // Trailcam and others
@@ -952,14 +951,14 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
         }
       }
       const recordingHasFinishedProcessing =
-          recording.processingState ===
-          models.Recording.finishedState(data.type as RecordingType);
+        recording.processingState ===
+        models.Recording.finishedState(data.type as RecordingType);
       const promises = [recording.save()] as Promise<any>[];
       if (recordingHasFinishedProcessing) {
         // NOTE: Should only occur during testing.
         const twentyFourHoursMs = 24 * 60 * 60 * 1000;
         const recordingAgeMs =
-            new Date().getTime() - recording.recordingDateTime.getTime();
+          new Date().getTime() - recording.recordingDateTime.getTime();
         if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
           // Alerts should only be sent for uploading devices.
           promises.push(sendAlerts(models, recording.id));
@@ -967,8 +966,8 @@ export const uploadRawRecording = (models: ModelsDictionary) => util.multipartUp
       }
       await Promise.all(promises);
       return recording;
-  }
-);
+    }
+  );
 
 // Returns a promise for the recordings query specified in the
 // request.
@@ -1019,7 +1018,7 @@ export async function bulkDelete(
     options
   );
 
-  const values = await models.Recording.findAll(builder.get()) as Recording[];
+  const values = (await models.Recording.findAll(builder.get())) as Recording[];
   if (values.length === 0) {
     throw new Error("No recordings found to delete");
   }
@@ -1369,7 +1368,11 @@ export const addTag = async (
   return tagInstance;
 };
 
-async function tracksFromMeta(models: ModelsDictionary, recording: Recording, metadata: any) {
+async function tracksFromMeta(
+  models: ModelsDictionary,
+  recording: Recording,
+  metadata: any
+) {
   try {
     if (!("tracks" in metadata)) {
       return false;
@@ -1755,7 +1758,10 @@ function addAudioBaitRow(out: any, audioBait: Event) {
 
 // Gets a single recording with associated tables required to calculate a visit
 // calculation
-export async function getRecordingForVisit(models: ModelsDictionary, id: number): Promise<Recording> {
+export async function getRecordingForVisit(
+  models: ModelsDictionary,
+  id: number
+): Promise<Recording> {
   const query = {
     include: [
       {
@@ -1920,7 +1926,6 @@ export async function sendEventAlerts(
   }
   return alerts;
 }
-
 
 const compressString = (text: string): Promise<Buffer> => {
   return new Promise((resolve) => {
@@ -2275,4 +2280,3 @@ export const finishedProcessingRecording = async (
     await sendAlerts(models, recording.id);
   }
 };
-

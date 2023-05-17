@@ -10,7 +10,11 @@ import modelsInit from "@models/index.js";
 import _ from "lodash";
 import {
   addTag,
-  finishedProcessingRecording, saveThumbnailInfo, sendAlerts, signedToken, updateMetadata,
+  finishedProcessingRecording,
+  saveThumbnailInfo,
+  sendAlerts,
+  signedToken,
+  updateMetadata,
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import type { Recording } from "@models/Recording.js";
@@ -209,7 +213,12 @@ export default function (app: Application) {
           recording.type === RecordingType.ThermalRaw &&
           recording.processingState === RecordingProcessingState.Finished
         ) {
-          await finishedProcessingRecording(models, recording, result, prevState);
+          await finishedProcessingRecording(
+            models,
+            recording,
+            result,
+            prevState
+          );
         }
         return successResponse(response, `Processing finished for #${id}`);
       } else {
@@ -408,10 +417,7 @@ export default function (app: Application) {
     fetchUnauthorizedRequiredRecordingById(body("id")),
     parseJSONField(body("metadata")),
     async (request: Request, response: Response) => {
-      await updateMetadata(
-        response.locals.recording,
-        response.locals.metadata
-      );
+      await updateMetadata(response.locals.recording, response.locals.metadata);
     }
   );
 

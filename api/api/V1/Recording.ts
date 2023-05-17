@@ -29,12 +29,11 @@ import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecording
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
 import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json" assert { type: "json" };
 import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" assert { type: "json" };
-import type {
-  TagMode} from "@typedefs/api/consts.js";
+import type { TagMode } from "@typedefs/api/consts.js";
 import {
   HttpStatusCode,
   RecordingProcessingState,
-  RecordingType
+  RecordingType,
 } from "@typedefs/api/consts.js";
 import type {
   ApiAudioRecordingMetadataResponse,
@@ -62,7 +61,11 @@ import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" assert { type: "json" };
 
-import { AuthorizationError, ClientError, FatalError } from "../customErrors.js";
+import {
+  AuthorizationError,
+  ClientError,
+  FatalError,
+} from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -90,7 +93,8 @@ import {
   bulkDelete,
   getThumbnail,
   getTrackTags,
-  queryRecordings, queryVisits,
+  queryRecordings,
+  queryVisits,
   reportRecordings,
   reportVisits,
   signedToken,
@@ -99,7 +103,7 @@ import {
 import { serverErrorResponse, successResponse } from "./responseUtil.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import fs from "fs/promises";
-import {mapPosition} from "@models/Recording.js";
+import { mapPosition } from "@models/Recording.js";
 
 const models = await modelsInit();
 
@@ -544,18 +548,14 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       const { viewAsSuperUser, where, tags = [] } = response.locals;
       const { tagMode, offset, limit } = request.query;
-      const result = await queryVisits(
-        models,
-        response.locals.requestUser.id,
-        {
-          viewAsSuperUser,
-          where,
-          tagMode: tagMode as TagMode,
-          tags,
-          offset: offset && parseInt(offset as string),
-          limit: limit && parseInt(limit as string),
-        }
-      );
+      const result = await queryVisits(models, response.locals.requestUser.id, {
+        viewAsSuperUser,
+        where,
+        tagMode: tagMode as TagMode,
+        tags,
+        offset: offset && parseInt(offset as string),
+        limit: limit && parseInt(limit as string),
+      });
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
         offset: request.query.offset,
@@ -1135,10 +1135,14 @@ export default (app: Application, baseUrl: string) => {
 
       let rows;
       if (request.query.type == "visits") {
-        rows = await reportVisits(models, response.locals.requestUser.id, options);
+        rows = await reportVisits(
+          models,
+          response.locals.requestUser.id,
+          options
+        );
       } else {
         rows = await reportRecordings(
-            models,
+          models,
           response.locals.requestUser.id,
           Boolean(audioBait),
           {
@@ -1411,8 +1415,7 @@ export default (app: Application, baseUrl: string) => {
       }
        */
 
-
-        getThumbnail(rec, trackId)
+      getThumbnail(rec, trackId)
         .then((data) => {
           response.setHeader(
             "Content-disposition",

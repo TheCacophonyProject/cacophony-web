@@ -60,7 +60,10 @@ import {
 } from "../customErrors.js";
 import { mapDevicesResponse } from "./Device.js";
 import type { Group } from "@/models/Group.js";
-import type { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group.js";
+import type {
+  ApiGroupResponse,
+  ApiGroupUserResponse,
+} from "@typedefs/api/group.js";
 import type { ApiDeviceResponse } from "@typedefs/api/device.js";
 import type {
   ApiCreateStationData,
@@ -85,10 +88,17 @@ import {
   getInviteToGroupToken,
   getInviteToGroupTokenExistingUser,
 } from "@api/auth.js";
-import type { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common.js";
+import type {
+  GroupId,
+  GroupInvitationId,
+  UserId,
+} from "@typedefs/api/common.js";
 import type { GroupInvites } from "@models/GroupInvites.js";
 import config from "@config";
-import {latLngApproxDistance, MIN_STATION_SEPARATION_METERS} from "@models/util/locationUtils.js";
+import {
+  latLngApproxDistance,
+  MIN_STATION_SEPARATION_METERS,
+} from "@models/util/locationUtils.js";
 
 const models = await modelsInit();
 

@@ -21,14 +21,15 @@ import { Op } from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type { User } from "./User.js";
 import type { CreateStationData, Station } from "./Station.js";
-import type {Recording, RecordingStatic} from "./Recording.js";
+import type { Recording, RecordingStatic } from "./Recording.js";
 import type { Device } from "./Device.js";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
 import type { ApiGroupSettings } from "@typedefs/api/group.js";
 import {
-  latLngApproxDistance, locationsAreEqual,
+  latLngApproxDistance,
+  locationsAreEqual,
   MIN_STATION_SEPARATION_METERS,
-  tryToMatchRecordingToStation
+  tryToMatchRecordingToStation,
 } from "@models/util/locationUtils.js";
 
 export const stationLocationHasChanged = (

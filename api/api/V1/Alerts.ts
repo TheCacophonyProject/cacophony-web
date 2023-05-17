@@ -32,7 +32,10 @@ import {
 } from "../extract-middleware.js";
 import { anyOf, idOf, integerOfWithDefault } from "../validation-middleware.js";
 import type { DeviceId, Seconds } from "@typedefs/api/common.js";
-import type { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts.js";
+import type {
+  ApiAlertCondition,
+  ApiAlertResponse,
+} from "@typedefs/api/alerts.js";
 import type { Alert } from "@models/Alert.js";
 import type { Request, Response } from "express";
 

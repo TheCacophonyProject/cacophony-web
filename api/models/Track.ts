@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import type { FindOptions } from "sequelize";
 import Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { TrackTag, TrackTagId} from "./TrackTag.js";
+import type { TrackTag, TrackTagId } from "./TrackTag.js";
 import { additionalTags, filteredTags } from "./TrackTag.js";
 import type { Recording } from "./Recording.js";
 import type { RecordingId, TrackId } from "@typedefs/api/common.js";

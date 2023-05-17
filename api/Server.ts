@@ -7,7 +7,7 @@ import config from "./config.js";
 import modelsInit from "@models/index.js";
 import log, { consoleTransport } from "@log";
 import customErrors from "./api/customErrors.js";
-import {openS3} from "./models/util/util.js";
+import { openS3 } from "./models/util/util.js";
 import initialiseApi from "./api/V1/index.js";
 import initialiseFileProcessingApi from "./api/fileProcessing/index.js";
 import expressWinston from "express-winston";
@@ -21,7 +21,7 @@ import {
   SuperUsers,
 } from "./Globals.js";
 import path from "path";
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);

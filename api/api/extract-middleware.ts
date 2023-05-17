@@ -1,6 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type {
-  DecodedJWTToken} from "./auth.js";
+import type { DecodedJWTToken } from "./auth.js";
 import {
   checkAccess,
   getDecodedToken,

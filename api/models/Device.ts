@@ -17,7 +17,11 @@ import bcrypt from "bcrypt";
 import { format } from "util";
 import type { FindOptions } from "sequelize";
 import Sequelize from "sequelize";
-import type {ModelCommon, ModelsDictionary, ModelStaticCommon} from "./index.js";
+import type {
+  ModelCommon,
+  ModelsDictionary,
+  ModelStaticCommon,
+} from "./index.js";
 import type { User } from "./User.js";
 import type { Group } from "./Group.js";
 import type { Event } from "./Event.js";
@@ -30,9 +34,9 @@ import type {
   ScheduleId,
   UserId,
 } from "@typedefs/api/common.js";
-import type {Station, StationStatic} from "@models/Station.js";
-import {tryToMatchLocationToStationInGroup} from "@models/util/locationUtils.js";
-import {locationField} from "@models/util/util.js";
+import type { Station, StationStatic } from "@models/Station.js";
+import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
+import { locationField } from "@models/util/util.js";
 
 const Op = Sequelize.Op;
 
@@ -64,7 +68,10 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   kind: DeviceType;
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
-  updateHeartbeat: (models: ModelsDictionary, nextHeartbeat: Date) => Promise<boolean>;
+  updateHeartbeat: (
+    models: ModelsDictionary,
+    nextHeartbeat: Date
+  ) => Promise<boolean>;
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
@@ -711,7 +718,10 @@ order by hour;
     return newDevice;
   };
 
-  Device.prototype.updateHeartbeat = async function (models: ModelsDictionary, nextHeartbeat: Date) {
+  Device.prototype.updateHeartbeat = async function (
+    models: ModelsDictionary,
+    nextHeartbeat: Date
+  ) {
     const now = new Date();
     if (this.location && this.kind !== DeviceType.Unknown) {
       // Find the station the device was in, update its lastActiveTime.

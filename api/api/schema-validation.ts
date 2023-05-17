@@ -101,7 +101,9 @@ export const jsonSchemaOf =
     if (typeof val !== "object") {
       throw new ClientError("Malformed json");
     }
-    const result = JsonSchema.validate(val, schema, { allowUnknownAttributes: false });
+    const result = JsonSchema.validate(val, schema, {
+      allowUnknownAttributes: false,
+    });
     if (result.errors.length) {
       const errors: ValidationError[] = result.errors;
       throw new ClientError(

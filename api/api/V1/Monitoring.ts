@@ -18,11 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { expectedTypeOf, isIntArray, validateFields } from "../middleware.js";
 import type { Application, NextFunction, Request, Response } from "express";
-import type {
-  MonitoringParams} from "./monitoringPage.js";
-import {
-  calculateMonitoringPageCriteria
-} from "./monitoringPage.js";
+import type { MonitoringParams } from "./monitoringPage.js";
+import { calculateMonitoringPageCriteria } from "./monitoringPage.js";
 import { generateVisits } from "./monitoringVisit.js";
 import { successResponse } from "./responseUtil.js";
 import { query } from "express-validator";

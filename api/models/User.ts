@@ -17,11 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import bcrypt from "bcrypt";
-import type {
-  BuildOptions,
-  ModelAttributes,
-  ModelOptions,
-} from "sequelize";
+import type { BuildOptions, ModelAttributes, ModelOptions } from "sequelize";
 import Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type { Group } from "./Group.js";

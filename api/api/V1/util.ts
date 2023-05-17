@@ -17,23 +17,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import moment from "moment";
-import {v4 as uuidv4} from "uuid";
+import { v4 as uuidv4 } from "uuid";
 import multiparty from "multiparty";
 import log from "@log";
-import responseUtil, {serverErrorResponse, someResponse} from "./responseUtil.js";
+import responseUtil, {
+  serverErrorResponse,
+  someResponse,
+} from "./responseUtil.js";
 import crypto from "crypto";
-import type {NextFunction, Request, Response} from "express";
-import type {Device} from "@models/Device.js";
-import type {ModelCommon} from "@models/index.js";
+import type { NextFunction, Request, Response } from "express";
+import type { Device } from "@models/Device.js";
+import type { ModelCommon } from "@models/index.js";
 import modelsInit from "@models/index.js";
-import type {User} from "@models/User.js";
-import type {Stream} from "stream";
+import type { User } from "@models/User.js";
+import type { Stream } from "stream";
 import stream from "stream";
-import {HttpStatusCode, RecordingType} from "@typedefs/api/consts.js";
+import { HttpStatusCode, RecordingType } from "@typedefs/api/consts.js";
 import config from "@config";
-import {Op} from "sequelize";
-import {UnprocessableError} from "@api/customErrors.js";
-import {openS3} from "@models/util/util.js";
+import { Op } from "sequelize";
+import { UnprocessableError } from "@api/customErrors.js";
+import { openS3 } from "@models/util/util.js";
 
 const models = await modelsInit();
 
@@ -165,37 +168,45 @@ function multipartUpload(
             isNaN(Date.parse(data.recordingDateTime))
           ) {
             canceledRequest = true;
-            return someResponse(response, HttpStatusCode.Unprocessable, `Invalid recordingDateTime '${data.recordingDateTime}'`);
+            return someResponse(
+              response,
+              HttpStatusCode.Unprocessable,
+              `Invalid recordingDateTime '${data.recordingDateTime}'`
+            );
           }
         }
 
-        if (uploadingDevice && 'fileHash' in data && !!data.fileHash && keyPrefix === "raw") {
+        if (
+          uploadingDevice &&
+          "fileHash" in data &&
+          !!data.fileHash &&
+          keyPrefix === "raw"
+        ) {
           // Try and handle duplicates early in the upload if possible,
           // so that we can return early and not waste bandwidth
           const existingRecordingWithHashForDevice =
-              await models.Recording.findOne({
-                where: {
-                  DeviceId: uploadingDevice.id,
-                  rawFileHash: data.fileHash,
-                  deletedAt: { [Op.eq]: null },
-                },
-              });
+            await models.Recording.findOne({
+              where: {
+                DeviceId: uploadingDevice.id,
+                rawFileHash: data.fileHash,
+                deletedAt: { [Op.eq]: null },
+              },
+            });
           if (existingRecordingWithHashForDevice !== null) {
             log.warning(
-                "Recording with hash %s for device %s already exists, discarding duplicate",
-                data.fileHash,
-                uploadingDevice.id
+              "Recording with hash %s for device %s already exists, discarding duplicate",
+              data.fileHash,
+              uploadingDevice.id
             );
             canceledRequest = true;
             responseUtil.validRecordingUpload(
-                response,
-                existingRecordingWithHashForDevice.id,
-                "Duplicate recording found for device"
+              response,
+              existingRecordingWithHashForDevice.id,
+              "Duplicate recording found for device"
             );
             return;
           }
         }
-
       } catch (err) {
         // This leaves `data` unset so that the close handler (below)
         // will fail the upload.
@@ -206,10 +217,10 @@ function multipartUpload(
     // Handle the "file" part.
     form.on("part", (part: MultiPartFormPart) => {
       if (
-          canceledRequest ||
-          (part.name !== "file" &&
-        part.name !== "derived" &&
-        part.name !== "thumb")
+        canceledRequest ||
+        (part.name !== "file" &&
+          part.name !== "derived" &&
+          part.name !== "thumb")
       ) {
         part.resume();
         return;
@@ -336,8 +347,8 @@ function multipartUpload(
                   });
                 if (!canceledRequest) {
                   responseUtil.invalidDatapointUpload(
-                      response,
-                      "Uploaded file integrity check failed, please retry."
+                    response,
+                    "Uploaded file integrity check failed, please retry."
                   );
                 }
               }
@@ -379,9 +390,9 @@ function multipartUpload(
                   });
                 if (!canceledRequest) {
                   responseUtil.validRecordingUpload(
-                      response,
-                      existingRecordingWithHashForDevice.id,
-                      "Duplicate recording found for device"
+                    response,
+                    existingRecordingWithHashForDevice.id,
+                    "Duplicate recording found for device"
                   );
                 }
               }
@@ -406,7 +417,10 @@ function multipartUpload(
           if (dbRecordOrFileKey.type === "audioBait" && !canceledRequest) {
             // FIXME - this is pretty nasty.
             responseUtil.validAudiobaitUpload(response, dbRecordOrFileKey.id);
-          } else if (dbRecordOrFileKey instanceof models.Event && !canceledRequest) {
+          } else if (
+            dbRecordOrFileKey instanceof models.Event &&
+            !canceledRequest
+          ) {
             responseUtil.validEventThumbnailUpload(
               response,
               (dbRecordOrFileKey as any).id

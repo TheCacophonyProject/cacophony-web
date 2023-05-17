@@ -19,13 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import type {
   CustomValidator,
   Result,
-  ValidationChain} from "express-validator";
-import {
-  body,
-  matchedData,
-  query,
-  validationResult,
+  ValidationChain,
 } from "express-validator";
+import { body, matchedData, query, validationResult } from "express-validator";
 import type { ModelStaticCommon } from "../models/index.js";
 import modelsInit from "../models/index.js";
 import { format } from "util";

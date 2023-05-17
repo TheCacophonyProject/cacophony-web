@@ -24,8 +24,8 @@ import type { GroupId, UserId } from "@typedefs/api/common.js";
 import modelsInit from "@models/index.js";
 import { SuperUsers } from "@/Globals.js";
 import { Op } from "sequelize";
-import {openS3} from "@models/util/util.js";
-import {signedUrl} from "@api/auth.js";
+import { openS3 } from "@models/util/util.js";
+import { signedUrl } from "@api/auth.js";
 
 const models = await modelsInit();
 

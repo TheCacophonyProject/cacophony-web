@@ -22,7 +22,7 @@ import modelsInit from "@models/index.js";
 import type { GroupId, StationId } from "@typedefs/api/common.js";
 import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
 import { RecordingType } from "@typedefs/api/consts.js";
-import type {Recording} from "@models/Recording.js";
+import type { Recording } from "@models/Recording.js";
 
 const models = await modelsInit();
 
@@ -117,7 +117,7 @@ async function getDatesForSearch(
     replaceInSQL(VISITS_COUNT_SQL, replacements),
     { type: QueryTypes.SELECT }
   );
-  const approxVisitCount = parseInt((countRet[0] as {count: string}).count);
+  const approxVisitCount = parseInt((countRet[0] as { count: string }).count);
   const returnVal = createPageCriteria(params, approxVisitCount);
   if (approxVisitCount < params.pageSize) {
     returnVal.pageFrom = returnVal.searchFrom;

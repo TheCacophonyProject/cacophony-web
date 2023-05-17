@@ -9,7 +9,6 @@ export interface EmailImageAttachment {
   mimeType: "image/png" | "image/jpeg";
 }
 
-
 function resetBody(userTitle: string, token: string): string[] {
   const resetUrl = `${config.server.browse_url}/new-password/?token=${token}`;
   let html = `Hello ${userTitle},<br><br>`;

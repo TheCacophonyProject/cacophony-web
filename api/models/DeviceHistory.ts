@@ -15,8 +15,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import type Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { DeviceId, GroupId, LatLng, StationId } from "@typedefs/api/common.js";
-import {locationField} from "@models/util/util.js";
+import type {
+  DeviceId,
+  GroupId,
+  LatLng,
+  StationId,
+} from "@typedefs/api/common.js";
+import { locationField } from "@models/util/util.js";
 
 export type DeviceHistorySetBy =
   | "automatic"

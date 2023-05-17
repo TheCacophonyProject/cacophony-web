@@ -21,10 +21,14 @@ import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import { AuthenticationError } from "./customErrors.js";
-import type {ModelCommon, ModelsDictionary} from "../models/index.js";
+import type { ModelCommon, ModelsDictionary } from "../models/index.js";
 import type { Request } from "express";
 import type { User } from "@models/User.js";
-import type { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common.js";
+import type {
+  GroupId,
+  GroupInvitationId,
+  UserId,
+} from "@typedefs/api/common.js";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
@@ -243,7 +247,10 @@ export const checkAccess = (
   return true;
 };
 
-export async function lookupEntity(models: ModelsDictionary, jwtDecoded: DecodedJWTToken) {
+export async function lookupEntity(
+  models: ModelsDictionary,
+  jwtDecoded: DecodedJWTToken
+) {
   switch (jwtDecoded._type) {
     case "user":
       return models.User.findByPk(jwtDecoded.id);
@@ -332,4 +339,7 @@ const authenticate = (
   };
 };
 
-export const authenticateUser: (models: ModelsDictionary) => AuthenticateMiddleware = (models: ModelsDictionary) => authenticate(models,["user"]);
+export const authenticateUser: (
+  models: ModelsDictionary
+) => AuthenticateMiddleware = (models: ModelsDictionary) =>
+  authenticate(models, ["user"]);

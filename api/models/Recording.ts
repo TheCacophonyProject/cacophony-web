@@ -57,9 +57,8 @@ import type {
 } from "@typedefs/api/recording.js";
 import labelPath from "../classifications/label_paths.json" assert { type: "json" };
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
-import {locationField, openS3} from "@models/util/util.js";
-import {ApiTrackPosition} from "@typedefs/api/track.js";
-
+import { locationField, openS3 } from "@models/util/util.js";
+import type { ApiTrackPosition } from "@typedefs/api/track.js";
 
 // Mapping
 export const mapPosition = (position: any): ApiTrackPosition => {

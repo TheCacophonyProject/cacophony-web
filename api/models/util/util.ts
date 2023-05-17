@@ -23,8 +23,8 @@ import mime from "mime";
 import config from "@config";
 import type { LatLng } from "@typedefs/api/common.js";
 import { DataTypes } from "sequelize";
-import {canonicalLatLng} from "@models/util/locationUtils.js";
-import {isLatLon} from "@models/util/validation.js";
+import { canonicalLatLng } from "@models/util/locationUtils.js";
+import { isLatLon } from "@models/util/validation.js";
 
 export function getFileName(model) {
   let fileName;

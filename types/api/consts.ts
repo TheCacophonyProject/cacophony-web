@@ -100,4 +100,4 @@ export const DeviceEventTypes = [
   "stop-reported",
 ] as const;
 
-export type DeviceEventType = typeof DeviceEventTypes[number];
+export type DeviceEventType = (typeof DeviceEventTypes)[number];

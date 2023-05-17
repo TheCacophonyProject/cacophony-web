@@ -37,7 +37,7 @@ import type { StationStatic } from "./Station.js";
 import { asyncLocalStorage } from "@/Globals.js";
 import type { DeviceHistoryStatic } from "./DeviceHistory.js";
 import type { GroupInvitesStatic } from "./GroupInvites.js";
-import { fileURLToPath } from 'url';
+import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const basename = path.basename(__filename);
@@ -90,118 +90,115 @@ export interface ModelStaticCommon<T> extends Sequelize.ModelCtor<any> {
 }
 
 export interface ModelsDictionary {
-    User: UserStatic;
-    Recording: RecordingStatic;
-    Tag: TagStatic;
-    TrackTag: TrackTagStatic;
-    Track: TrackStatic;
-    DetailSnapshot: DetailSnapshotStatic;
-    File: FileStatic;
-    Event: EventStatic;
-    Device: DeviceStatic;
-    Group: GroupStatic;
-    DeviceHistory: DeviceHistoryStatic;
-    GroupInvites: GroupInvitesStatic;
-    Station: StationStatic;
-    GroupUsers: GroupUsersStatic;
-    Schedule: ScheduleStatic;
-    Alert: AlertStatic;
-    sequelize: Sequelize.Sequelize;
+  User: UserStatic;
+  Recording: RecordingStatic;
+  Tag: TagStatic;
+  TrackTag: TrackTagStatic;
+  Track: TrackStatic;
+  DetailSnapshot: DetailSnapshotStatic;
+  File: FileStatic;
+  Event: EventStatic;
+  Device: DeviceStatic;
+  Group: GroupStatic;
+  DeviceHistory: DeviceHistoryStatic;
+  GroupInvites: GroupInvitesStatic;
+  Station: StationStatic;
+  GroupUsers: GroupUsersStatic;
+  Schedule: ScheduleStatic;
+  Alert: AlertStatic;
+  sequelize: Sequelize.Sequelize;
 }
 
 let AllModels: ModelsDictionary;
 
 export default async function () {
-    if (!AllModels) {
+  if (!AllModels) {
+    // String-based operators are deprecated in sequelize v4 as a security concern.
+    // http://docs.sequelizejs.com/manual/tutorial/querying.html#operators-security
+    // Because they are currently used via the API, we need to keep them enabled.
+    // The following definition explicitly enables the aliases we want to support.
+    const Op = Sequelize.Op;
 
-// String-based operators are deprecated in sequelize v4 as a security concern.
-// http://docs.sequelizejs.com/manual/tutorial/querying.html#operators-security
-// Because they are currently used via the API, we need to keep them enabled.
-// The following definition explicitly enables the aliases we want to support.
-        const Op = Sequelize.Op;
-
-// If we're running in debug mode, we want to be able to see requestIds with every
-// logged DB call, so that we can match up all the logs for a single request.
-// By default, sequelize pools connections, and keeps them around for a while,
-// which for some reason breaks the context passing of our AsyncLocalStorage based
-// requestIds.  Setting the pools to timeout after idle for 1ms and having max 1 connection
-// resolves this issue for debugging purposes, but this is not something you'd
-// want to do in production!
-        const poolOptions = IS_DEBUG
-            ? {
-                pool: {
-                    max: 1,
-                    min: 0,
-                    idle: 1,
-                    evict: 1,
-                },
-            }
-            : {};
-
-        // @ts-ignore
-        const sequelize = new Sequelize(
-            dbConfig.database,
-            dbConfig.username,
-            dbConfig.password,
-            {
-                ...dbConfig,
-                logQueryParameters: true,
-                operatorsAliases: {
-                  $eq: Op.eq,
-                  $ne: Op.ne,
-                  $gte: Op.gte,
-                  $gt: Op.gt,
-                  $lte: Op.lte,
-                  $lt: Op.lt,
-                  $not: Op.not,
-                  $in: Op.in,
-                  $notIn: Op.notIn,
-                  $is: Op.is,
-                  $like: Op.like,
-                  $notLike: Op.notLike,
-                  $iLike: Op.iLike,
-                  $notILike: Op.notILike,
-                  $between: Op.between,
-                  $notBetween: Op.notBetween,
-                  $contains: Op.contains,
-                  $and: Op.and,
-                  $or: Op.or,
-                  $any: Op.any,
-                  $all: Op.all,
-                },
-                ...poolOptions,
-            }
-        );
-
-        const db: Record<string, any> = {};
-
-        const files = fs.readdirSync(__dirname)
-            .filter((file) => {
-                return file.indexOf(".") !== 0 && file !== basename && file.endsWith(".js");
-            });
-        for (const file of files) {
-            try {
-                const filePath = path.join(__dirname, file);
-                const model = await import(filePath);
-                const m = model.default(
-                    sequelize,
-                    Sequelize.DataTypes
-                );
-                db[m.name] = m;
-            } catch (e) {
-                console.error(`Error loading model ${file}`, e);
-            }
+    // If we're running in debug mode, we want to be able to see requestIds with every
+    // logged DB call, so that we can match up all the logs for a single request.
+    // By default, sequelize pools connections, and keeps them around for a while,
+    // which for some reason breaks the context passing of our AsyncLocalStorage based
+    // requestIds.  Setting the pools to timeout after idle for 1ms and having max 1 connection
+    // resolves this issue for debugging purposes, but this is not something you'd
+    // want to do in production!
+    const poolOptions = IS_DEBUG
+      ? {
+          pool: {
+            max: 1,
+            min: 0,
+            idle: 1,
+            evict: 1,
+          },
         }
+      : {};
 
-        Object.keys(db).forEach((modelName) => {
-            if (db[modelName].addAssociations) {
-                db[modelName].addAssociations(db);
-            }
-        });
-        AllModels = {
-            ...db,
-            sequelize,
-        } as ModelsDictionary;
+    // @ts-ignore
+    const sequelize = new Sequelize(
+      dbConfig.database,
+      dbConfig.username,
+      dbConfig.password,
+      {
+        ...dbConfig,
+        logQueryParameters: true,
+        operatorsAliases: {
+          $eq: Op.eq,
+          $ne: Op.ne,
+          $gte: Op.gte,
+          $gt: Op.gt,
+          $lte: Op.lte,
+          $lt: Op.lt,
+          $not: Op.not,
+          $in: Op.in,
+          $notIn: Op.notIn,
+          $is: Op.is,
+          $like: Op.like,
+          $notLike: Op.notLike,
+          $iLike: Op.iLike,
+          $notILike: Op.notILike,
+          $between: Op.between,
+          $notBetween: Op.notBetween,
+          $contains: Op.contains,
+          $and: Op.and,
+          $or: Op.or,
+          $any: Op.any,
+          $all: Op.all,
+        },
+        ...poolOptions,
+      }
+    );
+
+    const db: Record<string, any> = {};
+
+    const files = fs.readdirSync(__dirname).filter((file) => {
+      return (
+        file.indexOf(".") !== 0 && file !== basename && file.endsWith(".js")
+      );
+    });
+    for (const file of files) {
+      try {
+        const filePath = path.join(__dirname, file);
+        const model = await import(filePath);
+        const m = model.default(sequelize, Sequelize.DataTypes);
+        db[m.name] = m;
+      } catch (e) {
+        console.error(`Error loading model ${file}`, e);
+      }
     }
-    return AllModels;
+
+    Object.keys(db).forEach((modelName) => {
+      if (db[modelName].addAssociations) {
+        db[modelName].addAssociations(db);
+      }
+    });
+    AllModels = {
+      ...db,
+      sequelize,
+    } as ModelsDictionary;
+  }
+  return AllModels;
 }
