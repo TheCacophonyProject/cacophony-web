@@ -213,7 +213,7 @@ export default function (
 
   Device.freeDeviceName = async function (deviceName, groupId) {
     const device = await this.findOne({
-      where: { deviceName, GroupId: groupId }
+      where: { deviceName, GroupId: groupId },
     });
     return device === null;
   };
