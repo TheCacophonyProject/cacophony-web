@@ -31,7 +31,6 @@ import {
 import { idOf } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json" assert { type: "json" };
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type {
   ApiScheduleResponse,
   ScheduleConfig,

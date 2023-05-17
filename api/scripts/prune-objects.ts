@@ -21,7 +21,7 @@ async function main() {
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(options.config),
+    ...(await config.default.loadConfig(options.config)),
   };
 
   if (!options.delete) {

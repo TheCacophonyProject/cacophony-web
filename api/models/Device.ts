@@ -34,7 +34,7 @@ import type {
   ScheduleId,
   UserId,
 } from "@typedefs/api/common.js";
-import type { Station, StationStatic } from "@models/Station.js";
+import type { Station } from "@models/Station.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { locationField } from "@models/util/util.js";
 
@@ -213,7 +213,7 @@ export default function (
 
   Device.freeDeviceName = async function (deviceName, groupId) {
     const device = await this.findOne({
-      where: { deviceName, GroupId: groupId },
+      where: { deviceName, GroupId: groupId }
     });
     return device === null;
   };
@@ -456,11 +456,6 @@ order by hour;
       index: Number(item.index),
     }));
   };
-
-  interface TagCount {
-    what: String;
-    count: number;
-  }
 
   Device.getSpeciesCount = async function (
     authUser,

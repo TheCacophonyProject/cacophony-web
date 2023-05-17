@@ -35,7 +35,6 @@ import stream from "stream";
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts.js";
 import config from "@config";
 import { Op } from "sequelize";
-import { UnprocessableError } from "@api/customErrors.js";
 import { openS3 } from "@models/util/util.js";
 
 const models = await modelsInit();
@@ -118,7 +117,7 @@ function multipartUpload(
     locals: Record<string, any>
   ) => Promise<ModelCommon<T> | string>
 ) {
-  return async (request: Request, response: Response, next: NextFunction) => {
+  return async (request: Request, response: Response, _next: NextFunction) => {
     const key = `${keyPrefix}/${moment().format("YYYY/MM/DD")}/${uuidv4()}`;
     let data;
     const uploadPromises = {};
@@ -473,7 +472,6 @@ async function deleteS3Object(fileKey) {
 }
 
 export default {
-  getS3Object,
   deleteS3Object,
   getS3ObjectFileSize,
   multipartUpload,

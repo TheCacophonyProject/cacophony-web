@@ -1,6 +1,6 @@
 // How close is a station allowed to be to another station?
 import type { LatLng } from "@typedefs/api/common.js";
-import type { Station, StationStatic } from "@models/Station.js";
+import type { Station } from "@models/Station.js";
 import type { GroupId } from "@typedefs/api/common.js";
 import type { Recording } from "@models/Recording.js";
 import { Op } from "sequelize";

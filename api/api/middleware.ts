@@ -22,7 +22,7 @@ import type {
   ValidationChain,
 } from "express-validator";
 import { body, matchedData, query, validationResult } from "express-validator";
-import type { ModelStaticCommon } from "../models/index.js";
+import type { ModelStaticCommon } from "@models";
 import modelsInit from "../models/index.js";
 import { format } from "util";
 import log from "../logging.js";

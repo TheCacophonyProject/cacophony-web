@@ -66,7 +66,6 @@ import type {
   TrackFramePosition,
 } from "@typedefs/api/fileProcessing.js";
 import type { ApiRecordingTagRequest } from "@typedefs/api/tag.js";
-import type { ApiTrackPosition } from "@typedefs/api/track.js";
 import type { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3.js";
 import type { AWSError } from "aws-sdk";
 import type { CptvHeader } from "cptv-decoder";
@@ -1007,7 +1006,7 @@ export async function bulkDelete(
   requestUserId: UserId,
   type: RecordingType,
   options: RecordingQueryOptions,
-  actuallyDelete: boolean = false // FIXME - Make recordings actually be deleted?
+  _actuallyDelete: boolean = false // FIXME - Make recordings actually be deleted?
 ): Promise<number[]> {
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };
@@ -1889,7 +1888,7 @@ export async function sendEventAlerts(
   data: { what: string; conf: number; dateTimes?: IsoFormattedDateString[] },
   device: Device,
   eventDateTime: Date,
-  thumbnail: Uint8Array
+  _thumbnail: Uint8Array
 ) {
   // Find the hierarchy for the matchedTag
   const { stationId } =
@@ -1905,7 +1904,7 @@ export async function sendEventAlerts(
       undefined,
       stationId
     );
-    for (const alert of alerts) {
+    for (const _alert of alerts) {
       // TODO:
       /*
       const alertSendSuccess = await sendAnimalAlertEmailForEvent();

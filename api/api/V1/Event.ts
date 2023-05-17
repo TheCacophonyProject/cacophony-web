@@ -16,13 +16,13 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields } from "../middleware.js";
+import {expectedTypeOf, validateFields} from "../middleware.js";
 import modelsInit from "@models/index.js";
-import type { Event, QueryOptions } from "@models/Event.js";
-import { successResponse } from "./responseUtil.js";
-import { body, param, query } from "express-validator";
-import type { Application, NextFunction, Request, Response } from "express";
-import { errors, powerEventsPerDevice } from "./eventUtil.js";
+import type {Event, QueryOptions} from "@models/Event.js";
+import {successResponse} from "./responseUtil.js";
+import {body, param, query} from "express-validator";
+import type {Application, NextFunction, Request, Response} from "express";
+import {errors, powerEventsPerDevice} from "./eventUtil.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -31,27 +31,18 @@ import {
   fetchAuthorizedRequiredEventById,
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
 } from "../extract-middleware.js";
-import { jsonSchemaOf } from "../schema-validation.js";
-import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" assert { type: "json" };
-import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" assert { type: "json" };
-import type { EventDescription } from "@typedefs/api/event.js";
+import {jsonSchemaOf} from "../schema-validation.js";
+import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" assert {type: "json"};
+import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" assert {type: "json"};
+import type {EventDescription} from "@typedefs/api/event.js";
 import logger from "@log";
-import {
-  anyOf,
-  booleanOf,
-  deprecatedField,
-  idOf,
-  integerOf,
-} from "../validation-middleware.js";
-import { ClientError } from "../customErrors.js";
-import type { IsoFormattedDateString } from "@typedefs/api/common.js";
-import {
-  maybeUpdateDeviceHistory,
-  sendEventAlerts,
-} from "@api/V1/recordingUtil.js";
-import { HttpStatusCode } from "@typedefs/api/consts.js";
+import {anyOf, booleanOf, deprecatedField, idOf, integerOf,} from "../validation-middleware.js";
+import {ClientError} from "../customErrors.js";
+import type {IsoFormattedDateString} from "@typedefs/api/common.js";
+import {maybeUpdateDeviceHistory,} from "@api/V1/recordingUtil.js";
+import {HttpStatusCode} from "@typedefs/api/consts.js";
 import util from "@api/V1/util.js";
-import { streamS3Object } from "@api/V1/signedUrl.js";
+import {streamS3Object} from "@api/V1/signedUrl.js";
 
 const models = await modelsInit();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -224,8 +215,8 @@ export default function (app: Application, baseUrl: string) {
         uploadingUser,
         data,
         keys,
-        uploadedFileDatas,
-        locals
+        _uploadedFileDatas,
+        _locals
       ): Promise<Event> => {
         console.assert(
           keys.length === 1,
@@ -250,15 +241,11 @@ export default function (app: Application, baseUrl: string) {
         const dateTime =
           (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
           new Date().toISOString();
-        const event = await models.Event.create({
+        return await models.Event.create({
           DeviceId: uploadingDevice.id,
           EventDetailId: detail.id,
           dateTime,
         });
-        // TODO:
-        // await sendEventAlerts(data, uploadingDevice, dateTime, uploadedFileData);
-
-        return event;
       }
     )
   );

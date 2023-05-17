@@ -20,7 +20,7 @@ const timeout = 1000;
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(options.config),
+    ...(await config.default.loadConfig(options.config)),
   };
 
   try {

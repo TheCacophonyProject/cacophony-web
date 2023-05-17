@@ -21,7 +21,7 @@ import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import { AuthenticationError } from "./customErrors.js";
-import type { ModelCommon, ModelsDictionary } from "../models/index.js";
+import type { ModelCommon, ModelsDictionary } from "@models";
 import type { Request } from "express";
 import type { User } from "@models/User.js";
 import type {

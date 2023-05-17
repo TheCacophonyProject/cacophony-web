@@ -13,7 +13,7 @@ async function main() {
 
   Config = {
     ...config,
-    ...config.loadConfig(args.config),
+    ...(await config.loadConfig(args.config)),
   };
 
   const client = await pgConnect();

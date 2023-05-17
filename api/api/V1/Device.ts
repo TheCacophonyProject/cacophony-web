@@ -75,7 +75,7 @@ import { deleteFile } from "@models/util/util.js";
 import { uploadFileStream } from "@api/V1/util.js";
 import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
-import { mapTrack, mapTracks } from "@api/V1/Recording.js";
+import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
 
 const models = await modelsInit();
@@ -153,6 +153,7 @@ interface ApiRegisterDeviceRequestBody {
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiCreateProxyDeviceRequestBody {
   group: string; // Name of group to assign the device to.
   deviceName: string; // Unique (within group) device name.
@@ -174,18 +175,22 @@ interface ApiDeviceResponseSuccess {
   device: ApiDeviceResponse;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationResponseSuccess {
   station: ApiStationResponse;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
   stations: ApiStationResponse[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLocationResponseSuccess {
   location: ApiStationResponse;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLocationsResponseSuccess {
   locations: { fromDateTime: Date; location: ApiStationResponse }[];
 }
@@ -349,7 +354,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([idOf(param("deviceId")), nameOrIdOf(body("group"))]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, _next: NextFunction) => {
       // Get the recording count for the device.
       const deviceId = response.locals.device.id;
       const hasRecording = await models.Recording.findOne({
@@ -694,7 +699,6 @@ export default function (app: Application, baseUrl: string) {
         order: [["fromDateTime", "DESC"]],
       });
       if (deviceHistoryEntry && deviceHistoryEntry.Station) {
-        const station = deviceHistoryEntry.Station;
         return successResponse(response, "Got station for device at time", {
           location: mapStation(deviceHistoryEntry.Station),
         });
@@ -716,7 +720,7 @@ export default function (app: Application, baseUrl: string) {
       query("until-time").isISO8601().toDate().optional(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, _next: NextFunction) => {
       const fromTime =
         request.query["from-time"] &&
         (request.query["from-time"] as unknown as Date);
@@ -805,7 +809,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(query("stationId")).optional(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, _next: NextFunction) => {
       const fromTime =
         request.query["from-time"] &&
         (request.query["from-time"] as unknown as Date);
@@ -909,7 +913,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, _next: NextFunction) => {
       const device = response.locals.device;
       const deviceLocations = await models.DeviceHistory.findAll({
         where: {

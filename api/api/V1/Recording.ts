@@ -44,7 +44,6 @@ import type {
   ApiThermalRecordingMetadataResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording.js";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag.js";
 import type { ApiTrackResponse } from "@typedefs/api/track.js";
 import type {
@@ -645,7 +644,7 @@ export default (app: Application, baseUrl: string) => {
         models,
         response.locals.requestUser.id,
         type as RecordingType,
-        countAll ? true : false,
+        !!countAll,
         {
           viewAsSuperUser,
           where,
@@ -654,8 +653,8 @@ export default (app: Application, baseUrl: string) => {
           tagMode: tagMode as TagMode,
           limit: limit && parseInt(limit as string),
           offset: offset && parseInt(offset as string),
-          hideFiltered: hideFiltered ? true : false,
-          exclusive: exclusive ? true : false,
+          hideFiltered: !!hideFiltered,
+          exclusive: !!exclusive,
           filterModel: useFilteredModel,
         }
       );
@@ -730,8 +729,8 @@ export default (app: Application, baseUrl: string) => {
             tagMode: tagMode as TagMode,
             limit: limitInt,
             offset: offset && parseInt(offset as string),
-            hideFiltered: hideFiltered ? true : false,
-            exclusive: exclusive ? true : false,
+            hideFiltered: !!hideFiltered,
+            exclusive: !!exclusive,
             checkIsGroupAdmin: true,
           }
         );
@@ -832,7 +831,7 @@ export default (app: Application, baseUrl: string) => {
       ]),
       async (request: Request, response: Response, next: NextFunction) => {
         const timeout = Number(request.query.seconds);
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve, _reject) => {
           setTimeout(resolve, timeout * 1000);
         });
         if (request.query.succeed) {
@@ -917,14 +916,12 @@ export default (app: Application, baseUrl: string) => {
         tagMode: tagMode as TagMode,
         limit: limit && parseInt(limit as string),
         offset: offset && parseInt(offset as string),
-        hideFiltered: hideFiltered ? true : false,
-        exclusive: exclusive ? true : false,
+        hideFiltered: !!hideFiltered,
+        exclusive: !!exclusive,
         checkIsGroupAdmin:
           response.locals.viewAsSuperUser && user.hasGlobalRead()
             ? false
-            : checkIsGroupAdmin
-            ? true
-            : false,
+            : !!checkIsGroupAdmin,
         includeAttributes: false,
       };
       if (request.query.hasOwnProperty("deleted")) {

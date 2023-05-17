@@ -6,7 +6,7 @@ import {
   getVerifiedJWT,
   lookupEntity,
 } from "./auth.js";
-import type { ModelStaticCommon } from "../models/index.js";
+import type { ModelStaticCommon } from "@models";
 import modelsInit from "../models/index.js";
 import log from "../logging.js";
 import { modelTypeName, modelTypeNamePlural } from "./middleware.js";

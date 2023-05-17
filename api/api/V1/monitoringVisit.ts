@@ -25,7 +25,6 @@ const RECORDINGS_LIMIT = 2000;
 const MAX_MINS_AFTER_TIME = 70;
 
 type TagName = string;
-type Count = number;
 
 class Visit {
   rawRecordings?: Recording[];
