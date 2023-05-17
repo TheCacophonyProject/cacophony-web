@@ -9,7 +9,7 @@ import {
 } from "./common";
 import { ApiRecordingTagResponse } from "./tag";
 import { ApiTrackResponse } from "./track";
-import { RecordingProcessingState, RecordingType } from "./consts";
+import { RecordingProcessingState, RecordingType } from "./consts.js";
 import { DeviceBatteryChargeState } from "./device";
 
 export interface ApiRecordingResponse {

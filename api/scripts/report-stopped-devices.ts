@@ -1,14 +1,14 @@
-import registerAliases from "../module-aliases";
-registerAliases();
-import config from "../config";
-import log from "../logging";
-import { Device } from "@models/Device";
+import config from "../config.js";
+import log from "../logging.js";
+import type { Device } from "@models/Device.js";
 
 import moment from "moment";
-import models from "../models";
-import { sendEmail } from "@/emails/sendEmail";
+import modelsInit from "@models/index.js";
+import { sendEmail } from "@/emails/sendEmail.js";
 import { Op } from "sequelize";
-import { DeviceType } from "@typedefs/api/consts";
+import { DeviceType } from "@typedefs/api/consts.js";
+
+const models = await modelsInit();
 
 async function getUserEvents(devices: Device[]) {
   const groupAdmins = {};

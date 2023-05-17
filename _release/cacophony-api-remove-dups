@@ -1,4 +1,4 @@
 #
 # cron.d/cacophony-api-remove-dups
 #
-*/30 * * * * root (cd /srv/cacophony/api/scripts/ && node --no-warnings=ExperimentalWarnings --experimental-json-modules remove-dups.js --delete) 2>&1 | logger --tag remove-dups
+*/30 * * * * root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader ./scripts/remove-dups.js --delete) 2>&1 | logger --tag remove-dups

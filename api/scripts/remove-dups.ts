@@ -1,6 +1,4 @@
-import registerAliases from "../module-aliases";
-registerAliases();
-import config from "../config";
+import config from "../config.js";
 
 const args = require("commander");
 const process = require("process");

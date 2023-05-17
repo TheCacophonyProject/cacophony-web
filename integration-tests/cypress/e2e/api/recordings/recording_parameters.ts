@@ -760,7 +760,7 @@ describe("Recordings - parameter tests", () => {
     });
   });
 
-  it("File hash accepted correctly", () => {
+  it.only("File hash accepted correctly", () => {
     cy.log("Correct file hash accepted");
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;

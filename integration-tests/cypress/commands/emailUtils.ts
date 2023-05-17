@@ -35,7 +35,7 @@ export const startMailServerStub = () => {
     { log: false }
   );
   cy.exec(
-    `cd ../api && docker-compose exec -d -T server bash -lic "node api/scripts/mailServerStub.js"`,
+    `cd ../api && docker-compose exec -d -T server bash -lic "node ./api/scripts/mailServerStub.js"`,
     { log: false }
   );
   // Wait for the mail server log file to be created

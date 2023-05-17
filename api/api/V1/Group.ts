@@ -16,11 +16,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
-import models from "@models";
-import { successResponse } from "./responseUtil";
+import { validateFields } from "../middleware.js";
+import modelsInit from "@models/index.js";
+import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   extractJWTInfo,
@@ -39,11 +39,11 @@ import {
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserById,
   parseJSONField,
-} from "../extract-middleware";
-import { jsonSchemaOf } from "../schema-validation";
-import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
-import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json";
-import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
+} from "../extract-middleware.js";
+import { jsonSchemaOf } from "../schema-validation.js";
+import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json" assert { type: "json" };
+import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json" assert { type: "json" };
+import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json" assert { type: "json" };
 import {
   anyOf,
   booleanOf,
@@ -52,29 +52,25 @@ import {
   nameOf,
   nameOrIdOf,
   validNameOf,
-} from "../validation-middleware";
+} from "../validation-middleware.js";
 import {
   AuthorizationError,
   ClientError,
   UnprocessableError,
-} from "../customErrors";
-import { mapDevicesResponse } from "./Device";
-import { Group } from "@/models/Group";
-import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
-import { ApiDeviceResponse } from "@typedefs/api/device";
-import {
+} from "../customErrors.js";
+import { mapDevicesResponse } from "./Device.js";
+import type { Group } from "@/models/Group.js";
+import type { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group.js";
+import type { ApiDeviceResponse } from "@typedefs/api/device.js";
+import type {
   ApiCreateStationData,
   ApiStationResponse,
-} from "@typedefs/api/station";
-import { ScheduleConfig } from "@typedefs/api/schedule";
-import { mapSchedule } from "@api/V1/Schedule";
-import { mapStation, mapStations } from "./Station";
-import {
-  latLngApproxDistance,
-  MIN_STATION_SEPARATION_METERS,
-} from "@api/V1/recordingUtil";
-import { HttpStatusCode } from "@typedefs/api/consts";
-import { urlNormaliseName } from "@/emails/htmlEmailUtils";
+} from "@typedefs/api/station.js";
+import type { ScheduleConfig } from "@typedefs/api/schedule.js";
+import { mapSchedule } from "@api/V1/Schedule.js";
+import { mapStation, mapStations } from "./Station.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 import { Op } from "sequelize";
 import {
   sendAddedToGroupNotificationEmail,
@@ -84,14 +80,17 @@ import {
   sendRemovedFromGroupNotificationEmail,
   sendRemovedFromInvitedGroupNotificationEmail,
   sendUpdatedGroupPermissionsNotificationEmail,
-} from "@/emails/transactionalEmails";
+} from "@/emails/transactionalEmails.js";
 import {
   getInviteToGroupToken,
   getInviteToGroupTokenExistingUser,
-} from "@api/auth";
-import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
-import { GroupInvites } from "@models/GroupInvites";
+} from "@api/auth.js";
+import type { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common.js";
+import type { GroupInvites } from "@models/GroupInvites.js";
 import config from "@config";
+import {latLngApproxDistance, MIN_STATION_SEPARATION_METERS} from "@models/util/locationUtils.js";
+
+const models = await modelsInit();
 
 const mapGroup = (
   group: Group,
@@ -1240,9 +1239,9 @@ export default function (app: Application, baseUrl: string) {
         let token;
         const group = response.locals.group;
         const user = response.locals.user;
-        const makeAdmin = request.body.admin;
-        const makeOwner = request.body.owner;
-        const requestUser = response.locals.requestUser;
+        const _makeAdmin = request.body.admin;
+        const _makeOwner = request.body.owner;
+        const _requestUser = response.locals.requestUser;
         const email = request.body.email.toLowerCase().trim();
         if (!user) {
           // If the user isn't a member, there should be an invitation created,

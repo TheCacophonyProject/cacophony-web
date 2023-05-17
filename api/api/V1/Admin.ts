@@ -16,18 +16,18 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
-import { successResponse } from "./responseUtil";
+import { validateFields } from "../middleware.js";
+import { successResponse } from "./responseUtil.js";
 import { body, param } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorisedSuperAdminUser,
   fetchUnauthorizedRequiredUserByEmailOrId,
-} from "@api/extract-middleware";
-import { anyOf, idOf } from "@api/validation-middleware";
-import { ClientError } from "@api/customErrors";
-import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts";
-import { SuperUsers } from "@/Globals";
+} from "@api/extract-middleware.js";
+import { anyOf, idOf } from "@api/validation-middleware.js";
+import { ClientError } from "@api/customErrors.js";
+import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts.js";
+import { SuperUsers } from "@/Globals.js";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiUpdateGlobalPermissionRequestBody {

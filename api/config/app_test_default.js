@@ -1,6 +1,7 @@
 // A real test configuration
 // @todo: consider reading from env vars
-exports.server = {
+
+export const server  = {
   passportSecret: "something",
   loggerLevel: "debug",
   http: {
@@ -11,18 +12,18 @@ exports.server = {
   browse_url: "http://test.site",
   isLocalDev: true,
 };
-exports.s3Local = {
+export const s3Local = {
   publicKey: "minio",
   privateKey: "miniostorage",
   bucket: "cacophony",
   endpoint: "http://127.0.0.1:9001",
   rootPath: "/.data/", // Root of the minio storage directory, so we can work out total and available disk space.
 };
-exports.fileProcessing = {
+export const fileProcessing = {
   port: 2008,
 };
 // ======= Database settings =======
-exports.database = {
+export const database = {
   username: "test",
   password: "test",
   database: "cacophonytest",
@@ -31,7 +32,7 @@ exports.database = {
   slowQueryLogThresholdMs: 1000,
 };
 
-exports.s3Archive = {
+export const s3Archive = {
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
@@ -39,7 +40,7 @@ exports.s3Archive = {
   freeSpaceThresholdRatio: 0.7,
 };
 
-exports.smtpDetails = {
+export const smtpDetails= {
   host: "localhost",
   port: 7777, //default for service is 25. 7777 used for smtp-tester
   tls: false, //default is true.  False used for smtp-tester
@@ -54,12 +55,13 @@ exports.smtpDetails = {
 
 // This is needed because Sequelize looks for development by default
 // when using db:migrate
-exports.development = exports.database;
-exports.default = {
-  smtpDetails: exports.smtpDetails,
-  server: exports.server,
-  s3Local: exports.s3Local,
-  s3Archive: exports.s3Archive,
-  fileProcessing: exports.fileProcessing,
-  database: exports.database,
+export const development = database;
+export default {
+  smtpDetails,
+  server,
+  s3Local,
+  s3Archive,
+  fileProcessing,
+  database,
+  development: database,
 };

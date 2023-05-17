@@ -16,22 +16,22 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
+import { validateFields } from "../middleware.js";
 import { body } from "express-validator";
-import auth from "../auth";
-import { successResponse } from "./responseUtil";
-import { Application, NextFunction, Request, Response } from "express";
+import { successResponse } from "./responseUtil.js";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   anyOf,
   deprecatedField,
   idOf,
   validNameOf,
   validPasswordOf,
-} from "../validation-middleware";
-import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware";
-import { Device } from "models/Device";
-import { AuthenticationError, ClientError } from "../customErrors";
-import { DeviceId } from "@typedefs/api/common";
+} from "../validation-middleware.js";
+import { extractUnauthenticatedOptionalDeviceInGroup } from "../extract-middleware.js";
+import type { Device } from "models/Device.js";
+import { AuthenticationError, ClientError } from "../customErrors.js";
+import type { DeviceId } from "@typedefs/api/common.js";
+import {createEntityJWT} from "@api/auth.js";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateDeviceRequestBody {
@@ -119,7 +119,7 @@ export default function (app: Application) {
       if (passwordMatch) {
         return successResponse(response, "Successful login.", {
           id: response.locals.device.id,
-          token: `JWT ${auth.createEntityJWT(response.locals.device)}`,
+          token: `JWT ${createEntityJWT(response.locals.device)}`,
         });
       } else {
         return next(new AuthenticationError("Wrong password or deviceName."));

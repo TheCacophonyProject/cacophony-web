@@ -16,17 +16,19 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import config from "../config";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import config from "../config.js";
+import type { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
-import { AuthenticationError } from "./customErrors";
-import models, { ModelCommon } from "../models";
-import { Request } from "express";
-import { User } from "@models/User";
-import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
+import { AuthenticationError } from "./customErrors.js";
+import type {ModelCommon, ModelsDictionary} from "../models/index.js";
+import type { Request } from "express";
+import type { User } from "@models/User.js";
+import type { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common.js";
 import { randomUUID } from "crypto";
 import { QueryTypes } from "sequelize";
-import { HttpStatusCode } from "@typedefs/api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
+
 /*
  * Create a new JWT for a user or device.
  */
@@ -37,7 +39,7 @@ export const ttlTypes = Object.freeze({
   long: 30 * 60,
 });
 
-function createEntityJWT<T>(
+export function createEntityJWT<T>(
   entity: ModelCommon<T>,
   options?,
   access?: {}
@@ -131,6 +133,7 @@ export const getInviteToGroupTokenExistingUser = (
 };
 
 export const generateAuthTokensForUser = async (
+  models: ModelsDictionary,
   user: User,
   viewport: string = "",
   userAgent: string = "unknown user agent",
@@ -240,7 +243,7 @@ export const checkAccess = (
   return true;
 };
 
-export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
+export async function lookupEntity(models: ModelsDictionary, jwtDecoded: DecodedJWTToken) {
   switch (jwtDecoded._type) {
     case "user":
       return models.User.findByPk(jwtDecoded.id);
@@ -253,7 +256,7 @@ export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   }
 }
 
-function signedUrl(req, res, next) {
+export function signedUrl(req, res, next) {
   const jwtParam = req.query["jwt"];
   if (jwtParam == null) {
     return res
@@ -284,6 +287,7 @@ type AuthenticateMiddleware = (req, res, next) => Promise<void>;
  * Authenticate a JWT in the 'Authorization' header of the given type
  */
 const authenticate = (
+  models: ModelsDictionary,
   types: string[] | null,
   reqAccess?: Record<string, any>
 ): AuthenticateMiddleware => {
@@ -314,7 +318,7 @@ const authenticate = (
         .json({ messages: ["JWT does not have access."] });
       return;
     }
-    const result = await lookupEntity(jwtDecoded);
+    const result = await lookupEntity(models, jwtDecoded);
     if (!result) {
       res.status(HttpStatusCode.AuthorizationError).json({
         messages: [
@@ -328,10 +332,4 @@ const authenticate = (
   };
 };
 
-const authenticateUser: AuthenticateMiddleware = authenticate(["user"]);
-
-export default {
-  createEntityJWT,
-  signedUrl,
-  authenticateUser,
-};
+export const authenticateUser: (models: ModelsDictionary) => AuthenticateMiddleware = (models: ModelsDictionary) => authenticate(models,["user"]);

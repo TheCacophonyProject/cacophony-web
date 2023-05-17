@@ -16,12 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { User } from "@models/User";
+import type { User } from "@models/User.js";
 import { QueryTypes } from "sequelize";
-import models from "@models";
-import { GroupId, StationId } from "@typedefs/api/common";
-import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
-import { RecordingType } from "@typedefs/api/consts";
+import modelsInit from "@models/index.js";
+import type { GroupId, StationId } from "@typedefs/api/common.js";
+import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
+import { RecordingType } from "@typedefs/api/consts.js";
+import type {Recording} from "@models/Recording.js";
+
+const models = await modelsInit();
 
 export interface MonitoringParams {
   groups: GroupId[];
@@ -114,7 +117,7 @@ async function getDatesForSearch(
     replaceInSQL(VISITS_COUNT_SQL, replacements),
     { type: QueryTypes.SELECT }
   );
-  const approxVisitCount = parseInt(countRet[0].count);
+  const approxVisitCount = parseInt((countRet[0] as {count: string}).count);
   const returnVal = createPageCriteria(params, approxVisitCount);
   if (approxVisitCount < params.pageSize) {
     returnVal.pageFrom = returnVal.searchFrom;
@@ -123,9 +126,9 @@ async function getDatesForSearch(
     const limit: number = Number(params.pageSize) + 1;
     const offset: number = (params.page - 1) * params.pageSize;
     replacements.PAGING = ` LIMIT ${limit} OFFSET ${offset}`;
-    const results = await models.sequelize.query(
+    const results: Recording[] = await models.sequelize.query(
       replaceInSQL(VISIT_STARTS_SQL, replacements),
-      { type: QueryTypes.SELECT }
+      { model: models.Recording }
     );
 
     if (results.length > 0) {

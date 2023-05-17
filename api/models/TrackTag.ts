@@ -16,11 +16,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { TrackId, UserId } from "@typedefs/api/common";
-import Sequelize from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { User } from "./User";
-import LabelPaths from "../classifications/label_paths.json";
+import type { TrackId, UserId } from "@typedefs/api/common.js";
+import type Sequelize from "sequelize";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { User } from "./User.js";
+import LabelPaths from "../classifications/label_paths.json" assert { type: "json" };
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 

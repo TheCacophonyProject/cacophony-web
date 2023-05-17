@@ -1,6 +1,4 @@
-import registerAliases from "../module-aliases";
-registerAliases();
-import * as config from "../config";
+import * as config from "../config.js";
 
 import * as Influx from "influx";
 import process from "process";
@@ -8,7 +6,7 @@ import { program } from "commander";
 import { Client } from "pg";
 import moment from "moment";
 import os from "os";
-import { RecordingProcessingState } from "@typedefs/api/consts";
+import { RecordingProcessingState } from "@typedefs/api/consts.js";
 
 let Config;
 

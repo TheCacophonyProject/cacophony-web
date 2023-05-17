@@ -1,13 +1,11 @@
-import registerAliases from "../module-aliases";
-registerAliases();
-import { openS3 } from "@models/util/util";
+import { openS3 } from "@models/util/util.js";
 import { exec as cp_exec } from "child_process";
 import util from "util";
-import * as config from "../config";
+import * as config from "../config.js";
 import { program } from "commander";
 import { Client } from "pg";
 import process from "process";
-import log from "../logging";
+import log from "../logging.js";
 const exec = util.promisify(cp_exec);
 
 let diskUsageRatioTarget = 0.7; // Bring our disk usage down to 70%, will be overwritten by config

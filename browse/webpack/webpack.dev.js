@@ -1,9 +1,9 @@
 const { merge } = require("webpack-merge");
 const path = require("path");
-const common = require("./webpack.common");
+const common = require("./webpack.common.js");
 const webpack = require("webpack");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const devConfig = require("../dev-config");
+const devConfig = require("../dev-config.js");
 const { GitRevisionPlugin } = require("git-revision-webpack-plugin");
 const gitRevisionPlugin = new GitRevisionPlugin({ branch: true });
 

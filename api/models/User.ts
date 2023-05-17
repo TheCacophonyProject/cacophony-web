@@ -17,26 +17,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import bcrypt from "bcrypt";
-import Sequelize, {
+import type {
   BuildOptions,
   ModelAttributes,
   ModelOptions,
 } from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { Group } from "./Group";
-import {
+import Sequelize from "sequelize";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { Group } from "./Group.js";
+import type {
   DeviceId,
   EndUserAgreementVersion,
   GroupId,
   StationId,
   UserId,
-} from "@typedefs/api/common";
-import { UserGlobalPermission } from "@typedefs/api/consts";
-import { sendResetEmail } from "@/scripts/emailUtil";
-import { Device } from "@models/Device";
-import { ApiUserSettings } from "@typedefs/api/user";
-import { Station } from "./Station";
-import logger from "@/logging";
+} from "@typedefs/api/common.js";
+import { UserGlobalPermission } from "@typedefs/api/consts.js";
+import { sendResetEmail } from "@/scripts/emailUtil.js";
+import type { Device } from "@models/Device.js";
+import type { ApiUserSettings } from "@typedefs/api/user.js";
+import type { Station } from "./Station.js";
+import logger from "@/logging.js";
 
 const Op = Sequelize.Op;
 

@@ -1,13 +1,7 @@
-import registerAliases from "../module-aliases";
-registerAliases();
-import config from "../config";
-import { Recording } from "@models/Recording";
-import { TrackTag } from "@models/TrackTag";
-import moment from "moment";
-import { User } from "@models/User";
-import { getPasswordResetToken } from "@api/auth";
-import { sendEmail } from "@/emails/sendEmail";
-import { Alert } from "@models/Alert";
+import config from "../config.js";
+import type { User } from "@models/User.js";
+import { getPasswordResetToken } from "@api/auth.js";
+import { sendEmail } from "@/emails/sendEmail.js";
 
 export interface EmailImageAttachment {
   buffer: Buffer;
@@ -15,41 +9,6 @@ export interface EmailImageAttachment {
   mimeType: "image/png" | "image/jpeg";
 }
 
-function alertBody(
-  recording: Recording,
-  tag: TrackTag,
-  alert: Alert,
-  hasThumbnail: boolean,
-  camera?: string,
-  station?: string
-): string[] {
-  const dateTime = moment(recording.recordingDateTime)
-    .tz(config.timeZone)
-    .format("h:mma Do MMM");
-  let html = camera
-    ? `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`
-    : `<b>${tag.what} detected at station ${station} - ${dateTime}</b>`;
-  if (hasThumbnail) {
-    html += `<br> <a href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">`;
-    html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
-  }
-
-  html += `<br><a href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">View Recording</a>`;
-  if (station) {
-    html += `<br><br><a href="${config.server.browse_url}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id}">Remove this alert</a>`;
-  }
-  html += "<br><p>Thanks,<br> Cacophony Team</p>";
-
-  let text = camera
-    ? `${camera} has detected a ${tag.what} - ${dateTime}\r\n`
-    : `${tag.what} detected at station ${station} - ${dateTime}\r\n`;
-  text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId} to view this recording\r\n`;
-  if (station) {
-    text += `Go to ${config.server.browse_url}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id} to remove this alert\r\n`;
-  }
-  text += "Thanks, Cacophony Team";
-  return [html, text];
-}
 
 function resetBody(userTitle: string, token: string): string[] {
   const resetUrl = `${config.server.browse_url}/new-password/?token=${token}`;
@@ -80,4 +39,4 @@ async function sendResetEmail(user: User, password: string): Promise<boolean> {
   );
 }
 
-export { alertBody, sendResetEmail };
+export { sendResetEmail };

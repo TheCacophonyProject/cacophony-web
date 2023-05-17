@@ -3,9 +3,14 @@ const port = 7777;
 import { init } from "smtp-tester";
 import { appendFile, writeFile } from "fs";
 const mailServer = init(port);
-writeFile("mailServerStub.log", "SERVER: started", (err) => {
+let num = 1;
+const stubFile = "mailServerStub.log";
+console.log("Init mailserver stub");
+writeFile(stubFile, "SERVER: started", (err) => {
+  appendFile(stubFile, `HERE ${num++}`, () => {});
   if (err) {
     console.error(err);
+    appendFile(stubFile, err.toString(), () => {});
     return;
   }
 });
@@ -17,7 +22,7 @@ mailServer.bind((addr: string, id: number, email: any) => {
     // when we're expecting *NO* email to be sent on an event,
     // but we don't want the cypress test to just timeout.
     const content: string = "SERVER: received email\n";
-    appendFile("mailServerStub.log", content, (err) => {
+    appendFile(stubFile, content, (err) => {
       if (err) {
         console.error(err);
         return;
@@ -31,9 +36,10 @@ mailServer.bind((addr: string, id: number, email: any) => {
     content += `SERVER: to: ${email.headers.to}\n`;
     content += `SERVER: body: ${email.data}\n`;
     content += "SERVER: end of mail\n";
-    writeFile("mailServerStub.log", content, (err) => {
+    writeFile(stubFile, content, (err) => {
       if (err) {
         console.error(err);
+        appendFile(stubFile, err.toString(), () => {});
         return;
       }
     });

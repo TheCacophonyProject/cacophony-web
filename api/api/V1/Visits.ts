@@ -11,16 +11,17 @@ All tracks of a recording always belong to the same visit
 
 // FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
 
-import { Recording } from "@models/Recording";
-import { TrackTag } from "@models/TrackTag";
-import { Track } from "@models/Track";
-import { AI_MASTER } from "@models/TrackTag";
-import moment, { Moment } from "moment";
-import { Event } from "@models/Event";
-import { DeviceId, StationId } from "@typedefs/api/common";
+import type { Recording } from "@models/Recording.js";
+import type { TrackTag } from "@models/TrackTag.js";
+import type { Track } from "@models/Track.js";
+import { AI_MASTER } from "@models/TrackTag.js";
+import type { Moment } from "moment";
+import moment from "moment";
+import type { Event } from "@models/Event.js";
+import type { DeviceId, StationId } from "@typedefs/api/common.js";
 
-import Classifications from "@/classifications/classification.json";
-import { Classification } from "@typedefs/api/trackTag";
+import Classifications from "@/classifications/classification.json" assert { type: "json" };
+import type { Classification } from "@typedefs/api/trackTag.js";
 
 const flattenNodes = (
   acc: Record<string, { label: string; display: string; path: string }>,

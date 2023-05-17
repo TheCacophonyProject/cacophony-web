@@ -16,26 +16,28 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
-import models from "@models";
-import util from "./util";
-import { successResponse } from "./responseUtil";
+import { validateFields } from "../middleware.js";
+import modelsInit from "@models/index.js";
+import util from "./util.js";
+import { successResponse } from "./responseUtil.js";
 import config from "@config";
 import jsonwebtoken from "jsonwebtoken";
 import { param, query } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   extractJwtAuthorizedUserOrDevice,
   fetchUnauthorizedRequiredFileById,
-} from "../extract-middleware";
-import { File } from "@models/File";
+} from "../extract-middleware.js";
+import type { File } from "@models/File.js";
 import { Op } from "sequelize";
-import { idOf } from "@api/validation-middleware";
-import { AuthorizationError } from "@api/customErrors";
-import { ApiAudiobaitFileResponse } from "@typedefs/api/file";
-import classification from "@/classifications/classification.json";
-import { User } from "@models/User";
+import { idOf } from "@api/validation-middleware.js";
+import { AuthorizationError } from "@api/customErrors.js";
+import type { ApiAudiobaitFileResponse } from "@typedefs/api/file.js";
+import classification from "@/classifications/classification.json" assert { type: "json" };
+import type { User } from "@models/User.js";
+
+const models = await modelsInit();
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {

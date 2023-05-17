@@ -399,7 +399,7 @@ describe("Device: fix-location of device and/or recordings", () => {
     });
   });
 
-  it.only("correct location: Move all recordings from auto to manual, before current lastRecTime", () => {
+  it("correct location: Move all recordings from auto to manual, before current lastRecTime", () => {
     const deviceName = "new-device-3";
     const manualStationName = "Josie-station-3";
 

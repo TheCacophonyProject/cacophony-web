@@ -16,26 +16,27 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { jsonSchemaOf } from "@api/schema-validation";
-import util from "@api/V1/util";
+import { jsonSchemaOf } from "@api/schema-validation.js";
+import util from "@api/V1/util.js";
 import config from "@config";
 import log from "@log";
-import models from "@models";
-import { Recording } from "@models/Recording";
-import { Tag } from "@models/Tag";
-import { Track } from "@models/Track";
-import { TrackTag } from "@models/TrackTag";
-import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json";
-import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
-import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json";
-import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json";
+import modelsInit from "@models/index.js";
+import type { Recording } from "@models/Recording.js";
+import type { Tag } from "@models/Tag.js";
+import type { Track } from "@models/Track.js";
+import type { TrackTag } from "@models/TrackTag.js";
+import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert { type: "json" };
+import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
+import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json" assert { type: "json" };
+import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" assert { type: "json" };
+import type {
+  TagMode} from "@typedefs/api/consts.js";
 import {
   HttpStatusCode,
   RecordingProcessingState,
-  RecordingType,
-  TagMode,
-} from "@typedefs/api/consts";
-import {
+  RecordingType
+} from "@typedefs/api/consts.js";
+import type {
   ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
   ApiGenericRecordingResponse,
@@ -43,24 +44,25 @@ import {
   ApiRecordingUpdateRequest,
   ApiThermalRecordingMetadataResponse,
   ApiThermalRecordingResponse,
-} from "@typedefs/api/recording";
+} from "@typedefs/api/recording.js";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import { ApiTrackResponse } from "@typedefs/api/track";
-import {
+import type { ApiRecordingTagResponse } from "@typedefs/api/tag.js";
+import type { ApiTrackResponse } from "@typedefs/api/track.js";
+import type {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
   ApiTrackTagResponse,
-} from "@typedefs/api/trackTag";
-import { Application, NextFunction, Request, Response } from "express";
+} from "@typedefs/api/trackTag.js";
+import type { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
 // @ts-ignore
 import * as csv from "fast-csv";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
-import LabelPaths from "../../classifications/label_paths.json";
+import LabelPaths from "../../classifications/label_paths.json" assert { type: "json" };
 
-import { AuthorizationError, ClientError, FatalError } from "../customErrors";
+import { AuthorizationError, ClientError, FatalError } from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -72,8 +74,8 @@ import {
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
-} from "../extract-middleware";
-import { expectedTypeOf, validateFields } from "../middleware";
+} from "../extract-middleware.js";
+import { expectedTypeOf, validateFields } from "../middleware.js";
 import {
   anyOf,
   booleanOf,
@@ -81,20 +83,25 @@ import {
   integerOf,
   stringOf,
   validNameOf,
-} from "../validation-middleware";
+} from "../validation-middleware.js";
 
-import recordingUtil, {
+import {
+  addTag,
+  bulkDelete,
+  getThumbnail,
   getTrackTags,
-  mapPosition,
+  queryRecordings, queryVisits,
   reportRecordings,
   reportVisits,
   signedToken,
   uploadRawRecording,
-} from "./recordingUtil";
-import { serverErrorResponse, successResponse } from "./responseUtil";
-import { streamS3Object } from "@api/V1/signedUrl";
+} from "./recordingUtil.js";
+import { serverErrorResponse, successResponse } from "./responseUtil.js";
+import { streamS3Object } from "@api/V1/signedUrl.js";
 import fs from "fs/promises";
-import logger from "@log";
+import {mapPosition} from "@models/Recording.js";
+
+const models = await modelsInit();
 
 const mapTrackTag = (
   trackTag: TrackTag
@@ -372,7 +379,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiSuccess {Number} recordingId ID of the recording.
    * @apiuse V1ResponseError
    */
-  app.post(apiUrl, extractJwtAuthorisedDevice, uploadRawRecording);
+  app.post(apiUrl, extractJwtAuthorisedDevice, uploadRawRecording(models));
 
   /**
    * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
@@ -410,7 +417,7 @@ export default (app: Application, baseUrl: string) => {
       param("deviceName"),
       param("groupName")
     ),
-    uploadRawRecording
+    uploadRawRecording(models)
   );
 
   /**
@@ -447,7 +454,7 @@ export default (app: Application, baseUrl: string) => {
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    uploadRawRecording
+    uploadRawRecording(models)
   );
 
   /**
@@ -490,7 +497,7 @@ export default (app: Application, baseUrl: string) => {
       response.locals.device = devices.pop();
       next();
     },
-    uploadRawRecording
+    uploadRawRecording(models)
   );
 
   // FIXME - Should we just delete this now?
@@ -537,7 +544,8 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       const { viewAsSuperUser, where, tags = [] } = response.locals;
       const { tagMode, offset, limit } = request.query;
-      const result = await recordingUtil.queryVisits(
+      const result = await queryVisits(
+        models,
         response.locals.requestUser.id,
         {
           viewAsSuperUser,
@@ -632,7 +640,9 @@ export default (app: Application, baseUrl: string) => {
       }
       const useFilteredModel: string | false =
         (filterModel && (filterModel as string)) || false;
-      const result = await recordingUtil.query(
+      // eslint-disable-next-line no-undef
+      const result = await queryRecordings(
+        models,
         response.locals.requestUser.id,
         type as RecordingType,
         countAll ? true : false,
@@ -708,7 +718,8 @@ export default (app: Application, baseUrl: string) => {
       const limitInt = Math.min(parsedLimit, 1000);
 
       try {
-        const values = await recordingUtil.bulkDelete(
+        const values = await bulkDelete(
+          models,
           response.locals.requestUser.id,
           type as RecordingType,
           {
@@ -1036,6 +1047,7 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("includeAI")),
     async (request: Request, response: Response) => {
       const result = await getTrackTags(
+        models,
         response.locals.requestUser.id,
         response.locals.viewAsSuperUser,
         Boolean(request.query.includeAI),
@@ -1123,9 +1135,10 @@ export default (app: Application, baseUrl: string) => {
 
       let rows;
       if (request.query.type == "visits") {
-        rows = await reportVisits(response.locals.requestUser.id, options);
+        rows = await reportVisits(models, response.locals.requestUser.id, options);
       } else {
         rows = await reportRecordings(
+            models,
           response.locals.requestUser.id,
           Boolean(audioBait),
           {
@@ -1398,8 +1411,8 @@ export default (app: Application, baseUrl: string) => {
       }
        */
 
-      recordingUtil
-        .getThumbnail(rec, trackId)
+
+        getThumbnail(rec, trackId)
         .then((data) => {
           response.setHeader(
             "Content-disposition",
@@ -2158,7 +2171,8 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredRecordingById(param("id")),
     parseJSONField(body("tag")),
     async (request: Request, response: Response) => {
-      const tagInstance = await recordingUtil.addTag(
+      const tagInstance = await addTag(
+        models,
         response.locals.requestUser,
         response.locals.recording,
         response.locals.tag

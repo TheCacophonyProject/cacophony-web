@@ -1,38 +1,37 @@
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStations,
   parseJSONField,
-} from "@api/extract-middleware";
-import { successResponse } from "@api/V1/responseUtil";
-import { validateFields } from "@api/middleware";
+} from "@api/extract-middleware.js";
+import { successResponse } from "@api/V1/responseUtil.js";
+import { validateFields } from "@api/middleware.js";
 import { body, param, query } from "express-validator";
-import { Station } from "@models/Station";
-import {
+import type { Station } from "@models/Station.js";
+import type {
   ApiCreateStationData,
   ApiStationResponse,
   ApiStationSettings,
-} from "@typedefs/api/station";
+} from "@typedefs/api/station.js";
 import {
   booleanOf,
   idOf,
   integerOfWithDefault,
   stringOf,
-} from "../validation-middleware";
-import { jsonSchemaOf } from "@api/schema-validation";
-import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json";
-import { stationLocationHasChanged } from "@models/Group";
-import models from "@models";
-import {
-  latLngApproxDistance,
-  MIN_STATION_SEPARATION_METERS,
-} from "@api/V1/recordingUtil";
-import util from "@api/V1/util";
-import { openS3 } from "@models/util/util";
-import { streamS3Object } from "@api/V1/signedUrl";
-import { ClientError } from "@api/customErrors";
+} from "../validation-middleware.js";
+import { jsonSchemaOf } from "@api/schema-validation.js";
+import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" assert { type: "json" };
+import { stationLocationHasChanged } from "@models/Group.js";
+import modelsInit from "@models/index.js";
+import util from "@api/V1/util.js";
+import { openS3 } from "@models/util/util.js";
+import { streamS3Object } from "@api/V1/signedUrl.js";
+import { ClientError } from "@api/customErrors.js";
+import {latLngApproxDistance, MIN_STATION_SEPARATION_METERS} from "@models/util/locationUtils.js";
+
+const models = await modelsInit();
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {

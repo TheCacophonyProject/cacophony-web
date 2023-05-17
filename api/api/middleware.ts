@@ -16,27 +16,30 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+import type {
+  CustomValidator,
+  Result,
+  ValidationChain} from "express-validator";
 import {
   body,
-  CustomValidator,
   matchedData,
   query,
-  Result,
-  ValidationChain,
   validationResult,
 } from "express-validator";
-import models, { ModelStaticCommon } from "../models";
+import type { ModelStaticCommon } from "../models/index.js";
+import modelsInit from "../models/index.js";
 import { format } from "util";
-import log from "../logging";
+import log from "../logging.js";
 import customErrors, {
   ClientError,
   UnprocessableError,
   ValidationError,
-} from "./customErrors";
-import { NextFunction, Request, Response } from "express";
-import logger from "../logging";
-import { DecodedJWTToken } from "./auth";
+} from "./customErrors.js";
+import type { NextFunction, Request, Response } from "express";
+import type { DecodedJWTToken } from "./auth.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
+
+const models = await modelsInit();
 
 export const getModelByIdChain = <T>(
   modelType: ModelStaticCommon<T>,
@@ -44,7 +47,7 @@ export const getModelByIdChain = <T>(
   checkFunc
 ) => {
   return checkFunc(fieldName).custom(async (val, { req }) => {
-    logger.info("Get id %s for %s", val, modelTypeName(modelType));
+    log.info("Get id %s for %s", val, modelTypeName(modelType));
     const model = await modelType.findByPk(val);
     if (model === null) {
       throw new Error(
@@ -60,9 +63,9 @@ export const getModelById = <T>(
   modelType: ModelStaticCommon<T>
 ): CustomValidator => {
   return async (id, { req }) => {
-    logger.info("Get model by id %s for %s", id, modelTypeName(modelType));
+    log.info("Get model by id %s for %s", id, modelTypeName(modelType));
     const item = await modelType.findByPk(id);
-    logger.info("Returned %s", item);
+    log.info("Returned %s", item);
     if (item === null) {
       throw new ClientError(
         `Could not find a ${modelType.name} with an id of ${id}`

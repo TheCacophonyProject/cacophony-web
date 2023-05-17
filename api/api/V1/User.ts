@@ -16,14 +16,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
+import { validateFields } from "../middleware.js";
 import {
   generateAuthTokensForUser,
   getEmailConfirmationToken,
   getJoinGroupRequestToken,
-} from "../auth";
-import models from "@models";
-import { successResponse } from "./responseUtil";
+} from "../auth.js";
+import modelsInit from "@models/index.js";
+import { successResponse } from "./responseUtil.js";
 import { body, matchedData, param, query } from "express-validator";
 import {
   AuthorizationError,
@@ -31,10 +31,10 @@ import {
   FatalError,
   UnprocessableError,
   ValidationError,
-} from "../customErrors";
-import { Application, NextFunction, Request, Response } from "express";
+} from "../customErrors.js";
+import type { Application, NextFunction, Request, Response } from "express";
 import config from "@config";
-import { User } from "@models/User";
+import type { User } from "@models/User.js";
 import {
   anyOf,
   booleanOf,
@@ -42,7 +42,7 @@ import {
   integerOf,
   validNameOf,
   validPasswordOf,
-} from "../validation-middleware";
+} from "../validation-middleware.js";
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
@@ -53,22 +53,23 @@ import {
   fetchUnauthorizedOptionalUserByEmailOrId,
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
-} from "../extract-middleware";
-import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import { jsonSchemaOf } from "@api/schema-validation";
-import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json";
-import { ApiGroupResponse } from "@typedefs/api/group";
+} from "../extract-middleware.js";
+import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
+import { jsonSchemaOf } from "@api/schema-validation.js";
+import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json" assert { type: "json" };
+import type { ApiGroupResponse } from "@typedefs/api/group.js";
 import {
   sendAddedToGroupNotificationEmail,
   sendChangedEmailConfirmationEmail,
   sendGroupMembershipRequestEmail,
   sendWelcomeEmailConfirmationEmail,
   sendWelcomeEmailWithGroupsAdded,
-} from "@/emails/transactionalEmails";
-import { CACOPHONY_WEB_VERSION } from "@/Globals";
-import { HttpStatusCode } from "@typedefs/api/consts";
+} from "@/emails/transactionalEmails.js";
+import { CACOPHONY_WEB_VERSION } from "@/Globals.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { Op } from "sequelize";
 
+const models = await modelsInit();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLoggedInUsersResponseSuccess {
   usersList: ApiLoggedInUserResponse[];
@@ -273,6 +274,7 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
+        models,
         user,
         request.headers["viewport"] as string,
         request.headers["user-agent"]
@@ -520,6 +522,7 @@ export default function (app: Application, baseUrl: string) {
         );
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
+        models,
         response.locals.user,
         request.headers["viewport"] as string,
         request.headers["user-agent"]

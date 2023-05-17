@@ -16,14 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
-import auth from "../auth";
-import models from "@models";
-import { successResponse } from "./responseUtil";
+import { validateFields } from "../middleware.js";
+import modelsInit from "@models/index.js";
+import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
-import { ClientError, UnprocessableError } from "../customErrors";
-import { dynamicImportESM } from "@/dynamic-import-esm";
+import type { Application, NextFunction, Request, Response } from "express";
+import { ClientError, UnprocessableError } from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -38,7 +36,7 @@ import {
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredScheduleById,
   parseJSONField,
-} from "../extract-middleware";
+} from "../extract-middleware.js";
 import {
   anyOf,
   checkDeviceNameIsUniqueInGroup,
@@ -50,36 +48,34 @@ import {
   stringOf,
   validNameOf,
   validPasswordOf,
-} from "../validation-middleware";
-import { Device } from "models/Device";
-import {
+} from "../validation-middleware.js";
+import type { Device } from "models/Device.js";
+import type {
   ApiDeviceLocationFixup,
   ApiDeviceResponse,
-} from "@typedefs/api/device";
-import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json";
+} from "@typedefs/api/device.js";
+import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
 import logging from "@log";
-import { ApiGroupUserResponse } from "@typedefs/api/group";
-import { jsonSchemaOf } from "@api/schema-validation";
-import { Op } from "sequelize";
-import { DeviceHistory, DeviceHistorySettings } from "@models/DeviceHistory";
+import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
+import { jsonSchemaOf } from "@api/schema-validation.js";
+import Sequelize, { Op } from "sequelize";
+import type { DeviceHistory, DeviceHistorySettings } from "@models/DeviceHistory.js";
 import {
   DeviceType,
   HttpStatusCode,
   RecordingType,
-} from "@typedefs/api/consts";
-import { Recording } from "@models/Recording";
+} from "@typedefs/api/consts.js";
+import type { Recording } from "@models/Recording.js";
 import config from "@config";
-import recordingUtil, {
-  getCPTVFrames,
-  THUMBNAIL_PALETTE,
-} from "@api/V1/recordingUtil";
-import log from "@log";
-import { streamS3Object } from "@api/V1/signedUrl";
-import modelsUtil, { deleteFile } from "@models/util/util";
-import { uploadFileStream } from "@api/V1/util";
-import { ApiStationResponse } from "@typedefs/api/station";
-import { mapStation } from "@api/V1/Station";
-import { mapTrack, mapTracks } from "@api/V1/Recording";
+import { streamS3Object } from "@api/V1/signedUrl.js";
+import { deleteFile } from "@models/util/util.js";
+import { uploadFileStream } from "@api/V1/util.js";
+import type { ApiStationResponse } from "@typedefs/api/station.js";
+import { mapStation } from "@api/V1/Station.js";
+import { mapTrack, mapTracks } from "@api/V1/Recording.js";
+import {createEntityJWT} from "@api/auth.js";
+
+const models = await modelsInit();
 
 export const mapDeviceResponse = (
   device: Device,
@@ -271,7 +267,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Created new device.", {
         id: device.id,
         saltId: device.saltId,
-        token: `JWT ${auth.createEntityJWT(device)}`,
+        token: `JWT ${createEntityJWT(device)}`,
       });
     }
   );
@@ -593,11 +589,11 @@ export default function (app: Application, baseUrl: string) {
                   fromDateTime: { [Op.gt]: fromTime },
                 },
                 models.sequelize.where(
-                  models.Sequelize.fn("ST_X", models.Sequelize.col("location")),
+                  Sequelize.fn("ST_X", Sequelize.col("location")),
                   { [Op.ne]: deviceHistoryEntry.location.lng }
                 ),
                 models.sequelize.where(
-                  models.Sequelize.fn("ST_Y", models.Sequelize.col("location")),
+                  Sequelize.fn("ST_Y", Sequelize.col("location")),
                   { [Op.ne]: deviceHistoryEntry.location.lat }
                 ),
               ] as any,
@@ -1588,6 +1584,7 @@ export default function (app: Application, baseUrl: string) {
       );
 
       const device = await requestDevice.reRegister(
+        models,
         request.body.newName,
         response.locals.group,
         request.body.newPassword
@@ -1601,7 +1598,7 @@ export default function (app: Application, baseUrl: string) {
       }
       return successResponse(response, "Registered the device again.", {
         id: device.id,
-        token: `JWT ${auth.createEntityJWT(device)}`,
+        token: `JWT ${createEntityJWT(device)}`,
       });
     }
   );
@@ -1866,7 +1863,7 @@ export default function (app: Application, baseUrl: string) {
       const requestDevice = (await models.Device.findByPk(
         response.locals.requestDevice.id
       )) as Device;
-      await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
+      await requestDevice.updateHeartbeat(models, request.body.nextHeartbeat);
       return successResponse(response, "Heartbeat updated.");
     }
   );

@@ -16,21 +16,23 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, isIntArray, validateFields } from "../middleware";
-import { Application, NextFunction, Request, Response } from "express";
+import { expectedTypeOf, isIntArray, validateFields } from "../middleware.js";
+import type { Application, NextFunction, Request, Response } from "express";
+import type {
+  MonitoringParams} from "./monitoringPage.js";
 import {
-  calculateMonitoringPageCriteria,
-  MonitoringParams,
-} from "./monitoringPage";
-import { generateVisits } from "./monitoringVisit";
-import { successResponse } from "./responseUtil";
+  calculateMonitoringPageCriteria
+} from "./monitoringPage.js";
+import { generateVisits } from "./monitoringVisit.js";
+import { successResponse } from "./responseUtil.js";
 import { query } from "express-validator";
-import { extractJwtAuthorizedUser } from "../extract-middleware";
-import models from "@models";
-import { ClientError } from "@api/customErrors";
-import { GroupId, StationId } from "@typedefs/api/common";
-import logger from "@log";
-import { RecordingType } from "@typedefs/api/consts";
+import { extractJwtAuthorizedUser } from "../extract-middleware.js";
+import modelsInit from "@models/index.js";
+import { ClientError } from "@api/customErrors.js";
+import type { GroupId, StationId } from "@typedefs/api/common.js";
+import { RecordingType } from "@typedefs/api/consts.js";
+
+const models = await modelsInit();
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;

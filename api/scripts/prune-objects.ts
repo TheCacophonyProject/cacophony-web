@@ -1,10 +1,8 @@
-import registerAliases from "../module-aliases";
-registerAliases();
 import process from "process";
 import { program } from "commander";
 import { Client } from "pg";
-import * as config from "../config";
-import * as modelsUtil from "../models/util/util";
+import * as config from "../config.js";
+import * as modelsUtil from "../models/util/util.js";
 
 let Config;
 // Define the types of object keys that will be considered for pruning.

@@ -16,16 +16,18 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
-import modelsUtil from "@models/util/util";
-import { serverErrorResponse } from "./responseUtil";
-import { ClientError } from "../customErrors";
-import { Application, Request, Response } from "express";
-import { GroupId, UserId } from "@typedefs/api/common";
-import models from "@models";
-import { SuperUsers } from "@/Globals";
+import middleware from "../middleware.js";
+import { serverErrorResponse } from "./responseUtil.js";
+import { ClientError } from "../customErrors.js";
+import type { Application, Request, Response } from "express";
+import type { GroupId, UserId } from "@typedefs/api/common.js";
+import modelsInit from "@models/index.js";
+import { SuperUsers } from "@/Globals.js";
 import { Op } from "sequelize";
+import {openS3} from "@models/util/util.js";
+import {signedUrl} from "@api/auth.js";
+
+const models = await modelsInit();
 
 export const streamS3Object = async (
   request: Request,
@@ -44,7 +46,7 @@ export const streamS3Object = async (
     response.setHeader("Content-Length", fileSize);
   }
 
-  const s3 = modelsUtil.openS3();
+  const s3 = openS3();
   const s3Request = s3.getObject({
     Key: key,
   });
@@ -158,7 +160,7 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${baseUrl}/signedUrl`,
-    [auth.signedUrl],
+    [signedUrl],
     middleware.requestWrapper(async (request, response) => {
       // TODO: If this signed url has a user, then we can attribute downloads + bandwidth
       //  to that user for billing purposes.

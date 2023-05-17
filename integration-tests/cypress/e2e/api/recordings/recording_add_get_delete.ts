@@ -606,7 +606,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     }
   });
 
-  it.only("Can upload multiple file attachments for trailcam devices", () => {
+  it("Can upload multiple file attachments for trailcam devices", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     recording1.type = RecordingType.TrailCamImage;
     let expectedRecording1: ApiThermalRecordingResponse;

@@ -1,7 +1,7 @@
 // Template configuration for automated tests.
 // Copy to `app_test.js` and fill in the sections indicated.
 
-const server = {
+export const server = {
   passportSecret: "something",
   loggerLevel: "debug",
   http: {
@@ -12,7 +12,7 @@ const server = {
   isLocalDev: true,
 };
 
-const s3Local = {
+export const s3Local = {
   // Used for storing audio & video recordings.
   publicKey: "REQUIRED", // obtain from S3 server.
   privateKey: "REQUIRED", // obtain from S3 server
@@ -21,7 +21,7 @@ const s3Local = {
   rootPath: "/.data/", // Root of the minio storage directory, so we can work out total and available disk space.
 };
 
-const s3Archive = {
+export const s3Archive = {
   publicKey: "REQUIRED", // REQUIRED, String:
   privateKey: "REQUIRED", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
@@ -29,12 +29,12 @@ const s3Archive = {
   freeSpaceThresholdRatio: 0.7,
 };
 
-const fileProcessing = {
+export const fileProcessing = {
   port: 2008,
 };
 
 // ======= Database settings =======
-const database = {
+export const database = {
   username: "REQUIRED",
   password: "REQUIRED",
   database: "cacophonytest",
@@ -43,7 +43,7 @@ const database = {
   slowQueryLogThresholdMs: 1000,
 };
 
-const smtpDetails = {
+export const smtpDetails = {
   service: "gmail",
   auth: {
     user: "noinfo@cacophony.org.nz",
@@ -51,21 +51,16 @@ const smtpDetails = {
   },
 };
 
-exports.smtpDetails = smtpDetails;
-exports.server = server;
-exports.s3Local = s3Local;
-exports.s3Archive = s3Archive;
-exports.fileProcessing = fileProcessing;
-exports.database = database;
 
 // This is needed because Sequelize looks for development by default
 // when using db:migrate
-exports.development = database;
-exports.default = {
-  smtpDetails: exports.smtpDetails,
-  server: exports.server,
-  s3Local: exports.s3Local,
-  s3Archive: exports.s3Archive,
-  fileProcessing: exports.fileProcessing,
-  database: exports.database,
+export const development = database;
+export default {
+  smtpDetails,
+  server,
+  s3Local,
+  s3Archive,
+  fileProcessing,
+  database,
+  development: database,
 };

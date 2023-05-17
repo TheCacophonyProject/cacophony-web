@@ -16,24 +16,26 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields } from "../middleware";
+import { expectedTypeOf, validateFields } from "../middleware.js";
 import { body, param } from "express-validator";
 
-import { Application, Request, Response } from "express";
+import type { Application, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredRecordingById,
   fetchAuthorizedRequiredRecordingsByIds,
-} from "../extract-middleware";
-import { idOf } from "../validation-middleware";
-import { successResponse } from "./responseUtil";
-import { NextFunction } from "express-serve-static-core";
-import { ClientError } from "../customErrors";
-import { arrayOf, jsonSchemaOf } from "../schema-validation";
+} from "../extract-middleware.js";
+import { idOf } from "../validation-middleware.js";
+import { successResponse } from "./responseUtil.js";
+import type { NextFunction } from "express-serve-static-core";
+import { ClientError } from "../customErrors.js";
+import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
 import { uniq as dedupe } from "lodash";
-import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json";
-import { HttpStatusCode } from "@typedefs/api/consts";
+import lodash from "lodash";
+import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" assert { type: "json" };
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 
+const { uniq: dedupe } = lodash;
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
 

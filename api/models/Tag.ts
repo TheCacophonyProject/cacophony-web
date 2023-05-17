@@ -17,13 +17,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import _ from "lodash";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import Sequelize from "sequelize";
-import {
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type Sequelize from "sequelize";
+import type {
   ApiRecordingTagRequest,
   ApiRecordingTagResponse,
-} from "@typedefs/api/tag";
-import { AcceptableTag } from "@typedefs/api/consts";
+} from "@typedefs/api/tag.js";
+import { AcceptableTag } from "@typedefs/api/consts.js";
 
 export interface Tag
   extends ApiRecordingTagResponse,

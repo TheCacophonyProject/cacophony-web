@@ -16,12 +16,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize, { FindOptions } from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { TrackTag, TrackTagId, additionalTags, filteredTags } from "./TrackTag";
-import { Recording } from "./Recording";
-import { RecordingId, TrackId } from "@typedefs/api/common";
-import { TrackTagData } from "@/../types/api/trackTag";
+import type { FindOptions } from "sequelize";
+import Sequelize from "sequelize";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { TrackTag, TrackTagId} from "./TrackTag.js";
+import { additionalTags, filteredTags } from "./TrackTag.js";
+import type { Recording } from "./Recording.js";
+import type { RecordingId, TrackId } from "@typedefs/api/common.js";
+import type { TrackTagData } from "@/../types/api/trackTag.js";
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
   id: TrackId;

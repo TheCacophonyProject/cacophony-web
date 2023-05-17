@@ -46,8 +46,7 @@ if [ ! -f "$CONFIG" ]; then
   echo "---- Copying /app/api/config/app_test_default.js to $CONFIG ----"
 fi
 echo "---- Using config $CONFIG ----"
-
-../node_modules/.bin/sequelize db:migrate --config $CONFIG
+./node_modules/.bin/sequelize db:migrate --config $CONFIG --env "database"
 sudo -i -u postgres psql cacophonytest -f /app/api/db-seed.sql
 
 echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
@@ -66,5 +65,5 @@ cd ../types && npm run generate-schemas
 cd ../api
 
 echo "---- Compiling typescript and starting module ----"
-../node_modules/.bin/tsc --resolveJsonModule
-../node_modules/.bin/tsc-watch --resolveJsonModule --noClear --onSuccess "node --no-warnings=ExperimentalWarnings --experimental-json-modules --inspect=0.0.0.0:9229 Server.js --config=$CONFIG"
+./node_modules/.bin/tsc
+./node_modules/.bin/tsc-watch --noClear --onSuccess "node --loader esm-module-alias/loader --no-warnings=ExperimentalWarnings --inspect=0.0.0.0:9229 ./Server.js --config=$CONFIG"

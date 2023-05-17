@@ -16,13 +16,13 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields } from "../middleware";
-import models from "@models";
-import { Event, QueryOptions } from "@models/Event";
-import { successResponse } from "./responseUtil";
+import { expectedTypeOf, validateFields } from "../middleware.js";
+import modelsInit from "@models/index.js";
+import type { Event, QueryOptions } from "@models/Event.js";
+import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
-import { errors, powerEventsPerDevice } from "./eventUtil";
+import type { Application, NextFunction, Request, Response } from "express";
+import { errors, powerEventsPerDevice } from "./eventUtil.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -30,11 +30,11 @@ import {
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredEventById,
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
-} from "../extract-middleware";
-import { jsonSchemaOf } from "../schema-validation";
-import EventDatesSchema from "@schemas/api/event/EventDates.schema.json";
-import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json";
-import { EventDescription } from "@typedefs/api/event";
+} from "../extract-middleware.js";
+import { jsonSchemaOf } from "../schema-validation.js";
+import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" assert { type: "json" };
+import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" assert { type: "json" };
+import type { EventDescription } from "@typedefs/api/event.js";
 import logger from "@log";
 import {
   anyOf,
@@ -42,17 +42,18 @@ import {
   deprecatedField,
   idOf,
   integerOf,
-} from "../validation-middleware";
-import { ClientError } from "../customErrors";
-import { IsoFormattedDateString } from "@typedefs/api/common";
+} from "../validation-middleware.js";
+import { ClientError } from "../customErrors.js";
+import type { IsoFormattedDateString } from "@typedefs/api/common.js";
 import {
   maybeUpdateDeviceHistory,
   sendEventAlerts,
-} from "@api/V1/recordingUtil";
-import { HttpStatusCode } from "@typedefs/api/consts";
-import util from "@api/V1/util";
-import { streamS3Object } from "@api/V1/signedUrl";
+} from "@api/V1/recordingUtil.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
+import util from "@api/V1/util.js";
+import { streamS3Object } from "@api/V1/signedUrl.js";
 
+const models = await modelsInit();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
 const uploadEvent = async (
@@ -84,6 +85,7 @@ const uploadEvent = async (
         const details = JSON.parse(description.details);
         if (details.location !== null) {
           await maybeUpdateDeviceHistory(
+            models,
             device,
             { lat: details.location.latitude, lng: details.location.longitude },
             new Date(details.location.updated),

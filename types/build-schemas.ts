@@ -10,9 +10,9 @@ import {
   createProgram,
   createParser,
   SchemaGenerator,
+  ts
 } from "ts-json-schema-generator";
 import fs from "fs/promises";
-import ts from "typescript";
 import crypto from "crypto";
 import readdir from "recursive-readdir";
 
@@ -101,7 +101,7 @@ class TypeAliasParser implements SubNodeParser {
     node: ts.Node,
     context: Context,
     reference?: ReferenceType
-  ): BaseType | undefined {
+  ): BaseType {
     return new IntegerType(); // Treat constructors as strings in this example
   }
 }
@@ -120,7 +120,7 @@ class FloatZeroOneParser implements SubNodeParser {
     node: ts.Node,
     context: Context,
     reference?: ReferenceType
-  ): BaseType | undefined {
+  ): BaseType {
     return new FloatZeroOneType(); // Treat constructors as strings in this example
   }
 }
@@ -139,7 +139,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
     node: ts.Node,
     context: Context,
     reference?: ReferenceType
-  ): BaseType | undefined {
+  ): BaseType {
     return new IsoFormattedDateStringType(); // Treat constructors as strings in this example
   }
 }
@@ -152,7 +152,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   // Load the changes cache file if it exists:
   let changes: Record<string, string> = {};
   try {
-    changes = JSON.parse(await fs.readFile("./schema-cache.json", "utf8"));
+    changes = JSON.parse(await fs.readFile("../api/schema-cache.json", "utf8"));
   } catch (e) {
     console.log("Cache doesn't exist?", e);
   }
@@ -229,22 +229,22 @@ class IsoFormattedDateStringParser implements SubNodeParser {
         const subdirNames = typedefFile.replace(".d.ts", "").split("/");
         const p = [];
         try {
-          await fs.access(`./jsonSchemas`);
+          await fs.access(`../api/json-schemas`);
         } catch (e) {
-          await fs.mkdir(`./jsonSchemas`);
+          await fs.mkdir(`../api/json-schemas`);
         }
         if (subdirNames.length) {
           while (p.length < subdirNames.length) {
             p.push(subdirNames[p.length]);
             try {
-              await fs.access(`./jsonSchemas/${p.join("/")}`);
+              await fs.access(`../api/json-schemas/${p.join("/")}`);
             } catch (e) {
-              await fs.mkdir(`./jsonSchemas/${p.join("/")}`);
+              await fs.mkdir(`../api/json-schemas/${p.join("/")}`);
             }
           }
         }
         await fs.writeFile(
-          `./jsonSchemas/${subdirNames.join("/")}/${exportedName}.schema.json`,
+          `../api/json-schemas/${subdirNames.join("/")}/${exportedName}.schema.json`,
           schemaString
         );
         updatedSchemas.push(typedefFile);
@@ -256,7 +256,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   }
   if (updatedSchemas.length) {
     console.log(`Built ${updatedSchemas.length} json schemas`);
-    await fs.writeFile("./schema-cache.json", JSON.stringify(changes, null, 2));
+    await fs.writeFile("../api/schema-cache.json", JSON.stringify(changes, null, 2));
   }
   process.exit();
 })();
