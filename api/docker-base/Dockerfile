@@ -1,7 +1,6 @@
 # Build:                   sudo docker build --no-cache . -t cacophonyproject/server-base:latest
 # Run interactive session: sudo docker run -it cacophony-api
 
-# FROM ubuntu:18.04
 FROM ubuntu:22.04
 
 RUN apt-get update
@@ -21,22 +20,22 @@ RUN echo "host all all ::/0 md5" >> /etc/postgresql/14/main/pg_hba.conf
 
 # install minio
 # https://minio.io/downloads.html#download-server-linux-x64
-# RUN curl --location --fail --silent --show-error --remote-name https://dl.minio.io/server/minio/release/linux-amd64/minio
+RUN curl --location --fail --silent --show-error --remote-name https://dl.minio.io/server/minio/release/linux-amd64/minio
 
 # Note: uncomment if you're developing on arm64
-RUN curl --location --fail --silent --show-error --remote-name https://dl.minio.io/server/minio/release/linux-arm64/minio
+#RUN curl --location --fail --silent --show-error --remote-name https://dl.minio.io/server/minio/release/linux-arm64/minio
 
 RUN chmod +x minio
 
 # https://docs.minio.io/docs/minio-client-complete-guide
-# RUN curl --location --fail --silent --show-error https://dl.minio.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2019-07-11T19-31-28Z > mc
+RUN curl --location --fail --silent --show-error https://dl.minio.io/client/mc/release/linux-amd64/archive/mc.RELEASE.2019-07-11T19-31-28Z > mc
 
 # Note: uncomment if you're developing on arm64
-RUN curl --location --fail --silent --show-error https://dl.minio.io/client/mc/release/linux-arm64/mc > mc
+#RUN curl --location --fail --silent --show-error https://dl.minio.io/client/mc/release/linux-arm64/mc > mc
 
 RUN chmod +x mc
 
-#install node
+#install nodex
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 RUN apt-get install -y nodejs
 
