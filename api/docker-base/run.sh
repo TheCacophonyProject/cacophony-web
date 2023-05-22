@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 apt-get update
 apt-get install -y apt-utils
 apt-get install -y tzdata
@@ -48,5 +49,4 @@ apt-get -y remove make build-essential g++ python3 curl
 apt-get -y autoremove
 dpkg --list |grep "^rc" | cut -d " " -f 3 | xargs sudo dpkg --purge
 apt-get clean
-rm /var/cache/apt/*.bin
-rm /var/lib/apt/lists/*
+rm -rf /var/lib/apt/lists/*

@@ -7,6 +7,10 @@ WORKDIR /app
 #  which dramamtically reduces the size of the final docker image.
 COPY package.json ./
 COPY run.sh ./
-RUN /app/run.sh && rm -rf /app/run.sh
-#RUN /app/run.sh arm64 && rm -rf /app/run.sh
+RUN chmod +x ./run.sh
+# NOTE amd64 build
+#RUN /app/run.sh && rm -rf /app/run.sh
+
+# NOTE arm64 build
+RUN ./run.sh arm64 && rm -rf ./run.sh
 
