@@ -14,26 +14,26 @@ env:
   - IS_CI_ENV=true
 
 install:
-  - npm install -g npm apidoc@0.50.0 eslint prettier
+  - npm install -g --loglevel=error npm apidoc@0.50.0 eslint prettier
   - sudo apt update
 
 script:
   # Run test checks
   - cd types
-  - npm install
+  - npm install --loglevel=error
   - npm run lint || travis_terminate 1;
   # Run browse checks
   - pwd
   - cd ../browse
-  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin
+  - npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin
   - npm run lint || travis_terminate 1;
   # Run api checks
   - cd ../api
-  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin github:TheCacophonyProject/apidoc-plugin-ts#v1.1.0
+  - npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin github:TheCacophonyProject/apidoc-plugin-ts#v1.1.0
   - npm run lint || travis_terminate 1;
   # Run integration checks
   - cd ../integration-tests
-  - npm install @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests
+  - npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests
   - npm run lint || travis_terminate 1;
   # Setup docker for more tests - better to do this after cheapo linting checks, since we can fail earlier.
   - cd ..
@@ -46,11 +46,11 @@ script:
   # Run cypress tests
   - cd integration-tests
   - cp cypress.config.ts.TEMPLATE cypress.config.ts
-  - npm install
+  - npm install --loglevel=error
   - npm run release
   - cd ../api
   # Generate api docs
-  - npm update apidoc-plugin-ts
+  - npm update --loglevel=error apidoc-plugin-ts
   - npm run apidoc || travis_terminate 1;
 
 before_deploy:

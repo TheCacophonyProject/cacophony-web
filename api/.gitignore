@@ -14,3 +14,4 @@ dockerstart.log
 !waitForApi.js
 test-cypress/cypress-performance.json
 *.iml
+!/api/cptv-decoder/decoder/decoder.js

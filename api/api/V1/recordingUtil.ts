@@ -23,7 +23,6 @@ import { AI_MASTER } from "@models/TrackTag.js";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
-import urljoin from "url-join";
 import config from "@config";
 import util from "./util.js";
 import type { Recording, RecordingQueryOptions } from "@models/Recording.js";
@@ -68,7 +67,8 @@ import type {
 import type { ApiRecordingTagRequest } from "@typedefs/api/tag.js";
 import type { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3.js";
 import type { AWSError } from "aws-sdk";
-import type { CptvHeader } from "cptv-decoder";
+import type { CptvFrame, CptvHeader } from "../cptv-decoder/decoder.js";
+import { CptvDecoder } from "../cptv-decoder/decoder.js";
 import log from "@log";
 import {
   locationsAreEqual,
@@ -76,11 +76,6 @@ import {
 } from "@models/util/locationUtils.js";
 import { openS3 } from "@models/util/util.js";
 import type { ModelsDictionary } from "@models";
-
-let CptvDecoder;
-(async () => {
-  CptvDecoder = (await import("cptv-decoder")).CptvDecoder;
-})();
 
 export async function getThumbnail(rec: Recording, trackId?: number) {
   let thumbKey: string;
@@ -152,22 +147,19 @@ export async function getCPTVFrames(
   const data = new Uint8Array(
     (fileData as GetObjectOutput).Body as ArrayBufferLike
   );
-  const { CptvDecoder } = await import("cptv-decoder");
   const decoder = new CptvDecoder();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const meta = await decoder.getBytesMetadata(data);
   const result = await decoder.initWithLocalCptvFile(data);
-  if (!result) {
-    decoder.close();
+  if (typeof result === "string") {
+    log.warning("CPTV Error '%s'", result);
+    await decoder.close();
     return;
   }
   let finished = false;
   let currentFrame = 0;
-  const frames = {};
-  let frame;
+  const frames: Record<number, CptvFrame> = {};
   log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
   while (!finished) {
-    frame = await decoder.getNextFrame();
+    const frame: CptvFrame | null = await decoder.getNextFrame();
     if (frame && frame.meta.isBackgroundFrame) {
       // Skip over background frame without incrementing counter.
       continue;
@@ -177,12 +169,12 @@ export async function getCPTVFrames(
       frameNumbers.delete(currentFrame);
       frames[currentFrame] = frame;
     }
-    if (frameNumbers.size == 0) {
+    if (frameNumbers.size === 0) {
       break;
     }
     currentFrame++;
   }
-  decoder.close();
+  await decoder.close();
   return frames;
 }
 
@@ -192,13 +184,7 @@ export async function saveThumbnailInfo(
   tracks: Track[],
   clip_thumbnail: TrackFramePosition
 ): Promise<ManagedUpload.SendData[] | Error[]> {
-  let fileKey = recording.rawFileKey;
-  if (
-    recording.type === RecordingType.TrailCamImage ||
-    recording.type == RecordingType.TrailCamVideo
-  ) {
-    fileKey = recording.fileKey;
-  }
+  const fileKey = recording.rawFileKey;
   const thumbnailTracks = tracks.filter(
     (track) => track.data?.thumbnail?.region
   );
@@ -389,7 +375,7 @@ async function createThumbnail(
   }
   const frameBuffer = new Uint8ClampedArray(4 * greyScaleData.length);
   const { renderFrameIntoFrameBuffer, ColourMaps } = await import(
-    "cptv-decoder"
+    "../cptv-decoder/frameRenderUtils.js"
   );
   let palette = ColourMaps[0];
   for (const colourMap of ColourMaps) {
@@ -649,7 +635,7 @@ const tryDecodeCptvMetadata = async (
       await decoder.getStreamError()
     );
   }
-  decoder.close();
+  await decoder.close();
   return { metadata, fileIsCorrupt };
 };
 
@@ -1282,7 +1268,7 @@ export async function reportRecordings(
       );
     }
 
-    thisRow.push(urljoin(recording_url_base, r.id.toString()), cacophonyIndex);
+    thisRow.push(`${recording_url_base}/${r.id.toString()}`, cacophonyIndex);
     out.push(thisRow);
   }
   return out;
@@ -1728,7 +1714,7 @@ function addEventRow(out: any, event: VisitEvent, recordingUrlBase: string) {
     event.trackTag ? event.trackTag.confidence + "%" : "",
     "",
     "",
-    urljoin(recordingUrlBase, event.recID.toString(), event.trackID.toString()),
+    `${recordingUrlBase}/${event.recID.toString()}/${event.trackID.toString()}`,
   ]);
 }
 

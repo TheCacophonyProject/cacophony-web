@@ -78,10 +78,12 @@ describe("Recording thumbnails", () => {
 
     it("Thumbnail generated as expected without track thumbnails", () => {
       const recording01 = TestCreateRecordingData(templateRecording);
+      recording01.additionalMetadata.previewSecs = 3;
+      recording01.additionalMetadata.totalFrames = 163;
       cy.apiRecordingAdd(
         "rtCamera1",
         recording01,
-        "oneframe.cptv",
+        "small.cptv",
         "rtRecording01"
       ).then(() => {
         const expectedProcessing01 = TestCreateExpectedProcessingData(
@@ -204,10 +206,12 @@ describe("Recording thumbnails", () => {
 
     it("Thumbnail tracks generated as expected", () => {
       const recording01 = TestCreateRecordingData(templateRecording);
+      recording01.additionalMetadata.previewSecs = 3;
+      recording01.additionalMetadata.totalFrames = 163;
       cy.apiRecordingAdd(
         "rtCamera1",
         recording01,
-        "oneframe.cptv",
+        "small.cptv",
         "rtRecording01"
       ).then(() => {
         const expectedProcessing01 = TestCreateExpectedProcessingData(
