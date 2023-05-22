@@ -13,7 +13,7 @@ echo "listen_addresses = '*'" >> /etc/postgresql/14/main/postgresql.conf
 echo "host all all 0.0.0.0/0 md5" >> /etc/postgresql/14/main/pg_hba.conf
 echo "host all all ::/0 md5" >> /etc/postgresql/14/main/pg_hba.conf
 
-if [ $1 = "arm64" ]; then
+if [ $1 == "arm64" ]; then
   # arm64 builds
   curl --location --fail --silent --show-error --remote-name https://dl.minio.io/server/minio/release/linux-arm64/minio
   curl --location --fail --silent --show-error https://dl.minio.io/client/mc/release/linux-arm64/mc > mc
@@ -48,3 +48,5 @@ apt-get -y remove make build-essential g++ python3 curl
 apt-get -y autoremove
 dpkg --list |grep "^rc" | cut -d " " -f 3 | xargs sudo dpkg --purge
 apt-get clean
+rm /var/cache/apt/*.bin
+rm /var/lib/apt/lists/*
