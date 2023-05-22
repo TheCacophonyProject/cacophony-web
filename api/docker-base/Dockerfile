@@ -9,8 +9,8 @@ COPY package.json ./
 COPY run.sh ./
 RUN chmod +x ./run.sh
 # NOTE amd64 build
-#RUN /app/run.sh && rm -rf /app/run.sh
+RUN ./run.sh && rm -rf ./run.sh
 
 # NOTE arm64 build
-RUN ./run.sh arm64 && rm -rf ./run.sh
+#RUN ./run.sh arm64 && rm -rf ./run.sh
 
