@@ -1424,7 +1424,16 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
 
         <button
           type="button"
-          class="btn mt-2 fs-7 px-0 advanced-filtering-btn d-flex align-items-center w-100"
+          class="
+            btn
+            mt-2
+            fs-7
+            px-0
+            advanced-filtering-btn
+            d-flex
+            align-items-center
+            w-100
+          "
           @click="showAdvanced = !showAdvanced"
         >
           Advanced filtering

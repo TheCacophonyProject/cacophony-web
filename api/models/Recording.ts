@@ -1256,7 +1256,6 @@ from (
       RecordingProcessingState.Finished,
     ],
     audio: [
-      RecordingProcessingState.ToMp3,
       RecordingProcessingState.Analyse,
       RecordingProcessingState.Finished,
     ],
@@ -1264,7 +1263,7 @@ from (
 
   Recording.uploadedState = function (type: RecordingType) {
     if (type == RecordingType.Audio) {
-      return RecordingProcessingState.ToMp3;
+      return RecordingProcessingState.Analyse;
     } else {
       return RecordingProcessingState.Tracking;
     }

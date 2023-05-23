@@ -481,7 +481,12 @@ const openSelectedDevice = async () => {
         <template #status="{ cell, row }">
           <div class="d-flex align-items-center">
             <span
-              class="d-flex power-status-icon align-items-center justify-content-center"
+              class="
+                d-flex
+                power-status-icon
+                align-items-center
+                justify-content-center
+              "
               :class="[cell]"
             >
               <font-awesome-icon icon="power-off" v-if="cell !== '-'" />

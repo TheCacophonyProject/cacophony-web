@@ -208,7 +208,12 @@ const permissionsOptions = computed(() => [
 <template>
   <h1 class="d-none d-md-block h5">Users</h1>
   <div
-    class="d-flex flex-column flex-md-row flex-fill mb-3 justify-content-md-between"
+    class="
+      d-flex
+      flex-column flex-md-row flex-fill
+      mb-3
+      justify-content-md-between
+    "
   >
     <p class="">
       Manage the users associated with {{ currentSelectedProject.groupName }}.
@@ -267,11 +272,23 @@ const permissionsOptions = computed(() => [
         />
       </div>
       <div
-        class="d-flex justify-content-between align-items-center mt-2 flex-row-reverse"
+        class="
+          d-flex
+          justify-content-between
+          align-items-center
+          mt-2
+          flex-row-reverse
+        "
       >
         <button
           type="button"
-          class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+          class="
+            btn btn-outline-secondary
+            d-flex
+            align-items-center
+            fs-7
+            text-nowrap
+          "
           @click.prevent="() => editUserAdmin(card.permissions.value)"
           :disabled="
             isLastOwnerUser(card.permissions.value) &&
@@ -372,7 +389,14 @@ const permissionsOptions = computed(() => [
       </div>
       <button
         type="button"
-        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-3"
+        class="
+          btn btn-outline-secondary
+          d-flex
+          align-items-center
+          fs-7
+          text-nowrap
+          ms-3
+        "
         @click.prevent="() => editUserAdmin(cell.value)"
         :disabled="isLastOwnerUser(cell.value) && isLastAdminUser(cell.value)"
       >

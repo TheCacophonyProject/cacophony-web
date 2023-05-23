@@ -382,7 +382,13 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         v-if="currentSelectedProjectHasAudioAndThermal"
       />
       <div
-        class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
+        class="
+          scope-filters
+          d-flex
+          align-items-sm-center
+          flex-column flex-sm-row
+          mb-3 mb-sm-0
+        "
       >
         <div class="d-flex flex-row align-items-center justify-content-between">
           <span>View </span>
@@ -434,7 +440,14 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       >
         <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
         <div
-          class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+          class="
+            d-flex
+            justify-content-evenly
+            flex-sm-column
+            ms-sm-3 ms-2
+            pe-sm-3 pe-1
+            align-items-center align-items-sm-start
+          "
         >
           <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
           <div class="species-name lh-sm small text-capitalize">

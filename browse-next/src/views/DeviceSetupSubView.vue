@@ -500,7 +500,14 @@ const deviceTypeIsKnown = computed<boolean>(() => {
           thermal camera sees as closely as possible.
         </p>
         <div
-          class="d-flex justify-content-center align-items-center position-relative skew-container mt-3"
+          class="
+            d-flex
+            justify-content-center
+            align-items-center
+            position-relative
+            skew-container
+            mt-3
+          "
         >
           <cptv-single-frame
             :recording="latestStatusRecording"
@@ -627,7 +634,12 @@ const deviceTypeIsKnown = computed<boolean>(() => {
             </div>
           </div>
           <div
-            class="reveal-handle d-flex align-items-center justify-content-center"
+            class="
+              reveal-handle
+              d-flex
+              align-items-center
+              justify-content-center
+            "
             ref="revealHandle"
             @pointerdown="grabRevealHandle"
             @pointerup="releaseRevealHandle"

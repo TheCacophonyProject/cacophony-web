@@ -55,7 +55,6 @@ export default function (app: Application) {
           query("type").equals(RecordingType.Audio),
           query("state").isIn([
             RecordingProcessingState.Reprocess,
-            RecordingProcessingState.ToMp3,
             RecordingProcessingState.Analyse,
           ]),
         ],

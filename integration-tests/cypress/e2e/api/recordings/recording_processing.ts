@@ -61,7 +61,7 @@ describe("Recordings - processing tests", () => {
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );
-  templateAudioRecording.processingState = RecordingProcessingState.ToMp3;
+  templateAudioRecording.processingState = RecordingProcessingState.Analyse;
 
   const POSSUM_ALERT: ApiAlertConditions[] = [
     { tag: "possum", automatic: true },
@@ -117,12 +117,12 @@ describe("Recordings - processing tests", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        RecordingProcessingState.ToMp3
+        RecordingProcessingState.Analyse
       );
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.Audio,
-        RecordingProcessingState.ToMp3
+        RecordingProcessingState.Analyse
       );
     });
 
@@ -1161,10 +1161,10 @@ describe("Recordings - processing tests", () => {
           "rpRecording21",
           recording21
         );
-        expectedProcessing21.processingState = RecordingProcessingState.ToMp3;
+        expectedProcessing21.processingState = RecordingProcessingState.Analyse;
 
-        cy.log("Check recording status is 'toMp3'");
-        expectedRecording21.processingState = RecordingProcessingState.ToMp3;
+        cy.log("Check recording status is 'Analyse'");
+        expectedRecording21.processingState = RecordingProcessingState.Analyse;
         expectedRecording21.rawMimeType = "audio/mp4";
         cy.apiRecordingCheck(
           "rpGroupAdmin",
@@ -1173,13 +1173,13 @@ describe("Recordings - processing tests", () => {
           EXCLUDE_ALL_IDS
         );
 
-        cy.log("Send for processing (toMp3)");
-        expectedProcessing21.processingState = RecordingProcessingState.ToMp3;
+        cy.log("Send for processing (Analyse)");
+        expectedProcessing21.processingState = RecordingProcessingState.Analyse;
         expectedProcessing21.processingStartTime = NOT_NULL_STRING;
         expectedProcessing21.updatedAt = NOT_NULL_STRING;
         cy.processingApiCheck(
           RecordingType.Audio,
-          RecordingProcessingState.ToMp3,
+          RecordingProcessingState.Analyse,
           "rpRecording21",
           expectedProcessing21,
           EXCLUDE_KEYS
@@ -1193,7 +1193,8 @@ describe("Recordings - processing tests", () => {
             null,
             recording21
           );
-          expectedRecording21b.processingState = RecordingProcessingState.ToMp3;
+          expectedRecording21b.processingState =
+            RecordingProcessingState.Analyse;
           expectedRecording21b.processing = true;
           expectedRecording21b.rawMimeType = "audio/mp4";
           cy.apiRecordingCheck(

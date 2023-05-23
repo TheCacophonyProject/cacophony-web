@@ -10,7 +10,16 @@
     :class="$attrs['class']"
   />
   <div
-    class="d-flex align-items-center w-100 h-100 justify-content-center position-absolute top-0 left-0"
+    class="
+      d-flex
+      align-items-center
+      w-100
+      h-100
+      justify-content-center
+      position-absolute
+      top-0
+      left-0
+    "
     :class="$attrs['class']"
     v-if="loading"
   >

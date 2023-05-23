@@ -1,6 +1,11 @@
 <template>
   <div
-    class="single-frame-cptv-container d-flex align-items-center justify-content-center"
+    class="
+      single-frame-cptv-container
+      d-flex
+      align-items-center
+      justify-content-center
+    "
     :style="{ width: `${width}px`, height: `${height}px` }"
   >
     <canvas

@@ -258,7 +258,13 @@ const debugConfirmEmail = async () => {
         </p>
         <p
           v-if="!emailAddressUpdated"
-          class="mt-3 d-flex flex-md-row flex-column justify-content-md-between align-items-start"
+          class="
+            mt-3
+            d-flex
+            flex-md-row flex-column
+            justify-content-md-between
+            align-items-start
+          "
         >
           <button
             class="btn btn-secondary me-3 mb-3"
@@ -388,7 +394,13 @@ const debugConfirmEmail = async () => {
                       <button
                         type="button"
                         data-cy="accept project invitation button"
-                        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                        class="
+                          btn btn-outline-secondary
+                          d-flex
+                          align-items-center
+                          fs-7
+                          text-nowrap
+                        "
                         @click.prevent="
                           () => acceptInvitationToProject(card.status.value)
                         "
@@ -428,7 +440,13 @@ const debugConfirmEmail = async () => {
                 <div v-else-if="cell.value.pending === 'invited'">
                   <button
                     type="button"
-                    class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                    class="
+                      btn btn-outline-secondary
+                      d-flex
+                      align-items-center
+                      fs-7
+                      text-nowrap
+                    "
                     @click.prevent="() => acceptInvitationToProject(cell.value)"
                     :disabled="acceptingInvite"
                   >

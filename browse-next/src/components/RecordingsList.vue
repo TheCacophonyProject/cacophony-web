@@ -89,7 +89,17 @@
       </div>
       <div
         v-else
-        class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden recording-detail my-1 me-1"
+        class="
+          d-flex
+          py-2
+          ps-3
+          align-items-center
+          flex-fill
+          overflow-hidden
+          recording-detail
+          my-1
+          me-1
+        "
       >
         <div class="visit-thumb">
           <image-loader

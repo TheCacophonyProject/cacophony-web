@@ -456,7 +456,13 @@ onMounted(async () => {
           <span class="strikethrough">{{ masterTag?.what }}</span></span
         >
         <span
-          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
+          class="
+            classification
+            text-capitalize
+            d-inline-block
+            fw-bold
+            conflicting-tags
+          "
           v-else-if="!consensusUserTag && masterTag"
           >{{
             uniqueUserTags
@@ -523,7 +529,16 @@ onMounted(async () => {
     <div class="classification-btns">
       <button
         type="button"
-        class="btn classification-btn fs-8 text-capitalize d-flex flex-column align-items-center justify-content-evenly"
+        class="
+          btn
+          classification-btn
+          fs-8
+          text-capitalize
+          d-flex
+          flex-column
+          align-items-center
+          justify-content-evenly
+        "
         :class="[
           tag.label,
           { selected: thisUserTag && tag.label === thisUserTag.what },

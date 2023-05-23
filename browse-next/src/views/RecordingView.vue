@@ -1053,7 +1053,16 @@ const inlineModal = ref<boolean>(false);
     :class="{ dimmed: inlineModal }"
   >
     <header
-      class="recording-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
+      class="
+        recording-view-header
+        d-flex
+        justify-content-between
+        ps-sm-3
+        pe-sm-1
+        ps-2
+        pe-1
+        py-sm-1
+      "
     >
       <div v-if="isInVisitContext">
         <span class="recording-header-type text-uppercase fw-bold">Visit</span>
@@ -1215,7 +1224,10 @@ const inlineModal = ref<boolean>(false);
             </div>
           </div>
           <ul
-            class="nav nav-tabs justify-content-md-center justify-content-evenly"
+            class="
+              nav nav-tabs
+              justify-content-md-center justify-content-evenly
+            "
             v-if="!isMobileView"
           >
             <router-link
@@ -1280,7 +1292,14 @@ const inlineModal = ref<boolean>(false);
             v-if="isMobileView"
           >
             <div
-              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
+              class="
+                recording-station-info
+                bg-white
+                d-flex
+                mb-3
+                flex-column-reverse
+                mt-3
+              "
             >
               <map-with-points
                 class="recording-location-map"
@@ -1295,7 +1314,14 @@ const inlineModal = ref<boolean>(false);
                 :radius="30"
               />
               <div
-                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
+                class="
+                  flex-fill
+                  d-flex
+                  align-items-sm-center
+                  p-2
+                  px-3
+                  flex-column flex-sm-row
+                "
               >
                 <div class="fw-bolder d-flex">
                   <div class="station-name pe-3 text-truncate">
@@ -1371,7 +1397,13 @@ const inlineModal = ref<boolean>(false);
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-sm-none flex-row-reverse align-items-center btn-hi"
+            class="
+              btn
+              d-flex d-sm-none
+              flex-row-reverse
+              align-items-center
+              btn-hi
+            "
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
             @click.prevent="gotoPreviousRecordingOrVisit"
           >
@@ -1397,7 +1429,13 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through visits -->
           <button
             type="button"
-            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
+            class="
+              btn
+              d-none d-sm-flex
+              flex-row-reverse
+              align-items-center
+              btn-hi
+            "
             :disabled="!hasPreviousVisit"
             @click.prevent="gotoPreviousVisit"
             v-if="isInGreaterVisitContext"
@@ -1440,7 +1478,13 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
-            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
+            class="
+              btn
+              d-none d-sm-flex
+              flex-row-reverse
+              align-items-center
+              btn-hi
+            "
             v-if="hasPreviousRecording"
             @click.prevent="gotoPreviousRecording"
             title="alt &larr;"

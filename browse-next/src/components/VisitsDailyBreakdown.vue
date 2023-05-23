@@ -255,7 +255,15 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
     <div
-      class="header fs-7 p-2 d-flex justify-content-between user-select-none align-items-center"
+      class="
+        header
+        fs-7
+        p-2
+        d-flex
+        justify-content-between
+        user-select-none
+        align-items-center
+      "
       @click="toggleVisitsDetail"
     >
       <div>
@@ -398,7 +406,15 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
               </span>
               <span
                 v-if="visit.data.userTagsConflict"
-                class="visit-species-tag px-1 mb-1 text-capitalize ms-1 bg-warning text-black"
+                class="
+                  visit-species-tag
+                  px-1
+                  mb-1
+                  text-capitalize
+                  ms-1
+                  bg-warning
+                  text-black
+                "
               >
                 <font-awesome-icon icon="exclamation-triangle" />
                 Controversial

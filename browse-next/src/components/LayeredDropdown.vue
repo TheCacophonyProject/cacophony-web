@@ -304,7 +304,13 @@ defineExpose({
         <button
           type="button"
           tabindex="-1"
-          class="btn selected-option text-start text-capitalize flex-grow-1 px-0"
+          class="
+            btn
+            selected-option
+            text-start text-capitalize
+            flex-grow-1
+            px-0
+          "
           @click="openSelect"
         >
           {{
@@ -330,13 +336,30 @@ defineExpose({
       >
         <button
           type="button"
-          class="selected-option-badge btn text-capitalize ps-2 pe-0 py-0 d-flex justify-content-center align-items-center"
+          class="
+            selected-option-badge
+            btn
+            text-capitalize
+            ps-2
+            pe-0
+            py-0
+            d-flex
+            justify-content-center
+            align-items-center
+          "
           :key="option.label"
           v-for="option in selections"
         >
           {{ option.display || option.label }}
           <span
-            class="selected-option-icon d-flex justify-content-center align-items-center ms-1 p-1"
+            class="
+              selected-option-icon
+              d-flex
+              justify-content-center
+              align-items-center
+              ms-1
+              p-1
+            "
             @click="() => removeSelectedOption(option)"
           >
             <font-awesome-icon icon="times" />
@@ -357,7 +380,12 @@ defineExpose({
       </div>
       <div
         ref="optionsList"
-        class="options-list-container d-flex justify-content-between flex-column"
+        class="
+          options-list-container
+          d-flex
+          justify-content-between
+          flex-column
+        "
       >
         <div
           class="options-list-item d-flex justify-content-between"
@@ -377,7 +405,13 @@ defineExpose({
           </div>
           <button
             id="child-button"
-            class="options-list-child align-items-center d-flex justify-content-center btn"
+            class="
+              options-list-child
+              align-items-center
+              d-flex
+              justify-content-center
+              btn
+            "
             v-if="option.children"
             @click="() => setToPath(option.label)"
           >

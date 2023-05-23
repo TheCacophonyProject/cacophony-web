@@ -22268,8 +22268,7 @@ var HME = (function (A) {
                         var I = VA.ba(g.fd);
                         if (2 & g.Sc) {
                           var E = g.flags,
-                            i = g.
-                              offset,
+                            i = g.offset,
                             C = m.slice(A, A + B);
                           VA.da(I, C, i, B, E);
                         }

@@ -617,7 +617,15 @@ const clearUploadQueue = () => {
         role="tab"
         type="button"
         v-b-toggle.accordion-1
-        class="px-3 btn w-100 d-flex justify-content-between align-items-center accordion-button"
+        class="
+          px-3
+          btn
+          w-100
+          d-flex
+          justify-content-between
+          align-items-center
+          accordion-button
+        "
       >
         <span>
           <font-awesome-icon
@@ -710,7 +718,15 @@ const clearUploadQueue = () => {
         type="button"
         ref="fileSelectButton"
         v-b-toggle.accordion-2
-        class="px-3 btn w-100 d-flex justify-content-between align-items-center accordion-button"
+        class="
+          px-3
+          btn
+          w-100
+          d-flex
+          justify-content-between
+          align-items-center
+          accordion-button
+        "
       >
         <span
           ><font-awesome-icon
@@ -731,7 +747,14 @@ const clearUploadQueue = () => {
       >
         <template #default="{ close }">
           <div
-            class="file-list d-flex align-items-center justify-content-center flex-column my-3"
+            class="
+              file-list
+              d-flex
+              align-items-center
+              justify-content-center
+              flex-column
+              my-3
+            "
             ref="dropFiles"
             @drop="(e) => onDropFiles(e, close)"
             @dragover="onDrag"
@@ -774,7 +797,15 @@ const clearUploadQueue = () => {
       (beganUpload && uploadInProgress) ||
       (uploadQueue.length !== 0 && finalSelectedLocation)
     "
-    class="p-3 d-flex justify-content-between align-items-center border-top bg-light align-content-end"
+    class="
+      p-3
+      d-flex
+      justify-content-between
+      align-items-center
+      border-top
+      bg-light
+      align-content-end
+    "
   >
     <div class="d-flex flex-grow-1 me-3">
       <div v-if="!uploadInProgress">

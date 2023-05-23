@@ -66,7 +66,16 @@ const deviceType = computed<string>(() => {
 <template>
   <div class="device-view d-flex flex-column">
     <header
-      class="device-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
+      class="
+        device-view-header
+        d-flex
+        justify-content-between
+        ps-sm-3
+        pe-sm-1
+        ps-2
+        pe-1
+        py-sm-1
+      "
     >
       <div>
         <span class="device-header-type text-uppercase fw-bold">{{

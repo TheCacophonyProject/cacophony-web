@@ -138,7 +138,14 @@ const doAddLabel = async () => {
     <div class="d-flex justify-content-end flex-grow-1">
       <button
         type="button"
-        class="btn btn-outline-secondary my-2 align-self-end add-label-btn d-flex align-items-center"
+        class="
+          btn btn-outline-secondary
+          my-2
+          align-self-end
+          add-label-btn
+          d-flex
+          align-items-center
+        "
         @click="addLabel"
       >
         <font-awesome-icon icon="plus" /><span> Add label</span>

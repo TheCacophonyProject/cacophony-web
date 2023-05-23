@@ -30,13 +30,11 @@ export enum RecordingProcessingState {
   Tracking = "tracking",
   AnalyseThermal = "analyse",
   Finished = "FINISHED",
-  ToMp3 = "toMp3",
   Analyse = "analyse",
   Reprocess = "reprocess",
 
   TrackingFailed = "tracking.failed",
   AnalyseThermalFailed = "analyse.failed",
-  ToMp3Failed = "toMp3.failed",
   AnalyseFailed = "analyse.failed",
   ReprocessFailed = "reprocess.failed",
 
