@@ -175,7 +175,8 @@ describe("Recordings query using where", () => {
             delete expectedRecording3.relativeToDawn;
             delete expectedRecording3.relativeToDusk;
 
-            expectedRecording3.processingState = RecordingProcessingState.ToMp3;
+            expectedRecording3.processingState =
+              RecordingProcessingState.Analyse;
 
             cy.apiRecordingAdd(
               "rqCamera1b",

@@ -7,8 +7,7 @@ module.exports = {
       type: Sequelize.INTEGER,
       allowNull: false,
       defaultValue: 0,
-      comment:
-        "Size of file in bytes.",
+      comment: "Size of file in bytes.",
     });
     await queryInterface.addColumn("GroupUsers", "owner", {
       type: Sequelize.BOOLEAN,
@@ -35,8 +34,7 @@ module.exports = {
       type: Sequelize.INTEGER,
       allowNull: false,
       defaultValue: 0,
-      comment:
-        "Increment this field every time a user requests a recording.",
+      comment: "Increment this field every time a user requests a recording.",
     });
     await queryInterface.addColumn("Users", "transferredBytes", {
       type: Sequelize.INTEGER,
@@ -54,7 +52,9 @@ module.exports = {
     });
 
     // Set all group admins as owners initially, since we don't actually know who owns each group in a billing sense.
-    await queryInterface.sequelize.query(`update "GroupUsers" set "owner" = true where "admin" = true`);
+    await queryInterface.sequelize.query(
+      `update "GroupUsers" set "owner" = true where "admin" = true`
+    );
   },
   down: async function (queryInterface, Sequelize) {
     await queryInterface.removeColumn("Files", "fileSize");

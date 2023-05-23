@@ -14,7 +14,8 @@ module.exports = {
       email: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: "Email address that the invitation was sent to.  User may sign up with a different email address though?"
+        comment:
+          "Email address that the invitation was sent to.  User may sign up with a different email address though?",
       },
       createdAt: {
         type: Sequelize.DATE,
@@ -38,9 +39,8 @@ module.exports = {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: false,
-        comment:
-          "Set if this user will become a group admin.",
-      }
+        comment: "Set if this user will become a group admin.",
+      },
     });
     await util.addSerial(queryInterface, "GroupInvites");
     await util.migrationAddBelongsTo(
@@ -54,15 +54,14 @@ module.exports = {
       allowNull: true,
       defaultValue: null,
       type: Sequelize.JSONB,
-      comment: "A place to put device settings that apply only while the device is in a particular location at a particular time."
+      comment:
+        "A place to put device settings that apply only while the device is in a particular location at a particular time.",
     });
   },
   down: async function (queryInterface, Sequelize) {
     await queryInterface.removeColumn("DeviceHistory", "settings");
     await queryInterface.removeColumn("GroupUsers", "pending");
-    await queryInterface.sequelize.query(
-      'drop type "enum_GroupUsers_pending"'
-    );
+    await queryInterface.sequelize.query('drop type "enum_GroupUsers_pending"');
     await util.migrationRemoveBelongsTo(
       queryInterface,
       "GroupInvites",

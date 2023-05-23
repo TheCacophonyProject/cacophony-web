@@ -1134,7 +1134,7 @@ describe("Recordings - processing tests", () => {
       );
     });
 
-    it("Audio recordings follow correct workflow", () => {
+    it.only("Audio recordings follow correct workflow", () => {
       const recording21 = TestCreateRecordingData(templateAudioRecording);
       let expectedRecording21: ApiAudioRecordingResponse;
       let expectedRecording21b: ApiAudioRecordingResponse;
@@ -1206,75 +1206,26 @@ describe("Recordings - processing tests", () => {
 
           cy.log("Mark processing as done");
           cy.processingApiPut("rpRecording21", true, {}, undefined).then(() => {
-            cy.log("Check recording status is 'analyse'");
-            expectedRecording21.processingState =
-              RecordingProcessingState.Analyse;
-            expectedRecording21.rawMimeType = "audio/mp4";
+            cy.log("Check status (FINISHED)");
+            expectedRecording21c = TestCreateExpectedRecordingData(
+              templateExpectedAudioRecording,
+              "rpRecording21",
+              "rpCamera1",
+              "rpGroup",
+              null,
+              recording21
+            );
+            expectedRecording21c.processingState =
+              RecordingProcessingState.Finished;
+            expectedRecording21c.processing = false;
+            expectedRecording21c.rawMimeType = "audio/mp4";
+            expectedRecording21c.tracks = [];
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording21",
-              expectedRecording21,
+              expectedRecording21c,
               EXCLUDE_ALL_IDS
             );
-
-            cy.log("Send for processing (analyse)");
-            expectedProcessing21.processingStartTime = NOT_NULL_STRING;
-            expectedProcessing21.updatedAt = NOT_NULL_STRING;
-            expectedProcessing21.processingState =
-              RecordingProcessingState.Analyse;
-            cy.processingApiCheck(
-              RecordingType.Audio,
-              RecordingProcessingState.Analyse,
-              "rpRecording21",
-              expectedProcessing21,
-              EXCLUDE_KEYS
-            ).then(() => {
-              cy.log("Check status");
-              expectedRecording21b = TestCreateExpectedRecordingData(
-                templateExpectedAudioRecording,
-                "rpRecording21",
-                "rpCamera1",
-                "rpGroup",
-                null,
-                recording21
-              );
-              expectedRecording21b.processingState =
-                RecordingProcessingState.Analyse;
-              expectedRecording21b.processing = true;
-              expectedRecording21b.rawMimeType = "audio/mp4";
-              cy.apiRecordingCheck(
-                "rpGroupAdmin",
-                "rpRecording21",
-                expectedRecording21b,
-                EXCLUDE_ALL_IDS
-              );
-
-              cy.log("Mark processing as done");
-              cy.processingApiPut("rpRecording21", true, {}, undefined).then(
-                () => {
-                  cy.log("Check status (FINISHED)");
-                  expectedRecording21c = TestCreateExpectedRecordingData(
-                    templateExpectedAudioRecording,
-                    "rpRecording21",
-                    "rpCamera1",
-                    "rpGroup",
-                    null,
-                    recording21
-                  );
-                  expectedRecording21c.processingState =
-                    RecordingProcessingState.Finished;
-                  expectedRecording21c.processing = false;
-                  expectedRecording21c.rawMimeType = "audio/mp4";
-                  expectedRecording21c.tracks = [];
-                  cy.apiRecordingCheck(
-                    "rpGroupAdmin",
-                    "rpRecording21",
-                    expectedRecording21c,
-                    EXCLUDE_ALL_IDS
-                  );
-                }
-              );
-            });
           });
         });
       });

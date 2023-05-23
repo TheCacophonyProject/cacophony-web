@@ -66,7 +66,7 @@ const influx = {
 };
 
 // List of devices to ignore when making the service error report.
-const deviceErrorIgnoreList = []
+const deviceErrorIgnoreList = [];
 
 exports.smtpDetails = smtpDetails;
 exports.server = server;
