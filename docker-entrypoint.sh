@@ -1,12 +1,11 @@
 #!/bin/bash
 set -e
 
-cd /
-
-
-echo "---- Syncing time ----"
+#echo "---- Syncing time ----"
 #timedatectl set-ntp on
 #timedatectl
+sudo chmod +x ./minio
+sudo chmod +x ./mc
 
 echo "---- Starting Minio ----"
 ./minio server --address :9001 .data &> minio.log &

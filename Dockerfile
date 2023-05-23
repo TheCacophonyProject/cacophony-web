@@ -1,10 +1,9 @@
 # Build:                   sudo docker build --no-cache . -t cacophony-api
 # Run interactive session: sudo docker run -it cacophony-api
 
-FROM cacophonyproject/server-base:ubuntu2204
-
-# NOTE: Using locally for arm64
-#FROM hardiesoft/server-base:latest
+FROM cacophonyproject/server-base:ubuntu2204_amd64
+# Use for arm64 dev environments
+#FROM cacophonyproject/server-base:ubuntu2204_arm64
 
 WORKDIR /app
 
