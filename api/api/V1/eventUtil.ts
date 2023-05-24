@@ -1,11 +1,12 @@
-import models from "@models";
-import { Device } from "@models/Device";
-import { Event } from "@models/Event";
+import modelsInit from "@models/index.js";
+import type { Device } from "@models/Device.js";
+import type { Event, QueryOptions } from "@models/Event.js";
+import { groupSystemErrors } from "./systemError.js";
+import type { Moment } from "moment";
+import moment from "moment";
+import type { DeviceId, IsoFormattedDateString } from "@typedefs/api/common.js";
 
-import { QueryOptions } from "@models/Event";
-import { groupSystemErrors } from "./systemError";
-import moment, { Moment } from "moment";
-import { DeviceId, IsoFormattedDateString } from "@typedefs/api/common";
+const models = await modelsInit();
 export const errors = async (
   request: {
     query: {

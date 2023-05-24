@@ -1,20 +1,22 @@
-import moment, { Moment } from "moment";
-import models from "@models";
-import { Recording } from "@models/Recording";
+import type { Moment } from "moment";
+import moment from "moment";
+import modelsInit from "@models/index.js";
+import type { Recording } from "@models/Recording.js";
 import {
   getCanonicalTrackTag,
   NON_ANIMAL_TAGS,
   UNIDENTIFIED_TAGS,
-} from "./Visits";
-import { ClientError } from "../customErrors";
-import { StationId, TrackId, UserId } from "@typedefs/api/common";
-import { MonitoringPageCriteria } from "@typedefs/api/monitoring";
+} from "./Visits.js";
+import { ClientError } from "../customErrors.js";
+import type { StationId, TrackId, UserId } from "@typedefs/api/common.js";
+import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
 import { Op } from "sequelize";
-import { RecordingType } from "@typedefs/api/consts";
-import { Station } from "@models/Station";
-import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
-import { TrackTag } from "@models/TrackTag";
-import logger from "@log";
+import { RecordingType } from "@typedefs/api/consts.js";
+import type { Station } from "@models/Station.js";
+import type { ApiTrackTagResponse } from "@typedefs/api/trackTag.js";
+import type { TrackTag } from "@models/TrackTag.js";
+
+const models = await modelsInit();
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -23,7 +25,6 @@ const RECORDINGS_LIMIT = 2000;
 const MAX_MINS_AFTER_TIME = 70;
 
 type TagName = string;
-type Count = number;
 
 class Visit {
   rawRecordings?: Recording[];

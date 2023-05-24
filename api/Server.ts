@@ -1,18 +1,15 @@
-import registerModuleAliases from "./module-aliases";
-registerModuleAliases();
-
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import express from "express";
 import passport from "passport";
 import process from "process";
 import http from "http";
-import config from "./config";
-import models from "./models";
+import config from "./config.js";
+import modelsInit from "@models/index.js";
 import log, { consoleTransport } from "@log";
-import customErrors from "./api/customErrors";
-import modelsUtil from "./models/util/util";
-import initialiseApi from "./api/V1";
-import initialiseFileProcessingApi from "./api/fileProcessing";
+import customErrors from "./api/customErrors.js";
+import { openS3 } from "./models/util/util.js";
+import initialiseApi from "./api/V1/index.js";
+import initialiseFileProcessingApi from "./api/fileProcessing/index.js";
 import expressWinston from "express-winston";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -22,9 +19,13 @@ import {
   asyncLocalStorage,
   CACOPHONY_WEB_VERSION,
   SuperUsers,
-} from "./Globals";
+} from "./Globals.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const asyncExec = promisify(exec);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
   if (!config.productionEnv) {
@@ -65,7 +66,7 @@ const openHttpServer = (app): Promise<void> => {
 // and reject if connection failed.
 const checkS3Connection = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    const s3 = modelsUtil.openS3();
+    const s3 = openS3();
     const params = { Bucket: config.s3Local.bucket };
     log.notice("Connecting to S3.....");
     s3.headBucket(params, (err) => {
@@ -81,7 +82,7 @@ const checkS3Connection = (): Promise<void> => {
 
 (async () => {
   log.notice("Starting Full Noise.");
-  config.loadConfigFromArgs(true);
+  await config.loadConfigFromArgs(true);
 
   await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
@@ -154,7 +155,7 @@ const checkS3Connection = (): Promise<void> => {
     );
     next();
   });
-  initialiseApi(app);
+  await initialiseApi(app);
   app.use(customErrors.errorHandler);
 
   // FIXME / TODO
@@ -173,6 +174,9 @@ const checkS3Connection = (): Promise<void> => {
   http.createServer(fileProcessingApp).listen(config.fileProcessing.port);
   log.notice("Starting file processing on %d", config.fileProcessing.port);
   fileProcessingApp.use(customErrors.errorHandler);
+
+  log.notice("Initialising Sequelize models");
+  const models = await modelsInit();
 
   log.notice("Connecting to database.....");
   try {

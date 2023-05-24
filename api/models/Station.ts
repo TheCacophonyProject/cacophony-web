@@ -16,12 +16,18 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize, { BuildOptions, ModelAttributes, Op } from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import util from "./util/util";
-import { GroupId, LatLng, StationId, UserId } from "@typedefs/api/common";
-import { ApiStationSettings } from "@typedefs/api/station";
-import models from "@models/index";
+import type { BuildOptions, ModelAttributes } from "sequelize";
+import type Sequelize from "sequelize";
+import { Op } from "sequelize";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type {
+  GroupId,
+  LatLng,
+  StationId,
+  UserId,
+} from "@typedefs/api/common.js";
+import type { ApiStationSettings } from "@typedefs/api/station.js";
+import { locationField } from "@models/util/util.js";
 
 // Station data as supplied to API on creation.
 export interface CreateStationData {
@@ -111,7 +117,7 @@ export default function (
     name: {
       type: DataTypes.STRING,
     },
-    location: util.locationField(),
+    location: locationField(),
     lastUpdatedById: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -185,7 +191,7 @@ export default function (
     groupId: GroupId,
     atDateTime: Date
   ): Promise<Station[]> {
-    return await models.Station.findAll({
+    return await this.findAll({
       where: {
         GroupId: groupId,
         // NOTE: If it's an automatic station, we're allowed to move its start time
@@ -224,7 +230,7 @@ export default function (
         [Op.and]: [{ retiredAt: { [Op.eq]: null } }, { automatic: true }],
       });
     }
-    return await models.Station.findAll({
+    return await this.findAll({
       where: {
         GroupId: groupId,
         [Op.or]: findClause,
@@ -294,7 +300,7 @@ export default function (
 
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-      const result = await Station.getCacophonyIndex(
+      const result = await this.getCacophonyIndex(
         authUser,
         stationId,
         windowEnd,
@@ -382,7 +388,7 @@ export default function (
 
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-      const result = await Station.getSpeciesCount(
+      const result = await this.getSpeciesCount(
         authUser,
         stationId,
         windowEnd,
@@ -398,12 +404,7 @@ export default function (
         }))
       );
     }
-    Station.getDaysActive(
-      authUser,
-      2,
-      new Date("2023-04-20T05:02:07.000Z"),
-      168
-    );
+    this.getDaysActive(authUser, 2, new Date("2023-04-20T05:02:07.000Z"), 168);
     return counts;
   };
 

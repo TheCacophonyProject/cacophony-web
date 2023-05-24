@@ -1,14 +1,13 @@
-import registerAliases from "../module-aliases";
-registerAliases();
 import config from "@config";
 import log from "@log";
-import models from "@models";
+import modelsInit from "@models/index.js";
 import { Client } from "pg";
 import process from "process";
-import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
+import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
 import { Op } from "sequelize";
-import { RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts.js";
 
+const models = await modelsInit();
 const dbOptions = (config) => ({
   host: config.host,
   user: config.username,
@@ -94,6 +93,7 @@ async function main() {
         Number(configChangeForDevice.lng) !== 0
       ) {
         await maybeUpdateDeviceHistory(
+          models,
           device,
           {
             lat: configChangeForDevice.lat,
@@ -131,6 +131,7 @@ async function main() {
         Number(automaticLocationChangeForDevice.lng) !== 0
       ) {
         await maybeUpdateDeviceHistory(
+          models,
           device,
           {
             lat: automaticLocationChangeForDevice.lat,

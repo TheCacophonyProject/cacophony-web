@@ -15,26 +15,25 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import log from "../logging";
+import log from "../logging.js";
 import mime from "mime";
 import moment from "moment-timezone";
-import Sequelize, { FindOptions, Includeable } from "sequelize";
+import type { FindOptions, Includeable } from "sequelize";
+import Sequelize from "sequelize";
 import { v4 as uuidv4 } from "uuid";
-import config from "../config";
-import util from "./util/util";
+import config from "../config.js";
 import _ from "lodash";
-import { User } from "./User";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { Tag, TagStatic } from "./Tag";
-import { Device, DeviceStatic } from "./Device";
-import { Group } from "./Group";
-import { Track } from "./Track";
+import type { User } from "./User.js";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { Tag, TagStatic } from "./Tag.js";
+import type { Device, DeviceStatic } from "./Device.js";
+import type { Group } from "./Group.js";
+import type { Track } from "./Track.js";
 
 import jsonwebtoken from "jsonwebtoken";
-import { TrackTag } from "./TrackTag";
-import { Station } from "./Station";
-import { mapPosition } from "@api/V1/recordingUtil";
-import {
+import type { TrackTag } from "./TrackTag.js";
+import type { Station } from "./Station.js";
+import type {
   DeviceId,
   GroupId,
   IsoFormattedDateString,
@@ -43,21 +42,46 @@ import {
   StationId,
   TrackId,
   UserId,
-} from "@typedefs/api/common";
+} from "@typedefs/api/common.js";
 import {
   AcceptableTag,
   RecordingProcessingState,
   RecordingType,
   TagMode,
-} from "@typedefs/api/consts";
-import { DeviceBatteryChargeState } from "@typedefs/api/device";
-import {
+} from "@typedefs/api/consts.js";
+import type { DeviceBatteryChargeState } from "@typedefs/api/device.js";
+import type {
   ApiAudioRecordingMetadataResponse,
   ApiThermalRecordingMetadataResponse,
   CacophonyIndex,
-} from "@typedefs/api/recording";
-import labelPath from "../classifications/label_paths.json";
-import { DetailSnapshotId } from "@models/DetailSnapshot";
+} from "@typedefs/api/recording.js";
+import labelPath from "../classifications/label_paths.json" assert { type: "json" };
+import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
+import { locationField, openS3 } from "@models/util/util.js";
+import type { ApiTrackPosition } from "@typedefs/api/track.js";
+
+// Mapping
+export const mapPosition = (position: any): ApiTrackPosition => {
+  if (Array.isArray(position)) {
+    return {
+      x: position[1][0],
+      y: position[1][1],
+      width: position[1][2] - position[1][0],
+      height: position[1][3] - position[1][1],
+      frameTime: position[0],
+    };
+  } else {
+    return {
+      x: position.x,
+      y: position.y,
+      width: position.width,
+      height: position.height,
+      order: position.frame_number ?? position.order,
+      mass: position.mass,
+      blank: position.blank,
+    };
+  }
+};
 
 type SqlString = string;
 
@@ -272,7 +296,7 @@ export default function (
     type: DataTypes.STRING,
     duration: DataTypes.FLOAT,
     recordingDateTime: DataTypes.DATE,
-    location: util.locationField(),
+    location: locationField(),
     relativeToDawn: DataTypes.INTEGER,
     relativeToDusk: DataTypes.INTEGER,
     version: DataTypes.STRING,
@@ -536,7 +560,7 @@ from (
     // the JWT token for it.
     let ContentLength = 0;
     try {
-      const s3 = util.openS3();
+      const s3 = openS3();
       const s3Data = await s3
         .headObject({
           Key: flattenedResult.fileKey,

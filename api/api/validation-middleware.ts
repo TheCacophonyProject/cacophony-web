@@ -1,12 +1,14 @@
-import { ClientError } from "./customErrors";
-import models from "../models";
-import { Request, Response, NextFunction } from "express";
-import { oneOf, Result, ValidationChain } from "express-validator";
-import { expectedTypeOf } from "./middleware";
-import { Middleware } from "express-validator/src/base";
-import { extractValFromRequest } from "./extract-middleware";
-import { urlNormaliseName } from "@/emails/htmlEmailUtils";
+import { ClientError } from "./customErrors.js";
+import modelsInit from "@models/index.js";
+import type { Request, Response, NextFunction } from "express";
+import type { Result, ValidationChain } from "express-validator";
+import { oneOf } from "express-validator";
+import { expectedTypeOf } from "./middleware.js";
+import type { Middleware } from "express-validator/src/base.js";
+import { extractValFromRequest } from "./extract-middleware.js";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 
+const models = await modelsInit();
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
   async (

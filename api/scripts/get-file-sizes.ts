@@ -1,13 +1,11 @@
-import registerAliases from "../module-aliases";
-registerAliases();
-import { openS3 } from "@models/util/util";
+import { openS3 } from "@models/util/util.js";
 import { exec as cp_exec } from "child_process";
 import util from "util";
-import * as config from "../config";
+import * as config from "../config.js";
 import { program } from "commander";
 import { Client } from "pg";
 import process from "process";
-import log from "../logging";
+import log from "../logging.js";
 const exec = util.promisify(cp_exec);
 let Config;
 
@@ -60,7 +58,7 @@ const checkOnlyInstanceOfScriptRunning = async () => {
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(options.config),
+    ...(await config.default.loadConfig(options.config)),
   };
 
   if (!Config.hasOwnProperty("s3Archive")) {

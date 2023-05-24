@@ -1,38 +1,44 @@
-import { successResponse } from "../V1/responseUtil";
+import { successResponse } from "../V1/responseUtil.js";
 import middleware, {
   getRecordingById,
   expectedTypeOf,
   validateFields,
-} from "../middleware";
+} from "../middleware.js";
 import log from "@log";
 import { body, param, query, oneOf } from "express-validator";
-import models from "@models";
+import modelsInit from "@models/index.js";
 import _ from "lodash";
-import recordingUtil, {
+import {
+  addTag,
   finishedProcessingRecording,
-} from "../V1/recordingUtil";
-import { Application, NextFunction, Request, Response } from "express";
-import { Recording } from "@models/Recording";
+  saveThumbnailInfo,
+  sendAlerts,
+  signedToken,
+  updateMetadata,
+} from "../V1/recordingUtil.js";
+import type { Application, NextFunction, Request, Response } from "express";
+import type { Recording } from "@models/Recording.js";
 
-import { ClassifierRawResult } from "@typedefs/api/fileProcessing";
-import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json";
-import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json";
-import { jsonSchemaOf } from "../schema-validation";
-import { booleanOf, idOf } from "../validation-middleware";
-import { ClientError } from "../customErrors";
-import util from "../V1/util";
+import type { ClassifierRawResult } from "@typedefs/api/fileProcessing.js";
+import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json" assert { type: "json" };
+import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
+import { jsonSchemaOf } from "../schema-validation.js";
+import { booleanOf, idOf } from "../validation-middleware.js";
+import { ClientError } from "../customErrors.js";
+import util from "../V1/util.js";
 import {
   HttpStatusCode,
   RecordingProcessingState,
   RecordingType,
-} from "@typedefs/api/consts";
+} from "@typedefs/api/consts.js";
 import {
   fetchUnauthorizedRequiredEventDetailSnapshotById,
   fetchUnauthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
-} from "@api/extract-middleware";
+} from "@api/extract-middleware.js";
 
+const models = await modelsInit();
 export default function (app: Application) {
   const apiUrl = "/api/fileProcessing";
 
@@ -81,7 +87,7 @@ export default function (app: Application) {
         // FIXME - Do we really want this status code/response?
         return response.status(HttpStatusCode.OkNoContent).json();
       } else {
-        const rawJWT = recordingUtil.signedToken(
+        const rawJWT = signedToken(
           recording.rawFileKey,
           recording.getRawFileName(),
           recording.rawMimeType
@@ -206,7 +212,12 @@ export default function (app: Application) {
           recording.type === RecordingType.ThermalRaw &&
           recording.processingState === RecordingProcessingState.Finished
         ) {
-          await finishedProcessingRecording(recording, result, prevState);
+          await finishedProcessingRecording(
+            models,
+            recording,
+            result,
+            prevState
+          );
         }
         return successResponse(response, `Processing finished for #${id}`);
       } else {
@@ -304,7 +315,7 @@ export default function (app: Application) {
 
         if (complete && recording.type === RecordingType.ThermalRaw) {
           const tracks = await recording.getTracks();
-          const results = await recordingUtil.saveThumbnailInfo(
+          const results = await saveThumbnailInfo(
             recording,
             tracks,
             recording.additionalMetadata["thumbnail_region"]
@@ -330,7 +341,7 @@ export default function (app: Application) {
           recording.uploader === "device" &&
           recordingAgeMs < twentyFourHoursMs
         ) {
-          await recordingUtil.sendAlerts(recording.id);
+          await sendAlerts(models, recording.id);
         }
 
         return successResponse(response, "Processing finished.");
@@ -372,7 +383,8 @@ export default function (app: Application) {
         // FIXME - processing still sends us the tag as "event" rather than "detail"
         response.locals.tag.detail = response.locals.tag.event;
       }
-      const tagInstance = await recordingUtil.addTag(
+      const tagInstance = await addTag(
+        models,
         null,
         response.locals.recording,
         response.locals.tag
@@ -404,10 +416,7 @@ export default function (app: Application) {
     fetchUnauthorizedRequiredRecordingById(body("id")),
     parseJSONField(body("metadata")),
     async (request: Request, response: Response) => {
-      await recordingUtil.updateMetadata(
-        response.locals.recording,
-        response.locals.metadata
-      );
+      await updateMetadata(response.locals.recording, response.locals.metadata);
     }
   );
 

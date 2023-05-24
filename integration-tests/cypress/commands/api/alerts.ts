@@ -240,14 +240,14 @@ export function runReportStoppedDevicesScript(callback) {
       '"cp /app/api/config/app_test_default.js /app/api/config/app.js"',
       null,
       testRunOnApi(
-        '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /app/api/scripts/report-stopped-devices.js > log.log"',
+        '"cd api && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader /app/api/scripts/report-stopped-devices.js > log.log"',
         null,
         callback
       )
     );
   } else {
     testRunOnApi(
-      '"node --no-warnings=ExperimentalWarnings --experimental-json-modules /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"',
+      '"node --no-warnings=ExperimentalWarnings --loader /srv/cacophony/api/node_modules/esm-module-alias/loader /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"',
       null,
       callback
     );

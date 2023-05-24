@@ -6,10 +6,12 @@ testconfig.json
 api/**/*.js
 scripts/**/*.js
 models/**/*.js
+json-schemas/*
+schema-cache.json
 /*.js
 dockerstart.log
-!dynamic-import-esm.js
-!.eslintrc.js
+!.eslintrc.cjs
 !waitForApi.js
 test-cypress/cypress-performance.json
 *.iml
+!/api/cptv-decoder/decoder/decoder.js

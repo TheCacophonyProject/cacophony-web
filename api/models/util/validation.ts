@@ -17,11 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 // Validate that input is a valid [longitude, latitude]
-import { LatLng } from "@typedefs/api/common";
+import type { LatLng } from "@typedefs/api/common.js";
 import logger from "@log";
-import { canonicalLatLng } from "./util";
+import { canonicalLatLng } from "@models/util/locationUtils.js";
 
-function isLatLon(
+export function isLatLon(
   point: { coordinates: [number, number] } | [number, number] | LatLng
 ) {
   let valid = true;
@@ -78,5 +78,3 @@ function isLatLon(
     throw new Error("Location is not valid G.");
   }
 }
-
-export default { isLatLon };

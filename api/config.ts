@@ -5,6 +5,9 @@ import process from "process";
 const server = {
   loggerLevel: "info",
 };
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const timeZone = "Pacific/Auckland";
 
@@ -30,10 +33,10 @@ function getConfigPathFromArgs(strict: boolean = false): string {
   return configPath;
 }
 
-function loadConfig(configPath) {
+async function loadConfig(configPath) {
   configPath = path.resolve(__dirname, configPath);
   checkConfigFileExists(configPath);
-  const config = require(configPath).default;
+  const config = (await import(configPath)).default;
   checkDatabaseConfigAvailable(config);
   return config;
 }
@@ -55,7 +58,7 @@ function checkDatabaseConfigAvailable(config) {
   }
 }
 
-const loadedConfig = loadConfigFromArgs();
+const loadedConfig = await loadConfigFromArgs();
 
 export default {
   getConfigPathFromArgs,

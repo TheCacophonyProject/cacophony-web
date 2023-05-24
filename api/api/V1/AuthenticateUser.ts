@@ -16,17 +16,19 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { validateFields } from "../middleware";
-import auth, {
+import middleware, { validateFields } from "../middleware.js";
+import {
+  authenticateUser,
+  createEntityJWT,
   generateAuthTokensForUser,
   getEmailConfirmationToken,
   getPasswordResetToken,
   ttlTypes,
-} from "../auth";
+} from "../auth.js";
 import { body } from "express-validator";
-import { serverErrorResponse, successResponse } from "./responseUtil";
-import { Application, NextFunction, Request, Response } from "express";
-import { anyOf, idOf, validPasswordOf } from "../validation-middleware";
+import { serverErrorResponse, successResponse } from "./responseUtil.js";
+import type { Application, NextFunction, Request, Response } from "express";
+import { anyOf, idOf, validPasswordOf } from "../validation-middleware.js";
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
@@ -34,12 +36,12 @@ import {
   fetchUnauthorizedOptionalUserByEmailOrId,
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
-} from "../extract-middleware";
-import { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import { mapUser } from "@api/V1/User";
-import { User } from "@models/User";
-import models from "@/models";
-import { UserId } from "@typedefs/api/common";
+} from "../extract-middleware.js";
+import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
+import { mapUser } from "@api/V1/User.js";
+import type { User } from "@models/User.js";
+import modelsInit from "@/models/index.js";
+import type { IsoFormattedDateString, UserId } from "@typedefs/api/common.js";
 import jwt from "jsonwebtoken";
 import config from "@config";
 import { randomUUID } from "crypto";
@@ -49,15 +51,17 @@ import {
   sendEmailConfirmationEmailLegacyUser,
   sendPasswordResetEmail,
   sendWelcomeEmailConfirmationEmail,
-} from "@/emails/transactionalEmails";
-import { HttpStatusCode } from "@typedefs/api/consts";
+} from "@/emails/transactionalEmails.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 import {
   AuthenticationError,
   AuthorizationError,
   ClientError,
   FatalError,
   UnprocessableError,
-} from "@api/customErrors";
+} from "@api/customErrors.js";
+
+const models = await modelsInit();
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -108,6 +112,7 @@ export default function (app: Application, baseUrl: string) {
         const isNewEndPoint = request.path.endsWith("authenticate");
         await response.locals.user.update({ lastActiveAt: new Date() });
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
+          models,
           response.locals.user,
           request.headers["viewport"] as string,
           request.headers["user-agent"],
@@ -203,7 +208,10 @@ export default function (app: Application, baseUrl: string) {
       if (result.length) {
         // if valid token, create new token to return, and update existing token.
         // create a new short-lived JWT token for user.
-        const validToken = result[0];
+        const validToken = result[0] as {
+          updatedAt: IsoFormattedDateString;
+          userId: UserId;
+        };
 
         // Best practices taken from auth0 say that we should revoke refresh tokens after 15 days of inactivity:
         // https://auth0.com/blog/achieving-a-seamless-user-experience-with-refresh-token-inactivity-lifetimes/
@@ -240,7 +248,7 @@ export default function (app: Application, baseUrl: string) {
           }
         );
 
-        const token = auth.createEntityJWT(user, {
+        const token = createEntityJWT(user, {
           expiresIn: ttlTypes.medium,
         });
         const refreshTokenSigned = jwt.sign(
@@ -268,7 +276,7 @@ export default function (app: Application, baseUrl: string) {
         "admin-authenticate-as-other-user"
       );
       const options = isNewEndPoint ? { expiresIn: ttlTypes.medium } : {};
-      const token = auth.createEntityJWT(response.locals.user, options);
+      const token = createEntityJWT(response.locals.user, options);
       const expiry = new Date(
         new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
       );
@@ -351,11 +359,11 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     "/token",
     validateFields([body("ttl").optional(), body("access").optional()]),
-    auth.authenticateUser,
+    authenticateUser(models),
     middleware.requestWrapper(async (request, response) => {
       // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
-      const token = auth.createEntityJWT(
+      const token = createEntityJWT(
         request.user,
         { expiresIn: expiry },
         request.body.access
@@ -588,6 +596,7 @@ export default function (app: Application, baseUrl: string) {
         //  again.  Either way we should return a new set of user keys.
         // Generate a new set of tokens to be replaced.
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
+          models,
           user,
           request.headers["viewport"] as string,
           request.headers["user-agent"]

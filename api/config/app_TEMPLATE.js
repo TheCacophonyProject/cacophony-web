@@ -1,6 +1,6 @@
 // Config instructions: Fill out required fields and save as 'app.js'
 
-const server = {
+export const server = {
   // General server settings
   passportSecret: "random string", // REQUIRED, String. Random string used for passport module for encrypting JWT.
   loggerLevel: "debug", // REQUIRED, one of ('debug', 'warning', 'info', 'error')
@@ -14,12 +14,12 @@ const server = {
   isLocalDev: true,
 };
 
-const fileProcessing = {
+export const fileProcessing = {
   // File processing API settings (runs on different port)
   port: 2002,
 };
 
-const database = {
+export const database = {
   username: "root",
   password: "",
   database: "cacophony",
@@ -28,7 +28,7 @@ const database = {
   slowQueryLogThresholdMs: 1000,
 };
 
-const s3Local = {
+export const s3Local = {
   // Used for storing audio & video recordings.
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
@@ -37,7 +37,7 @@ const s3Local = {
   rootPath: "/.data/", // Root of the minio storage directory, so we can work out total and available disk space.
 };
 
-const s3Achive = {
+export const s3Archive = {
   publicKey: "", // REQUIRED, String:
   privateKey: "", // REQUIRED, String
   bucket: "CacophonyBackblazeTest", // REQUIRED, String
@@ -45,7 +45,7 @@ const s3Achive = {
   freeSpaceThresholdRatio: 0.7,
 };
 
-const smtpDetails = {
+export const smtpDetails = {
   host: "localhost",
   port: 7777, //default for service is 25. 7777 used for smtp-tester
   tls: false, //default is true.  False used for smtp-tester
@@ -58,7 +58,7 @@ const smtpDetails = {
   // }
 };
 
-const influx = {
+export const influx = {
   host: "",
   database: "",
   username: "",
@@ -66,27 +66,19 @@ const influx = {
 };
 
 // List of devices to ignore when making the service error report.
-const deviceErrorIgnoreList = [];
-
-exports.smtpDetails = smtpDetails;
-exports.server = server;
-exports.fileProcessing = fileProcessing;
-exports.database = database;
-exports.s3Local = s3Local;
-exports.s3Archive = s3Achive;
-exports.influx = influx;
-exports.deviceErrorIgnoreList = deviceErrorIgnoreList;
+export const deviceErrorIgnoreList = [];
 
 // This is needed because Sequelize looks for development by default when using db:migrate
-exports.development = database;
+export const development = database;
 
-exports.default = {
-  smtpDetails: exports.smtpDetails,
-  server: exports.server,
-  s3Local: exports.s3Local,
-  s3Archive: exports.s3Archive,
-  fileProcessing: exports.fileProcessing,
-  database: exports.database,
-  influx: exports.influx,
-  export: exports.deviceErrorIgnoreList,
+export default {
+  smtpDetails,
+  server,
+  s3Local,
+  s3Archive,
+  fileProcessing,
+  database,
+  development: database,
+  influx,
+  deviceErrorIgnoreList
 };

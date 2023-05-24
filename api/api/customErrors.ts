@@ -16,12 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import log from "../logging";
+import log from "../logging.js";
 import { format } from "util";
-import { asyncLocalStorage } from "@/Globals";
-import { NextFunction, Request, Response } from "express";
-import { HttpStatusCode } from "@typedefs/api/consts";
-import { serverErrorResponse, someResponse } from "@api/V1/responseUtil";
+import { asyncLocalStorage } from "@/Globals.js";
+import type { NextFunction, Request, Response } from "express";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { serverErrorResponse, someResponse } from "@api/V1/responseUtil.js";
 
 function errorHandler(
   err: Error,

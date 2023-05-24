@@ -17,10 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import _ from "lodash";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import Sequelize from "sequelize";
-import { ScheduleId, UserId } from "@typedefs/api/common";
-import { ScheduleConfig } from "@typedefs/api/schedule";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type Sequelize from "sequelize";
+import type { ScheduleId, UserId } from "@typedefs/api/common.js";
+import type { ScheduleConfig } from "@typedefs/api/schedule.js";
 
 export interface Schedule extends Sequelize.Model, ModelCommon<Schedule> {
   id: ScheduleId;

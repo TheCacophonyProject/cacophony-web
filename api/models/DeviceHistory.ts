@@ -13,10 +13,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { DeviceId, GroupId, LatLng, StationId } from "@typedefs/api/common";
-import util from "./util/util";
+import type Sequelize from "sequelize";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type {
+  DeviceId,
+  GroupId,
+  LatLng,
+  StationId,
+} from "@typedefs/api/common.js";
+import { locationField } from "@models/util/util.js";
 
 export type DeviceHistorySetBy =
   | "automatic"
@@ -69,7 +74,7 @@ export default function (
   const name = "DeviceHistory";
 
   const attributes = {
-    location: util.locationField(),
+    location: locationField(),
     fromDateTime: {
       type: DataTypes.DATE,
       allowNull: false,

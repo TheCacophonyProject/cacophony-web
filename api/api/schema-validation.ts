@@ -1,6 +1,6 @@
 import { Validator } from "jsonschema";
-import { Schema, ValidationError } from "jsonschema/lib";
-import { ClientError } from "./customErrors";
+import type { Schema, ValidationError } from "jsonschema/lib";
+import { ClientError } from "./customErrors.js";
 
 export const JsonSchema = new Validator();
 Validator.prototype.customFormats.FloatZeroOne = (val) => {
@@ -101,7 +101,9 @@ export const jsonSchemaOf =
     if (typeof val !== "object") {
       throw new ClientError("Malformed json");
     }
-    const result = JsonSchema.validate(val, schema, { required: true });
+    const result = JsonSchema.validate(val, schema, {
+      allowUnknownAttributes: false,
+    });
     if (result.errors.length) {
       const errors: ValidationError[] = result.errors;
       throw new ClientError(

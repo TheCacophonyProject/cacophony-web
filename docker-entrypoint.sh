@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
 
-cd /
-
-echo "---- Syncing time ----"
+#echo "---- Syncing time ----"
 #timedatectl set-ntp on
 #timedatectl
+sudo chmod +x ./minio
+sudo chmod +x ./mc
 
 echo "---- Starting Minio ----"
 ./minio server --address :9001 .data &> minio.log &
@@ -45,26 +45,34 @@ if [ ! -f "$CONFIG" ]; then
   cp /app/api/config/app_test_default.js $CONFIG
   echo "---- Copying /app/api/config/app_test_default.js to $CONFIG ----"
 fi
-echo "---- Using config $CONFIG ----"
-
-../node_modules/.bin/sequelize db:migrate --config $CONFIG
-sudo -i -u postgres psql cacophonytest -f /app/api/db-seed.sql
-
-echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 
 
 echo "---- install npm packages ----"
 
-npm install
+npm install --omit=optional
+mv ../bcrypt ./node_modules/
+mv ../sharp ./node_modules/
+
+# Sharp dependencies
+if [ ! -d "./node_modules/detect-libc" ]; then
+  mv ../detect-libc ./node_modules/
+fi
+mv ../color ./node_modules/
 cd ../types && npm install
 cd ../api
-echo "---- update npm packages ----"
-npm i
+
+echo "---- Using config $CONFIG ----"
+
+./node_modules/.bin/sequelize db:migrate --config $CONFIG --env "database"
+sudo -i -u postgres psql cacophonytest -f /app/api/db-seed.sql
+echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 
 echo "---- Compiling JSON schemas ----"
 cd ../types && npm run generate-schemas
 cd ../api
 
 echo "---- Compiling typescript and starting module ----"
-../node_modules/.bin/tsc --resolveJsonModule
-../node_modules/.bin/tsc-watch --resolveJsonModule --noClear --onSuccess "node --no-warnings=ExperimentalWarnings --experimental-json-modules --inspect=0.0.0.0:9229 Server.js --config=$CONFIG"
+./node_modules/.bin/tsc
+#sleep 10000
+chmod a+x ./node_modules/.bin/tsc-watch
+./node_modules/.bin/tsc-watch --noClear --onSuccess "node --loader esm-module-alias/loader --no-warnings=ExperimentalWarnings --inspect=0.0.0.0:9229 ./Server.js --config=$CONFIG"

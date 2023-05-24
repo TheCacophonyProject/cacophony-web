@@ -15,23 +15,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bcrypt from "bcrypt";
 import { format } from "util";
-import Sequelize, { FindOptions } from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { User } from "./User";
-import { Group } from "./Group";
-import { Event } from "./Event";
-import logger from "../logging";
-import { DeviceType } from "@typedefs/api/consts";
-import {
+import type { FindOptions } from "sequelize";
+import Sequelize from "sequelize";
+import type {
+  ModelCommon,
+  ModelsDictionary,
+  ModelStaticCommon,
+} from "./index.js";
+import type { User } from "./User.js";
+import type { Group } from "./Group.js";
+import type { Event } from "./Event.js";
+import logger from "../logging.js";
+import { DeviceType } from "@typedefs/api/consts.js";
+import type {
   DeviceId,
   GroupId,
   LatLng,
   ScheduleId,
   UserId,
-} from "@typedefs/api/common";
-import util from "./util/util";
-import { Station } from "@models/Station";
-import { tryToMatchLocationToStationInGroup } from "@api/V1/recordingUtil";
+} from "@typedefs/api/common.js";
+import type { Station } from "@models/Station.js";
+import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
+import { locationField } from "@models/util/util.js";
 
 const Op = Sequelize.Op;
 
@@ -52,6 +57,7 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   nextHeartbeat: Date | null;
   comparePassword: (password: string) => Promise<boolean>;
   reRegister: (
+    models: ModelsDictionary,
     deviceName: string,
     group: Group,
     newPassword: string
@@ -62,7 +68,10 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
   kind: DeviceType;
   getEvents: (options: FindOptions) => Promise<Event[]>;
   getGroup: () => Promise<Group>;
-  updateHeartbeat: (nextHeartbeat: Date) => Promise<boolean>;
+  updateHeartbeat: (
+    models: ModelsDictionary,
+    nextHeartbeat: Date
+  ) => Promise<boolean>;
 }
 
 export interface DeviceStatic extends ModelStaticCommon<Device> {
@@ -141,7 +150,7 @@ export default function (
       type: DataTypes.STRING,
       allowNull: false,
     },
-    location: util.locationField(),
+    location: locationField(),
     lastConnectionTime: {
       type: DataTypes.DATE,
     },
@@ -448,11 +457,6 @@ order by hour;
     }));
   };
 
-  interface TagCount {
-    what: String;
-    count: number;
-  }
-
   Device.getSpeciesCount = async function (
     authUser,
     deviceId,
@@ -613,6 +617,7 @@ order by hour;
 
   // Will register as a new device
   Device.prototype.reRegister = async function (
+    models: ModelsDictionary,
     newName: string,
     newGroup: Group,
     newPassword: string
@@ -624,6 +629,7 @@ order by hour;
     if (this.location) {
       // NOTE: This needs to happen outside the transaction to succeed.
       stationToAssign = await tryToMatchLocationToStationInGroup(
+        models,
         this.location,
         newGroup.id,
         now
@@ -636,7 +642,7 @@ order by hour;
             Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
         async (t) => {
-          const conflictingDevice = await Device.findOne({
+          const conflictingDevice = await models.Device.findOne({
             where: {
               deviceName: newName,
               GroupId: newGroup.id,
@@ -707,11 +713,15 @@ order by hour;
     return newDevice;
   };
 
-  Device.prototype.updateHeartbeat = async function (nextHeartbeat: Date) {
+  Device.prototype.updateHeartbeat = async function (
+    models: ModelsDictionary,
+    nextHeartbeat: Date
+  ) {
     const now = new Date();
     if (this.location && this.kind !== DeviceType.Unknown) {
       // Find the station the device was in, update its lastActiveTime.
       const station = await tryToMatchLocationToStationInGroup(
+        models,
         this.location,
         this.GroupId,
         now

@@ -19,10 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "@log";
 import jwt from "jsonwebtoken";
 import config from "@config";
-import { Response, Request } from "express";
-import { CACOPHONY_WEB_VERSION } from "@/Globals";
-import { HttpStatusCode } from "@/../types/api/consts";
-import { DecodedJWTToken, getVerifiedJWT } from "@api/auth";
+import type { Response, Request } from "express";
+import { CACOPHONY_WEB_VERSION } from "@/Globals.js";
+import { HttpStatusCode } from "@/../types/api/consts.js";
+import type { DecodedJWTToken } from "@api/auth.js";
+import { getVerifiedJWT } from "@api/auth.js";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";

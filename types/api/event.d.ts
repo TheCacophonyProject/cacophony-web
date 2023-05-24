@@ -1,5 +1,5 @@
 import type { IsoFormattedDateString, DeviceId } from "./common";
-import { DeviceEventType } from "./consts";
+import { DeviceEventType } from "./consts.js";
 
 export type EventDates = IsoFormattedDateString[];
 

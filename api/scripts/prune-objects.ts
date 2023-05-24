@@ -1,10 +1,8 @@
-import registerAliases from "../module-aliases";
-registerAliases();
 import process from "process";
 import { program } from "commander";
 import { Client } from "pg";
-import * as config from "../config";
-import * as modelsUtil from "../models/util/util";
+import * as config from "../config.js";
+import * as modelsUtil from "../models/util/util.js";
 
 let Config;
 // Define the types of object keys that will be considered for pruning.
@@ -23,7 +21,7 @@ async function main() {
 
   Config = {
     ...config.default,
-    ...config.default.loadConfig(options.config),
+    ...(await config.default.loadConfig(options.config)),
   };
 
   if (!options.delete) {

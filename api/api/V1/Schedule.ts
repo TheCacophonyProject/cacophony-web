@@ -16,28 +16,31 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
+import { validateFields } from "../middleware.js";
 import { body, param } from "express-validator";
-import models from "@models";
-import { successResponse } from "./responseUtil";
-import { Application, NextFunction, Request, Response } from "express";
+import modelsInit from "@models/index.js";
+import { successResponse } from "./responseUtil.js";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
   fetchUnauthorizedRequiredScheduleById,
   parseJSONField,
-} from "@api/extract-middleware";
-import { idOf } from "../validation-middleware";
-import { jsonSchemaOf } from "@api/schema-validation";
-import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { ApiScheduleResponse, ScheduleConfig } from "@typedefs/api/schedule";
-import { Schedule } from "@models/Schedule";
-import { Device } from "@models/Device";
-import { ClientError } from "@api/customErrors";
-import { HttpStatusCode } from "@typedefs/api/consts";
+} from "@api/extract-middleware.js";
+import { idOf } from "../validation-middleware.js";
+import { jsonSchemaOf } from "@api/schema-validation.js";
+import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json" assert { type: "json" };
+import type {
+  ApiScheduleResponse,
+  ScheduleConfig,
+} from "@typedefs/api/schedule.js";
+import type { Schedule } from "@models/Schedule.js";
+import type { Device } from "@models/Device.js";
+import { ClientError } from "@api/customErrors.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 
+const models = await modelsInit();
 export const mapSchedule = (schedule: Schedule): ApiScheduleResponse => ({
   id: schedule.id,
   schedule: schedule.schedule as ScheduleConfig,
