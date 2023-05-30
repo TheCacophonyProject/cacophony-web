@@ -231,7 +231,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
-  it.only("Cannot add a recording without a recordingDateTime", () => {
+  it("Cannot add a recording without a recordingDateTime", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     delete recording1.recordingDateTime;
     cy.log("Add recording as group admin");
