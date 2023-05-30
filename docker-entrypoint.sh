@@ -4,13 +4,12 @@ set -e
 #echo "---- Syncing time ----"
 #timedatectl set-ntp on
 #timedatectl
-cd /app
-sudo chmod +x /app/minio
-sudo chmod +x /app/mc
-
+mv /app/minio /minio
+cd /
+sudo chmod +x /minio
+sudo chmod +x /mc
 echo "---- Starting Minio ----"
-/app/minio server --address :9001 .data &> minio.log &
-
+/minio server --address :9001 /data &> minio.log &
 
 echo "---- Starting PostgreSQL ----"
 service postgresql start
@@ -30,13 +29,13 @@ sudo -i -u postgres psql cacophonytest -c "CREATE EXTENSION IF NOT EXISTS ltree"
 
 echo "---- Setting up Minio ----"
 # Check minio has been setup by checking if myminio/cacophony exists
-if /app/mc ls myminio | grep -q cacophony; then
+if ./mc ls myminio | grep -q cacophony; then
     echo "---- Minio already setup ----"
 else
     echo "---- Setting up Minio ----"
-    /app/mc config host add myminio http://127.0.0.1:9001 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-    /app/mc mb myminio/cacophony
-    /app/mc mb myminio/cacophony-archived
+    ./mc config host add myminio http://127.0.0.1:9001 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+    ./mc mb myminio/cacophony
+    ./mc mb myminio/cacophony-archived
 fi
 
 cd /app/api
