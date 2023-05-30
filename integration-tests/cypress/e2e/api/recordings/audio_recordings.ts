@@ -574,7 +574,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  it("File hash accepted correctly", () => {
+  it.only("File hash accepted correctly", () => {
     cy.log("Correct file hash accepted");
     const recording27 = TestCreateRecordingData(templateRecording);
     let expectedRecording27: ApiAudioRecordingResponse;

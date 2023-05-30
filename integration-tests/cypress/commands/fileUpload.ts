@@ -28,7 +28,11 @@ export function sendMultipartMessage(
     // completedXhr.open("POST", v1ApiPath("uploadedFile"));
     // completedXhr.send(JSON.stringify(xhr.response.body));
   };
-  xhr.onerror = function () {
+  xhr.onerror = function (err) {
+    Cypress.log({
+      name: "Upload error",
+      message: { xhr, err },
+    });
     onComplete(xhr);
   };
   xhr.send(formData);
@@ -60,6 +64,7 @@ export function uploadFile(
   ) => {
     // Build up the form
     const formData = new FormData();
+    formData.set("data", JSON.stringify(data));
     if (!Array.isArray(blob)) {
       formData.set("file", blob, fileName as string); //adding a file to the form
     } else {
@@ -67,7 +72,6 @@ export function uploadFile(
         formData.set(item.key, item.fileBlob, item.filename);
       }
     }
-    formData.set("data", JSON.stringify(data));
     // Perform the request
 
     return sendMultipartMessage(
@@ -75,7 +79,7 @@ export function uploadFile(
       jwt,
       formData,
       waitOn,
-      function (xhr: any) {
+      function (xhr: XMLHttpRequest) {
         Cypress.log({
           name: "Upload debug",
           displayName: "(upload)",
@@ -90,7 +94,10 @@ export function uploadFile(
             };
           },
         });
-
+        Cypress.log({
+          name: "Upload complete",
+          message: xhr.status,
+        });
         if (statusCode === 200) {
           if (xhr.status != 200) {
             expect(xhr.status, "Check response from uploading file").to.eq(200);
@@ -101,10 +108,7 @@ export function uploadFile(
             `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`
           ).to.equal(statusCode);
         }
-        Cypress.log({
-          name: "Upload complete",
-          message: xhr,
-        });
+
         resolve({ ...xhr.response, statusCode });
       }
     );

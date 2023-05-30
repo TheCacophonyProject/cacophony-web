@@ -21,6 +21,7 @@ import {
   SuperUsers,
 } from "./Globals.js";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 const asyncExec = promisify(exec);
@@ -62,22 +63,37 @@ const openHttpServer = (app): Promise<void> => {
   });
 };
 
-// Returns a Promise that will reolve if it could connect to the S3 file storage
+export const delayMs = async (delayMs: number) =>
+  new Promise((resolve) => setTimeout(resolve, delayMs));
+
+// Returns a Promise that will resolve if it could connect to the S3 file storage
 // and reject if connection failed.
-const checkS3Connection = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const s3 = openS3();
-    const params = { Bucket: config.s3Local.bucket };
-    log.notice("Connecting to S3.....");
-    s3.headBucket(params, (err) => {
-      if (err) {
-        log.error("Error with connecting to S3.");
-        reject(err);
-      }
-      log.notice("Connected to S3.");
-      resolve();
-    });
-  });
+const checkS3Connection = async (): Promise<void> => {
+  const s3 = openS3();
+  log.notice("Connecting to S3.....");
+  try {
+    await s3.headBucket(config.s3Local.bucket);
+    log.notice("Connected to S3.");
+  } catch (err) {
+    if (err) {
+      log.error("Error with connecting to S3. %s", err);
+    }
+  }
+  const start = performance.now();
+  try {
+    // TODO: Create a stream that has pauses, and see if the upload works, and gets flushed/gives feedback.
+    const upload = await s3.uploadStreaming(
+      "test",
+      fs.createReadStream("./debug-files/2-second-status.cptv")
+    );
+    await upload.done();
+    console.log("upload took", performance.now() - start);
+  } catch (err) {
+    if (err) {
+      console.log("failure upload took", performance.now() - start);
+      log.error("Error with uploading to S3. %s", err);
+    }
+  }
 };
 
 (async () => {

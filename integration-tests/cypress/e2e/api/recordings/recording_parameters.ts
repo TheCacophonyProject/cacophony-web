@@ -22,9 +22,11 @@ describe("Recordings - parameter tests", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
+  delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
+  delete templateRecording.metadata;
 
   before(() => {
     //Create group 1 with 2 devices, admin and member
@@ -760,7 +762,7 @@ describe("Recordings - parameter tests", () => {
     });
   });
 
-  it.only("File hash accepted correctly", () => {
+  it("File hash accepted correctly", () => {
     cy.log("Correct file hash accepted");
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
@@ -770,7 +772,7 @@ describe("Recordings - parameter tests", () => {
       recording1,
       "oneframe.cptv",
       "rpaRecording27"
-    ).then(() => {
+    ).then((recordingId) => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
         "rpaRecording27",
@@ -796,7 +798,9 @@ describe("Recordings - parameter tests", () => {
         { message: "Duplicate recording found for device" }
       );
 
-      cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording27");
+      cy.apiRecordingDelete("rpaGroupAdmin", recordingId.toString(), 200, {
+        useRawRecordingId: true,
+      });
     });
 
     cy.log("Incorrect file hash rejected");

@@ -69,6 +69,7 @@ describe("Stations: station updates also update recordings", () => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: oneWeekAgo,
+        noTracks: true,
       }).then((recordingId) => {
         cy.apiStationDelete(
           Josie,
@@ -295,6 +296,7 @@ describe("Stations: station updates also update recordings", () => {
         cy.testUploadRecording(deviceName, {
           ...newLocation,
           time: dayThree,
+          noTracks: true,
         }).thenCheckStationNameIs(Josie, getTestName(newLocationStation.name));
       });
     });
@@ -326,6 +328,7 @@ describe("Stations: station updates also update recordings", () => {
         cy.testUploadRecording(deviceName, {
           ...oldLocation,
           time: dayThree,
+          noTracks: true,
         }).thenCheckStationIsNew(Josie);
       });
     });

@@ -67,7 +67,7 @@ describe("Stations: permissions", () => {
       const recordingTime = new Date();
       cy.testUploadRecording(
         "saCamera1",
-        { ...thisLocation, time: recordingTime },
+        { ...thisLocation, time: recordingTime, noTracks: true },
         "saRecording1"
       )
         .thenCheckStationNameIs("saAdmin", getTestName("saStation1"))

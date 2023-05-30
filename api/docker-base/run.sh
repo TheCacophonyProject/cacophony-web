@@ -36,7 +36,7 @@ apt-get install -y nodejs
 # install packages - this still has to be done each time because of updates but doing it
 # on the base means there are fewer packages to install
 npm i -g npm
-npm install
+npm install --no-audit
 npm cache ls
 # Bcrypt are sharp are natively compiled, so we can't just get them from the npm cache.
 # Instead we copy them over to avoid having to ship all the native build tools in the docker image.

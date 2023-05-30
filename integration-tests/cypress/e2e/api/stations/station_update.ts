@@ -463,7 +463,7 @@ describe("Stations: updating", () => {
 
     cy.testUploadRecording(
       "stuCamera1",
-      { ...thisLocation, time: recordingTime },
+      { ...thisLocation, time: recordingTime, noTracks: true },
       "saRecording1"
     )
       .thenCheckStationIsNew("stuAdmin")

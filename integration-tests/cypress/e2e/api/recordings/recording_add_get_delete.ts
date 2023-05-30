@@ -24,9 +24,12 @@ describe("Recordings (thermal): add, get, delete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
+  // NOTE: Save time in tests by not creating tracks - these tests don't use them.
+  delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
+  delete templateRecording.metadata;
 
   before(() => {
     //Create group1 with 2 devices, admin and member
@@ -200,6 +203,48 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
+  it.only("Cannot add a recording with an invalid recordingDateTime", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    recording1.recordingDateTime = "foo";
+    cy.log("Add recording as group admin");
+    cy.apiRecordingAddOnBehalfUsingDevice(
+      "raGroupAdmin",
+      "raCamera1",
+      recording1,
+      "raRecording1",
+      "oneframe.cptv",
+      422
+    );
+  });
+
+  it("Cannot add a recording with a fileHash not matching the uploaded raw file", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    recording1.fileHash = "foo";
+    cy.log("Add recording as group admin");
+    cy.apiRecordingAddOnBehalfUsingDevice(
+      "raGroupAdmin",
+      "raCamera1",
+      recording1,
+      "raRecording1",
+      "oneframe.cptv",
+      400
+    );
+  });
+
+  it("Cannot add a recording without a recordingDateTime", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    delete recording1.recordingDateTime;
+    cy.log("Add recording as group admin");
+    cy.apiRecordingAddOnBehalfUsingDevice(
+      "raGroupAdmin",
+      "raCamera1",
+      recording1,
+      "raRecording1",
+      "invalid.cptv",
+      422
+    );
+  });
+
   it("Group admin can add recordings by device on behalf", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
@@ -329,9 +374,9 @@ describe("Recordings (thermal): add, get, delete", () => {
   });
 
   it("Group member can add recordings by device on behalf - for inactive device", () => {
+    // NOTE: This test requires the previous test to also pass.
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
-
     cy.log("Rename/reregister device");
     cy.apiDeviceReregister(
       "raCamera1-renamed",

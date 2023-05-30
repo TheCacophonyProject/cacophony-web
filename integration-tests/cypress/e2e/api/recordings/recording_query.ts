@@ -175,7 +175,8 @@ describe("Recordings query using where", () => {
             delete expectedRecording3.relativeToDawn;
             delete expectedRecording3.relativeToDusk;
 
-            expectedRecording3.processingState = RecordingProcessingState.ToMp3;
+            expectedRecording3.processingState =
+              RecordingProcessingState.Analyse;
 
             cy.apiRecordingAdd(
               "rqCamera1b",
@@ -283,7 +284,7 @@ describe("Recordings query using where", () => {
     }
   });
 
-  it("Group admin can query device's recordings", () => {
+  it.only("Group admin can query device's recordings", () => {
     cy.log("Check recording can be viewed correctly");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",

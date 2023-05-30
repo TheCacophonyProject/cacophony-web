@@ -22,7 +22,7 @@
     "@mapbox/node-pre-gyp": "^1.0.10",
     "apidoc-plugin-ts": "github:TheCacophonyProject/apidoc-plugin-ts#v1.1.0",
     "scale-color-perceptual": "^1.1.2",
-    "aws-sdk": "^2.1381.0",
+    "@aws-sdk/client-s3": "^3.337.0",
     "commander": "^8.1.0",
     "emailjs": "^4.0.2",
     "express": "^4.17.1",
@@ -49,8 +49,6 @@
     "handlebars": "^4.7.7",
     "jsdom": "^19.0.0",
 
-    "form-data": "^4.0.0",
-
     "recursive-readdir": "^2.2.2",
     "ts-json-schema-generator": "^1.2.0"
   },
@@ -70,15 +68,7 @@
     "typescript": "^5.0.4",
 
     "@types/recursive-readdir": "^2.2.0",
-    "@tsconfig/node16": "^1.0.4",
-
-    "@vue/cli-service": "^5.0.8",
-    "cypress": "^12.12.0",
-    "cypress-promise": "^1.1.0",
-    "eslint-plugin-cypress": "^2.13.3",
-    "eslint-plugin-no-only-tests": "^3.1.0",
-    "vue": "^3.3.2",
-    "webpack": "^5.73.0"
+    "@tsconfig/node16": "^1.0.4"
   },
   "optionalDependencies": {
     "bcrypt": "^5.0.1",

@@ -35,9 +35,11 @@ describe("Recordings: bulk delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
+  delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
+  delete templateRecording.metadata;
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );

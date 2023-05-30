@@ -4,8 +4,11 @@ import type { CptvPlayerContext as PlayerContext } from "./decoder/decoder.js";
 const context = parentPort;
 import init, { CptvPlayerContext } from "./decoder/decoder.js";
 import { readFileSync } from "fs";
+import type { ReadableStream } from "stream/web";
 import { fileURLToPath } from "url";
 import path from "path";
+import { RecordingId } from "@typedefs/api/common.js";
+import { wasm_bindgen__convert__closures__invoke2_mut__h7b4a9d0471de459f } from "@api/cptv-decoder/decoder/decoder_bg.wasm.js";
 
 class Unlocker {
   fn: (() => void) | null = null;
@@ -68,6 +71,7 @@ interface Reader {
   read: () => Promise<{ value: Uint8Array; done: boolean }>;
 }
 
+let wasmBytes: Buffer;
 class CptvDecoderInterface {
   private framesRead = 0;
   private locked = false;
@@ -117,6 +121,37 @@ class CptvDecoderInterface {
         path.join(__dirname, "./decoder/decoder_bg.wasm")
       );
       const _wasmInstance = await init(wasm);
+      this.playerContext = await CptvPlayerContext.newWithStream(this.reader);
+      this.inited = true;
+      result = true;
+    } catch (e) {
+      this.streamError = e;
+      result = `Failed to load CPTV file, ${e}`;
+    }
+    unlocker.unlock();
+    this.locked = false;
+    return result;
+  }
+
+  async initWithReadableStream(stream: ReadableStream) {
+    this.free();
+    this.framesRead = 0;
+    this.streamError = null;
+    const unlocker = new Unlocker();
+    await this.lockIsUncontended(unlocker);
+    this.locked = true;
+    this.reader = stream.getReader() as Reader;
+    let result;
+    try {
+      if (!wasmBytes) {
+        const __filename = fileURLToPath(import.meta.url);
+        // eslint-disable-next-line no-undef
+        const __dirname = path.dirname(__filename);
+        wasmBytes = readFileSync(
+          path.join(__dirname, "./decoder/decoder_bg.wasm")
+        );
+      }
+      const _wasmInstance = await init(wasmBytes);
       this.playerContext = await CptvPlayerContext.newWithStream(this.reader);
       this.inited = true;
       result = true;
@@ -250,6 +285,17 @@ class CptvDecoderInterface {
     return initedResult as string;
   }
 
+  async getStreamMetadata(stream: ReadableStream) {
+    const initedResult = await this.initWithReadableStream(stream);
+    if (initedResult === true) {
+      const meta = await this.getMetadata();
+      this.reader && (this.reader as any).releaseLock();
+      return meta;
+    }
+    this.reader && (this.reader as any).releaseLock();
+    return initedResult as string;
+  }
+
   async lockIsUncontended(unlocker: Unlocker) {
     return new Promise((resolve) => {
       if (this.locked) {
@@ -321,10 +367,22 @@ context.addListener("message", async (data) => {
         context.postMessage({ type: data.type, data: result });
       }
       break;
+    case "initWithReadableStream":
+      {
+        const result = await player.initWithReadableStream(data.streamReader);
+        context.postMessage({ type: data.type, data: result });
+      }
+      break;
     case "getBytesMetadata":
       {
         const header = await player.getBytesMetadata(data.arrayBuffer);
         context.postMessage({ type: data.type, data: header });
+      }
+      break;
+    case "getStreamMetadata":
+      {
+        const result = await player.getStreamMetadata(data.streamReader);
+        context.postMessage({ type: data.type, data: result });
       }
       break;
     case "getNextFrame":

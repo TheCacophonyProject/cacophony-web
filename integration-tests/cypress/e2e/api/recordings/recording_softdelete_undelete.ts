@@ -34,9 +34,11 @@ describe("Recordings: soft delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
+  delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
+  delete templateRecording.metadata;
 
   before(() => {
     //Create group1 with 2 devices, admin and member

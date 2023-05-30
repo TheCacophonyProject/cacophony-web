@@ -87,13 +87,7 @@ const checkOnlyInstanceOfScriptRunning = async () => {
     if (result.rows.length) {
       const p = [];
       for (const row of result.rows) {
-        p.push(
-          s3
-            .headObject({
-              Key: row["rawFileKey"],
-            })
-            .promise()
-        );
+        p.push(s3.headObject(row["rawFileKey"]));
       }
       const stats = await Promise.all(p);
       const j = [];

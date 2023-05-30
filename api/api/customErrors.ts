@@ -70,7 +70,7 @@ function errorHandler(
   );
 }
 
-class CustomError extends Error {
+export class CustomError extends Error {
   statusCode: HttpStatusCode;
   constructor(
     message: string = "Internal server error.",
@@ -145,6 +145,12 @@ export class AuthorizationError extends CustomError {
 export class UnprocessableError extends CustomError {
   constructor(message: string) {
     super(message, HttpStatusCode.Unprocessable);
+  }
+}
+
+export class BadRequestError extends CustomError {
+  constructor(message: string) {
+    super(message, HttpStatusCode.BadRequest);
   }
 }
 

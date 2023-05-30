@@ -91,11 +91,11 @@ export const uploadFileStream = async (
     hash.update(d, "binary");
   });
   request.pipe(pass);
-  const upload = openS3().upload({ Key: fullKey, Body: pass });
+  const upload = openS3().uploadStreaming(fullKey, pass);
   // upload.on("httpUploadProgress", (p) => {
   //   console.log(p);
   // });
-  await upload.promise().catch((err) => {
+  await upload.done().catch((err) => {
     return err;
   });
   return {
@@ -224,16 +224,11 @@ function multipartUpload(
         part.resume();
         return;
       }
-      const uploadStream = (Key) => {
+      const uploadStream = (key) => {
         const pass = new stream.PassThrough();
         return {
           writeStream: pass,
-          promise: openS3()
-            .upload({ Key, Body: pass })
-            .promise()
-            .catch((err) => {
-              return err;
-            }),
+          upload: openS3().uploadStreaming(key, pass),
         };
       };
       let partKey = key;
@@ -243,8 +238,8 @@ function multipartUpload(
       if (part.name === "thumb") {
         partKey = `${key.replace("raw", "web")}-thumb`;
       }
-      const { writeStream, promise } = uploadStream(partKey);
-      uploadPromises[part.filename] = promise;
+      const { writeStream, upload } = uploadStream(partKey);
+      uploadPromises[part.filename] = upload.done();
       part.pipe(writeStream);
       fileDataPromises[partKey] = stream2Buffer(
         writeStream,
@@ -337,10 +332,7 @@ function multipartUpload(
                 // Hash check failed, delete the file from s3, and return an error which the client can respond
                 // to in order to decide whether to retry immediately.
                 await openS3()
-                  .deleteObject({
-                    Key: key,
-                  })
-                  .promise()
+                  .deleteObject(key)
                   .catch((err) => {
                     return err;
                   });
@@ -380,10 +372,7 @@ function multipartUpload(
                 );
                 // Remove from s3
                 await openS3()
-                  .deleteObject({
-                    Key: key,
-                  })
-                  .promise()
+                  .deleteObject(key)
                   .catch((err) => {
                     return err;
                   });
@@ -446,10 +435,7 @@ function multipartUpload(
 
 function getS3Object(fileKey) {
   const s3 = openS3();
-  const params = {
-    Key: fileKey,
-  };
-  return s3.headObject(params).promise();
+  return s3.headObject(fileKey);
 }
 
 async function getS3ObjectFileSize(fileKey) {
@@ -465,10 +451,7 @@ async function getS3ObjectFileSize(fileKey) {
 
 async function deleteS3Object(fileKey) {
   const s3 = openS3();
-  const params = {
-    Key: fileKey,
-  };
-  return s3.deleteObject(params).promise();
+  return s3.deleteObject(fileKey);
 }
 
 export default {

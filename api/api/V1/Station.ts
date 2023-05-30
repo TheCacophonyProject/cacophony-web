@@ -177,7 +177,7 @@ export default function (app: Application, baseUrl: string) {
         return next(new ClientError("Reference image not found for station"));
       }
       const s3 = openS3();
-      await s3.deleteObject({ Key: fileKey });
+      await s3.deleteObject(fileKey);
       referenceImages = referenceImages.filter(
         (imageKey) => imageKey !== fileKey
       );

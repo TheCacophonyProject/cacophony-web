@@ -4,6 +4,7 @@ set -e
 #echo "---- Syncing time ----"
 #timedatectl set-ntp on
 #timedatectl
+cd /app
 sudo chmod +x ./minio
 sudo chmod +x ./mc
 
@@ -49,7 +50,7 @@ fi
 
 echo "---- install npm packages ----"
 
-npm install --omit=optional
+npm install --omit=optional --no-audit
 mv ../bcrypt ./node_modules/
 mv ../sharp ./node_modules/
 
@@ -58,7 +59,7 @@ if [ ! -d "./node_modules/detect-libc" ]; then
   mv ../detect-libc ./node_modules/
 fi
 mv ../color ./node_modules/
-cd ../types && npm install
+cd ../types && npm install --no-audit
 cd ../api
 
 echo "---- Using config $CONFIG ----"

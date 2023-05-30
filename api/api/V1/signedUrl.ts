@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import middleware from "../middleware.js";
-import { serverErrorResponse } from "./responseUtil.js";
 import { ClientError } from "../customErrors.js";
 import type { Application, Request, Response } from "express";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
@@ -26,6 +25,8 @@ import { SuperUsers } from "@/Globals.js";
 import { Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
 import { signedUrl } from "@api/auth.js";
+import type { ReadableStream } from "stream/web";
+import { serverErrorResponse } from "@api/V1/responseUtil.js";
 
 const models = await modelsInit();
 
@@ -39,6 +40,13 @@ export const streamS3Object = async (
   groupId?: GroupId,
   fileSize?: number
 ) => {
+  // NOTE: The internal NodeJS writable stream that is in an express object
+  //  doesn't allow you to set a lower highwaterMark to allow a bit of back-pressure
+  //  on slower connections, and therefore restrict how much data we're pulling from
+  //  our S3 providers in the case that the request is canceled for instance.
+  //  So in terms of recording bytes transferred for billing purposes, we basically
+  //  may have to attribute more bytes to the download than were actually used by the
+  //  end-user browser request.
   response.setHeader("Content-disposition", "attachment; filename=" + fileName);
   response.setHeader("Transfer-Encoding", "chunked");
   response.setHeader("Content-type", mimeType);
@@ -47,23 +55,15 @@ export const streamS3Object = async (
   }
 
   const s3 = openS3();
-  const s3Request = s3.getObject({
-    Key: key,
-  });
-  // NOTE: The internal NodeJS writable stream that is in an express object
-  //  doesn't allow you to set a lower highwaterMark to allow a bit of back-pressure
-  //  on slower connections, and therefore restrict how much data we're pulling from
-  //  our S3 providers in the case that the request is canceled for instance.
-  //  So in terms of recording bytes transferred for billing purposes, we basically
-  //  may have to attribute more bytes to the download than were actually used by the
-  //  end-user browser request.
-  let dataStreamed = 0;
-  const stream = s3Request.createReadStream();
-  stream.on("error", (err) => {
-    return serverErrorResponse(request, response, err);
-  });
-  if (userId && groupId) {
-    stream.on("close", async () => {
+  try {
+    const s3Request = await s3.getObject(key);
+    const webStream = s3Request.Body as unknown as ReadableStream;
+    let dataStreamed = 0;
+    for await (const chunk of webStream) {
+      dataStreamed += chunk.length;
+      response.write(chunk);
+    }
+    if (userId && groupId) {
       // Log out to the DB how much we streamed for this user.
       const groupUser = await models.GroupUsers.findOne({
         where: {
@@ -87,13 +87,11 @@ export const streamS3Object = async (
           transferredItems: 1,
         });
       }
-    });
+    }
+    response.end();
+  } catch (err) {
+    return serverErrorResponse(request, response, err);
   }
-  stream.on("data", (chunk) => {
-    dataStreamed += chunk.length;
-  });
-  stream.pipe(response);
-
   // TODO: We may want to support HTTP range requests, and if we do, we should be able to
   //  pass that through to our s3 providers.  It may not be supported for minio though,
   //  so we may still need to use the following hack.

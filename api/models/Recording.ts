@@ -561,11 +561,7 @@ from (
     let ContentLength = 0;
     try {
       const s3 = openS3();
-      const s3Data = await s3
-        .headObject({
-          Key: flattenedResult.fileKey,
-        })
-        .promise();
+      const s3Data = await s3.headObject(flattenedResult.fileKey);
       ContentLength = s3Data.ContentLength;
     } catch (err) {
       log.warning(
@@ -1268,6 +1264,7 @@ from (
     "batteryLevel",
     "airplaneModeOn",
     "additionalMetadata",
+    "cacophonyIndex",
     "processingMeta", // FIXME - Check this
     "comment",
     "StationId",
@@ -1280,7 +1277,6 @@ from (
       RecordingProcessingState.Finished,
     ],
     audio: [
-      RecordingProcessingState.ToMp3,
       RecordingProcessingState.Analyse,
       RecordingProcessingState.Finished,
     ],
@@ -1288,7 +1284,7 @@ from (
 
   Recording.uploadedState = function (type: RecordingType) {
     if (type == RecordingType.Audio) {
-      return RecordingProcessingState.ToMp3;
+      return RecordingProcessingState.Analyse;
     } else {
       return RecordingProcessingState.Tracking;
     }

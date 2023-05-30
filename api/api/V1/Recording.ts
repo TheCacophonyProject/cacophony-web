@@ -22,6 +22,7 @@ import config from "@config";
 import log from "@log";
 import modelsInit from "@models/index.js";
 import type { Recording } from "@models/Recording.js";
+import { mapPosition } from "@models/Recording.js";
 import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
 import type { TrackTag } from "@models/TrackTag.js";
@@ -59,11 +60,13 @@ import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" assert { type: "json" };
+import multiparty from "multiparty";
 
 import {
   AuthorizationError,
   ClientError,
   FatalError,
+  UnprocessableError,
 } from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
@@ -97,12 +100,21 @@ import {
   reportRecordings,
   reportVisits,
   signedToken,
-  uploadRawRecording,
 } from "./recordingUtil.js";
-import { serverErrorResponse, successResponse } from "./responseUtil.js";
+import {
+  serverErrorResponse,
+  someResponse,
+  successResponse,
+} from "./responseUtil.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import fs from "fs/promises";
-import { mapPosition } from "@models/Recording.js";
+import responseUtil from "@api/V1/responseUtil.js";
+import type { MultipartFormPart } from "@api/fileUploaders/multipartFormDataHelper.js";
+import {
+  uploadGenericRecording,
+  uploadGenericRecordingFromDevice,
+  uploadGenericRecordingOnBehalfOfDevice,
+} from "@api/fileUploaders/uploadGenericRecording.js";
 
 const models = await modelsInit();
 
@@ -380,9 +392,14 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} recordingId ID of the recording.
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    */
-  app.post(apiUrl, extractJwtAuthorisedDevice, uploadRawRecording(models));
+  app.post(
+    apiUrl,
+    extractJwtAuthorisedDevice,
+    async (request, response, next) =>
+      uploadGenericRecordingFromDevice(models)(request, response, next)
+  );
 
   /**
    * @api {post} /api/v1/recordings/device/:deviceName/group/:groupName Add a new recording on behalf of device using group
@@ -420,7 +437,8 @@ export default (app: Application, baseUrl: string) => {
       param("deviceName"),
       param("groupName")
     ),
-    uploadRawRecording(models)
+    async (request, response, next) =>
+      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next)
   );
 
   /**
@@ -457,7 +475,8 @@ export default (app: Application, baseUrl: string) => {
       query("only-active").default(false).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    uploadRawRecording(models)
+    async (request, response, next) =>
+      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next)
   );
 
   /**
@@ -500,7 +519,8 @@ export default (app: Application, baseUrl: string) => {
       response.locals.device = devices.pop();
       next();
     },
-    uploadRawRecording(models)
+    async (request, response, next) =>
+      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next)
   );
 
   // FIXME - Should we just delete this now?
@@ -1411,27 +1431,25 @@ export default (app: Application, baseUrl: string) => {
         return response.end(null, "binary");
       }
        */
-
-      getThumbnail(rec, trackId)
-        .then((data) => {
-          response.setHeader(
-            "Content-disposition",
-            "attachment; filename=" + filename
-          );
-          response.setHeader("Content-type", mimeType);
-          response.setHeader("Content-Length", data.ContentLength);
-          response.write(data.Body, "binary");
-          return response.end(null, "binary");
-        })
-        .catch((err) => {
-          // FIXME - if the thumbnail doesn't exist, lets create it, even if the request takes a while.
-          log.error(
-            "Error getting thumbnail from s3 %s: %s",
-            rec.id,
-            err.message
-          );
-          return next(new ClientError("No thumbnail exists"));
-        });
+      try {
+        const data = await getThumbnail(rec, trackId);
+        response.setHeader(
+          "Content-disposition",
+          "attachment; filename=" + filename
+        );
+        response.setHeader("Content-type", mimeType);
+        response.setHeader("Content-Length", data.length);
+        response.write(data, "binary");
+        return response.end(null, "binary");
+      } catch (err) {
+        // FIXME - if the thumbnail doesn't exist, lets create it, even if the request takes a while.
+        log.error(
+          "Error getting thumbnail from s3 %s: %s",
+          rec.id,
+          err.message
+        );
+        return next(new ClientError("No thumbnail exists"));
+      }
     }
   );
 

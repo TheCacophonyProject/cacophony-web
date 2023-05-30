@@ -1,5 +1,5 @@
 import { Worker } from "worker_threads";
-
+import type { ReadableStream } from "stream/web";
 interface MessageData {
   type: string;
   data: unknown;
@@ -12,19 +12,18 @@ interface MessageDataMessage extends MessageData {
   };
 }
 
-let messageQueue: Record<string, (data: unknown) => void> = {};
-let decoder: Worker | undefined;
-
 export class CptvDecoder {
   constructor() {
     this.free().then(() => {
-      messageQueue = {};
+      this.messageQueue = {};
     });
   }
   private inited = false;
+  private decoder: Worker;
+  private messageQueue = {};
   async init() {
     await this.free();
-    messageQueue = {};
+    this.messageQueue = {};
     if (!this.inited) {
       const onMessage = async (message: MessageData | MessageDataMessage) => {
         let type;
@@ -36,21 +35,53 @@ export class CptvDecoder {
           type = (message as MessageDataMessage).data.type;
           data = (message as MessageDataMessage).data.data;
         }
-        const resolver = messageQueue[type];
-        delete messageQueue[type];
+        const resolver = this.messageQueue[type];
+        delete this.messageQueue[type];
         resolver && resolver(data);
       };
-      const decoderNotInited = !decoder;
-      if (decoderNotInited) {
-        decoder = new Worker(new URL("./decoder.worker.js", import.meta.url));
-        decoder.addListener.bind(decoder)("message", onMessage);
-      }
-      if (decoderNotInited) {
-        await this.waitForMessage("init");
-      }
+
+      this.decoder = new Worker(
+        new URL("./decoder.worker.js", import.meta.url)
+      );
+      this.decoder.addListener.bind(this.decoder)("message", onMessage);
+      await this.waitForMessage("init");
+
       this.inited = true;
     }
   }
+  /**
+   * Initialise a new player with an cptv file stream
+   * @param stream (ReadableStream)
+   * @returns True on success, or an error string on failure (String | Boolean)
+   */
+  async initWithReadableStream(
+    stream: ReadableStream
+  ): Promise<string | boolean> {
+    await this.init();
+    const type = "initWithReadableStream";
+    const thisStream = stream as any;
+    this.decoder &&
+      this.decoder.postMessage({ type, streamReader: stream }, [thisStream]);
+    return (await this.waitForMessage(type)) as string | boolean;
+  }
+
+  /**
+   * Get the header and duration in seconds for a cptv file stream
+   * This function reads and consumes the entire stream, without decoding actual frames.
+   * @param stream (ReadableStream)
+   * @returns {CptvHeader} on success, or an error string on failure
+   */
+  async getStreamMetadata(
+    stream: ReadableStream
+  ): Promise<CptvHeader | string> {
+    await this.init();
+    const type = "getStreamMetadata";
+    const thisStream = stream as any;
+    this.decoder &&
+      this.decoder.postMessage({ type, streamReader: stream }, [thisStream]);
+    return (await this.waitForMessage(type)) as CptvHeader | string;
+  }
+
   /**
    * Initialise a new player with an already loaded local file.
    * @param fileBytes (Uint8Array)
@@ -61,7 +92,7 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithLocalCptvFile";
-    decoder && decoder.postMessage({ type, arrayBuffer: fileBytes });
+    this.decoder && this.decoder.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -73,7 +104,7 @@ export class CptvDecoder {
   async getBytesMetadata(fileBytes: Uint8Array): Promise<CptvHeader> {
     await this.init();
     const type = "getBytesMetadata";
-    decoder && decoder.postMessage({ type, arrayBuffer: fileBytes });
+    this.decoder && this.decoder.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -82,7 +113,7 @@ export class CptvDecoder {
    */
   async getNextFrame(): Promise<CptvFrame | null> {
     const type = "getNextFrame";
-    decoder && decoder.postMessage({ type });
+    this.decoder && this.decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as CptvFrame | null;
   }
 
@@ -92,7 +123,7 @@ export class CptvDecoder {
    */
   async getTotalFrames(): Promise<number | null> {
     const type = "getTotalFrames";
-    decoder && decoder.postMessage({ type });
+    this.decoder && this.decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as number | null;
   }
 
@@ -102,7 +133,7 @@ export class CptvDecoder {
    */
   async getHeader(): Promise<CptvHeader> {
     const type = "getHeader";
-    decoder && decoder.postMessage({ type });
+    this.decoder && this.decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -111,7 +142,7 @@ export class CptvDecoder {
    */
   async getLoadProgress(): Promise<number> {
     const type = "getLoadProgress";
-    decoder && decoder.postMessage({ type });
+    this.decoder && this.decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as number;
   }
 
@@ -121,7 +152,7 @@ export class CptvDecoder {
    */
   async hasStreamError(): Promise<boolean> {
     const type = "hasStreamError";
-    decoder && decoder.postMessage({ type });
+    this.decoder && this.decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as boolean;
   }
 
@@ -130,7 +161,7 @@ export class CptvDecoder {
    */
   async getStreamError(): Promise<string | null> {
     const type = "getStreamError";
-    decoder && decoder.postMessage({ type });
+    this.decoder && this.decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as string | null;
   }
 
@@ -139,15 +170,15 @@ export class CptvDecoder {
    */
   async free(): Promise<void> {
     const type = "freeResources";
-    if (decoder && this.inited) {
-      decoder.postMessage({ type });
+    if (this.decoder && this.inited) {
+      this.decoder.postMessage({ type });
       return (await this.waitForMessage(type)) as void;
     }
   }
 
   async waitForMessage(messageType: string): Promise<unknown> {
     return new Promise((resolve) => {
-      messageQueue[messageType] = resolve;
+      this.messageQueue[messageType] = resolve;
     });
   }
 
@@ -156,8 +187,8 @@ export class CptvDecoder {
    * do this only when the thread closes.
    */
   async close(): Promise<void> {
-    decoder && decoder.terminate();
-    decoder = undefined;
+    this.decoder && this.decoder.terminate();
+    delete this.decoder;
   }
 }
 
