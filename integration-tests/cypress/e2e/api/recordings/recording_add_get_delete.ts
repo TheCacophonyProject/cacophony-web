@@ -203,7 +203,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
-  it.only("Cannot add a recording with an invalid recordingDateTime", () => {
+  it("Cannot add a recording with an invalid recordingDateTime", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     recording1.recordingDateTime = "foo";
     cy.log("Add recording as group admin");
@@ -231,7 +231,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
-  it("Cannot add a recording without a recordingDateTime", () => {
+  it.only("Cannot add a recording without a recordingDateTime", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     delete recording1.recordingDateTime;
     cy.log("Add recording as group admin");

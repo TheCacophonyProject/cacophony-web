@@ -284,7 +284,7 @@ describe("Recordings query using where", () => {
     }
   });
 
-  it.only("Group admin can query device's recordings", () => {
+  it("Group admin can query device's recordings", () => {
     cy.log("Check recording can be viewed correctly");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",

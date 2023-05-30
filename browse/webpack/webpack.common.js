@@ -12,6 +12,7 @@ module.exports = {
   target: "web", // NOTE: Hot module reloading via vue-loader breaks without this, even though it is supposed to be the default.
   experiments: {
     syncWebAssembly: true,
+    futureDefaults: true,
   },
   module: {
     rules: [

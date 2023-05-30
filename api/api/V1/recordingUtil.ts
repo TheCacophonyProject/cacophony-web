@@ -204,7 +204,6 @@ export async function saveThumbnailInfo(
       continue;
     }
     const thumb = await createThumbnail(frame, track.data.thumbnail.region);
-    debugger;
     frameUploads.push(
       await openS3()
         .upload(`${fileKey}-${track.id}-thumb`, thumb.data, thumb.meta)
