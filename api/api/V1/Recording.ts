@@ -832,7 +832,6 @@ export default (app: Application, baseUrl: string) => {
     }
   );
 
-
   if (config.server.loggerLevel === "debug") {
     app.get(
       `${apiUrl}/long-running-query`,

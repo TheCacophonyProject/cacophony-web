@@ -350,7 +350,6 @@ export const uploadGenericRecording =
       }
     });
 
-
     // TODO - depending on the kind of asset we're uploading, it can go to different object storage providers and buckets.
     //  Choose destination based on object type, and potentially owning group.
     const fileUploadsInProgress: Promise<RecordingFileUploadResult>[] = [];
