@@ -320,6 +320,7 @@ export const uploadGenericRecording =
     // on the devices' behalf, set the lastConnectionTime for the device.
     const canceledRequest = { canceled: false };
     const uploader = fromDevice ? "device" : "user";
+
     // NOTE: Get the real device - do we always have this here, or just the device.id?
     let uploadingUser: User;
     const recordingDeviceId: DeviceId =

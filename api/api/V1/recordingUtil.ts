@@ -24,7 +24,6 @@ import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
 import config from "@config";
-import util from "./util.js";
 import type { Recording, RecordingQueryOptions } from "@models/Recording.js";
 import type { Event, QueryOptions } from "@models/Event.js";
 import type { User } from "@models/User.js";
@@ -34,10 +33,7 @@ import { DeviceSummary, Visit } from "./Visits.js";
 import type { Station } from "@models/Station.js";
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import type { Device } from "@models/Device.js";
-import type {
-  GetObjectCommandOutput,
-  PutObjectCommandOutput,
-} from "@aws-sdk/client-s3";
+import type { PutObjectCommandOutput } from "@aws-sdk/client-s3";
 import type {
   DeviceHistory,
   DeviceHistorySetBy,
@@ -57,7 +53,6 @@ import type {
 } from "@typedefs/api/common.js";
 import {
   AcceptableTag,
-  DeviceType,
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.js";

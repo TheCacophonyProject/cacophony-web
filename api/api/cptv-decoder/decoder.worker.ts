@@ -7,8 +7,6 @@ import { readFileSync } from "fs";
 import type { ReadableStream } from "stream/web";
 import { fileURLToPath } from "url";
 import path from "path";
-import { RecordingId } from "@typedefs/api/common.js";
-import { wasm_bindgen__convert__closures__invoke2_mut__h7b4a9d0471de459f } from "@api/cptv-decoder/decoder/decoder_bg.wasm.js";
 
 class Unlocker {
   fn: (() => void) | null = null;

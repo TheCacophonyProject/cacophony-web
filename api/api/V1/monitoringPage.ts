@@ -212,21 +212,6 @@ function toPgDate(date: Date): string {
   return date.toISOString().replace("T", " ").replace("Z", " +00:00");
 }
 
-async function makeGroupsAndStationsPermissions(
-  user: User,
-  viewAsSuperAdmin: boolean
-): Promise<string> {
-  if (user.hasGlobalRead() && viewAsSuperAdmin) {
-    return "";
-  }
-
-  const [stationIds, groupIds] = await Promise.all([
-    user.getStationIds(),
-    user.getGroupsIds(),
-  ]);
-  return makeGroupsAndStationsCriteria(stationIds, groupIds);
-}
-
 async function makeGroupsPermissions(
   user: User,
   viewAsSuperAdmin: boolean

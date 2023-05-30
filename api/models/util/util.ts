@@ -18,27 +18,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import type {
   HeadBucketCommandInput,
-  ListBucketsCommandInput,
-  CreateBucketCommandInput,
   PutObjectCommandInput,
-  HeadObjectCommandInput,
-  ListObjectsCommandInput,
-  DeleteObjectCommandInput,
-  GetObjectCommandInput,
-  CopyObjectCommandInput,
   S3ClientConfig,
 } from "@aws-sdk/client-s3";
 import {
   S3Client,
   HeadBucketCommand,
-  ListBucketsCommand,
-  CreateBucketCommand,
   PutObjectCommand,
   HeadObjectCommand,
-  ListObjectsCommand,
   DeleteObjectCommand,
   GetObjectCommand,
-  CopyObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import mime from "mime";

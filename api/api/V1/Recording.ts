@@ -60,13 +60,11 @@ import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" assert { type: "json" };
-import multiparty from "multiparty";
 
 import {
   AuthorizationError,
   ClientError,
   FatalError,
-  UnprocessableError,
 } from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
@@ -101,17 +99,10 @@ import {
   reportVisits,
   signedToken,
 } from "./recordingUtil.js";
-import {
-  serverErrorResponse,
-  someResponse,
-  successResponse,
-} from "./responseUtil.js";
+import { serverErrorResponse, successResponse } from "./responseUtil.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import fs from "fs/promises";
-import responseUtil from "@api/V1/responseUtil.js";
-import type { MultipartFormPart } from "@api/fileUploaders/multipartFormDataHelper.js";
 import {
-  uploadGenericRecording,
   uploadGenericRecordingFromDevice,
   uploadGenericRecordingOnBehalfOfDevice,
 } from "@api/fileUploaders/uploadGenericRecording.js";
@@ -849,7 +840,7 @@ export default (app: Application, baseUrl: string) => {
         query("seconds").default(20).isNumeric(),
         query("succeed").default(true).isBoolean().toBoolean(),
       ]),
-      async (request: Request, response: Response, next: NextFunction) => {
+      async (request: Request, response: Response, _next: NextFunction) => {
         const timeout = Number(request.query.seconds);
         await new Promise((resolve, _reject) => {
           setTimeout(resolve, timeout * 1000);

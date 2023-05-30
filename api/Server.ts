@@ -79,21 +79,6 @@ const checkS3Connection = async (): Promise<void> => {
       log.error("Error with connecting to S3. %s", err);
     }
   }
-  const start = performance.now();
-  try {
-    // TODO: Create a stream that has pauses, and see if the upload works, and gets flushed/gives feedback.
-    const upload = await s3.uploadStreaming(
-      "test",
-      fs.createReadStream("./debug-files/2-second-status.cptv")
-    );
-    await upload.done();
-    console.log("upload took", performance.now() - start);
-  } catch (err) {
-    if (err) {
-      console.log("failure upload took", performance.now() - start);
-      log.error("Error with uploading to S3. %s", err);
-    }
-  }
 };
 
 (async () => {

@@ -565,7 +565,12 @@ export default function (app: Application, baseUrl: string) {
     extractJWTInfo(body("inviteToken")),
     // Get a token with user, and group id to add to.
     async (request: Request, response: Response, next: NextFunction) => {
-      const { id, groupId, admin, inviterId } = response.locals.tokenInfo;
+      const {
+        id,
+        groupId,
+        admin: _admin,
+        inviterId,
+      } = response.locals.tokenInfo;
       const [user, group, inviter] = await Promise.all([
         models.User.findByPk(id),
         models.Group.findByPk(groupId),
