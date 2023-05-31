@@ -933,7 +933,7 @@ export async function reportRecordings(
   }
 
   const recording_url_base = config.server.recording_url_base || "";
-
+  debugger;
   const labels = [
     "Id",
     "Type",
@@ -980,8 +980,7 @@ export async function reportRecordings(
       }
     }
 
-    const recording_tags = r.Tags.map((t) => t.what || t.detail);
-
+    const recording_tags = r.Tags.map((t) => t.what || t.detail) || [];
     const cacophonyIndex = getCacophonyIndex(r);
 
     const thisRow = [
@@ -1028,14 +1027,20 @@ export async function reportRecordings(
       );
     }
 
-    thisRow.push(`${recording_url_base}/${r.id.toString()}`, cacophonyIndex);
+    thisRow.push(
+      `${recording_url_base}/${r.id.toString()}`,
+      cacophonyIndex,
+      ""
+    );
     out.push(thisRow);
   }
   return out;
 }
 
 function getCacophonyIndex(recording: Recording): string | null {
-  return recording.cacophonyIndex?.map((val) => val.index_percent).join(";");
+  return (
+    recording.cacophonyIndex?.map((val) => val.index_percent).join(";") || ""
+  );
 }
 
 function findLatestEvent(events: Event[]): Event | null {

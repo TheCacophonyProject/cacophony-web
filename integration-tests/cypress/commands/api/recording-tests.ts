@@ -508,7 +508,7 @@ export function TestCreateExpectedRecordingColumns(
   } else {
     expected["Cacophony Index"] = "";
   }
-  expected["Species Classification"] = ""; //FIXME PATRICK - remove once this depracted column gone
+  expected["Species Classification"] = ""; //FIXME PATRICK - remove once this deprecated column gone
 
   return expected;
 }

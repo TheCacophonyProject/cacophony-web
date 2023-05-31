@@ -134,7 +134,7 @@ describe("Recordings report using where", () => {
   const recording4 = TestCreateRecordingData(templateRecording4);
   let expectedRecording4: ApiRecordingColumns;
 
-  //CSV file structure to compate against the returned report
+  //CSV file structure to compare against the returned report
   const expectedRecording: ApiRecordingColumns[] = [];
 
   before(() => {
@@ -249,7 +249,10 @@ describe("Recordings report using where", () => {
   });
 
   it("Group admin can view report on their device's recordings", () => {
-    cy.log("Check recording can be viewed correctly");
+    cy.log(
+      "Check recording can be viewed correctly",
+      getCreds("rreRecording1").id
+    );
     cy.apiRecordingsReportCheck(
       "rreGroupAdmin",
       { where: { id: getCreds("rreRecording1").id } },

@@ -445,13 +445,13 @@ describe("Recordings: soft delete, undelete", () => {
         recording1,
         false
       );
-      // TODO: Isue 104: positions whould be returned or absent, but not empty
+      // TODO: Issue 104: positions should be returned or absent, but not empty
       //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording9").then(() => {
         cy.log(
-          "Check recording was soft-deleted (listed in soft-deleted recordings query"
+          "Check recording was soft-deleted (listed in soft-deleted recordings query)"
         );
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",
