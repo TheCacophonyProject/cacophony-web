@@ -27,7 +27,7 @@ module.exports = {
         comment: "Whether this file is an original archival file, or a derived (compressed) version for display on web, or a preview (thumbnail)."
       },
       location: {
-        type: Sequelize.ENUM('digital-ocean', 'backblaze', 's3', 's3-glacier', 'local-minio'),
+        type: Sequelize.ENUM('digital-ocean', 'backblaze', 'aws-s3', 'aws-s3-glacier', 'local-minio'),
         allowedNull: false,
         comment: "Which object storage provider currently hosts this file."
       },

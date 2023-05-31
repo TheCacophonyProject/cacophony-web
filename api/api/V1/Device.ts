@@ -450,7 +450,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {apiSuccess::ApiDeviceResponseSuccess} device Device details
+   * @apiInterface {apiSuccess::ApiDeviceResponseSuccess} device Device details
    *
    * @apiSuccessExample {JSON} device:
    * {
@@ -660,7 +660,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {apiSuccess::ApiLocationResponseSuccess} station Device location details
+   * @apiInterface {apiSuccess::ApiLocationResponseSuccess} station Device location details
    * @apiUse V1ResponseError
    */
   app.get(
@@ -902,7 +902,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {apiSuccess::ApiLocationsResponseSuccess} stations Device station details
+   * @apiInterface {apiSuccess::ApiLocationsResponseSuccess} stations Device station details
    * @apiUse V1ResponseError
    */
   app.get(
@@ -1329,7 +1329,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {apiSuccess::ApiDeviceResponseSuccess} device Device details
+   * @apiInterface {apiSuccess::ApiDeviceResponseSuccess} device Device details
    *
    * @apiSuccessExample {JSON} device:
    * {

@@ -18,7 +18,7 @@
     "@log":  "./logging.js"
   },
   "dependencies": {
-    "apidoc": "^0.50.0",
+    "apidoc": "^1.0.2",
     "@mapbox/node-pre-gyp": "^1.0.10",
     "apidoc-plugin-ts": "github:TheCacophonyProject/apidoc-plugin-ts#v1.1.0",
     "scale-color-perceptual": "^1.1.2",
