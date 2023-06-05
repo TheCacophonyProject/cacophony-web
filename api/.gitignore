@@ -15,3 +15,4 @@ dockerstart.log
 test-cypress/cypress-performance.json
 *.iml
 !/api/cptv-decoder/decoder/decoder.js
+.DS_Store
