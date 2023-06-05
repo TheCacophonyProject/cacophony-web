@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import type {
   HeadBucketCommandInput,
+  ListObjectsCommandInput,
   PutObjectCommandInput,
   S3ClientConfig,
 } from "@aws-sdk/client-s3";
@@ -28,6 +29,7 @@ import {
   HeadObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import mime from "mime";
@@ -154,19 +156,17 @@ export function openS3() {
       const { client, bucket } = getProviderForParams({ Key: key });
       return client.send(new DeleteObjectCommand({ Key: key, Bucket: bucket }));
     },
-    // listObjects(params: ListObjectsCommandInput) {
-    //   const { client, bucket} = getProviderForParams(params);
-    //   return client.send(new ListObjectsCommand({ ...params, Bucket: bucket }));
-    // },
+    listObjects(params: ListObjectsCommandInput) {
+      const { client, bucket } = getProviderForParams(params);
+      return client.send(new ListObjectsCommand({ ...params, Bucket: bucket }));
+    },
     headObject(key: string) {
       const { client, bucket } = getProviderForParams({ Key: key });
       return client.send(new HeadObjectCommand({ Key: key, Bucket: bucket }));
     },
     upload(key: string, body: Buffer | Uint8Array, metadata?: any) {
       const { client, bucket } = getProviderForParams({ Key: key });
-      console.log((body as Buffer).length);
       const length = (body as Buffer).length || 0; //"length" in body ? body.length : 0;
-      console.log("Uploading", length);
       const payload: PutObjectCommandInput = {
         Key: key,
         Body: body,

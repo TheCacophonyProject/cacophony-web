@@ -12,7 +12,7 @@ import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.js";
-import responseUtil, { successResponse } from "@api/V1/responseUtil.js";
+import { successResponse } from "@api/V1/responseUtil.js";
 import type { ModelsDictionary } from "@models";
 import multiparty from "multiparty";
 import type { NextFunction, Request, Response } from "express";
@@ -591,20 +591,13 @@ const deleteUploads = async (uploadResults: RecordingFileUploadResult[]) => {
 };
 
 const recordingUploadedState = (type: RecordingType) => {
-  if (type == RecordingType.Audio) {
+  if (type === RecordingType.Audio) {
     return RecordingProcessingState.Analyse;
-  } else {
+  } else if (type === RecordingType.ThermalRaw) {
     return RecordingProcessingState.Tracking;
   }
+  return RecordingProcessingState.Finished;
 };
-const recordingFinishedState = (type: RecordingType) => {
-  if (type == RecordingType.Audio) {
-    return RecordingProcessingState.Finished;
-  } else {
-    return RecordingProcessingState.Finished;
-  }
-};
-
 const dataHasSuppliedTracks = (data: { metadata?: any }) => {
   return (
     data.metadata && data.metadata.tracks && data.metadata.tracks.length !== 0
@@ -634,7 +627,6 @@ const setInitialProcessingState = (
   } else {
     // NOTE: During testing, even if the file is corrupt, it won't be marked as such if a concrete processingState
     //  is supplied.  This would ideally get fixed once we are always uploading valid files during testing.
-
     if (
       recordingTemplate.processingState !== RecordingProcessingState.Corrupt
     ) {
@@ -645,14 +637,8 @@ const setInitialProcessingState = (
         // NOTE: If there are supplied tracks, we have already done tracking on the device, so skip to analyse state.
         recordingTemplate.processingState =
           RecordingProcessingState.AnalyseThermal;
-      } else if (
-        recordingTemplate.type !== RecordingType.TrailCamImage &&
-        recordingTemplate.type !== RecordingType.TrailCamVideo
-      ) {
-        recordingTemplate.processingState = recordingUploadedState(data.type);
       } else {
-        // Trailcam and others
-        recordingTemplate.processingState = RecordingProcessingState.Finished;
+        recordingTemplate.processingState = recordingUploadedState(data.type);
       }
     }
   }

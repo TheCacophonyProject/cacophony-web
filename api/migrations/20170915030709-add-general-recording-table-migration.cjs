@@ -29,8 +29,8 @@ module.exports = {
       type: Sequelize.STRING, // What type of recording it is.
       public: { type: Sequelize.BOOLEAN, defaultValue: false },
       additionalMetadata: Sequelize.JSONB,
-      createdAt: { type: Sequelize.DATE, allowedNull: false },
-      updatedAt: { type: Sequelize.DATE, allowedNull: false },
+      createdAt: { type: Sequelize.DATE, allowNull: false },
+      updatedAt: { type: Sequelize.DATE, allowNull: false },
     });
     await util.addSerial(queryInterface, "Recordings");
     await util.migrationAddBelongsTo(queryInterface, "Recordings", "Groups");

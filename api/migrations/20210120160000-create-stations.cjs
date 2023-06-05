@@ -21,17 +21,17 @@ module.exports = {
       },
       createdAt: {
         type: Sequelize.DATE,
-        allowedNull: false,
+        allowNull: false,
         defaultValue: Sequelize.NOW,
       },
       updatedAt: {
         type: Sequelize.DATE,
-        allowedNull: false,
+        allowNull: false,
         defaultValue: Sequelize.NOW,
       },
       retiredAt: {
         type: Sequelize.DATE,
-        allowedNull: true,
+        allowNull: true,
         defaultValue: Sequelize.NULL,
       },
     });

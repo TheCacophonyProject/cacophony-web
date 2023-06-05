@@ -20,8 +20,8 @@ module.exports = {
         type: Sequelize.JSONB,
         allowNull: false,
       },
-      createdAt: { type: Sequelize.DATE, allowedNull: false },
-      updatedAt: { type: Sequelize.DATE, allowedNull: false },
+      createdAt: { type: Sequelize.DATE, allowNull: false },
+      updatedAt: { type: Sequelize.DATE, allowNull: false },
     });
     await util.migrationAddBelongsTo(
       queryInterface,
@@ -62,8 +62,8 @@ module.exports = {
         type: Sequelize.JSONB,
         allowNull: false,
       },
-      createdAt: { type: Sequelize.DATE, allowedNull: false },
-      updatedAt: { type: Sequelize.DATE, allowedNull: false },
+      createdAt: { type: Sequelize.DATE, allowNull: false },
+      updatedAt: { type: Sequelize.DATE, allowNull: false },
     });
     await util.migrationAddBelongsTo(
       queryInterface,

@@ -21,8 +21,8 @@ import {
   SuperUsers,
 } from "./Globals.js";
 import path from "path";
-import fs from "fs";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
