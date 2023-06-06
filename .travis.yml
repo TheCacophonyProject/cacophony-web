@@ -4,7 +4,7 @@ services:
 before_install:
   - echo $DOCKERHUB_TOKEN | docker login --username $DOCKERHUB_USER --password-stdin
 
-dist: jammy
+dist: focal
 
 language: node_js
 node_js:
