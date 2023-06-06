@@ -103,3 +103,12 @@
 //     await queryInterface.dropTable("Objects");
 //   },
 // };
+module.exports = {
+  up: async function (queryInterface, Sequelize) {
+
+  },
+
+  down: async function (queryInterface) {
+
+  },
+};
