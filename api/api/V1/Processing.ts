@@ -44,9 +44,11 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/processing`;
 
   /**
-     * @api {get} /api/fileProcessing Get a new file processing job
+     * @api {get} /api/v1/processing Get a new file processing job
      * @apiName getNewFileProcessingJob
-     * @apiGroup FileProcessing
+     * @apiGroup Processing
+     *
+     * Requires super-admin user credentials
      *
      * @apiParam {String} type Type of recording.
      * @apiParam {String} state Processing state.
@@ -108,15 +110,16 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-     * @api {post} /api/fileProcessing/processed Upload a processed file to object storage
-     * @apiName PostProcessedFile
-     * @apiGroup FileProcessing
-
-     * @apiUse V1ResponseSuccess
-     * @apiSuccess {String} fileKey of uploaded file
-     *
-     * @apiUse V1ResponseError
-     */
+   * @api {post} /api/v1/processing/processed Upload a processed file to object storage
+   * @apiName PostProcessedFile
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} fileKey of uploaded file
+   *
+   * @apiUse V1ResponseError
+   */
   app.post(
     `${apiUrl}/processed`,
     extractJwtAuthorisedSuperAdminUser,
@@ -239,9 +242,11 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {put} /api/fileProcessing Finished a file processing job
+   * @api {put} /api/v1/processing Finished a file processing job
    * @apiName finishedFileProcessingJob
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
    *
    * @apiParam {Integer} id ID of the recording.
    * @apiParam {String} jobKey Key given when requesting the job.
@@ -361,21 +366,21 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/fileProcessing/tags Add a tag to a recording
+   * @api {post} /api/v1/processing/tags Add a tag to a recording
    * @apiName tagRecordingAfterFileProcessing
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
    *
    * @apiDescription This call takes a `tag` field which contains a JSON
    * object string containing a number of fields. See /api/V1/tags for
-   * more details.
+   * more details. Requires super-admin user credentials.
    *
    * @apiParam {Number} recordingId ID of the recording that you want to tag.
-   * @apiparam {JSON} tag Tag data in JSON format.
+   * @apiParam {JSON} tag Tag data in JSON format.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} tagId ID of the tag just added.
    *
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.post(
@@ -402,11 +407,12 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/fileProcessing/metadata Updates the metadata for the recording
+   * @api {post} /api/v1/processing/metadata Updates the metadata for the recording
    * @apiName updateMetaData
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
    *
    * @apiDescription This call updates the metadata for a recording
+   * Requires super-admin user credentials
    *
    * @apiParam {Number} recordingId ID of the recording that you want to tag.
    * @apiparam {JSON} metadata Metadata to be updated for the recording.  See /api/V1/recording for more details
@@ -428,9 +434,11 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/fileProcessing/:id/tracks Add track to recording
+   * @api {post} /api/v1/processing/:id/tracks Add track to recording
    * @apiName PostTrack
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
    *
    * @apiParam {JSON} data Data which defines the track (type specific).
    * @apiParam {Number} AlgorithmId Database Id of the Tracking algorithm details retrieved from
@@ -468,9 +476,9 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {delete} /api/fileProcessing/:id/tracks Delete all tracks for a recording
+   * @api {delete} /api/v1/processing/:id/tracks Delete all tracks for a recording
    * @apiName DeleteTracks
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
    *
    * @apiUse V1ResponseSuccess
    *
@@ -490,9 +498,11 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/recordings/:id/tracks/:trackId/tags Add tag to track
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/tags Add tag to track
    * @apiName PostTrackTag
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
    *
    * @apiParam {String} what Object/event to tag.
    * @apiParam {Number} confidence Tag confidence score.
@@ -530,11 +540,12 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /algorithm Finds matching existing algorithm definition or adds a new one to the database
+   * @api {post} /api/v1/processing/algorithm Finds matching existing algorithm definition or adds a new one to the database
    * @apiName Algorithm
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
    *
    * @apiParam {JSON} algorithm algorithm data in tag form.
+   * Requires super-admin user credentials
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} algorithmId Id of the matching algorithm tag.
@@ -558,10 +569,11 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/recordings/:id/tracks Get tracks for recording
+   * @api {get} /api/v1/processing/:id/tracks Get tracks for recording
    * @apiName GetTracks
-   * @apiGroup Tracks
+   * @apiGroup Processing
    * @apiDescription Get all tracks for a given recording and their tags.
+   * Requires super-admin user credentials
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {JSON} tracks Array with elements containing id,
