@@ -1329,10 +1329,7 @@ export default (app: Application, baseUrl: string) => {
         .replace(".", "_");
       const fileName = `${recordingItem.id}@${time}.${fileExt}`;
 
-      if (
-        config.server.loggerLevel === "debug" &&
-        fileMimeType === "application/x-cptv"
-      ) {
+      if (config.server.isLocalDev && fileMimeType === "application/x-cptv") {
         const file = await fs.readFile("./debug-files/2-second-status.cptv");
         response.setHeader(
           "Content-disposition",
