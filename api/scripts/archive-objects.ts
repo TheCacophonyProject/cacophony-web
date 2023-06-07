@@ -165,17 +165,17 @@
 //     log.debug(`select *
 //              from "Recordings"
 //              where "rawFileKey" not like 'a_%' or "fileKey" is not null and "fileKey" not like 'a_%' and id > ${lastId}
-//              order by id limit 1`);
+//              order by id asc limit 10`);
 //     const result = await client.query(
 //       `select *
 //              from "Recordings"
 //              where "rawFileKey" not like 'a_%' or "fileKey" is not null and "fileKey" not like 'a_%' and id > ${lastId}
-//              order by id limit 1`
+//              order by id asc limit 10`
 //     );
-//     if (result.rows.length) {
-//       const { id, rawFileKey, fileKey } = result.rows[0];
+//     for (const row of result.rows) {
+//       const { id, rawFileKey, fileKey } = row;
 //       // Store last id so that if we error, we move on to the next recording.
-//       lastId = id;
+//       lastId = Math.max(lastId, id);
 //       for (const [column, Key] of Object.entries({
 //         rawFileKey,
 //         fileKey,
@@ -184,7 +184,18 @@
 //         log.info("Archiving %s:%s for recording #%d", column, Key, id);
 //         let data;
 //         try {
-//           data = await s3.getObject({ Key });
+//           s3.getObject({ Key }).then((data) => {
+//               usedBytes -= data.ContentLength;
+//               s3.upload({
+//                       Body: data.Body,
+//                       Metadata: data.Metadata,
+//                       Key: `a_${Key}`,
+//                   }).then(() => {
+//                   client.query(`update "Recordings"
+//                                                    set "${column}" = 'a_${Key}'
+//                                                    where id = ${id}`).then(s3.deleteObject({ Key }));
+//               });
+//           });
 //         } catch (error) {
 //           log.error(
 //             "%s for %s:%s recording #%d",
@@ -195,46 +206,6 @@
 //           );
 //           continue;
 //         }
-//         try {
-//           await s3
-//             .upload({
-//               Body: data.Body,
-//               Metadata: data.Metadata,
-//               Key: `a_${Key}`,
-//             });
-//         } catch (error) {
-//           log.error(
-//             "Upload to archive bucket failed: %s:%s for #%d",
-//             column,
-//             Key,
-//             id
-//           );
-//           continue;
-//         }
-//         try {
-//           await client.query(`update "Recordings"
-//                                                    set "${column}" = 'a_${Key}'
-//                                                    where id = ${id}`);
-//         } catch (error) {
-//           log.error(
-//             "Updating recording entry #%d with new Key failed: %s:%s",
-//             id,
-//             column,
-//             Key
-//           );
-//           continue;
-//         }
-//         try {
-//           await s3.deleteObject({ Key });
-//         } catch (error) {
-//           log.error(
-//             "Deleting archived object from localS3 failed: %s:%s for #%d",
-//             column,
-//             Key,
-//             id
-//           );
-//         }
-//         usedBytes -= data.ContentLength;
 //       }
 //     } else {
 //       log.notice("No more archivable recordings");

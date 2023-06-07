@@ -32,6 +32,7 @@ import {
   RecordingType,
 } from "@typedefs/api/consts.js";
 import {
+  extractJwtAuthorisedSuperAdminUser,
   fetchUnauthorizedRequiredEventDetailSnapshotById,
   fetchUnauthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredTrackById,
@@ -39,22 +40,23 @@ import {
 } from "@api/extract-middleware.js";
 
 const models = await modelsInit();
-export default function (app: Application) {
-  const apiUrl = "/api/fileProcessing";
+export default function (app: Application, baseUrl: string) {
+  const apiUrl = `${baseUrl}/processing`;
 
   /**
-   * @api {get} /api/fileProcessing Get a new file processing job
-   * @apiName getNewFileProcessingJob
-   * @apiGroup FileProcessing
-   *
-   * @apiParam {String} type Type of recording.
-   * @apiParam {String} state Processing state.
-   * @apiSuccess {recording} requested
-   * @apiSuccess {String} signed url to download the raw file
+     * @api {get} /api/fileProcessing Get a new file processing job
+     * @apiName getNewFileProcessingJob
+     * @apiGroup FileProcessing
+     *
+     * @apiParam {String} type Type of recording.
+     * @apiParam {String} state Processing state.
+     * @apiSuccess {recording} requested
+     * @apiSuccess {String} signed url to download the raw file
 
-   */
+     */
   app.get(
     apiUrl,
+    extractJwtAuthorisedSuperAdminUser,
     [
       oneOf([
         [
@@ -106,17 +108,18 @@ export default function (app: Application) {
   );
 
   /**
-   * @api {post} /api/fileProcessing/processed Upload a processed file to object storage
-   * @apiName PostProcessedFile
-   * @apiGroup FileProcessing
+     * @api {post} /api/fileProcessing/processed Upload a processed file to object storage
+     * @apiName PostProcessedFile
+     * @apiGroup FileProcessing
 
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess {String} fileKey of uploaded file
-   *
-   * @apiUse V1ResponseError
-   */
+     * @apiUse V1ResponseSuccess
+     * @apiSuccess {String} fileKey of uploaded file
+     *
+     * @apiUse V1ResponseError
+     */
   app.post(
     `${apiUrl}/processed`,
+    extractJwtAuthorisedSuperAdminUser,
     util.multipartUpload(
       "file",
       async (uploader, uploadingDevice, uploadingUser, data, keys) => {
@@ -136,6 +139,7 @@ export default function (app: Application) {
   // TODO - Processing should send this request gzipped.
   app.put(
     `${apiUrl}/raw`,
+    extractJwtAuthorisedSuperAdminUser,
     [
       body("id")
         .isInt()
@@ -247,6 +251,7 @@ export default function (app: Application) {
    */
   app.put(
     apiUrl,
+    extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(body("id")),
       body("jobKey").exists(),
@@ -375,6 +380,7 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/tags`,
+    extractJwtAuthorisedSuperAdminUser,
     validateFields([body("tag").isJSON(), idOf(body("recordingId"))]),
     fetchUnauthorizedRequiredRecordingById(body("recordingId")),
     parseJSONField(body("tag")),
@@ -412,6 +418,7 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/metadata`,
+    extractJwtAuthorisedSuperAdminUser,
     validateFields([idOf(body("id")), body("metadata").isJSON()]),
     fetchUnauthorizedRequiredRecordingById(body("id")),
     parseJSONField(body("metadata")),
@@ -437,6 +444,7 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/:id/tracks`,
+    extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
 
@@ -471,6 +479,7 @@ export default function (app: Application) {
    */
   app.delete(
     `${apiUrl}/:id/tracks`,
+    extractJwtAuthorisedSuperAdminUser,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
@@ -496,6 +505,7 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags`,
+    extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
@@ -533,6 +543,7 @@ export default function (app: Application) {
    */
   app.post(
     `${apiUrl}/algorithm`,
+    extractJwtAuthorisedSuperAdminUser,
     validateFields([body("algorithm").isJSON()]),
     parseJSONField(body("algorithm")),
     async (request, response) => {
@@ -560,6 +571,7 @@ export default function (app: Application) {
    */
   app.get(
     `${apiUrl}/:id/tracks`,
+    extractJwtAuthorisedSuperAdminUser,
     param("id").isInt().toInt(),
     middleware.requestWrapper(
       async (request: Request, response: Response, next: NextFunction) => {

@@ -101,6 +101,7 @@ describe("Recording thumbnails", () => {
 
         cy.log("Send for processing");
         cy.processingApiCheck(
+          superuser,
           RecordingType.ThermalRaw,
           RecordingProcessingState.Analyse,
           "rtRecording01",
@@ -109,96 +110,99 @@ describe("Recording thumbnails", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rtTrack01",
-              "rtRecording01",
-              { start_s: 1, end_s: 4 },
-              algorithmId
-            );
-            cy.log("Add tags");
-            cy.processingApiTracksTagsPost(
-              "rtTrack01",
-              "rtRecording01",
-              "possum",
-              0.9,
-              { name: "Master" }
-            ).then(() => {
-              expectedRecording01.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      path: "all",
-                      automatic: true,
-                      trackId: getCreds("rtTrack01").id,
-                      confidence: 0.9,
-                      data: { name: "Master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  //                  positions: [],
-                  // TODO enable after merge
-                  filtered: false,
-                  automatic: true,
-                },
-              ];
+        cy.processingApiAlgorithmPost(superuser, {
+          "tracking-format": 42,
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            superuser,
+            "rtTrack01",
+            "rtRecording01",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
+          cy.log("Add tags");
+          cy.processingApiTracksTagsPost(
+            superuser,
+            "rtTrack01",
+            "rtRecording01",
+            "possum",
+            0.9,
+            { name: "Master" }
+          ).then(() => {
+            expectedRecording01.tracks = [
+              {
+                tags: [
+                  {
+                    what: "possum",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rtTrack01").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
+                  },
+                ],
+                start: 1,
+                end: 4,
+                id: 1,
+                //                  positions: [],
+                // TODO enable after merge
+                filtered: false,
+                automatic: true,
+              },
+            ];
 
-              cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut(
-                "rtRecording01",
-                true,
-                {
-                  fieldUpdates: {
-                    additionalMetadata: {
-                      thumbnail_region: {
-                        x: 5,
-                        y: 46,
-                        mass: 682,
-                        blank: false,
-                        width: 39,
-                        height: 32,
-                        frame_number: 2,
-                        pixel_variance: 0,
-                      },
+            cy.log("set processing to done and recheck tracks");
+            cy.processingApiPut(
+              superuser,
+              "rtRecording01",
+              true,
+              {
+                fieldUpdates: {
+                  additionalMetadata: {
+                    thumbnail_region: {
+                      x: 5,
+                      y: 46,
+                      mass: 682,
+                      blank: false,
+                      width: 39,
+                      height: 32,
+                      frame_number: 2,
+                      pixel_variance: 0,
                     },
                   },
                 },
-                undefined
-              );
+              },
+              undefined
+            );
 
-              cy.log("Check thumbnail data present");
-              expectedRecording01.additionalMetadata["thumbnail_region"] = {
-                x: 5,
-                y: 46,
-                mass: 682,
-                blank: false,
-                width: 39,
-                height: 32,
-                frame_number: 2,
-                pixel_variance: 0,
-              };
-              cy.apiRecordingCheck(
-                "rtGroupAdmin",
-                "rtRecording01",
-                expectedRecording01,
-                EXCLUDE_IDS
-              );
+            cy.log("Check thumbnail data present");
+            expectedRecording01.additionalMetadata["thumbnail_region"] = {
+              x: 5,
+              y: 46,
+              mass: 682,
+              blank: false,
+              width: 39,
+              height: 32,
+              frame_number: 2,
+              pixel_variance: 0,
+            };
+            cy.apiRecordingCheck(
+              "rtGroupAdmin",
+              "rtRecording01",
+              expectedRecording01,
+              EXCLUDE_IDS
+            );
 
-              cy.log("Check thumbnail available");
-              cy.apiRecordingThumbnailCheck(
-                "rtGroupAdmin",
-                "rtRecording01",
-                HttpStatusCode.Ok,
-                { type: "PNG" }
-              );
-            });
-          }
-        );
+            cy.log("Check thumbnail available");
+            cy.apiRecordingThumbnailCheck(
+              "rtGroupAdmin",
+              "rtRecording01",
+              HttpStatusCode.Ok,
+              { type: "PNG" }
+            );
+          });
+        });
       });
     });
 
@@ -227,6 +231,7 @@ describe("Recording thumbnails", () => {
 
         cy.log("Send for processing");
         cy.processingApiCheck(
+          superuser,
           RecordingType.ThermalRaw,
           RecordingProcessingState.Analyse,
           "rtRecording01",
@@ -235,123 +240,126 @@ describe("Recording thumbnails", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rtTrack01",
-              "rtRecording01",
+        cy.processingApiAlgorithmPost(superuser, {
+          "tracking-format": 42,
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            superuser,
+            "rtTrack01",
+            "rtRecording01",
+            {
+              start_s: 1,
+              end_s: 4,
+              thumbnail: {
+                region: {
+                  x: 20,
+                  y: 60,
+                  mass: 682,
+                  blank: false,
+                  width: 10,
+                  height: 5,
+                  frame_number: 1,
+                  pixel_variance: 0,
+                },
+                contours: 1,
+                median_diff: 2,
+                score: 5,
+              },
+            },
+            algorithmId
+          );
+          cy.log("Add tags");
+          cy.processingApiTracksTagsPost(
+            superuser,
+            "rtTrack01",
+            "rtRecording01",
+            "possum",
+            0.9,
+            { name: "Master" }
+          ).then(() => {
+            expectedRecording01.tracks = [
               {
-                start_s: 1,
-                end_s: 4,
-                thumbnail: {
-                  region: {
-                    x: 20,
-                    y: 60,
-                    mass: 682,
-                    blank: false,
-                    width: 10,
-                    height: 5,
-                    frame_number: 1,
-                    pixel_variance: 0,
+                tags: [
+                  {
+                    what: "possum",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rtTrack01").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
                   },
-                  contours: 1,
-                  median_diff: 2,
-                  score: 5,
+                ],
+                start: 1,
+                end: 4,
+                id: 1,
+                //                  positions: [],
+                // TODO enable after merge
+                filtered: false,
+                automatic: true,
+              },
+            ];
+
+            cy.log("set processing to done and recheck tracks");
+            cy.processingApiPut(
+              superuser,
+              "rtRecording01",
+              true,
+              {
+                fieldUpdates: {
+                  additionalMetadata: {
+                    thumbnail_region: {
+                      x: 5,
+                      y: 46,
+                      mass: 682,
+                      blank: false,
+                      width: 39,
+                      height: 32,
+                      frame_number: 2,
+                      pixel_variance: 0,
+                    },
+                  },
                 },
               },
-              algorithmId
+              undefined
             );
-            cy.log("Add tags");
-            cy.processingApiTracksTagsPost(
-              "rtTrack01",
+
+            cy.log("Check thumbnail data present");
+            expectedRecording01.additionalMetadata["thumbnail_region"] = {
+              x: 5,
+              y: 46,
+              mass: 682,
+              blank: false,
+              width: 39,
+              height: 32,
+              frame_number: 2,
+              pixel_variance: 0,
+            };
+            cy.apiRecordingCheck(
+              "rtGroupAdmin",
               "rtRecording01",
-              "possum",
-              0.9,
-              { name: "Master" }
-            ).then(() => {
-              expectedRecording01.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      path: "all",
-                      automatic: true,
-                      trackId: getCreds("rtTrack01").id,
-                      confidence: 0.9,
-                      data: { name: "Master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  //                  positions: [],
-                  // TODO enable after merge
-                  filtered: false,
-                  automatic: true,
-                },
-              ];
+              expectedRecording01,
+              EXCLUDE_IDS
+            );
 
-              cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut(
-                "rtRecording01",
-                true,
-                {
-                  fieldUpdates: {
-                    additionalMetadata: {
-                      thumbnail_region: {
-                        x: 5,
-                        y: 46,
-                        mass: 682,
-                        blank: false,
-                        width: 39,
-                        height: 32,
-                        frame_number: 2,
-                        pixel_variance: 0,
-                      },
-                    },
-                  },
-                },
-                undefined
-              );
+            cy.log("Check thumbnail available");
+            cy.apiRecordingThumbnailCheck(
+              "rtGroupAdmin",
+              "rtRecording01",
+              HttpStatusCode.Ok,
+              { type: "PNG" }
+            );
 
-              cy.log("Check thumbnail data present");
-              expectedRecording01.additionalMetadata["thumbnail_region"] = {
-                x: 5,
-                y: 46,
-                mass: 682,
-                blank: false,
-                width: 39,
-                height: 32,
-                frame_number: 2,
-                pixel_variance: 0,
-              };
-              cy.apiRecordingCheck(
-                "rtGroupAdmin",
-                "rtRecording01",
-                expectedRecording01,
-                EXCLUDE_IDS
-              );
-
-              cy.log("Check thumbnail available");
-              cy.apiRecordingThumbnailCheck(
-                "rtGroupAdmin",
-                "rtRecording01",
-                HttpStatusCode.Ok,
-                { type: "PNG" }
-              );
-
-              cy.log("Check track thumbnail available");
-              cy.apiRecordingThumbnailCheck(
-                "rtGroupAdmin",
-                "rtRecording01",
-                HttpStatusCode.Ok,
-                { type: "PNG" },
-                "rtTrack01"
-              );
-            });
-          }
-        );
+            cy.log("Check track thumbnail available");
+            cy.apiRecordingThumbnailCheck(
+              "rtGroupAdmin",
+              "rtRecording01",
+              HttpStatusCode.Ok,
+              { type: "PNG" },
+              "rtTrack01"
+            );
+          });
+        });
       });
     });
 
@@ -410,6 +418,7 @@ describe("Recording thumbnails", () => {
 
         cy.log("Send for processing");
         cy.processingApiCheck(
+          superuser,
           RecordingType.ThermalRaw,
           RecordingProcessingState.Analyse,
           "rtRecording02",
@@ -418,66 +427,74 @@ describe("Recording thumbnails", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rtTrack02",
+        cy.processingApiAlgorithmPost(superuser, {
+          "tracking-format": 42,
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            superuser,
+            "rtTrack02",
+            "rtRecording02",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
+          cy.log("Add tags");
+          cy.processingApiTracksTagsPost(
+            superuser,
+            "rtTrack02",
+            "rtRecording02",
+            "possum",
+            0.9,
+            { name: "Master" }
+          ).then(() => {
+            expectedRecording02.tracks = [
+              {
+                tags: [
+                  {
+                    what: "possum",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rtTrack02").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
+                  },
+                ],
+                start: 1,
+                end: 4,
+                id: 1,
+                //                  positions: [],
+                // TODO: enable after merge
+                filtered: false,
+                automatic: true,
+              },
+            ];
+
+            cy.log("set processing to done and recheck tracks");
+            cy.processingApiPut(
+              superuser,
               "rtRecording02",
-              { start_s: 1, end_s: 4 },
-              algorithmId
+              true,
+              {},
+              undefined
             );
-            cy.log("Add tags");
-            cy.processingApiTracksTagsPost(
-              "rtTrack02",
+
+            cy.log("Check no thumbnail data present");
+            cy.apiRecordingCheck(
+              "rtGroupAdmin",
               "rtRecording02",
-              "possum",
-              0.9,
-              { name: "Master" }
-            ).then(() => {
-              expectedRecording02.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      path: "all",
-                      automatic: true,
-                      trackId: getCreds("rtTrack02").id,
-                      confidence: 0.9,
-                      data: { name: "Master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  //                  positions: [],
-                  // TODO: enable after merge
-                  filtered: false,
-                  automatic: true,
-                },
-              ];
+              expectedRecording02,
+              EXCLUDE_IDS
+            );
 
-              cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut("rtRecording02", true, {}, undefined);
-
-              cy.log("Check no thumbnail data present");
-              cy.apiRecordingCheck(
-                "rtGroupAdmin",
-                "rtRecording02",
-                expectedRecording02,
-                EXCLUDE_IDS
-              );
-
-              cy.log("Check thumbnail not available");
-              cy.apiRecordingThumbnailCheck(
-                "rtGroupAdmin",
-                "rtRecording02",
-                HttpStatusCode.BadRequest,
-                { message: "No thumbnail exists" }
-              );
-            });
-          }
-        );
+            cy.log("Check thumbnail not available");
+            cy.apiRecordingThumbnailCheck(
+              "rtGroupAdmin",
+              "rtRecording02",
+              HttpStatusCode.BadRequest,
+              { message: "No thumbnail exists" }
+            );
+          });
+        });
       });
     });
   } else {

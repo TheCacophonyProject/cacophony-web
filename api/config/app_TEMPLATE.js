@@ -14,11 +14,6 @@ export const server = {
   isLocalDev: true,
 };
 
-export const fileProcessing = {
-  // File processing API settings (runs on different port)
-  port: 2002,
-};
-
 export const database = {
   username: "root",
   password: "",
@@ -76,7 +71,6 @@ export default {
   server,
   s3Local,
   s3Archive,
-  fileProcessing,
   database,
   development: database,
   influx,

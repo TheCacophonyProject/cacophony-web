@@ -34,6 +34,7 @@ import { RecordingId } from "@typedefs/api/common";
 Cypress.Commands.add(
   "processingApiPut",
   (
+    userName: string,
     recordingName: string,
     success: boolean,
     result: any,
@@ -54,12 +55,16 @@ Cypress.Commands.add(
       newProcessedFileKey: newProcessedFileKey,
     };
 
-    const url = processingApiPath("");
-    cy.request({
-      method: "PUT",
-      url,
-      body: params,
-    }).then((response) => {
+    const url = v1ApiPath("processing");
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "PUT",
+        url,
+        body: params,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
       expect(response.status, "Check return statusCode is").to.equal(
         statusCode
       );
@@ -70,6 +75,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "processingApiTracksPost",
   (
+    userName: string,
     trackName: string,
     recordingName: string,
     data: any,
@@ -87,12 +93,16 @@ Cypress.Commands.add(
       algorithmId: algorithmId,
     };
 
-    const url = processingApiPath(id.toString() + "/tracks");
-    cy.request({
-      method: "POST",
-      url,
-      body: params,
-    }).then((response) => {
+    const url = v1ApiPath(`processing/${id.toString()}/tracks`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url,
+        body: params,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
       expect(response.status, "Check return statusCode is").to.equal(
         statusCode
       );
@@ -103,18 +113,22 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "processingApiTracksDelete",
-  (recordingName: string, statusCode: number = 200) => {
+  (userName: string, recordingName: string, statusCode: number = 200) => {
     const id = getCreds(recordingName).id;
     logTestDescription(`Deleting tracks from recording ${recordingName}`, {
       id: id,
     });
     const params = {};
-    const url = processingApiPath(id.toString() + "/tracks");
-    cy.request({
-      method: "DELETE",
-      url: url,
-      body: params,
-    }).then((response) => {
+    const url = v1ApiPath(`processing/${id.toString()}/tracks`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "DELETE",
+        url: url,
+        body: params,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
       expect(response.status, "Check return statusCode is").to.equal(
         statusCode
       );
@@ -125,6 +139,7 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "processingApiTracksTagsPost",
   (
+    userName: string,
     trackName: string,
     recordingName: string,
     what: any,
@@ -144,14 +159,18 @@ Cypress.Commands.add(
       data: JSON.stringify(data),
     };
 
-    const url = processingApiPath(
-      id.toString() + "/tracks/" + trackId.toString() + "/tags"
+    const url = v1ApiPath(
+      "processing/" + id.toString() + "/tracks/" + trackId.toString() + "/tags"
     );
-    cy.request({
-      method: "POST",
-      url: url,
-      body: params,
-    }).then((response) => {
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: url,
+        body: params,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
       expect(response.status, "Check return statusCode is").to.equal(
         statusCode
       );
@@ -159,27 +178,38 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add("processingApiAlgorithmPost", (algorithm: any) => {
-  logTestDescription(`Getting id for algorithm ${JSON.stringify(algorithm)}`, {
-    algorithm: algorithm,
-  });
-  const params = {
-    algorithm: JSON.stringify(algorithm),
-  };
+Cypress.Commands.add(
+  "processingApiAlgorithmPost",
+  (userName: string, algorithm: any) => {
+    logTestDescription(
+      `Getting id for algorithm ${JSON.stringify(algorithm)}`,
+      {
+        algorithm: algorithm,
+      }
+    );
+    const params = {
+      algorithm: JSON.stringify(algorithm),
+    };
 
-  const url = processingApiPath("algorithm");
-  cy.request({
-    method: "POST",
-    url: url,
-    body: params,
-  }).then((response) => {
-    cy.wrap(response.body.algorithmId);
-  });
-});
+    const url = v1ApiPath("processing/algorithm");
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: url,
+        body: params,
+      },
+      userName,
+      200
+    ).then((response) => {
+      cy.wrap(response.body.algorithmId);
+    });
+  }
+);
 
 Cypress.Commands.add(
   "processingApiCheck",
   (
+    userName: string,
     type: string,
     state: string,
     recordingName: string,
@@ -197,9 +227,16 @@ Cypress.Commands.add(
       type,
       state,
     };
-    const url = processingApiPath("", params);
+    const url = v1ApiPath("processing", params);
     cy.log(`URL: ${url}`);
-    cy.request({ url }).then((response) => {
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
       if (statusCode === 200) {
         if (response.body.recording !== undefined) {
           saveJobKeyByName(recordingName, response.body.recording.jobKey);

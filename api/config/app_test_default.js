@@ -19,9 +19,7 @@ export const s3Local = {
   endpoint: "http://127.0.0.1:9001",
   rootPath: "/.data/", // Root of the minio storage directory, so we can work out total and available disk space.
 };
-export const fileProcessing = {
-  port: 2008,
-};
+
 // ======= Database settings =======
 export const database = {
   username: "test",
@@ -61,7 +59,6 @@ export default {
   server,
   s3Local,
   s3Archive,
-  fileProcessing,
   database,
   development: database,
 };

@@ -27,6 +27,7 @@ declare namespace Cypress {
      * Optionally: check for a returned error message (additionalChecks.message)
      */
     processingApiCheck(
+      userName: string,
       type: string,
       state: string,
       recordingName: string,
@@ -43,6 +44,7 @@ declare namespace Cypress {
      */
 
     processingApiPut(
+      userName: string,
       recordingName: string,
       success: boolean,
       result: any,
@@ -55,7 +57,10 @@ declare namespace Cypress {
      * Returns algorithmId
      */
 
-    processingApiAlgorithmPost(algorithm: any): Chainable<number>;
+    processingApiAlgorithmPost(
+      userName: string,
+      algorithm: any
+    ): Chainable<number>;
 
     /** Post to /api/fileProcessing/:id/tracks
      * recordingId is looked up using recordingName
@@ -63,6 +68,7 @@ declare namespace Cypress {
      * Optionally: check for a non-200 statusCode
      */
     processingApiTracksPost(
+      userName: string,
       trackName: string,
       recordingName: string,
       data: any,
@@ -76,6 +82,7 @@ declare namespace Cypress {
      * Optionally: check for a non-200 statusCode
      */
     processingApiTracksTagsPost(
+      userName: string,
       trackName: string,
       recordingName: string,
       what: any,
@@ -89,7 +96,11 @@ declare namespace Cypress {
      * Optionally: add additional parameters from additionalParams
      * Optionally: check for a non-200 statusCode
      */
-    processingApiTracksDelete(recordingName: string, statusCode?: number): any;
+    processingApiTracksDelete(
+      userName: string,
+      recordingName: string,
+      statusCode?: number
+    ): any;
 
     /**
      * upload a single recording to for a particular camera using deviceId and user credentials

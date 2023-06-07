@@ -9,7 +9,6 @@ import log, { consoleTransport } from "@log";
 import customErrors from "./api/customErrors.js";
 import { openS3 } from "./models/util/util.js";
 import initialiseApi from "./api/V1/index.js";
-import initialiseFileProcessingApi from "./api/fileProcessing/index.js";
 import expressWinston from "express-winston";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -22,7 +21,6 @@ import {
 } from "./Globals.js";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -135,8 +133,8 @@ const checkS3Connection = async (): Promise<void> => {
       type: "application/octet-stream",
     })
   );
-  app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
-  app.use(express.json({ limit: "2Mb" }));
+  app.use(express.urlencoded({ extended: false, limit: "50Mb" }));
+  app.use(express.json({ limit: "50Mb" }));
   app.use(passport.initialize());
   // Adding API documentation
   app.use(express.static(__dirname + "/apidoc"));
@@ -165,16 +163,6 @@ const checkS3Connection = async (): Promise<void> => {
   //   const result = validationResult(request);
   //   log.warning("validation %s", result);
   // });
-
-  // Add file processing API.
-  const fileProcessingApp = express();
-  fileProcessingApp.use(express.urlencoded({ extended: false, limit: "50Mb" }));
-  fileProcessingApp.use(express.json({ limit: "50Mb" }));
-
-  initialiseFileProcessingApi(fileProcessingApp);
-  http.createServer(fileProcessingApp).listen(config.fileProcessing.port);
-  log.notice("Starting file processing on %d", config.fileProcessing.port);
-  fileProcessingApp.use(customErrors.errorHandler);
 
   log.notice("Initialising Sequelize models");
   const models = await modelsInit();

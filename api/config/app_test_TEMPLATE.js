@@ -29,10 +29,6 @@ export const s3Archive = {
   freeSpaceThresholdRatio: 0.7,
 };
 
-export const fileProcessing = {
-  port: 2008,
-};
-
 // ======= Database settings =======
 export const database = {
   username: "REQUIRED",
@@ -60,7 +56,6 @@ export default {
   server,
   s3Local,
   s3Archive,
-  fileProcessing,
   database,
   development: database,
 };
