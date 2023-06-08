@@ -366,47 +366,6 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/processing/tags Add a tag to a recording
-   * @apiName tagRecordingAfterFileProcessing
-   * @apiGroup Processing
-   *
-   * @apiDescription This call takes a `tag` field which contains a JSON
-   * object string containing a number of fields. See /api/V1/tags for
-   * more details. Requires super-admin user credentials.
-   *
-   * @apiParam {Number} recordingId ID of the recording that you want to tag.
-   * @apiParam {JSON} tag Tag data in JSON format.
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess {Number} tagId ID of the tag just added.
-   *
-   * @apiUse V1ResponseError
-   *
-   */
-  app.post(
-    `${apiUrl}/tags`,
-    extractJwtAuthorisedSuperAdminUser,
-    validateFields([body("tag").isJSON(), idOf(body("recordingId"))]),
-    fetchUnauthorizedRequiredRecordingById(body("recordingId")),
-    parseJSONField(body("tag")),
-    async (request, response) => {
-      if (response.locals.tag.event) {
-        // FIXME - processing still sends us the tag as "event" rather than "detail"
-        response.locals.tag.detail = response.locals.tag.event;
-      }
-      const tagInstance = await addTag(
-        models,
-        null,
-        response.locals.recording,
-        response.locals.tag
-      );
-      return successResponse(response, "Added new tag.", {
-        tagId: tagInstance.id,
-      });
-    }
-  );
-
-  /**
    * @api {post} /api/v1/processing/metadata Updates the metadata for the recording
    * @apiName updateMetaData
    * @apiGroup Processing
@@ -447,7 +406,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackId Unique id of the newly created track.
    *
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.post(
@@ -566,43 +525,5 @@ export default function (app: Application, baseUrl: string) {
         algorithmId: algorithm.id,
       });
     }
-  );
-
-  /**
-   * @api {get} /api/v1/processing/:id/tracks Get tracks for recording
-   * @apiName GetTracks
-   * @apiGroup Processing
-   * @apiDescription Get all tracks for a given recording and their tags.
-   * Requires super-admin user credentials
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess {JSON} tracks Array with elements containing id,
-   * algorithm, data and tags fields.
-   *
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:id/tracks`,
-    extractJwtAuthorisedSuperAdminUser,
-    param("id").isInt().toInt(),
-    middleware.requestWrapper(
-      async (request: Request, response: Response, next: NextFunction) => {
-        const recording = await models.Recording.findOne({
-          where: { id: request.params.id },
-        });
-
-        if (!recording) {
-          return next(new ClientError("No such recording."));
-        }
-
-        const tracks = await recording.getActiveTracksTagsAndTagger();
-        tracks.forEach((t) => {
-          delete t.dataValues.RecordingId;
-        });
-        return successResponse(response, "OK.", {
-          tracks,
-        });
-      }
-    )
   );
 }

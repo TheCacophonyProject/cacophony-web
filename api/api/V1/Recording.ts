@@ -45,7 +45,10 @@ import type {
   ApiThermalRecordingMetadataResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording.js";
-import type { ApiRecordingTagResponse } from "@typedefs/api/tag.js";
+import type {
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag.js";
 import type { ApiTrackResponse } from "@typedefs/api/track.js";
 import type {
   ApiAutomaticTrackTagResponse,
@@ -287,6 +290,11 @@ interface ApiUpdateRecordingRequestBody {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiRecordingResponseSuccess {
   recording: ApiGenericRecordingResponse;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiRecordingTagRequestBody {
+  tag: ApiRecordingTagRequest;
 }
 
 export default (app: Application, baseUrl: string) => {
@@ -2150,7 +2158,7 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiParam {Integer} id Recording id to add tag to
-   * @apiInterface {apiBody::ApiRecordingTagRequest} tag
+   * @apiInterface {apiBody::ApiRecordingTagRequestBody} tag
    *
    * @apiSuccess {Integer} tagId id of the newly created tag
    * @apiUse V1ResponseSuccess

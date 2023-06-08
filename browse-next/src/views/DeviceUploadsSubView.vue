@@ -299,7 +299,7 @@ const beginUploadJob = async () => {
     });
     worker.onmessage = async (message: MessageEvent<MessageData>) => {
       const { type, data, threadIndex } = message.data;
-      console.log(type, data, threadIndex);
+      // console.log(type, data, threadIndex);
       // Type is only ever "finish"
       if (type === "finish") {
         if (data.success) {

@@ -1,5 +1,5 @@
 import { sha1 } from "hash-wasm";
-import EXIF from "exif-js";
+import EXIF from "exif-js_fixed";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { supportsFastBuild, createOCREngine } from "tesseract-wasm";

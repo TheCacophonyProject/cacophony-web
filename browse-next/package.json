@@ -20,7 +20,7 @@
     "@vueuse/core": "^9.13.0",
     "bootstrap": "^5.2.3",
     "bootstrap-vue-3": "^0.4.6",
-    "exif-js": "^2.3.0",
+    "exif-js_fixed": "^2.3.1",
     "hash-wasm": "^4.9.0",
     "leaflet": "^1.9.3",
     "luxon": "^3.3.0",
