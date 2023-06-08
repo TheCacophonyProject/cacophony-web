@@ -80,13 +80,7 @@ export async function getThumbnail(
   trackId?: number
 ): Promise<Uint8Array> {
   let thumbKey: string;
-  let fileKey = rec.rawFileKey;
-  if (
-    rec.type === RecordingType.TrailCamImage ||
-    rec.type == RecordingType.TrailCamVideo
-  ) {
-    fileKey = rec.fileKey;
-  }
+  const fileKey = rec.rawFileKey;
   if (trackId) {
     thumbKey = `${fileKey}-${trackId}-thumb`;
   } else {

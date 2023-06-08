@@ -1380,14 +1380,13 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
-      let fileKey = rec.rawFileKey;
+      const fileKey = rec.rawFileKey;
       let mimeType = "image/png";
       let ext = "png";
       if (
         rec.type === RecordingType.TrailCamVideo ||
         rec.type === RecordingType.TrailCamImage
       ) {
-        fileKey = rec.fileKey;
         mimeType = "image/webp";
         ext = "webp";
       }
@@ -1477,13 +1476,7 @@ export default (app: Application, baseUrl: string) => {
         let deleted = false;
         const rawFileKey = recording.rawFileKey;
         const fileKey = recording.fileKey;
-        let thumbKey = `${rawFileKey}-thumb`;
-        if (
-          recording.type === RecordingType.TrailCamVideo ||
-          RecordingType.TrailCamImage
-        ) {
-          thumbKey = `${fileKey}-thumb`;
-        }
+        const thumbKey = `${rawFileKey}-thumb`;
         try {
           await recording.destroy({ force: true });
           deleted = true;

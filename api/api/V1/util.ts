@@ -233,10 +233,10 @@ function multipartUpload(
       };
       let partKey = key;
       if (part.name === "derived") {
-        partKey = key.replace("raw", "web");
+        partKey = key.replace("raw", "rec");
       }
       if (part.name === "thumb") {
-        partKey = `${key.replace("raw", "web")}-thumb`;
+        partKey = `${key}-thumb`;
       }
       const { writeStream, upload } = uploadStream(partKey);
       uploadPromises[part.filename] = upload.done();
