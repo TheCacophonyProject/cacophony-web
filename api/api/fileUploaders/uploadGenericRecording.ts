@@ -200,15 +200,26 @@ interface RecordingFileUploadResult {
   embeddedMetadata?: CptvHeader;
   fileName?: string;
 }
+
+const mapPartName = (partKey: string, partName: string): string => {
+  switch (partName) {
+    case "file":
+      return `raw/${partKey}`;
+    case "derived":
+      return `rec/${partKey}`;
+    case "thumb":
+      return `raw/${partKey}-thumb`;
+  }
+  return partKey;
+};
 const processFilePart = async (
+  partKey: string,
   part: MultipartFormPart,
-  groupId: GroupId,
   request: Request,
   canceledRequest: { canceled: boolean }
 ): Promise<RecordingFileUploadResult> => {
   let length = 0;
   // NOTE: it can end up that we are uploading old recordings for another group, in which case we'd want to rename these keys.
-  const partKey = `${groupId}/${moment().format("YYYY/MM/DD/")}${uuidv4()}`;
   const sha1Hash = crypto.createHash("sha1");
   console.assert(!!part.filename, "NO FILENAME");
   const mightBeCptvFile =
@@ -342,6 +353,9 @@ export const uploadGenericRecording =
       uploadingUser = response.locals.requestUser;
     }
 
+    const partKey = `${recordingDevice.GroupId}/${moment().format(
+      "YYYY/MM/DD/"
+    )}${uuidv4()}`;
     const form = new multiparty.Form();
     form.on("error", (error: Error) => {
       if (error instanceof CustomError && !canceledRequest.canceled) {
@@ -377,8 +391,8 @@ export const uploadGenericRecording =
       } else if (recognisedFileParts.includes(part.name)) {
         fileUploadsInProgress.push(
           processFilePart(
+            mapPartName(partKey, part.name),
             part,
-            recordingDevice.GroupId,
             request,
             canceledRequest
           )
