@@ -27,4 +27,12 @@ export default defineConfig({
       "@typedefs": fileURLToPath(new URL("../types", import.meta.url)),
     },
   },
+  build: {
+    target: "modules",
+    terserOptions: {
+      compress: {
+        collapse_vars: false,
+      },
+    },
+  },
 });
