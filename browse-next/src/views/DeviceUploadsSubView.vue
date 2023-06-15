@@ -785,8 +785,8 @@ const clearUploadQueue = () => {
       </div>
       <div v-else class="d-flex flex-grow-1 flex-column">
         <div>
-          Uploading {{ uploadQueue.length }} file<span
-            v-if="uploadQueue.length !== 1"
+          Uploading {{ totalUploads - completedUploads }} file<span
+            v-if="totalUploads - completedUploads !== 1"
             >s</span
           >
           for location '<strong>{{

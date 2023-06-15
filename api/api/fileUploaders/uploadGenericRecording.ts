@@ -222,8 +222,12 @@ const processFilePart = async (
   // NOTE: it can end up that we are uploading old recordings for another group, in which case we'd want to rename these keys.
   const sha1Hash = crypto.createHash("sha1");
   console.assert(!!part.filename, "NO FILENAME");
+
+  // NOTE: thermal-uploader calls the filename 'file'
   const mightBeCptvFile =
-    !("filename" in part) || (part.filename && part.filename.endsWith(".cptv"));
+    !("filename" in part) ||
+    (part.filename && part.filename.endsWith(".cptv")) ||
+    part.filename === "file";
   const transform = new TransformStream({
     transform(chunk, controller) {
       if (canceledRequest.canceled) {
@@ -271,7 +275,11 @@ const processFilePart = async (
       }
       await upload.done().catch((error) => {
         if (error.name !== "AbortError") {
-          log.info("Upload error: %s", error.toString());
+          log.error("Upload error: %s", error.toString());
+          part.emit(
+            "error",
+            new UnprocessableError(`Upload error: '${part.name}'`)
+          );
         }
       });
     }
@@ -279,7 +287,11 @@ const processFilePart = async (
   } else {
     await upload.done().catch((error) => {
       if (error.name !== "AbortError") {
-        log.info("DONE? %s", error.toString());
+        log.error("DONE? %s", error.toString());
+        part.emit(
+          "error",
+          new UnprocessableError(`Upload error: '${part.name}'`)
+        );
       }
     });
   }
