@@ -62,8 +62,8 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
   recordingUploadData: RecordingFileUploadResult
 ): RecordingData => {
   const mergedData = {
-    ...data,
     ...recordingUploadData.embeddedMetadata,
+    ...data,
   };
   // FIXME - reject/warn on  recordings without any location set, or location set to zero?
   if (recordingUploadData.embeddedMetadata) {
@@ -105,10 +105,7 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
       }
       mergedData.additionalMetadata.totalFrames = metadata.totalFrames;
     }
-  } else if (
-    !("recordingDateTime" in data) &&
-    !("recordingDateTime" in mergedData)
-  ) {
+  } else if (!("recordingDateTime" in mergedData)) {
     throw new UnprocessableError("recordingDateTime not supplied");
   }
   return mergedData;
