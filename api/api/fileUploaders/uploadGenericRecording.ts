@@ -68,8 +68,12 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
   // FIXME - reject/warn on  recordings without any location set, or location set to zero?
   if (recordingUploadData.embeddedMetadata) {
     const metadata = recordingUploadData.embeddedMetadata;
-    if (metadata.latitude && metadata.longitude) {
-      mergedData.location = {
+    if (
+      !("location" in mergedData) &&
+      metadata.latitude &&
+      metadata.longitude
+    ) {
+      (mergedData as any).location = {
         lat: metadata.latitude,
         lng: metadata.longitude,
       };
