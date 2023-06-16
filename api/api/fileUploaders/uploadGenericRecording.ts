@@ -68,7 +68,7 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
   // FIXME - reject/warn on  recordings without any location set, or location set to zero?
   if (recordingUploadData.embeddedMetadata) {
     const metadata = recordingUploadData.embeddedMetadata;
-    if ("location" in metadata && metadata.latitude && metadata.longitude) {
+    if (metadata.latitude && metadata.longitude) {
       mergedData.location = {
         lat: metadata.latitude,
         lng: metadata.longitude,
@@ -226,8 +226,8 @@ const processFilePart = async (
   // NOTE: thermal-uploader calls the filename 'file'
   const mightBeCptvFile =
     !("filename" in part) ||
-    (part.filename && part.filename.endsWith(".cptv")) ||
-    part.filename === "file";
+    (part.filename &&
+      (part.filename.endsWith(".cptv") || part.filename === "file"));
   const transform = new TransformStream({
     transform(chunk, controller) {
       if (canceledRequest.canceled) {
