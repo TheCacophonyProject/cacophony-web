@@ -1128,7 +1128,7 @@ from (
       const tag = tags[i];
       if (tag === "interesting") {
         parts.push(
-          `("Tags"."detail"!='bird' AND "Tags"."detail"!='false positive')`
+          `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`
         );
       } else {
         const path = labelPath[tag.toLowerCase()];
@@ -1136,7 +1136,7 @@ from (
           parts.push(`"Tags".path ~ '${path}${exclusive ? "" : ".*"}'`);
         } else {
           // TODO: this catches tags that may of not been added to classifications but should be added
-          parts.push(`"Tags"."detail" = '${tag}'`);
+          parts.push(`"Tags"."what" = '${tag}'`);
         }
       }
     }
