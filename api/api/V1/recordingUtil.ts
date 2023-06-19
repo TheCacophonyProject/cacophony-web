@@ -1630,7 +1630,7 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
         matchedTag,
         alert.StationId !== null ? "station" : "device",
         thumbnail && {
-          buffer: thumbnail.Body as Buffer,
+          buffer: Buffer.from(thumbnail),
           cid: "thumbnail",
           mimeType: "image/png",
         }
