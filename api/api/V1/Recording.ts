@@ -660,7 +660,10 @@ export default (app: Application, baseUrl: string) => {
       const useFilteredModel: string | false =
         (filterModel && (filterModel as string)) || false;
 
-      if (!Object.values(RecordingType).includes(type as RecordingType)) {
+      if (
+        type &&
+        !Object.values(RecordingType).includes(type as RecordingType)
+      ) {
         return next(
           new BadRequestError(`Invalid recording type '${type}' supplied`)
         );
@@ -933,7 +936,10 @@ export default (app: Application, baseUrl: string) => {
         checkIsGroupAdmin,
         deleted,
       } = request.query;
-      if (!Object.values(RecordingType).includes(type as RecordingType)) {
+      if (
+        type &&
+        !Object.values(RecordingType).includes(type as RecordingType)
+      ) {
         return next(
           new BadRequestError(`Invalid recording type '${type}' supplied`)
         );
