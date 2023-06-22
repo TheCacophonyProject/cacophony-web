@@ -66,6 +66,7 @@ import LabelPaths from "../../classifications/label_paths.json" assert { type: "
 
 import {
   AuthorizationError,
+  BadRequestError,
   ClientError,
   FatalError,
 } from "../customErrors.js";
@@ -635,7 +636,7 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
       const {
         tagMode,
@@ -658,6 +659,12 @@ export default (app: Application, baseUrl: string) => {
       }
       const useFilteredModel: string | false =
         (filterModel && (filterModel as string)) || false;
+
+      if (!Object.values(RecordingType).includes(type as RecordingType)) {
+        return next(
+          new BadRequestError(`Invalid recording type '${type}' supplied`)
+        );
+      }
       // eslint-disable-next-line no-undef
       const result = await queryRecordings(
         models,
@@ -926,7 +933,11 @@ export default (app: Application, baseUrl: string) => {
         checkIsGroupAdmin,
         deleted,
       } = request.query;
-
+      if (!Object.values(RecordingType).includes(type as RecordingType)) {
+        return next(
+          new BadRequestError(`Invalid recording type '${type}' supplied`)
+        );
+      }
       const options = {
         viewAsSuperUser,
         where,
