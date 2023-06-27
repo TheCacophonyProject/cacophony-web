@@ -171,7 +171,7 @@ const validateDataPart = async (
         uploadingDeviceId
       );
       throw new ClientError(
-        "Duplicate recording found for device",
+        `Duplicate recording found for device: ${existingRecordingWithHashForDevice.id}`,
         HttpStatusCode.Ok
       );
     }
@@ -373,6 +373,18 @@ export const uploadGenericRecording =
     form.on("error", (error: Error) => {
       if (error instanceof CustomError && !canceledRequest.canceled) {
         canceledRequest.canceled = true;
+        if (error.message.startsWith("Duplicate recording found for device")) {
+          if (!response.headersSent) {
+            const recordingId = Number(error.message.split(":")[1].trim());
+            return successResponse(
+              response,
+              "Duplicate recording found for device",
+              {
+                recordingId,
+              }
+            );
+          }
+        }
         return next(error);
       }
     });
