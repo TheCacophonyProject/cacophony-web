@@ -143,8 +143,10 @@ const mapTrackTag = (
   } else {
     (trackTagBase as ApiHumanTrackTagResponse).automatic = false;
     (trackTagBase as ApiHumanTrackTagResponse).userId = trackTag.UserId;
-    (trackTagBase as ApiHumanTrackTagResponse).userName =
-      trackTag.User.userName;
+    if (trackTag.User) {
+      (trackTagBase as ApiHumanTrackTagResponse).userName =
+        trackTag.User.userName;
+    }
     return trackTagBase as ApiHumanTrackTagResponse;
   }
 };
