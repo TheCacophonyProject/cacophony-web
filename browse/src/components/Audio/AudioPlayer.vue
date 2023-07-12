@@ -785,19 +785,18 @@ export default defineComponent({
         const pos =
           track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
         let { x, y, width, height } = pos;
-        const topFreq = (sampleRate / 2)
-        const scale =topFreq/ 9;
-
+        const topFreq = sampleRate / 2;
+        const scale = topFreq / 9;
         // take it from linear scale to log scale
-        height =y - height
-        y = y * topFreq
-        y = y / scale
-        y = Math.log10(y + 1)
+        height = y - height;
+        y = y * topFreq;
+        y = y / scale;
+        y = Math.log10(y + 1);
 
-        let minFreq = height * topFreq
-        minFreq = minFreq / scale
-        minFreq = Math.log10(minFreq + 1)
-        height = y - minFreq
+        let minFreq = height * topFreq;
+        minFreq = minFreq / scale;
+        minFreq = Math.log10(minFreq + 1);
+        height = y - minFreq;
         // y needs to inverted due to canvas positioning
         y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
         height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
@@ -1075,19 +1074,19 @@ export default defineComponent({
         };
 
         const confirmTrack = debounce(() => {
-          const topFreq = (sampleRate / 2)
-          const scale =topFreq/ 9;
-          let flippedY = 1 - tempTrack.value.pos.y;
-          let minFreq = flippedY - tempTrack.value.pos.height
+          const topFreq = sampleRate / 2;
+          const scale = topFreq / 9;
+          const flippedY = 1 - tempTrack.value.pos.y;
+          let minFreq = flippedY - tempTrack.value.pos.height;
           // spectogram is in log scale so make into linear
           const pos = Object.assign({}, tempTrack.value.pos);
 
-          let maxFreq = Math.pow(10,flippedY) -1
-          minFreq = Math.pow(10,minFreq) -1
-          maxFreq = maxFreq * scale
-          minFreq = minFreq * scale
-          pos.y = maxFreq / topFreq
-          pos.height = (maxFreq-minFreq)/topFreq
+          let maxFreq = Math.pow(10, flippedY) - 1;
+          minFreq = Math.pow(10, minFreq) - 1;
+          maxFreq = maxFreq * scale;
+          minFreq = minFreq * scale;
+          pos.y = maxFreq / topFreq;
+          pos.height = (maxFreq - minFreq) / topFreq;
           pos.y = maxFreq / (defaultSampleRate.value / 2);
 
           const track: AudioTrack = {
