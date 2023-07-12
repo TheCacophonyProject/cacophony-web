@@ -785,10 +785,23 @@ export default defineComponent({
         const pos =
           track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
         let { x, y, width, height } = pos;
+        const topFreq = (sampleRate / 2)
+        const scale =topFreq/ 9;
+        // take it from linear scale to log scale
+        height =y - height
+        y = y * topFreq
+        y = y / scale
+        y = Math.log10(y + 1)
+
+        height = height * topFreq
+        height = height / scale
+        height = Math.log10(height + 1)
         // y needs to inverted due to canvas positioning
-        y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        y = 1 - y;
+        // y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        // height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        height = y - height
+        y = 1-y;
+
 
         if (track.start && track.end) {
           const { start, end } = track;
@@ -1063,16 +1076,20 @@ export default defineComponent({
         };
 
         const confirmTrack = debounce(() => {
-          const top = sampleRate / 2;
-          const flippedY = 1 - tempTrack.value.pos.y;
-          const maxFreq = Math.floor(flippedY * top);
-          const minFreq = Math.floor(
-            (flippedY - tempTrack.value.pos.height) * top
-          );
+          const topFreq = (sampleRate / 2)
+          const scale =topFreq/ 9;
+          let flippedY = 1 - tempTrack.value.pos.y;
+          let minFreq = flippedY - tempTrack.value.pos.height
+          // spectogram is in log scale so make into linear
           const pos = Object.assign({}, tempTrack.value.pos);
+
+          let maxFreq = Math.pow(10,flippedY) -1
+          minFreq = Math.pow(10,minFreq) -1
+          maxFreq = maxFreq * scale
+          minFreq = minFreq * scale
+          pos.y = maxFreq / topFreq
+          pos.height = (maxFreq-minFreq)/topFreq
           pos.y = maxFreq / (defaultSampleRate.value / 2);
-          pos.y = 1 - pos.y;
-          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
 
           const track: AudioTrack = {
             id: -1,
