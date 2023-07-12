@@ -787,21 +787,20 @@ export default defineComponent({
         let { x, y, width, height } = pos;
         const topFreq = (sampleRate / 2)
         const scale =topFreq/ 9;
+
         // take it from linear scale to log scale
         height =y - height
         y = y * topFreq
         y = y / scale
         y = Math.log10(y + 1)
 
-        height = height * topFreq
-        height = height / scale
-        height = Math.log10(height + 1)
+        let minFreq = height * topFreq
+        minFreq = minFreq / scale
+        minFreq = Math.log10(minFreq + 1)
+        height = y - minFreq
         // y needs to inverted due to canvas positioning
-        // y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        // height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        height = y - height
-        y = 1-y;
-
+        y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
 
         if (track.start && track.end) {
           const { start, end } = track;
