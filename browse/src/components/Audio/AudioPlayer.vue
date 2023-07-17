@@ -789,19 +789,18 @@ export default defineComponent({
         const scale = topFreq / 9;
 
         // take it from linear scale to log scale
-        height = y - height;
-        y = y * topFreq;
-        y = y / scale;
-        y = (y * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        y = Math.log10(y + 1);
-        let minFreq = height * topFreq;
+        let minFreq = y * topFreq;
         minFreq = minFreq / scale;
-        minFreq = (minFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-
         minFreq = Math.log10(minFreq + 1);
-        height = y - minFreq;
+        minFreq = (minFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        let maxFreq = (y + height) * topFreq;
+        maxFreq = maxFreq / scale;
+
+        maxFreq = Math.log10(maxFreq + 1);
+        maxFreq = (maxFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        height = maxFreq - minFreq;
         // y needs to inverted due to canvas positioning
-        y = 1 - y;
+        y = 1 - maxFreq;
         if (track.start && track.end) {
           const { start, end } = track;
           x = start / player.value.getDuration();
@@ -1086,9 +1085,8 @@ export default defineComponent({
           minFreq = Math.pow(10, minFreq) - 1;
           maxFreq = maxFreq * scale;
           minFreq = minFreq * scale;
-          pos.y = maxFreq / topFreq;
           pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
-          pos.y = maxFreq / (defaultSampleRate.value / 2);
+          pos.y = minFreq / (defaultSampleRate.value / 2);
           const track: AudioTrack = {
             id: -1,
             start: tempTrack.value.pos.x * player.value.getDuration(),
