@@ -141,7 +141,7 @@
               <input
                 type="range"
                 min="8000"
-                max="44100"
+                max="48000"
                 step="100"
                 v-model="newSampleRate"
               />
@@ -754,7 +754,7 @@ export default defineComponent({
     onMounted(async () => {
       const audioBuffer = props.buffer.slice(0);
       const realSampleRate = getSampleRate(audioBuffer).sampleRate;
-      defaultSampleRate.value = realSampleRate === 0 ? 44100 : realSampleRate;
+      defaultSampleRate.value = realSampleRate === 0 ? 48000 : realSampleRate;
       let sampleRate = props.sampleRate;
       if (sampleRate === null) {
         sampleRate = defaultSampleRate.value;
@@ -787,20 +787,21 @@ export default defineComponent({
         let { x, y, width, height } = pos;
         const topFreq = sampleRate / 2;
         const scale = topFreq / 9;
+
         // take it from linear scale to log scale
         height = y - height;
         y = y * topFreq;
         y = y / scale;
+        y = (y * (defaultSampleRate.value / 2)) / (sampleRate / 2);
         y = Math.log10(y + 1);
-
         let minFreq = height * topFreq;
         minFreq = minFreq / scale;
+        minFreq = (minFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+
         minFreq = Math.log10(minFreq + 1);
         height = y - minFreq;
         // y needs to inverted due to canvas positioning
-        y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-
+        y = 1 - y;
         if (track.start && track.end) {
           const { start, end } = track;
           x = start / player.value.getDuration();
@@ -1086,9 +1087,8 @@ export default defineComponent({
           maxFreq = maxFreq * scale;
           minFreq = minFreq * scale;
           pos.y = maxFreq / topFreq;
-          pos.height = (maxFreq - minFreq) / topFreq;
+          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
           pos.y = maxFreq / (defaultSampleRate.value / 2);
-
           const track: AudioTrack = {
             id: -1,
             start: tempTrack.value.pos.x * player.value.getDuration(),
