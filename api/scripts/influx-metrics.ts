@@ -3,7 +3,7 @@ import * as config from "../config.js";
 import * as Influx from "influx";
 import process from "process";
 import { program } from "commander";
-import { Client } from "pg";
+import pg from "pg";
 import moment from "moment";
 import os from "os";
 import { RecordingProcessingState } from "@typedefs/api/consts.js";
@@ -162,7 +162,7 @@ async function influxConnect() {
 
 async function pgConnect() {
   const dbConf = Config.database;
-  const client = new Client({
+  const client = new pg.Client({
     host: dbConf.host,
     port: dbConf.port,
     user: dbConf.username,

@@ -3,15 +3,15 @@ import { exec as cp_exec } from "child_process";
 import util from "util";
 import * as config from "../config.js";
 import { program } from "commander";
-import { Client } from "pg";
+import pg from "pg";
 import process from "process";
 import log from "../logging.js";
 const exec = util.promisify(cp_exec);
 let Config;
 
-const pgConnect = async (): Promise<Client> => {
+const pgConnect = async (): Promise<pg.Client> => {
   const dbconf = Config.database;
-  const client = new Client({
+  const client = new pg.Client({
     host: dbconf.host,
     port: dbconf.port,
     user: dbconf.username,

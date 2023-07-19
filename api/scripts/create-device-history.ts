@@ -1,7 +1,7 @@
 import config from "@config";
 import log from "@log";
 import modelsInit from "@models/index.js";
-import { Client } from "pg";
+import pg from "pg";
 import process from "process";
 import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
 import { Op } from "sequelize";
@@ -18,7 +18,7 @@ const dbOptions = (config) => ({
 async function main() {
   // For each device.
   // Find all versions of the device with its saltId
-  const pgClient = new Client(dbOptions(config.database));
+  const pgClient = new pg.Client(dbOptions(config.database));
   await pgClient.connect();
   const saltIds = await pgClient.query(
     `select distinct "saltId" from "Devices";`
