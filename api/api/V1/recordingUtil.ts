@@ -543,13 +543,6 @@ export const maybeUpdateDeviceHistory = async (
         dateTime,
         false
       );
-      if (stationToAssign) {
-        log.warning(
-          "~~ StationToAssign %s",
-          JSON.stringify(stationToAssign.get({ plain: true }))
-        );
-        log.warning("~~ DateTime %s", dateTime);
-      }
       if (stationToAssign && stationToAssign.activeAt > dateTime) {
         // We matched a future station in this location, so it's likely this is an older recording coming in out
         // of order.  We want to back-date the existing station to this time.

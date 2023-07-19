@@ -37,7 +37,7 @@ export function isLatLon(
   ) {
     valid = false;
     logger.warning("Invalid 4");
-  } else if (typeof point === "object") {
+  } else if (typeof point === "object" && !Array.isArray(point)) {
     if (point.hasOwnProperty("coordinates")) {
       const coordinates = (point as any).coordinates;
       if (!Array.isArray(coordinates)) {
