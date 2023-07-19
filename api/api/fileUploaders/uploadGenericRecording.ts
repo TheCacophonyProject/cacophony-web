@@ -39,6 +39,7 @@ import {
 } from "@api/V1/recordingUtil.js";
 import type { Station } from "@models/Station.js";
 import type { Group } from "@models/Group.js";
+import { isLatLon } from "@models/util/validation.js";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -455,6 +456,19 @@ export const uploadGenericRecording =
           return next(error);
         }
       }
+
+      // Reject recordings with invalid locations
+      if (data.location && !isLatLon(data.location, false)) {
+        if (!canceledRequest.canceled) {
+          canceledRequest.canceled = true;
+          return next(
+            new UnprocessableError(
+              `Invalid location '${JSON.stringify(data.location)}'`
+            )
+          );
+        }
+      }
+
       if (
         data &&
         data.fileHash &&

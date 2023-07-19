@@ -554,8 +554,18 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
   });
 
-  it.skip("Correct handling of invalid recording upload parameters", () => {
-    //TODO: to be defined / written
+  it("Correct handling of invalid recording upload parameters", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    cy.log("Add recording using invalid location");
+    recording1.location = [-43.551753997802734, 192.6381378173828];
+    cy.apiRecordingAddOnBehalfUsingDevice(
+      "raGroupAdmin",
+      "raCamera1",
+      recording1,
+      "raRecording1",
+      "invalid.cptv",
+      422
+    );
   });
 
   it.skip("Deleted recording deletes associated tracks, tracktags and tags", () => {

@@ -22,7 +22,8 @@ import logger from "@log";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 
 export function isLatLon(
-  point: { coordinates: [number, number] } | [number, number] | LatLng
+  point: { coordinates: [number, number] } | [number, number] | LatLng,
+  shouldThrow = true
 ) {
   let valid = true;
   if (point === null) {
@@ -74,7 +75,8 @@ export function isLatLon(
     logger.warning("Invalid 6 %s", location);
     valid = false;
   }
-  if (!valid) {
+  if (!valid && shouldThrow) {
     throw new Error("Location is not valid G.");
   }
+  return valid;
 }
