@@ -88,6 +88,9 @@ export interface MinimalTrackRequestData {
   tracker_version?: integer | string;
   start_s: Seconds;
   end_s: Seconds;
+  minFreq?: integer;
+  maxFreq?: integer;
+  scale?: string;
 
   num_frames?: integer;
   frame_start?: integer;
