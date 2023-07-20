@@ -16,18 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import Sequelize from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { Recording } from "./Recording";
-import { Track } from "./Track";
-import { TrackTag } from "./TrackTag";
-import { alertBody, EmailImageAttachment } from "@/scripts/emailUtil";
-import { DeviceId, StationId, UserId } from "@typedefs/api/common";
-import logger from "../logging";
-import { sendEmail } from "@/emails/sendEmail";
-import { sendAnimalAlertEmail } from "@/emails/transactionalEmails";
-import { Station } from "@models/Station";
-import { Device } from "@models/Device";
-
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { Recording } from "./Recording.js";
+import type { Track } from "./Track.js";
+import type { TrackTag } from "./TrackTag.js";
+import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
+import type { DeviceId, StationId, UserId } from "@typedefs/api/common.js";
+import logger from "../logging.js";
+import { alertBody, sendEmail } from "@/emails/sendEmail.js";
+//
 export type AlertId = number;
 const Op = Sequelize.Op;
 
@@ -216,7 +213,6 @@ export default function (sequelize, DataTypes): AlertStatic {
     thumbnail?: EmailImageAttachment
   ) {
     const subject = `${this.name}  - ${tag.what} Detected`;
-
     const [html, text] = alertBody(
       recording,
       tag,
@@ -246,46 +242,5 @@ export default function (sequelize, DataTypes): AlertStatic {
     });
     await this.update({ lastAlert: alertTime });
   };
-
-  // Alert.prototype.sendEventAlert = async function (
-  //     tag: TrackTag,
-  //     event: Event,
-  //     station: Station,
-  //     device: Device,
-  //     alertOn: "station" | "device",
-  //     thumbnail?: EmailImageAttachment
-  // ) {
-  //   const subject = `${this.name}  - ${tag.what} Detected`;
-  //
-  //   await sendAnimalAlertEmail();
-  //   const [html, text] = alertBody(
-  //       recording,
-  //       tag,
-  //       this,
-  //       !!thumbnail,
-  //       alertOn === "device" ? recording.Device?.deviceName : undefined,
-  //       alertOn === "station" ? recording.Station?.name : undefined
-  //   );
-  //   const alertTime = new Date().toISOString();
-  //   const result = await sendEmail(
-  //       html,
-  //       text,
-  //       this.User.email,
-  //       subject,
-  //       thumbnail && [thumbnail]
-  //   );
-  //   const detail = await models.DetailSnapshot.getOrCreateMatching("alert", {
-  //     alertId: this.id,
-  //     eventId: event.id,
-  //     success: result,
-  //   });
-  //   await models.Event.create({
-  //     DeviceId: event.De.id,
-  //     EventDetailId: detail.id,
-  //     dateTime: alertTime,
-  //   });
-  //   await this.update({ lastAlert: alertTime });
-  // };
-
   return Alert;
 }

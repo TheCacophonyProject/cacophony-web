@@ -1,33 +1,40 @@
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStationById,
   fetchAuthorizedRequiredStations,
   parseJSONField,
-} from "@api/extract-middleware";
-import { successResponse } from "@api/V1/responseUtil";
-import { validateFields } from "@api/middleware";
+} from "@api/extract-middleware.js";
+import { successResponse } from "@api/V1/responseUtil.js";
+import { validateFields } from "@api/middleware.js";
 import { body, param, query } from "express-validator";
-import { Station } from "@models/Station";
-import {
+import type { Station } from "@models/Station.js";
+import type {
   ApiCreateStationData,
   ApiStationResponse,
   ApiStationSettings,
-} from "@typedefs/api/station";
-import { booleanOf, idOf } from "../validation-middleware";
-import { jsonSchemaOf } from "@api/schema-validation";
-import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json";
-import { stationLocationHasChanged } from "@models/Group";
-import models from "@models";
+} from "@typedefs/api/station.js";
+import {
+  booleanOf,
+  idOf,
+  integerOfWithDefault,
+  stringOf,
+} from "../validation-middleware.js";
+import { jsonSchemaOf } from "@api/schema-validation.js";
+import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" assert { type: "json" };
+import { stationLocationHasChanged } from "@models/Group.js";
+import modelsInit from "@models/index.js";
+import util from "@api/V1/util.js";
+import { openS3 } from "@models/util/util.js";
+import { streamS3Object } from "@api/V1/signedUrl.js";
+import { ClientError } from "@api/customErrors.js";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
-} from "@api/V1/recordingUtil";
-import util from "@api/V1/util";
-import { openS3 } from "@models/util/util";
-import { streamS3Object } from "@api/V1/signedUrl";
-import { ClientError } from "@api/customErrors";
+} from "@models/util/locationUtils.js";
+
+const models = await modelsInit();
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiStationsResponseSuccess {
@@ -170,7 +177,7 @@ export default function (app: Application, baseUrl: string) {
         return next(new ClientError("Reference image not found for station"));
       }
       const s3 = openS3();
-      await s3.deleteObject({ Key: fileKey });
+      await s3.deleteObject(fileKey);
       referenceImages = referenceImages.filter(
         (imageKey) => imageKey !== fileKey
       );
@@ -243,10 +250,15 @@ export default function (app: Application, baseUrl: string) {
         uploadingDevice,
         uploadingUser,
         data,
-        key,
-        uploadedFileData,
+        keys,
+        uploadedFileDatas,
         locals
       ): Promise<string> => {
+        console.assert(
+          keys.length === 1,
+          "Only expected 1 file-attachment for this end-point"
+        );
+        const key = keys[0];
         const station = locals.station;
         const stationSettings: ApiStationSettings = { ...station.settings };
         stationSettings.referenceImages = [
@@ -453,6 +465,173 @@ export default function (app: Application, baseUrl: string) {
         await response.locals.station.destroy();
         return successResponse(response, "Deleted station");
       }
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/:stationId/cacophony-index Get the cacophony index for a station
+   * @apiName cacophony-index-Station
+   * @apiGroup Station
+   * @apiDescription Get a single number Cacophony Index
+   * for a given station.  This number is the average of all the Cacophony Index values from a
+   * given time (defaulting to 'Now'), within a given timespan (defaulting to 3 months)
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} station ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of rolling window in hours.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Float} cacophonyIndex A number representing the average index over the period `from` minus `window-size`
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:stationId/cacophony-index`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("stationId")),
+    async (request: Request, response: Response) => {
+      const cacophonyIndex = await models.Station.getCacophonyIndex(
+        response.locals.requestUser,
+        response.locals.station.id,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number
+      );
+      return successResponse(response, { cacophonyIndex });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/:stationId/cacophony-index-bulk Get the cacophony index for a station across a give range of times frames
+   * @apiName cacophony-index-Station-bulk
+   * @apiGroup Station
+   * @apiDescription Get multiple Cacophony Index values
+   * for a given station.  These numbers are the averages of all the Cacophony Index values from a
+   * given time (defaulting to 'Now'), within the time frames specified by windowsize and steps.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} station ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
+   * @apiQuery {String} [interval=days] description of each time frame size
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Object} #TODO
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:stationId/cacophony-index-bulk`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
+      stringOf(query("interval")).default("days"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("stationId")),
+    async (request: Request, response: Response) => {
+      console.log("hi");
+      const cacophonyIndexBulk = await models.Station.getCacophonyIndexBulk(
+        response.locals.requestUser,
+        response.locals.station.id,
+        request.query.from as unknown as Date,
+        request.query.steps as unknown as number,
+        request.query.interval as unknown as String
+      );
+      return successResponse(response, { cacophonyIndexBulk });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/{:stationsId}/species-count Get the species breakdown for a station
+   * @apiName species-breakdown
+   * @apiGroup Station
+   * @apiDescription Get a species breakdown
+   * for a given station, showing the proportion of recordings that are of each species.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} stationId ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
+   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Object} #TODO
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:stationId/species-count`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      query("type").optional().isString().default("audio"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("stationId")),
+    async function (request: Request, response: Response) {
+      const speciesCount = await models.Station.getSpeciesCount(
+        response.locals.requestUser,
+        response.locals.station.id,
+        request.query.from as unknown as Date, // Get the current cacophony index
+        request.query["window-size"] as unknown as number,
+        request.query.type as unknown as string
+      );
+      return successResponse(response, { speciesCount });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/{:stationId}/species-count-bulk Get the species breakdown for a station across a given range of time frames
+   * @apiName species-count-Station-bulk
+   * @apiGroup Station
+   * @apiDescription Get a species count
+   * for a given station, showing the count of recordings that are of each species across a give range of time frames
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} stationId ID of the device.
+   * @apiQuery {String} [from=now] ISO8601 date string
+   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
+   * @apiQuery {String} [interval=days] description of each time frame size
+   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
+   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiSuccess {Object} #TODO
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:stationId/species-count-bulk`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      query("from").isISO8601().toDate().default(new Date()),
+      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
+      stringOf(query("interval")).default("days"),
+      query("type").optional().isString().default("audio"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredStationById(param("stationId")),
+    async function (request: Request, response: Response) {
+      const speciesCountBulk = await models.Station.getSpeciesCountBulk(
+        response.locals.requestUser,
+        response.locals.station.id,
+        request.query.from as unknown as Date,
+        request.query.steps as unknown as number,
+        request.query.interval as unknown as String,
+        request.query.type as unknown as string
+      );
+      return successResponse(response, { speciesCountBulk });
     }
   );
 }

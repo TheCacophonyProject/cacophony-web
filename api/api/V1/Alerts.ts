@@ -16,25 +16,30 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields } from "../middleware";
-import models from "@models";
-import { successResponse } from "./responseUtil";
+import { expectedTypeOf, validateFields } from "../middleware.js";
+import modelsInit from "@models/index.js";
+import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
-import { Application, NextFunction } from "express";
-import { arrayOf, jsonSchemaOf } from "../schema-validation";
-import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json";
+import type { Application, NextFunction } from "express";
+import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
+import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" assert { type: "json" };
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredAlertById,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredStationById,
   parseJSONField,
-} from "../extract-middleware";
-import { anyOf, idOf, integerOfWithDefault } from "../validation-middleware";
-import { DeviceId, Seconds } from "@typedefs/api/common";
-import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
-import { Alert } from "@models/Alert";
-import { Request, Response } from "express";
+} from "../extract-middleware.js";
+import { anyOf, idOf, integerOfWithDefault } from "../validation-middleware.js";
+import type { DeviceId, Seconds } from "@typedefs/api/common.js";
+import type {
+  ApiAlertCondition,
+  ApiAlertResponse,
+} from "@typedefs/api/alerts.js";
+import type { Alert } from "@models/Alert.js";
+import type { Request, Response } from "express";
+
+const models = await modelsInit();
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 

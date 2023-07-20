@@ -1,5 +1,22 @@
 #!/usr/bin/node
-const http = require("http");
+import http from "http";
+
+const apiServerIsUp = async (url) => {
+  return new Promise((resolve, reject) => {
+    http
+      .get(url, (response) => {
+        response.on("data", (_chunk) => {
+          // Do nothing
+        });
+        response.on("end", () => {
+          resolve(true);
+        });
+      })
+      .on("error", (_err) => {
+        reject(false);
+      });
+  });
+};
 
 (async function main() {
   const now = new Date();
@@ -8,28 +25,12 @@ const http = require("http");
     now.setMinutes(now.getMinutes() + waitMins)
   );
   console.log(`Waiting up to ${waitMins} minutes for API sever...`);
-  const apiServerIsUp = async (url) => {
-    return new Promise((resolve, reject) => {
-      http
-        .get(url, (response) => {
-          response.on("data", (chunk) => {
-            // Do nothing
-          });
-          response.on("end", () => {
-            resolve(true);
-          });
-        })
-        .on("error", (err) => {
-          reject(false);
-        });
-    });
-  };
 
   while (new Date() < fiveMinutesFromNow) {
     let up = false;
     try {
       up = await apiServerIsUp(
-        "http://localhost:1080/api/v1/endUserAgreement/latest"
+        "http://localhost:1080/api/v1/end-user-agreement/latest"
       );
     } catch (e) {
       // ...

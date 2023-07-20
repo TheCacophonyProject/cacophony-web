@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
 import type {
   CptvFrame,
@@ -42,9 +42,17 @@ import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { CurrentUserCreds } from "@models/LoggedInUser";
+import type { LoggedInUserAuth } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { DateTime } from "luxon";
+import { timezoneForLatLng } from "@models/visitsUtils";
+import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
+import {
+  getReferenceImageForDeviceAtCurrentLocation,
+  getReferenceImageForDeviceAtTime,
+} from "@api/Device.ts";
 
 const { pixelRatio } = useDevicePixelRatio();
 const {
@@ -57,6 +65,7 @@ const {
   exportRequested,
   hasNext = false,
   hasPrev = false,
+  hasReferencePhoto = false,
   displayHeaderInfo = false,
 } = defineProps<{
   recording: ApiRecordingResponse | null;
@@ -67,6 +76,7 @@ const {
   canSelectTracks?: boolean;
   hasNext?: boolean;
   hasPrev?: boolean;
+  hasReferencePhoto?: boolean;
   displayHeaderInfo?: boolean;
   exportRequested?: boolean | "advanced";
 }>();
@@ -77,7 +87,6 @@ const backgroundFrame = ref<CptvFrame | null>(null);
 let frameBuffer: Uint8ClampedArray;
 let cptvDecoder: CptvDecoder;
 
-// TODO: Bind left and right keyboard keys to prev/back
 // TODO: Check http://localhost:5173/onawe-field-trip-2022/visit/unknown/1350085/tracks
 // - Unknown vs unidentified?
 // TODO: Tracks - use classifications.json to manage labeling.
@@ -118,6 +127,19 @@ const playbackTimeChanged = (offset: number) => {
   setTimeAndRedraw({ timeZeroOne: offset });
 };
 
+const recordingDateTime = computed<DateTime | null>(() => {
+  if (recording) {
+    if (recording.location) {
+      const zone = timezoneForLatLng(recording.location);
+      return DateTime.fromISO(recording.recordingDateTime, {
+        zone,
+      });
+    }
+    return DateTime.fromISO(recording.recordingDateTime);
+  }
+  return null;
+});
+
 const playbackTimeZeroOne = computed<number>(() => {
   const fractionalFrame =
     (1 / (totalPlayableFrames.value - 1) / ticksBetweenDraws.value) *
@@ -134,6 +156,8 @@ const playbackTimeZeroOne = computed<number>(() => {
 const emit = defineEmits<{
   (e: "request-prev-recording"): void;
   (e: "request-next-recording"): void;
+  (e: "request-prev-visit"): void;
+  (e: "request-next-visit"): void;
   (
     e: "track-selected",
     { trackId, automatically }: { trackId: TrackId; automatically: boolean }
@@ -207,8 +231,9 @@ const animationFrame = ref<number>(0);
 
 const motionPaths = computed<MotionPath[]>(() => {
   return (
-    recording?.tracks.map((track) => motionPathForTrack(track, scale.value)) ||
-    []
+    (recording?.tracks
+      .map((track) => motionPathForTrack(track, scale.value))
+      .filter((m) => m !== null) as MotionPath[]) || []
   );
 });
 
@@ -283,7 +308,7 @@ const colourMap = ref<[string, Uint32Array]>(ColourMaps[paletteIndex.value]);
 const messageTimeout = ref<number | null>(null);
 const messageAnimationFrame = ref<number>(0);
 
-const loadedStream = ref<boolean | string>(false);
+const loadedStream = ref<boolean | string | Blob>(false);
 const totalFrames = ref<number | null>(null);
 const seekingInProgress = ref<boolean>(false);
 const streamLoadError = ref<string | null>(null);
@@ -400,6 +425,28 @@ const requestNextRecording = () => {
   }
 };
 
+const requestNextVisit = () => {
+  if (hasNext) {
+    frameNum.value = 0;
+    targetFrameNum.value = 0;
+    buffering.value = true;
+    emit("request-next-visit");
+  } else {
+    showAtEndOfSearch.value = true;
+  }
+};
+
+const requestPrevVisit = () => {
+  if (hasPrev) {
+    frameNum.value = 0;
+    targetFrameNum.value = 0;
+    buffering.value = true;
+    emit("request-prev-visit");
+  } else {
+    showAtEndOfSearch.value = true;
+  }
+};
+
 const hasBackgroundFrame = computed<boolean>(() => {
   return (header.value?.hasBackgroundFrame as boolean) || false;
 });
@@ -485,14 +532,14 @@ const loadedFramesForTrack = (trackId: TrackId): CptvFrame[] => {
 
 const frameWidth = computed<number>(() => {
   if (header.value) {
-    return header.value.width;
+    return (header.value as CptvHeader).width;
   }
   return 160;
 });
 
 const frameHeight = computed<number>(() => {
   if (header.value) {
-    return header.value.height;
+    return (header.value as CptvHeader).height;
   }
   return 120;
 });
@@ -506,7 +553,7 @@ const renderFrame = (
   if (canvas.value && header.value && canvasContext.value) {
     let min;
     let max;
-
+    const thisHeader = header.value as CptvHeader;
     const numTracks = recording?.tracks.length || 0;
     if (trackHighlightMode.value) {
       if (
@@ -571,21 +618,21 @@ const renderFrame = (
         // console.log("minMaxForTrackS", min, max, max - min);
       } else {
         if (
-          header.value.minValue !== undefined &&
-          header.value.maxValue !== undefined
+          thisHeader.minValue !== undefined &&
+          thisHeader.maxValue !== undefined
         ) {
-          min = header.value.minValue;
-          max = header.value.maxValue;
+          min = thisHeader.minValue;
+          max = thisHeader.maxValue;
         } else {
           [min, max] = minMaxForFrame(frameData);
         }
       }
     } else if (
-      header.value.minValue !== undefined &&
-      header.value.maxValue !== undefined
+      thisHeader.minValue !== undefined &&
+      thisHeader.maxValue !== undefined
     ) {
-      min = header.value.minValue;
-      max = header.value.maxValue;
+      min = thisHeader.minValue;
+      max = thisHeader.maxValue;
     } else {
       [min, max] = minMaxForFrame(frameData);
     }
@@ -607,11 +654,11 @@ const renderFrame = (
     } else {
       // Render silhouette mode
       if (backgroundFrame.value) {
-        const [min, max] = minMaxForFrame(backgroundFrame.value);
+        const [min, max] = minMaxForFrame(backgroundFrame.value as CptvFrame);
         const range = max - min;
         const colourMapToUse = colourMap.value[1];
         const fd = frameData.data;
-        const bg = backgroundFrame.value.data;
+        const bg = (backgroundFrame.value as CptvFrame).data;
         const threshold = 45; // Should be scaled by range.
         const frameBufferView = new Uint32Array(frameBuffer.buffer);
         const len = frameBufferView.length;
@@ -644,9 +691,14 @@ const renderFrame = (
 };
 
 const secondsSinceLastFFC = computed<number | null>(() => {
-  if (frameHeader.value && frameHeader.value.lastFfcTimeMs) {
+  if (
+    frameHeader.value &&
+    (frameHeader.value as CptvFrameHeader).lastFfcTimeMs
+  ) {
     return (
-      (frameHeader.value.timeOnMs - frameHeader.value.lastFfcTimeMs) / 1000
+      ((frameHeader.value as CptvFrameHeader).timeOnMs -
+        (frameHeader.value as CptvFrameHeader).lastFfcTimeMs) /
+      1000
     );
   }
   return null;
@@ -656,12 +708,14 @@ const setDebugFrameInfo = (frameNum: number) => {
   // TODO: This was set manually/non-reactively because this could be slow on mobile on Vue2 - is it still the case with Vue3?
   if (showDebugTools.value) {
     if (frameNumField.value) {
-      frameNumField.value.innerText = `Frame #${frameNum + 1}`;
+      (frameNumField.value as HTMLDivElement).innerText = `Frame #${
+        frameNum + 1
+      }`;
     }
     if (ffcSecsAgo.value && secondsSinceLastFFC.value) {
-      ffcSecsAgo.value.innerText = `FFC ${secondsSinceLastFFC.value.toFixed(
-        1
-      )}s ago`;
+      (ffcSecsAgo.value as HTMLDivElement).innerText = `FFC ${(
+        secondsSinceLastFFC.value as number
+      ).toFixed(1)}s ago`;
     }
   }
 };
@@ -678,25 +732,30 @@ const timeAdjustmentForBackgroundFrame = computed<number>(() => {
 
 const fps = computed<number>(() => {
   if (header.value) {
-    return header.value.fps;
+    return (header.value as CptvHeader).fps;
   }
   return 9;
 });
 
 const totalPlayableFrames = computed<number>(() => {
-  if (header.value && header.value.totalFrames) {
-    const backgroundAdjust = header.value.hasBackgroundFrame ? 1 : 0;
-    return header.value.totalFrames - backgroundAdjust;
+  if (header.value && (header.value as CptvHeader).totalFrames) {
+    const backgroundAdjust = (header.value as CptvHeader).hasBackgroundFrame
+      ? 1
+      : 0;
+    return (header.value as CptvHeader).totalFrames - backgroundAdjust;
   } else {
     if (totalFrames.value !== null) {
       const backgroundAdjust = header.value?.hasBackgroundFrame ? 1 : 0;
       return totalFrames.value - backgroundAdjust;
     }
     if (header.value) {
-      const backgroundAdjust = header.value.hasBackgroundFrame ? 1 : 0;
+      const backgroundAdjust = (header.value as CptvHeader).hasBackgroundFrame
+        ? 1
+        : 0;
       return Math.round(
         Math.max(
-          ((recording || {}).duration || 0) * fps.value - backgroundAdjust,
+          (((recording || {}) as any).duration || 0) * fps.value -
+            backgroundAdjust,
           ...(recording || { tracks: [] }).tracks.map(
             ({ end }) => end * fps.value - backgroundAdjust
           )
@@ -905,8 +964,9 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       desynchronized: true,
     });
     const videoCanvas = document.createElement("canvas");
-    videoCanvas.width = header.value.width;
-    videoCanvas.height = header.value.height;
+    const thisHeader = header.value as CptvHeader;
+    videoCanvas.width = thisHeader.width;
+    videoCanvas.height = thisHeader.height;
     const videoContext = videoCanvas.getContext("2d");
     if (videoContext === null || renderContext === null) {
       encoder.close();
@@ -973,8 +1033,9 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         min,
         max
       );
+      const thisHeader = header.value as CptvHeader;
       videoContext.putImageData(
-        new ImageData(frameBuffer, header.value.width, header.value.height),
+        new ImageData(frameBuffer, thisHeader.width, thisHeader.height),
         0,
         0
       );
@@ -1042,7 +1103,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     download(
       URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
       `${recordingIdSuffix}${new Date(
-        header.value.timestamp / 1000
+        (header.value as CptvHeader).timestamp / 1000
       ).toLocaleString()}`
     );
     isExporting.value = false;
@@ -1058,43 +1119,68 @@ const download = (url: string, filename: string) => {
 };
 
 const ambientTemperature = computed<string | null>(() => {
-  if (frameHeader.value && frameHeader.value.frameTempC) {
-    return `About ${Math.round(frameHeader.value.frameTempC)}ºC`;
+  if (frameHeader.value && (frameHeader.value as CptvFrameHeader).frameTempC) {
+    return `About ${Math.round(
+      (frameHeader.value as CptvFrameHeader).frameTempC
+    )}ºC`;
+  }
+  return null;
+});
+
+const currentAbsoluteTime = computed<string | null>(() => {
+  if (recordingDateTime.value) {
+    return (
+      recordingDateTime.value
+        ?.plus({ seconds: currentTime.value })
+        ?.toLocaleString({
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hourCycle: "h12",
+        })
+        .replace(/ /g, "") || "&ndash;"
+    );
   }
   return null;
 });
 
 const updateOverlayCanvas = (frameNumToRender: number) => {
-  // FIXME - Move this somewhere else, like when the frame advances
-  if (overlayContext.value) {
-    renderOverlay(
-      overlayContext.value,
-      scale.value,
-      secondsSinceLastFFC.value,
-      false,
-      frameNumToRender,
-      recording?.tracks || [],
-      canSelectTracks,
-      currentTrack,
-      motionPathMode.value ? motionPaths.value : [],
-      pixelRatio.value,
-      tracksByFrame.value,
-      framesByTrack.value,
-      trackExportOptions.value
-    );
-
-    {
-      const time = `${elapsedTime.value} / ${formatTime(
-        Math.max(currentTime.value, actualDuration.value)
-      )}`;
-      drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
-      // Draw time and temperature in
-      // overlayContext.
-      drawBottomLeftOverlayLabel(
-        ambientTemperature.value,
+  if (currentRecordingType.value === "cptv") {
+    // FIXME - Move this somewhere else, like when the frame advances
+    if (overlayContext.value) {
+      renderOverlay(
         overlayContext.value,
-        pixelRatio.value
+        scale.value,
+        secondsSinceLastFFC.value,
+        false,
+        frameNumToRender,
+        recording?.tracks || [],
+        canSelectTracks,
+        currentTrack,
+        motionPathMode.value ? motionPaths.value : [],
+        pixelRatio.value,
+        tracksByFrame.value,
+        framesByTrack.value,
+        trackExportOptions.value
       );
+
+      {
+        const time = `${elapsedTime.value} / ${formatTime(
+          Math.max(currentTime.value, actualDuration.value)
+        )}`;
+        drawBottomRightOverlayLabel(
+          time,
+          overlayContext.value,
+          pixelRatio.value
+        );
+        // Draw time and temperature in
+        // overlayContext.
+        drawBottomLeftOverlayLabel(
+          currentAbsoluteTime.value,
+          overlayContext.value,
+          pixelRatio.value
+        );
+      }
     }
   }
 };
@@ -1172,6 +1258,25 @@ const togglePlayback = async (): Promise<void> => {
   }
 };
 
+const referenceImageURL = ref<string | null>(null);
+const showingReferencePhoto = ref<boolean>(false);
+const toggleReferencePhotoComparison = async () => {
+  showingReferencePhoto.value = !showingReferencePhoto.value;
+  if (showingReferencePhoto.value) {
+    const rec = recording as ApiRecordingResponse;
+    // Load the reference photo.
+    const referenceImageResponse = await getReferenceImageForDeviceAtTime(
+      rec.deviceId,
+      new Date(rec.recordingDateTime)
+    );
+    if (referenceImageResponse.success) {
+      referenceImageURL.value = URL.createObjectURL(
+        referenceImageResponse.result
+      );
+    }
+  }
+};
+
 const setPlayerMessage = (message: string) => {
   if (messageTimeout.value !== null || playerMessage.value !== null) {
     clearTimeout(messageTimeout.value as number);
@@ -1215,7 +1320,7 @@ const speedMultiplier = computed(() => {
 
 const overlayContext = computed<CanvasRenderingContext2D | null>(() => {
   if (overlayCanvas.value) {
-    const context = overlayCanvas.value.getContext("2d");
+    const context = (overlayCanvas.value as HTMLCanvasElement).getContext("2d");
     if (context) {
       return context;
     }
@@ -1225,7 +1330,7 @@ const overlayContext = computed<CanvasRenderingContext2D | null>(() => {
 
 const canvasContext = computed<CanvasRenderingContext2D | null>(() => {
   if (canvas.value) {
-    const context = canvas.value.getContext("2d");
+    const context = (canvas.value as HTMLCanvasElement).getContext("2d");
     if (context) {
       return context;
     }
@@ -1300,8 +1405,9 @@ const toggleBackground = async (): Promise<void> => {
         min,
         max
       );
-      canvasContext.value.putImageData(
-        new ImageData(frameBuffer, header.value.width, header.value.height),
+      const thisHeader = header.value as CptvHeader;
+      (canvasContext.value as CanvasRenderingContext2D).putImageData(
+        new ImageData(frameBuffer, thisHeader.width, thisHeader.height),
         0,
         0
       );
@@ -1336,11 +1442,14 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
 
 const clickOverlayCanvas = async (event: MouseEvent): Promise<void> => {
   if (canvas.value && overlayCanvas.value) {
-    const canvasOffset = canvas.value.getBoundingClientRect();
+    const canvasOffset = (
+      canvas.value as HTMLCanvasElement
+    ).getBoundingClientRect();
     const pX = Math.floor((event.x - canvasOffset.x) / scale.value);
     const pY = Math.floor((event.y - canvasOffset.y) / scale.value);
     const trackId = getTrackIdAtPosition(pX, pY);
-    overlayCanvas.value.style.cursor = trackId !== null ? "pointer" : "default";
+    (overlayCanvas.value as HTMLCanvasElement).style.cursor =
+      trackId !== null ? "pointer" : "default";
     if (trackId !== null) {
       emit("track-selected", {
         trackId,
@@ -1364,7 +1473,9 @@ const currentVisibleFrame = computed<CptvFrame>(() => {
 
 const moveOverOverlayCanvas = (event: MouseEvent) => {
   if (canvas.value && overlayCanvas.value) {
-    const canvasOffset = canvas.value.getBoundingClientRect();
+    const thisCanvas = canvas.value as HTMLCanvasElement;
+    const thisOverlayCanvas = overlayCanvas.value as HTMLCanvasElement;
+    const canvasOffset = thisCanvas.getBoundingClientRect();
     const { x, y } = event;
     const offsetX = x - canvasOffset.x;
     const offsetY = y - canvasOffset.y;
@@ -1372,25 +1483,26 @@ const moveOverOverlayCanvas = (event: MouseEvent) => {
     const pY = Math.floor(offsetY / scale.value);
     const hitTrackIndex = getTrackIdAtPosition(pX, pY);
     // set cursor
-    overlayCanvas.value.style.cursor =
+    thisOverlayCanvas.style.cursor =
       hitTrackIndex !== null ? "pointer" : "default";
     if (showValueInfo.value && header.value) {
-      canvas.value.style.cursor = "default";
+      thisCanvas.style.cursor = "default";
       // Map the x,y into canvas size
       const frameData = currentVisibleFrame.value;
       valueUnderCursor.value = `(${pX}, ${pY}) ${
-        frameData.data[pY * header.value.width + pX]
+        frameData.data[pY * (header.value as CptvHeader).width + pX]
       }`;
       if (valueTooltip.value) {
+        const thisTooltip = valueTooltip.value as HTMLSpanElement;
         if (offsetX > canvasOffset.right - canvasOffset.x - 100) {
-          valueTooltip.value.style.left = `${offsetX - 100}px`;
+          thisTooltip.style.left = `${offsetX - 100}px`;
         } else {
-          valueTooltip.value.style.left = `${offsetX + 2}px`;
+          thisTooltip.style.left = `${offsetX + 2}px`;
         }
         if (offsetY < canvasOffset.top - canvasOffset.y + 20) {
-          valueTooltip.value.style.top = `${offsetY + 20}px`;
+          thisTooltip.style.top = `${offsetY + 20}px`;
         } else {
-          valueTooltip.value.style.top = `${offsetY - 20}px`;
+          thisTooltip.style.top = `${offsetY - 20}px`;
         }
       }
     }
@@ -1431,7 +1543,30 @@ const pollFrameTimes = () => {
   }
 };
 
+const handleKeyboardControls = (event: KeyboardEvent) => {
+  if (event.code === "Space" && !event.repeat) {
+    togglePlayback();
+  } else if (event.code === "ArrowRight") {
+    if (!event.altKey) {
+      stepForward();
+    } else if (!event.shiftKey) {
+      requestNextRecording();
+    } else {
+      requestNextVisit();
+    }
+  } else if (event.code === "ArrowLeft") {
+    if (!event.altKey) {
+      stepBackward();
+    } else if (!event.shiftKey) {
+      requestPrevRecording();
+    } else {
+      requestPrevVisit();
+    }
+  }
+};
+
 onMounted(async () => {
+  window.addEventListener("keydown", handleKeyboardControls);
   cptvDecoder = new CptvDecoder();
   // This makes button active styles work in safari iOS.
   document.addEventListener(
@@ -1443,8 +1578,8 @@ onMounted(async () => {
   );
 
   if (canvas.value) {
-    canvas.value.width = 160;
-    canvas.value.height = 120;
+    (canvas.value as HTMLCanvasElement).width = 160;
+    (canvas.value as HTMLCanvasElement).height = 120;
   }
 
   buffering.value = true;
@@ -1455,6 +1590,9 @@ onMounted(async () => {
 
   await loadNextRecording(recordingId);
   pollFrameTimes();
+});
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", handleKeyboardControls);
 });
 
 const loadedNextRecordingData = async () => {
@@ -1477,6 +1615,8 @@ watch(
     }
   }
 );
+
+const currentRecordingType = ref<"cptv" | "image">("cptv");
 
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
@@ -1504,30 +1644,35 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   }
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
-  loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
-    nextRecordingId,
-    cptvSize || 0,
-    CurrentUserCreds.value?.apiToken
-  );
+  if (CurrentUserCreds.value) {
+    loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+      nextRecordingId,
+      cptvSize || 0,
+      (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+    );
+  }
 
   if (loadedStream.value === true) {
+    currentRecordingType.value = "cptv";
     header.value = Object.freeze(await cptvDecoder.getHeader());
+    const thisHeader = header.value as CptvHeader;
     // TODO - Init all the header related info (min/max values etc)
     setDebugFrameInfo(0);
-    scale.value = canvasWidth.value / header.value.width;
+    scale.value = canvasWidth.value / thisHeader.width;
     // If the header dimensions have changed since the last one, re-init the frameBuffer
-    console.assert(canvas.value);
-    if (
-      canvas.value &&
-      (canvas.value.width !== header.value.width ||
-        canvas.value.height !== header.value.height ||
-        !frameBuffer)
-    ) {
-      frameBuffer = new Uint8ClampedArray(
-        header.value.width * header.value.height * 4
-      );
-      canvas.value.width = header.value.width;
-      canvas.value.height = header.value.height;
+    if (canvas.value) {
+      const thisCanvas = canvas.value as HTMLCanvasElement;
+      if (
+        thisCanvas.width !== thisHeader.width ||
+        thisCanvas.height !== thisHeader.height ||
+        !frameBuffer
+      ) {
+        frameBuffer = new Uint8ClampedArray(
+          thisHeader.width * thisHeader.height * 4
+        );
+        thisCanvas.width = thisHeader.width;
+        thisCanvas.height = thisHeader.height;
+      }
     }
     while (!recording) {
       // Wait for the recording data to be loaded if it's not,
@@ -1536,7 +1681,44 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     }
     if (recording && recording.id === recordingId) {
       await loadedNextRecordingData();
-      emit("ready-to-play", header.value);
+      emit("ready-to-play", thisHeader);
+      playing.value = true;
+    }
+  } else if (loadedStream.value instanceof Blob) {
+    currentRecordingType.value = "image";
+    clearCanvases();
+    let imageBitmap;
+    try {
+      imageBitmap = await createImageBitmap(loadedStream.value);
+      {
+        const ctx = overlayCanvas.value?.getContext("2d");
+        if (ctx) {
+          const imageRatio = imageBitmap.width / imageBitmap.height;
+          const canvasWidth = ctx.canvas.width;
+          const canvasHeight = ctx.canvas.height;
+          const dh = canvasWidth / pixelRatio.value / imageRatio;
+          const dy = (canvasHeight / pixelRatio.value - dh) / 2;
+          const dw = canvasWidth / pixelRatio.value;
+          ctx.drawImage(imageBitmap, 0, dy, dw, dh);
+        }
+      }
+    } catch (e) {
+      console.log("Image Error", e);
+    }
+
+    frames = [];
+    header.value = null;
+    resetRecordingNormalisation();
+    buffering.value = false;
+
+    while (!recording) {
+      // Wait for the recording data to be loaded if it's not,
+      // so that we can seek to the beginning of any track.
+      await delayMs(10);
+    }
+    if (recording && recording.id === recordingId) {
+      await loadedNextRecordingData();
+      emit("ready-to-play", header.value as CptvHeader);
       playing.value = true;
     }
   } else if (typeof loadedStream.value === "string") {
@@ -1583,11 +1765,12 @@ const exportOptions = computed<TrackExportOption[]>(() => {
 const setOverlayCanvasDimensions = () => {
   scale.value = canvasWidth.value / 160;
   if (header.value) {
-    scale.value = canvasWidth.value / header.value.width;
+    scale.value = canvasWidth.value / (header.value as CptvHeader).width;
   }
   if (overlayCanvas.value) {
-    overlayCanvas.value.width = canvasWidth.value * pixelRatio.value;
-    overlayCanvas.value.height = canvasHeight.value * pixelRatio.value;
+    const thisOverlayCanvas = overlayCanvas.value as HTMLCanvasElement;
+    thisOverlayCanvas.width = canvasWidth.value * pixelRatio.value;
+    thisOverlayCanvas.height = canvasHeight.value * pixelRatio.value;
     if (overlayContext.value) {
       overlayContext.value.scale(pixelRatio.value, pixelRatio.value);
     }
@@ -1671,16 +1854,83 @@ const drawFrame = async (
     }
   }
 };
+
+// Reveal slider for reference images:
+
+const revealHandleSelected = ref<boolean>(false);
+let revealGrabOffsetX = 0;
+const revealSlider = ref<HTMLDivElement>();
+const referenceImageContainer = ref<HTMLDivElement>();
+const referenceImage = ref<HTMLImageElement>();
+const { width: referenceImageContainerWidth } = useElementSize(
+  referenceImageContainer
+);
+watch(referenceImageContainerWidth, (width) => {
+  if (referenceImage.value) {
+    (referenceImage.value as HTMLImageElement).width = width;
+  }
+});
+const grabRevealHandle = (event: PointerEvent) => {
+  // NOTE: Maintain the offset of the cursor on the pointer when it's selected.
+  revealGrabOffsetX = event.offsetX;
+  const target = event.currentTarget as HTMLDivElement;
+  target.classList.add("selected");
+  revealHandleSelected.value = true;
+  target.setPointerCapture(event.pointerId);
+};
+const releaseRevealHandle = (event: PointerEvent) => {
+  const target = event.currentTarget as HTMLDivElement;
+  target.classList.remove("selected");
+  revealHandleSelected.value = false;
+  target.releasePointerCapture(event.pointerId);
+};
+
+const moveRevealHandle = (event: PointerEvent) => {
+  if (revealHandleSelected.value) {
+    const target = event.currentTarget as HTMLDivElement;
+    const parentBounds = (
+      target.parentElement as HTMLDivElement
+    ).getBoundingClientRect();
+    const handleBounds = target.getBoundingClientRect();
+    const x = Math.min(
+      Math.max(
+        -(handleBounds.width / 2),
+        event.clientX - parentBounds.left - revealGrabOffsetX
+      ),
+      parentBounds.width - handleBounds.width / 2
+    );
+    if (revealSlider.value) {
+      (revealSlider.value as HTMLDivElement).style.width = `${
+        x + handleBounds.width / 2
+      }px`;
+    }
+    target.style.left = `${x}px`;
+  }
+};
+watch(
+  () => hasReferencePhoto,
+  (hasRef) => {
+    if (!hasRef && showingReferencePhoto.value) {
+      showingReferencePhoto.value = false;
+    }
+  }
+);
 </script>
 <template>
   <div class="cptv-player">
-    <div key="container" class="video-container" ref="container">
+    <div
+      key="container"
+      class="video-container"
+      ref="container"
+      :class="[currentRecordingType]"
+    >
       <canvas
         key="base"
         ref="canvas"
         :class="['video-canvas', { smoothed: videoSmoothing }]"
       />
       <canvas key="overlay" ref="overlayCanvas" class="overlay-canvas" />
+
       <span
         key="px-value"
         v-show="showValueInfo"
@@ -1697,6 +1947,7 @@ const drawFrame = async (
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
       <div
+        v-if="currentRecordingType === 'cptv'"
         key="playback-controls"
         :class="[
           'playback-controls',
@@ -1721,8 +1972,35 @@ const drawFrame = async (
           <font-awesome-icon icon="forward" class="replay" />
         </button>
       </div>
+
+      <div
+        class="position-absolute top-0 h-100 w-100 reference-image"
+        ref="referenceImageContainer"
+        v-if="showingReferencePhoto && hasReferencePhoto"
+      >
+        <div class="reveal-slider position-absolute" ref="revealSlider">
+          <img
+            ref="referenceImage"
+            alt="Device point-of-view reference photo at the time of recording"
+            :src="referenceImageURL"
+          />
+        </div>
+        <div
+          class="reveal-handle d-flex align-items-center justify-content-center"
+          ref="revealHandle"
+          @pointerdown="grabRevealHandle"
+          @pointerup="releaseRevealHandle"
+          @pointermove="moveRevealHandle"
+        >
+          <font-awesome-icon icon="left-right" />
+        </div>
+      </div>
     </div>
-    <div key="playback-nav" class="playback-nav">
+    <div
+      key="playback-nav"
+      class="playback-nav"
+      v-if="currentRecordingType === 'cptv'"
+    >
       <button
         @click.prevent="togglePlayback"
         ref="playPauseButton"
@@ -1828,6 +2106,16 @@ const drawFrame = async (
           </button>
         </div>
         <button
+          :disabled="!hasReferencePhoto"
+          :class="{ selected: showingReferencePhoto }"
+          @click="toggleReferencePhotoComparison"
+          ref="toggleReferencePhoto"
+          class="reference-photo-btn"
+          data-tooltip="Reference photo"
+        >
+          <font-awesome-icon icon="panorama" />
+        </button>
+        <button
           @click.prevent="incrementSpeed"
           ref="cyclePlaybackSpeed"
           class="playback-speed"
@@ -1837,7 +2125,12 @@ const drawFrame = async (
         </button>
       </div>
     </div>
-    <div key="debug-nav" :class="['debug-tools', { open: showDebugTools }]">
+    <div v-else class="black-spacer"></div>
+    <div
+      key="debug-nav"
+      :class="['debug-tools', { open: showDebugTools }]"
+      v-if="currentRecordingType === 'cptv'"
+    >
       <div class="debug-info">
         <div ref="frameNumField"></div>
         <div ref="ffcSecsAgo"></div>
@@ -1858,6 +2151,7 @@ const drawFrame = async (
           <font-awesome-icon icon="step-forward" />
         </button>
         <button
+          class="d-none d-sm-inline-block"
           @click.prevent="showValueInfo = !showValueInfo"
           :class="{ selected: showValueInfo }"
           :data-tooltip="
@@ -1880,6 +2174,7 @@ const drawFrame = async (
           <font-awesome-icon icon="highlighter" />
         </button>
         <button
+          class="d-none d-sm-inline-block"
           @click.prevent="polygonEditMode = !polygonEditMode"
           :class="{ selected: polygonEditMode }"
           :data-tooltip="
@@ -1890,6 +2185,7 @@ const drawFrame = async (
           <!--         draw-polygon, bezier-curve, vector-square -->
         </button>
         <button
+          class="d-none d-sm-inline-block"
           @click.prevent="silhouetteMode = !silhouetteMode"
           :class="{ selected: silhouetteMode }"
           :data-tooltip="
@@ -1918,7 +2214,7 @@ const drawFrame = async (
         </button>
       </div>
     </div>
-    <div class="tracks-container">
+    <div class="tracks-container" v-if="currentRecordingType === 'cptv'">
       <tracks-scrubber
         class="player-tracks"
         :tracks="tracksIntermediate"
@@ -2016,15 +2312,8 @@ const drawFrame = async (
   aspect-ratio: 4 / 3;
 }
 .cptv-player {
+  user-select: none;
   background: #202731;
-
-  .video-container {
-    margin: 0 auto;
-    position: relative;
-    padding: 0;
-    background: black;
-    overflow: hidden;
-  }
   .video-canvas {
     width: 100%;
     height: 100%;
@@ -2043,6 +2332,18 @@ const drawFrame = async (
     right: 0;
     width: 100%;
     height: 100%;
+  }
+  .video-container {
+    margin: 0 auto;
+    position: relative;
+    padding: 0;
+    background: black;
+    overflow: hidden;
+    &.image {
+      @media screen and (min-width: 1041px) {
+        margin-top: 30px;
+      }
+    }
   }
   .time,
   .temp,
@@ -2345,5 +2646,57 @@ const drawFrame = async (
 .cancel-export-button {
   margin-top: 20px;
   text-align: center;
+}
+.black-spacer {
+  // TODO for trailcam images, use minimum height possible.
+
+  @media screen and (min-width: 1041px) {
+    min-height: 30px;
+  }
+  background: black;
+}
+// Reference image overlay + slider
+.reference-image {
+  z-index: 1;
+  user-select: none;
+}
+.reveal-slider {
+  height: 100%;
+  width: 50%;
+  overflow: hidden;
+  user-select: none;
+  > img {
+    user-select: none;
+    pointer-events: none;
+    //position: absolute;
+    //top: 0;
+    //left: 0;
+    //right: 0;
+    //bottom: 0;
+    //height: auto;
+  }
+}
+.reveal-handle {
+  touch-action: none;
+  user-select: none;
+  content: "";
+  position: absolute;
+  top: calc(50% - 20px);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(0, 0, 0, 0.5);
+  left: (calc(50% - 20px));
+  font-size: 20px;
+  cursor: grab;
+  &.selected {
+    cursor: grabbing;
+  }
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  &:hover {
+    opacity: 1;
+  }
 }
 </style>

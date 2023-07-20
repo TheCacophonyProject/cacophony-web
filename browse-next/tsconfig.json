@@ -1,5 +1,5 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.web.json",
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": [
       "env.d.ts",
       "src/**/*",
@@ -9,7 +9,7 @@
       "node_modules/typescript/lib/lib.dom.d.ts"
   ],
   "compilerOptions": {
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
@@ -17,7 +17,10 @@
       "@views/*": ["./src/views/*"],
       "@models/*": ["./src/models/*"],
       "@typedefs/*":  ["../types/*"]
-    }
+    },
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "ignoreDeprecations": "5.0"
   },
 
   "references": [

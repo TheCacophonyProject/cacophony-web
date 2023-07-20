@@ -11,13 +11,41 @@ All tracks of a recording always belong to the same visit
 
 // FIXME - This file seems to be in the wrong place - this folder is full of API endpoints...
 
-import { Recording } from "@models/Recording";
-import { TrackTag } from "@models/TrackTag";
-import { Track } from "@models/Track";
-import { AI_MASTER } from "@models/TrackTag";
-import moment, { Moment } from "moment";
-import { Event } from "@models/Event";
-import { DeviceId, StationId } from "@typedefs/api/common";
+import type { Recording } from "@models/Recording.js";
+import type { TrackTag } from "@models/TrackTag.js";
+import type { Track } from "@models/Track.js";
+import { AI_MASTER } from "@models/TrackTag.js";
+import type { Moment } from "moment";
+import moment from "moment";
+import type { Event } from "@models/Event.js";
+import type { DeviceId, StationId } from "@typedefs/api/common.js";
+
+import Classifications from "@/classifications/classification.json" assert { type: "json" };
+import type { Classification } from "@typedefs/api/trackTag.js";
+
+const flattenNodes = (
+  acc: Record<string, { label: string; display: string; path: string }>,
+  node: Classification,
+  parentPath: string
+) => {
+  for (const child of node.children || []) {
+    acc[child.label] = {
+      label: child.label,
+      display: child.display || child.label,
+      path: `${parentPath}.${child.label}`,
+    };
+    flattenNodes(acc, child, acc[child.label].path);
+  }
+  return acc;
+};
+
+const flatClassifications = (() => {
+  const nodes = flattenNodes({}, Classifications, "all");
+  if (nodes.unknown) {
+    nodes["unidentified"] = nodes["unknown"];
+  }
+  return nodes;
+})();
 
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
@@ -25,7 +53,7 @@ const conflictTag = "conflicting tags";
 
 const META_TAGS = ["part", "poor tracking"];
 export const UNIDENTIFIED_TAGS = ["unidentified", "unknown"];
-const NON_ANIMAL_TAGS = [...META_TAGS, ...UNIDENTIFIED_TAGS];
+export const NON_ANIMAL_TAGS = [...META_TAGS, ...UNIDENTIFIED_TAGS];
 
 const audioBaitInterval = 60 * 10;
 
@@ -50,6 +78,43 @@ function sortTracks(tracks: Track[]) {
   });
 }
 
+const getCommonAncestorForTags = (tags: string[]): string => {
+  // Find common parents of classifications.
+  const classes = tags
+    .map((tag) => flatClassifications[tag])
+    .filter((classification) => classification !== undefined);
+  const commonAncestors = new Map();
+  for (const classification of classes) {
+    const path = classification.path.split(".");
+    while (path.length > 2) {
+      path.shift();
+    }
+    while (path.length) {
+      // Don't include all
+      const piece = path.pop();
+      // Only add the piece if all classes agree on it.
+      const someOthersAgree = classes.some(
+        (c) => c !== classification && c.path.includes(piece)
+      );
+      if (someOthersAgree) {
+        if (commonAncestors.has(piece)) {
+          commonAncestors.set(piece, commonAncestors.get(piece) + 1);
+        } else {
+          commonAncestors.set(piece, 1);
+        }
+      }
+    }
+  }
+  let bestCount = 0;
+  let bestKey = "";
+  for (const [key, count] of commonAncestors) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestKey = key;
+    }
+  }
+  return bestKey;
+};
 // From all tags return a single tag by precedence:
 // first, this users tag, or any other humans tag, else the original AI
 export function getCanonicalTrackTag(
@@ -64,12 +129,19 @@ export function getCanonicalTrackTag(
   const animalTags = manualTags.filter(
     (tag) => !NON_ANIMAL_TAGS.includes(tag.what)
   );
+
+  // NOTE - Conflicting tags aren't actually conflicts if users agree on the super-species of the tag to some extent:
+  //  i.e. Rodent + mouse shouldn't be counted as conflicting, but mammal + rodent or mammal + mouse should be.
   const uniqueTags = new Set(animalTags.map((tag) => tag.what));
   if (uniqueTags.size > 1) {
+    const commonAncestor = getCommonAncestorForTags(
+      Array.from(uniqueTags.values())
+    );
     const conflict = {
-      what: conflictTag,
+      what: commonAncestor === "all" ? conflictTag : commonAncestor,
       confidence: manualTags[0].confidence,
       automatic: false,
+      data: { userTagsConflict: true },
     };
     return conflict as TrackTag;
   }

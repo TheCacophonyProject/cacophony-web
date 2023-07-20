@@ -7,5 +7,6 @@
     "testCreds" : { "superuser":{"name":"admin_test", "password": "admin_test", "email": "admin@email.com" }},
     "running_in_a_dev_environment" : false,
     "API-ssh-server": "server-test-api"
-  }
+  },
+  screenshotOnRunFailure: false,
 }

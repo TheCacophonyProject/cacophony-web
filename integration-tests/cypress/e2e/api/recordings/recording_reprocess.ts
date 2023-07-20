@@ -200,6 +200,7 @@ describe("Recordings - reprocessing tests", () => {
         expectedProcessing1.processingStartTime = NOT_NULL_STRING;
         expectedProcessing1.updatedAt = NOT_NULL_STRING;
         cy.processingApiCheck(
+          superuser,
           RecordingType.ThermalRaw,
           RecordingProcessingState.Reprocess,
           "rrpRecording1",
@@ -228,7 +229,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Mark as done");
-        cy.processingApiPut("rrpRecording1", true, {}, undefined);
+        cy.processingApiPut(superuser, "rrpRecording1", true, {}, undefined);
 
         cy.log("Check recording status is now FINISHED");
         expectedRecording4 = TestCreateExpectedRecordingData(
@@ -436,7 +437,7 @@ describe("Recordings - reprocessing tests", () => {
       cy.apiRecordingAdd(
         "rrpCamera1",
         recording1,
-        "60sec-audio.mp4",
+        "60sec-audio.m4a",
         "rrpRecording11"
       ).then(() => {
         expectedRecording1 = TestCreateExpectedRecordingData(
@@ -488,6 +489,7 @@ describe("Recordings - reprocessing tests", () => {
         expectedProcessing1.processingStartTime = NOT_NULL_STRING;
         expectedProcessing1.updatedAt = NOT_NULL_STRING;
         cy.processingApiCheck(
+          superuser,
           RecordingType.Audio,
           RecordingProcessingState.Reprocess,
           "rrpRecording11",
@@ -514,7 +516,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Mark as done");
-        cy.processingApiPut("rrpRecording11", true, {}, undefined);
+        cy.processingApiPut(superuser, "rrpRecording11", true, {}, undefined);
 
         cy.log("Check recording status is now FINISHED");
         expectedRecording4 = TestCreateExpectedRecordingData(
@@ -572,6 +574,7 @@ describe("Recordings - reprocessing tests", () => {
         expectedProcessing18.processingStartTime = NOT_NULL_STRING;
         expectedProcessing18.updatedAt = NOT_NULL_STRING;
         cy.processingApiCheck(
+          superuser,
           RecordingType.ThermalRaw,
           RecordingProcessingState.Reprocess,
           "rrpRecording18",
@@ -580,88 +583,97 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rrpTrack18",
-              "rrpRecording18",
-              { start_s: 1, end_s: 4 },
-              algorithmId
-            );
+        cy.processingApiAlgorithmPost(superuser, {
+          "tracking-format": 42,
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            superuser,
+            "rrpTrack18",
+            "rrpRecording18",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
 
-            cy.log("Check tracks added to recording");
-            expectedRecording18.processing = true;
-            expectedRecording18.processingState =
-              RecordingProcessingState.Reprocess;
+          cy.log("Check tracks added to recording");
+          expectedRecording18.processing = true;
+          expectedRecording18.processingState =
+            RecordingProcessingState.Reprocess;
+          expectedRecording18.tracks = [
+            {
+              tags: [],
+              start: 1,
+              end: 4,
+              id: 1,
+              //                positions: [],
+              // TODO enable after merge
+              filtered: true,
+              automatic: true,
+            },
+          ];
+          cy.apiRecordingCheck(
+            "rrpGroupAdmin",
+            "rrpRecording18",
+            expectedRecording18,
+            EXCLUDE_IDS
+          ).then(() => {
+            cy.log("Check tags added to recording/track");
             expectedRecording18.tracks = [
               {
-                tags: [],
+                tags: [
+                  {
+                    what: "possum",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rrpTrack18").id,
+                    confidence: 0.9,
+                    data: { name: "Master" },
+                    id: -1,
+                  },
+                ],
                 start: 1,
                 end: 4,
                 id: 1,
                 //                positions: [],
                 // TODO enable after merge
-                filtered: true,
+                filtered: false,
                 automatic: true,
               },
             ];
+
+            cy.processingApiTracksTagsPost(
+              superuser,
+              "rrpTrack18",
+              "rrpRecording18",
+              "possum",
+              0.9,
+              { name: "Master" }
+            );
             cy.apiRecordingCheck(
               "rrpGroupAdmin",
               "rrpRecording18",
               expectedRecording18,
               EXCLUDE_IDS
             ).then(() => {
-              cy.log("Check tags added to recording/track");
-              expectedRecording18.tracks = [
-                {
-                  tags: [
-                    {
-                      what: "possum",
-                      automatic: true,
-                      trackId: getCreds("rrpTrack18").id,
-                      confidence: 0.9,
-                      data: { name: "Master" },
-                      id: -1,
-                    },
-                  ],
-                  start: 1,
-                  end: 4,
-                  id: 1,
-                  //                positions: [],
-                  // TODO enable after merge
-                  filtered: false,
-                  automatic: true,
-                },
-              ];
-
-              cy.processingApiTracksTagsPost(
-                "rrpTrack18",
+              cy.log("set processing to done and recheck tracks");
+              cy.processingApiPut(
+                superuser,
                 "rrpRecording18",
-                "possum",
-                0.9,
-                { name: "Master" }
+                true,
+                {},
+                undefined
               );
+              expectedRecording18.processing = false;
+              expectedRecording18.processingState =
+                RecordingProcessingState.Finished;
               cy.apiRecordingCheck(
                 "rrpGroupAdmin",
                 "rrpRecording18",
                 expectedRecording18,
                 EXCLUDE_IDS
-              ).then(() => {
-                cy.log("set processing to done and recheck tracks");
-                cy.processingApiPut("rrpRecording18", true, {}, undefined);
-                expectedRecording18.processing = false;
-                expectedRecording18.processingState =
-                  RecordingProcessingState.Finished;
-                cy.apiRecordingCheck(
-                  "rrpGroupAdmin",
-                  "rrpRecording18",
-                  expectedRecording18,
-                  EXCLUDE_IDS
-                );
-              });
+              );
             });
-          }
-        );
+          });
+        });
       });
     });
 
@@ -702,6 +714,7 @@ describe("Recordings - reprocessing tests", () => {
 
         cy.log("Send for reprocessing and check is flagged as hasAlert");
         cy.processingApiCheck(
+          superuser,
           RecordingType.ThermalRaw,
           RecordingProcessingState.Reprocess,
           "rrpRecording20",
@@ -710,51 +723,57 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost({ "tracking-format": 42 }).then(
-          (algorithmId) => {
-            cy.processingApiTracksPost(
-              "rrpTrack20",
-              "rrpRecording20",
-              { start_s: 1, end_s: 4 },
-              algorithmId
-            );
+        cy.processingApiAlgorithmPost(superuser, {
+          "tracking-format": 42,
+        }).then((algorithmId) => {
+          cy.processingApiTracksPost(
+            superuser,
+            "rrpTrack20",
+            "rrpRecording20",
+            { start_s: 1, end_s: 4 },
+            algorithmId
+          );
 
-            cy.log("Add tags");
-            cy.processingApiTracksTagsPost(
-              "rrpTrack20",
+          cy.log("Add tags");
+          cy.processingApiTracksTagsPost(
+            superuser,
+            "rrpTrack20",
+            "rrpRecording20",
+            "possum",
+            0.9,
+            {
+              name: "Master",
+              clarity: 1,
+              raw_tag: "possum",
+              model_used: "Inc3",
+              predictions: [],
+              classify_time: 1.2,
+              prediction_frames: [],
+              all_class_confidences: { possum: 1 },
+            }
+          ).then(() => {
+            cy.log("set processing to done and recheck tracks");
+            cy.processingApiPut(
+              superuser,
               "rrpRecording20",
-              "possum",
-              0.9,
-              {
-                name: "Master",
-                clarity: 1,
-                raw_tag: "possum",
-                model_used: "Inc3",
-                predictions: [],
-                classify_time: 1.2,
-                prediction_frames: [],
-                all_class_confidences: { possum: 1 },
-              }
+              true,
+              {},
+              undefined
             ).then(() => {
-              cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut("rrpRecording20", true, {}, undefined).then(
-                () => {
-                  cy.log("Check an event was generated");
-                  cy.apiDeviceAlertCheck(
-                    "rrpGroupAdmin",
-                    "rrpCamera1b",
-                    expectedAlert20
-                  );
-                  cy.testEventsCheckAgainstExpected(
-                    "rrpGroupAdmin",
-                    "rrpCamera1b",
-                    expectedEvent20
-                  );
-                }
+              cy.log("Check an event was generated");
+              cy.apiDeviceAlertCheck(
+                "rrpGroupAdmin",
+                "rrpCamera1b",
+                expectedAlert20
+              );
+              cy.testEventsCheckAgainstExpected(
+                "rrpGroupAdmin",
+                "rrpCamera1b",
+                expectedEvent20
               );
             });
-          }
-        );
+          });
+        });
       });
     });
   } else {

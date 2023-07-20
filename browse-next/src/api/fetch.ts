@@ -4,11 +4,13 @@ import {
   CurrentUserCreds,
   forgetUserOnCurrentDevice,
   refreshLocallyStoredUser,
+  refreshLocallyStoredUserActivation,
   setLoggedInUserCreds,
+  tryLoggingInRememberedUser,
   userIsLoggedIn,
 } from "@/models/LoggedInUser";
 import type { ErrorResult, FetchResult } from "@api/types";
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import { decodeJWT, delayMs, delayMsThen } from "@/utils";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -111,8 +113,6 @@ export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
   control: false,
 });
 
-let hotReloaded = true;
-
 /**
  * Makes a request to the given url with default handling for cors and authentication.
  * Returns a promise that when resolved, returns an object with a result, success boolean, and status code.
@@ -142,8 +142,10 @@ export async function fetch<T>(
       console.warn("Aborted", e, request.signal);
     });
   }
-  if (userIsLoggedIn.value || hotReloaded) {
-    hotReloaded = false;
+  if (import.meta.env.DEV) {
+    await tryLoggingInRememberedUser(ref(true));
+  }
+  if (userIsLoggedIn.value) {
     await maybeRefreshStaleCredentials();
     if (CurrentUserCreds.value) {
       (request.headers as Record<string, string>).Authorization = (
@@ -203,8 +205,24 @@ export async function fetch<T>(
       success: false,
     };
   }
-  if (response.status === HttpStatusCode.AuthorizationError) {
-    debugger;
+  if (
+    response.status === HttpStatusCode.AuthorizationError &&
+    !response.url.endsWith("/api/v1/users/authenticate")
+  ) {
+    {
+      const isJSON = (
+        Array.from((response.headers as any).entries()) as [string, string][]
+      ).find(
+        ([key, val]: [string, string]) =>
+          key.toLowerCase() === "content-type" &&
+          val.toLowerCase().includes("application/json")
+      );
+      if (isJSON) {
+        const result = await response.json();
+        debugger;
+      }
+    }
+
     forgetUserOnCurrentDevice();
     return {
       result: {
@@ -216,20 +234,53 @@ export async function fetch<T>(
       success: false,
     };
   }
-  const result = await response.json();
-  if (result.cwVersion) {
-    const lastApiVersion = window.localStorage.getItem("last-api-version");
-    if (lastApiVersion && lastApiVersion !== result.cwVersion) {
-      // TODO - could show a user prompt rather than just refreshing?
+  const isJSON = (
+    Array.from((response.headers as any).entries()) as [string, string][]
+  ).find(
+    ([key, val]: [string, string]) =>
+      key.toLowerCase() === "content-type" &&
+      val.toLowerCase().includes("application/json")
+  );
+  let result;
+  if (isJSON) {
+    result = await response.json();
 
-      // TODO - Do we need to actually log the user out, in case there have been changes to the structure
-      //  of the user object stored, and we need to get it again?  Or we could just re-fetch the user info before we reload?
-      window.localStorage.setItem("last-api-version", result.cwVersion.version);
-      return window.location.reload();
+    if (
+      response.status === HttpStatusCode.Forbidden &&
+      result.errorType === "authorization" &&
+      !response.url.endsWith("/api/v1/users/authenticate")
+    ) {
+      forgetUserOnCurrentDevice();
+      return {
+        result: {
+          errors: ["Unauthorized"],
+          messages: ["You must be logged in to access this API."],
+          errorType: "Client",
+        },
+        status: HttpStatusCode.AuthorizationError,
+        success: false,
+      };
     }
-    delete result.cwVersion;
-  }
 
+    if (result.cwVersion) {
+      const lastApiVersion = window.localStorage.getItem("last-api-version");
+      if (lastApiVersion && lastApiVersion !== result.cwVersion) {
+        // TODO - could show a user prompt rather than just refreshing?
+
+        // TODO - Do we need to actually log the user out, in case there have been changes to the structure
+        //  of the user object stored, and we need to get it again?  Or we could just re-fetch the user info before we reload?
+        window.localStorage.setItem(
+          "last-api-version",
+          result.cwVersion.version
+        );
+        return window.location.reload();
+      }
+      delete result.cwVersion;
+    }
+  } else {
+    result = await response.blob();
+  }
+  //console.log(result);
   return {
     result,
     status: response.status,

@@ -67,7 +67,6 @@ const handleImageLoadStart = (e: Event) => {
 img {
   background: transparent;
   position: relative;
-  overflow: hidden;
   transition: opacity ease-in 0.3s;
   color: unset;
   &.selected {

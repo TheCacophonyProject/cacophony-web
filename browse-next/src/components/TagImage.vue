@@ -34,7 +34,7 @@ const currentTag = computed<string>(() => {
 });
 
 const pathForTag = (tag: string): string => {
-  return flatClassifications.value[tag].path || tag;
+  return flatClassifications.value[tag]?.path || tag;
 };
 
 onBeforeMount(async () => {

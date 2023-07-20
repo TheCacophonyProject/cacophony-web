@@ -31,6 +31,7 @@ import {
 const EXCLUDE_TRACK_IDS = [
   "[].id",
   "[].tags[].id",
+  "[].tags[].path",
   "[].tags[].trackId",
   "[].tags[].userId",
 ];
@@ -101,6 +102,7 @@ describe("Track Tags: add, check, delete", () => {
     createdAt: NOT_NULL_STRING,
     //Note: data not set in a manual tag
     data: "",
+    path: "all",
     id: 99,
     automatic: false,
     trackId: 99,
@@ -115,6 +117,7 @@ describe("Track Tags: add, check, delete", () => {
     createdAt: NOT_NULL_STRING,
     //Note: data not set in a manual tag
     data: "",
+    path: "all",
     id: 99,
     automatic: false,
     trackId: 99,
@@ -559,7 +562,7 @@ describe("Track Tags: add, check, delete", () => {
         cy.log("Retrieve the recording's JWT");
         cy.apiRecordingNeedsTagCheck(
           "ttaNonMember",
-          undefined,
+          "ttaCamera1",
           "ttaNeedsTag8",
           [expectedRecording1],
           [],

@@ -17,10 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import Sequelize from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { Device } from "./Device";
-import { DetailSnapShot } from "./DetailSnapshot";
-import { DeviceId, UserId } from "@typedefs/api/common";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { Device } from "./Device.js";
+import type { DetailSnapShot } from "./DetailSnapshot.js";
+import type { DeviceId, UserId } from "@typedefs/api/common.js";
 
 const Op = Sequelize.Op;
 

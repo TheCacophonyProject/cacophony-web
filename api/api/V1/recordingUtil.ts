@@ -17,35 +17,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import sharp from "sharp";
 import zlib from "zlib";
-import { Alert, AlertStatic } from "@models/Alert";
-import { AI_MASTER, TrackTag } from "@models/TrackTag";
+import type { Alert, AlertStatic } from "@models/Alert.js";
+import type { TrackTag } from "@models/TrackTag.js";
+import { AI_MASTER } from "@models/TrackTag.js";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
-import urljoin from "url-join";
 import config from "@config";
-import models from "@models";
-import util from "./util";
-import { Recording, RecordingQueryOptions } from "@models/Recording";
-import { Event, QueryOptions } from "@models/Event";
-import { User } from "@models/User";
+import type { Recording, RecordingQueryOptions } from "@models/Recording.js";
+import type { Event, QueryOptions } from "@models/Event.js";
+import type { User } from "@models/User.js";
 import Sequelize, { Op } from "sequelize";
-import {
-  DeviceSummary,
-  DeviceVisitMap,
-  Visit,
-  VisitEvent,
-  VisitSummary,
-} from "./Visits";
-import { Station } from "@models/Station";
-import modelsUtil, { locationsAreEqual } from "@models/util/util";
-import { dynamicImportESM } from "@/dynamic-import-esm";
-import { DetailSnapshotId } from "@models/DetailSnapshot";
-import { Device } from "@models/Device";
-import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory";
-import { Tag } from "@models/Tag";
-import { Track } from "@models/Track";
-import {
+import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
+import { DeviceSummary, Visit } from "./Visits.js";
+import type { Station } from "@models/Station.js";
+import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
+import type { Device } from "@models/Device.js";
+import type { PutObjectCommandOutput } from "@aws-sdk/client-s3";
+import type {
+  DeviceHistory,
+  DeviceHistorySetBy,
+} from "@models/DeviceHistory.js";
+import type { Tag } from "@models/Tag.js";
+import type { Track } from "@models/Track.js";
+import type {
   DeviceId,
   FileId,
   GroupId,
@@ -55,163 +50,43 @@ import {
   StationId,
   TrackTagId,
   UserId,
-} from "@typedefs/api/common";
+} from "@typedefs/api/common.js";
 import {
   AcceptableTag,
-  DeviceType,
   RecordingProcessingState,
   RecordingType,
-} from "@typedefs/api/consts";
-import {
+} from "@typedefs/api/consts.js";
+import type {
   ClassifierModelDescription,
   ClassifierRawResult,
   RawTrack,
   TrackClassification,
   TrackFramePosition,
-} from "@typedefs/api/fileProcessing";
-import { ApiRecordingTagRequest } from "@typedefs/api/tag";
-import { ApiTrackPosition } from "@typedefs/api/track";
-import { GetObjectOutput, ManagedUpload } from "aws-sdk/clients/s3";
-import { AWSError } from "aws-sdk";
-import { CptvHeader } from "cptv-decoder";
+} from "@typedefs/api/fileProcessing.js";
+import type { ApiRecordingTagRequest } from "@typedefs/api/tag.js";
+import type { CptvFrame, CptvHeader } from "../cptv-decoder/decoder.js";
+import { CptvDecoder } from "../cptv-decoder/decoder.js";
 import log from "@log";
 import {
-  sendAnimalAlertEmail,
-  sendAnimalAlertEmailForEvent,
-} from "@/emails/transactionalEmails";
+  locationsAreEqual,
+  tryToMatchLocationToStationInGroup,
+} from "@models/util/locationUtils.js";
+import { openS3 } from "@models/util/util.js";
+import type { ReadableStream } from "stream/web";
+import type { ModelsDictionary } from "@models";
 
-let CptvDecoder;
-(async () => {
-  CptvDecoder = (await dynamicImportESM("cptv-decoder")).CptvDecoder;
-})();
-
-// How close is a station allowed to be to another station?
-export const MIN_STATION_SEPARATION_METERS = 60;
-// The radius of the station is half the max distance between stations: any recording inside the radius can
-// be considered to belong to that station.
-export const MAX_DISTANCE_FROM_STATION_FOR_RECORDING =
-  MIN_STATION_SEPARATION_METERS / 2;
-
-export function latLngApproxDistance(a: LatLng, b: LatLng): number {
-  if (a.lat === b.lat && a.lng === b.lng) {
-    return 0;
-  }
-  const R = 6371e3;
-  // Using 'spherical law of cosines' from https://www.movable-type.co.uk/scripts/latlong.html
-  const lat1 = (a.lat * Math.PI) / 180;
-  const costLat1 = Math.cos(lat1);
-  const sinLat1 = Math.sin(lat1);
-  const lat2 = (b.lat * Math.PI) / 180;
-  const deltaLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const part1 = Math.acos(
-    sinLat1 * Math.sin(lat2) + costLat1 * Math.cos(lat2) * Math.cos(deltaLng)
-  );
-  return part1 * R;
-}
-
-export async function tryToMatchLocationToStationInGroup(
-  location: LatLng,
-  groupId: GroupId,
-  activeFromDate: Date,
-  lookForwards: boolean = false
-): Promise<Station | null> {
-  // Match the recording to any stations that the group might have:
-  let stations;
-  if (lookForwards) {
-    stations = await models.Station.activeInGroupDuringTimeRange(
-      groupId,
-      activeFromDate,
-      new Date()
-    );
-  } else {
-    stations = await models.Station.activeInGroupAtTime(
-      groupId,
-      activeFromDate
-    );
-  }
-  const stationDistances = [];
-  for (const station of stations) {
-    // See if any stations match: Looking at the location distance between this recording and the stations.
-    const distanceToStation = latLngApproxDistance(station.location, location);
-    stationDistances.push({ distanceToStation, station });
-  }
-  const validStationDistances = stationDistances.filter(
-    ({ distanceToStation }) =>
-      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING
-  );
-
-  // There shouldn't really ever be more than one station within our threshold distance,
-  // since we check that stations aren't too close together when we add them.  However, on the off
-  // chance we *do* get two or more valid stations for a recording, take the closest one.
-  validStationDistances.sort((a, b) => {
-    return b.distanceToStation - a.distanceToStation;
-  });
-  const closest = validStationDistances.pop();
-  if (closest) {
-    return closest.station;
-  }
-  return null;
-}
-
-export async function tryToMatchRecordingToStation(
-  recording: Recording,
-  stations?: Station[]
-): Promise<Station | null> {
-  // If the recording does not yet have a location, return
-  if (!recording.location) {
-    return null;
-  }
-
-  // Match the recording to any stations that the group might have:
-  if (!stations) {
-    const group = await models.Group.getFromId(recording.GroupId);
-    stations = await group.getStations({
-      where: {
-        activeAt: { [Op.lte]: recording.recordingDateTime },
-        retiredAt: {
-          [Op.or]: [
-            { [Op.eq]: null },
-            { [Op.gt]: recording.recordingDateTime },
-          ],
-        },
-      },
-    });
-  }
-  const stationDistances = [];
-  for (const station of stations) {
-    // See if any stations match: Looking at the location distance between this recording and the stations.
-    const distanceToStation = latLngApproxDistance(
-      station.location,
-      recording.location
-    );
-    stationDistances.push({ distanceToStation, station });
-  }
-  const validStationDistances = stationDistances.filter(
-    ({ distanceToStation }) =>
-      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING
-  );
-
-  // There shouldn't really ever be more than one station within our threshold distance,
-  // since we check that stations aren't too close together when we add them.  However, on the off
-  // chance we *do* get two or more valid stations for a recording, take the closest one.
-  validStationDistances.sort((a, b) => {
-    return b.distanceToStation - a.distanceToStation;
-  });
-  const closest = validStationDistances.pop();
-  if (closest) {
-    return closest.station;
-  }
-  return null;
-}
-
-async function getThumbnail(rec: Recording, trackId?: number) {
+export async function getThumbnail(
+  rec: Recording,
+  trackId?: number
+): Promise<Uint8Array> {
   let thumbKey: string;
+  const fileKey = rec.rawFileKey;
   if (trackId) {
-    thumbKey = `${rec.rawFileKey}-${trackId}-thumb`;
+    thumbKey = `${fileKey}-${trackId}-thumb`;
   } else {
     const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
     if (thumbedTracks.length > 0) {
-      // choose best track based of visit tag and highest score
+      // choose best track based off visit tag and highest score
       const recVisit = new Visit(rec, 0, thumbedTracks);
       const commonTag = recVisit.mostCommonTag();
       const trackIds = recVisit.events
@@ -228,86 +103,75 @@ async function getThumbnail(rec: Recording, trackId?: number) {
           ? 1
           : -1;
       });
-      thumbKey = `${rec.rawFileKey}-${bestTracks[0].id}-thumb`;
+      thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
     } else {
-      thumbKey = `${rec.rawFileKey}-thumb`;
+      thumbKey = `${fileKey}-thumb`;
     }
   }
 
-  const s3 = modelsUtil.openS3();
+  const s3 = openS3();
   if (thumbKey.startsWith("a_")) {
-    thumbKey = thumbKey.substr(2);
+    thumbKey = thumbKey.slice(2);
   }
-  const params = {
-    Key: thumbKey,
-  };
-  return s3.getObject(params).promise();
+  const data = await s3.getObject(thumbKey);
+  return data.Body.transformToByteArray();
 }
 
 const THUMBNAIL_SIZE = 64;
-const THUMBNAIL_PALETTE = "Viridis";
+export const THUMBNAIL_PALETTE = "Viridis";
 // Gets a raw cptv frame from a recording
-async function getCPTVFrames(
+export async function getCPTVFrames(
   recording: Recording,
   frameNumbers: Set<number>
 ): Promise<any | undefined> {
-  const fileData: GetObjectOutput | AWSError = await modelsUtil
-    .openS3()
-    .getObject({
-      Key: recording.rawFileKey,
-    })
-    .promise()
-    .catch((err) => {
-      return err;
-    });
-  //work around for error in cptv-decoder
-  //best to use createReadStream() from s3 when cptv-decoder has support
-  if (fileData instanceof Error) {
+  try {
+    const stream = (
+      await openS3().getObject(recording.rawFileKey)
+    ).Body.transformToWebStream();
+    //work around for error in cptv-decoder
+    const decoder = new CptvDecoder();
+    const result = await decoder.initWithReadableStream(
+      stream as ReadableStream
+    );
+    if (typeof result === "string") {
+      log.warning("CPTV Error '%s'", result);
+      await decoder.close();
+      return;
+    }
+    let finished = false;
+    let currentFrame = 0;
+    const frames: Record<number, CptvFrame> = {};
+    log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
+    while (!finished) {
+      const frame: CptvFrame | null = await decoder.getNextFrame();
+      if (frame && frame.meta.isBackgroundFrame) {
+        // Skip over background frame without incrementing counter.
+        continue;
+      }
+      finished = frame === null || (await decoder.getTotalFrames()) !== null;
+      if (frameNumbers.has(currentFrame)) {
+        frameNumbers.delete(currentFrame);
+        frames[currentFrame] = frame;
+      }
+      if (frameNumbers.size === 0) {
+        break;
+      }
+      currentFrame++;
+    }
+    await decoder.close();
+    return frames;
+  } catch (err) {
     return;
   }
-  const data = new Uint8Array(
-    (fileData as GetObjectOutput).Body as ArrayBufferLike
-  );
-  const { CptvDecoder } = await dynamicImportESM("cptv-decoder");
-  const decoder = new CptvDecoder();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const meta = await decoder.getBytesMetadata(data);
-  const result = await decoder.initWithLocalCptvFile(data);
-  if (!result) {
-    decoder.close();
-    return;
-  }
-  let finished = false;
-  let currentFrame = 0;
-  const frames = {};
-  let frame;
-  log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
-  while (!finished) {
-    frame = await decoder.getNextFrame();
-    if (frame && frame.meta.isBackgroundFrame) {
-      // Skip over background frame without incrementing counter.
-      continue;
-    }
-    finished = frame === null || (await decoder.getTotalFrames()) !== null;
-    if (frameNumbers.has(currentFrame)) {
-      frameNumbers.delete(currentFrame);
-      frames[currentFrame] = frame;
-    }
-    if (frameNumbers.size == 0) {
-      break;
-    }
-    currentFrame++;
-  }
-  decoder.close();
-  return frames;
 }
 
 // Creates and saves a thumbnail for a recording using specified thumbnail info
-async function saveThumbnailInfo(
+export async function saveThumbnailInfo(
   recording: Recording,
   tracks: Track[],
   clip_thumbnail: TrackFramePosition
-): Promise<ManagedUpload.SendData[] | Error[]> {
+): Promise<PutObjectCommandOutput[] | Error[]> {
+  const fileKey = recording.rawFileKey;
   const thumbnailTracks = tracks.filter(
     (track) => track.data?.thumbnail?.region
   );
@@ -335,14 +199,8 @@ async function saveThumbnailInfo(
     }
     const thumb = await createThumbnail(frame, track.data.thumbnail.region);
     frameUploads.push(
-      await modelsUtil
-        .openS3()
-        .upload({
-          Key: `${recording.rawFileKey}-${track.id}-thumb`,
-          Body: thumb.data,
-          Metadata: thumb.meta,
-        })
-        .promise()
+      await openS3()
+        .upload(`${fileKey}-${track.id}-thumb`, thumb.data, thumb.meta)
         .catch((err) => {
           return err;
         })
@@ -357,16 +215,10 @@ async function saveThumbnailInfo(
       );
     } else {
       const thumb = await createThumbnail(frame, clip_thumbnail);
-      console.log("saving", `${recording.rawFileKey}-thumb`);
+      console.log("saving", `${fileKey}-thumb`);
       frameUploads.push(
-        await modelsUtil
-          .openS3()
-          .upload({
-            Key: `${recording.rawFileKey}-thumb`,
-            Body: thumb.data,
-            Metadata: thumb.meta,
-          })
-          .promise()
+        await openS3()
+          .upload(`${fileKey}-thumb`, thumb.data, thumb.meta)
           .catch((err) => {
             return err;
           })
@@ -499,8 +351,8 @@ async function createThumbnail(
     greyScaleData = thumbnailData;
   }
   const frameBuffer = new Uint8ClampedArray(4 * greyScaleData.length);
-  const { renderFrameIntoFrameBuffer, ColourMaps } = await dynamicImportESM(
-    "cptv-decoder"
+  const { renderFrameIntoFrameBuffer, ColourMaps } = await import(
+    "../cptv-decoder/frameRenderUtils.js"
   );
   let palette = ColourMaps[0];
   for (const colourMap of ColourMaps) {
@@ -529,6 +381,7 @@ async function createThumbnail(
 }
 
 export const maybeUpdateDeviceHistory = async (
+  models: ModelsDictionary,
   device: Device,
   location: LatLng,
   dateTime: Date,
@@ -600,6 +453,7 @@ export const maybeUpdateDeviceHistory = async (
           },
           order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than our current dateTime
         });
+
         if (laterLocation) {
           const locationChanged = !locationsAreEqual(
             laterLocation.location,
@@ -683,6 +537,7 @@ export const maybeUpdateDeviceHistory = async (
         uuid: device.uuid,
       };
       let stationToAssign = await tryToMatchLocationToStationInGroup(
+        models,
         location,
         device.GroupId,
         dateTime,
@@ -709,7 +564,6 @@ export const maybeUpdateDeviceHistory = async (
 
       (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
       // Insert this location.
-
       const newDeviceHistory = await models.DeviceHistory.create(
         newDeviceHistoryEntry
       );
@@ -752,7 +606,7 @@ const tryDecodeCptvMetadata = async (
       await decoder.getStreamError()
     );
   }
-  decoder.close();
+  await decoder.close();
   return { metadata, fileIsCorrupt };
 };
 
@@ -761,6 +615,9 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
   fileData: Uint8Array,
   recording: Recording
 ): Promise<boolean> => {
+  if (fileData.length === 0) {
+    return true;
+  }
   if (data.type === RecordingType.ThermalRaw) {
     // Read the file back out from s3 and decode/parse it.
     const { metadata, fileIsCorrupt: isCorrupt } = await tryDecodeCptvMetadata(
@@ -818,7 +675,8 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
   return false;
 };
 
-const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
+export const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
+  models: ModelsDictionary,
   device: Device,
   atTime: Date
 ): Promise<{ groupId: GroupId; deviceId: DeviceId; stationId?: StationId }> => {
@@ -828,6 +686,7 @@ const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
     where: {
       uuid: device.uuid,
       fromDateTime: { [Op.lte]: atTime },
+      location: { [Op.ne]: null },
     },
     order: [["fromDateTime", "DESC"]],
     limit: 1,
@@ -839,199 +698,13 @@ const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
       stationId: deviceHistory.stationId,
     };
   }
-  log.error("Missing entry in DeviceHistory table for device #%s", device.id);
   return { deviceId: device.id, groupId: device.GroupId };
 };
 
-export const uploadRawRecording = util.multipartUpload(
-  "raw",
-  async (
-    uploader: "device" | "user",
-    uploadingDevice: Device,
-    uploadingUser: User | null,
-    data: any, // FIXME - At least partially validate this data
-    key: string,
-    uploadedFileData: Uint8Array
-  ): Promise<Recording> => {
-    const recording = models.Recording.buildSafely(data);
-    // Add the filehash if present
-    if (data.fileHash) {
-      recording.rawFileHash = data.fileHash;
-    }
-
-    // TODO - if a fileHash isn't supplied, lets create one anyway.
-
-    recording.rawFileSize = uploadedFileData.length;
-    recording.rawFileKey = key;
-    recording.rawMimeType = guessRawMimeType(data.type, data.filename);
-
-    if (uploader === "device") {
-      recording.DeviceId = uploadingDevice.id;
-      if (typeof uploadingDevice.public === "boolean") {
-        recording.public = uploadingDevice.public;
-      }
-    }
-    recording.uploader = uploader;
-    recording.uploaderId =
-      uploader === "device" ? uploadingDevice.id : (uploadingUser as User).id;
-    let deviceId: DeviceId;
-    let groupId: DeviceId;
-    // Check if the file is corrupt and use file metadata if it can be parsed.
-    const fileIsCorrupt = await parseAndMergeEmbeddedFileMetadataIntoRecording(
-      data,
-      uploadedFileData,
-      recording
-    );
-
-    const recordingLocation = recording.location;
-    if (recordingLocation) {
-      const { stationToAssignToRecording, deviceHistoryEntry } =
-        await maybeUpdateDeviceHistory(
-          uploadingDevice,
-          recordingLocation,
-          recording.recordingDateTime
-        );
-      recording.StationId = stationToAssignToRecording.id;
-
-      {
-        // Update station lastRecordingTimes if needed.
-        if (
-          recording.type === RecordingType.Audio &&
-          (!stationToAssignToRecording.lastAudioRecordingTime ||
-            recording.recordingDateTime >
-              stationToAssignToRecording.lastAudioRecordingTime)
-        ) {
-          stationToAssignToRecording.lastAudioRecordingTime =
-            recording.recordingDateTime;
-          await stationToAssignToRecording.save();
-        } else if (
-          recording.type === RecordingType.ThermalRaw &&
-          (!stationToAssignToRecording.lastThermalRecordingTime ||
-            recording.recordingDateTime >
-              stationToAssignToRecording.lastThermalRecordingTime)
-        ) {
-          stationToAssignToRecording.lastThermalRecordingTime =
-            recording.recordingDateTime;
-          await stationToAssignToRecording.save();
-        }
-      }
-      deviceId = deviceHistoryEntry.DeviceId;
-      groupId = deviceHistoryEntry.GroupId;
-    }
-
-    if (!deviceId && !groupId) {
-      // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
-      const { deviceId: d, groupId: g } =
-        await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
-          uploadingDevice,
-          recording.recordingDateTime
-        );
-      deviceId = d;
-      groupId = g;
-    }
-
-    recording.DeviceId = deviceId;
-    recording.GroupId = groupId;
-
-    {
-      // Update the device location and lastRecordingTime from the recording data,
-      // if the recording time is *later* than the last recording time, or there
-      // is no last recording time
-      if (
-        !uploadingDevice.lastRecordingTime ||
-        uploadingDevice.lastRecordingTime < recording.recordingDateTime
-      ) {
-        await uploadingDevice.update({
-          location: recording.location,
-          lastRecordingTime: recording.recordingDateTime,
-        });
-
-        // Update the group lastRecordingTimes too:
-        const group = await uploadingDevice.getGroup();
-        // Update the last recording time for the group if necessary, to give us a quick and easy way
-        // to see which groups have new recordings, and of what kind.
-        if (
-          recording.type === RecordingType.ThermalRaw &&
-          (!group.lastThermalRecordingTime ||
-            group.lastThermalRecordingTime < recording.recordingDateTime)
-        ) {
-          await group.update({
-            lastThermalRecordingTime: recording.recordingDateTime,
-          });
-        } else if (
-          recording.type === RecordingType.Audio &&
-          (!group.lastAudioRecordingTime ||
-            group.lastAudioRecordingTime < recording.recordingDateTime)
-        ) {
-          group.lastAudioRecordingTime = recording.recordingDateTime;
-          await group.update({
-            lastAudioRecordingTime: recording.recordingDateTime,
-          });
-        }
-      }
-      if (uploadingDevice.kind === DeviceType.Unknown) {
-        // If this is the first recording we've gotten from a device, we can set its type.
-        const deviceType =
-          recording.type === RecordingType.ThermalRaw ? "thermal" : "audio";
-        await uploadingDevice.update({ kind: deviceType });
-      }
-    }
-
-    // We need to reconcile the recording state in the DB to run these next bits.
-    await recording.save();
-
-    {
-      let tracked = false;
-      if (data.metadata) {
-        tracked = await tracksFromMeta(recording, data.metadata);
-      }
-      if (data.processingState) {
-        // NOTE: If the processingState field is present when a recording is uploaded, this means that the recording
-        //  has already been processed, and we are supplying the processing results with the recording.
-        //  This *only* happens from the test suite, and exists solely for testing purposes.
-        recording.processingState = data.processingState;
-      } else {
-        // NOTE: During testing, even if the file is corrupt, it won't be marked as such if a concrete processingState
-        //  is supplied.  This would ideally get fixed once we are always uploading valid files during testing.
-
-        // FIXME - This logic still looks a little suspect.
-        if (!fileIsCorrupt) {
-          if (tracked && recording.type !== RecordingType.Audio) {
-            recording.processingState = RecordingProcessingState.AnalyseThermal;
-            // already have done tracking pi skip to analyse state
-          } else {
-            recording.processingState = models.Recording.uploadedState(
-              data.type as RecordingType
-            );
-          }
-        } else {
-          // Mark the recording as corrupt for future investigation, and so it doesn't get picked up by the pipeline.
-          recording.processingState = RecordingProcessingState.Corrupt;
-        }
-      }
-    }
-    const recordingHasFinishedProcessing =
-      recording.processingState ===
-      models.Recording.finishedState(data.type as RecordingType);
-    const promises = [recording.save()] as Promise<any>[];
-    if (recordingHasFinishedProcessing) {
-      // NOTE: Should only occur during testing.
-      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
-      const recordingAgeMs =
-        new Date().getTime() - recording.recordingDateTime.getTime();
-      if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
-        // Alerts should only be sent for uploading devices.
-        promises.push(sendAlerts(recording.id));
-      }
-    }
-    await Promise.all(promises);
-    return recording;
-  }
-);
-
 // Returns a promise for the recordings query specified in the
 // request.
-async function query(
+export async function queryRecordings(
+  models: ModelsDictionary,
   requestUserId: UserId,
   type: RecordingType,
   countAll: boolean,
@@ -1061,10 +734,12 @@ async function query(
   return { count: rows.length, rows: rows };
 }
 
-async function bulkDelete(
+export async function bulkDelete(
+  models: ModelsDictionary,
   requestUserId: UserId,
   type: RecordingType,
-  options: RecordingQueryOptions
+  options: RecordingQueryOptions,
+  _actuallyDelete: boolean = false // FIXME - Make recordings actually be deleted?
 ): Promise<number[]> {
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };
@@ -1075,7 +750,7 @@ async function bulkDelete(
     options
   );
 
-  const values = await models.Recording.findAll<Recording>(builder.get());
+  const values = (await models.Recording.findAll(builder.get())) as Recording[];
   if (values.length === 0) {
     throw new Error("No recordings found to delete");
   }
@@ -1092,6 +767,7 @@ async function bulkDelete(
 }
 
 export async function getTrackTags(
+  models: ModelsDictionary,
   userId: UserId,
   viewAsSuperUser: boolean,
   includeAI: boolean,
@@ -1185,6 +861,7 @@ export async function getTrackTags(
 // Returns a promise for report rows for a set of recordings. Takes
 // the same parameters as query() above.
 export async function reportRecordings(
+  models: ModelsDictionary,
   userId: UserId,
   includeAudiobait: boolean,
   options: RecordingQueryOptions
@@ -1243,7 +920,7 @@ export async function reportRecordings(
   }
 
   const recording_url_base = config.server.recording_url_base || "";
-
+  debugger;
   const labels = [
     "Id",
     "Type",
@@ -1290,8 +967,7 @@ export async function reportRecordings(
       }
     }
 
-    const recording_tags = r.Tags.map((t) => t.what || t.detail);
-
+    const recording_tags = r.Tags.map((t) => t.what || t.detail) || [];
     const cacophonyIndex = getCacophonyIndex(r);
 
     const thisRow = [
@@ -1338,14 +1014,20 @@ export async function reportRecordings(
       );
     }
 
-    thisRow.push(urljoin(recording_url_base, r.id.toString()), cacophonyIndex);
+    thisRow.push(
+      `${recording_url_base}/${r.id.toString()}`,
+      cacophonyIndex,
+      ""
+    );
     out.push(thisRow);
   }
   return out;
 }
 
 function getCacophonyIndex(recording: Recording): string | null {
-  return recording.cacophonyIndex?.map((val) => val.index_percent).join(";");
+  return (
+    recording.cacophonyIndex?.map((val) => val.index_percent).join(";") || ""
+  );
 }
 
 function findLatestEvent(events: Event[]): Event | null {
@@ -1392,23 +1074,23 @@ export function signedToken(
   });
 }
 
-function guessRawMimeType(type, filename) {
+export const guessMimeType = (type, filename): string => {
   const mimeType = mime.getType(filename);
   if (mimeType) {
     return mimeType;
   }
   switch (type) {
-    case "thermalRaw":
+    case RecordingType.ThermalRaw:
       return "application/x-cptv";
-    case "audio":
+    case RecordingType.Audio:
       return "audio/mpeg";
     default:
       return "application/octet-stream";
   }
-}
+};
 
-// FIXME(jon): This should really be a method on Recording?
-const addTag = async (
+export const addTag = async (
+  models: ModelsDictionary,
   user: User | null,
   recording: Recording,
   tag: ApiRecordingTagRequest
@@ -1421,8 +1103,11 @@ const addTag = async (
   await tagInstance.save();
   return tagInstance;
 };
-
-async function tracksFromMeta(recording: Recording, metadata: any) {
+export const tracksFromMeta = async (
+  models: ModelsDictionary,
+  recording: Recording,
+  metadata: any
+) => {
   try {
     if (!("tracks" in metadata)) {
       return false;
@@ -1432,58 +1117,72 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
       metadata["algorithm"]
     );
 
+    const promises = [];
     for (const trackMeta of metadata["tracks"]) {
-      const track = await recording.createTrack({
-        data: trackMeta,
-        AlgorithmId: algorithmDetail.id,
-      });
-      if (
-        !("predictions" in trackMeta) ||
-        trackMeta["predictions"].length == 0
-      ) {
-        await track.updateIsFiltered();
-        continue;
-      }
-      for (const prediction of trackMeta["predictions"]) {
-        let modelName = "unknown";
-        if (prediction.model_id) {
-          if (metadata.models) {
-            const model = metadata.models.find(
-              (model) => model.id == prediction.model_id
-            );
-            if (model) {
-              modelName = model.name;
-            }
-          }
-        }
+      promises.push(
+        new Promise((resolve, _reject) => {
+          recording
+            .createTrack({
+              data: trackMeta,
+              AlgorithmId: algorithmDetail.id,
+            })
+            .then((track) => {
+              if (
+                !("predictions" in trackMeta) ||
+                trackMeta["predictions"].length === 0
+              ) {
+                track.updateIsFiltered().then(resolve);
+              } else {
+                const trackPromises = [];
+                for (const prediction of trackMeta["predictions"]) {
+                  let modelName = "unknown";
+                  if (prediction.model_id) {
+                    if (metadata.models) {
+                      const model = metadata.models.find(
+                        (model) => model.id == prediction.model_id
+                      );
+                      if (model) {
+                        modelName = model.name;
+                      }
+                    }
+                  }
 
-        const tag_data = { name: modelName };
-        if (prediction.clarity) {
-          tag_data["clarity"] = prediction["clarity"];
-        }
-        if (prediction.classify_time) {
-          tag_data["classify_time"] = prediction["classify_time"];
-        }
-        if (prediction.prediction_frames) {
-          tag_data["prediction_frames"] = prediction["prediction_frames"];
-        }
-        if (prediction.predictions) {
-          tag_data["predictions"] = prediction["predictions"];
-        }
-        if (prediction.label) {
-          tag_data["raw_tag"] = prediction["label"];
-        }
-        if (prediction.all_class_confidences) {
-          tag_data["all_class_confidences"] =
-            prediction["all_class_confidences"];
-        }
-        let tag = "unidentified";
-        if (prediction.confident_tag) {
-          tag = prediction["confident_tag"];
-        }
-        await track.addTag(tag, prediction["confidence"], true, tag_data);
-      }
+                  const tag_data = { name: modelName };
+                  if (prediction.clarity) {
+                    tag_data["clarity"] = prediction["clarity"];
+                  }
+                  if (prediction.classify_time) {
+                    tag_data["classify_time"] = prediction["classify_time"];
+                  }
+                  if (prediction.prediction_frames) {
+                    tag_data["prediction_frames"] =
+                      prediction["prediction_frames"];
+                  }
+                  if (prediction.predictions) {
+                    tag_data["predictions"] = prediction["predictions"];
+                  }
+                  if (prediction.label) {
+                    tag_data["raw_tag"] = prediction["label"];
+                  }
+                  if (prediction.all_class_confidences) {
+                    tag_data["all_class_confidences"] =
+                      prediction["all_class_confidences"];
+                  }
+                  let tag = "unidentified";
+                  if (prediction.confident_tag) {
+                    tag = prediction["confident_tag"];
+                  }
+                  trackPromises.push(
+                    track.addTag(tag, prediction["confidence"], true, tag_data)
+                  );
+                }
+                Promise.all(trackPromises).then(resolve);
+              }
+            });
+        })
+      );
     }
+    await Promise.all(promises);
   } catch (err) {
     log.error(
       "Error creating recording tracks from metadata: %s",
@@ -1491,16 +1190,17 @@ async function tracksFromMeta(recording: Recording, metadata: any) {
     );
   }
   return true;
-}
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function updateMetadata(recording: any, metadata: any) {
+export async function updateMetadata(recording: any, metadata: any) {
   throw new Error("recordingUtil.updateMetadata is unimplemented!");
 }
 
 // Returns a promise for the recordings visits query specified in the
 // request.
-async function queryVisits(
+export async function queryVisits(
+  models: ModelsDictionary,
   userId: UserId,
   options: RecordingQueryOptions
 ): Promise<{
@@ -1681,10 +1381,11 @@ function reportDeviceVisits(deviceMap: DeviceVisitMap) {
 }
 
 export async function reportVisits(
+  models: ModelsDictionary,
   userId: UserId,
   options: RecordingQueryOptions
 ) {
-  const results = await queryVisits(userId, options);
+  const results = await queryVisits(models, userId, options);
   const out = reportDeviceVisits(results.summary.deviceMap);
   const recordingUrlBase = config.server.recording_url_base || "";
   out.push([]);
@@ -1777,7 +1478,7 @@ function addEventRow(out: any, event: VisitEvent, recordingUrlBase: string) {
     event.trackTag ? event.trackTag.confidence + "%" : "",
     "",
     "",
-    urljoin(recordingUrlBase, event.recID.toString(), event.trackID.toString()),
+    `${recordingUrlBase}/${event.recID.toString()}/${event.trackID.toString()}`,
   ]);
 }
 
@@ -1806,7 +1507,10 @@ function addAudioBaitRow(out: any, audioBait: Event) {
 
 // Gets a single recording with associated tables required to calculate a visit
 // calculation
-async function getRecordingForVisit(id: number): Promise<Recording> {
+export async function getRecordingForVisit(
+  models: ModelsDictionary,
+  id: number
+): Promise<Recording> {
   const query = {
     include: [
       {
@@ -1862,14 +1566,15 @@ async function getRecordingForVisit(id: number): Promise<Recording> {
       "StationId",
       "GroupId",
       "rawFileKey",
+      "fileKey",
     ],
   };
   // @ts-ignore
   return await models.Recording.findByPk(id, query);
 }
 
-async function sendAlerts(recId: RecordingId) {
-  const recording = await getRecordingForVisit(recId);
+export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
+  const recording = await getRecordingForVisit(models, recId);
   const recVisit = new Visit(recording, 0);
   recVisit.completeVisit();
   let matchedTrack;
@@ -1918,7 +1623,7 @@ async function sendAlerts(recId: RecordingId) {
         matchedTag,
         alert.StationId !== null ? "station" : "device",
         thumbnail && {
-          buffer: thumbnail.Body as Buffer,
+          buffer: Buffer.from(thumbnail),
           cid: "thumbnail",
           mimeType: "image/png",
         }
@@ -1929,14 +1634,16 @@ async function sendAlerts(recId: RecordingId) {
 }
 
 export async function sendEventAlerts(
+  models: ModelsDictionary,
   data: { what: string; conf: number; dateTimes?: IsoFormattedDateString[] },
   device: Device,
   eventDateTime: Date,
-  thumbnail: Uint8Array
+  _thumbnail: Uint8Array
 ) {
   // Find the hierarchy for the matchedTag
   const { stationId } =
     await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
+      models,
       device,
       eventDateTime
     );
@@ -1947,7 +1654,7 @@ export async function sendEventAlerts(
       undefined,
       stationId
     );
-    for (const alert of alerts) {
+    for (const _alert of alerts) {
       // TODO:
       /*
       const alertSendSuccess = await sendAnimalAlertEmailForEvent();
@@ -2232,6 +1939,7 @@ const calculateTags = (
 };
 
 export const finishedProcessingRecording = async (
+  models: ModelsDictionary,
   recording: Recording,
   classifierResult: ClassifierRawResult,
   prevState: RecordingProcessingState
@@ -2240,7 +1948,7 @@ export const finishedProcessingRecording = async (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_, tags, hasMultipleAnimals] = calculateTags(classifierResult.tracks);
   if (hasMultipleAnimals) {
-    await addTag(null, recording, {
+    await addTag(models, null, recording, {
       detail: AcceptableTag.MultipleAnimals,
       confidence: 1,
     });
@@ -2290,13 +1998,11 @@ export const finishedProcessingRecording = async (
   // thumbnail_region
 
   // Save metadata about classification:
-  await modelsUtil
-    .openS3()
-    .upload({
-      Key: `${recording.rawFileKey}-classifier-metadata`,
-      Body: await compressString(JSON.stringify(classifierResult)),
-    })
-    .promise()
+  await openS3()
+    .upload(
+      `${recording.rawFileKey}-classifier-metadata`,
+      await compressString(JSON.stringify(classifierResult))
+    )
     .catch((err) => {
       return err;
     });
@@ -2319,42 +2025,6 @@ export const finishedProcessingRecording = async (
   // }
 
   if (prevState !== RecordingProcessingState.Reprocess) {
-    await sendAlerts(recording.id);
+    await sendAlerts(models, recording.id);
   }
-};
-
-// Mapping
-export const mapPosition = (position: any): ApiTrackPosition => {
-  if (Array.isArray(position)) {
-    return {
-      x: position[1][0],
-      y: position[1][1],
-      width: position[1][2] - position[1][0],
-      height: position[1][3] - position[1][1],
-      frameTime: position[0],
-    };
-  } else {
-    return {
-      x: position.x,
-      y: position.y,
-      width: position.width,
-      height: position.height,
-      order: position.frame_number ?? position.order,
-      mass: position.mass,
-      blank: position.blank,
-    };
-  }
-};
-
-export default {
-  query,
-  bulkDelete,
-  addTag,
-  tracksFromMeta,
-  updateMetadata,
-  queryVisits,
-  saveThumbnailInfo,
-  sendAlerts,
-  getThumbnail,
-  signedToken,
 };

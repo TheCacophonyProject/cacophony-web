@@ -1,32 +1,52 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { computed, ref } from "vue";
+import type { StationId as LocationId } from "@typedefs/api/common";
+import { computed, inject, ref } from "vue";
+import type { Ref } from "vue";
 import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
-  visitTimeAtLocation,
+  timeAtLocation,
   visitDuration,
 } from "@models/visitsUtils";
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
 import { API_ROOT } from "@api/root";
-import { selectedVisit as currentlySelectedVisit } from "@models/SelectionContext";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import {
+  displayLabelForClassificationLabel,
+  getClassificationForLabel,
+} from "@api/Classifications";
 import ImageLoader from "@/components/ImageLoader.vue";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
 
+const currentlySelectedVisit = inject(
+  "currentlySelectedVisit"
+) as Ref<ApiVisitResponse | null>;
+
 const now = new Date();
-const { visits, startTime, isNocturnal, location } = defineProps<{
+const {
+  visits,
+  startTime,
+  isNocturnal,
+  location,
+  currentlyHighlightedLocation,
+} = defineProps<{
   visits: ApiVisitResponse[];
   startTime: DateTime;
   isNocturnal: boolean;
   location: LatLng;
+  currentlyHighlightedLocation?: LocationId;
+}>();
+
+const emit = defineEmits<{
+  (e: "selected-visit", payload: ApiVisitResponse): void;
+  (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
 const endTime = computed<DateTime>(() => startTime.plus({ day: 1 }));
-const visitCountBySpecies = computed<[string, number][]>(() =>
+const visitCountBySpecies = computed<[string, string, number][]>(() =>
   visitsCountBySpeciesCalc(visits)
 );
 
@@ -58,6 +78,13 @@ interface SunEventItem extends EventItem {
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
+
+  for (const visit of visits) {
+    if (!visit.classification) {
+      debugger;
+    }
+  }
+
   const events: (VisitEventItem | SunEventItem)[] = visits.map(
     (visit) =>
       ({
@@ -196,7 +223,7 @@ const hasVisits = computed<boolean>(() => {
 });
 
 const visitTime = (timeIsoString: string) =>
-  visitTimeAtLocation(timeIsoString, location);
+  timeAtLocation(timeIsoString, location);
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   if (visit.recordings.length) {
@@ -207,7 +234,21 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   if (visit.type === "visit") {
-    currentlySelectedVisit.value = visit.data;
+    emit("selected-visit", visit.data);
+  }
+};
+
+const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
+  if (visit.type === "visit") {
+    emit("change-highlighted-location", visit.data.stationId);
+  }
+};
+const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
+  if (
+    visit.type === "visit" &&
+    currentlyHighlightedLocation === visit.data.stationId
+  ) {
+    emit("change-highlighted-location", null);
   }
 };
 </script>
@@ -239,9 +280,9 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
       <div v-else class="visits-species-count p-3 pb-1 user-select-none">
         <div
-          v-for="([classification, count], index) in visitCountBySpecies"
+          v-for="([classification, path, count], index) in visitCountBySpecies"
           class="fs-8 visit-species-count"
-          :class="[classification]"
+          :class="[classification, ...path.split('.')]"
           :key="index"
         >
           <span class="count text-capitalize">{{ count }}</span>
@@ -264,6 +305,8 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
           },
         ]"
         @click="selectedVisit(visit)"
+        @mouseenter="() => highlightedLocation(visit)"
+        @mouseleave="() => unhighlightedLocation(visit)"
       >
         <div
           class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
@@ -339,7 +382,12 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
             <div>
               <span
                 class="visit-species-tag px-1 mb-1 text-capitalize"
-                :class="[visit.name]"
+                :class="[
+                  visit.name,
+                  ...(getClassificationForLabel(visit.name)?.path || '').split(
+                    '.'
+                  ),
+                ]"
                 >{{ displayLabelForClassificationLabel(visit.name) }}
                 <font-awesome-icon
                   icon="check"
@@ -347,6 +395,13 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
                   class="mx-1 align-middle"
                   style="padding-bottom: 2px"
                 />
+              </span>
+              <span
+                v-if="visit.data.userTagsConflict"
+                class="visit-species-tag px-1 mb-1 text-capitalize ms-1 bg-warning text-black"
+              >
+                <font-awesome-icon icon="exclamation-triangle" />
+                Controversial
               </span>
             </div>
             <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
@@ -428,6 +483,9 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
   line-height: 14px;
   transition: background-color linear 0.2s;
   border-radius: 3px;
+  > * {
+    pointer-events: none;
+  }
   &:hover:not(&.sun) {
     background: #eee;
   }

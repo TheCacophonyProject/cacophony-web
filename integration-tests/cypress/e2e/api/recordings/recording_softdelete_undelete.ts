@@ -25,6 +25,7 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 //and only done safely on dev
 const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
   "[].tracks[].tags[].data",
+  "[].tracks[].tags[].path",
 ]);
 
 const EXCLUDE_COLUMNS = ["Date", "Time"];
@@ -33,9 +34,11 @@ describe("Recordings: soft delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
+  delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
+  delete templateRecording.metadata;
 
   before(() => {
     //Create group1 with 2 devices, admin and member
@@ -442,13 +445,13 @@ describe("Recordings: soft delete, undelete", () => {
         recording1,
         false
       );
-      // TODO: Isue 104: positions whould be returned or absent, but not empty
+      // TODO: Issue 104: positions should be returned or absent, but not empty
       //expectedRecordingFromQuery1.tracks[0].positions = [];
 
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording9").then(() => {
         cy.log(
-          "Check recording was soft-deleted (listed in soft-deleted recordings query"
+          "Check recording was soft-deleted (listed in soft-deleted recordings query)"
         );
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",

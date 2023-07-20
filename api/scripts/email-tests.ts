@@ -1,5 +1,3 @@
-import registerAliases from "../module-aliases";
-registerAliases();
 import {
   sendChangedEmailConfirmationEmail,
   sendGroupInviteExistingMemberEmail,
@@ -8,7 +6,7 @@ import {
   sendPasswordResetEmail,
   sendWelcomeEmailConfirmationEmail,
   sendAnimalAlertEmail,
-} from "@/emails/transactionalEmails";
+} from "@/emails/transactionalEmails.js";
 
 const _sendTestEmails = async () => {
   // TODO - Should we pass in just a user object, and have these functions create the appropriate tokens?

@@ -1,5 +1,5 @@
 import { EndUserAgreementVersion, GroupId, UserId } from "./common";
-import { UserGlobalPermission } from "./consts";
+import { UserGlobalPermission } from "./consts.js";
 
 export interface ApiUserResponse {
   userName: string; // Full name of user

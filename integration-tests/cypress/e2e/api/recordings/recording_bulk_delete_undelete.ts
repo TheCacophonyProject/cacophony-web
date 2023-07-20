@@ -26,6 +26,7 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 //and only done safely on dev
 const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
   "[].tracks[].tags[].data",
+  "[].tracks[].tags[].path",
 ]);
 
 const EXCLUDE_COLUMNS = ["Date", "Time"];
@@ -34,9 +35,11 @@ describe("Recordings: bulk delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
+  delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
+  delete templateRecording.metadata;
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );

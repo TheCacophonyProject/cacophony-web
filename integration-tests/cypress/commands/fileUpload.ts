@@ -28,7 +28,11 @@ export function sendMultipartMessage(
     // completedXhr.open("POST", v1ApiPath("uploadedFile"));
     // completedXhr.send(JSON.stringify(xhr.response.body));
   };
-  xhr.onerror = function () {
+  xhr.onerror = function (err) {
+    Cypress.log({
+      name: "Upload error",
+      message: { xhr, err },
+    });
     onComplete(xhr);
   };
   xhr.send(formData);
@@ -40,7 +44,7 @@ export function sendMultipartMessage(
 export function uploadFile(
   url: string,
   credName: string,
-  fileName: string,
+  fileName: string | { filename: string; key: string }[],
   fileType: RecordingType | string,
   data: ApiRecordingSet | Record<string, string | string[] | number>,
   waitOn: string,
@@ -53,11 +57,21 @@ export function uploadFile(
   }>
 > {
   const jwt = getCreds(credName).jwt;
-  const doUpload = (blob: Blob, data: any, resolve) => {
+  const doUpload = (
+    blob: Blob | { fileBlob: Blob; filename: string; key: string }[],
+    data: any,
+    resolve
+  ) => {
     // Build up the form
     const formData = new FormData();
-    formData.set("file", blob, fileName); //adding a file to the form
     formData.set("data", JSON.stringify(data));
+    if (!Array.isArray(blob)) {
+      formData.set("file", blob, fileName as string); //adding a file to the form
+    } else {
+      for (const item of blob) {
+        formData.set(item.key, item.fileBlob, item.filename);
+      }
+    }
     // Perform the request
 
     return sendMultipartMessage(
@@ -65,7 +79,7 @@ export function uploadFile(
       jwt,
       formData,
       waitOn,
-      function (xhr: any) {
+      function (xhr: XMLHttpRequest) {
         Cypress.log({
           name: "Upload debug",
           displayName: "(upload)",
@@ -80,7 +94,10 @@ export function uploadFile(
             };
           },
         });
-
+        Cypress.log({
+          name: "Upload complete",
+          message: xhr.status,
+        });
         if (statusCode === 200) {
           if (xhr.status != 200) {
             expect(xhr.status, "Check response from uploading file").to.eq(200);
@@ -91,13 +108,43 @@ export function uploadFile(
             `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`
           ).to.equal(statusCode);
         }
-        Cypress.log({
-          name: "Upload complete",
-          message: xhr,
-        });
+
         resolve({ ...xhr.response, statusCode });
       }
     );
+  };
+
+  const getMimeTypeFromFileName = (fileName: string): string => {
+    const ext = fileName.split(".").pop();
+    let mimeType = "application/octet-stream";
+    switch (ext) {
+      case "mp4":
+        mimeType = "video/mp4";
+        break;
+      case "m4a":
+        mimeType = "audio/mp4";
+        break;
+      case "mp3":
+        mimeType = "audio/mpeg";
+        break;
+      case "cptv":
+        mimeType = "application/x-cptv";
+        break;
+      case "webp":
+        mimeType = "image/webp";
+        break;
+      case "jpg":
+      case "jpeg":
+        mimeType = "image/jpeg";
+        break;
+      case "ogg":
+        mimeType = "audio/ogg";
+        break;
+      case "wav":
+        mimeType = "audio/wav";
+        break;
+    }
+    return mimeType;
   };
 
   // TODO - Make wasm encoder import work here
@@ -113,13 +160,36 @@ export function uploadFile(
   //   // Create a test cptv file from data.
   // } else if (fileType === RecordingType.Audio) {
   // Get file from fixtures as binary
-  const uploadPromise = new Promise((resolve, reject) => {
-    cy.fixture(fileName, "binary").then((fileBinary) => {
-      // File in binary format gets converted to blob so it can be sent as Form data
-      const blob = Cypress.Blob.binaryStringToBlob(fileBinary, "audio/mpeg");
-      doUpload(blob, data, resolve);
+  let uploadPromise: Promise<any>;
+  if (Array.isArray(fileName)) {
+    uploadPromise = new Promise((resolve, reject) => {
+      const blobs = {};
+      for (const item of fileName) {
+        cy.fixture(item.filename, "binary").then((fileBinary) => {
+          // File in binary format gets converted to blob so it can be sent as Form data
+          const blob = Cypress.Blob.binaryStringToBlob(
+            fileBinary,
+            getMimeTypeFromFileName(item.filename)
+          );
+          blobs[item.filename] = { ...item, fileBlob: blob };
+          if (Object.keys(blobs).length === fileName.length) {
+            doUpload(Object.values(blobs), data, resolve);
+          }
+        });
+      }
     });
-  });
+  } else {
+    uploadPromise = new Promise((resolve, reject) => {
+      cy.fixture(fileName, "binary").then((fileBinary) => {
+        // File in binary format gets converted to blob so it can be sent as Form data
+        const blob = Cypress.Blob.binaryStringToBlob(
+          fileBinary,
+          getMimeTypeFromFileName(fileName)
+        );
+        doUpload(blob, data, resolve);
+      });
+    });
+  }
   return cy.wrap(uploadPromise) as Cypress.Chainable<
     Promise<{
       recordingId: RecordingId;

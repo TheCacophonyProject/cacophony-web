@@ -16,22 +16,23 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields } from "../middleware";
+import { expectedTypeOf, validateFields } from "../middleware.js";
 import { body } from "express-validator";
-import models from "@models";
-import recordingUtil from "./recordingUtil";
-import { successResponse } from "./responseUtil";
-import { Application, NextFunction, Request, Response } from "express";
+import modelsInit from "@models/index.js";
+import { successResponse } from "./responseUtil.js";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredRecordingById,
   parseJSONField,
-} from "../extract-middleware";
-import { idOf } from "../validation-middleware";
-import { jsonSchemaOf } from "../schema-validation";
-import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json";
-import { ClientError } from "@api/customErrors";
+} from "../extract-middleware.js";
+import { idOf } from "../validation-middleware.js";
+import { jsonSchemaOf } from "../schema-validation.js";
+import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
+import { ClientError } from "@api/customErrors.js";
+import { addTag } from "@api/V1/recordingUtil.js";
 
+const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
 
@@ -75,7 +76,8 @@ export default function (app: Application, baseUrl: string) {
     // Not anyone with only superuser read access
     // Not anyone with only public access
     async function (request: Request, response: Response) {
-      const tagInstance = await recordingUtil.addTag(
+      const tagInstance = await addTag(
+        models,
         response.locals.requestUser,
         response.locals.recording,
         request.body.tag

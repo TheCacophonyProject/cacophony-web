@@ -2,18 +2,29 @@
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
 import { TagColours } from "@/consts";
-import { computed, onMounted, ref, watch } from "vue";
+import type { Ref } from "vue";
+import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import { removeTrackTag, replaceTrackTag } from "@api/Recording";
-import { CurrentUser } from "@models/LoggedInUser";
+import type { LoggedInUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
+import {
+  displayLabelForClassificationLabel,
+  getPathForLabel,
+} from "@api/Classifications";
+import { currentUser as currentUserInfo } from "@models/provides";
+import { RecordingType } from "@typedefs/api/consts.ts";
+
 const route = useRoute();
 const router = useRouter();
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
 }>();
+
+// eslint-disable-next-line no-undef
+const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
 const currentTrack = ref<ApiTrackResponse | null>(null);
 
@@ -59,6 +70,11 @@ watch(
     cloneLocalTracks(nextRecording?.tracks || []);
     if (route.params.trackId) {
       currentTrack.value = getTrackById(currentTrackId.value);
+    }
+    if (nextRecording?.type === RecordingType.TrailCamImage) {
+      // Select the only dummy track
+      //currentTrack.value = getTrackById()
+      expandedItemChanged(nextRecording.tracks[0].id, true);
     }
   }
 );
@@ -107,7 +123,7 @@ const addOrRemoveUserTag = async ({
   tag: string;
   trackId: TrackId;
 }) => {
-  if (recording && CurrentUser.value && !updatingTags.value) {
+  if (recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal
     const track = recordingTracksLocal.value.find(
@@ -115,7 +131,7 @@ const addOrRemoveUserTag = async ({
     );
     if (track) {
       const thisUserTag = track.tags.find(
-        (tag) => tag.userId === CurrentUser.value?.id
+        (tag) => tag.userId === currentUser.value?.id
       );
       track.tags = track.tags.filter((tag) => tag !== thisUserTag);
       if (thisUserTag && thisUserTag.what === tag) {
@@ -127,7 +143,9 @@ const addOrRemoveUserTag = async ({
         );
         if (removeTagResponse.success) {
           const completelyRemoved = !track.tags.some(
-            (tag) => tag.what === thisUserTag.what
+            (tag) =>
+              displayLabelForClassificationLabel(tag.what, tag.automatic) ===
+              displayLabelForClassificationLabel(thisUserTag.what)
           );
           if (completelyRemoved) {
             emit("track-tag-changed", { track, tag, action: "remove" });
@@ -138,15 +156,20 @@ const addOrRemoveUserTag = async ({
         }
       } else {
         const tagAlreadyExists = track.tags.some(
-          (existingTag) => existingTag.what === tag
+          (existingTag) =>
+            displayLabelForClassificationLabel(
+              existingTag.what,
+              existingTag.automatic
+            ) === displayLabelForClassificationLabel(tag)
         );
         // We are adding or replacing the current tag.
         const interimTag: ApiHumanTrackTagResponse = {
           trackId,
           id: -1,
           what: tag,
-          userId: CurrentUser.value?.id,
-          userName: CurrentUser.value?.userName,
+          path: getPathForLabel(tag),
+          userId: currentUser.value?.id,
+          userName: currentUser.value?.userName,
           automatic: false,
           confidence: 0.85,
         };
@@ -170,6 +193,7 @@ const addOrRemoveUserTag = async ({
         }
       }
     }
+    cloneLocalTracks(recording.tracks);
     updatingTags.value = false;
   }
 };
@@ -181,7 +205,7 @@ const removeTag = async ({
   trackTagId: TrackTagId;
   trackId: TrackId;
 }) => {
-  if (recording && CurrentUser.value && !updatingTags.value) {
+  if (recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal
     const track = recordingTracksLocal.value.find(

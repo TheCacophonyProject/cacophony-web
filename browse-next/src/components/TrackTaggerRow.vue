@@ -7,21 +7,22 @@ import type {
   Classification,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
-import {
-  currentSelectedGroup,
-  CurrentUser,
-  persistUserGroupSettings,
-} from "@models/LoggedInUser";
-import type { SelectedGroup } from "@models/LoggedInUser";
+import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import type { Ref } from "vue";
+import { persistUserGroupSettings } from "@models/LoggedInUser";
+import type { SelectedProject, LoggedInUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   classifications,
   flatClassifications,
+  getClassificationForLabel,
   getClassifications,
 } from "@api/Classifications";
-import type { CardTableRows, CardTableItem } from "@/components/CardTableTypes";
+import type {
+  CardTableRows,
+  GenericCardTableValue,
+} from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
@@ -29,6 +30,11 @@ import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
 import TagImage from "@/components/TagImage.vue";
+import {
+  currentSelectedProject as currentProject,
+  currentUser,
+} from "@models/provides";
+import type { LoadedResource } from "@api/types";
 const { track, index, color, selected } = defineProps<{
   track: ApiTrackResponse;
   index: number;
@@ -55,15 +61,18 @@ const showTaggerDetails = ref<boolean>(false);
 const tagSelect = ref<typeof HierarchicalTagSelect>();
 const trackDetails = ref<HTMLDivElement>();
 
+const currentSelectedProject = inject(currentProject) as Ref<SelectedProject>;
+const CurrentUser = inject(currentUser) as Ref<LoadedResource<LoggedInUser>>;
+
 const userIsGroupAdmin = computed<boolean>(() => {
   return (
-    (currentSelectedGroup.value &&
-      (currentSelectedGroup.value as SelectedGroup).admin) ||
+    (currentSelectedProject.value &&
+      (currentSelectedProject.value as SelectedProject).admin) ||
     false
   );
 });
 
-const taggerDetails = computed<CardTableRows<ApiTrackTagResponse | string>>(
+const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
   () => {
     const tags: ApiTrackTagResponse[] = [...humanTags.value];
     if (masterTag.value) {
@@ -75,9 +84,11 @@ const taggerDetails = computed<CardTableRows<ApiTrackTagResponse | string>>(
     return tags.map((tag: ApiTrackTagResponse) => {
       const item: Record<
         string,
-        CardTableItem<ApiTrackTagResponse | string> | string
+        GenericCardTableValue<string | ApiTrackTagResponse> | string
       > = {
-        tag: capitalize(displayLabelForClassificationLabel(tag.what)),
+        tag: capitalize(
+          displayLabelForClassificationLabel(tag.what, tag.automatic)
+        ),
         tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(
           " ",
           "&nbsp;"
@@ -95,7 +106,7 @@ const taggerDetails = computed<CardTableRows<ApiTrackTagResponse | string>>(
 );
 
 const route = useRoute();
-
+const mounting = ref<boolean>(true);
 const expanded = computed<boolean>(() => {
   return (
     Number(route.params.trackId) === track.id &&
@@ -107,14 +118,17 @@ const expanded = computed<boolean>(() => {
 const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
-      trackDetails.value.style.height = `${trackDetails.value.scrollHeight}px`;
+      (trackDetails.value as HTMLDivElement).style.height = `${
+        (trackDetails.value as HTMLDivElement).scrollHeight
+      }px`;
     }
   } else {
     if (trackDetails.value) {
-      trackDetails.value.style.height = "0";
+      (trackDetails.value as HTMLDivElement).style.height = "0";
     }
   }
   expandedInternal.value = isExpanding;
+  setTimeout(() => (mounting.value = false), 200);
 };
 
 watch(expanded, handleExpansion);
@@ -152,13 +166,18 @@ const uniqueUserTags = computed<string[]>(() => {
     track.tags
       .filter((tag) => !tag.automatic)
       .reduce((acc: Record<string, boolean>, item: ApiTrackTagResponse) => {
-        acc[item.what] = true;
+        const mappedWhat =
+          getClassificationForLabel(item.what)?.label || item.what;
+        acc[mappedWhat] = true;
         return acc;
       }, {})
   );
 });
 
 const consensusUserTag = computed<string | null>(() => {
+  if (uniqueUserTags.value.length !== 1) {
+    return null;
+  }
   return (
     displayLabelForClassificationLabel(uniqueUserTags.value[0] || "") || null
   );
@@ -170,25 +189,66 @@ const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
       tag.automatic && tag.data && (tag.data as TrackTagData).name === "Master"
   );
   if (tag) {
-    return tag as ApiAutomaticTrackTagResponse;
+    const mappedWhat = getClassificationForLabel(tag.what);
+    return {
+      ...tag,
+      what: mappedWhat.label,
+    } as ApiAutomaticTrackTagResponse;
   }
   return null;
 });
 
-const humanTags = computed<ApiHumanTrackTagResponse[]>(() => {
-  return track.tags.filter(
-    (tag) => !tag.automatic
-  ) as ApiHumanTrackTagResponse[];
+const hasAiTag = computed<boolean>(() => {
+  return masterTag.value !== null;
 });
 
-const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(() =>
-  humanTags.value.find((tag) => tag.userId === CurrentUser.value?.id)
+const humanTags = computed<ApiHumanTrackTagResponse[]>(() => {
+  return track.tags
+    .filter((tag) => !tag.automatic)
+    .map((tag) => ({
+      ...tag,
+      what: getClassificationForLabel(tag.what)?.label || tag.what,
+    })) as ApiHumanTrackTagResponse[];
+});
+
+const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(
+  () =>
+    (CurrentUser.value &&
+      humanTags.value.find(
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+      )) ||
+    undefined
 );
 
-const otherUserTags = computed<string[]>(() =>
-  humanTags.value
-    .filter((tag) => tag.userId !== CurrentUser.value?.id)
-    .map(({ what }) => what)
+const selectedUserTagLabel = computed<string[]>({
+  get: () => {
+    const label =
+      CurrentUser.value &&
+      humanTags.value.find(
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+      );
+    if (label) {
+      return [label.what];
+    }
+    return [];
+  },
+  set: (val: string[]) => {
+    if (val.length) {
+      emit("add-or-remove-user-tag", {
+        trackId: track.id,
+        tag: val[0],
+      });
+    }
+  },
+});
+
+const otherUserTags = computed<string[]>(
+  () =>
+    (CurrentUser.value &&
+      humanTags.value
+        .filter((tag) => tag.userId !== (CurrentUser.value as LoggedInUser).id)
+        .map(({ what }) => what)) ||
+    []
 );
 
 const thisUsersTagAgreesWithAiClassification = computed<boolean>(
@@ -198,8 +258,8 @@ const thisUsersTagAgreesWithAiClassification = computed<boolean>(
 // Default tags is computed from a default list, with overrides coming from the group admin level, and the user group level.
 const defaultTags = computed<string[]>(() => {
   const tags = [];
-  if (currentSelectedGroup.value) {
-    const groupSettings = currentSelectedGroup.value.settings;
+  if (currentSelectedProject.value) {
+    const groupSettings = currentSelectedProject.value.settings;
     if (groupSettings && groupSettings.tags) {
       tags.push(...groupSettings.tags);
     } else {
@@ -213,8 +273,8 @@ const defaultTags = computed<string[]>(() => {
 // These are "pinned" tags.
 const userDefinedTags = computed<Record<string, boolean>>(() => {
   const tags: Record<string, boolean> = {};
-  if (currentSelectedGroup.value) {
-    const userSettings = currentSelectedGroup.value.userSettings;
+  if (currentSelectedProject.value) {
+    const userSettings = currentSelectedProject.value.userSettings;
     if (userSettings && userSettings.tags) {
       // These are any user-defined "pinned" tags for this group.
       for (const tag of userSettings.tags) {
@@ -233,9 +293,16 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
   const tags: Record<string, { label: string; display: string }> = {};
-  const allTags = [...defaultTags.value, ...userDefinedTagLabels.value];
-  if (thisUserTag.value && !allTags.includes(thisUserTag.value.what)) {
-    allTags.push(thisUserTag.value.what);
+  const allTags = [
+    ...defaultTags.value,
+    ...userDefinedTagLabels.value,
+    ...Object.values(uniqueUserTags.value),
+  ];
+  if (
+    thisUserTag.value &&
+    !allTags.includes((thisUserTag.value as ApiHumanTrackTagResponse).what)
+  ) {
+    allTags.push((thisUserTag.value as ApiHumanTrackTagResponse).what);
   }
   for (const tag of allTags.map(
     (tag) =>
@@ -253,11 +320,15 @@ const toggleTag = (tag: string) => {
   if (tag === "more-classifications") {
     showClassificationSearch.value = !showClassificationSearch.value;
   } else {
-    if (thisUserTag.value && tag === thisUserTag.value.what) {
+    if (
+      thisUserTag.value &&
+      tag === (thisUserTag.value as ApiHumanTrackTagResponse).what
+    ) {
       showClassificationSearch.value = false;
     } else if (
       !thisUserTag.value ||
-      (thisUserTag.value && thisUserTag.value.what !== tag)
+      (thisUserTag.value &&
+        (thisUserTag.value as ApiHumanTrackTagResponse).what !== tag)
     ) {
       showClassificationSearch.value = !defaultTags.value.includes(tag);
     }
@@ -272,7 +343,7 @@ const confirmAiSuggestedTag = () => {
   if (masterTag.value) {
     emit("add-or-remove-user-tag", {
       trackId: track.id,
-      tag: masterTag.value.what,
+      tag: (masterTag.value as ApiAutomaticTrackTagResponse).what,
     });
   }
 };
@@ -283,8 +354,8 @@ const rejectAiSuggestedTag = () => {
 };
 
 const pinCustomTag = async (classification: Classification) => {
-  if (currentSelectedGroup.value) {
-    const userGroupSettings: ApiGroupUserSettings = currentSelectedGroup.value
+  if (currentSelectedProject.value) {
+    const userGroupSettings: ApiGroupUserSettings = currentSelectedProject.value
       .userSettings || {
       displayMode: "visits",
       tags: [],
@@ -306,22 +377,13 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
   if (!thisUserTag.value) {
     return false;
   }
-  return !defaultTags.value.includes(thisUserTag.value.what);
+  return !defaultTags.value.includes(
+    (thisUserTag.value as ApiHumanTrackTagResponse).what
+  );
 });
-
-const setCustomTag = async (classification: Classification | null) => {
-  if (classification) {
-    // Add the tag, remove the current one.
-    emit("add-or-remove-user-tag", {
-      trackId: track.id,
-      tag: classification.label,
-    });
-  }
-};
-
 const addCustomTag = () => {
   showClassificationSearch.value = true;
-  tagSelect.value && tagSelect.value.open();
+  tagSelect.value && (tagSelect.value as HierarchicalTagSelect).open();
 };
 
 onMounted(async () => {
@@ -387,7 +449,9 @@ onMounted(async () => {
             !uniqueUserTags.includes(masterTag.what)
           "
           >{{
-            uniqueUserTags.map(displayLabelForClassificationLabel).join(", ")
+            uniqueUserTags
+              .map((tag) => displayLabelForClassificationLabel(tag))
+              .join(", ")
           }}
           <span class="strikethrough">{{ masterTag?.what }}</span></span
         >
@@ -395,12 +459,24 @@ onMounted(async () => {
           class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
           v-else-if="!consensusUserTag && masterTag"
           >{{
-            uniqueUserTags.map(displayLabelForClassificationLabel).join(", ")
+            uniqueUserTags
+              .map((tag) => displayLabelForClassificationLabel(tag))
+              .join(", ")
+          }}</span
+        >
+        <!-- No AI tag, maybe this is a dummy track for a trailcam image? -->
+        <span
+          class="classification text-capitalize d-inline-block fw-bold"
+          v-else-if="consensusUserTag && !hasAiTag"
+          >{{
+            uniqueUserTags
+              .map((tag) => displayLabelForClassificationLabel(tag))
+              .join(", ")
           }}</span
         >
       </span>
     </div>
-    <div v-if="!hasUserTag && !expanded">
+    <div v-if="!hasUserTag && hasAiTag && !expanded">
       <button
         type="button"
         class="btn fs-7 confirm-button"
@@ -440,7 +516,7 @@ onMounted(async () => {
     </div>
   </div>
   <div
-    :class="[{ expanded }]"
+    :class="[{ expanded, mounting }]"
     class="track-details px-2 pe-2"
     ref="trackDetails"
   >
@@ -485,12 +561,11 @@ onMounted(async () => {
       <hierarchical-tag-select
         v-if="currentlySelectedTagCanBePinned || showClassificationSearch"
         class="flex-grow-1"
-        @change="setCustomTag"
         @pin="pinCustomTag"
         @options-change="resizeDetails"
         @deselected="showClassificationSearch = false"
         ref="tagSelect"
-        :selected-item="thisUserTag && thisUserTag.what"
+        v-model="selectedUserTagLabel"
         :can-be-pinned="currentlySelectedTagCanBePinned"
         :pinned-items="userDefinedTagLabels"
       />
@@ -509,13 +584,13 @@ onMounted(async () => {
         />
       </button>
       <card-table
-        v-if="showTaggerDetails"
+        v-if="showTaggerDetails && taggerDetails.length !== 0"
         :items="taggerDetails"
         class="mb-2"
         compact
         :max-card-width="0"
       >
-        <template #_deleteAction="{ cell }">
+        <template #_deleteAction="{ cell }: { cell: Ref<ApiTrackTagResponse> }">
           <button
             v-if="userIsGroupAdmin && !cell.value.automatic"
             class="btn text-secondary"
@@ -532,6 +607,12 @@ onMounted(async () => {
           <span v-else></span>
         </template>
       </card-table>
+      <div
+        v-else-if="showTaggerDetails && taggerDetails.length === 0"
+        class="fs-7 mb-2"
+      >
+        No tags have been added yet.
+      </div>
     </div>
   </div>
 </template>
@@ -547,7 +628,9 @@ onMounted(async () => {
 
 .track-details {
   background: white;
-  transition: height 0.2s ease-in-out;
+  &:not(.mounting) {
+    transition: height 0.2s ease-in-out;
+  }
   height: 0;
   overflow: hidden;
 }

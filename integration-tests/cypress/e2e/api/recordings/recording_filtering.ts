@@ -38,6 +38,9 @@ delete trackApiTrackTemplate.frame_end;
 delete trackApiTrackTemplate.predictions;
 
 describe("Recording filtering", () => {
+  const superuser = getCreds("superuser")["email"];
+  const suPassword = getCreds("superuser")["password"];
+
   const algorithm1 = {
     model_name: "Master",
   };
@@ -59,6 +62,7 @@ describe("Recording filtering", () => {
     automatic: false,
     trackId: NOT_NULL,
     what: "cat",
+    path: "all",
     userName: NOT_NULL_STRING,
     userId: NOT_NULL,
   };
@@ -70,11 +74,14 @@ describe("Recording filtering", () => {
     automatic: true,
     trackId: NOT_NULL,
     what: "cat",
+    path: "all",
   };
 
   before(() => {
     //Create group1 with 1 devices, admin
     cy.testCreateUserGroupAndDevice("rfGroupAdmin", "rfGroup", "rfCamera1");
+    //Sign is as superuser so we have their JWT
+    cy.apiSignInAs(null, superuser, suPassword);
   });
 
   //Upload
@@ -238,11 +245,12 @@ describe("Recording filtering", () => {
       let expectedRecording5b: ApiThermalRecordingResponse;
       cy.apiRecordingAdd("rfCamera1", recording5b, undefined, "rfRecording5b");
 
-      cy.processingApiAlgorithmPost({
+      cy.processingApiAlgorithmPost(superuser, {
         "tracking-format": 42,
         model_name: "Master",
       }).then((algorithmId) => {
         cy.processingApiTracksPost(
+          superuser,
           "rfTrack5b.1",
           "rfRecording5b",
           track5b,
@@ -430,6 +438,7 @@ describe("Recording filtering", () => {
         );
 
         cy.processingApiTracksTagsPost(
+          superuser,
           "rfTrack8.1",
           "rfRecording8",
           "false-positive",
@@ -492,6 +501,7 @@ describe("Recording filtering", () => {
         );
 
         cy.processingApiTracksTagsPost(
+          superuser,
           "rfTrack9.1",
           "rfRecording9",
           "possum",
@@ -546,6 +556,7 @@ describe("Recording filtering", () => {
         algorithm1
       );
       cy.processingApiTracksTagsPost(
+        superuser,
         "rfTrack10.1",
         "rfRecording10",
         "possum",
@@ -578,6 +589,7 @@ describe("Recording filtering", () => {
 
         cy.log("Reprocess adds new master tag of false-positive");
         cy.processingApiTracksTagsPost(
+          superuser,
           "rfTrack10.1",
           "rfRecording10",
           "false-positive",
@@ -630,6 +642,7 @@ describe("Recording filtering", () => {
         algorithm1
       );
       cy.processingApiTracksTagsPost(
+        superuser,
         "rfTrack11.1",
         "rfRecording11",
         "false-positive",
@@ -662,6 +675,7 @@ describe("Recording filtering", () => {
 
         cy.log("Reprocess adds new master tag of possum");
         cy.processingApiTracksTagsPost(
+          superuser,
           "rfTrack11.1",
           "rfRecording11",
           "possum",
@@ -886,6 +900,7 @@ describe("Recording filtering", () => {
         algorithm1
       );
       cy.processingApiTracksTagsPost(
+        superuser,
         "rfTrack20.1",
         "rfRecording20",
         "false-positive",
@@ -973,6 +988,7 @@ describe("Recording filtering", () => {
         algorithm1
       );
       cy.processingApiTracksTagsPost(
+        superuser,
         "rfTrack21.1",
         "rfRecording21",
         "possum",

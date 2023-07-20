@@ -58,12 +58,86 @@ function getDevice(
   );
 }
 
+function getDeviceCacophonyIndex(
+  id: DeviceId,
+  from: String,
+  windowsize: Number,
+  activeAndInactive = false
+): Promise<FetchResult<{ cacophonyIndex: Number }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/cacophony-index?from=${from}&window-size=${windowsize}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getDeviceCacophonyIndexBulk(
+  id: DeviceId,
+  from: String,
+  steps: Number,
+  interval: String,
+  activeAndInactive = false
+): Promise<FetchResult<{ cacophonyIndexBulk: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/cacophony-index-bulk?from=${from}&steps=${steps}&interval=${interval}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getDeviceSpeciesCount(
+  id: DeviceId,
+  from: String,
+  windowsize: Number,
+  activeAndInactive = false,
+  recordingType = "audio"
+): Promise<FetchResult<{ speciesCount: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/species-count?from=${from}&window-size=${windowsize}&type=${recordingType}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getDeviceSpeciesCountBulk(
+  id: DeviceId,
+  from: String,
+  steps: Number,
+  interval: String,
+  activeAndInactive = false,
+  recordingType = "audio"
+): Promise<FetchResult<{ speciesCount: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}&type=${recordingType}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getDeviceDaysActive(
+  id: DeviceId,
+  from: String,
+  windowsize: Number
+): Promise<FetchResult<{ daysActive: Number }>> {
+  return CacophonyApi.get(
+    `/api/v1/devices/${id}/days-active?from=${from}&window-size=${windowsize}`
+  );
+}
+
 function getDeviceById(
   id: DeviceId,
   activeAndInactive = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/device/${id}${
+    `/api/v1/devices/${id}${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
@@ -78,13 +152,12 @@ const assignScheduleToDevice = (
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
-    `/api/v1/devices/assign-schedule${
+    `/api/v1/devices/${deviceId}/assign-schedule${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`,
     {
-      deviceId,
       scheduleId,
     },
     suppressGlobalMessaging
@@ -98,13 +171,12 @@ const removeScheduleFromDevice = (
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
-    `/api/v1/devices/remove-schedule${
+    `/api/v1/devices/${deviceId}/remove-schedule${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
     }`,
     {
-      deviceId,
       scheduleId,
     },
     suppressGlobalMessaging
@@ -192,4 +264,9 @@ export default {
   getType,
   assignScheduleToDevice,
   removeScheduleFromDevice,
+  getDeviceCacophonyIndex,
+  getDeviceCacophonyIndexBulk,
+  getDeviceSpeciesCount,
+  getDeviceSpeciesCountBulk,
+  getDeviceDaysActive,
 };

@@ -61,7 +61,11 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation1.lastThermalRecordingTime = recordingTime.toISOString();
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.log("Add a recording and check new station is created");
-      cy.testUploadRecording(deviceName, { ...location, time: recordingTime })
+      cy.testUploadRecording(deviceName, {
+        ...location,
+        time: recordingTime,
+        noTracks: true,
+      })
         .thenCheckStationIsNew(Josie)
         .then((station: TestNameAndId) => {
           cy.log("Check station created correctly");
@@ -106,7 +110,11 @@ describe("Stations: assign recordings to stations", () => {
     cy.apiDeviceAdd(deviceName, group);
 
     cy.log("Add a recording and check new station created");
-    cy.testUploadRecording(deviceName, { ...location, time: oneDayLater })
+    cy.testUploadRecording(deviceName, {
+      ...location,
+      time: oneDayLater,
+      noTracks: true,
+    })
       .thenCheckStationIsNew(Josie)
       .then((station: TestNameAndId) => {
         cy.log(
@@ -238,6 +246,7 @@ describe("Stations: assign recordings to stations", () => {
           cy.testUploadRecording(deviceName, {
             ...nearbyLocation,
             time: twoDaysTime,
+            noTracks: true,
           })
             .thenCheckStationNameIs(Josie, station.name)
             .then(() => {
@@ -304,7 +313,11 @@ describe("Stations: assign recordings to stations", () => {
       cy.log(
         "Add a matching recording, dated day 3 and check assigned to existing station"
       );
-      cy.testUploadRecording(deviceName, { ...location, time: threeDaysTime })
+      cy.testUploadRecording(deviceName, {
+        ...location,
+        time: threeDaysTime,
+        noTracks: true,
+      })
         .thenCheckStationIdIs(Josie, stationId)
         .then((station: TestNameAndId) => {
           cy.log(
@@ -337,7 +350,11 @@ describe("Stations: assign recordings to stations", () => {
           cy.log(
             "Upload an earlier recording dated day 2 and check assigned to existing station"
           );
-          cy.testUploadRecording(deviceName, { ...location, time: twoDaysTime })
+          cy.testUploadRecording(deviceName, {
+            ...location,
+            time: twoDaysTime,
+            noTracks: true,
+          })
             .thenCheckStationNameIs(Josie, station.name)
             .then(() => {
               cy.log(
@@ -374,11 +391,14 @@ describe("Stations: assign recordings to stations", () => {
     cy.apiDeviceAdd(device1Name, group);
     cy.apiDeviceAdd(device2Name, group2);
 
-    cy.testUploadRecording(device1Name, location)
+    cy.testUploadRecording(device1Name, { ...location, noTracks: true })
       .thenCheckStationIsNew(Josie)
       .then((station1: any) => {
         cy.log("Upload another recording and check assigned to same station");
-        cy.testUploadRecording(device2Name, nearbyLocation)
+        cy.testUploadRecording(device2Name, {
+          ...nearbyLocation,
+          noTracks: true,
+        })
           .thenCheckStationIsNew(Josie)
           .then((station2: any) => {
             cy.log("Check stations were different");
@@ -402,7 +422,11 @@ describe("Stations: assign recordings to stations", () => {
     expectedStation1.location = nearbyLocation;
     expectedStation1.activeAt = twoDaysTime.toISOString();
     cy.apiDeviceAdd(deviceName, group);
-    cy.testUploadRecording(deviceName, { ...nearbyLocation, time: twoDaysTime })
+    cy.testUploadRecording(deviceName, {
+      ...nearbyLocation,
+      time: twoDaysTime,
+      noTracks: true,
+    })
       .thenCheckStationIsNew(Josie)
       .then((station: TestNameAndId) => {
         cy.log("Check startDate is same as recording (day 2)");
@@ -431,6 +455,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.testUploadRecording(deviceName, {
           ...nearbyLocation,
           time: oneDaysTime,
+          noTracks: true,
         })
           .thenCheckStationIdIs(Josie, station.id)
           .then(() => {
@@ -478,6 +503,7 @@ describe("Stations: assign recordings to stations", () => {
     cy.testUploadRecording(deviceName, {
       ...location1Nearby,
       time: twoDaysTime,
+      noTracks: true,
     })
       .thenCheckStationNameIs(Josie, getTestName(station1Name))
       .then(() => {
@@ -506,6 +532,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.testUploadRecording(deviceName, {
           ...location2,
           time: threeDaysTime,
+          noTracks: true,
         })
           .thenCheckStationIsNew(Josie)
           .then((station2: TestNameAndId) => {
@@ -553,6 +580,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.testUploadRecording(deviceName, {
           ...location1Nearby,
           time: twoDaysTime,
+          noTracks: true,
         })
           .thenCheckStationNameIs(Josie, getTestName(station1Name))
           .then(() => {
@@ -560,6 +588,7 @@ describe("Stations: assign recordings to stations", () => {
             cy.testUploadRecording(deviceName, {
               ...location2,
               time: threeDaysTime,
+              noTracks: true,
             })
               .thenCheckStationNameIs(Josie, getTestName(station2Name))
               .then(() => {
@@ -613,6 +642,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.testUploadRecording(deviceName, {
         ...nearbyLocation,
         time: oneMonthAgo,
+        noTracks: true,
       }).thenCheckStationIsNew(Josie);
     });
   });
@@ -645,6 +675,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: dayTwo,
+        noTracks: true,
       })
         .thenCheckStationIdIs(Josie, stationId)
         .then(() => {
@@ -688,6 +719,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: oneMonthAgo,
+        noTracks: true,
       }).thenCheckStationIdIs(Josie, stationId);
     });
   });
@@ -710,6 +742,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: oneWeekAgo,
+        noTracks: true,
       }).thenCheckStationIsNew(Josie);
     });
   });
@@ -739,6 +772,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: now,
+        noTracks: true,
       })
         .thenCheckStationIsNew(Josie)
         .then((station: TestNameAndId) => {
@@ -766,6 +800,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.testUploadRecording(deviceName, {
         ...location,
         time: now,
+        noTracks: true,
       }).thenCheckStationIsNew(Josie);
     });
   });

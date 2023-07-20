@@ -6,14 +6,15 @@ import {
   CurrentUser,
   setLoggedInUserCreds,
   setLoggedInUserData,
-  urlNormalisedCurrentGroupName,
-  userHasGroups,
+  urlNormalisedCurrentProjectName,
+  userHasProjects,
   userIsLoggedIn,
 } from "@models/LoggedInUser";
 import type { ErrorResult } from "@api/types";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
+import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
@@ -33,7 +34,9 @@ onBeforeMount(async () => {
 
   // Get the token, and sent it to the backend.
   const alreadyValidated =
-    userIsLoggedIn.value && CurrentUser.value?.emailConfirmed;
+    userIsLoggedIn.value &&
+    CurrentUser.value &&
+    (CurrentUser.value as ApiLoggedInUserResponse).emailConfirmed;
   if (params.token && !alreadyValidated) {
     checkingValidateEmailToken.value = true;
     if (Array.isArray(params.token) && params.token.length) {
@@ -75,12 +78,12 @@ onBeforeMount(async () => {
       });
 
       // NOTE: Should redirect to "setup" if user has no groups
-      if (userHasGroups.value) {
+      if (userHasProjects.value) {
         console.warn("Redirecting to dashboard");
         await router.push({
           name: "dashboard",
           params: {
-            groupName: urlNormalisedCurrentGroupName.value,
+            projectName: urlNormalisedCurrentProjectName.value,
           },
         });
       } else {
@@ -92,11 +95,11 @@ onBeforeMount(async () => {
     checkingValidateEmailToken.value = false;
   } else {
     if (userIsLoggedIn.value) {
-      if (userHasGroups.value) {
+      if (userHasProjects.value) {
         await router.push({
           name: "dashboard",
           params: {
-            groupName: urlNormalisedCurrentGroupName.value,
+            projectName: urlNormalisedCurrentProjectName.value,
           },
         });
       } else {

@@ -7,7 +7,7 @@ import {
   ScheduleId,
   StationId,
 } from "./common";
-import { DeviceType } from "./consts";
+import { DeviceType } from "./consts.js";
 import { ApiGroupUserResponse } from "./group";
 
 export type DeviceBatteryChargeState =

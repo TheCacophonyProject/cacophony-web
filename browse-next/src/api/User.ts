@@ -147,7 +147,7 @@ export const getEUAVersion = () =>
     FetchResult<{ euaVersion: number }>
   >;
 
-export const getGroupsForGroupAdminByEmail = (
+export const getProjectsForProjectAdminByEmail = (
   groupAdminEmail: string,
   abortable = false
 ) =>
@@ -172,7 +172,7 @@ export const requestToJoinGroup = (
     abortable
   ) as Promise<FetchResult<void>>;
 
-export const acceptGroupInvitation = (groupId: GroupId, abortable = false) =>
+export const acceptProjectInvitation = (groupId: GroupId, abortable = false) =>
   CacophonyApi.post(
     `/api/v1/groups/${groupId}/accept-invitation`,
     {},

@@ -16,12 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { Application } from "express";
+import type { Application } from "express";
 import fs from "fs";
 import path from "path";
 import logger from "@log";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-export default function (app: Application) {
+export default async function (app: Application) {
   const excludedFiles = [
     "index.js",
     "util.js",
@@ -39,7 +42,8 @@ export default function (app: Application) {
     .filter((file) => file.endsWith(".js") && !excludedFiles.includes(file));
   for (const route of apiRoutes) {
     try {
-      require(path.join(__dirname, route)).default(app, "/api/v1");
+      const routeModule = await import(path.join(__dirname, route));
+      routeModule.default(app, "/api/v1");
     } catch (e) {
       logger.warning(e.message);
     }

@@ -392,6 +392,7 @@ describe("Tracks: add, check, delete", () => {
     const expectedTrack = JSON.parse(JSON.stringify(TEMPLATE_EXPECTED_TRACK));
     expectedTrack.tags[0]["createdAt"] = NOT_NULL_STRING;
     expectedTrack.tags[0]["updatedAt"] = NOT_NULL_STRING;
+    expectedTrack.tags[0]["path"] = "all.mammal.cat";
     expectedTrack.tags[0]["data"] = predictionResponseFromSet(
       recording1.metadata.tracks[0].predictions,
       recording1.metadata.models

@@ -14,8 +14,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import Sequelize from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { GroupId, UserId } from "@typedefs/api/common";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { GroupId, UserId } from "@typedefs/api/common.js";
 
 export interface GroupInvites
   extends Sequelize.Model,

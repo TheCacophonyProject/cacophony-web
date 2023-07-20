@@ -141,7 +141,7 @@
               <input
                 type="range"
                 min="8000"
-                max="44100"
+                max="48000"
                 step="100"
                 v-model="newSampleRate"
               />
@@ -754,7 +754,7 @@ export default defineComponent({
     onMounted(async () => {
       const audioBuffer = props.buffer.slice(0);
       const realSampleRate = getSampleRate(audioBuffer).sampleRate;
-      defaultSampleRate.value = realSampleRate === 0 ? 44100 : realSampleRate;
+      defaultSampleRate.value = realSampleRate === 0 ? 48000 : realSampleRate;
       let sampleRate = props.sampleRate;
       if (sampleRate === null) {
         sampleRate = defaultSampleRate.value;
@@ -785,11 +785,22 @@ export default defineComponent({
         const pos =
           track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
         let { x, y, width, height } = pos;
-        // y needs to inverted due to canvas positioning
-        y = ((1 - y) * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        height = (height * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        y = 1 - y;
+        const topFreq = sampleRate / 2;
+        const scale = topFreq / 9;
 
+        // take it from linear scale to log scale
+        let minFreq = y * topFreq;
+        minFreq = minFreq / scale;
+        minFreq = Math.log10(minFreq + 1);
+        minFreq = (minFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        let maxFreq = (y + height) * topFreq;
+        maxFreq = maxFreq / scale;
+
+        maxFreq = Math.log10(maxFreq + 1);
+        maxFreq = (maxFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
+        height = maxFreq - minFreq;
+        // y needs to inverted due to canvas positioning
+        y = 1 - maxFreq;
         if (track.start && track.end) {
           const { start, end } = track;
           x = start / player.value.getDuration();
@@ -1063,17 +1074,19 @@ export default defineComponent({
         };
 
         const confirmTrack = debounce(() => {
-          const top = sampleRate / 2;
+          const topFreq = sampleRate / 2;
+          const scale = topFreq / 9;
           const flippedY = 1 - tempTrack.value.pos.y;
-          const maxFreq = Math.floor(flippedY * top);
-          const minFreq = Math.floor(
-            (flippedY - tempTrack.value.pos.height) * top
-          );
+          let minFreq = flippedY - tempTrack.value.pos.height;
+          // spectogram is in log scale so make into linear
           const pos = Object.assign({}, tempTrack.value.pos);
-          pos.y = maxFreq / (defaultSampleRate.value / 2);
-          pos.y = 1 - pos.y;
-          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
 
+          let maxFreq = Math.pow(10, flippedY) - 1;
+          minFreq = Math.pow(10, minFreq) - 1;
+          maxFreq = maxFreq * scale;
+          minFreq = minFreq * scale;
+          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
+          pos.y = minFreq / (defaultSampleRate.value / 2);
           const track: AudioTrack = {
             id: -1,
             start: tempTrack.value.pos.x * player.value.getDuration(),
