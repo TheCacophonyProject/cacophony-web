@@ -45,11 +45,13 @@ async function main() {
         } else {
           y = 1 - y;
           // flip it so origin is 0,0 and y is minFreq
-          const maxFreq = Math.pow(10, y) - 1;
-          linearY = maxFreq / topFreq;
+          let maxFreq = Math.pow(10, y) - 1;
+          maxFreq = maxFreq * scale;
           let minFreq = y - height;
           minFreq = Math.pow(10, minFreq) - 1;
           minFreq = minFreq * scale;
+
+          linearY = minFreq / topFreq;
           linearHeight = (maxFreq - minFreq) / topFreq;
         }
         pos["y"] = linearY;
