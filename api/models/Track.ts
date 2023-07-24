@@ -319,5 +319,5 @@ function isFiltered(tags): boolean {
   if (masterTag) {
     return filteredTags.some((filteredTag) => filteredTag == masterTag.what);
   }
-  return false;
+  return true;
 }
