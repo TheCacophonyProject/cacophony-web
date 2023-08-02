@@ -2,26 +2,27 @@ import { createRouter, createWebHistory } from "vue-router";
 import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
   currentEUAVersion,
-  currentSelectedGroup,
+  currentSelectedProject,
+  DevicesForCurrentProject,
   forgetUserOnCurrentDevice,
-  isFetchingGroups,
+  isFetchingProjects,
   isLoggingInAutomatically,
   isResumingSession,
   pinSideNav,
-  refreshUserGroups,
-  switchCurrentGroup,
+  refreshUserProjects,
+  switchCurrentProject,
   tryLoggingInRememberedUser,
-  urlNormalisedCurrentGroupName,
-  UserGroups,
+  urlNormalisedCurrentProjectName,
+  UserProjects,
   userHasConfirmedEmailAddress,
-  userHasGroups,
-  userIsAdminForCurrentSelectedGroup,
+  userHasProjects,
+  userIsAdminForCurrentSelectedProject,
   userIsLoggedIn,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
-import { getGroups } from "@api/Group";
+import { getDevicesForProject, getProjects } from "@api/Project";
 import { nextTick, reactive } from "vue";
-import { decodeJWT, urlNormaliseGroupName } from "@/utils";
+import { decodeJWT, urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 
 // Allows us to abort all pending fetch requests when switching between major views.
@@ -42,6 +43,47 @@ const cancelPendingRequests = (
   CurrentViewAbortController.newView();
   return next();
 };
+const recordingModalTabChildren = (grandParent: string, parent: string) => [
+  {
+    path: "labels/:trackId?/:detail?", // Labels also needs to maintain current trackId when we switch to it.
+    name: `${grandParent}-${parent}-labels`,
+    component: () => import("@/components/RecordingViewLabels.vue"),
+  },
+  {
+    path: "tracks/:trackId?/:detail?",
+    name: `${grandParent}-${parent}-tracks`,
+    component: () => import("@/components/RecordingViewTracks.vue"),
+  },
+];
+
+const recordingModalChildren = (parent: string) => [
+  {
+    // RecordingView will be rendered inside Dashboards' <router-view>
+    // when /:projectName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
+    path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
+    name: `${parent}-visit`,
+    redirect: { name: `${parent}-visit-tracks` }, // Make tracks the default tab
+    meta: {
+      title: ":visitLabel visit, #:currentRecordingId",
+      context: `${parent}-visit`,
+    },
+    component: () => import("@/views/RecordingView.vue"),
+    children: recordingModalTabChildren(parent, "visit"),
+  },
+  {
+    // RecordingView will be rendered inside Dashboards' <router-view>
+    // when /:projectName/recordings/:recordingIds is matched
+    path: "recording/:currentRecordingId/:recordingIds?",
+    meta: {
+      title: "Recording #:currentRecordingId",
+      context: `${parent}-recording`,
+    },
+    redirect: { name: `${parent}-recording-tracks` }, // Make tracks the default tab
+    name: `${parent}-recording`,
+    component: () => import("@/views/RecordingView.vue"),
+    children: recordingModalTabChildren(parent, "recording"),
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -50,7 +92,7 @@ const router = createRouter({
       path: "/setup",
       name: "setup",
       meta: {
-        title: "Group setup",
+        title: "Project setup",
         requiresLogin: true,
         nonMainView: true,
         justChangedEmailAddress: false,
@@ -71,134 +113,144 @@ const router = createRouter({
     },
     {
       path: "/accept-invite/:token",
-      name: "accept-group-invite",
+      name: "accept-project-invite",
       meta: {
-        title: "Accept group invitation",
+        title: "Accept project invitation",
         requiresLogin: true,
         nonMainView: true,
       },
-      component: () => import("@/views/AcceptGroupInvite.vue"),
+      component: () => import("@/views/AcceptProjectInvite.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/confirm-group-membership-request/:token",
-      name: "confirm-group-membership-request",
+      path: "/confirm-project-membership-request/:token",
+      name: "confirm-project-membership-request",
       meta: {
-        title: "Confirm group membership request",
+        title: "Confirm project membership request",
         requiresLogin: true,
         nonMainView: true,
       },
-      component: () => import("@/views/ConfirmAddToGroupRequest.vue"),
+      component: () => import("@/views/ConfirmAddToProjectRequest.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName",
+      path: "/:projectName",
       name: "dashboard",
-      meta: { title: ":groupName Dashboard", requiresLogin: true },
+      meta: { title: ":projectName Dashboard", requiresLogin: true },
       component: () => import("@/views/DashboardView.vue"),
+      beforeEnter: cancelPendingRequests,
+      children: recordingModalChildren("dashboard"),
+    },
+    {
+      path: "/:projectName/locations",
+      name: "locations",
+      // route level code-splitting
+      // this generates a separate chunk (About.[hash].js) for this route
+      // which is lazy-loaded when the route is visited.
+      meta: { requiresLogin: true, title: "Locations for :projectName" },
+      component: () => import("@/views/LocationsView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
+    {
+      path: "/:projectName/activity",
+      name: "activity",
+      meta: { requiresLogin: true, title: "Activity in :projectName" },
+      component: () => import("@/views/ActivitySearchView.vue"),
+      beforeEnter: cancelPendingRequests,
+      children: recordingModalChildren("activity"),
+    },
+    {
+      path: "/:projectName/devices/:all?",
+      name: "devices",
+      meta: { requiresLogin: true, title: "Devices belonging to :projectName" },
+      component: () => import("@/views/DevicesView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
         {
-          // RecordingView will be rendered inside Dashboards' <router-view>
-          // when /:groupName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
-          path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
-          name: "dashboard-visit",
-          redirect: { name: "dashboard-visit-tracks" }, // Make tracks the default tab
-          meta: { title: ":visitLabel visit, #:currentRecordingId" },
-          component: () => import("@/views/RecordingView.vue"),
+          // DeviceView will be rendered inside DevicesViews' <router-view>
+          // when /:groupName/devices/:deviceName is matched
+          path: ":deviceId/:deviceName",
+          name: "device",
+          redirect: { name: "device-diagnostics" }, // Make diagnostics the default tab
+          meta: { title: "Manage device :deviceName" },
+          component: () => import("@/views/DeviceView.vue"),
           children: [
             {
-              path: "labels/:trackId?/:detail?", // Labels also needs to maintain current trackId when we switch to it.
-              name: "dashboard-visit-labels",
-              component: () => import("@/components/RecordingViewLabels.vue"),
+              path: "diagnostics", // Labels also needs to maintain current trackId when we switch to it.
+              name: "device-diagnostics",
+              component: () => import("@/views/DeviceDiagnosticsSubView.vue"),
             },
             {
-              path: "tracks/:trackId?/:detail?",
-              name: "dashboard-visit-tracks",
-              component: () => import("@/components/RecordingViewTracks.vue"),
+              path: "setup",
+              name: "device-setup",
+              component: () => import("@/views/DeviceSetupSubView.vue"),
+            },
+            {
+              path: "schedules",
+              name: "device-schedules",
+              component: () => import("@/views/DeviceSchedulesSubView.vue"),
+            },
+            {
+              path: "manual-uploads",
+              name: "device-uploads",
+              component: () => import("@/views/DeviceUploadsSubView.vue"),
+            },
+            {
+              path: "insights",
+              name: "device-insights",
+              component: () => import("@/views/DeviceInsightsSubView.vue"),
             },
           ],
-        },
-        {
-          // RecordingView will be rendered inside Dashboards' <router-view>
-          // when /:groupName/recordings/:recordingIds is matched
-          path: "recording/:currentRecordingId/:recordingIds?",
-          meta: { title: "Recording #:currentRecordingId" },
-          name: "dashboard-recording",
-          component: () => import("@/views/RecordingView.vue"),
         },
       ],
     },
     {
-      path: "/:groupName/stations",
-      name: "stations",
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      meta: { requiresLogin: true, title: "Stations for :groupName" },
-      component: () => import("@/views/StationsView.vue"),
-      beforeEnter: cancelPendingRequests,
-    },
-    {
-      path: "/:groupName/activity",
-      name: "activity",
-      meta: { requiresLogin: true, title: "Activity in :groupName" },
-      component: () => import("@/views/ActivitySearchView.vue"),
-      beforeEnter: cancelPendingRequests,
-    },
-    {
-      path: "/:groupName/devices",
-      name: "devices",
-      meta: { requiresLogin: true, title: "Devices belonging to :groupName" },
-      component: () => import("@/views/DevicesView.vue"),
-      beforeEnter: cancelPendingRequests,
-    },
-    {
-      path: "/:groupName/report",
+      path: "/:projectName/report",
       name: "report",
-      meta: { requiresLogin: true, title: "Reporting: :groupName" },
+      meta: { requiresLogin: true, title: "Reporting: :projectName" },
       component: () => import("@/views/ReportingView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName/my-settings",
-      name: "user-group-settings",
-      meta: { requiresLogin: true, title: "My settings for :groupName" },
+      path: "/:projectName/my-settings",
+      name: "user-project-settings",
+      meta: { requiresLogin: true, title: "My settings for :projectName" },
       component: () => import("@/views/UserGroupPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:groupName/settings",
-      name: "group-settings",
+      path: "/:projectName/settings",
+      name: "project-settings",
       meta: {
         requiresLogin: true,
         requiresGroupAdmin: true,
-        title: "Settings for :groupName",
+        title: "Settings for :projectName",
       },
-      redirect: { name: "group-users" },
-      component: () => import("@/views/ManageGroupView.vue"),
+      redirect: { name: "project-users" },
+      component: () => import("@/views/ManageProjectView.vue"),
       beforeEnter: cancelPendingRequests,
       children: [
         {
           // ManageGroupUsersSubView will be rendered inside ManageGroupViews's <router-view>
           // when /:groupName/settings/users is matched
-          name: "group-users",
+          name: "project-users",
           path: "users",
-          meta: { title: "Users for :groupName" },
-          component: () => import("@/views/ManageGroupUsersSubView.vue"),
+          meta: { title: "Users for :projectName" },
+          component: () => import("@/views/ManageProjectUsersSubView.vue"),
         },
         {
-          name: "group-tag-settings",
+          name: "project-tag-settings",
           path: "tag-settings",
-          meta: { title: "Tag preferences for :groupName" },
-          component: () => import("@/views/ManageGroupTagSettingsSubView.vue"),
+          meta: { title: "Tag preferences for :projectName" },
+          component: () =>
+            import("@/views/ManageProjectTagSettingsSubView.vue"),
         },
         {
-          name: "fix-station-locations",
-          path: "fix-station-locations",
-          meta: { title: "Fixup station locations for :groupName" },
+          name: "fix-project-locations",
+          path: "fix-project-locations",
+          meta: { title: "Fixup locations for :projectName" },
           component: () =>
-            import("@/views/ManageGroupFixStationLocationsSubView.vue"),
+            import("@/views/ManageProjectFixLocationsSubView.vue"),
         },
       ],
     },
@@ -389,13 +441,13 @@ router.beforeEach(async (to, from, next) => {
     //  in the background without blocking.
     if (
       userIsLoggedIn.value &&
-      !currentSelectedGroup.value &&
-      !isFetchingGroups.value
+      !currentSelectedProject.value &&
+      !isFetchingProjects.value
     ) {
-      const groupsResponse = await refreshUserGroups();
-      if (groupsResponse.status === 401) {
+      const projectsResponse = await refreshUserProjects();
+      if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-      } else if (UserGroups.value?.length === 0) {
+      } else if (UserProjects.value && UserProjects.value?.length === 0) {
         if (to.query.nextUrl) {
           return next({ path: to.query.nextUrl as string });
         } else if (jwtToken) {
@@ -426,14 +478,14 @@ router.beforeEach(async (to, from, next) => {
         (to.name !== "setup" &&
           to.name !== "confirm-email" &&
           !userHasConfirmedEmailAddress.value) ||
-        !userHasGroups.value
+        !userHasProjects.value
       ) {
         return next({ name: "setup" });
       } else {
         return next({
           name: "dashboard",
           params: {
-            groupName: urlNormalisedCurrentGroupName.value,
+            projectName: urlNormalisedCurrentProjectName.value,
           },
         });
       }
@@ -451,28 +503,28 @@ router.beforeEach(async (to, from, next) => {
       return next({ name: "setup" });
     }
     // Check to see if we match the first part of the path to any of our group names:
-    let potentialGroupName = to.path
+    let potentialProjectName = to.path
       .split("/")
       .filter((item) => item !== "")
       .shift();
-    if (userIsLoggedIn.value && !UserGroups.value) {
+    if (userIsLoggedIn.value && !UserProjects.value) {
       // Grab the users' groups, and select the first one.
-      isFetchingGroups.value = true;
+      isFetchingProjects.value = true;
       // console.warn("Fetching user groups");
       const NO_ABORT = false;
-      const groupsResponse = await getGroups(NO_ABORT);
-      if (groupsResponse.success) {
-        UserGroups.value = reactive(groupsResponse.result.groups);
+      const projectsResponse = await getProjects(NO_ABORT);
+      if (projectsResponse.success) {
+        UserProjects.value = reactive(projectsResponse.result.groups);
         // console.warn(
         //   "Fetched user groups",
         //   currentSelectedGroup.value,
         //   JSON.stringify(UserGroups.value)
         // );
       }
-      isFetchingGroups.value = false;
-      if (groupsResponse.status === 401) {
+      isFetchingProjects.value = false;
+      if (projectsResponse.status === 401) {
         return next({ name: "sign-out" });
-      } else if (UserGroups.value?.length === 0) {
+      } else if (UserProjects.value && UserProjects.value?.length === 0) {
         if (to.name !== "setup" && to.name !== "confirm-email") {
           return next({ name: "setup" });
         } else {
@@ -480,26 +532,58 @@ router.beforeEach(async (to, from, next) => {
         }
       }
     }
-    if (potentialGroupName) {
-      potentialGroupName = urlNormaliseGroupName(potentialGroupName);
-      const matchedGroup = (UserGroups.value as ApiGroupResponse[]).find(
-        ({ groupName }) =>
-          urlNormaliseGroupName(groupName) === potentialGroupName
+    if (potentialProjectName) {
+      potentialProjectName = urlNormaliseName(potentialProjectName);
+      const matchedProject = (
+        (UserProjects.value as ApiGroupResponse[]) || []
+      ).find(
+        ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName
       );
       // console.warn("Found match", matchedGroup);
-      if (matchedGroup) {
+      /*
+      if (currentSelectedGroup.value) {
+          getDevicesForGroup(
+              currentSelectedGroup.value.id
+          ).then((devicesResponse) => {
+            if (devicesResponse.success) {
+              console.log("Setting devices");
+              DevicesForCurrentGroup.value = devicesResponse.result.devices;
+            }
+          });
+        } else {
+          DevicesForCurrentGroup.value = null;
+        }
+       */
+
+      if (matchedProject) {
         // Don't persist the admin property in user settings, since that could change
-        switchCurrentGroup({
-          groupName: matchedGroup.groupName,
-          id: matchedGroup.id,
+        const switchedProject = switchCurrentProject({
+          groupName: matchedProject.groupName,
+          id: matchedProject.id,
         });
+
+        if (currentSelectedProject.value) {
+          // Get the devices for the current group.
+          if (!DevicesForCurrentProject.value || switchedProject) {
+            const devices = await getDevicesForProject(
+              currentSelectedProject.value.id,
+              false,
+              true
+            );
+            if (devices) {
+              DevicesForCurrentProject.value = devices;
+            }
+          }
+        } else {
+          DevicesForCurrentProject.value = null;
+        }
       } else {
         if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
           // Group in url not found, redirect to our last selected group.
           return next({
             name: "dashboard",
             params: {
-              groupName: urlNormalisedCurrentGroupName.value,
+              projectName: urlNormalisedCurrentProjectName.value,
             },
           });
         }
@@ -507,12 +591,15 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  if (to.meta.requiresGroupAdmin && !userIsAdminForCurrentSelectedGroup.value) {
+  if (
+    to.meta.requiresGroupAdmin &&
+    !userIsAdminForCurrentSelectedProject.value
+  ) {
     console.error("Trying to access admin only route");
     return next({
       name: "dashboard",
       params: {
-        groupName: urlNormalisedCurrentGroupName.value,
+        projectName: urlNormalisedCurrentProjectName.value,
       },
     });
   }
@@ -520,13 +607,13 @@ router.beforeEach(async (to, from, next) => {
   if (
     to.name === "setup" &&
     userIsLoggedIn.value &&
-    userHasGroups.value &&
+    userHasProjects.value &&
     userHasConfirmedEmailAddress.value
   ) {
     return next({
       name: "dashboard",
       params: {
-        groupName: urlNormalisedCurrentGroupName.value,
+        projectName: urlNormalisedCurrentProjectName.value,
       },
     });
   }
@@ -553,7 +640,7 @@ router.beforeEach(async (to, from, next) => {
     });
   } else {
     pinSideNav.value = false;
-    console.warn("Navigating to ", to.fullPath, to.name);
+    console.warn(`Navigating to '${String(to.name)}'`, to.fullPath);
     return next();
   }
 });

@@ -16,45 +16,30 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import AWS from "aws-sdk";
-import log from "@log";
-import fs from "fs";
+import type {
+  HeadBucketCommandInput,
+  ListObjectsCommandInput,
+  PutObjectCommandInput,
+  S3ClientConfig,
+} from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  HeadBucketCommand,
+  PutObjectCommand,
+  HeadObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  ListObjectsCommand,
+} from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import mime from "mime";
 import config from "@config";
-import { LatLng } from "@typedefs/api/common";
-import validation from "@models/util/validation";
+import type { LatLng } from "@typedefs/api/common.js";
 import { DataTypes } from "sequelize";
-
-const EPSILON = 0.000000000001;
-
-export const canonicalLatLng = (
-  location: LatLng | { coordinates: [number, number] } | [number, number]
-): LatLng => {
-  if (Array.isArray(location)) {
-    return { lat: location[0], lng: location[1] };
-  } else if (location.hasOwnProperty("coordinates")) {
-    // Lat lng is stored in the database as lng/lat (X,Y).
-    // If we get lat/lng in this format we are getting it from the DB.
-    return {
-      lat: (location as { coordinates: [number, number] }).coordinates[1],
-      lng: (location as { coordinates: [number, number] }).coordinates[0],
-    };
-  }
-  return location as LatLng;
-};
-
-export const locationsAreEqual = (
-  a: LatLng | { coordinates: [number, number] },
-  b: LatLng | { coordinates: [number, number] }
-): boolean => {
-  const canonicalA = canonicalLatLng(a);
-  const canonicalB = canonicalLatLng(b);
-  // NOTE: We need to compare these numbers with an epsilon value, otherwise we get floating-point precision issues.
-  return (
-    Math.abs(canonicalA.lat - canonicalB.lat) < EPSILON &&
-    Math.abs(canonicalA.lng - canonicalB.lng) < EPSILON
-  );
-};
+import { canonicalLatLng } from "@models/util/locationUtils.js";
+import { isLatLon } from "@models/util/validation.js";
+import type { Readable } from "stream";
+import type { ReadableStream } from "stream/web";
 
 export function getFileName(model) {
   let fileName;
@@ -105,7 +90,7 @@ export function openS3() {
     Key?: string;
     Bucket?: string;
     Prefix?: string;
-  }): AWS.S3 => {
+  }): { client: S3Client; bucket: string } => {
     if (!params.Key && !params.Bucket && !params.Prefix) {
       throw new Error("s3 params must contain a 'Key' or a 'Bucket' field");
     }
@@ -122,117 +107,122 @@ export function openS3() {
       chooseProvider = "s3Archive";
     }
     if (chooseProvider === "s3Archive") {
-      params.Bucket = config.s3Archive.bucket;
       if (!providers.s3Archive) {
-        providers.s3Archive = new AWS.S3({
+        const clientConfig: S3ClientConfig = {
+          region: "dummy-region",
           endpoint: config.s3Archive.endpoint,
-          accessKeyId: config.s3Archive.publicKey,
-          secretAccessKey: config.s3Archive.privateKey,
-          s3ForcePathStyle: true, // needed for minio
-        });
+          credentials: {
+            accessKeyId: config.s3Archive.publicKey,
+            secretAccessKey: config.s3Archive.privateKey,
+          },
+          forcePathStyle: true, // needed for minio
+        };
+        providers.s3Archive = new S3Client(clientConfig);
       }
-      return providers.s3Archive as AWS.S3;
+      return {
+        client: providers.s3Archive as S3Client,
+        bucket: config.s3Archive.bucket,
+      };
     } else {
-      params.Bucket = config.s3Local.bucket;
       if (!providers.s3Local) {
-        providers.s3Local = new AWS.S3({
+        const clientConfig: S3ClientConfig = {
+          region: "dummy-region",
           endpoint: config.s3Local.endpoint,
-          accessKeyId: config.s3Local.publicKey,
-          secretAccessKey: config.s3Local.privateKey,
-          s3ForcePathStyle: true, // needed for minio
-        });
+          credentials: {
+            accessKeyId: config.s3Local.publicKey,
+            secretAccessKey: config.s3Local.privateKey,
+          },
+          forcePathStyle: true, // needed for minio
+        };
+        providers.s3Local = new S3Client(clientConfig);
       }
-      return providers.s3Local as AWS.S3;
+      return {
+        client: providers.s3Local as S3Client,
+        bucket: config.s3Local.bucket,
+      };
     }
   };
 
   return {
-    getObject(params, callback?) {
-      return getProviderForParams(params).getObject(params, callback);
+    getObject(key: string) {
+      const { client, bucket } = getProviderForParams({ Key: key });
+      return client.send(new GetObjectCommand({ Key: key, Bucket: bucket }));
     },
-    copyObject(params, callback?) {
-      return getProviderForParams(params).copyObject(params, callback);
+    // copyObject(params: CopyObjectCommandInput) {
+    //   const { client, bucket} = getProviderForParams(params);
+    //   return getProviderForParams(params).send(new CopyObjectCommand(params));
+    // },
+    deleteObject(key: string) {
+      const { client, bucket } = getProviderForParams({ Key: key });
+      return client.send(new DeleteObjectCommand({ Key: key, Bucket: bucket }));
     },
-    deleteObject(params, callback?) {
-      return getProviderForParams(params).deleteObject(params, callback);
+    listObjects(params: ListObjectsCommandInput) {
+      const { client, bucket } = getProviderForParams(params);
+      return client.send(new ListObjectsCommand({ ...params, Bucket: bucket }));
     },
-    listObjects(params, callback?) {
-      return getProviderForParams(params).listObjects(params, callback);
+    headObject(key: string) {
+      const { client, bucket } = getProviderForParams({ Key: key });
+      return client.send(new HeadObjectCommand({ Key: key, Bucket: bucket }));
     },
-    headObject(params, callback?) {
-      return getProviderForParams(params).headObject(params, callback);
+    upload(key: string, body: Buffer | Uint8Array, metadata?: any) {
+      const { client, bucket } = getProviderForParams({ Key: key });
+      const length = (body as Buffer).length || 0; //"length" in body ? body.length : 0;
+      const payload: PutObjectCommandInput = {
+        Key: key,
+        Body: body,
+        Bucket: bucket,
+        ContentLength: length,
+      };
+      if (metadata) {
+        payload.Metadata = metadata;
+      }
+      return client.send(new PutObjectCommand(payload));
     },
-    upload(params, callback?) {
-      return getProviderForParams(params).upload(params, callback);
+    uploadStreaming(
+      key: string,
+      body: Readable | ReadableStream,
+      metadata?: any
+    ) {
+      const { client, bucket } = getProviderForParams({ Key: key });
+      const payload: PutObjectCommandInput = {
+        Key: key,
+        Body: body as any,
+        Bucket: bucket,
+      };
+      if (metadata) {
+        payload.Metadata = metadata;
+      }
+
+      return new Upload({
+        client,
+        params: payload,
+        leavePartsOnError: false,
+      });
     },
-    headBucket(params, callback?) {
-      return getProviderForParams(params).headBucket(params, callback);
+    headBucket(suppliedBucket?: string) {
+      const params: { Bucket?: string } = {};
+      if (suppliedBucket) {
+        params.Bucket = suppliedBucket;
+      }
+      const { client, bucket } = getProviderForParams(params);
+      return client.send(
+        new HeadBucketCommand({ Bucket: bucket } as HeadBucketCommandInput)
+      );
     },
-    createBucket(params, callback?) {
-      return getProviderForParams(params).createBucket(params, callback);
-    },
-    listBuckets(params, callback?) {
-      return getProviderForParams(params).listBuckets(callback);
-    },
+    // createBucket(params: CreateBucketCommandInput) {
+    //   const { client, bucket} = getProviderForParams(params);
+    //   return client.send(new CreateBucketCommand(params));
+    // },
+    // listBuckets(params: ListBucketsCommandInput) {
+    //   const { client, bucket} = getProviderForParams(params);
+    //   return getProviderForParams(params).send(new ListBucketsCommand(params));
+    // },
   };
 }
 
-export function saveFile(file /* model.File */) {
-  const model = this;
-  return new Promise(function (resolve, reject) {
-    // Gets date object set to recordingDateTime field or now if field not set.
-    const date = new Date(
-      model.getDataValue("recordingDateTime") || new Date()
-    );
-
-    // Generate key for file using the date.
-    const key = `${date.getFullYear()}/${date.getMonth()}/${date
-      .toISOString()
-      .replace(/\..+/, "")
-      .replace(/:/g, "")}_${Math.random().toString(36).substr(2)}`;
-
-    // Save file with key.
-    const s3 = openS3();
-    fs.readFile(file.path, function (err, data) {
-      const params = {
-        Key: key,
-        Body: data,
-      };
-      s3.upload(params, function (err) {
-        if (err) {
-          log.error("Error with saving to S3.");
-          log.error(err.toString());
-          return reject(err);
-        } else {
-          fs.unlinkSync(file.path); // Delete local file.
-          log.info("Successful saving to S3.");
-          file.key = key;
-
-          model.setDataValue("filename", file.name);
-          model.setDataValue("mimeType", file.mimeType);
-          model.setDataValue("size", file.size);
-          model.setDataValue("fileKey", file.key);
-          return resolve(model.save());
-        }
-      });
-    });
-  });
-}
-
-export function deleteFile(fileKey) {
-  return new Promise((resolve, reject) => {
-    const s3 = openS3();
-    const params = {
-      Key: fileKey,
-    };
-    s3.deleteObject(params, function (err, data) {
-      if (err) {
-        return reject(err);
-      } else {
-        return resolve(data);
-      }
-    });
-  });
+export async function deleteFile(fileKey: string) {
+  const s3 = openS3();
+  return s3.deleteObject(fileKey);
 }
 
 const geometrySetter = (
@@ -269,14 +259,7 @@ export function locationField(fieldName: string = "location") {
       return null;
     },
     validate: {
-      isLatLon: validation.isLatLon,
+      isLatLon: isLatLon,
     },
   };
 }
-
-export default {
-  locationField,
-  userCanEdit,
-  openS3,
-  saveFile,
-};

@@ -12,7 +12,12 @@
     :disabled="disabled"
   >
     <template #button-content>
-      <button type="button" class="btn" ref="iconButton" :class="classes">
+      <button
+        type="button"
+        class="btn btn-square"
+        ref="iconButton"
+        :class="classes"
+      >
         <font-awesome-icon
           :icon="icon"
           v-if="icon"

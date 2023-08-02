@@ -16,20 +16,21 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize, { Op } from "sequelize";
-import models, { ModelCommon, ModelStaticCommon } from "./index";
-import { User } from "./User";
-import { CreateStationData, Station } from "./Station";
-import { Recording } from "./Recording";
+import type Sequelize from "sequelize";
+import { Op } from "sequelize";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { User } from "./User.js";
+import type { CreateStationData, Station } from "./Station.js";
+import type { Recording, RecordingStatic } from "./Recording.js";
+import type { Device } from "./Device.js";
+import type { GroupId, UserId } from "@typedefs/api/common.js";
+import type { ApiGroupSettings } from "@typedefs/api/group.js";
 import {
   latLngApproxDistance,
+  locationsAreEqual,
   MIN_STATION_SEPARATION_METERS,
   tryToMatchRecordingToStation,
-} from "@api/V1/recordingUtil";
-import { Device } from "./Device";
-import { GroupId, UserId } from "@typedefs/api/common";
-import { ApiGroupSettings } from "@typedefs/api/group";
-import { locationsAreEqual } from "./util/util";
+} from "@models/util/locationUtils.js";
 
 export const stationLocationHasChanged = (
   oldStation: Station,
@@ -96,6 +97,8 @@ export const checkThatStationsAreNotTooCloseTogether = (
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
+  staticRecording: RecordingStatic,
+  staticGroup: GroupStatic,
   authUserId: UserId,
   group: Group,
   fromDate: Date,
@@ -123,7 +126,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   }
 
   // Get recordings for group starting at date:
-  const builder = new models.Recording.queryBuilder().init(authUserId, {
+  const builder = new staticRecording.queryBuilder().init(authUserId, {
     where: {
       // Group id, and after date
       GroupId: group.id,
@@ -132,7 +135,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   });
   builder.query.distinct = true;
   delete builder.query.limit;
-  const recordingsFromStartDate: Recording[] = await models.Recording.findAll(
+  const recordingsFromStartDate: Recording[] = await staticRecording.findAll(
     builder.get()
   );
   const recordingOpPromises = [];
@@ -140,6 +143,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   for (const recording of recordingsFromStartDate) {
     // NOTE: This await call won't actually block, since we're passing all the stations in.
     const matchingStation = await tryToMatchRecordingToStation(
+      staticGroup,
       recording,
       stations
     );

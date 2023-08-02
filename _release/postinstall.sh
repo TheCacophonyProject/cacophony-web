@@ -14,6 +14,7 @@ cd /srv/cacophony/api
 if [[ ! -h config/app.js ]]; then
     section "Moving configuration to /etc/cacophony"
     mv config/app.js /etc/cacophony/api.js
+    cp package.json /etc/cacophony/package.json
     ln -s /etc/cacophony/api.js config/app.js
 fi
 

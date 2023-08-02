@@ -21,10 +21,11 @@ class CptvDecoderInterface {
   private consumed = false;
   private prevFrameHeader: CptvFrameHeader | null = null;
   private response: Response | null = null;
-  private reader: ReadableStreamDefaultReader | null = null;
+  private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   private playerContext: PlayerContext | null = null;
   private expectedSize = 0;
   private inited = false;
+  private currentContentType = "application/x-cptv";
   streamError: string | null = null;
 
   free() {
@@ -49,7 +50,7 @@ class CptvDecoderInterface {
     apiToken: string,
     apiRoot: string,
     size?: number
-  ): Promise<boolean | string> {
+  ): Promise<string | boolean | Blob> {
     this.free();
     const unlocker = new Unlocker();
     await this.lockIsUncontended(unlocker);
@@ -64,22 +65,28 @@ class CptvDecoderInterface {
         },
         method: "get",
       };
-
       this.response = await fetch(
         `${apiRoot}/api/v1/recordings/raw/${id}`,
         request as RequestInit
       );
       if (this.response.status === 200) {
         if (this.response.body) {
-          this.reader = this.response.body.getReader();
+          this.currentContentType =
+            this.response.headers.get("Content-Type") || "application/x-cptv";
           if (!size) {
             size = Number(this.response.headers.get("Content-Length")) || 0;
           }
           this.expectedSize = size;
-          await init(wasmUrl);
-          this.playerContext = await CptvPlayerContext.newWithStream(
-            this.reader
-          );
+          if (this.currentContentType === "application/x-cptv") {
+            this.reader =
+              this.response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
+            await init(wasmUrl);
+            this.playerContext = await CptvPlayerContext.newWithStream(
+              this.reader
+            );
+          } else if (this.currentContentType === "image/webp") {
+            return await this.response.blob();
+          }
           unlocker.unlock();
           this.inited = true;
           this.locked = false;
@@ -120,7 +127,8 @@ class CptvDecoderInterface {
       this.response = await fetch(url);
       if (this.response.status === 200) {
         if (this.response.body) {
-          this.reader = this.response.body.getReader();
+          this.reader =
+            this.response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
           if (!size) {
             size = Number(this.response.headers.get("Content-Length")) || 0;
           }

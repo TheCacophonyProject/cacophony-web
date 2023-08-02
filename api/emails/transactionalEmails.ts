@@ -1,13 +1,18 @@
+import type { StoppedDevice } from "@/emails/htmlEmailUtils.js";
 import {
   createEmailWithTemplate,
-  StoppedDevice,
   urlNormaliseName,
-} from "@/emails/htmlEmailUtils";
-import { EmailImageAttachment } from "@/scripts/emailUtil";
+} from "@/emails/htmlEmailUtils.js";
+import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import fs from "fs/promises";
-import { sendEmail } from "@/emails/sendEmail";
+import { sendEmail } from "@/emails/sendEmail.js";
 import config from "@config";
-import logger from "@/logging";
+import logger from "@/logging.js";
+
+import path from "path";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
   const buffer = await fs.readFile(`${__dirname}/templates/cacophony-logo.png`);
@@ -354,39 +359,6 @@ export const sendGroupMembershipRequestEmail = async (
     text,
     userEmailAddress,
     `A Cacophony Monitoring user wants to join your '${requestGroupName}' group`,
-    await commonAttachments()
-  );
-};
-
-export const sendUserDeletionEmail = async (
-  origin: string,
-  userEmailAddress: string
-) => {
-  const adminEmail = await createEmailWithTemplate(
-    "user-deletion-request.html",
-    {
-      ...commonInterpolants(origin),
-      userEmailAddress,
-    }
-  );
-
-  const userEmail = await createEmailWithTemplate("user-deletion.html", {
-    ...commonInterpolants(origin),
-    userEmailAddress,
-  });
-
-  await sendEmail(
-    adminEmail.html,
-    adminEmail.text,
-    "coredev@cacophony.org.nz",
-    `User ${userEmailAddress} has requested deletion of their account`
-  );
-
-  return await sendEmail(
-    userEmail.html,
-    userEmail.text,
-    userEmailAddress,
-    "Your request to delete your Cacophony Monitoring account has been received",
     await commonAttachments()
   );
 };

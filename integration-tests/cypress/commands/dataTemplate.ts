@@ -58,7 +58,7 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   type: RecordingType.Audio,
   jobKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
   rawFileKey: "e6ef8335-42d2-4906-a943-995499bd84e2",
-  rawMimeType: "video/mp4",
+  rawMimeType: "audio/mp4",
   fileKey: null,
   fileMimeType: null,
   processingState: "xxx",
@@ -173,6 +173,7 @@ export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
       confidence: 1,
       trackId: NOT_NULL,
       id: NOT_NULL,
+      path: "all",
     },
   ],
 };
@@ -248,6 +249,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
       confidence: 0.97,
       trackId: NOT_NULL,
       id: NOT_NULL,
+      path: "all",
     },
   ],
 };
@@ -260,7 +262,7 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     id: 892972,
     rawMimeType: "application/x-cptv",
     processingState: RecordingProcessingState.Finished,
-    duration: 15.6666666666667,
+    duration: 0.5555555555555556,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: { lat: -45.29115, lng: 169.30845 },
     type: RecordingType.ThermalRaw,
@@ -278,7 +280,7 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
 export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
   type: RecordingType.ThermalRaw,
   fileHash: null,
-  duration: 15.6666666666667,
+  duration: 0.5555555555555556,
   recordingDateTime: "2021-07-17T20:13:17.248Z",
   location: [-45.29115, 169.30845],
   additionalMetadata: {

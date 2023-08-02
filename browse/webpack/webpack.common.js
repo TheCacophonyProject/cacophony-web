@@ -1,5 +1,5 @@
 const path = require("path");
-const VueLoaderPlugin = require("vue-loader/lib/plugin");
+const { VueLoaderPlugin } = require("vue-loader");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const ESLintPlugin = require("eslint-webpack-plugin");
@@ -12,6 +12,9 @@ module.exports = {
   target: "web", // NOTE: Hot module reloading via vue-loader breaks without this, even though it is supposed to be the default.
   experiments: {
     syncWebAssembly: true,
+  },
+  output: {
+    hashFunction: "xxhash64",
   },
   module: {
     rules: [
@@ -47,10 +50,18 @@ module.exports = {
       },
       {
         test: /\.(png|jpg|gif|svg)$/,
-        loader: "file-loader",
-        options: {
-          name: "[name].[ext]?[hash]",
-        },
+        oneOf: [
+          {
+            dependency: { not: ["url"] }, // exclude new URL calls
+            use: ["new-url-loader"],
+          },
+          {
+            type: "asset/resource", // emit a separate file
+            generator: {
+              filename: "static/media/[name].[hash][ext]",
+            },
+          },
+        ],
       },
       // this will apply to both plain `.scss` files
       // AND `<style lang="scss">` blocks in `.vue` files

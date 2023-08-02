@@ -331,7 +331,9 @@ export default defineComponent({
     const filterHuman = ref(false);
 
     const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
-      const automaticTag = track.tags.find((tag) => tag.automatic);
+      const automaticTag = track.tags.find(
+        (tag) => tag.automatic && tag.data.name === "Master"
+      );
       const humanTags = track.tags.filter((tag) => !tag.automatic);
       const humanTag =
         humanTags.length === 1

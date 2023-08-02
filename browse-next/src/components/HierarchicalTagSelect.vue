@@ -7,8 +7,9 @@
     :pinned-items="pinnedItems"
     :placeholder="placeholder"
     :multiselect="multiselect"
-    :selected-item="selectedItem"
+    :selected-items="modelValue"
     :open-on-mount="openOnMount"
+    @change="updateModel"
     ref="layeredDropdown"
   />
 </template>
@@ -25,9 +26,9 @@ const {
   multiselect = false,
   canBePinned = false,
   pinnedItems = [],
-  selectedItem,
   openOnMount = true,
   disabledTags = [],
+  modelValue = [],
 } = defineProps<{
   disabled?: boolean;
   exclude?: string[];
@@ -35,10 +36,21 @@ const {
   multiselect?: boolean;
   canBePinned?: boolean;
   pinnedItems?: string[];
-  selectedItem?: string;
   openOnMount?: boolean;
   disabledTags?: string[];
+  modelValue?: string[];
 }>();
+
+const emit = defineEmits<{
+  (e: "update:modelValue", value: string[]): void;
+}>();
+
+const updateModel = (val: Classification[]) => {
+  emit(
+    "update:modelValue",
+    val.map(({ label }) => label)
+  );
+};
 
 const layeredDropdown = ref<typeof LayeredDropdown>();
 const options = ref<Classification>({ label: "", children: [] });
@@ -69,7 +81,7 @@ onMounted(async () => {
 
 defineExpose({
   open: () => {
-    layeredDropdown.value && layeredDropdown.value.open();
+    layeredDropdown.value && (layeredDropdown.value as LayeredDropdown).open();
   },
 });
 </script>

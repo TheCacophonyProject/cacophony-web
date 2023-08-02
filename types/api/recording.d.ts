@@ -9,7 +9,7 @@ import {
 } from "./common";
 import { ApiRecordingTagResponse } from "./tag";
 import { ApiTrackResponse } from "./track";
-import { RecordingProcessingState, RecordingType } from "./consts";
+import { RecordingProcessingState, RecordingType } from "./consts.js";
 import { DeviceBatteryChargeState } from "./device";
 
 export interface ApiRecordingResponse {
@@ -70,7 +70,11 @@ export interface ApiAudioRecordingMetadataResponse {
 
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   additionalMetadata?: ApiThermalRecordingMetadataResponse;
-  type: RecordingType.ThermalRaw;
+  type:
+    | RecordingType.ThermalRaw
+    | RecordingType.InfraredVideo
+    | RecordingType.TrailCamVideo
+    | RecordingType.TrailCamImage;
 }
 
 export interface CacophonyIndex {

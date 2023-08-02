@@ -16,11 +16,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import _ from "lodash";
-import sequelize, { Order } from "sequelize";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import Sequelize from "sequelize";
-import { User } from "./User";
-import { FileId, UserId } from "@typedefs/api/common";
+import type { Order } from "sequelize";
+import sequelize from "sequelize";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type Sequelize from "sequelize";
+import type { User } from "./User.js";
+import type { FileId, UserId } from "@typedefs/api/common.js";
 
 const Op = sequelize.Op;
 export interface File extends Sequelize.Model, ModelCommon<File> {

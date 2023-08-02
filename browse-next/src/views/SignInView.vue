@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, nextTick, reactive, ref } from "vue";
 import { BAlert } from "bootstrap-vue-3";
 import { login } from "@models/LoggedInUser";
+import type { PendingRequest } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 
-// TODO Can we parse e.g body.password in the messages into contextual error messages?
-
 const showPassword = ref(false);
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value;
 };
-
-// TODO - tooltip on eye button?
 
 const userEmailAddress: FormInputValue = formFieldInputText();
 const userPassword: FormInputValue = formFieldInputText();
@@ -37,17 +34,26 @@ const hasError = computed({
 const router = useRouter();
 const route = useRoute();
 const submitLogin = async () => {
+  delete (signInInProgress as PendingRequest).errors;
   await login(userEmailAddress.value, userPassword.value, signInInProgress);
-  const nextUrl = route.query.nextUrl;
-  const to: RouteLocationRaw = {
-    path: "/",
-  };
-  if (nextUrl) {
-    to.query = {
-      nextUrl,
+  if ((signInInProgress as PendingRequest).errors) {
+    signInErrorMessage.value =
+      (signInInProgress as PendingRequest).errors?.messages[0] || "";
+  } else {
+    const nextUrl = route.query.nextUrl;
+    const to: RouteLocationRaw = {
+      path: "/",
     };
+    if (nextUrl) {
+      to.query = {
+        nextUrl,
+      };
+    }
+    // Avoids a weird re-paint of the sign-in form
+    await nextTick(async () => {
+      await router.push(to);
+    });
   }
-  await router.push(to);
 };
 
 const isValidEmailAddress = computed<boolean>(() => {
@@ -151,13 +157,13 @@ const signInFormIsFilledAndValid = computed<boolean>(
           !signInFormIsFilledAndValid || signInInProgress.requestPending
         "
       >
-        <div
+        <span
           v-if="signInInProgress.requestPending"
           class="d-flex align-items-center justify-content-center"
         >
           <b-spinner role="status" aria-hidden="true" small></b-spinner>
           <span class="ms-2">Signing in...</span>
-        </div>
+        </span>
         <span v-else>Sign in</span>
       </button>
     </b-form>

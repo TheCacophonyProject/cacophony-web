@@ -1,14 +1,13 @@
-import registerAliases from "../module-aliases";
-registerAliases();
 import config from "@config";
 import log from "@log";
-import models from "@models";
-import { Client } from "pg";
+import modelsInit from "@models/index.js";
+import pg from "pg";
 import process from "process";
-import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil";
+import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
 import { Op } from "sequelize";
-import { RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts.js";
 
+const models = await modelsInit();
 const dbOptions = (config) => ({
   host: config.host,
   user: config.username,
@@ -19,7 +18,7 @@ const dbOptions = (config) => ({
 async function main() {
   // For each device.
   // Find all versions of the device with its saltId
-  const pgClient = new Client(dbOptions(config.database));
+  const pgClient = new pg.Client(dbOptions(config.database));
   await pgClient.connect();
   const saltIds = await pgClient.query(
     `select distinct "saltId" from "Devices";`
@@ -94,6 +93,7 @@ async function main() {
         Number(configChangeForDevice.lng) !== 0
       ) {
         await maybeUpdateDeviceHistory(
+          models,
           device,
           {
             lat: configChangeForDevice.lat,
@@ -131,6 +131,7 @@ async function main() {
         Number(automaticLocationChangeForDevice.lng) !== 0
       ) {
         await maybeUpdateDeviceHistory(
+          models,
           device,
           {
             lat: automaticLocationChangeForDevice.lat,

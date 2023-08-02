@@ -1,4 +1,4 @@
-import type { UserId } from "@typedefs/api/common";
+import type { GroupId, UserId } from "@typedefs/api/common";
 import type { HttpStatusCode } from "@typedefs/api/consts";
 
 export type JwtToken<_T> = string;
@@ -29,8 +29,14 @@ type HttpFailureCode =
   | HttpStatusCode.Unprocessable
   | HttpStatusCode.ServerError;
 
-interface SuccessFetchResult<SUCCESS> {
+export interface SuccessFetchResult<SUCCESS> {
   result: SUCCESS;
+  status: HttpSuccessCode;
+  success: true;
+}
+
+interface WrappedSuccessFetchResult<SUCCESS> {
+  result: Record<string, SUCCESS>;
   status: HttpSuccessCode;
   success: true;
 }
@@ -63,4 +69,16 @@ export interface JwtUserAuthTokenPayload extends JwtTokenPayload<"user"> {
   id: UserId;
 }
 
+export interface JwtAcceptInviteTokenPayload
+  extends JwtTokenPayload<"invite-new-user" | "invite-existing-user"> {
+  id: UserId | number;
+  group: GroupId;
+}
+
 export type FetchResult<T> = SuccessFetchResult<T> | FailureFetchResult;
+export type WrappedFetchResult<T> =
+  | WrappedSuccessFetchResult<T>
+  | FailureFetchResult;
+
+// NOTE: null means uninitialised, false means a failure occurred, undefined means loading in progress
+export type LoadedResource<T> = null | false | undefined | T;

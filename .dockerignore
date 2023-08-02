@@ -1,7 +1,11 @@
 _release
 .git
+.run
+.idea
 api/docker-base
 api/node_modules
+types/node_modules
 browse
-test
-!test/db-seed.sql
+browse-next
+integration-tests
+!api/db-seed.sql

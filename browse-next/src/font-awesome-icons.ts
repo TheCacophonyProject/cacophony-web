@@ -4,6 +4,7 @@ import {
   faUser,
   faGaugeHigh,
   faLocationDot,
+  faMapLocationDot,
   faMagnifyingGlass,
   faMicrochip,
   faCircleExclamation,
@@ -54,7 +55,7 @@ import {
   faBurst,
   faThumbsUp as faThumbsUpSolid,
   faThumbsDown as faThumbsDownSolid,
-  faCheckCircle,
+  faCheckCircle as faCheckCircleSolid,
   faAngleDoubleRight,
   faEllipsis,
   faThumbTack,
@@ -62,6 +63,19 @@ import {
   faArrowUp,
   faPencilAlt,
   faEnvelope,
+  faSortDown,
+  faSortUp,
+  faVideo,
+  faMusic,
+  faCamera,
+  faHeart,
+  faHeartBroken,
+  faCircleMinus,
+  faPowerOff,
+  faLeftRight,
+  faStream,
+  faUserCog,
+  faPanorama,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -73,6 +87,8 @@ import {
   faThumbsDown,
   faFile,
   faFileVideo,
+  faCircle,
+  faCircleCheck,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -135,7 +151,7 @@ library.add(
   faThumbsUpSolid,
   faThumbsDown,
   faThumbsDownSolid,
-  faCheckCircle,
+  faCheckCircleSolid,
   faAngleDoubleRight,
   faEllipsis,
   faThumbTack,
@@ -144,7 +160,23 @@ library.add(
   faExclamationTriangle,
   faArrowUp,
   faPencilAlt,
-  faEnvelope
+  faEnvelope,
+  faSortUp,
+  faSortDown,
+  faVideo,
+  faMusic,
+  faCamera,
+  faHeart,
+  faHeartBroken,
+  faCircleMinus,
+  faPowerOff,
+  faLeftRight,
+  faCircle,
+  faCircleCheck,
+  faStream,
+  faUserCog,
+  faMapLocationDot,
+  faPanorama
 );
 
 export default FontAwesomeIcon;

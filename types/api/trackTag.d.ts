@@ -22,6 +22,7 @@ export interface TrackTagData extends ApiTrackTagAttributes {
 
 export interface ApiTrackTagResponse {
   what: string;
+  path: string;
   id: TrackTagId;
   trackId: TrackId;
   confidence: number;
@@ -46,6 +47,7 @@ export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {
 
 export type Classification = {
   label: string;
+  aliases?: string[];
   display?: string;
   children?: Classification[];
   path?: string | string[];

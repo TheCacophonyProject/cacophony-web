@@ -19,10 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import log from "@log";
 import jwt from "jsonwebtoken";
 import config from "@config";
-import { Response, Request } from "express";
-import { CACOPHONY_WEB_VERSION } from "@/Globals";
-import { HttpStatusCode } from "@/../types/api/consts";
-import { DecodedJWTToken, getVerifiedJWT } from "@api/auth";
+import type { Response, Request } from "express";
+import { CACOPHONY_WEB_VERSION } from "@/Globals.js";
+import { HttpStatusCode } from "@/../types/api/consts.js";
+import type { DecodedJWTToken } from "@api/auth.js";
+import { getVerifiedJWT } from "@api/auth.js";
 
 const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
 const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
@@ -171,16 +172,22 @@ export const serverErrorResponse = async (
   try {
     // If the payload was too large, we'd still like to know who the request is from in the logs.
     const token = getVerifiedJWT(request) as DecodedJWTToken;
+
+    const stack = new Error().stack;
     log.error(
       "SERVER ERROR: %s, %s, %s, %s(%s)",
       error.toString(),
-      error.stack,
+      error.stack || stack,
       Object.entries(error).flat(),
       token._type,
       token.id
     );
   } catch (e) {
-    log.error("SERVER ERROR: %s, %s", error.toString(), error.stack);
+    log.error(
+      "SERVER ERROR (JWT token): %s, %s",
+      error.toString(),
+      error.stack
+    );
   }
   return someResponse(
     response,

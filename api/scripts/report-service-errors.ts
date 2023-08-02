@@ -1,11 +1,10 @@
-import registerAliases from "../module-aliases";
-registerAliases();
-import config from "../config";
-import log from "../logging";
-import { errors } from "@api/V1/eventUtil";
-import moment, { Moment } from "moment";
-import { ServiceErrorMap } from "@api/V1/systemError";
-import { sendEmail } from "@/emails/sendEmail";
+import config from "../config.js";
+import log from "../logging.js";
+import { errors } from "@api/V1/eventUtil.js";
+import type { Moment } from "moment";
+import moment from "moment";
+import type { ServiceErrorMap } from "@api/V1/systemError.js";
+import { sendEmail } from "@/emails/sendEmail.js";
 async function main() {
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";

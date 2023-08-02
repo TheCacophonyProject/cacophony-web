@@ -15,50 +15,73 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import log from "../logging";
+import log from "../logging.js";
 import mime from "mime";
 import moment from "moment-timezone";
-import Sequelize, { FindOptions, Includeable } from "sequelize";
+import type { FindOptions, Includeable } from "sequelize";
+import Sequelize from "sequelize";
 import { v4 as uuidv4 } from "uuid";
-import config from "../config";
-import util from "./util/util";
+import config from "../config.js";
 import _ from "lodash";
-import { User } from "./User";
-import { ModelCommon, ModelStaticCommon } from "./index";
-import { TagStatic } from "./Tag";
-import { Device, DeviceStatic } from "./Device";
-import { Group } from "./Group";
-import { Track } from "./Track";
-import { Tag } from "./Tag";
+import type { User } from "./User.js";
+import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type { Tag, TagStatic } from "./Tag.js";
+import type { Device, DeviceStatic } from "./Device.js";
+import type { Group } from "./Group.js";
+import type { Track } from "./Track.js";
 
 import jsonwebtoken from "jsonwebtoken";
-import { TrackTag } from "./TrackTag";
-import { Station } from "./Station";
-import { mapPosition } from "@api/V1/recordingUtil";
-import {
+import type { TrackTag } from "./TrackTag.js";
+import type { Station } from "./Station.js";
+import type {
   DeviceId,
   GroupId,
+  IsoFormattedDateString,
+  LatLng,
   RecordingId,
+  StationId,
   TrackId,
   UserId,
-  StationId,
-  LatLng,
-  IsoFormattedDateString,
-} from "@typedefs/api/common";
+} from "@typedefs/api/common.js";
 import {
   AcceptableTag,
   RecordingProcessingState,
   RecordingType,
   TagMode,
-} from "@typedefs/api/consts";
-import { DeviceBatteryChargeState } from "@typedefs/api/device";
-import {
+} from "@typedefs/api/consts.js";
+import type { DeviceBatteryChargeState } from "@typedefs/api/device.js";
+import type {
   ApiAudioRecordingMetadataResponse,
   ApiThermalRecordingMetadataResponse,
   CacophonyIndex,
-} from "@typedefs/api/recording";
-import labelPath from "../classifications/label_paths.json";
-import { DetailSnapshotId } from "@models/DetailSnapshot";
+} from "@typedefs/api/recording.js";
+import labelPath from "../classifications/label_paths.json" assert { type: "json" };
+import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
+import { locationField, openS3 } from "@models/util/util.js";
+import type { ApiTrackPosition } from "@typedefs/api/track.js";
+
+// Mapping
+export const mapPosition = (position: any): ApiTrackPosition => {
+  if (Array.isArray(position)) {
+    return {
+      x: position[1][0],
+      y: position[1][1],
+      width: position[1][2] - position[1][0],
+      height: position[1][3] - position[1][1],
+      frameTime: position[0],
+    };
+  } else {
+    return {
+      x: position.x,
+      y: position.y,
+      width: position.width,
+      height: position.height,
+      order: position.frame_number ?? position.order,
+      mass: position.mass,
+      blank: position.blank,
+    };
+  }
+};
 
 type SqlString = string;
 
@@ -82,6 +105,7 @@ export type RecordingQueryOptions = Partial<{
   exclusive: boolean;
   includeAttributes: boolean;
   attributes: string[];
+  filterModel: string | false;
 }>;
 
 const MaxProcessingRetries = 1;
@@ -272,7 +296,7 @@ export default function (
     type: DataTypes.STRING,
     duration: DataTypes.FLOAT,
     recordingDateTime: DataTypes.DATE,
-    location: util.locationField(),
+    location: locationField(),
     relativeToDawn: DataTypes.INTEGER,
     relativeToDusk: DataTypes.INTEGER,
     version: DataTypes.STRING,
@@ -536,12 +560,8 @@ from (
     // the JWT token for it.
     let ContentLength = 0;
     try {
-      const s3 = util.openS3();
-      const s3Data = await s3
-        .headObject({
-          Key: flattenedResult.fileKey,
-        })
-        .promise();
+      const s3 = openS3();
+      const s3Data = await s3.headObject(flattenedResult.fileKey);
       ContentLength = s3Data.ContentLength;
     } catch (err) {
       log.warning(
@@ -754,9 +774,6 @@ from (
   };
 
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
-
-  // TODO(jon): Change recordings queries to be cursor based rather than limit/offset based:
-  //  this will scale better.
   Recording.queryBuilder.prototype.init = function (
     userId: UserId,
     options: RecordingQueryOptions
@@ -794,6 +811,11 @@ from (
       ),
     ];
     const noArchived = { archivedAt: null };
+    const onlyMasterModel = options.filterModel
+      ? {
+          [Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
+        }
+      : {};
     if (hideFiltered) {
       const filteredSQL = `(
 		select
@@ -874,10 +896,11 @@ from (
           include: [
             {
               model: models.TrackTag,
-              where: noArchived,
+              where: { ...noArchived, ...onlyMasterModel },
               attributes: [
                 "id",
                 "what",
+                "path",
                 "automatic",
                 "TrackId",
                 "confidence",
@@ -939,7 +962,7 @@ from (
         [tagMode],
         null,
         exclusive
-      )}) IS NOT NULL)`;
+      )} limit 1) IS NOT NULL)`;
       if (tagWhats) {
         sqlQuery = `${sqlQuery} AND (${Recording.queryBuilder.trackTaggedWith(
           tagWhats,
@@ -951,29 +974,23 @@ from (
     }
 
     switch (tagMode) {
-      case "any":
+      case TagMode.Any:
         return "";
-      case "untagged":
+      case TagMode.UnTagged:
         return Recording.queryBuilder.notTagOfType(tagWhats, null, exclusive);
-      case "tagged":
+      case TagMode.Tagged:
         return Recording.queryBuilder.tagOfType(tagWhats, null, exclusive);
-      case "human-tagged":
+      case TagMode.HumanTagged:
         return Recording.queryBuilder.tagOfType(tagWhats, humanSQL, exclusive);
-      case "automatic-tagged":
+      case TagMode.AutomaticallyTagged:
         return Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive);
-      case "both-tagged":
-        return `${Recording.queryBuilder.tagOfType(
-          tagWhats,
-          humanSQL,
-          exclusive
-        )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive)}`;
-      case "no-human":
+      case TagMode.NoHuman:
         return Recording.queryBuilder.notTagOfType(
           tagWhats,
           humanSQL,
           exclusive
         );
-      case "automatic-only":
+      case TagMode.AutomaticOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           AISQL,
@@ -983,7 +1000,7 @@ from (
           humanSQL,
           exclusive
         )}`;
-      case "human-only":
+      case TagMode.HumanOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,
@@ -993,7 +1010,7 @@ from (
           AISQL,
           exclusive
         )}`;
-      case "automatic+human":
+      case TagMode.AutomaticHuman:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,
@@ -1111,7 +1128,7 @@ from (
       const tag = tags[i];
       if (tag === "interesting") {
         parts.push(
-          `("Tags"."detail"!='bird' AND "Tags"."detail"!='false positive')`
+          `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`
         );
       } else {
         const path = labelPath[tag.toLowerCase()];
@@ -1119,7 +1136,7 @@ from (
           parts.push(`"Tags".path ~ '${path}${exclusive ? "" : ".*"}'`);
         } else {
           // TODO: this catches tags that may of not been added to classifications but should be added
-          parts.push(`"Tags"."detail" = '${tag}'`);
+          parts.push(`"Tags"."what" = '${tag}'`);
         }
       }
     }
@@ -1247,6 +1264,7 @@ from (
     "batteryLevel",
     "airplaneModeOn",
     "additionalMetadata",
+    "cacophonyIndex",
     "processingMeta", // FIXME - Check this
     "comment",
     "StationId",
@@ -1259,7 +1277,6 @@ from (
       RecordingProcessingState.Finished,
     ],
     audio: [
-      RecordingProcessingState.ToMp3,
       RecordingProcessingState.Analyse,
       RecordingProcessingState.Finished,
     ],
@@ -1267,7 +1284,7 @@ from (
 
   Recording.uploadedState = function (type: RecordingType) {
     if (type == RecordingType.Audio) {
-      return RecordingProcessingState.ToMp3;
+      return RecordingProcessingState.Analyse;
     } else {
       return RecordingProcessingState.Tracking;
     }

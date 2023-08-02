@@ -14,7 +14,7 @@ interface MessageDataMessage extends MessageData {
 }
 
 let messageQueue: Record<string, (data: unknown) => void> = {};
-let decoder: Worker;
+let decoder: Worker | undefined;
 
 export class CptvDecoder {
   constructor() {
@@ -47,7 +47,7 @@ export class CptvDecoder {
           type: "module",
         });
       }
-      decoder.onmessage = onMessage;
+      (decoder as Worker).onmessage = onMessage;
       if (decoderNotInited) {
         await this.waitForMessage("init");
       }
@@ -67,7 +67,7 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithUrlAndSize";
-    decoder.postMessage({ type, url, size });
+    decoder && decoder.postMessage({ type, url, size });
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -76,17 +76,18 @@ export class CptvDecoder {
    * @param id (Number)
    * @param apiToken (String)
    * @param size (Number)
-   * @returns True on success, or an error string on failure (String | Boolean)
+   * @returns Content type on success, or an error string on failure (String | Boolean)
    */
   async initWithRecordingIdAndKnownSize(
     id: RecordingId,
     size: number,
     apiToken?: string
-  ): Promise<string | boolean> {
+  ): Promise<string | boolean | Blob> {
     await this.init();
     const type = "initWithRecordingIdAndSize";
-    decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
-    return (await this.waitForMessage(type)) as string | boolean;
+    decoder &&
+      decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
+    return (await this.waitForMessage(type)) as string | boolean | Blob;
   }
 
   /**
@@ -97,7 +98,7 @@ export class CptvDecoder {
   async initWithCptvUrl(url: string): Promise<string | boolean> {
     await this.init();
     const type = "initWithUrl";
-    decoder.postMessage({ type, url });
+    decoder && decoder.postMessage({ type, url });
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -111,7 +112,7 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithLocalCptvFile";
-    decoder.postMessage({ type, arrayBuffer: fileBytes });
+    decoder && decoder.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -123,7 +124,7 @@ export class CptvDecoder {
   async getStreamMetadata(url: string): Promise<CptvHeader> {
     await this.init();
     const type = "getStreamMetadata";
-    decoder.postMessage({ type, url });
+    decoder && decoder.postMessage({ type, url });
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -135,7 +136,7 @@ export class CptvDecoder {
   async getBytesMetadata(fileBytes: Uint8Array): Promise<CptvHeader> {
     await this.init();
     const type = "getBytesMetadata";
-    decoder.postMessage({ type, arrayBuffer: fileBytes });
+    decoder && decoder.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -144,7 +145,7 @@ export class CptvDecoder {
    */
   async getNextFrame(): Promise<CptvFrame | null> {
     const type = "getNextFrame";
-    decoder.postMessage({ type });
+    decoder && decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as CptvFrame | null;
   }
 
@@ -154,7 +155,7 @@ export class CptvDecoder {
    */
   async getTotalFrames(): Promise<number | null> {
     const type = "getTotalFrames";
-    decoder.postMessage({ type });
+    decoder && decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as number | null;
   }
 
@@ -164,7 +165,7 @@ export class CptvDecoder {
    */
   async getHeader(): Promise<CptvHeader> {
     const type = "getHeader";
-    decoder.postMessage({ type });
+    decoder && decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -173,7 +174,7 @@ export class CptvDecoder {
    */
   async getLoadProgress(): Promise<number> {
     const type = "getLoadProgress";
-    decoder.postMessage({ type });
+    decoder && decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as number;
   }
 
@@ -183,7 +184,7 @@ export class CptvDecoder {
    */
   async hasStreamError(): Promise<boolean> {
     const type = "hasStreamError";
-    decoder.postMessage({ type });
+    decoder && decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as boolean;
   }
 
@@ -192,7 +193,7 @@ export class CptvDecoder {
    */
   async getStreamError(): Promise<string | null> {
     const type = "getStreamError";
-    decoder.postMessage({ type });
+    decoder && decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as string | null;
   }
 
@@ -201,7 +202,7 @@ export class CptvDecoder {
    */
   async free(): Promise<void> {
     const type = "freeResources";
-    if (decoder) {
+    if (decoder && this.inited) {
       decoder.postMessage({ type });
       return (await this.waitForMessage(type)) as void;
     }
@@ -219,6 +220,7 @@ export class CptvDecoder {
    */
   async close(): Promise<void> {
     decoder && decoder.terminate();
+    decoder = undefined;
   }
 }
 

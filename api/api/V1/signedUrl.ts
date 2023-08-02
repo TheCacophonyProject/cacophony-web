@@ -16,16 +16,19 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware";
-import auth from "../auth";
-import modelsUtil from "@models/util/util";
-import { serverErrorResponse } from "./responseUtil";
-import { ClientError } from "../customErrors";
-import { Application, Request, Response } from "express";
-import { GroupId, UserId } from "@typedefs/api/common";
-import models from "@models";
-import { SuperUsers } from "@/Globals";
+import middleware from "../middleware.js";
+import { ClientError } from "../customErrors.js";
+import type { Application, Request, Response } from "express";
+import type { GroupId, UserId } from "@typedefs/api/common.js";
+import modelsInit from "@models/index.js";
+import { SuperUsers } from "@/Globals.js";
 import { Op } from "sequelize";
+import { openS3 } from "@models/util/util.js";
+import { signedUrl } from "@api/auth.js";
+import type { ReadableStream } from "stream/web";
+import { serverErrorResponse } from "@api/V1/responseUtil.js";
+
+const models = await modelsInit();
 
 export const streamS3Object = async (
   request: Request,
@@ -37,10 +40,6 @@ export const streamS3Object = async (
   groupId?: GroupId,
   fileSize?: number
 ) => {
-  const s3 = modelsUtil.openS3();
-  const s3Request = s3.getObject({
-    Key: key,
-  });
   // NOTE: The internal NodeJS writable stream that is in an express object
   //  doesn't allow you to set a lower highwaterMark to allow a bit of back-pressure
   //  on slower connections, and therefore restrict how much data we're pulling from
@@ -48,13 +47,23 @@ export const streamS3Object = async (
   //  So in terms of recording bytes transferred for billing purposes, we basically
   //  may have to attribute more bytes to the download than were actually used by the
   //  end-user browser request.
-  let dataStreamed = 0;
-  const stream = s3Request.createReadStream();
-  stream.on("error", (err) => {
-    return serverErrorResponse(request, response, err);
-  });
-  if (userId && groupId) {
-    stream.on("close", async () => {
+  response.setHeader("Content-disposition", "attachment; filename=" + fileName);
+  response.setHeader("Transfer-Encoding", "chunked");
+  response.setHeader("Content-type", mimeType);
+  if (fileSize) {
+    response.setHeader("Content-Length", fileSize);
+  }
+
+  const s3 = openS3();
+  try {
+    const s3Request = await s3.getObject(key);
+    const webStream = s3Request.Body as unknown as ReadableStream;
+    let dataStreamed = 0;
+    for await (const chunk of webStream) {
+      dataStreamed += chunk.length;
+      response.write(chunk);
+    }
+    if (userId && groupId) {
       // Log out to the DB how much we streamed for this user.
       const groupUser = await models.GroupUsers.findOne({
         where: {
@@ -78,19 +87,11 @@ export const streamS3Object = async (
           transferredItems: 1,
         });
       }
-    });
+    }
+    response.end();
+  } catch (err) {
+    return serverErrorResponse(request, response, err);
   }
-  stream.on("data", (chunk) => {
-    dataStreamed += chunk.length;
-  });
-  response.setHeader("Content-disposition", "attachment; filename=" + fileName);
-  response.setHeader("Transfer-Encoding", "chunked");
-  response.setHeader("Content-type", mimeType);
-  if (fileSize) {
-    response.setHeader("Content-Length", fileSize);
-  }
-  stream.pipe(response);
-
   // TODO: We may want to support HTTP range requests, and if we do, we should be able to
   //  pass that through to our s3 providers.  It may not be supported for minio though,
   //  so we may still need to use the following hack.
@@ -157,7 +158,7 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${baseUrl}/signedUrl`,
-    [auth.signedUrl],
+    [signedUrl],
     middleware.requestWrapper(async (request, response) => {
       // TODO: If this signed url has a user, then we can attribute downloads + bandwidth
       //  to that user for billing purposes.

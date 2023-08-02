@@ -66,6 +66,70 @@ function renameStationById(
   });
 }
 
+function getStationCacophonyIndex(
+  stationId: StationId,
+  from: string,
+  windowsize: Number,
+  activeAndInactive = false
+): Promise<FetchResult<{ cacophonyIndex: number }>> {
+  return CacophonyApi.get(
+    `/api/v1/stations/${stationId}/cacophony-index?from=${from}&window-size=${windowsize}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getStationCacophonyIndexBulk(
+  id: StationId,
+  from: String,
+  steps: Number,
+  interval: String,
+  activeAndInactive = false
+): Promise<FetchResult<{ cacophonyIndexBulk: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/stations/${id}/cacophony-index-bulk?from=${from}&steps=${steps}&interval=${interval}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getStationSpeciesCount(
+  stationId: StationId,
+  from: String,
+  windowsize: Number,
+  activeAndInactive = false,
+  recordingType = "audio"
+): Promise<FetchResult<{ speciesCount: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/stations/${stationId}/species-count?from=${from}&window-size=${windowsize}&type=${recordingType}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
+function getStationSpeciesCountBulk(
+  stationId: StationId,
+  from: String,
+  steps: Number,
+  interval: String,
+  activeAndInactive = false,
+  recordingType = "audio"
+): Promise<FetchResult<{ cacophonyIndexBulk: Object }>> {
+  return CacophonyApi.get(
+    `/api/v1/stations/${stationId}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}&type=${recordingType}${
+      shouldViewAsSuperUser()
+        ? `&only-active=${activeAndInactive ? "false" : "true"}`
+        : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
+    }`
+  );
+}
+
 function uploadReferenceImage(
   stationId: StationId,
   imageData: Blob
@@ -106,4 +170,8 @@ export default {
   uploadReferenceImage,
   getReferenceImage,
   deleteReferenceImage,
+  getStationCacophonyIndex,
+  getStationCacophonyIndexBulk,
+  getStationSpeciesCount,
+  getStationSpeciesCountBulk,
 };

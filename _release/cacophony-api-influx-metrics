@@ -1,4 +1,4 @@
 #
 # cron.d/cacophony-api-influx-metrics
 # every minute
-* * * * * root (cd /srv/cacophony/api/scripts/ && node --unhandled-rejections=strict --no-warnings=ExperimentalWarnings --experimental-json-modules influx-metrics.js) 2>&1 | logger --tag influx-metrics
+* * * * * root (cd /srv/cacophony/api/ && node --unhandled-rejections=strict --loader esm-module-alias/loader --no-warnings=ExperimentalWarnings ./scripts/influx-metrics.js) 2>&1 | logger --tag influx-metrics

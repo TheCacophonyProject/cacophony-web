@@ -16,11 +16,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { validateFields } from "../middleware";
-import models from "@models";
-import { successResponse } from "./responseUtil";
+import { validateFields } from "../middleware.js";
+import modelsInit from "@models/index.js";
+import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   extractJWTInfo,
@@ -39,11 +39,11 @@ import {
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserById,
   parseJSONField,
-} from "../extract-middleware";
-import { jsonSchemaOf } from "../schema-validation";
-import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json";
-import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json";
-import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json";
+} from "../extract-middleware.js";
+import { jsonSchemaOf } from "../schema-validation.js";
+import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json" assert { type: "json" };
+import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json" assert { type: "json" };
+import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json" assert { type: "json" };
 import {
   anyOf,
   booleanOf,
@@ -52,29 +52,28 @@ import {
   nameOf,
   nameOrIdOf,
   validNameOf,
-} from "../validation-middleware";
+} from "../validation-middleware.js";
 import {
   AuthorizationError,
   ClientError,
   UnprocessableError,
-} from "../customErrors";
-import { mapDevicesResponse } from "./Device";
-import { Group } from "@/models/Group";
-import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
-import { ApiDeviceResponse } from "@typedefs/api/device";
-import {
+} from "../customErrors.js";
+import { mapDevicesResponse } from "./Device.js";
+import type { Group } from "@/models/Group.js";
+import type {
+  ApiGroupResponse,
+  ApiGroupUserResponse,
+} from "@typedefs/api/group.js";
+import type { ApiDeviceResponse } from "@typedefs/api/device.js";
+import type {
   ApiCreateStationData,
   ApiStationResponse,
-} from "@typedefs/api/station";
-import { ScheduleConfig } from "@typedefs/api/schedule";
-import { mapSchedule } from "@api/V1/Schedule";
-import { mapStation, mapStations } from "./Station";
-import {
-  latLngApproxDistance,
-  MIN_STATION_SEPARATION_METERS,
-} from "@api/V1/recordingUtil";
-import { HttpStatusCode } from "@typedefs/api/consts";
-import { urlNormaliseName } from "@/emails/htmlEmailUtils";
+} from "@typedefs/api/station.js";
+import type { ScheduleConfig } from "@typedefs/api/schedule.js";
+import { mapSchedule } from "@api/V1/Schedule.js";
+import { mapStation, mapStations } from "./Station.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 import { Op } from "sequelize";
 import {
   sendAddedToGroupNotificationEmail,
@@ -84,14 +83,24 @@ import {
   sendRemovedFromGroupNotificationEmail,
   sendRemovedFromInvitedGroupNotificationEmail,
   sendUpdatedGroupPermissionsNotificationEmail,
-} from "@/emails/transactionalEmails";
+} from "@/emails/transactionalEmails.js";
 import {
   getInviteToGroupToken,
   getInviteToGroupTokenExistingUser,
-} from "@api/auth";
-import { GroupId, GroupInvitationId, UserId } from "@typedefs/api/common";
-import { GroupInvites } from "@models/GroupInvites";
+} from "@api/auth.js";
+import type {
+  GroupId,
+  GroupInvitationId,
+  UserId,
+} from "@typedefs/api/common.js";
+import type { GroupInvites } from "@models/GroupInvites.js";
 import config from "@config";
+import {
+  latLngApproxDistance,
+  MIN_STATION_SEPARATION_METERS,
+} from "@models/util/locationUtils.js";
+
+const models = await modelsInit();
 
 const mapGroup = (
   group: Group,
@@ -304,7 +313,7 @@ export default function (app: Application, baseUrl: string) {
       deprecatedField(query("where")), // Sidekick
     ]),
     fetchAuthorizedRequiredGroups,
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       let groups: ApiGroupResponse[] = mapGroups(
         response.locals.groups,
         response.locals.viewAsSuperUser
@@ -319,6 +328,9 @@ export default function (app: Application, baseUrl: string) {
         const actualUser = await models.User.findByPk(
           response.locals.requestUser.id
         );
+        if (!actualUser) {
+          return next(new AuthorizationError("User not found"));
+        }
         if (actualUser.createdAt > oneWeekAgo) {
           // Check invites that haven't expired
           const invites = await models.GroupInvites.findAll({
@@ -527,8 +539,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
-
-  // TODO(jon): Would be nicer as /api/v1/groups/:groupName/users or something
   app.post(
     `${apiUrl}/users`,
     extractJwtAuthorizedUser,
@@ -840,6 +850,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiInterface {apiBody::ApiCreateSingleStationDataBody} station ApiStation
    * @apiParam {Date} [from-date] Start (active from) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
    * @apiParam {Date} [until-date] End (retirement) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiParam {Boolean} [automatic] Station is treated as automatically created, such that the from/until dates are flexible and can be moved if earlier
+   * recordings are seen.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Integer} stationId StationId id of new station.
@@ -852,6 +864,7 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
       body("station").exists().custom(jsonSchemaOf(ApiCreateStationDataSchema)),
       body("from-date").isISO8601().toDate().optional(),
+      booleanOf(body("automatic")).optional().default(false),
       body("until-date").isISO8601().toDate().optional(),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
@@ -903,7 +916,7 @@ export default function (app: Application, baseUrl: string) {
         location,
         activeAt: fromTime,
         retiredAt: untilTime || null,
-        automatic: false,
+        automatic: request.body.automatic || false,
         lastUpdatedById: userId,
         GroupId: groupId,
       });
@@ -1236,9 +1249,9 @@ export default function (app: Application, baseUrl: string) {
         let token;
         const group = response.locals.group;
         const user = response.locals.user;
-        const makeAdmin = request.body.admin;
-        const makeOwner = request.body.owner;
-        const requestUser = response.locals.requestUser;
+        const _makeAdmin = request.body.admin;
+        const _makeOwner = request.body.owner;
+        const _requestUser = response.locals.requestUser;
         const email = request.body.email.toLowerCase().trim();
         if (!user) {
           // If the user isn't a member, there should be an invitation created,

@@ -1,18 +1,14 @@
-import registerModuleAliases from "./module-aliases";
-registerModuleAliases();
-
-import { Application, NextFunction, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import express from "express";
 import passport from "passport";
 import process from "process";
 import http from "http";
-import config from "./config";
-import models from "./models";
+import config from "./config.js";
+import modelsInit from "@models/index.js";
 import log, { consoleTransport } from "@log";
-import customErrors from "./api/customErrors";
-import modelsUtil from "./models/util/util";
-import initialiseApi from "./api/V1";
-import initialiseFileProcessingApi from "./api/fileProcessing";
+import customErrors from "./api/customErrors.js";
+import { openS3 } from "./models/util/util.js";
+import initialiseApi from "./api/V1/index.js";
 import expressWinston from "express-winston";
 import { exec } from "child_process";
 import { promisify } from "util";
@@ -22,9 +18,13 @@ import {
   asyncLocalStorage,
   CACOPHONY_WEB_VERSION,
   SuperUsers,
-} from "./Globals";
+} from "./Globals.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const asyncExec = promisify(exec);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const maybeRecompileJSONSchemaDefinitions = async (): Promise<void> => {
   if (!config.productionEnv) {
@@ -61,27 +61,27 @@ const openHttpServer = (app): Promise<void> => {
   });
 };
 
-// Returns a Promise that will reolve if it could connect to the S3 file storage
+export const delayMs = async (delayMs: number) =>
+  new Promise((resolve) => setTimeout(resolve, delayMs));
+
+// Returns a Promise that will resolve if it could connect to the S3 file storage
 // and reject if connection failed.
-const checkS3Connection = (): Promise<void> => {
-  return new Promise((resolve, reject) => {
-    const s3 = modelsUtil.openS3();
-    const params = { Bucket: config.s3Local.bucket };
-    log.notice("Connecting to S3.....");
-    s3.headBucket(params, (err) => {
-      if (err) {
-        log.error("Error with connecting to S3.");
-        reject(err);
-      }
-      log.notice("Connected to S3.");
-      resolve();
-    });
-  });
+const checkS3Connection = async (): Promise<void> => {
+  const s3 = openS3();
+  log.notice("Connecting to S3.....");
+  try {
+    await s3.headBucket(config.s3Local.bucket);
+    log.notice("Connected to S3.");
+  } catch (err) {
+    if (err) {
+      log.error("Error with connecting to S3. %s", err);
+    }
+  }
 };
 
 (async () => {
   log.notice("Starting Full Noise.");
-  config.loadConfigFromArgs(true);
+  await config.loadConfigFromArgs(true);
 
   await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
@@ -126,8 +126,15 @@ const checkS3Connection = (): Promise<void> => {
       },
     })
   );
-  app.use(express.urlencoded({ extended: false, limit: "2Mb" }));
-  app.use(express.json({ limit: "2Mb" }));
+  app.use(
+    express.raw({
+      inflate: true,
+      limit: "50Mb",
+      type: "application/octet-stream",
+    })
+  );
+  app.use(express.urlencoded({ extended: false, limit: "50Mb" }));
+  app.use(express.json({ limit: "50Mb" }));
   app.use(passport.initialize());
   // Adding API documentation
   app.use(express.static(__dirname + "/apidoc"));
@@ -147,7 +154,7 @@ const checkS3Connection = (): Promise<void> => {
     );
     next();
   });
-  initialiseApi(app);
+  await initialiseApi(app);
   app.use(customErrors.errorHandler);
 
   // FIXME / TODO
@@ -157,15 +164,8 @@ const checkS3Connection = (): Promise<void> => {
   //   log.warning("validation %s", result);
   // });
 
-  // Add file processing API.
-  const fileProcessingApp = express();
-  fileProcessingApp.use(express.urlencoded({ extended: false, limit: "50Mb" }));
-  fileProcessingApp.use(express.json({ limit: "50Mb" }));
-
-  initialiseFileProcessingApi(fileProcessingApp);
-  http.createServer(fileProcessingApp).listen(config.fileProcessing.port);
-  log.notice("Starting file processing on %d", config.fileProcessing.port);
-  fileProcessingApp.use(customErrors.errorHandler);
+  log.notice("Initialising Sequelize models");
+  const models = await modelsInit();
 
   log.notice("Connecting to database.....");
   try {

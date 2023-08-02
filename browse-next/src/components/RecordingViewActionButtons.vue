@@ -1,20 +1,40 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
+import type { SelectedProject } from "@models/LoggedInUser";
 import {
-  currentSelectedGroup,
+  currentSelectedProject,
   CurrentUser,
   showUnimplementedModal,
 } from "@models/LoggedInUser";
-import type { SelectedGroup } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import { RecordingType } from "@typedefs/api/consts.ts";
+import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
 }>();
+const currentRecordingType = ref<"cptv" | "image">("cptv");
+
+watch(
+  () => recording,
+  (nextRecording) => {
+    if (nextRecording) {
+      switch (nextRecording.type) {
+        case RecordingType.TrailCamVideo:
+        case RecordingType.TrailCamImage:
+          currentRecordingType.value = "image";
+          break;
+        default:
+          currentRecordingType.value = "cptv";
+          break;
+      }
+    }
+  }
+);
 
 const emit = defineEmits<{
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
@@ -34,14 +54,16 @@ const addLabel = async (label: string) => {
     const addLabelResponse = await addRecordingLabel(recording.id, label);
     if (addLabelResponse.success) {
       // Emit tag change event, patch upstream recording.
-      emit("added-recording-label", {
-        id: addLabelResponse.result.tagId,
-        detail: label,
-        confidence: 0.9,
-        taggerName: CurrentUser.value?.userName,
-        taggerId: CurrentUser.value?.id,
-        createdAt: new Date().toISOString(),
-      });
+      if (CurrentUser.value) {
+        emit("added-recording-label", {
+          id: addLabelResponse.result.tagId,
+          detail: label,
+          confidence: 0.9,
+          taggerName: (CurrentUser.value as ApiLoggedInUserResponse).userName,
+          taggerId: (CurrentUser.value as ApiLoggedInUserResponse).id,
+          createdAt: new Date().toISOString(),
+        });
+      }
     }
     addingLabelInProgress.value = false;
   }
@@ -100,7 +122,8 @@ const recordingIsFlagged = computed<boolean>(() => {
   return false;
 });
 
-const userIsGroupAdmin = (currentSelectedGroup.value as SelectedGroup).admin;
+const userIsGroupAdmin = (currentSelectedProject.value as SelectedProject)
+  .admin;
 
 const notImplemented = () => {
   showUnimplementedModal.value = true;
@@ -110,7 +133,7 @@ const notImplemented = () => {
   <div class="recording-icons d-flex justify-content-between px-sm-2">
     <button
       type="button"
-      class="btn"
+      class="btn btn-square btn-hi"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
@@ -123,7 +146,7 @@ const notImplemented = () => {
     </button>
     <button
       type="button"
-      class="btn"
+      class="btn btn-square btn-hi"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
@@ -139,9 +162,10 @@ const notImplemented = () => {
       dropup
       auto-close
       offset="-92, 7"
-      no-caret
       variant="link"
+      toggle-class="dropdown-btn"
       menu-class="dropdown-indicator"
+      v-if="currentRecordingType === 'cptv'"
     >
       <template #button-content>
         <font-awesome-icon icon="download" color="#666" />
@@ -160,6 +184,16 @@ const notImplemented = () => {
         Download CPTV
       </b-dropdown-item-button>
     </b-dropdown>
+    <button
+      v-else-if="currentRecordingType === 'image'"
+      type="button"
+      class="btn btn-square btn-hi"
+      :disabled="!recordingReady"
+      @click="() => emit('requested-download')"
+    >
+      <font-awesome-icon icon="download" color="#666" />
+    </button>
+
     <two-step-action-button
       :action="() => emit('delete-recording')"
       icon="trash-can"
@@ -172,7 +206,7 @@ const notImplemented = () => {
     </two-step-action-button>
     <button
       type="button"
-      class="btn"
+      class="btn btn-square btn-hi"
       :disabled="!recordingReady"
       @click="() => notImplemented()"
     >

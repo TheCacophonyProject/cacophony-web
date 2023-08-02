@@ -20,19 +20,21 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       "@api": fileURLToPath(new URL("./src/api", import.meta.url)),
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       "@views": fileURLToPath(new URL("./src/views", import.meta.url)),
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       "@models": fileURLToPath(new URL("./src/models", import.meta.url)),
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       "@typedefs": fileURLToPath(new URL("../types", import.meta.url)),
     },
   },
-  // build: {
-  //   rollupOptions: {
-  //     output: {
-  //       inlineDynamicImports: false,
-  //       format: "iife",
-  //     },
-  //   },
-  // },
 });

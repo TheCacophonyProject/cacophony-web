@@ -9,6 +9,7 @@ import { CurrentUser } from "@models/LoggedInUser";
 import type { TagId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
+import { RecordingLabels } from "@/consts";
 
 const { recording } = defineProps<{
   recording?: ApiRecordingResponse | null;
@@ -41,39 +42,7 @@ interface Label {
 }
 
 // TODO - Group-level defined labels created by group admin.
-const labels: Label[] = [
-  { text: "Cool", description: "Mark this as a cool or interesting recording" },
-  {
-    text: "Flag for review",
-    value: "requires review",
-    description:
-      "Flag this recording for review due to low confidence IDing track(s)",
-  },
-  {
-    text: "Animal in trap",
-    value: "trapped in trap",
-    description: "An animal is in a trap in this recording",
-  },
-  {
-    text: "Animal interacted with trap",
-    value: "interaction with trap",
-    description: "An animal interacted with a trap in this recording",
-  },
-  {
-    text: "Missed recording",
-    description:
-      "Missing an earlier recording that explains how the animal got to where it is now",
-  },
-  {
-    text: "Missed track",
-    description:
-      "One or more animals do not have a corresponding track in this recording",
-  },
-  {
-    text: "Multiple animals",
-    description: "There is more than one animal in this recording",
-  },
-].map(({ text, description, value }) => ({
+const labels: Label[] = RecordingLabels.map(({ text, description, value }) => ({
   text,
   description,
   value: (value || text).toLowerCase(),

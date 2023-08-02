@@ -55,6 +55,7 @@ Cypress.Commands.add(
           type: type,
           processingState: state,
         }).then((recordingIds) => {
+          console.log(recordingIds);
           recordingIds.forEach((recordingId) => {
             cy.apiRecordingDelete(
               superuser,
@@ -507,7 +508,7 @@ export function TestCreateExpectedRecordingColumns(
   } else {
     expected["Cacophony Index"] = "";
   }
-  expected["Species Classification"] = ""; //FIXME PATRICK - remove once this depracted column gone
+  expected["Species Classification"] = ""; //FIXME PATRICK - remove once this deprecated column gone
 
   return expected;
 }
@@ -551,7 +552,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputRecording.type == "thermalRaw") {
     expected.rawMimeType = "application/x-cptv";
   } else {
-    expected.rawMimeType = "audio/mpeg";
+    expected.rawMimeType = "audio/mp4";
   }
   if (inputRecording.duration !== undefined) {
     expected.duration = inputRecording.duration;
@@ -700,6 +701,7 @@ export function trackResponseFromSet(
             data: tpreddata[0],
             confidence: track.predictions[0].confidence,
             id: 0,
+            path: "all",
           },
         ];
       }

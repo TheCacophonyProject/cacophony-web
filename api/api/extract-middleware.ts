@@ -1,34 +1,36 @@
-import { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
+import type { DecodedJWTToken } from "./auth.js";
 import {
   checkAccess,
-  DecodedJWTToken,
   getDecodedToken,
   getVerifiedJWT,
   lookupEntity,
-} from "./auth";
-import models, { ModelStaticCommon } from "../models";
-import logger from "../logging";
-import log from "../logging";
-import { modelTypeName, modelTypeNamePlural } from "./middleware";
-import { ValidationChain } from "express-validator";
+} from "./auth.js";
+import type { ModelStaticCommon } from "@models";
+import modelsInit from "../models/index.js";
+import log from "../logging.js";
+import { modelTypeName, modelTypeNamePlural } from "./middleware.js";
+import type { ValidationChain } from "express-validator";
 import {
   AuthenticationError,
   AuthorizationError,
   ClientError,
-} from "./customErrors";
-import { User } from "models/User";
+} from "./customErrors.js";
+import type { User } from "models/User.js";
 import { Op } from "sequelize";
-import { Device } from "models/Device";
-import { RecordingId, ScheduleId, UserId } from "@typedefs/api/common";
-import { Group } from "models/Group";
-import { Recording } from "models/Recording";
-import { Station } from "@/models/Station";
-import { Schedule } from "@/models/Schedule";
-import { UserGlobalPermission } from "@typedefs/api/consts";
-import { urlNormaliseName } from "@/emails/htmlEmailUtils";
-import { SuperUsers } from "@/Globals";
-import { Alert } from "@models/Alert";
-import { Event } from "@models/Event";
+import type { Device } from "models/Device.js";
+import type { RecordingId, ScheduleId, UserId } from "@typedefs/api/common.js";
+import type { Group } from "models/Group.js";
+import type { Recording } from "models/Recording.js";
+import type { Station } from "@/models/Station.js";
+import type { Schedule } from "@/models/Schedule.js";
+import { UserGlobalPermission } from "@typedefs/api/consts.js";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
+import { SuperUsers } from "@/Globals.js";
+import type { Alert } from "@models/Alert.js";
+import type { Event } from "@models/Event.js";
+
+const models = await modelsInit();
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -107,7 +109,7 @@ const extractJwtAuthenticatedEntity =
       } else {
         let result;
         try {
-          result = await lookupEntity(jwtDecoded);
+          result = await lookupEntity(models, jwtDecoded);
         } catch (e) {
           return next(e);
         }
@@ -176,6 +178,8 @@ const deviceAttributes = [
   "kind",
   "ScheduleId",
   "password", // Needed for auth, but not passed through when mapping to response.
+  "heartbeat",
+  "nextHeartbeat",
 ];
 
 const getGroupInclude = (
@@ -459,7 +463,7 @@ export const fetchModel =
     try {
       model = await modelGetter(id, id2, response.locals);
     } catch (e) {
-      logger.error("%s", e.sql);
+      log.error("%s", e.sql);
       return next(e);
     }
     if (model instanceof ClientError) {
@@ -939,6 +943,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
         attributes: [
           "id",
           "what",
+          "path",
           "automatic",
           "confidence",
           "data",

@@ -2,23 +2,33 @@
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
   computed,
+  inject,
   nextTick,
   onBeforeUnmount,
   onMounted,
   ref,
   watch,
 } from "vue";
+import type { Ref } from "vue";
 import {
-  timezoneForLocation,
+  timezoneForLatLng,
   visitsBySpecies as visitsBySpeciesCalc,
 } from "@models/visitsUtils";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import {
+  displayLabelForClassificationLabel,
+  getPathForLabel,
+} from "@api/Classifications";
+import type { StationId as LocationId } from "@typedefs/api/common";
 
-const { visits, stations, startDate } = defineProps<{
+const currentlyHighlightedLocation = inject(
+  "currentlyHighlightedLocation"
+) as Ref<LocationId | null>;
+
+const { visits, locations, startDate } = defineProps<{
   visits: ApiVisitResponse[];
-  stations: NamedPoint[];
+  locations: NamedPoint[];
   startDate: Date;
 }>();
 
@@ -76,9 +86,9 @@ onBeforeUnmount(() => {
 });
 
 const timezoneForActiveStations = computed<string>(() => {
-  if (stations.length) {
-    const station = stations[0];
-    return timezoneForLocation(station.location);
+  if (locations.length) {
+    const location = locations[0];
+    return timezoneForLatLng(location.location);
   }
   return "Auckland/Pacific";
 });
@@ -143,6 +153,14 @@ const maxTime = computed<number>(() => {
 const dateAndDayOfWeek = (date: DateTime): string => {
   return `${date.weekdayShort} ${date.day}`;
 };
+
+const mouseOverVisit = (visit: ApiVisitResponse) => {
+  currentlyHighlightedLocation.value = visit.stationId;
+};
+
+const mouseLeftVisit = (_visit: ApiVisitResponse) => {
+  currentlyHighlightedLocation.value = null;
+};
 </script>
 <template>
   <div class="visits-timeline">
@@ -160,6 +178,8 @@ const dateAndDayOfWeek = (date: DateTime): string => {
         <div
           v-for="visit in visits"
           :key="visit.timeStart"
+          @mouseenter="() => mouseOverVisit(visit)"
+          @mouseleave="() => mouseLeftVisit(visit)"
           :title="
             DateTime.fromISO(visit.timeStart, {
               zone: timezoneForActiveStations,
@@ -177,7 +197,11 @@ const dateAndDayOfWeek = (date: DateTime): string => {
               maxTime
             )}%`,
           }"
-          :class="['event-item-visit', visit.classification]"
+          :class="[
+            'event-item-visit',
+            visit.classification,
+            ...(getPathForLabel(visit.classification) || '').split('.'),
+          ]"
         />
         <div
           v-for="(date, index) in dates"

@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted, ref, unref, watch } from "vue";
-import type { Ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import type { CircleMarkerOptions, LatLngTuple } from "leaflet";
-import { DomEvent, latLng, Layer, Map as LeafletMap, Point } from "leaflet";
+import {
+  DomEvent,
+  latLng,
+  Layer,
+  Map as LeafletMap,
+  Point,
+  TileLayer,
+} from "leaflet";
 import {
   tileLayer,
   latLngBounds,
@@ -22,6 +28,7 @@ import {
 import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
 import { BSpinner } from "bootstrap-vue-3";
+import type { LatLng } from "@typedefs/api/common";
 
 const attribution = control.attribution;
 
@@ -29,29 +36,41 @@ const attribution = control.attribution;
 //  and hard to see.  Maybe make them a minimum size, or give them an outline colour?
 
 const {
-  points,
+  points = [],
   radius = 0,
   navigateToPoint,
   zoom = true,
-  highlightedPoint,
+  zoomLevel,
+  center,
+  minZoom = 5,
+  highlightedPoint = null,
   canChangeBaseMap = true,
   isInteractive = true,
   markersAreInteractive = true,
   hasAttribution = true,
+  showStationRadius = true,
+  showOnlyActivePoints = true,
   activePoints = [],
   focusedPoint,
+  showCrossHairs = false,
 } = defineProps<{
   navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
-  points: NamedPoint[];
-  highlightedPoint: Ref<NamedPoint | null>;
-  activePoints: NamedPoint[];
-  focusedPoint?: NamedPoint;
+  points?: NamedPoint[];
+  highlightedPoint?: NamedPoint | null;
+  activePoints?: NamedPoint[];
+  focusedPoint?: NamedPoint | null;
   radius?: number;
+  showStationRadius?: boolean;
+  showOnlyActivePoints?: boolean;
   zoom?: boolean;
+  zoomLevel?: number;
+  minZoom?: number;
+  center?: LatLng;
   canChangeBaseMap?: boolean;
   isInteractive?: boolean;
   markersAreInteractive?: boolean;
   hasAttribution?: boolean;
+  showCrossHairs?: boolean;
 }>();
 
 interface LeafletInternalRawMarker {
@@ -62,11 +81,15 @@ interface LeafletInternalRawMarker {
   _map: LeafletMap;
 }
 
-const loading = ref(true);
+const loading = ref<boolean>(false);
 const mapEl = ref<HTMLDivElement | null>(null);
 
-const pointKey = (point: NamedPoint) =>
-  `${point.group}|${point.name}|${point.location.lat}|${point.location.lng}`;
+const pointKey = (point: NamedPoint) => {
+  if (!point.location) {
+    debugger;
+  }
+  return `${point.project}|${point.name}|${point.location.lat}|${point.location.lng}`;
+};
 
 const lerp = (targetValue: number, progressZeroOne: number) => {
   return targetValue * progressZeroOne;
@@ -104,55 +127,63 @@ const updateMarkerRadius = (marker: CircleMarkerGroup, radius: number) => {
   }
 };
 
-const highlightMarker = (marker: CircleMarkerGroup) => {
+const markerAnimationFrames: Record<string, number> = {};
+const highlightMarker = (marker: CircleMarkerGroup, key: string) => {
   const currentRadius = marker.foregroundMarker.getRadius();
   const numFrames = Math.ceil(rafFps.value * 0.3);
   const initialRadius = 5;
   const enlargeBy = 5;
-
   if (currentRadius < initialRadius + enlargeBy) {
     const progress = iLerp(enlargeBy, currentRadius - initialRadius);
     const newRadius =
       initialRadius + lerp(enlargeBy, Math.min(1, progress + 1 / numFrames));
-    requestAnimationFrame(() => {
+    cancelAnimationFrame(markerAnimationFrames[key]);
+    markerAnimationFrames[key] = requestAnimationFrame(() => {
       const rawMarker =
         marker.foregroundMarker as unknown as LeafletInternalRawMarker;
       if (!rawMarker._path.classList.contains("pulse")) {
         rawMarker._path.classList.add("pulse");
       }
       updateMarkerRadius(marker, newRadius);
-      highlightMarker(marker);
+      highlightMarker(marker, key);
     });
   }
 };
 
-const unHighlightMarker = (marker: CircleMarkerGroup) => {
+const unhighlightImmediately = (marker: CircleMarkerGroup) => {
+  const rawMarker =
+    marker.foregroundMarker as unknown as LeafletInternalRawMarker;
+  if (rawMarker._path.classList.contains("pulse")) {
+    (rawMarker._path as SVGPathElement).classList.remove("pulse");
+  }
+  marker.foregroundMarker.setRadius(5);
+};
+
+const unHighlightMarker = (marker: CircleMarkerGroup, key: string) => {
   const currentRadius = marker.foregroundMarker.getRadius();
   if (currentRadius > 5) {
-    requestAnimationFrame(() => {
+    cancelAnimationFrame(markerAnimationFrames[key]);
+    markerAnimationFrames[key] = requestAnimationFrame(() => {
       const rawMarker =
         marker.foregroundMarker as unknown as LeafletInternalRawMarker;
       if (rawMarker._path.classList.contains("pulse")) {
         (rawMarker._path as SVGPathElement).classList.remove("pulse");
       }
-      // TODO - Lerp this number properly.
       marker.foregroundMarker.setRadius(currentRadius - 1);
-      unHighlightMarker(marker);
+      unHighlightMarker(marker, key);
     });
   }
 };
 
 watch(
-  highlightedPoint,
-  (newPoint: NamedPoint | null, oldPoint: NamedPoint | null) => {
-    const newP = unref(newPoint);
-    const oldP = unref(oldPoint);
-    if (newP) {
-      const pointMarker = markers[pointKey(newP)];
-      if (pointMarker) {
+  () => highlightedPoint,
+  (newP: NamedPoint | null) => {
+    const key = (newP && pointKey(newP)) || "";
+    for (const [markerKey, pointMarker] of Object.entries(markers)) {
+      if (key === markerKey) {
         // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
         pointMarker.foregroundMarker.bringToFront();
-        highlightMarker(pointMarker);
+        highlightMarker(pointMarker, markerKey);
         pointMarker.foregroundMarker.openTooltip();
         (
           (pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker)
@@ -160,12 +191,9 @@ watch(
         ).panInside(pointMarker.foregroundMarker.getLatLng(), {
           padding: [100, 30],
         });
-      }
-    }
-    if (oldP) {
-      const pointMarker = markers[pointKey(oldP)];
-      if (pointMarker) {
-        unHighlightMarker(pointMarker);
+      } else {
+        cancelAnimationFrame(markerAnimationFrames[markerKey]);
+        unhighlightImmediately(pointMarker);
         pointMarker.foregroundMarker.closeTooltip();
       }
     }
@@ -188,32 +216,43 @@ const mapLayers = [
       '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
   },
 ];
-
 const mapBounds = computed<LatLngBounds | null>(() => {
-  if (activePoints.length === 0) {
-    // Calculate the initial map bounds and zoom level from the set of lat/lng points
-    return (
-      (points.length &&
-        latLngBounds(points.map(({ location }) => location)).pad(0.25)) ||
-      null
-    );
-  } else {
+  const boundsPaddingInMeters = 300;
+  if (
+    !(
+      !activePoints ||
+      (activePoints && activePoints.length === 0) ||
+      !showOnlyActivePoints
+    )
+  ) {
     if (focusedPoint) {
       // Give the bounds 300m around the focused location.
-      return latLng(focusedPoint.location).toBounds(300);
-    }
-    if (activePoints.length > 1) {
-      return latLngBounds(activePoints.map(({ location }) => location)).pad(
-        0.25
+      // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
+      return latLng(focusedPoint.location).toBounds(boundsPaddingInMeters);
+    } else if (activePoints && activePoints.length === 1) {
+      // Give the bounds 300m around the location.
+      return latLng(activePoints[0].location).toBounds(boundsPaddingInMeters);
+    } else if (activePoints && activePoints.length > 1) {
+      return latLngBounds(
+        activePoints.flatMap(({ location }) => {
+          const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
+          return [pBounds.getNorthWest(), pBounds.getSouthEast()];
+        })
       );
     }
-
-    if (activePoints.length === 1) {
-      // Give the bounds 300m around the location.
-      return latLng(activePoints[0].location).toBounds(300);
-    }
-    return null;
   }
+  // Calculate the initial map bounds and zoom level from the set of lat/lng points
+  return (
+    (points &&
+      points.length &&
+      latLngBounds(
+        points.flatMap(({ location }) => {
+          const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
+          return [pBounds.getNorthWest(), pBounds.getSouthEast()];
+        })
+      )) ||
+    null
+  );
 });
 
 const _mapLocationsForRadius = computed<NamedPoint[]>(() => {
@@ -227,7 +266,6 @@ const _hasPoints = computed<boolean>(() => {
   return points && points.length !== 0;
 });
 
-const computedPoints = computed<NamedPoint[]>(() => points);
 const computedLoading = computed<boolean>(() => loading.value);
 
 const _navigateToLocation = (point: NamedPoint) => {
@@ -238,7 +276,7 @@ const _navigateToLocation = (point: NamedPoint) => {
 };
 
 interface CircleMarkerGroup {
-  backgroundRadius: Circle;
+  backgroundRadius?: Circle;
   foregroundMarker: CircleMarker;
 }
 
@@ -279,7 +317,9 @@ const maybeShowAttributionForCurrentLayer = () => {
 const clearCurrentMarkers = () => {
   if (map) {
     for (const [key, marker] of Object.entries(markers)) {
-      map.removeLayer(marker.backgroundRadius);
+      if (marker.backgroundRadius) {
+        map.removeLayer(marker.backgroundRadius);
+      }
       map.removeLayer(marker.foregroundMarker);
       delete markers[key];
     }
@@ -300,13 +340,15 @@ const addPoints = () => {
         activePoints && activePoints.find((p) => pointKey(p) === thisPointKey);
       const isFocusedPoint =
         focusedPoint && pointKey(focusedPoint) === thisPointKey;
-      if (!isAnActivePoint) {
-        colour.fillColor = "#aaa";
+      if (!point.color && !isAnActivePoint) {
+        colour.fillColor = "#666";
+      } else if (point.color) {
+        colour.fillColor = point.color;
       }
       let fillOpacityMultiplier = 1;
       let pointScaleMultiplier = 1;
       if (!isAnActivePoint) {
-        pointScaleMultiplier = 0.5;
+        pointScaleMultiplier = 1;
         fillOpacityMultiplier = 0.85;
       }
       if (isAnActivePoint && focusedPoint && !isFocusedPoint) {
@@ -316,16 +358,7 @@ const addPoints = () => {
         pointScaleMultiplier = 1.25;
       }
 
-      const marker = {
-        backgroundRadius: circle(point.location, {
-          radius: 30,
-          interactive: false,
-          fillOpacity: 0.25 * fillOpacityMultiplier,
-          fillColor: "",
-          fill: true,
-          stroke: false,
-          ...colour,
-        }),
+      const marker: CircleMarkerGroup = {
         foregroundMarker: circleMarker(point.location, {
           radius: 5 * pointScaleMultiplier,
           stroke: false,
@@ -334,6 +367,17 @@ const addPoints = () => {
           ...colour,
         }),
       };
+      if (!point.type || point.type === "station") {
+        marker.backgroundRadius = circle(point.location, {
+          radius: 30,
+          interactive: false,
+          fillOpacity: 0.25 * fillOpacityMultiplier,
+          fillColor: "",
+          fill: true,
+          stroke: false,
+          ...colour,
+        });
+      }
       markers[pointKey(point)] = marker;
 
       if (markersAreInteractive && isAnActivePoint) {
@@ -352,9 +396,18 @@ const addPoints = () => {
           );
           namedPoint && hoverPoint(namedPoint);
         });
-        marker.foregroundMarker.on("mouseout", leavePoint);
+        marker.foregroundMarker.on("mouseout", () => leavePoint());
+        marker.foregroundMarker.on("click", (e) => {
+          const namedPoint = points.find(
+            (p) =>
+              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+          );
+          namedPoint && selectPoint(namedPoint);
+        });
       }
-      map.addLayer(marker.backgroundRadius);
+      if (marker.backgroundRadius) {
+        map.addLayer(marker.backgroundRadius);
+      }
       map.addLayer(marker.foregroundMarker);
     }
     // Bring active markers to foreground:
@@ -362,20 +415,36 @@ const addPoints = () => {
       for (const point of activePoints) {
         const marker = markers[pointKey(point)];
         if (marker && marker.foregroundMarker.getElement()?.parentNode) {
-          marker.backgroundRadius.bringToFront();
+          if (marker.backgroundRadius) {
+            marker.backgroundRadius.bringToFront();
+          }
           marker.foregroundMarker.bringToFront();
         }
       }
+
+      // TODO: Try and get the contrast with the markers looking better
+      map.eachLayer((layer) => {
+        if ((layer as TileLayer).options.attribution) {
+          (layer as TileLayer).setOpacity(0.15);
+        }
+      });
     }
     if (focusedPoint) {
       const marker = markers[pointKey(focusedPoint)];
       if (marker && marker.foregroundMarker.getElement()?.parentNode) {
-        marker.backgroundRadius.bringToFront();
+        if (marker.backgroundRadius) {
+          marker.backgroundRadius.bringToFront();
+        }
         marker.foregroundMarker.bringToFront();
       }
     }
+    fitMapBounds();
   }
 };
+
+watch(() => activePoints, addPoints);
+watch(() => points, addPoints);
+watch(() => focusedPoint, addPoints);
 
 const fitMapBounds = () => {
   if (map && mapBounds.value) {
@@ -390,10 +459,8 @@ const fitMapBounds = () => {
   }
 };
 
-watch(mapBounds, fitMapBounds);
-watch(computedPoints, addPoints);
-
 onMounted(() => {
+  loading.value = true;
   const mapElement = mapEl.value;
 
   for (const layer of mapLayers) {
@@ -401,8 +468,16 @@ onMounted(() => {
       attribution: layer.attribution,
       detectRetina: true,
     });
+    if (layer.visible) {
+      tileLayers[layer.name].on("load", (e) => {
+        if (loading.value) {
+          (tileLayers[layer.name] as TileLayer).setOpacity(0.25);
+          loading.value = false;
+          addPoints();
+        }
+      });
+    }
   }
-
   // TODO: Add a "Fit to bounds" button.
   map = mapConstructor(mapElement as HTMLElement, {
     zoomControl: zoom,
@@ -410,10 +485,27 @@ onMounted(() => {
     scrollWheelZoom: isInteractive,
     keyboard: isInteractive,
     tap: isInteractive,
-    maxZoom: 15,
+    maxZoom: 16,
+    minZoom,
     attributionControl: false,
+    center: center || mapBounds.value?.getCenter(),
+    zoom: zoomLevel || 14,
     layers: [tileLayers[currentLayer]], // The default layer
   });
+
+  map.on("move", (event) => {
+    if ("originalEvent" in event) {
+      emit("move-map", map?.getCenter());
+    }
+  });
+  map.on("load", () => {
+    emit("init-map");
+  });
+  if (center) {
+    // map load event won't fire if we manually set center on init.
+    emit("init-map");
+  }
+  map.invalidateSize();
   if (canChangeBaseMap && mapLayers.length > 1) {
     map.addControl(control.layers(tileLayers));
     map.on("baselayerchange", (e) => {
@@ -447,10 +539,22 @@ onMounted(() => {
     };
     map.addControl(attributionToggle);
   }
-
-  fitMapBounds();
+  if (!center) {
+    map.invalidateSize();
+    fitMapBounds();
+  }
   addPoints();
 });
+
+watch(
+  () => center,
+  () => {
+    if (center && map) {
+      map.invalidateSize();
+      map.setView(center, zoomLevel);
+    }
+  }
+);
 //  TODO: On point highlight, animate the size/colour of the point.
 //  Suggests that maybe we don't want to use vue-leaflet to manage the lifecycle of the points.
 //  Would also be cool to have the ability to show "group regions" where there is a bubble or shape around a cluster of
@@ -458,10 +562,20 @@ onMounted(() => {
 //  haven't had a recording in a while.  Maybe filter stations by what kind of recordings we've seen there too,
 //  so we can show either thermal or audio stations, or both.  Show stations that are more active than others?
 
-const emit = defineEmits(["hover-point", "leave-point"]);
+const emit = defineEmits<{
+  (e: "hover-point", val: NamedPoint): void;
+  (e: "leave-point", val: NamedPoint | null): void;
+  (e: "select-point", val: NamedPoint): void;
+  (e: "move-map", val: LatLng): void;
+  (e: "init-map"): void;
+}>();
 
 const hoverPoint = (point: NamedPoint) => {
   emit("hover-point", point);
+};
+
+const selectPoint = (point: NamedPoint) => {
+  emit("select-point", point);
 };
 
 const leavePoint = () => {
@@ -482,10 +596,44 @@ const leavePoint = () => {
     >
       <b-spinner />
     </div>
+    <div
+      v-else-if="showCrossHairs"
+      class="d-flex justify-content-center align-items-center loading-overlay"
+    >
+      <svg
+        fill="#000000"
+        xmlns="http://www.w3.org/2000/svg"
+        width="32px"
+        height="32px"
+        viewBox="0 0 97 97"
+        xml:space="preserve"
+      >
+        <path
+          fill="darkred"
+          d="M95,44.312h-7.518C85.54,26.094,70.906,11.46,52.688,9.517V2c0-1.104-0.896-2-2-2h-4.376c-1.104,0-2,0.896-2,2v7.517l0,0
+		C26.094,11.46,11.46,26.094,9.517,44.312H2c-1.104,0-2,0.896-2,2v4.377c0,1.104,0.896,2,2,2h7.517
+		C11.46,70.906,26.094,85.54,44.312,87.482V95c0,1.104,0.896,2,2,2h4.377c1.104,0,2-0.896,2-2v-7.518l0,0
+		C70.906,85.54,85.54,70.906,87.482,52.688H95c1.104,0,2-0.896,2-2v-4.376C97,45.207,96.104,44.312,95,44.312z M24.896,52.688
+		c1.104,0,2-0.896,2-2v-4.376c0-1.104-0.896-2-2-2h-6.492c1.856-13.397,12.51-24.052,25.907-25.908v6.492c0,1.104,0.896,2,2,2h4.376
+		c1.104,0,2-0.896,2-2v-6.492C66.086,20.26,76.74,30.914,78.596,44.312h-6.492c-1.104,0-2,0.896-2,2v4.377c0,1.104,0.896,2,2,2
+		h6.492C76.74,66.086,66.086,76.74,52.689,78.598v-6.492c0-1.104-0.896-2-2-2h-4.377c-1.104,0-2,0.896-2,2v6.492
+		C30.914,76.74,20.26,66.086,18.404,52.688H24.896z"
+        />
+      </svg>
+    </div>
   </div>
 </template>
 <style lang="less">
 // TODO: Set a min-height for the map from props.
+.map {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(
+    circle,
+    rgba(230, 230, 230, 1) 0%,
+    rgba(188, 188, 188, 1) 100%
+  );
+}
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -496,7 +644,6 @@ const leavePoint = () => {
 }
 .map.loading {
   background: rgba(140, 140, 140, 0.5);
-  position: relative;
 }
 .pulse {
   animation: pulsate 1s ease-out;

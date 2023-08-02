@@ -1,5 +1,5 @@
 {
-    "extends": "@tsconfig/node14/tsconfig.json",
+    "extends": "@tsconfig/node16/tsconfig.json",
     "compilerOptions": {
         "module": "commonjs",
         "target": "es2020",
@@ -7,7 +7,7 @@
         "esModuleInterop": true,
         "moduleResolution": "node",
         "baseUrl": ".",
-        "lib": ["ES2020"]
+        "lib": ["es2020"]
     },
     "exclude": [
         "node_modules"

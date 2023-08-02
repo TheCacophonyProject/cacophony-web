@@ -1,4 +1,4 @@
-import config from "./config";
+import config from "./config.js";
 config.environment = __ENV_STAGING__; //eslint-disable-line
 config.api = __API_STAGING__; //eslint-disable-line
 config.linzBasemapApiKey = __LINZ_API_KEY__; //eslint-disable-line

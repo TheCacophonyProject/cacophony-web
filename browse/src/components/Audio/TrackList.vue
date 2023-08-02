@@ -179,14 +179,15 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="tag in track.tags" :key="tag.id">
+                  <tr v-for="tag in tags(track)" :key="tag.id">
                     <td>{{ tag.what }}</td>
                     <td>
-                      {{
-                        tag.userName
-                          ? tag.userName
-                          : typeof tag.data === "object" && "AI"
-                      }}
+                      <span v-if="tag.userName">
+                        {{ tag.userName }}
+                      </span>
+                      <span v-else>
+                        {{ aiName(tag) }}
+                      </span>
                     </td>
                     <td>{{ tag.confidence }}</td>
                   </tr>
@@ -225,7 +226,8 @@ import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 import { TrackId } from "@typedefs/api/common";
 
 import store from "@/stores";
-
+import { shouldViewAsSuperUser } from "@/utils";
+import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 enum TrackListFilter {
   All = "all",
   Automatic = "automatic",
@@ -260,6 +262,37 @@ export default defineComponent({
     playTrack: {
       type: Function as PropType<(track: AudioTrack) => void>,
       required: true,
+    },
+  },
+  computed: {
+    isSuperUserAndViewingAsSuperUser(): boolean {
+      return (
+        this.$store.state.User.userData.isSuperUser && shouldViewAsSuperUser()
+      );
+    },
+  },
+  methods: {
+    tags(track) {
+      let items = track.tags;
+      if (!this.isSuperUserAndViewingAsSuperUser) {
+        // Remove AI tags other than master, as they'll just be confusing
+        items = items.filter(
+          (item: ApiTrackTagResponse) =>
+            !item.automatic || item.data.name === "Master"
+        );
+      }
+      return items;
+    },
+    aiName: function (trackTag) {
+      if (
+        this.isSuperUserAndViewingAsSuperUser &&
+        trackTag.data &&
+        trackTag.data.name
+      ) {
+        return "AI " + trackTag.data.name;
+      } else {
+        return "Cacophony AI";
+      }
     },
   },
   setup(props) {

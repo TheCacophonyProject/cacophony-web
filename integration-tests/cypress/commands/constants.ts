@@ -6,6 +6,7 @@ export const LATEST_END_USER_AGREEMENT = 3;
 export const EXCLUDE_IDS = [
   ".tracks[].TrackTags[].TrackId",
   ".tracks[].tags[].id",
+  ".tracks[].tags[].path",
   ".tracks[].id",
   ".rawMimeType", //FIXME this should be verifyable
 ];
