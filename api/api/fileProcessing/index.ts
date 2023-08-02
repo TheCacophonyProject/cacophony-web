@@ -317,6 +317,43 @@ export default function (app: Application) {
             }
           }
         }
+
+        // If group filters out human audio, delete the file
+        if (complete && recording.type === RecordingType.Audio) {
+          const device = await recording.getDevice();
+          const group = await device.getGroup();
+          if (group.settings?.filterHuman) {
+            const tracks = await recording.getTracks();
+            const hasHuman = tracks.find(
+              (t) =>
+                t.TrackTags && t.TrackTags.find((tt) => tt.what === "human")
+            );
+            if (hasHuman) {
+              const rawFileKey = recording.rawFileKey;
+              const fileKey = recording.fileKey;
+              try {
+                const recording: Recording = response.locals.recording;
+                recording.deletedAt = new Date();
+                recording.deletedBy = response.locals.requestUser.id;
+
+                await recording.save();
+                if (rawFileKey) {
+                  await util.deleteS3Object(rawFileKey).catch((err) => {
+                    log.warning(err);
+                  });
+                }
+                if (fileKey) {
+                  await util.deleteS3Object(fileKey).catch((err) => {
+                    log.warning(err);
+                  });
+                }
+              } catch (e) {
+                log.warning("Failed to delete file: %s", e);
+              }
+            }
+          }
+        }
+
         const twentyFourHoursMs = 24 * 60 * 60 * 1000;
         const recordingAgeMs =
           new Date().getTime() - recording.recordingDateTime.getTime();

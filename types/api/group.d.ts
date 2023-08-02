@@ -26,6 +26,8 @@ export interface ApiGroupSettings {
   // Define if cameras are on 24/7?
   tags?: string[];
   audioTags?: string[];
+  // Delete audio recordings with human voices
+  filterHuman?: boolean;
 }
 
 export interface ApiGroupUserSettings {

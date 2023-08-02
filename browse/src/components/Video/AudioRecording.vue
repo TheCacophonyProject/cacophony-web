@@ -283,7 +283,7 @@ export default defineComponent({
     LabelButtonGroup,
     ClassificationsDropdown,
   },
-  setup(props) {
+  setup(props, context) {
     const userName = store.state.User.userData.userName;
     const userId = store.state.User.userData.id;
     const [url, setUrl] = useState(
@@ -328,6 +328,7 @@ export default defineComponent({
     };
 
     const isGroupAdmin = ref(false);
+    const filterHuman = ref(false);
 
     const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
       const automaticTag = track.tags.find((tag) => tag.automatic);
@@ -510,6 +511,22 @@ export default defineComponent({
         confidence,
         ...(data && { data: JSON.stringify(data) }),
       };
+      let shouldDelete = false;
+
+      if (filterHuman.value && tag.what === "human") {
+        shouldDelete = await context.root.$bvModal.msgBoxConfirm(
+          "The group has privacy protection, adding this human tag will delete the recording. Are you sure you want to continue?",
+          {
+            title: "Privacy Protection",
+            okVariant: "danger",
+            okTitle: "Delete",
+            cancelTitle: "Cancel",
+            footerClass: "p-2",
+            hideHeaderClose: false,
+            centered: true,
+          }
+        );
+      }
       const response = await api.recording.replaceTrackTag(
         tag,
         props.recording.id,
@@ -542,6 +559,9 @@ export default defineComponent({
         }
         storeCommonTag(what);
         setButtonLabels(createButtonLabels());
+        if (shouldDelete) {
+          await deleteRecording();
+        }
         return currTrack;
       } else {
         return modifyTrack(trackId, {
@@ -843,6 +863,8 @@ export default defineComponent({
         const response = await api.groups.getGroupById(props.recording.groupId);
         if (response.success) {
           isGroupAdmin.value = response.result.group.admin;
+          filterHuman.value =
+            response.result.group.settings?.filterHuman ?? false;
         } else {
           throw response.result;
         }

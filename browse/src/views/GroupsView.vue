@@ -27,6 +27,28 @@
             </b-button>
           </div>
           <div v-if="hasGroups" class="group-list-wrapper">
+            <b-form-group>
+              <label
+                ><h4>
+                  Privacy Protected
+                  <help>
+                    These groups filter out audio recordings when human speech
+                    is detected.
+                  </help>
+                </h4>
+              </label>
+              <multiselect
+                :options="groups"
+                v-model="selectedPrivacyGroups"
+                label="groupName"
+                track-by="groupName"
+                @select="onPrivacyGroupSelect"
+                @remove="onPrivacyGroupRemove"
+                multiple
+                placeholder="Select groups"
+              />
+            </b-form-group>
+
             <b-checkbox class="filter-option" v-model="showGroupsWithNoDevices"
               >Include groups with no devices</b-checkbox
             >
@@ -126,11 +148,12 @@
 import api from "@/api";
 import Spinner from "@/components/Spinner.vue";
 import GroupAdd from "@/components/Groups/GroupAdd.vue";
+import Help from "@/components/Help.vue";
 
 import { LatLng, latLng, latLngBounds } from "leaflet";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { mapState } from "vuex";
-import { ApiGroupResponse } from "@typedefs/api/group";
+import { ApiGroupResponse, ApiGroupSettings } from "@typedefs/api/group";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 
@@ -142,12 +165,14 @@ interface GroupsForLocation {
 interface GroupInfo {
   devices: ApiDeviceResponse[];
   groupName: string;
+  settings?: ApiGroupSettings;
   lastThermalRecordingTime?: Date;
   lastAudioRecordingTime?: Date;
 }
 
 interface GroupsViewData {
   groups: ApiGroupResponse[];
+  selectedPrivacyGroups: ApiGroupResponse[];
   isLoading: boolean;
   locationsLoading: boolean;
   showGroupsWithNoDevices: boolean;
@@ -172,10 +197,12 @@ export default {
     MapWithPoints,
     Spinner,
     GroupAdd,
+    Help,
   },
   data(): GroupsViewData {
     return {
       groups: [],
+      selectedPrivacyGroups: [],
       isLoading: false,
       showGroupsWithNoDevices: false,
       showGroupsWithNoRecordings: false,
@@ -208,7 +235,11 @@ export default {
         return pass;
       });
     },
-
+    privacyGroups(): GroupInfo[] {
+      return this.groups.filter(
+        (group: ApiGroupResponse) => group.settings?.filterHuman
+      );
+    },
     orderedGroups(): ApiGroupResponse[] {
       return [...this.filteredGroups].sort(
         (a: ApiGroupResponse, b: ApiGroupResponse) => {
@@ -265,15 +296,21 @@ export default {
           {
             if (userGroups.success) {
               const { result } = userGroups;
+              this.selectedPrivacyGroups = result.groups.filter(
+                (group: ApiGroupResponse) =>
+                  group.admin && group.settings?.filterHuman
+              );
               for (const {
                 id,
                 groupName,
+                settings,
                 lastThermalRecordingTime,
                 lastAudioRecordingTime,
               } of result.groups) {
                 groups[id] = {
                   devices: [],
                   groupName,
+                  settings,
                 };
                 if (lastAudioRecordingTime) {
                   groups[id].lastAudioRecordingTime = new Date(
@@ -339,6 +376,18 @@ export default {
         );
       }
       this.isLoading = false;
+    },
+    async onPrivacyGroupSelect(group: ApiGroupResponse) {
+      await api.groups.updateGroupSettings(group.groupName, {
+        ...group.settings,
+        filterHuman: true,
+      });
+    },
+    async onPrivacyGroupRemove(group: ApiGroupResponse) {
+      await api.groups.updateGroupSettings(group.groupName, {
+        ...group.settings,
+        filterHuman: false,
+      });
     },
   },
 };
