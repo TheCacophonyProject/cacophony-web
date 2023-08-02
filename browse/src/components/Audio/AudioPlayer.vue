@@ -201,7 +201,7 @@ import {
   ref,
 } from "@vue/composition-api";
 import WaveSurfer from "wavesurfer.js";
-import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram/index.js";
+import SpectrogramPlugin from "wavesurfer.js";
 import ColorMap from "colormap";
 
 import {
@@ -785,22 +785,11 @@ export default defineComponent({
         const pos =
           track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
         let { x, y, width, height } = pos;
-        const topFreq = sampleRate / 2;
-        const scale = topFreq / 9;
-
-        // take it from linear scale to log scale
-        let minFreq = y * topFreq;
-        minFreq = minFreq / scale;
-        minFreq = Math.log10(minFreq + 1);
-        minFreq = (minFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        let maxFreq = (y + height) * topFreq;
-        maxFreq = maxFreq / scale;
-
-        maxFreq = Math.log10(maxFreq + 1);
-        maxFreq = (maxFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        height = maxFreq - minFreq;
-        // y needs to inverted due to canvas positioning
-        y = 1 - maxFreq;
+        let reScale=  (defaultSampleRate.value / 2) / (sampleRate / 2);
+        height = height * rescale
+        y = y * rescale
+        y = 1- y
+        y = Math.max(0,y)
         if (track.start && track.end) {
           const { start, end } = track;
           x = start / player.value.getDuration();
@@ -1077,16 +1066,11 @@ export default defineComponent({
           const topFreq = sampleRate / 2;
           const scale = topFreq / 9;
           const flippedY = 1 - tempTrack.value.pos.y;
-          let minFreq = flippedY - tempTrack.value.pos.height;
-          // spectogram is in log scale so make into linear
           const pos = Object.assign({}, tempTrack.value.pos);
-
-          let maxFreq = Math.pow(10, flippedY) - 1;
-          minFreq = Math.pow(10, minFreq) - 1;
-          maxFreq = maxFreq * scale;
-          minFreq = minFreq * scale;
-          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
-          pos.y = minFreq / (defaultSampleRate.value / 2);
+          pos.y = flippedY;
+          let reScale= (sampleRate / 2)  /(defaultSampleRate.value / 2);
+          pos,y = pos.y* rescale;
+          pos.height = pos.height * rescale;
           const track: AudioTrack = {
             id: -1,
             start: tempTrack.value.pos.x * player.value.getDuration(),
