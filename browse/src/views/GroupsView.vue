@@ -126,7 +126,6 @@
 import api from "@/api";
 import Spinner from "@/components/Spinner.vue";
 import GroupAdd from "@/components/Groups/GroupAdd.vue";
-import Help from "@/components/Help.vue";
 
 import { LatLng, latLng, latLngBounds } from "leaflet";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -174,7 +173,6 @@ export default {
     MapWithPoints,
     Spinner,
     GroupAdd,
-    Help,
   },
   data(): GroupsViewData {
     return {

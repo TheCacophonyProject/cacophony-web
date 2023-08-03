@@ -38,7 +38,7 @@ import {
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
 } from "@api/extract-middleware.js";
-import { Track } from "@/models/Track.js";
+import type { Track } from "@/models/Track.js";
 
 const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
@@ -331,7 +331,9 @@ export default function (app: Application, baseUrl: string) {
               (t: Track) =>
                 t.TrackTags && t.TrackTags.some((tt) => tt.what === "human")
             );
-            console.log(`Filter Humans - Recorrding ID:${recording.id},  HasHuman:${hasHuman}`);
+            console.log(
+              `Filter Humans - Recorrding ID:${recording.id},  HasHuman:${hasHuman}`
+            );
             if (hasHuman) {
               const rawFileKey = recording.rawFileKey;
               const fileKey = recording.fileKey;
