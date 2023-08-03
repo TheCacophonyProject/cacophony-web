@@ -326,14 +326,15 @@ export default function (app: Application, baseUrl: string) {
           const device = await recording.getDevice();
           const group = await device.getGroup();
           if (group.settings?.filterHuman) {
-            const tracks = await recording.getTracks();
-            const hasHuman = tracks.some(
-              (t: Track) =>
-                t.TrackTags && t.TrackTags.some((tt) => tt.what === "human")
-            );
-            console.log(
-              `Filter Humans - Recorrding ID:${recording.id},  HasHuman:${hasHuman}`
-            );
+            const tracks: Track[] = await recording.getTracks();
+            let hasHuman = false;
+            for (const t of tracks) {
+              const tags = await t.getTrackTags({});
+              hasHuman = tags.some((tt) => tt.what === "human");
+              if (hasHuman) {
+                break;
+              }
+            }
             if (hasHuman) {
               const rawFileKey = recording.rawFileKey;
               const fileKey = recording.fileKey;
