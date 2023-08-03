@@ -27,28 +27,6 @@
             </b-button>
           </div>
           <div v-if="hasGroups" class="group-list-wrapper">
-            <b-form-group>
-              <label
-                ><h4>
-                  Privacy Protected
-                  <help>
-                    These groups filter out audio recordings when human speech
-                    is detected.
-                  </help>
-                </h4>
-              </label>
-              <multiselect
-                :options="groups"
-                v-model="selectedPrivacyGroups"
-                label="groupName"
-                track-by="groupName"
-                @select="onPrivacyGroupSelect"
-                @remove="onPrivacyGroupRemove"
-                multiple
-                placeholder="Select groups"
-              />
-            </b-form-group>
-
             <b-checkbox class="filter-option" v-model="showGroupsWithNoDevices"
               >Include groups with no devices</b-checkbox
             >
@@ -172,7 +150,6 @@ interface GroupInfo {
 
 interface GroupsViewData {
   groups: ApiGroupResponse[];
-  selectedPrivacyGroups: ApiGroupResponse[];
   isLoading: boolean;
   locationsLoading: boolean;
   showGroupsWithNoDevices: boolean;
@@ -202,7 +179,6 @@ export default {
   data(): GroupsViewData {
     return {
       groups: [],
-      selectedPrivacyGroups: [],
       isLoading: false,
       showGroupsWithNoDevices: false,
       showGroupsWithNoRecordings: false,
@@ -296,10 +272,6 @@ export default {
           {
             if (userGroups.success) {
               const { result } = userGroups;
-              this.selectedPrivacyGroups = result.groups.filter(
-                (group: ApiGroupResponse) =>
-                  group.admin && group.settings?.filterHuman
-              );
               for (const {
                 id,
                 groupName,
@@ -376,18 +348,6 @@ export default {
         );
       }
       this.isLoading = false;
-    },
-    async onPrivacyGroupSelect(group: ApiGroupResponse) {
-      await api.groups.updateGroupSettings(group.groupName, {
-        ...group.settings,
-        filterHuman: true,
-      });
-    },
-    async onPrivacyGroupRemove(group: ApiGroupResponse) {
-      await api.groups.updateGroupSettings(group.groupName, {
-        ...group.settings,
-        filterHuman: false,
-      });
     },
   },
 };

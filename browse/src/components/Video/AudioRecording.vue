@@ -515,6 +515,7 @@ export default defineComponent({
       };
       let shouldDelete = false;
 
+      debugger;
       if (filterHuman.value && tag.what === "human") {
         shouldDelete = await context.root.$bvModal.msgBoxConfirm(
           "The group has privacy protection, adding this human tag will delete the recording. Are you sure you want to continue?",
@@ -859,17 +860,17 @@ export default defineComponent({
 
     onMounted(async () => {
       buffer.value = await fetchAudioBuffer(url.value);
-      if (shouldViewAsSuperUser()) {
-        isGroupAdmin.value = true;
-      } else {
-        const response = await api.groups.getGroupById(props.recording.groupId);
-        if (response.success) {
-          isGroupAdmin.value = response.result.group.admin;
-          filterHuman.value =
-            response.result.group.settings?.filterHuman ?? false;
+      const response = await api.groups.getGroupById(props.recording.groupId);
+      if (response.success) {
+        filterHuman.value =
+          response.result.group.settings?.filterHuman ?? false;
+        if (shouldViewAsSuperUser()) {
+          isGroupAdmin.value = true;
         } else {
-          throw response.result;
+          isGroupAdmin.value = response.result.group.admin;
         }
+      } else {
+        throw response.result;
       }
     });
 
