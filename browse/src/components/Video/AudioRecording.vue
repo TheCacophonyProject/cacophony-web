@@ -515,7 +515,6 @@ export default defineComponent({
       };
       let shouldDelete = false;
 
-      debugger;
       if (filterHuman.value && tag.what === "human") {
         shouldDelete = await context.root.$bvModal.msgBoxConfirm(
           "The group has privacy protection, adding this human tag will delete the recording. Are you sure you want to continue?",
