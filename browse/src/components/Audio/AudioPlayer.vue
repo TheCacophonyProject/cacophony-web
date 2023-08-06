@@ -201,7 +201,8 @@ import {
   ref,
 } from "@vue/composition-api";
 import WaveSurfer from "wavesurfer.js";
-import SpectrogramPlugin from "wavesurfer.js";
+import SpectrogramPlugin from "wavesurfer.js/src/plugins/spectrogram.ts";
+// import SpectrogramPlugin from "wavesurfer.js";
 import ColorMap from "colormap";
 
 import {
