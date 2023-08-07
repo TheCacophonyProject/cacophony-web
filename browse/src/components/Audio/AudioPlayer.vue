@@ -201,10 +201,8 @@ import {
   ref,
 } from "@vue/composition-api";
 import WaveSurfer from "wavesurfer.js";
-import SpectrogramPlugin from "wavesurfer.js/src/plugins/spectrogram.ts";
-// import SpectrogramPlugin from "wavesurfer.js";
+import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram";
 import ColorMap from "colormap";
-
 import {
   debounce,
   changedContext,
@@ -769,7 +767,7 @@ export default defineComponent({
       const waveSurferOptions = {
         audioContext,
         container: "#waveform",
-        height: 0,
+        height: 200,
         backgroundColor: "#2B333F",
         progressColor: "#FFF",
         cursorColor: "#dc3545",
@@ -786,7 +784,7 @@ export default defineComponent({
         const pos =
           track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
         let { x, y, width, height } = pos;
-        let reScale=  (defaultSampleRate.value / 2) / (sampleRate / 2);
+        let rescale=  (defaultSampleRate.value / 2) / (sampleRate / 2);
         height = height * rescale
         y = y * rescale
         y = 1- y
