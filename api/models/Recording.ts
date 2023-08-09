@@ -596,7 +596,7 @@ from (
       nextState = Recording.finishedState(this.type);
     } else if (this.processingState == RecordingProcessingState.ReTrack) {
       nextState = RecordingProcessingState.Analyse;
-    }else {
+    } else {
       const job_index = jobs.indexOf(this.processingState);
       if (job_index == -1) {
         throw new Error(`Recording state unknown - ${this.processState}`);

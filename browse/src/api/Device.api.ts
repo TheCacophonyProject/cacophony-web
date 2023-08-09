@@ -136,7 +136,7 @@ export const DeviceEventTypes = [
 
 type IsoFormattedString = string;
 
-export type DeviceEventType = typeof DeviceEventTypes[number];
+export type DeviceEventType = (typeof DeviceEventTypes)[number];
 
 export interface EventApiParams {
   limit?: number;

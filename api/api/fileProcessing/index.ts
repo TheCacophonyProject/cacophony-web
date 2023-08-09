@@ -391,43 +391,43 @@ export default function (app: Application) {
     }
   );
 
-    /**
-     * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track to recording
-     * @apiName UpdateTrackData
-     * @apiGroup FileProcessing
-     *
-     * @apiParam {JSON} data Data which defines the track (type specific).
-     *
-     * @apiUse V1ResponseSuccess
-     * @apiuse V1ResponseError
-     *
-     */
-    app.post(
-      `${apiUrl}/:id/tracks/:trackId`,
-      validateFields([
-        idOf(param("id")),
-        idOf(param("trackId")),
-        // FIXME - We don't currently have tracks for audio recordings, but when we do we need to widen this check.
-        body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
-      ]),
-      fetchUnauthorizedRequiredRecordingById(param("id")),
-      fetchUnauthorizedRequiredTrackById(param("trackId")),
-      parseJSONField(body("data")),
-      async (request: Request, response) => {
-        // make a copy of the original track
-         await response.locals.recording.createTrack({
-          data: response.locals.track.data,
-          AlgorithmId: response.locals.track.AlgorithmId,
-          archivedAt:Date.now(),
-        });
-        await response.locals.track.update({ data: response.locals.data });
+  /**
+   * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track to recording
+   * @apiName UpdateTrackData
+   * @apiGroup FileProcessing
+   *
+   * @apiParam {JSON} data Data which defines the track (type specific).
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId`,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      // FIXME - We don't currently have tracks for audio recordings, but when we do we need to widen this check.
+      body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
+    async (request: Request, response) => {
+      // make a copy of the original track
+      await response.locals.recording.createTrack({
+        data: response.locals.track.data,
+        AlgorithmId: response.locals.track.AlgorithmId,
+        archivedAt: Date.now(),
+      });
+      await response.locals.track.update({ data: response.locals.data });
 
-        responseUtil.send(response, {
-          statusCode: 200,
-          messages: ["Track updated."],
-        });
-      }
-    );
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Track updated."],
+      });
+    }
+  );
 
   /**
    * @api {post} /api/fileProcessing/:id/tracks Add track to recording

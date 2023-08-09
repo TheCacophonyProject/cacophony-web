@@ -27,7 +27,7 @@ export enum RecordingProcessingState {
   Corrupt = "CORRUPT",
   Tracking = "tracking",
   AnalyseThermal = "analyse",
-  ReTrack = 'retrack',
+  ReTrack = "retrack",
   Finished = "FINISHED",
   ToMp3 = "toMp3",
   Analyse = "analyse",
