@@ -338,9 +338,8 @@ export default function (app: Application, baseUrl: string) {
             if (hasHuman) {
               const rawFileKey = recording.rawFileKey;
               const fileKey = recording.fileKey;
+              recording.redacted = true;
               try {
-                recording.deletedAt = new Date();
-                recording.deletedBy = response.locals.requestUser.id;
                 if (rawFileKey) {
                   await util.deleteS3Object(rawFileKey).catch((err) => {
                     log.warning(err);

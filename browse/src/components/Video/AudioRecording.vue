@@ -177,6 +177,16 @@
         :delete-recording="deleteRecording"
         :is-group-admin="isGroupAdmin"
       />
+      <div v-if="recording.processing || isQueued" class="mt-4">
+        <h1 class="mb-0 ml-2" v-if="isQueued">Queued...</h1>
+        <div
+          class="d-flex align-items-center justify-content-center"
+          v-else-if="recording.processing"
+        >
+          <b-spinner />
+          <h1 class="mb-0 ml-2">Processing...</h1>
+        </div>
+      </div>
       <h3 class="pt-4">Cacophony Index</h3>
       <CacophonyIndexGraph
         v-if="cacophonyIndex"
@@ -230,6 +240,7 @@ import {
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
 import ClassificationsDropdown from "../ClassificationsDropdown.vue";
+import { RecordingProcessingState } from "@typedefs/api/consts";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -760,6 +771,7 @@ export default defineComponent({
         label,
         pinned: false,
       }));
+
       const storedCommonTags: { label: string; pinned: boolean }[] =
         Object.values(JSON.parse(localStorage.getItem("commonTags")) ?? {})
           .filter(
@@ -783,6 +795,11 @@ export default defineComponent({
             label: bird.what.toLowerCase(),
             pinned: bird.pinned,
           }));
+
+      const pinnedBirdLabels = storedCommonTags.filter((bird) => bird.pinned);
+      const unpinnedBirdLabels = storedCommonTags.filter(
+        (bird) => !bird.pinned
+      );
       const commonBirdLabels = [
         "Morepork",
         "Kiwi",
@@ -802,7 +819,8 @@ export default defineComponent({
       const amountToRemove = Math.min(maxBirdButtons, storedCommonTags.length);
       const diffToMax = maxBirdButtons - amountToRemove;
       const commonTags = [
-        ...storedCommonTags.slice(0, amountToRemove),
+        ...pinnedBirdLabels,
+        ...unpinnedBirdLabels.splice(0, amountToRemove),
         ...commonBirdLabels.splice(0, diffToMax),
       ];
 
@@ -873,6 +891,17 @@ export default defineComponent({
       }
     });
 
+    const isQueued = computed(() => {
+      const state = props.recording.processingState.toLowerCase();
+      return (
+        (state === RecordingProcessingState.Analyse ||
+          state === RecordingProcessingState.AnalyseThermal ||
+          state === RecordingProcessingState.Tracking ||
+          state === RecordingProcessingState.Reprocess) &&
+        !props.recording.processing
+      );
+    });
+
     return {
       url,
       buffer,
@@ -881,6 +910,7 @@ export default defineComponent({
       deleted,
       tracks,
       isGroupAdmin,
+      isQueued,
       selectedTrack,
       selectedLabel,
       usersTag,

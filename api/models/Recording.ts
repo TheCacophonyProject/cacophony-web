@@ -191,6 +191,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   airplaneModeOn: boolean;
   deletedAt: Date | null;
   deletedBy: UserId | null;
+  redacted: boolean;
 
   DeviceId: DeviceId;
   GroupId: GroupId;

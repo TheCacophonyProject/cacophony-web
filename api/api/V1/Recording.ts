@@ -247,6 +247,7 @@ const mapRecordingResponse = (
       fileHash: recording.rawFileHash,
       tags: recording.Tags && mapTags(recording.Tags),
       tracks: recording.Tracks && mapTracks(recording.Tracks),
+      redacted: recording.redacted,
     };
     if (cameraTypes.includes(recording.type)) {
       return {
