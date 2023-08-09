@@ -594,7 +594,9 @@ from (
     let nextState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
       nextState = Recording.finishedState(this.type);
-    } else {
+    } else if (this.processingState == RecordingProcessingState.ReTrack) {
+      nextState = RecordingProcessingState.Analyse;
+    }else {
       const job_index = jobs.indexOf(this.processingState);
       if (job_index == -1) {
         throw new Error(`Recording state unknown - ${this.processState}`);
@@ -1305,6 +1307,7 @@ from (
 
   Recording.processingStates = {
     thermalRaw: [
+      RecordingProcessingState.ReTrack,
       RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,

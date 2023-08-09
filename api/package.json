@@ -30,6 +30,7 @@
     "fstream": "^1.0.12",
     "influx": "^5.9.2",
     "install": "^0.12.2",
+    "json-stringify-safe": "^5.0.1",
     "jsonschema": "^1.4.0",
     "jsonwebtoken": "^8.5.1",
     "levenshtein-edit-distance": "2.0.5",
@@ -60,6 +61,7 @@
     "winston": "^3.3.3"
   },
   "devDependencies": {
+    "@tsconfig/node14": "^14.1.0",
     "@typescript-eslint/eslint-plugin": "^4.33.0",
     "@typescript-eslint/parser": "^4.33.0",
     "eslint": "^7.32.0",

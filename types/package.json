@@ -7,19 +7,22 @@
         "lint:fix": "eslint ./ --fix --ext .ts && npx prettier --write './**/*.ts'"
     },
     "dependencies": {
+        "json-stringify-safe": "^5.0.1",
+        "normalize-path": "^3.0.0",
         "recursive-readdir": "^2.2.2",
+        "safe-stable-stringify": "^2.4.3",
         "ts-json-schema-generator": "^0.96.0"
     },
     "devDependencies": {
+        "@tsconfig/node14": "^1.0.3",
+        "@types/node": "^16.7.1",
+        "@types/recursive-readdir": "^2.2.0",
         "@typescript-eslint/eslint-plugin": "^4.29.0",
         "@typescript-eslint/parser": "^4.29.0",
         "eslint": "^7.32.0",
         "eslint-config-prettier": "^8.3.0",
         "eslint-utils": "^3.0.0",
         "prettier": "^2.4.1",
-        "typescript": "^4.4.3",
-        "@tsconfig/node14": "^1.0.1",
-        "@types/node": "^16.7.1",
-        "@types/recursive-readdir": "^2.2.0"
+        "typescript": "^4.4.3"
     }
 }

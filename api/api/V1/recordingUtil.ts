@@ -606,7 +606,7 @@ export const uploadRawRecording = util.multipartUpload(
     } else {
       if (!fileIsCorrupt) {
         if (tracked && recording.type !== RecordingType.Audio) {
-          recording.processingState = RecordingProcessingState.AnalyseThermal;
+          recording.processingState = RecordingProcessingState.ReTrack;
           // already have done tracking pi skip to analyse state
         } else {
           recording.processingState = models.Recording.uploadedState(
