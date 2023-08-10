@@ -306,6 +306,7 @@ export default function (
     comment: DataTypes.STRING,
     deletedAt: DataTypes.DATE,
     deletedBy: DataTypes.INTEGER,
+    redacted: DataTypes.BOOLEAN,
     public: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -1226,6 +1227,7 @@ from (
     "processing",
     "comment",
     "additionalMetadata",
+    "redacted",
   ];
 
   // Attributes returned when looking up a single recording.

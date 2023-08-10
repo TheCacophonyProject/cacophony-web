@@ -334,7 +334,7 @@ export default {
   },
   computed: {
     headerClass() {
-      if (this.item.filtered) {
+      if (this.item.filtered || this.item.redacted) {
         return "filtered-recording";
       }
       return "";

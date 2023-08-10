@@ -690,6 +690,7 @@ export default (app: Application, baseUrl: string) => {
           filterModel: useFilteredModel,
         }
       );
+
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
         offset: request.query.offset,

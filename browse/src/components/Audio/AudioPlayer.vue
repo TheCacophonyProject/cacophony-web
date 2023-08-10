@@ -529,7 +529,7 @@ export default defineComponent({
             );
             overlay.value.appendChild(rect);
           }
-          if (!prev || curr.id !== prev.id) {
+          if ((!prev || curr.id !== prev.id) && !isPrevTemp) {
             playTrack(curr);
           }
         } else if (isPlaying.value && !isFinished.value) {

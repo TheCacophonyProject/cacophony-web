@@ -7,7 +7,7 @@
             :key="`${url}-${
               sampleRate === null ? 44100 : sampleRate
             }-${colour}`"
-            v-if="buffer !== null && !deleted"
+            v-if="buffer !== null && !deleted && !recording.redacted"
             :colour="colour"
             :setColour="setColour"
             :tracks="tracks"
@@ -27,6 +27,19 @@
             <h1>Undo Delete Recording</h1>
             <font-awesome-icon class="mb-2" icon="undo" size="2x" />
           </b-row>
+          <b-row
+            v-else-if="recording.redacted"
+            class="
+              w-100
+              redacted
+              justify-content-center
+              align-items-center
+              text-primary
+            "
+          >
+            <font-awesome-icon class="mb-2 mr-4" icon="shield-alt" size="3x" />
+            <h1>Recording Redacted</h1>
+          </b-row>
         </b-col>
       </b-row>
       <b-row class="bottom-container" v-show="!deleted">
@@ -38,6 +51,7 @@
             :delete-track="deleteTrack"
             :undo-delete-track="undoDeleteTrack"
             :add-tag-to-track="addTagToTrack"
+            :redacted="recording.redacted"
           />
         </b-col>
         <b-col>
@@ -978,6 +992,9 @@ export default defineComponent({
       font-size: calc(1em + 0.5vw);
       padding-right: min(5vw, 1.5em);
     }
+  }
+  .redacted {
+    height: 343px;
   }
 
   h2 {
