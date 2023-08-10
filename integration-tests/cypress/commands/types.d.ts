@@ -391,6 +391,7 @@ export interface ApiRecordingReturned {
   //fields in fileProcessing API but not api/vi
   DeviceId?: string;
   rawFileKey?: string;
+  redacted: boolean;
 }
 
 export interface ApiRecordingNeedsTagReturned {
