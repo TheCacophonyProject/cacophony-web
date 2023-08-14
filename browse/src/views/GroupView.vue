@@ -33,7 +33,7 @@
         </p>
       </div>
     </b-jumbotron>
-    <tab-list v-model="currentTabIndex" v-if="group && devices.length">
+    <tab-list v-model="currentTabIndex" v-if="group">
       <tab-list-item
         lazy
         title="Manual uploads"
