@@ -37,8 +37,11 @@
               text-primary
             "
           >
-            <font-awesome-icon class="mb-2 mr-4" icon="shield-alt" size="3x" />
-            <h1>Recording Redacted</h1>
+            <font-awesome-icon class="mb-2 mr-4" icon="shield-alt" size="4x" />
+            <h1 class="text-center">
+              Human voice detected<br />
+              Recording removed
+            </h1>
           </b-row>
         </b-col>
       </b-row>
@@ -995,6 +998,8 @@ export default defineComponent({
   }
   .redacted {
     height: 343px;
+    display: flex;
+    flex-direction: column;
   }
 
   h2 {

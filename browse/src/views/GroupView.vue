@@ -323,7 +323,7 @@ export default {
       if (res.success) {
         this.group.settings = res.result.settings;
       } else {
-        this.filterHuman = this.group.settings?.filterHuman ?? false;
+        this.filterHuman = this.group.settings?.filterHuman ?? true;
       }
     },
   },

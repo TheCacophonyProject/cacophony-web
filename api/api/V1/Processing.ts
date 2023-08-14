@@ -325,7 +325,8 @@ export default function (app: Application, baseUrl: string) {
         if (complete && recording.type === RecordingType.Audio) {
           const device = await recording.getDevice();
           const group = await device.getGroup();
-          if (group.settings?.filterHuman) {
+          const shouldFilter = group.settings?.filterHuman ?? true;
+          if (shouldFilter) {
             const tracks: Track[] = await recording.getTracks();
             let hasHuman = false;
             for (const t of tracks) {
