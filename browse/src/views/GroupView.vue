@@ -291,7 +291,7 @@ export default {
       const {
         result: { group },
       } = groupRequest;
-      this.filterHuman = group.settings?.filterHuman ?? false;
+      this.filterHuman = group.settings?.filterHuman ?? true;
       this.group = group;
       this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
       await Promise.all([
