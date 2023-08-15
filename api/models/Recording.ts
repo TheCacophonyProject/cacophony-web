@@ -137,7 +137,7 @@ interface RecordingQueryBuilder {
     exclusive: boolean
   ) => SqlString;
   tagOfType: (tags: string[], sql: SqlString, exclusive: boolean) => SqlString;
-  selectByTag: (tags: string[], exclusive: boolean) => any;
+  selectByTag: (tags: string[], exclusive: boolean, tagPath?: string) => any;
 }
 
 interface RecordingQueryBuilderInstance {
@@ -1084,9 +1084,13 @@ from (
     exclusive: boolean
   ) => {
     let sql =
-      'SELECT "Recording"."id" FROM "Tags" WHERE  "Tags"."RecordingId" = "Recording".id';
+      'SELECT 1 FROM "Tags" WHERE  "Tags"."RecordingId" = "Recording".id';
     if (tags) {
-      sql += ` AND (${Recording.queryBuilder.selectByTag(tags, exclusive)})`;
+      sql += ` AND (${Recording.queryBuilder.selectByTag(
+        tags,
+        exclusive,
+        "detail"
+      )})`;
     }
     if (tagTypeSql) {
       sql += ` AND (${tagTypeSql})`;
@@ -1120,7 +1124,11 @@ from (
     }
   };
 
-  Recording.queryBuilder.selectByTag = (tags: string[], exclusive: boolean) => {
+  Recording.queryBuilder.selectByTag = (
+    tags: string[],
+    exclusive: boolean,
+    tagPath = "what"
+  ) => {
     if (!tags || tags.length === 0) {
       return null;
     }
@@ -1138,7 +1146,7 @@ from (
           parts.push(`"Tags".path ~ '${path}${exclusive ? "" : ".*"}'`);
         } else {
           // TODO: this catches tags that may of not been added to classifications but should be added
-          parts.push(`"Tags"."what" = '${tag}'`);
+          parts.push(`"Tags"."${tagPath}" = '${tag}'`);
         }
       }
     }
