@@ -1,6 +1,6 @@
 {
     "label": "all",
-    "version": "35faf19f-cef2-462b-83ba-d1a921145f4",
+    "version": "edb82422-89ec-42ff-bc36-d7b79915a5ec",
     "children": [
         {
             "label": "mammal",
@@ -22,7 +22,7 @@
                 },
                 {
                     "label": "human",
-                    "display": "Human Speech"
+                    "display": "human speech"
                 },
                 {
                     "label": "leporidae",
@@ -79,7 +79,62 @@
             ]
         },
         {
-          "label": "deer"
+            "label": "other",
+            "children": [
+                {
+                    "label": "false-positive",
+                    "display": "false positive"
+                },
+                {
+                    "label": "frog"
+                },
+                {
+                    "label": "insect",
+                    "display": "insect/spider",
+                    "children": [
+                        {
+                            "label": "weta"
+                        }
+                    ]
+                },
+                {
+                    "label": "interesting"
+                },
+                {
+                    "label": "lizard"
+                },
+                {
+                    "label": "part",
+                    "display": "part of an animal"
+                },
+                {
+                    "label": "pest"
+                },
+                {
+                    "label": "poor tracking"
+                },
+                {
+                    "label": "rain",
+                    "display": "Rain/Water Droplets"
+                },
+                {
+                    "label": "static"
+                },
+                {
+                    "label": "unidentified",
+                    "display": "not identifiable"
+                },
+                {
+                    "label": "vehicle"
+                },
+                {
+                    "label": "water",
+                    "display": "River/Sea"
+                },
+                {
+                    "label": "wind"
+                }
+            ]
         },
         {
             "label": "bird",

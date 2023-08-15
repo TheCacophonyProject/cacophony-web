@@ -29,19 +29,23 @@
           </b-row>
           <b-row
             v-else-if="recording.redacted"
-            class="
-              w-100
-              redacted
-              justify-content-center
-              align-items-center
-              text-primary
-            "
+            class="w-100 redacted justify-content-center align-items-center"
           >
-            <font-awesome-icon class="mb-2 mr-4" icon="shield-alt" size="4x" />
-            <h1 class="text-center">
-              Human voice detected<br />
-              Recording removed
-            </h1>
+            <font-awesome-icon
+              class="mb-2 mr-4 text-primary"
+              icon="shield-alt"
+              size="4x"
+            />
+            <span class="d-flex position-relative">
+              <h1 class="text-center">
+                Human voice detected<br />
+                Recording removed
+              </h1>
+              <Help class="redacted-help text-secondary">
+                Privacy protection feature can be disabled by an admin in the
+                group settings.
+              </Help>
+            </span>
           </b-row>
         </b-col>
       </b-row>
@@ -247,6 +251,7 @@ import LabelButtonGroup from "../Audio/LabelButtonGroup.vue";
 import CacophonyIndexGraph from "../Audio/CacophonyIndexGraph.vue";
 import RecordingProperties from "../Video/RecordingProperties.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
+import Help from "@/components/Help.vue";
 
 import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
 import { ApiTrackTagAttributes } from "@typedefs/api/trackTag";
@@ -310,6 +315,7 @@ export default defineComponent({
     RecordingProperties,
     LabelButtonGroup,
     ClassificationsDropdown,
+    Help,
   },
   setup(props, context) {
     const userName = store.state.User.userData.userName;
@@ -1000,6 +1006,12 @@ export default defineComponent({
     height: 343px;
     display: flex;
     flex-direction: column;
+  }
+
+  .redacted-help {
+    position: absolute;
+    right: -1.2em;
+    font-size: 1.2em;
   }
 
   h2 {
