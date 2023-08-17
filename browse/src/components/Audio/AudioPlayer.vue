@@ -496,7 +496,7 @@ export default defineComponent({
     // Watch for changes to the selected track and update the spectrogram
     watch(
       () => props.selectedTrack,
-      (curr, prev) => {
+      (curr, prev: AudioTrack | null) => {
         const isPrevTemp = prev ? prev.id === -1 : false;
         if (isPrevTemp) {
           // remove the temp track as it has no been confirmed
@@ -529,7 +529,9 @@ export default defineComponent({
             );
             overlay.value.appendChild(rect);
           }
-          playTrack(curr);
+          if ((!prev || curr.id !== prev.id) && !isPrevTemp) {
+            playTrack(curr);
+          }
         } else if (isPlaying.value && !isFinished.value) {
           play();
         }

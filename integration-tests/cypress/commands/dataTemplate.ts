@@ -126,6 +126,7 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
     "Phone manufacturer": "samsung",
     "App has root access": false,
   },
+  redacted: false,
 };
 
 //THERMAL RECORDINGS
@@ -275,6 +276,7 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     processing: false,
     tags: [],
     tracks: [TEMPLATE_EXPECTED_TRACK],
+    redacted: false,
   };
 
 export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {

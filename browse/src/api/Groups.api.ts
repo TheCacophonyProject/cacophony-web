@@ -1,7 +1,11 @@
 import CacophonyApi from "./CacophonyApi";
 import { shouldViewAsSuperUser } from "@/utils";
 import { FetchResult } from "@/api/Recording.api";
-import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
+import {
+  ApiGroupResponse,
+  ApiGroupSettings,
+  ApiGroupUserResponse,
+} from "@typedefs/api/group";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import { GroupId, StationId } from "@typedefs/api/common";
 import { ApiStationResponse } from "@typedefs/api/station";
@@ -165,6 +169,15 @@ function addStationsToGroup(
   );
 }
 
+function updateGroupSettings(
+  groupName: string | number,
+  settings: ApiGroupSettings
+) {
+  return CacophonyApi.patch(`/api/v1/groups/${groupName}/group-settings`, {
+    settings,
+  });
+}
+
 export default {
   addNewGroup,
   getGroups,
@@ -178,4 +191,5 @@ export default {
   addStationsToGroup,
   addGroupUser,
   removeGroupUser,
+  updateGroupSettings,
 };

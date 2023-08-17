@@ -1,6 +1,6 @@
 {
     "label": "all",
-    "version": "35faf19f-cef2-462b-83ba-d1a921145f4",
+    "version": "edb82422-89ec-42ff-bc36-d7b79915a5ec",
     "children": [
         {
             "label": "mammal",
@@ -21,7 +21,8 @@
                     "label": "hedgehog"
                 },
                 {
-                    "label": "human"
+                    "label": "human",
+                    "display": "human speech"
                 },
                 {
                     "label": "leporidae",

@@ -44,7 +44,7 @@
                                 !track.tags.some(
                                   (t) => t.userName === userName
                                 ))
-                          )
+                          ) && !redacted
                         "
                         variant="outline-success"
                         size="sm"
@@ -262,6 +262,10 @@ export default defineComponent({
     playTrack: {
       type: Function as PropType<(track: AudioTrack) => void>,
       required: true,
+    },
+    redacted: {
+      type: Boolean as PropType<boolean>,
+      default: false,
     },
   },
   computed: {

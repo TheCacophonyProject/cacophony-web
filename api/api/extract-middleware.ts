@@ -904,6 +904,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     "version",
     "processingStartTime",
     "processingEndTime",
+    "redacted",
   ];
   recordingQuery.include = recordingQuery.include || [];
   recordingQuery.include.push({
