@@ -39,7 +39,7 @@
     "vue2-leaflet": "^2.7.0",
     "vuelidate": "^0.7.6",
     "vuex": "^3.6.0",
-    "wavesurfer.js": "^5.2.0"
+    "wavesurfer.js": "^7.1.5"
   },
   "browserslist": [
     "> 1%",

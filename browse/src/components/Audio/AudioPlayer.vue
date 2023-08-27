@@ -3,6 +3,34 @@
     <div v-if="isLoading" class="loading-spinner text-center text-primary">
       <b-spinner label="Loading Spectrogram..."></b-spinner>
     </div>
+    <div id="track-changes-container">
+      <button id="save-track-changes" @click="() => saveTrackChanges()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+        >
+          <path
+            fill="currentColor"
+            d="M5 21q-.825 0-1.413-.588T3 19V5q0-.825.588-1.413T5 3h11.175q.4 0 .763.15t.637.425l2.85 2.85q.275.275.425.638t.15.762V19q0 .825-.588 1.413T19 21H5Zm7-3q1.25 0 2.125-.875T15 15q0-1.25-.875-2.125T12 12q-1.25 0-2.125.875T9 15q0 1.25.875 2.125T12 18Zm-5-8h7q.425 0 .713-.288T15 9V7q0-.425-.288-.713T14 6H7q-.425 0-.713.288T6 7v2q0 .425.288.713T7 10Z"
+          />
+        </svg>
+      </button>
+      <button id="cancel-track-changes" @click="() => cancelTrackChanges()">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+        >
+          <path
+            fill="currentColor"
+            d="M8 19q-.425 0-.713-.288T7 18q0-.425.288-.713T8 17h6.1q1.575 0 2.738-1T18 13.5q0-1.5-1.163-2.5T14.1 10H7.8l1.9 1.9q.275.275.275.7t-.275.7q-.275.275-.7.275t-.7-.275L4.7 9.7q-.15-.15-.213-.325T4.425 9q0-.2.063-.375T4.7 8.3l3.6-3.6q.275-.275.7-.275t.7.275q.275.275.275.7t-.275.7L7.8 8h6.3q2.425 0 4.163 1.575T20 13.5q0 2.35-1.738 3.925T14.1 19H8Z"
+          />
+        </svg>
+      </button>
+    </div>
     <div id="spectrogram"></div>
     <div id="waveform"></div>
     <div id="player-bar" class="flex flex-col">
@@ -201,7 +229,9 @@ import {
   ref,
 } from "@vue/composition-api";
 import WaveSurfer from "wavesurfer.js";
-import SpectrogramPlugin from "wavesurfer.js/src/plugin/spectrogram/index.js";
+import SpectrogramPlugin, {
+  SpectrogramPluginOptions,
+} from "wavesurfer.js/dist/plugins/spectrogram";
 import ColorMap from "colormap";
 
 import {
@@ -214,46 +244,8 @@ import {
 
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 
-import { ApiTrackPosition } from "@typedefs/api/track";
-const getSampleRate = (
-  arrayBuffer: ArrayBuffer
-): { sampleRate: number; bitsPerSample: number } => {
-  const view = new DataView(arrayBuffer);
-  const chunkCellSize = 4;
-
-  const getChunkName = (newOffset: number) =>
-    String.fromCharCode.apply(
-      null,
-      new Int8Array(arrayBuffer.slice(newOffset, newOffset + chunkCellSize))
-    );
-
-  const isWave = getChunkName(0).includes("RIFF");
-  if (!isWave) {
-    return { sampleRate: 0, bitsPerSample: 0 };
-  }
-
-  let offset = 12;
-  let chunkName = getChunkName(offset);
-  let chunkSize = 0;
-
-  while (!chunkName.includes("fmt")) {
-    chunkSize = view.getUint32(offset + chunkCellSize, true);
-    offset += 2 * chunkCellSize + chunkSize; // name cell + data_size cell + data size
-    chunkName = getChunkName(offset);
-
-    if (offset > view.byteLength) {
-      throw new Error("Couldn't find sampleRate.");
-    }
-  }
-
-  const sampleRateOffset = 12;
-  const bitsPerSampleOffset = 22;
-
-  const sampleRate = view.getUint32(offset + sampleRateOffset, true);
-  const bitsPerSample = view.getUint16(offset + bitsPerSampleOffset, true);
-
-  return { sampleRate, bitsPerSample };
-};
+import { ApiTrackDataRequest, ApiTrackPosition } from "@typedefs/api/track";
+import { TrackId } from "@typedefs/api/common";
 
 export default defineComponent({
   props: {
@@ -262,8 +254,12 @@ export default defineComponent({
       required: true,
     },
     buffer: {
-      type: ArrayBuffer as PropType<ArrayBuffer>,
+      type: Blob as PropType<Blob>,
       default: null,
+    },
+    url: {
+      type: String,
+      required: true,
     },
     sampleRate: {
       type: Number,
@@ -293,6 +289,15 @@ export default defineComponent({
       type: Function as PropType<SetState<string>>,
       required: true,
     },
+    updateTrack: {
+      type: Function as PropType<
+        (
+          trackId: TrackId,
+          trackData: Partial<ApiTrackDataRequest>
+        ) => Promise<{ success: boolean }>
+      >,
+      required: true,
+    },
   },
   setup(props) {
     // Player
@@ -303,7 +308,6 @@ export default defineComponent({
 
     const newSampleRate = ref(props.sampleRate);
     const toggleSampleRate = ref(false);
-    const defaultSampleRate = ref(props.sampleRate);
 
     const colours = [
       "jet",
@@ -353,6 +357,15 @@ export default defineComponent({
       player.value.playPause();
       interacted.value = true;
     };
+    const applyScale = <T extends ElementCSSInlineStyle>(
+      element: T,
+      origin: number,
+      x: number,
+      y: number
+    ) => {
+      element.style.transform = `scaleX(${x}) scaleY(${y})`;
+      element.style.transformOrigin = `${origin}px bottom`;
+    };
 
     const updateZoom = () => {
       if (!overlay.value) {
@@ -380,11 +393,11 @@ export default defineComponent({
       const endPos = progress.offsetWidth + half;
       const overEnd = Math.abs(Math.min(playerBar.offsetWidth - endPos, 0));
       const overStart = Math.abs(Math.min(startPos, 0));
-
-      overlay.value.style.transformOrigin = `${x.toFixed(1)}px bottom`;
-      overlay.value.style.transform = `scaleX(${
-        zoomed.value.enabled ? zoomed.value.scale.toFixed(1) : 1
-      }) scaleY(${props.sampleRate / newSampleRate.value})`;
+      const origin = parseFloat(x.toFixed(1));
+      const xScale = parseFloat(zoomed.value.scale.toFixed(1));
+      const yScale = props.sampleRate / newSampleRate.value;
+      applyScale(overlay.value, origin, xScale, yScale);
+      applyScale(spectrogram.value, origin, xScale, yScale);
       const translateY = "translateY(-3px)";
       zoomIndicatorStart.style.transform = `translateX(${(
         -half -
@@ -415,13 +428,18 @@ export default defineComponent({
         zoomIndicatorEnd.style.display = "block";
         requestAnimationFrame(updateZoom);
       } else {
-        overlay.value.style.transform = ``;
-        zoomIndicatorStart.style.transform = ``;
-        zoomIndicatorEnd.style.transform = ``;
-        zoomIndicatorStart.style.display = "none";
-        zoomIndicatorEnd.style.display = "none";
+        requestAnimationFrame(() => {
+          overlay.value.style.transform = ``;
+          spectrogram.value.style.transform = ``;
+          zoomIndicatorStart.style.transform = ``;
+          zoomIndicatorEnd.style.transform = ``;
+          zoomIndicatorStart.style.display = "none";
+          zoomIndicatorEnd.style.display = "none";
+        });
       }
     });
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    const strokeWidth = isMobile ? "2" : "4";
     const [tempTrack, setTempTrack] = useState<{
       pos: ApiTrackPosition & { startX: number; startY: number };
       rect: SVGElement;
@@ -437,7 +455,7 @@ export default defineComponent({
             width: "0",
             height: "0",
             stroke: "#c8d6e5",
-            "stroke-width": "2",
+            "stroke-width": strokeWidth,
             fill: "none",
             cursor: "pointer",
           },
@@ -493,19 +511,323 @@ export default defineComponent({
         (height * spectrogram.value.height).toString()
       );
     });
+
+    const createRectFromTrack = (track: AudioTrack) => {
+      const id = `track_${track.id.toString()}`;
+      const minFreq = track.minFreq ?? 0;
+      const maxFreq = track.maxFreq ?? props.sampleRate / 2;
+      const pos =
+        track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
+      let { x, y, width, height } = pos;
+      const topFreq = props.sampleRate / 2;
+
+      height = (maxFreq - minFreq) / topFreq;
+      // y needs to inverted due to canvas positioning
+      y = 1 - maxFreq / topFreq;
+      if (track.start && track.end) {
+        const { start, end } = track;
+        x = start / player.value.getDuration();
+        width = (end - start) / player.value.getDuration();
+      }
+      let rect: HTMLElement | SVGElement | null = document.getElementById(id);
+      if (!rect) {
+        rect = createSVGElement(
+          {
+            attributes: {
+              id: `track_${track.id.toString()}`,
+              x: (x * spectrogram.value.width).toString(),
+              y: (y * spectrogram.value.height).toString(),
+              width: (width * spectrogram.value.width).toString(),
+              height: (height * spectrogram.value.height).toString(),
+              stroke: track.colour,
+              "stroke-width": strokeWidth,
+              opacity: "60%",
+              cursor: "pointer",
+              fill: "none",
+            },
+          },
+          "rect"
+        );
+
+        rect.addEventListener("mouseover", () => {
+          if (
+            props.selectedTrack === null ||
+            props.selectedTrack.id !== track.id
+          ) {
+            rect.setAttribute("stroke-width", "5");
+          }
+        });
+        rect.addEventListener("mouseout", () => {
+          rect.setAttribute("stroke-width", strokeWidth);
+        });
+        rect.addEventListener("click", () => {
+          props.setSelectedTrack(props.tracks.get(track.id));
+        });
+      } else {
+        rect.setAttribute("x", (x * spectrogram.value.width).toString());
+        rect.setAttribute("y", (y * spectrogram.value.height).toString());
+        rect.setAttribute(
+          "width",
+          (width * spectrogram.value.width).toString()
+        );
+        rect.setAttribute(
+          "height",
+          (height * spectrogram.value.height).toString()
+        );
+      }
+      return rect;
+    };
+    const hideControls = () => {
+      const prevTopLeft = document.getElementById("top-left-control");
+      const prevBottomRight = document.getElementById("bottom-right-control");
+      if (prevTopLeft) {
+        overlay.value.removeChild(prevTopLeft);
+      }
+      if (prevBottomRight) {
+        overlay.value.removeChild(prevBottomRight);
+      }
+      document.getElementById("track-changes-container").style.visibility =
+        "hidden";
+    };
+
+    const attachControls = (trackId: TrackId) => {
+      const element = document.getElementById(`track_${trackId}`);
+      // Remove previous controls
+      hideControls();
+      // Extract rectangle attributes
+      let rectX = parseFloat(element.getAttribute("x") || "0");
+      let rectY = parseFloat(element.getAttribute("y") || "0");
+      let rectWidth = parseFloat(element.getAttribute("width") || "0");
+      let rectHeight = parseFloat(element.getAttribute("height") || "0");
+      const colour = element.getAttribute("stroke") || "";
+
+      // Create top-left circle
+      const topLeftCircle = createControl(
+        rectX,
+        rectY,
+        colour,
+        "top-left-control"
+      );
+      overlay.value.appendChild(topLeftCircle);
+
+      // Create bottom-right circle
+      const bottomRightCircle = createControl(
+        rectX + rectWidth,
+        rectY + rectHeight,
+        colour,
+        "bottom-right-control"
+      );
+      overlay.value.appendChild(bottomRightCircle);
+
+      // Function to create control
+      function createControl(
+        cx: number,
+        cy: number,
+        colour: string,
+        id: string
+      ) {
+        const circle = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle"
+        );
+        circle.id = id;
+        circle.setAttribute("cx", cx.toString());
+        circle.setAttribute("cy", cy.toString());
+        circle.setAttribute("r", "5");
+        circle.setAttribute("fill", colour);
+        circle.setAttribute("cursor", "move");
+        return circle;
+      }
+
+      // Event handlers
+      topLeftCircle.addEventListener("mousedown", (event) =>
+        onPressDown(event, "topLeft")
+      );
+      topLeftCircle.addEventListener("touchstart", (event) =>
+        onPressDown(event, "topLeft")
+      );
+
+      bottomRightCircle.addEventListener("mousedown", (event) =>
+        onPressDown(event, "bottomRight")
+      );
+      bottomRightCircle.addEventListener("touchstart", (event) =>
+        onPressDown(event, "bottomRight")
+      );
+      function getCoords(event: MouseEvent | TouchEvent): {
+        x: number;
+        y: number;
+      } {
+        if (event instanceof TouchEvent) {
+          return { x: event.touches[0].clientX, y: event.touches[0].clientY };
+        } else {
+          return { x: event.clientX, y: event.clientY };
+        }
+      }
+
+      function onPressDown(
+        event: MouseEvent | TouchEvent,
+        corner: "topLeft" | "bottomRight"
+      ) {
+        const { x: startX, y: startY } = getCoords(event);
+
+        // Update the initial rectangle attributes at the start of each drag
+        rectX = parseFloat(element.getAttribute("x") || "0");
+        rectY = parseFloat(element.getAttribute("y") || "0");
+        rectWidth = parseFloat(element.getAttribute("width") || "0");
+        rectHeight = parseFloat(element.getAttribute("height") || "0");
+
+        let controlsModified = false;
+
+        function toggleButtonContainerVisibility() {
+          // Get the button container
+          const buttonContainer = document.getElementById(
+            "track-changes-container"
+          ) as HTMLElement;
+
+          if (buttonContainer && controlsModified) {
+            // Show or hide the container based on the controlsModified state
+            buttonContainer.style.visibility = "visible";
+          }
+        }
+
+        const onPressMove = (event: MouseEvent | TouchEvent) => {
+          if (event instanceof TouchEvent) {
+            event.preventDefault(); // Prevent scrolling during touch move
+          }
+          const { x, y } = getCoords(event);
+
+          let dx = x - startX;
+          let dy = y - startY;
+          const minSize = 8;
+
+          if (corner === "topLeft") {
+            // Constrain the top-left control within the bounds of the overlay and not beyond the bottom-right control
+            const newX = Math.min(
+              Math.max(rectX + dx, 0),
+              rectX + rectWidth - minSize
+            );
+            const newY = Math.min(
+              Math.max(rectY + dy, 0),
+              rectY + rectHeight - minSize
+            );
+
+            dx = newX - rectX; // Adjust the difference
+            dy = newY - rectY;
+            element.setAttribute("x", newX.toString());
+            element.setAttribute("y", newY.toString());
+            element.setAttribute("width", (rectWidth - dx).toString());
+            element.setAttribute("height", (rectHeight - dy).toString());
+
+            // Update the top-left control's position
+            topLeftCircle.setAttribute("cx", newX.toString());
+            topLeftCircle.setAttribute("cy", newY.toString());
+          } else {
+            // Constrain the bottom-right control within the bounds of the overlay and not beyond the top-left control
+            const newWidth = Math.min(
+              Math.max(rectWidth + dx, minSize),
+              overlay.value.clientWidth - rectX
+            );
+            const newHeight = Math.min(
+              Math.max(rectHeight + dy, minSize),
+              overlay.value.clientHeight - rectY
+            );
+
+            dx = newWidth - rectWidth; // Adjust the difference
+            dy = newHeight - rectHeight;
+            element.setAttribute("width", newWidth.toString());
+            element.setAttribute("height", newHeight.toString());
+
+            // Update the bottom-right control's position
+            bottomRightCircle.setAttribute("cx", (rectX + newWidth).toString());
+            bottomRightCircle.setAttribute(
+              "cy",
+              (rectY + newHeight).toString()
+            );
+          }
+
+          controlsModified = true;
+
+          // Update the button container's visibility based on the new state
+          toggleButtonContainerVisibility();
+
+          function updateButtonPosition() {
+            // Get the rectangle's position and dimensions
+            const rectX = parseFloat(element.getAttribute("x") || "0");
+            const rectY = parseFloat(element.getAttribute("y") || "0");
+            const rectWidth = parseFloat(element.getAttribute("width") || "0");
+
+            // Get the button container
+            const buttonContainer = document.getElementById(
+              "track-changes-container"
+            ) as HTMLElement;
+
+            if (buttonContainer) {
+              // Calculate the center top position
+              const leftPosition = rectX + rectWidth / 2 - 20;
+              const topPosition = rectY - 43;
+
+              // Set the CSS properties
+              buttonContainer.style.left = `${leftPosition}px`;
+              buttonContainer.style.top = `${topPosition}px`;
+            }
+          }
+          // Move save/cancel buttons
+          updateButtonPosition();
+        };
+
+        toggleButtonContainerVisibility();
+        const onPressUp = () => {
+          window.removeEventListener("mousemove", onPressMove);
+          window.removeEventListener("mouseup", onPressUp);
+          window.removeEventListener("touchmove", onPressMove);
+          window.removeEventListener("touchend", onPressUp);
+        };
+
+        window.addEventListener("mousemove", onPressMove);
+        window.addEventListener("mouseup", onPressUp);
+        window.addEventListener("touchmove", onPressMove, { passive: false });
+        window.addEventListener("touchend", onPressUp, { passive: false });
+      }
+    };
+
+    const saveTrackChanges = () => {
+      const track = props.selectedTrack;
+      if (!track) {
+        return;
+      }
+      const topFreq = props.sampleRate / 2;
+      const rect = document.getElementById(`track_${track.id.toString()}`);
+      const y = parseFloat(rect.getAttribute("y")) / spectrogram.value.height;
+      const height =
+        parseFloat(rect.getAttribute("height")) / spectrogram.value.height;
+      const maxFreq = topFreq * (1 - y);
+      const minFreq = maxFreq - topFreq * height;
+      document.getElementById("track-changes-container").style.visibility =
+        "hidden";
+      console.log(maxFreq, minFreq);
+    };
+
+    const cancelTrackChanges = (track = props.selectedTrack) => {
+      if (!track) {
+        return;
+      }
+      createRectFromTrack(track);
+      hideControls();
+    };
+
     // Watch for changes to the selected track and update the spectrogram
     watch(
       () => props.selectedTrack,
       (curr, prev: AudioTrack | null) => {
-        const isPrevTemp = prev ? prev.id === -1 : false;
-        if (isPrevTemp) {
+        const isPrevTrackTemp = prev?.id === -1;
+        if (isPrevTrackTemp) {
           // remove the temp track as it has no been confirmed
-          const rect = overlay.value.querySelector(
-            `#track_${prev.id.toString()}`
-          );
+          const rect = document.getElementById(`track_${prev.id.toString()}`);
           if (rect) {
             overlay.value.removeChild(rect);
           }
+        } else if (prev && curr?.id !== prev.id) {
+          cancelTrackChanges(prev);
         }
         if (curr) {
           const isCurrTemp = curr.id === -1;
@@ -521,15 +843,22 @@ export default defineComponent({
                   width: (width * spectrogram.value.width).toString(),
                   height: (height * spectrogram.value.height).toString(),
                   stroke: "#c8d6e5",
-                  "stroke-width": "2",
+                  "stroke-width": strokeWidth,
                   fill: "none",
                 },
               },
               "rect"
             );
             overlay.value.appendChild(rect);
+          } else if (curr.id !== prev?.id) {
+            attachControls(curr.id);
           }
-          if ((!prev || curr.id !== prev.id) && !isPrevTemp) {
+          // Add controls to the selected track on bottom right and top left of the rectangle
+
+          if (
+            !isPrevTrackTemp &&
+            (curr.id !== prev?.id || curr.playEventId !== prev.playEventId)
+          ) {
             playTrack(curr);
           }
         } else if (isPlaying.value && !isFinished.value) {
@@ -548,23 +877,17 @@ export default defineComponent({
     };
 
     const playTrack = (track: AudioTrack) => {
-      if (props.selectedTrack.id !== track.id) {
-        props.setSelectedTrack(() => track);
-      }
-      player.value.play(track.start, track.end);
+      playRegion(track.start, track.end);
     };
 
-    const togglePlay = (e) => {
+    const togglePlay = () => {
       if (props.selectedTrack) {
         if (isPlaying.value === true) {
           player.value.pause();
         } else if (isFinished.value) {
           replay();
         } else {
-          player.value.play(
-            player.value.getCurrentTime(),
-            props.selectedTrack.end
-          );
+          playRegion(player.value.getCurrentTime(), props.selectedTrack.end);
         }
       } else {
         player.value.playPause();
@@ -577,7 +900,7 @@ export default defineComponent({
 
     const playAt = debounce(
       (start: number, end: number = player.value.getDuration()) => {
-        player.value.play(start, end);
+        playRegion(start, end);
       },
       50
     );
@@ -654,7 +977,7 @@ export default defineComponent({
           time < props.selectedTrack.end &&
           time > props.selectedTrack.start
         ) {
-          player.value.play(time, props.selectedTrack.end);
+          playRegion(time, props.selectedTrack.end);
         } else {
           player.value.seekTo(percent);
         }
@@ -672,6 +995,23 @@ export default defineComponent({
     const onDragEndTime = () => {
       setDragTime(false);
     };
+    const currHandler = ref<(curr: number) => void>(null);
+    function playRegion(start: number, end: number) {
+      function handler(current: number) {
+        if (current > end) {
+          player.value.pause();
+          player.value.un("timeupdate", handler);
+        }
+      }
+      const existingHandler = currHandler.value;
+      if (existingHandler) {
+        player.value.un("timeupdate", existingHandler);
+      }
+      player.value.setTime(start);
+      player.value.on("timeupdate", handler);
+      currHandler.value = handler;
+      player.value.play();
+    }
 
     const onClickSeek = (e: MouseEvent) => {
       if (dragZoom.value.started) {
@@ -684,7 +1024,7 @@ export default defineComponent({
         time < props.selectedTrack.end &&
         time > props.selectedTrack.start
       ) {
-        player.value.play(time, props.selectedTrack.end);
+        playRegion(time, props.selectedTrack.end);
       } else {
         player.value.seekTo(percent);
       }
@@ -743,30 +1083,32 @@ export default defineComponent({
       });
     };
 
-    const SpectrogramSettings = {
+    const SpectrogramSettings: SpectrogramPluginOptions = {
+      labels: true,
       container: "#spectrogram",
-      fftSamples: 512,
       colorMap: ColorMap({
         colormap: props.colour,
         nshades: 256,
         format: "float",
       }),
+      fftSamples: isMobile ? 512 : 1024,
     };
 
     onMounted(async () => {
-      const audioBuffer = props.buffer.slice(0);
-      const realSampleRate = getSampleRate(audioBuffer).sampleRate;
-      defaultSampleRate.value = realSampleRate === 0 ? 48000 : realSampleRate;
-      let sampleRate = props.sampleRate;
-      if (sampleRate === null) {
-        sampleRate = defaultSampleRate.value;
-        props.setSampleRate(sampleRate);
-        newSampleRate.value = sampleRate;
-      }
+      const audio = new Audio();
       const audioContext = new AudioContext({
-        sampleRate,
+        sampleRate: props.sampleRate,
       });
       const gainNode = audioContext.createGain();
+      const filterNode = audioContext.createBiquadFilter();
+      filterNode.type = "allpass";
+      const mediaNode = audioContext.createMediaElementSource(audio);
+      audio.addEventListener("canplay", () => {
+        mediaNode
+          .connect(filterNode)
+          .connect(gainNode)
+          .connect(audioContext.destination);
+      });
       const waveSurferOptions = {
         audioContext,
         container: "#waveform",
@@ -780,66 +1122,9 @@ export default defineComponent({
         responsive: true,
         normalize: true,
         cursorWidth: 1,
+        sampleRate: props.sampleRate,
+        media: audio,
         plugins: [SpectrogramPlugin.create(SpectrogramSettings)],
-      };
-
-      const createRectFromTrack = (track: AudioTrack) => {
-        const pos =
-          track.positions.length > 1 ? track.positions[1] : track.positions[0]; // Temp track uses second position
-        let { x, y, width, height } = pos;
-        const topFreq = sampleRate / 2;
-        const scale = topFreq / 9;
-
-        // take it from linear scale to log scale
-        let minFreq = y * topFreq;
-        minFreq = minFreq / scale;
-        minFreq = Math.log10(minFreq + 1);
-        minFreq = (minFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        let maxFreq = (y + height) * topFreq;
-        maxFreq = maxFreq / scale;
-
-        maxFreq = Math.log10(maxFreq + 1);
-        maxFreq = (maxFreq * (defaultSampleRate.value / 2)) / (sampleRate / 2);
-        height = maxFreq - minFreq;
-        // y needs to inverted due to canvas positioning
-        y = 1 - maxFreq;
-        if (track.start && track.end) {
-          const { start, end } = track;
-          x = start / player.value.getDuration();
-          width = (end - start) / player.value.getDuration();
-        }
-        const rect = createSVGElement(
-          {
-            attributes: {
-              id: `track_${track.id.toString()}`,
-              x: (x * spectrogram.value.width).toString(),
-              y: (y * spectrogram.value.height).toString(),
-              width: (width * spectrogram.value.width).toString(),
-              height: (height * spectrogram.value.height).toString(),
-              stroke: track.colour,
-              "stroke-width": "2",
-              cursor: "pointer",
-              fill: "none",
-            },
-          },
-          "rect"
-        );
-
-        rect.addEventListener("mouseover", () => {
-          if (
-            props.selectedTrack === null ||
-            props.selectedTrack.id !== track.id
-          ) {
-            rect.setAttribute("stroke-width", "3");
-          }
-        });
-        rect.addEventListener("mouseout", () => {
-          rect.setAttribute("stroke-width", "2");
-        });
-        rect.addEventListener("click", () => {
-          props.setSelectedTrack(props.tracks.get(track.id));
-        });
-        return rect;
       };
 
       const addTracksToOverlay = (tracks: AudioTrack[]) =>
@@ -860,7 +1145,7 @@ export default defineComponent({
           const markedForDeletion = [...newTracks.values()]
             .filter((track) => track.deleted)
             .map((track) => track.id);
-          const markedForUndeletion = [...newTracks.values()]
+          const markedToRestore = [...newTracks.values()]
             .filter((track) => {
               const oldTrack = oldTracks.get(track.id);
               if (oldTrack) {
@@ -870,7 +1155,7 @@ export default defineComponent({
             })
             .map((track) => track.id);
 
-          [...added, ...markedForUndeletion].forEach((trackId) => {
+          [...added, ...markedToRestore].forEach((trackId) => {
             const track = newTracks.get(trackId);
             if (track) {
               const rect = createRectFromTrack(track);
@@ -890,6 +1175,23 @@ export default defineComponent({
           });
         }
       );
+
+      watch(
+        () => props.selectedTrack,
+        (track) => {
+          if (track?.maxFreq && track?.minFreq) {
+            filterNode.type = "bandpass";
+            const { maxFreq, minFreq } = track;
+            const fcenter = Math.sqrt(maxFreq * minFreq);
+            const deltaf = maxFreq - minFreq;
+            filterNode.frequency.value = fcenter;
+            filterNode.Q.value = fcenter / deltaf;
+          } else {
+            filterNode.type = "allpass";
+          }
+        }
+      );
+
       watch(volume, (v) => {
         if (!volumeSlider.value) {
           return;
@@ -899,7 +1201,7 @@ export default defineComponent({
           volumeSlider.value.value = "0";
           player.value.setVolume(0);
         } else {
-          const volume = v.volume * 2;
+          const volume = v.volume * 150;
           if (volume < 1) {
             player.value.setVolume(volume);
             gainNode.gain.value = 1;
@@ -939,10 +1241,15 @@ export default defineComponent({
       player.value.on("play", () => {
         setIsPlaying(true);
       });
-      player.value.on("seek", (time) => {
+      player.value.on("seeking", (time) => {
         if (props.selectedTrack) {
-          const { x, width } = props.selectedTrack.positions[0];
-          if (time > x + width || time < x) {
+          const { start, end } = props.selectedTrack;
+          const decimal = 10;
+          const Time = Math.round(time * decimal) / decimal;
+          const Start = Math.round(start * decimal) / decimal;
+          const End = Math.round(end * decimal) / decimal;
+          console.log(Start, End, Time);
+          if (Time < Start || Time > End) {
             props.setSelectedTrack(null);
           }
         }
@@ -950,29 +1257,20 @@ export default defineComponent({
 
       const attachSpectrogramOverlay = () => {
         const canvas = document.querySelector(
-          "spectrogram canvas"
+          "#spectrogram canvas:nth-child(2)"
         ) as HTMLCanvasElement;
+        const labels = document.querySelector(
+          "#spectrogram canvas:nth-child(1)"
+        ) as HTMLCanvasElement;
+        labels.style.visibility = "hidden";
         canvas.style.zIndex = "0";
-        const context = canvas.getContext("2d");
         // add scale x on mousewheel;
         spectrogram.value = canvas;
         const spectrogramWidth = spectrogram.value.width;
         const spectrogramHeight = spectrogram.value.height;
-        const container = document.querySelector("#spectrogram") as HTMLElement;
-        const svgImage = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "image"
-        );
-        svgImage.setAttributeNS(
-          "http://www.w3.org/1999/xlink",
-          "href",
-          canvas.toDataURL("image/png")
-        );
-        svgImage.setAttribute("width", spectrogramWidth.toString());
-        svgImage.setAttribute("height", spectrogramHeight.toString());
-        svgImage.setAttribute("x", "0");
-        svgImage.setAttribute("y", "0");
-        svgImage.setAttribute("preserveAspectRatio", "none");
+        const container = document.querySelector(
+          "#spectrogram div"
+        ) as HTMLElement;
 
         // check if newOverlay is already there
         const oldOverlay = container.querySelector("svg");
@@ -982,11 +1280,11 @@ export default defineComponent({
 
         const overlayAttr = {
           style: {
-            ["z-index"]: 10,
             cursor: "crosshair",
             width: "100%",
             height: "100%",
             "transform-origin": "0 center bottom",
+            position: "relative",
           },
           attributes: {
             viewBox: `0 0 ${spectrogramWidth} ${spectrogramHeight}`,
@@ -994,32 +1292,24 @@ export default defineComponent({
           },
         };
         const newOverlay = createSVGElement(overlayAttr, "svg");
-        newOverlay.appendChild(svgImage);
-        // hide container made by waveform
-        const spectrogramContainer = document.querySelector(
-          "spectrogram"
-        ) as HTMLDivElement;
-        spectrogramContainer.style.display = "none";
 
         if (overlay.value && container.contains(overlay.value)) {
           container.removeChild(overlay.value);
         }
         overlay.value = newOverlay;
-        newOverlay.addEventListener("wheel", (e) => {
-          const { deltaY } = e;
-          context.save();
-          context.scale(deltaY > 0 ? 1.1 : 0.9, 1);
-          context.drawImage(canvas, 0, 0);
-          context.restore();
-        });
         newOverlay.addEventListener("touch", interactWithSpectrogram);
 
         container.appendChild(overlay.value);
         const startEvent = (e: TouchEvent | MouseEvent) => {
           // iOS safari doesn't support audio playback without user interaction
+          const target = e.target as Element;
           const isiOS =
             !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
-          if (!interacted.value && isiOS) {
+          if (
+            (!interacted.value && isiOS) ||
+            target.id === "top-left-control" ||
+            target.id === "bottom-right-control"
+          ) {
             return;
           }
           const { x, y } = getDragCoords(e);
@@ -1059,7 +1349,7 @@ export default defineComponent({
             moveTempTrack(x, y);
           }
         };
-        const endEvent = (e: TouchEvent | MouseEvent) => {
+        const endEvent = () => {
           if (!tempTrack.value.active) {
             return;
           }
@@ -1076,19 +1366,15 @@ export default defineComponent({
         };
 
         const confirmTrack = debounce(() => {
-          const topFreq = sampleRate / 2;
-          const scale = topFreq / 9;
+          const topFreq = props.sampleRate / 2;
           const flippedY = 1 - tempTrack.value.pos.y;
-          let minFreq = flippedY - tempTrack.value.pos.height;
+          const minFreq = (flippedY - tempTrack.value.pos.height) * topFreq;
           // spectogram is in log scale so make into linear
           const pos = Object.assign({}, tempTrack.value.pos);
 
-          let maxFreq = Math.pow(10, flippedY) - 1;
-          minFreq = Math.pow(10, minFreq) - 1;
-          maxFreq = maxFreq * scale;
-          minFreq = minFreq * scale;
-          pos.height = (maxFreq - minFreq) / (defaultSampleRate.value / 2);
-          pos.y = minFreq / (defaultSampleRate.value / 2);
+          const maxFreq = flippedY * topFreq;
+          pos.height = (maxFreq - minFreq) / (props.sampleRate / 2);
+          pos.y = minFreq / (props.sampleRate / 2);
           const track: AudioTrack = {
             id: -1,
             start: tempTrack.value.pos.x * player.value.getDuration(),
@@ -1156,7 +1442,6 @@ export default defineComponent({
 
       const initPlayer = () => {
         isLoading.value = false;
-        player.value.backend.setFilters([gainNode]);
         attachSpectrogramOverlay();
         // Move canvas image to SVG & clean up
         overlay.value.appendChild(tempTrack.value.rect);
@@ -1170,7 +1455,6 @@ export default defineComponent({
         setPlayerTime(0);
         // Due to spectrogram plugin, we need to wait for the canvas to be rendered
         player.value.on("redraw", () => {
-          player.value.spectrogram.init();
           attachSpectrogramOverlay();
           if (props.selectedTrack && props.selectedTrack.id === -1) {
             // remove previous
@@ -1206,7 +1490,7 @@ export default defineComponent({
       if ((window as any).WaveSurferOfflineAudioContext) {
         (window as any).WaveSurferOfflineAudioContext = null;
       }
-      player.value.loadArrayBuffer(audioBuffer);
+      player.value.loadBlob(props.buffer);
     });
     onBeforeUnmount(() => {
       player.value.empty();
@@ -1236,6 +1520,8 @@ export default defineComponent({
       playAt,
       playTrack,
       interactWithSpectrogram,
+      saveTrackChanges,
+      cancelTrackChanges,
     };
   },
 });
@@ -1252,9 +1538,12 @@ spectrogram {
 }
 #spectrogram {
   background-color: #2b333f;
-  min-height: 256px;
+  min-height: 512px;
   overflow: hidden;
   border-radius: 8px 8px 0px 0px;
+  @media (max-width: 768px) {
+    min-height: 256px;
+  }
 }
 .player-bar {
   display: grid;
@@ -1444,5 +1733,46 @@ spectrogram > svg {
 .player-bar-color-dropdown * {
   color: #fff !important;
   max-width: 8em;
+}
+#save-track-changes {
+  background: none;
+  height: 40px;
+  width: 40px;
+  color: #3b82f6;
+  font-weight: 800;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit;
+  &:hover {
+    color: #38bdf8;
+  }
+}
+#cancel-track-changes {
+  background: none;
+  height: 40px;
+  width: 40px;
+  color: #52525b;
+  font-weight: 800;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit;
+  border-left: 1px solid #f5f5f4;
+  &:hover {
+    color: #78716c;
+  }
+}
+#track-changes-container {
+  visibility: hidden;
+  opacity: 70%;
+  position: absolute;
+  display: flex;
+  background: #fafaf9;
+  border-radius: 0.2em;
+  z-index: 20;
+  &:hover {
+    opacity: 100;
+  }
 }
 </style>

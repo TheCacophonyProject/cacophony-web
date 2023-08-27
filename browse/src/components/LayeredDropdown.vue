@@ -3,7 +3,7 @@
     @click="$emit('click', $event)"
     ref="optionsContainerRef"
     class="options-container"
-    id="options-container"
+    :id="`options-container-${id}`"
   >
     <div v-show="showOptions" class="options-display-container">
       <div ref="optionsList" class="options-list-container">
@@ -19,7 +19,7 @@
             {{ option.display ? option.display : option.label }}
           </button>
           <button
-            id="child-button"
+            :id="`child-button-${id}`"
             class="options-list-child"
             v-if="option.children"
             @click="() => setToPath(option.label)"
@@ -252,9 +252,6 @@ export default defineComponent({
       () => {
         createOptionsPaths(props.options);
         setToPath("all");
-      },
-      {
-        immediate: true,
       }
     );
 
@@ -290,6 +287,7 @@ export default defineComponent({
         inputRef.value.focus();
       }
     });
+    const id = Math.random().toString(36).substring(2, 15);
 
     onMounted(() => {
       document.addEventListener("keydown", (e) => {
@@ -303,15 +301,15 @@ export default defineComponent({
       document.addEventListener("click", (e) => {
         const target = e.target as Element;
         const isDropdown = document
-          .getElementById("options-container")
+          .getElementById(`options-container-${id}`)
           ?.contains(target);
         const selectedItem =
           typeof target.className === "string" &&
-          target.className.includes("options-list") &&
+          target.className.includes(`options-list`) &&
           typeof selectedOptions.value === "string";
         const switchedParent =
-          target.id.includes("child-button") ||
-          target.parentElement?.id.includes("child-button");
+          target.id.includes(`child-button-${id}`) ||
+          target.parentElement?.id.includes(`child-button-${id}`);
 
         if (!isDropdown || selectedItem) {
           if (switchedParent) {
@@ -329,6 +327,7 @@ export default defineComponent({
     });
 
     return {
+      id,
       optionsMap,
       optionsContainerRef,
       optionsList,

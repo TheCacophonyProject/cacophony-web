@@ -9,7 +9,11 @@ import {
 import { RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
-import { ApiTrackRequest, ApiTrackResponse } from "@typedefs/api/track";
+import {
+  ApiTrackDataRequest,
+  ApiTrackRequest,
+  ApiTrackResponse,
+} from "@typedefs/api/track";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
@@ -420,6 +424,17 @@ function undeleteTrack(
   );
 }
 
+function updateTrack(
+  trackId: TrackId,
+  recordingId: RecordingId,
+  data: Partial<ApiTrackDataRequest>
+): Promise<FetchResult<{}>> {
+  return CacophonyApi.put(
+    `${apiPath}/${recordingId}/tracks/${trackId}/update-data`,
+    { data }
+  );
+}
+
 function replaceTrackTag(
   tag: ApiTrackTagRequest,
   recordingId: RecordingId,
@@ -596,6 +611,7 @@ export default {
   addTrack,
   deleteTrack,
   undeleteTrack,
+  updateTrack,
   reprocess,
   addTrackTag,
   deleteTrackTag,

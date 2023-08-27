@@ -1886,6 +1886,57 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
+   * @api {put} /api/v1/recordings/:id/tracks/:trackId/update-data
+   * Updates a Track's Data
+   * @apiDescription Updates the "data" column of the specified track.
+   * @apiName PutTrackData
+   * @apiGroup Tracks
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId Id of the recording track to update
+   *
+   * @apiBody {JSON} data The new data object to replace the existing one.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} message Success message.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.put(
+    `${apiUrl}/:id/tracks/:trackId/update-data`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("data").isJSON(),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.track.RecordingId === response.locals.recording.id) {
+        try {
+          const existingData = response.locals.track.data;
+          const mergedData = { ...existingData, ...request.body.data };
+
+          await models.Track.update(
+            { data: mergedData },
+            { where: { id: response.locals.track.id } }
+          );
+          return successResponse(response, "Track data updated.");
+        } catch (e) {
+          return next(new FatalError("Server error updating track data."));
+        }
+      } else {
+        return next(
+          new FatalError("Track does not belong to specified recording")
+        );
+      }
+    }
+  );
+
+  /**
    * @api {patch} /api/v1/recordings/:id/tracks/:trackId/tags/:tagId
    * Updates a Track Tag with new request body
    * @apiDescription Adds or Replaces track tag based off:

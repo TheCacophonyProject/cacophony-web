@@ -20,6 +20,7 @@ import {
 import LayeredDropdown, { Option } from "./LayeredDropdown.vue";
 
 export default defineComponent({
+  name: "ClassificationsDropdown",
   props: {
     value: {
       type: [Array, String] as PropType<string | string[]>,
