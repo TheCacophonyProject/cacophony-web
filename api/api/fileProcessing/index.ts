@@ -392,7 +392,31 @@ export default function (app: Application) {
   );
 
   /**
-   * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track to recording
+   * @api {patch} /api/fileProcessing/:id/tracks/:trackId/archive Archives a track
+   * @apiName UpdateTrackData
+   * @apiGroup FileProcessing
+   *     *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/archive`,
+    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response) => {
+      await response.locals.track.update({ archivedAt: Date.now() });
+
+      responseUtil.send(response, {
+        statusCode: 200,
+        messages: ["Track archived."],
+      });
+    }
+  );
+
+  /**
+   * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track for recording
    * @apiName UpdateTrackData
    * @apiGroup FileProcessing
    *
