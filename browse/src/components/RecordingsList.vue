@@ -264,7 +264,7 @@ interface ItemData {
   processingState: string;
   processing: boolean;
   tracks: any[];
-  filtered: boolean;
+  redacted: boolean;
 }
 
 export default {
@@ -375,6 +375,7 @@ export default {
           ...(recording.type === "thermalRaw" && {
             filtered: recording.tracks.every((track) => track.filtered),
           }),
+          redacted: recording.redacted,
         };
 
         items.push(itemData);

@@ -38,6 +38,7 @@ import {
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
 } from "@api/extract-middleware.js";
+import type { Track } from "@/models/Track.js";
 
 const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
@@ -321,6 +322,41 @@ export default function (app: Application, baseUrl: string) {
             }
           }
         }
+        if (complete && recording.type === RecordingType.Audio) {
+          const device = await recording.getDevice();
+          const group = await device.getGroup();
+          const shouldFilter = group.settings?.filterHuman ?? true;
+          if (shouldFilter) {
+            const tracks: Track[] = await recording.getTracks();
+            let hasHuman = false;
+            for (const t of tracks) {
+              const tags = await t.getTrackTags({});
+              hasHuman = tags.some((tt) => tt.what === "human");
+              if (hasHuman) {
+                break;
+              }
+            }
+            if (hasHuman) {
+              const rawFileKey = recording.rawFileKey;
+              const fileKey = recording.fileKey;
+              recording.redacted = true;
+              try {
+                if (rawFileKey) {
+                  await util.deleteS3Object(rawFileKey).catch((err) => {
+                    log.warning(err);
+                  });
+                }
+                if (fileKey) {
+                  await util.deleteS3Object(fileKey).catch((err) => {
+                    log.warning(err);
+                  });
+                }
+              } catch (e) {
+                log.warning("Failed to delete file: %s", e);
+              }
+            }
+          }
+        }
         await recording.save();
 
         if (complete && recording.type === RecordingType.ThermalRaw) {
@@ -342,6 +378,9 @@ export default function (app: Application, baseUrl: string) {
             }
           }
         }
+
+        // If group filters out human audio, delete the file
+
         const twentyFourHoursMs = 24 * 60 * 60 * 1000;
         const recordingAgeMs =
           new Date().getTime() - recording.recordingDateTime.getTime();

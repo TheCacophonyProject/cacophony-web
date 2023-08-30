@@ -130,7 +130,7 @@ import GroupAdd from "@/components/Groups/GroupAdd.vue";
 import { LatLng, latLng, latLngBounds } from "leaflet";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { mapState } from "vuex";
-import { ApiGroupResponse } from "@typedefs/api/group";
+import { ApiGroupResponse, ApiGroupSettings } from "@typedefs/api/group";
 import { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 
@@ -142,6 +142,7 @@ interface GroupsForLocation {
 interface GroupInfo {
   devices: ApiDeviceResponse[];
   groupName: string;
+  settings?: ApiGroupSettings;
   lastThermalRecordingTime?: Date;
   lastAudioRecordingTime?: Date;
 }
@@ -208,7 +209,11 @@ export default {
         return pass;
       });
     },
-
+    privacyGroups(): GroupInfo[] {
+      return this.groups.filter(
+        (group: ApiGroupResponse) => group.settings?.filterHuman
+      );
+    },
     orderedGroups(): ApiGroupResponse[] {
       return [...this.filteredGroups].sort(
         (a: ApiGroupResponse, b: ApiGroupResponse) => {
@@ -268,12 +273,14 @@ export default {
               for (const {
                 id,
                 groupName,
+                settings,
                 lastThermalRecordingTime,
                 lastAudioRecordingTime,
               } of result.groups) {
                 groups[id] = {
                   devices: [],
                   groupName,
+                  settings,
                 };
                 if (lastAudioRecordingTime) {
                   groups[id].lastAudioRecordingTime = new Date(

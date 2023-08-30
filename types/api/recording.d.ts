@@ -31,6 +31,7 @@ export interface ApiRecordingResponse {
   stationName?: string;
   comment?: string;
   rawMimeType: string;
+  redacted: boolean;
 }
 
 export interface ApiThermalRecordingMetadataResponse {

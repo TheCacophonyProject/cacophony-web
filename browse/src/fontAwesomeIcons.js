@@ -74,6 +74,7 @@ import {
   faCheck,
   faImages,
   faPencilAlt,
+  faShieldAlt,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   faCalendar,
@@ -142,6 +143,7 @@ library.add(
   faQuestion,
   faQuestionCircle,
   faReply,
+  faShieldAlt,
   faRedoAlt,
   faSearch,
   faSearchPlus,

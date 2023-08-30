@@ -75,7 +75,6 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response) => {
       const version = request.query.version as string;
       if (classification.version === version) {
-        console.log(`Returning classification version ${version}`);
         return successResponse(response, { version: classification.version });
       }
       response.setHeader("Content-Type", "application/json");

@@ -10,15 +10,30 @@
       <h1>
         <GroupLink :group-name="groupName" />
       </h1>
-      <p class="lead" v-if="group && isGroupAdmin">
-        Manage the users associated with this group and view the devices
-        associated with it.
-      </p>
-      <p v-else-if="group">
-        View stations, recordings, and devices associated with this group.
-      </p>
+      <div v-if="group && isGroupAdmin">
+        <p class="lead">
+          Manage the users associated with this group and view the devices
+          associated with it.
+        </p>
+        <b-form-checkbox v-model="filterHuman"
+          >Filter Audio Recordings of Human Speech.</b-form-checkbox
+        >
+      </div>
+      <div v-else-if="group">
+        <p>
+          View stations, recordings, and devices associated with this group.
+        </p>
+        <p class="text-secondary" v-if="filterHuman">
+          Filtering Audio Recordings of Human Speech.
+          <Help>Contant your group admin to change this setting.</Help>
+        </p>
+        <p class="text-secondary" v-else>
+          Not Filtering Audio Recordings of Human Speech.
+          <Help>Contant your group admin to change this setting.</Help>
+        </p>
+      </div>
     </b-jumbotron>
-    <tab-list v-model="currentTabIndex" v-if="group && devices.length">
+    <tab-list v-model="currentTabIndex" v-if="group">
       <tab-list-item
         lazy
         title="Manual uploads"
@@ -146,6 +161,7 @@ import TabListItem from "@/components/TabListItem.vue";
 import TabList from "@/components/TabList.vue";
 import ManualRecordingUploads from "@/components/ManualRecordingUploads.vue";
 import { ApiDeviceResponse } from "@typedefs/api/device";
+import Help from "@/components/Help.vue";
 
 interface GroupViewData {
   group: ApiGroupResponse | null;
@@ -166,6 +182,7 @@ export default {
     TabList,
     ManualRecordingUploads,
     AnalysisTab,
+    Help,
   },
   data(): Record<string, any> & GroupViewData {
     return {
@@ -187,6 +204,7 @@ export default {
       devices: [],
       stations: [],
       visits: [],
+      filterHuman: false,
     };
   },
   computed: {
@@ -273,6 +291,7 @@ export default {
       const {
         result: { group },
       } = groupRequest;
+      this.filterHuman = group.settings?.filterHuman ?? true;
       this.group = group;
       this.currentTabIndex = this.tabNames.indexOf(this.currentTabName);
       await Promise.all([
@@ -294,6 +313,19 @@ export default {
         },
       });
     }
+  },
+  watch: {
+    async filterHuman(newValue) {
+      const res = await api.groups.updateGroupSettings(this.groupName, {
+        ...this.group.settings,
+        filterHuman: newValue,
+      });
+      if (res.success) {
+        this.group.settings = res.result.settings;
+      } else {
+        this.filterHuman = this.group.settings?.filterHuman ?? true;
+      }
+    },
   },
   methods: {
     recordingQuery() {
