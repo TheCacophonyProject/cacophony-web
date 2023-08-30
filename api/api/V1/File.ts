@@ -55,7 +55,7 @@ export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/files`;
 
   /**
-   * @api {get} /api/v1/files/classification Get classification json file
+   * @api {get} /api/v1/files/classifications Get classification json file
    * @apiName GetClassificationJsonFile
    * @apiGroup Files
    * @apiDescription Returns the versioned classification json.

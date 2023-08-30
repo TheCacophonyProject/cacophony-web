@@ -397,6 +397,7 @@ export default {
           skipMessage
         );
       }
+      this.loadingNext = false;
     },
     async goToNextRecordingInList(direction, list: string[]) {
       const listIndex = list.indexOf(this.recording.id.toString());

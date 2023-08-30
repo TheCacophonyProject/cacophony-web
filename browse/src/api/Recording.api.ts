@@ -11,6 +11,7 @@ import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import {
   ApiTrackDataRequest,
+  ApiTrackPosition,
   ApiTrackRequest,
   ApiTrackResponse,
 } from "@typedefs/api/track";
@@ -427,9 +428,9 @@ function undeleteTrack(
 function updateTrack(
   trackId: TrackId,
   recordingId: RecordingId,
-  data: Partial<ApiTrackDataRequest>
+  data: ApiTrackDataRequest
 ): Promise<FetchResult<{}>> {
-  return CacophonyApi.put(
+  return CacophonyApi.patch(
     `${apiPath}/${recordingId}/tracks/${trackId}/update-data`,
     { data }
   );

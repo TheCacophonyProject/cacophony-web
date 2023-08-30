@@ -262,11 +262,7 @@ import RecordingProperties from "../Video/RecordingProperties.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import Help from "@/components/Help.vue";
 
-import {
-  ApiTrackResponse,
-  ApiTrackRequest,
-  ApiTrackDataRequest,
-} from "@typedefs/api/track";
+import { ApiTrackResponse, ApiTrackDataRequest } from "@typedefs/api/track";
 import { ApiTrackTagAttributes } from "@typedefs/api/trackTag";
 import {
   ApiTrackTagRequest,
@@ -526,7 +522,6 @@ export default defineComponent({
         // console.error(error);
       }
     };
-
     const modifyTrack = (
       trackId: TrackId,
       trackChanges: Partial<AudioTrack>
@@ -731,7 +726,7 @@ export default defineComponent({
 
     const updateTrack = async (
       trackId: TrackId,
-      trackData: Partial<ApiTrackDataRequest>
+      trackData: ApiTrackDataRequest
     ) => {
       const response = await api.recording.updateTrack(
         trackId,
@@ -740,10 +735,18 @@ export default defineComponent({
       );
       if (response.success) {
         // update local state
-        const track = tracks.value.get(trackId);
-        tracks.value.set(trackId, {
-          ...track,
-          ...trackData,
+        setTracks((draftTracks) => {
+          const track = draftTracks.get(trackId);
+
+          draftTracks.set(
+            trackId,
+            produce(track, () => ({
+              ...track,
+              ...trackData,
+              start: trackData.start_s,
+              end: trackData.end_s,
+            }))
+          );
         });
         return { success: true };
       } else {
@@ -811,7 +814,6 @@ export default defineComponent({
         const filtered = tracks.filter((track) =>
           track.tags.some((tag) => !tags.includes(tag.what))
         );
-        console.log(tracks, filtered, tags);
         return filtered;
       }
       return tracks;
@@ -958,18 +960,20 @@ export default defineComponent({
           isGroupAdmin.value = response.result.group.admin;
         }
       }
-      watch(
-        () => props.recording,
-        () => {
-          setTracks(mappedTracks(filterTracks(props.recording.tracks)));
-          setSelectedTrack(null);
-          setCacophonyIndex(props.recording.cacophonyIndex);
-        },
-        {
-          deep: true,
-        }
-      );
     });
+    watch(
+      () => props.recording,
+      () => {
+        console.log(props.recording.tracks);
+        setTracks(mappedTracks(filterTracks(props.recording.tracks)));
+        setSelectedTrack(null);
+        setCacophonyIndex(props.recording.cacophonyIndex);
+      },
+      {
+        deep: true,
+        immediate: true,
+      }
+    );
 
     const isQueued = computed(() => {
       const state = props.recording.processingState.toLowerCase();

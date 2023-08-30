@@ -55,7 +55,6 @@
           id="input-user-admin"
           v-model="$v.form.isAdmin.$model"
           plain
-          value="true"
           unchecked-value="false"
         >
           Make this user an administrator
@@ -199,7 +198,7 @@ export default {
           this.users = usersListResponse.result.usersList.map(
             ({ userName, id, email }) => ({
               name: userName,
-              display: `${userName} ${email && `<${email}>`}>`,
+              display: `${userName} ${email && `<${email}>`}`,
               email,
               id,
             })

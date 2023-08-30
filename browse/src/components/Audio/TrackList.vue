@@ -17,6 +17,15 @@
           </svg>
         </template>
         <div class="classification-filter-container">
+          <div class="d-flex">
+            <h3>
+              Group Tag Filter
+
+              <Help class="text-secondary"
+                >Admins can filter tags from a group</Help
+              >
+            </h3>
+          </div>
           <ClassificationsDropdown
             v-bind:value="filteredTags"
             @input="onAddFilterTags($event)"
@@ -242,6 +251,7 @@
 <script lang="ts">
 import { PropType } from "vue";
 import { defineComponent, ref, watch } from "@vue/composition-api";
+import Help from "@/components/Help.vue";
 
 import { useState } from "@/utils";
 
@@ -267,6 +277,7 @@ export default defineComponent({
   components: {
     Dropdown,
     ClassificationsDropdown,
+    Help,
   },
   props: {
     audioTracks: {

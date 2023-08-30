@@ -1886,7 +1886,7 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {put} /api/v1/recordings/:id/tracks/:trackId/update-data
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/update-data
    * Updates a Track's Data
    * @apiDescription Updates the "data" column of the specified track.
    * @apiName PutTrackData
@@ -1904,29 +1904,26 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1ResponseError
    */
-  app.put(
+  app.patch(
     `${apiUrl}/:id/tracks/:trackId/update-data`,
     extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("id")),
-      idOf(param("trackId")),
-      body("data").isJSON(),
-    ]),
+    validateFields([idOf(param("id")), idOf(param("trackId")), body("data")]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         try {
-          const existingData = response.locals.track.data;
-          const mergedData = { ...existingData, ...request.body.data };
+          const track: Track = response.locals.track;
+          console.log(request.body.data);
 
-          await models.Track.update(
-            { data: mergedData },
-            { where: { id: response.locals.track.id } }
-          );
+          await track.update({
+            data: { ...track.data, ...request.body.data },
+          });
           return successResponse(response, "Track data updated.");
         } catch (e) {
-          return next(new FatalError("Server error updating track data."));
+          return next(
+            new FatalError(`Server error updating track data: ${e.toString()}`)
+          );
         }
       } else {
         return next(
