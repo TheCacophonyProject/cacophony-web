@@ -210,7 +210,7 @@ export default {
       }
     },
     isVideo(): boolean {
-      return this.recording.type === RecordingType.ThermalRaw;
+      return  this.recording.type === RecordingType.ThermalRaw || this.recording.type == RecordingType.InfraredVideo;
     },
     isAudio(): boolean {
       return this.recording.type === RecordingType.Audio;
@@ -308,7 +308,6 @@ export default {
             this.downloadRawJWT = downloadRawJWT;
             this.rawSize = rawSize;
             this.fileSize = fileSize;
-
             const stationResponse = await api.station.getStationById(
               this.recordingInternal.stationId
             );

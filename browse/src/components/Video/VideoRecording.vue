@@ -4,6 +4,18 @@
   >
     <b-row class="no-gutters">
       <b-col cols="12" lg="8">
+        <div v-if="isMP4">
+          <ThermalVideoPlayer
+          ref="player"
+          :video-url="videoRawUrl"
+          :tracks="tracks"
+          @trackSelected="trackSelected"
+          :current-track="selectedTrack"
+          @request-next-recording="nextRecording"
+          @player-ready="playerReady"
+        />
+      </div>
+      <div v-else>
         <CptvPlayer
           ref="player"
           :cptv-url="videoRawUrl"
@@ -24,6 +36,7 @@
           @request-prev-recording="prevRecording"
           @export-complete="requestedExport = false"
         />
+      </div>
       </b-col>
       <b-col cols="12" lg="4">
         <div v-if="tracks && tracks.length > 0" class="accordion">
@@ -121,6 +134,7 @@
 /* eslint-disable no-console */
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
+import ThermalVideoPlayer from "./ThermalVideoPlayer.vue";
 import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
 import RecordingProperties from "./RecordingProperties.vue";
 import { TagColours, WALLABY_GROUP } from "@/const";
@@ -139,6 +153,7 @@ import { FILTERED_TOOLTIP } from "../../const";
 export default {
   name: "VideoRecording",
   components: {
+    ThermalVideoPlayer,
     RecordingControls,
     RecordingProperties,
     TrackInfo,
@@ -179,6 +194,9 @@ export default {
     };
   },
   computed: {
+    isMP4: function() {
+      return this.recording.type == RecordingType.InfraredVideo;
+    },
     tooltipTitle: function () {
       return FILTERED_TOOLTIP;
     },
@@ -186,7 +204,9 @@ export default {
       set: function (val) {
         localStorage.setItem("showFiltered", val);
         this.$store.state.User.userData.showFiltered = val;
-        this.$refs["player"].renderCurrentFrame(true);
+        if(!this.MP4){
+          this.$refs["player"].renderCurrentFrame(true);
+        }
         this.checkPreviousAndNextRecordings();
       },
       get: function () {
