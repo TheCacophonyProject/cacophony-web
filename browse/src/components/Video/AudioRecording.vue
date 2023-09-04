@@ -13,7 +13,7 @@
             :tracks="tracks"
             :buffer="buffer"
             :url="url"
-            :sampleRate="sampleRate"
+            :sampleRate="sampleRate === null ? 48000 : sampleRate"
             :setSampleRate="setSampleRate"
             :duration="recording.duration"
             :selectedTrack="selectedTrack"
@@ -64,6 +64,7 @@
               :redacted="recording.redacted"
               :filtered-tags="filteredAudioTags"
               :on-add-filter-tags="updateGroupFilterTags"
+              :is-group-admin="isGroupAdmin"
             />
           </b-row>
         </b-col>
@@ -335,7 +336,7 @@ export default defineComponent({
       props.audioRawUrl ? props.audioRawUrl : props.audioUrl
     );
     const buffer = ref<Blob>(null);
-    const [sampleRate, setSampleRate] = useState<number>(22050);
+    const [sampleRate, setSampleRate] = useState<number>(48000);
 
     const savedColour = localStorage.getItem("audio-colour");
     const [colour, setColour] = useState(savedColour ? savedColour : "cool");
@@ -811,8 +812,17 @@ export default defineComponent({
     const filterTracks = (tracks: ApiTrackResponse[]) => {
       const tags = filteredAudioTags.value;
       if (tags) {
-        const filtered = tracks.filter((track) =>
-          track.tags.some((tag) => !tags.includes(tag.what))
+        const filtered = tracks.filter(
+          (track) =>
+            !track.tags.some((tag) => {
+              if (tag.automatic) {
+                return tag.data.name === "Master"
+                  ? tags.includes(tag.what)
+                  : false;
+              } else {
+                tags.includes(tag.what);
+              }
+            })
         );
         return filtered;
       }
@@ -937,13 +947,6 @@ export default defineComponent({
     };
 
     onMounted(async () => {
-      watch(filteredAudioTags, () => {
-        setTracks(mappedTracks(filterTracks(props.recording.tracks)));
-        const currTrack = selectedTrack.value;
-        if (currTrack && !tracks.value.has(currTrack.id)) {
-          setSelectedTrack(null);
-        }
-      });
       buffer.value = await fetchAudioBuffer(url.value);
       const response = await api.groups.getGroupById(props.recording.groupId);
       if (response.success) {
@@ -954,26 +957,31 @@ export default defineComponent({
         }
         filterHuman.value = settings.filterHuman ?? false;
         filteredAudioTags.value = settings.filteredAudioTags ?? [];
-        if (shouldViewAsSuperUser()) {
-          isGroupAdmin.value = true;
-        } else {
-          isGroupAdmin.value = response.result.group.admin;
-        }
+        isGroupAdmin.value = response.result.group.admin;
+        watch(
+          filteredAudioTags,
+          () => {
+            setTracks(mappedTracks(filterTracks(props.recording.tracks)));
+            const currTrack = selectedTrack.value;
+            if (currTrack && !tracks.value.has(currTrack.id)) {
+              setSelectedTrack(null);
+            }
+          },
+          { immediate: true }
+        );
+        watch(
+          () => props.recording,
+          () => {
+            setTracks(mappedTracks(filterTracks(props.recording.tracks)));
+            setSelectedTrack(null);
+            setCacophonyIndex(props.recording.cacophonyIndex);
+          },
+          {
+            deep: true,
+          }
+        );
       }
     });
-    watch(
-      () => props.recording,
-      () => {
-        console.log(props.recording.tracks);
-        setTracks(mappedTracks(filterTracks(props.recording.tracks)));
-        setSelectedTrack(null);
-        setCacophonyIndex(props.recording.cacophonyIndex);
-      },
-      {
-        deep: true,
-        immediate: true,
-      }
-    );
 
     const isQueued = computed(() => {
       const state = props.recording.processingState.toLowerCase();
@@ -1079,7 +1087,7 @@ export default defineComponent({
     }
   }
   .redacted {
-    height: 343px;
+    height: 589px;
     display: flex;
     flex-direction: column;
   }

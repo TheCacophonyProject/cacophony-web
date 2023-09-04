@@ -99,7 +99,7 @@
         <RecordingControls
           :items="tagItems"
           :comment="recording.comment"
-          :groupId="recording.groupId"
+          :groupId="recording.groupId.toString()"
           :download-raw-url="videoRawUrl"
           :download-file-url="''"
           :processing-completed="processingCompleted"

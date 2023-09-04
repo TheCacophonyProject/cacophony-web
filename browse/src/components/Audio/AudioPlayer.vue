@@ -5,30 +5,10 @@
     </div>
     <div id="track-changes-container">
       <button id="save-track-changes" @click="() => saveTrackChanges()">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-        >
-          <path
-            fill="currentColor"
-            d="M5 21q-.825 0-1.413-.588T3 19V5q0-.825.588-1.413T5 3h11.175q.4 0 .763.15t.637.425l2.85 2.85q.275.275.425.638t.15.762V19q0 .825-.588 1.413T19 21H5Zm7-3q1.25 0 2.125-.875T15 15q0-1.25-.875-2.125T12 12q-1.25 0-2.125.875T9 15q0 1.25.875 2.125T12 18Zm-5-8h7q.425 0 .713-.288T15 9V7q0-.425-.288-.713T14 6H7q-.425 0-.713.288T6 7v2q0 .425.288.713T7 10Z"
-          />
-        </svg>
+        <font-awesome-icon icon="check" />
       </button>
       <button id="cancel-track-changes" @click="() => cancelTrackChanges()">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-        >
-          <path
-            fill="currentColor"
-            d="M8 19q-.425 0-.713-.288T7 18q0-.425.288-.713T8 17h6.1q1.575 0 2.738-1T18 13.5q0-1.5-1.163-2.5T14.1 10H7.8l1.9 1.9q.275.275.275.7t-.275.7q-.275.275-.7.275t-.7-.275L4.7 9.7q-.15-.15-.213-.325T4.425 9q0-.2.063-.375T4.7 8.3l3.6-3.6q.275-.275.7-.275t.7.275q.275.275.275.7t-.275.7L7.8 8h6.3q2.425 0 4.163 1.575T20 13.5q0 2.35-1.738 3.925T14.1 19H8Z"
-          />
-        </svg>
+        <font-awesome-icon icon="times" />
       </button>
     </div>
     <div id="spectrogram"></div>
@@ -918,6 +898,7 @@ export default defineComponent({
               "rect"
             );
             overlay.value.appendChild(rect);
+            hideControls();
           } else if (curr.id !== prev?.id) {
             attachControls(curr.id);
           }
@@ -991,7 +972,7 @@ export default defineComponent({
       const total = secondsToTimeString(player.value.getDuration());
       const percent = (currTime / player.value.getDuration()) * 100;
       // round to nearest 25%, 0.25, 0.5, 0.75, 1, 1.25
-      const roundedPercent = Math.round(percent / 0.1) * 0.1;
+      const roundedPercent = Math.round(percent / 0.001) * 0.001;
       setTime({ curr, total });
       const progressBar = document.getElementById(
         "loader-progress"
@@ -1575,8 +1556,8 @@ export default defineComponent({
       );
     });
     onBeforeUnmount(() => {
-      player.value.empty();
       player.value.destroy();
+      player.value.empty();
     });
     return {
       player,
@@ -1821,14 +1802,14 @@ spectrogram > svg {
   background: none;
   height: 40px;
   width: 40px;
-  color: #3b82f6;
+  color: #28a745;
   font-weight: 800;
   border: none;
   font: inherit;
   cursor: pointer;
   outline: inherit;
   &:hover {
-    color: #38bdf8;
+    color: #34ce57;
   }
 }
 #cancel-track-changes {

@@ -153,6 +153,19 @@ const recordingLabelsBase = [
     text: "Flagged for review",
     specified: true,
   },
+  // inside, outside, incursion
+  {
+    value: "inside",
+    text: "Inside",
+  },
+  {
+    value: "outside",
+    text: "Outside",
+  },
+  {
+    value: "incursion",
+    text: "Incursion",
+  },
 ];
 
 const taggingFilters = [

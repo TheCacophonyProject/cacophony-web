@@ -1,12 +1,12 @@
 <template>
-  <div class="dropdown">
+  <div class="dropdown" ref="buttonRef">
     <!-- Button Slot -->
     <div class="dropdown-button" @click="toggleDropdown">
       <slot name="button-content"></slot>
     </div>
 
     <!-- Dropdown Content -->
-    <div v-show="isOpen" class="dropdown-content">
+    <div ref="dropdownRef" :class="{ 'dropdown-content': true, open: isOpen }">
       <!-- Default Slot for Items -->
       <slot></slot>
     </div>
@@ -58,6 +58,7 @@ export default defineComponent({
     z-index: 10;
     right: 0;
     overflow: visible;
+    visibility: hidden;
 
     // Style for individual items
     & > * {
@@ -69,10 +70,8 @@ export default defineComponent({
   }
 
   // Show the dropdown content when open
-  &.open {
-    .dropdown-content {
-      display: block;
-    }
+  .open {
+    visibility: visible;
   }
 }
 </style>

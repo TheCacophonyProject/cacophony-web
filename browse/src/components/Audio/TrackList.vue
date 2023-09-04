@@ -2,7 +2,7 @@
   <b-container class="tracklist-container">
     <div class="classification-header mb-2">
       <h2 class="mb-0">Classifications</h2>
-      <Dropdown>
+      <Dropdown v-show="isGroupAdmin">
         <template #button-content>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -27,21 +27,28 @@
             </h3>
           </div>
           <ClassificationsDropdown
+            key="track-list"
             v-bind:value="filteredTags"
             @input="onAddFilterTags($event)"
           />
         </div>
       </Dropdown>
     </div>
-    <b-row class="classification-list">
+    <b-row id="classification-list">
       <b-col>
         <b-row
-          class="classification-item"
           v-for="track in tracks"
           :key="track.id"
+          class="classification-item"
+          :id="`tag-item-${track.id}`"
         >
           <b-col v-if="!track.deleted">
-            <b-row>
+            <b-row
+              :class="{
+                'selected-track':
+                  selectedTrack && selectedTrack.id === track.id,
+              }"
+            >
               <b-col
                 v-on:click="() => playTrack(track)"
                 class="track-container"
@@ -50,11 +57,7 @@
                 <b-row>
                   <b-col class="d-flex justify-content-center pr-0" cols="2">
                     <span
-                      :class="{
-                        highlight:
-                          selectedTrack && selectedTrack.id === track.id,
-                        'track-colour': true,
-                      }"
+                      class="track-colour"
                       :style="{
                         background: `${track.colour}`,
                         position: 'absolute',
@@ -250,7 +253,7 @@
 
 <script lang="ts">
 import { PropType } from "vue";
-import { defineComponent, ref, watch } from "@vue/composition-api";
+import { defineComponent, onMounted, ref, watch } from "@vue/composition-api";
 import Help from "@/components/Help.vue";
 
 import { useState } from "@/utils";
@@ -258,13 +261,12 @@ import { useState } from "@/utils";
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 import Dropdown from "../Dropdown.vue";
 import ClassificationsDropdown from "../ClassificationsDropdown.vue";
-import SelectTags from "../QueryRecordings/SelectTags.vue";
 
 import { TrackId } from "@typedefs/api/common";
 
 import store from "@/stores";
 import { shouldViewAsSuperUser } from "@/utils";
-import { ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import { ApiTrackTag, ApiTrackTagResponse } from "@typedefs/api/trackTag";
 enum TrackListFilter {
   All = "all",
   Automatic = "automatic",
@@ -306,7 +308,7 @@ export default defineComponent({
       required: true,
     },
     redacted: {
-      type: Boolean as PropType<boolean>,
+      type: Boolean,
       default: false,
     },
     filteredTags: {
@@ -316,6 +318,10 @@ export default defineComponent({
     onAddFilterTags: {
       type: Function as PropType<(tags: string[]) => void>,
       default: () => {},
+    },
+    isGroupAdmin: {
+      type: Boolean,
+      default: false,
     },
   },
   computed: {
@@ -331,16 +337,15 @@ export default defineComponent({
       if (!this.isSuperUserAndViewingAsSuperUser) {
         // Remove AI tags other than master, as they'll just be confusing
         items = items.filter(
-          (item: ApiTrackTagResponse) =>
-            !item.automatic || item.data.name === "Master"
+          (item: ApiTrackTag) => !item.automatic || item.data.name === "Master"
         );
       }
       return items;
     },
-    aiName: function (trackTag) {
+    aiName: function (trackTag: ApiTrackTag) {
       if (
         this.isSuperUserAndViewingAsSuperUser &&
-        trackTag.data &&
+        trackTag.automatic &&
         trackTag.data.name
       ) {
         return "AI " + trackTag.data.name;
@@ -388,6 +393,22 @@ export default defineComponent({
       }
     );
 
+    watch(
+      () => props.selectedTrack,
+      (track) => {
+        if (track) {
+          const list = document.getElementById("classification-list");
+          const element = document.getElementById(`tag-item-${track.id}`);
+          if (list && element) {
+            const scrollPosition = element.offsetTop - list.offsetTop;
+
+            // Step 4: Scroll
+            list.scrollTop = scrollPosition;
+          }
+        }
+      }
+    );
+
     return {
       userName: store.state.User.userData.userName,
       tracks,
@@ -425,9 +446,10 @@ export default defineComponent({
 
 .classification-item {
   min-height: 90px;
+  margin-left: 5px;
 }
 
-.classification-list {
+#classification-list {
   overflow-y: auto;
   max-height: 22vh;
   min-height: 350px;
@@ -514,5 +536,8 @@ export default defineComponent({
 }
 .classification-filter-container {
   width: 20em;
+}
+.selected-track {
+  box-shadow: -5px 0px 0px 0px #9acd32;
 }
 </style>

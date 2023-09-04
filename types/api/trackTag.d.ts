@@ -27,7 +27,6 @@ export interface ApiTrackTagResponse {
   trackId: TrackId;
   confidence: number;
   automatic: boolean;
-  data?: TrackTagData | string;
   createdAt?: IsoFormattedDateString;
   updatedAt?: IsoFormattedDateString;
   userId?: UserId;
@@ -39,11 +38,17 @@ export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
   userId?: UserId;
   userName?: string;
   automatic: false;
+  data?: string;
 }
 
 export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {
   automatic: true;
+  data: TrackTagData;
 }
+
+export type ApiTrackTag =
+  | ApiHumanTrackTagResponse
+  | ApiAutomaticTrackTagResponse;
 
 export type Classification = {
   label: string;
