@@ -74,6 +74,109 @@ import {
 import { openS3 } from "@models/util/util.js";
 import type { ReadableStream } from "stream/web";
 import type { ModelsDictionary } from "@models";
+const ffmpegPath = "/usr/bin/ffmpeg";
+import ffmpeg from "fluent-ffmpeg";
+ffmpeg.setFfmpegPath(ffmpegPath);
+import { Writable } from "stream";
+import temp from "temp";
+temp.track();
+
+import fs from "fs";
+
+// Create a png thumbnail image  from this frame with thumbnail info
+// Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
+// width and height
+//render the png in THUMBNAIL_PALETTE
+//returns {data: buffer, meta: metadata about image}
+async function createIRThumbnail(
+  frame,
+  thumbnail: TrackFramePosition
+): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
+  console.log("Creating thumb from", frame);
+  const frameMeta = frame.meta.imageData;
+  try {
+    const thumbMeta = {
+      region: JSON.stringify(thumbnail),
+      palette: "original",
+    };
+    const img = await sharp(frame.data)
+      .png({
+        palette: true,
+        compressionLevel: 9,
+      })
+      .toBuffer();
+    return { data: img, meta: thumbMeta };
+  } catch (e) {
+    log.error("Couldn't save IR thumbnail because", e);
+  }
+  return null;
+}
+export async function getIRFrame(
+  recording: any,
+  frameNumbers: Set<number>
+): Promise<any | undefined> {
+  const fileData = await openS3().getObject(recording.rawFileKey as string);
+  const bodyBuffer = await fileData.Body.transformToByteArray();
+  // const bodyBuffer = fileData.Body.data as ArrayBufferView;
+  const tempName = temp.path({ suffix: ".mp4" });
+  // GP
+  // getting the screenshot seems to only work from a file, rather than a stream
+  // probably can get around this by uploading the mp4 in a different format
+  try {
+    fs.writeFileSync(tempName, bodyBuffer);
+
+    console.log("Getting ir frame");
+
+    const frames = {};
+    for (const frameNumber of frameNumbers) {
+      await new Promise((resolve, reject) => {
+        const screenData = new Uint8Array(640 * 480);
+        let index = 0;
+
+        const wStream = new Writable({
+          write(chunk) {
+            screenData.set(chunk, index);
+            index += chunk.length;
+          },
+        });
+        const command = ffmpeg()
+          .noAudio()
+          .outputOptions(["-frames:v 1", "-f image2"])
+          .input(tempName)
+          .output(wStream);
+        command
+          .seek(frameNumber / 10)
+          // .on("start", function (commandLine) {
+          //   console.log("Spawned Ffmpeg with command: " + commandLine);
+          // })
+          .on("end", function () {
+            const frame = {
+              data: screenData,
+              frameNumber: frameNumber,
+              meta: { imageData: { width: 640, height: 480 } },
+            };
+            return resolve(frame);
+          })
+          .on("error", (err) => {
+            return reject(new Error(err));
+          })
+          .run();
+      }).then((response: any) => {
+        frames[response.frameNumber] = response;
+      });
+    }
+    fs.unlink(tempName, (err) => {
+      if (err) {
+        log.error("error unlinking", err);
+      }
+    });
+    return frames;
+  } catch (e) {
+    fs.unlink(tempName, (err) => {});
+  }
+
+  return null;
+}
 
 export async function getThumbnail(
   rec: Recording,
@@ -185,7 +288,19 @@ export async function saveThumbnailInfo(
     log.warning(`No thumbnails to be made for ${recording.id}`);
     return;
   }
-  const frames = await getCPTVFrames(recording, frameNumbers);
+  let thumb;
+  let frames;
+  if (recording.type == RecordingType.InfraredVideo) {
+    frames = await getIRFrame(recording, frameNumbers);
+    if (!frames) {
+      throw new Error(`Failed to extract frames ${frameNumbers}`);
+    }
+  } else {
+    frames = await getCPTVFrames(recording, frameNumbers);
+    if (!frames) {
+      throw new Error(`Failed to extract frames ${frameNumbers}`);
+    }
+  }
   const frameUploads = [];
   for (const track of thumbnailTracks) {
     const frame = frames[track.data.thumbnail.region.frame_number];
@@ -197,7 +312,12 @@ export async function saveThumbnailInfo(
       );
       continue;
     }
-    const thumb = await createThumbnail(frame, track.data.thumbnail.region);
+    let thumb;
+    if (recording.type == RecordingType.InfraredVideo) {
+      thumb = await createIRThumbnail(frame, track.data.thumbnail.region);
+    } else {
+      thumb = await createThumbnail(frame, track.data.thumbnail.region);
+    }
     frameUploads.push(
       await openS3()
         .upload(`${fileKey}-${track.id}-thumb`, thumb.data, thumb.meta)
@@ -214,8 +334,12 @@ export async function saveThumbnailInfo(
         Error(`Failed to extract CPTV frame ${clip_thumbnail.frame_number}`)
       );
     } else {
-      const thumb = await createThumbnail(frame, clip_thumbnail);
-      console.log("saving", `${fileKey}-thumb`);
+      let thumb;
+      if (recording.type == RecordingType.InfraredVideo) {
+        thumb = await createIRThumbnail(frame, clip_thumbnail);
+      } else {
+        thumb = await createThumbnail(frame, clip_thumbnail);
+      }
       frameUploads.push(
         await openS3()
           .upload(`${fileKey}-thumb`, thumb.data, thumb.meta)
@@ -289,7 +413,8 @@ function padRegion(
 //returns {data: buffer, meta: metadata about image}
 async function createThumbnail(
   frame,
-  thumbnail: TrackFramePosition
+  thumbnail: TrackFramePosition,
+  colourPalette: string = THUMBNAIL_PALETTE
 ): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
   const frameMeta = frame.meta.imageData;
   const resX = frameMeta.width;
@@ -356,7 +481,7 @@ async function createThumbnail(
   );
   let palette = ColourMaps[0];
   for (const colourMap of ColourMaps) {
-    if (colourMap[0] == THUMBNAIL_PALETTE) {
+    if (colourMap[0] == colourPalette) {
       palette = colourMap;
     }
   }
@@ -1183,6 +1308,13 @@ export const tracksFromMeta = async (
       );
     }
     await Promise.all(promises);
+    const tracks = await recording.getTracks();
+
+    await saveThumbnailInfo(
+      recording,
+      tracks,
+      recording.additionalMetadata["thumbnail_region"]
+    );
   } catch (err) {
     log.error(
       "Error creating recording tracks from metadata: %s",

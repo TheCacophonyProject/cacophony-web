@@ -1230,7 +1230,7 @@ var HME = (function (A) {
           B[I + Q] = A[I];
         return I;
       }
-    }.call(this, Q(4)));
+    }).call(this, Q(4));
   },
   function (A, B) {
     var Q,
@@ -3861,7 +3861,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B, Q) {
     var g = Q(1).Buffer,
@@ -4527,7 +4527,7 @@ var HME = (function (A) {
               "Secure random number generation is not supported by this browser.\nUse Chrome, Firefox or Internet Explorer 11"
             );
           });
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -4716,7 +4716,7 @@ var HME = (function (A) {
               (this._writableState.destroyed = A));
           },
         });
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B, Q) {
     var g = Q(1).Buffer;
@@ -4953,7 +4953,7 @@ var HME = (function (A) {
               (this._writableState.destroyed = A));
           },
         });
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -5035,7 +5035,7 @@ var HME = (function (A) {
           );
         }),
         (B.isBuffer = A.isBuffer);
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B, Q) {
     (function (B) {
@@ -5048,7 +5048,7 @@ var HME = (function (A) {
           I[E] = A[E] ^ Q[E];
         return I;
       };
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B, Q) {
     "use strict";
@@ -5180,7 +5180,7 @@ var HME = (function (A) {
             },
           })
         : (A.exports = B);
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B, Q) {
     var g = Q(1).Buffer;
@@ -5943,7 +5943,7 @@ var HME = (function (A) {
           return A.apply(this, arguments);
         };
       };
-    }.call(this, Q(4)));
+    }).call(this, Q(4));
   },
   function (A, B, Q) {
     "use strict";
@@ -6573,7 +6573,7 @@ var HME = (function (A) {
         (D.prototype._destroy = function (A, B) {
           this.end(), B(A);
         });
-    }.call(this, Q(3), Q(123).setImmediate, Q(4)));
+    }).call(this, Q(3), Q(123).setImmediate, Q(4));
   },
   function (A, B, Q) {
     "use strict";
@@ -6865,7 +6865,7 @@ var HME = (function (A) {
         return Q;
       }
       (A.exports = E), (E.getr = i);
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B, Q) {
     "use strict";
@@ -9293,7 +9293,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B) {
     var Q = {}.toString;
@@ -9478,7 +9478,7 @@ var HME = (function (A) {
           : function (A, B, Q) {
               return B < 0 && (B = A.length + B), A.substr(B, Q);
             };
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -10170,7 +10170,7 @@ var HME = (function (A) {
           (U.from = function (A, B) {
             return void 0 === h && (h = Q(112)), h(U, A, B);
           });
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     A.exports = Q(11).EventEmitter;
@@ -10243,7 +10243,7 @@ var HME = (function (A) {
             : A.emit("error", B);
         },
       };
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -10673,7 +10673,7 @@ var HME = (function (A) {
         (U.prototype._destroy = function (A, B) {
           B(A);
         });
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -11705,7 +11705,7 @@ var HME = (function (A) {
           },
         }),
         (u._fromList = L);
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     A.exports = Q(11).EventEmitter;
@@ -11922,7 +11922,7 @@ var HME = (function (A) {
           throw new TypeError("Key length not a number");
         if (E < 0 || E > Q || E != E) throw new TypeError("Bad key length");
       };
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B, Q) {
     (function (B) {
@@ -11934,7 +11934,7 @@ var HME = (function (A) {
               ? "utf-8"
               : "binary");
       A.exports = Q;
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B, Q) {
     var g = Q(64),
@@ -14661,7 +14661,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B, Q) {
     var g = Q(150),
@@ -15343,7 +15343,7 @@ var HME = (function (A) {
           (U.from = function (A, B) {
             return void 0 === h && (h = Q(161)), h(U, A, B);
           });
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     A.exports = Q(11).EventEmitter;
@@ -15416,7 +15416,7 @@ var HME = (function (A) {
             : A.emit("error", B);
         },
       };
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -15846,7 +15846,7 @@ var HME = (function (A) {
         (U.prototype._destroy = function (A, B) {
           B(A);
         });
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -18580,7 +18580,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B, Q) {
     var g = Q(0),
@@ -22268,8 +22268,7 @@ var HME = (function (A) {
                         var I = VA.ba(g.fd);
                         if (2 & g.Sc) {
                           var E = g.flags,
-                            i = g.
-                              offset,
+                            i = g.offset,
                             C = m.slice(A, A + B);
                           VA.da(I, C, i, B, E);
                         }
@@ -24175,7 +24174,7 @@ var HME = (function (A) {
             return WQ(), A;
           });
       A.exports = C;
-    }.call(this, "/index.js", Q(3), "/", Q(2).Buffer));
+    }).call(this, "/index.js", Q(3), "/", Q(2).Buffer);
   },
   function (A, B, Q) {
     "use strict";
@@ -24877,7 +24876,7 @@ var HME = (function (A) {
           Q
         );
       };
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B) {
     A.exports = function () {
@@ -25377,7 +25376,7 @@ var HME = (function (A) {
           ("undefined" != typeof self && self.clearImmediate) ||
           (void 0 !== A && A.clearImmediate) ||
           (this && this.clearImmediate));
-    }.call(this, Q(4)));
+    }).call(this, Q(4));
   },
   function (A, B, Q) {
     (function (A, B) {
@@ -25500,7 +25499,7 @@ var HME = (function (A) {
           }
         }
       })("undefined" == typeof self ? (void 0 === A ? this : A) : self);
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     "use strict";
@@ -25650,7 +25649,7 @@ var HME = (function (A) {
             c
           );
       };
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
   function (A, B, Q) {
     var g = Q(134),
@@ -26011,7 +26010,7 @@ var HME = (function (A) {
         var E = B._cache.slice(0, Q.length);
         return (B._cache = B._cache.slice(Q.length)), g(Q, E);
       };
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B, Q) {
     var g = Q(1).Buffer,
@@ -26207,7 +26206,7 @@ var HME = (function (A) {
                   ? new E(g(Q, C), C, !0)
                   : (A.isBuffer(Q) || (Q = new A(Q, I)), new E(Q, C, !0)));
           });
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B) {},
   function (A, B, Q) {
@@ -28443,7 +28442,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B) {},
   function (A, B) {},
@@ -28579,7 +28578,7 @@ var HME = (function (A) {
             this
           );
         });
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B, Q) {
     var g = Q(2).Buffer,
@@ -29017,7 +29016,7 @@ var HME = (function (A) {
           Q
         );
       };
-    }.call(this, Q(3)));
+    }).call(this, Q(3));
   },
   function (A, B) {
     A.exports = function () {
@@ -31463,7 +31462,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B) {},
   function (A) {
@@ -36388,7 +36387,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B) {},
   function (A, B, Q) {
@@ -37524,7 +37523,7 @@ var HME = (function (A) {
             this
           );
         });
-    }.call(this, Q(2).Buffer));
+    }).call(this, Q(2).Buffer);
   },
   function (A, B, Q) {
     (function (A) {
@@ -39759,7 +39758,7 @@ var HME = (function (A) {
             return this.imod(A._invmp(this.m).mul(this.r2))._forceRed(this);
           });
       })(A, this);
-    }.call(this, Q(10)(A)));
+    }).call(this, Q(10)(A));
   },
   function (A, B) {},
   function (A, B, Q) {
@@ -39968,7 +39967,7 @@ var HME = (function (A) {
             return r(g, Q, B.length), h(B, Q, g);
           }))
         : ((B.randomFill = I), (B.randomFillSync = I));
-    }.call(this, Q(4), Q(3)));
+    }).call(this, Q(4), Q(3));
   },
 ]);
 //# sourceMappingURL=h264-mp4-encoder.web.js.map

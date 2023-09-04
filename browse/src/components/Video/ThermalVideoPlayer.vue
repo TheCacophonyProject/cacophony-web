@@ -138,7 +138,6 @@ export default {
       this.setVideoUrl();
     },
     currentTrack() {
-      console.log("CURRENT RACK CHANGED")
       this.selectTrack();
     },
     tracks() {
@@ -220,7 +219,7 @@ export default {
             src: this.videoUrl,
           },
         ];
-        // if tracks is loaded then select the first track
+        // // if tracks is loaded then select the first track
         if (this.currentTrack && this.currentTrack.trackIndex !== 0) {
           this.$emit("trackSelected", this.currentTrack);
         }
@@ -255,10 +254,7 @@ export default {
     },
     selectTrack() {
       this.lastDisplayedVideoTime = -1;
-      if (
-        this.tracks &&
-        this.currentTrack
-      ) {
+      if (this.tracks && this.currentTrack) {
         this.setTimeAndRedraw(this.currentTrack.start + 0.01);
       }
     },
@@ -320,11 +316,13 @@ export default {
           const x = event.x - canvasOffset.x;
           const y = event.y - canvasOffset.y;
           const hitRect = hitTestPos(x, y);
-            if (hitRect ){
-              const hitIndex = this.tracks[hitRect.trackIndex];
+          if (hitRect) {
+            const hitIndex = this.tracks[hitRect.trackIndex];
 
-              if(this.currentTrack !== this.tracks[hitIndex]) {
-              this.$emit("trackSelected", this.currentTrack);
+            if (this.currentTrack !== this.tracks[hitIndex]) {
+              const newTrack = this.tracks[hitRect.trackIndex];
+              newTrack.trackId = newTrack.id;
+              this.$emit("trackSelected", newTrack);
             }
           }
         });
@@ -342,7 +340,6 @@ export default {
     setTimeAndRedraw(time) {
       this.videoJsPlayer() && this.videoJsPlayer().currentTime(time);
       this.videoJsPlayer().play();
-
     },
     ratechange() {
       const htmlPlayer = this.$refs.player.$refs.video;
@@ -406,7 +403,6 @@ export default {
       } else {
         tracks = this.tracks;
       }
-      console.log("filtering tracks",tracks)
       const frameTime = 1 / 10;
       const currentFrame = Math.floor(this.currentVideoTime / frameTime);
       const data = tracks
@@ -414,13 +410,11 @@ export default {
           (track) =>
             track.start <= currentTime &&
             track.end >= currentTime &&
-            track.positions[currentFrame-track.positions[0].order]
+            track.positions[currentFrame - track.positions[0].order]
         )
         .map((track) => {
-          const pos = track.positions[currentFrame-track.positions[0].order];
+          const pos = track.positions[currentFrame - track.positions[0].order];
           const index = tracks.indexOf(track);
-          // some voodo magic happening here with trackId
-          console.log("Track is",track)
           return {
             rectWidth: pos.width * this.scale,
             rectHeight: pos.height * this.scale,
@@ -430,7 +424,6 @@ export default {
             trackId: track.id,
           };
         });
-      console.log("Data is",data)
       return data;
     },
     draw() {
@@ -455,8 +448,16 @@ export default {
             this.selectTrack();
           }
         }
-
         const currentFrame = Math.floor(this.currentVideoTime / frameTime);
+        if (
+          currentFrame !== this.lastDisplayedVideoTime &&
+          this.currentTrack &&
+          this.currentTrack.playToEnd &&
+          Math.floor(this.currentTrack.end / frameTime) - 1 == currentFrame
+        ) {
+          this.videoJsPlayer().pause();
+        }
+
         if (currentFrame !== this.lastDisplayedVideoTime || this.isScrubbing) {
           // Only update the canvas if the video time has changed as this means a new
           // video frame is being displayed.
@@ -464,9 +465,12 @@ export default {
             this.currentVideoTime,
             this.showOverlaysForCurrentTrackOnly
           );
-          console.log(allFrameData,"CURRENT TRACK",this.currentTrack)
-          const trackExists = allFrameData.find((track) => track.trackId = this.currentTrack.trackId);
-          console.log(trackExists,"EXIST")
+          const trackExists = allFrameData.find(
+            (track) => track.trackId == this.currentTrack.trackId
+          );
+          if (!trackExists && allFrameData.length > 0) {
+            this.$emit("trackSelected", allFrameData[0]);
+          }
           const canvas = this.$refs.canvas;
           if (canvas) {
             const context = canvas.getContext("2d");

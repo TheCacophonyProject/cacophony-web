@@ -210,7 +210,10 @@ export default {
       }
     },
     isVideo(): boolean {
-      return  this.recording.type === RecordingType.ThermalRaw || this.recording.type == RecordingType.InfraredVideo;
+      return (
+        this.recording.type === RecordingType.ThermalRaw ||
+        this.recording.type == RecordingType.InfraredVideo
+      );
     },
     isAudio(): boolean {
       return this.recording.type === RecordingType.Audio;

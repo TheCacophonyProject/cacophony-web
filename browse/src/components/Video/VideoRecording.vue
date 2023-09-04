@@ -6,37 +6,37 @@
       <b-col cols="12" lg="8">
         <div v-if="isMP4">
           <ThermalVideoPlayer
-          ref="player"
-          :video-url="videoRawUrl"
-          :tracks="tracks"
-          @trackSelected="trackSelected"
-          :current-track="selectedTrack"
-          @request-next-recording="nextRecording"
-          @player-ready="playerReady"
-        />
-      </div>
-      <div v-else>
-        <CptvPlayer
-          ref="player"
-          :cptv-url="videoRawUrl"
-          :cptv-size="videoRawSize"
-          :tracks="tracks"
-          :user-files="false"
-          :recording-id="recording.id"
-          :known-duration="recording.duration"
-          :current-track="selectedTrack"
-          :colours="colours"
-          :recently-added-tag="recentlyAddedTrackTag"
-          :can-go-backwards="canGoBackwardInSearch"
-          :can-go-forwards="canGoForwardInSearch"
-          :export-requested="requestedExport"
-          @track-selected="trackSelected"
-          @ready-to-play="playerReady"
-          @request-next-recording="nextRecording"
-          @request-prev-recording="prevRecording"
-          @export-complete="requestedExport = false"
-        />
-      </div>
+            ref="player"
+            :video-url="videoRawUrl"
+            :tracks="tracks"
+            @trackSelected="trackSelected"
+            :current-track="selectedTrack"
+            @request-next-recording="nextRecording"
+            @player-ready="playerReady"
+          />
+        </div>
+        <div v-else>
+          <CptvPlayer
+            ref="player"
+            :cptv-url="videoRawUrl"
+            :cptv-size="videoRawSize"
+            :tracks="tracks"
+            :user-files="false"
+            :recording-id="recording.id"
+            :known-duration="recording.duration"
+            :current-track="selectedTrack"
+            :colours="colours"
+            :recently-added-tag="recentlyAddedTrackTag"
+            :can-go-backwards="canGoBackwardInSearch"
+            :can-go-forwards="canGoForwardInSearch"
+            :export-requested="requestedExport"
+            @track-selected="trackSelected"
+            @ready-to-play="playerReady"
+            @request-next-recording="nextRecording"
+            @request-prev-recording="prevRecording"
+            @export-complete="requestedExport = false"
+          />
+        </div>
       </b-col>
       <b-col cols="12" lg="4">
         <div v-if="tracks && tracks.length > 0" class="accordion">
@@ -194,7 +194,7 @@ export default {
     };
   },
   computed: {
-    isMP4: function() {
+    isMP4: function () {
       return this.recording.type == RecordingType.InfraredVideo;
     },
     tooltipTitle: function () {
@@ -204,7 +204,7 @@ export default {
       set: function (val) {
         localStorage.setItem("showFiltered", val);
         this.$store.state.User.userData.showFiltered = val;
-        if(!this.MP4){
+        if (!this.isMP4) {
           this.$refs["player"].renderCurrentFrame(true);
         }
         this.checkPreviousAndNextRecordings();

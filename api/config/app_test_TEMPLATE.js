@@ -47,7 +47,6 @@ export const smtpDetails = {
   },
 };
 
-
 // This is needed because Sequelize looks for development by default
 // when using db:migrate
 export const development = database;

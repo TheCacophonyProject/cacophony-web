@@ -358,8 +358,11 @@ export default function (app: Application, baseUrl: string) {
           }
         }
         await recording.save();
-
-        if (complete && recording.type === RecordingType.ThermalRaw) {
+        if (
+          complete &&
+          (recording.type === RecordingType.ThermalRaw ||
+            recording.type === RecordingType.InfraredVideo)
+        ) {
           const tracks = await recording.getTracks();
           const results = await saveThumbnailInfo(
             recording,
