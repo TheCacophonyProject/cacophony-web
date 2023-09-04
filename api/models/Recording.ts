@@ -615,6 +615,8 @@ from (
     let nextState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
       nextState = Recording.finishedState(this.type);
+    } else if (this.processingState == RecordingProcessingState.ReTrack) {
+      nextState = RecordingProcessingState.Analyse;
     } else {
       const job_index = jobs.indexOf(this.processingState);
       if (job_index == -1) {
@@ -1284,6 +1286,7 @@ from (
   Recording.processingStates = {
     thermalRaw: [
       RecordingProcessingState.Tracking,
+      RecordingProcessingState.ReTrack,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,
     ],

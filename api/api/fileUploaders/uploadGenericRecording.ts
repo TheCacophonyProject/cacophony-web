@@ -688,8 +688,7 @@ const setInitialProcessingState = (
         recordingTemplate.type === RecordingType.ThermalRaw
       ) {
         // NOTE: If there are supplied tracks, we have already done tracking on the device, so skip to analyse state.
-        recordingTemplate.processingState =
-          RecordingProcessingState.AnalyseThermal;
+        recordingTemplate.processingState = RecordingProcessingState.ReTrack;
       } else {
         recordingTemplate.processingState = recordingUploadedState(data.type);
       }

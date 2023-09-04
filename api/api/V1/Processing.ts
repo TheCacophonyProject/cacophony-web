@@ -75,6 +75,7 @@ export default function (app: Application, baseUrl: string) {
             RecordingProcessingState.Reprocess,
             RecordingProcessingState.AnalyseThermal,
             RecordingProcessingState.Tracking,
+            RecordingProcessingState.ReTrack,
           ]),
         ],
       ]),
@@ -566,6 +567,62 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Algorithm key retrieved.", {
         algorithmId: algorithm.id,
       });
+    }
+  );
+
+  /**
+   * @api {patch} /api/fileProcessing/:id/tracks/:trackId/archive Archives a track
+   * @apiName UpdateTrackData
+   * @apiGroup FileProcessing
+   *     *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/archive`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response) => {
+      await response.locals.track.update({ archivedAt: Date.now() });
+
+      return successResponse(response, "Track archived");
+    }
+  );
+
+  /**
+   * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track data for recording and archives the old track data.
+   * @apiName UpdateTrackData
+   * @apiGroup FileProcessing
+   *
+   * @apiParam {JSON} data Data which defines the track (type specific).
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
+    async (request: Request, response) => {
+      // make a copy of the original track
+      await response.locals.recording.createTrack({
+        data: response.locals.track.data,
+        AlgorithmId: response.locals.track.AlgorithmId,
+        archivedAt: Date.now(),
+      });
+      await response.locals.track.update({ data: response.locals.data });
+      return successResponse(response, "Track updated");
     }
   );
 }
