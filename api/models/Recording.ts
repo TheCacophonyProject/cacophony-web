@@ -1286,14 +1286,14 @@ from (
 
   Recording.processingStates = {
     irRaw: [
-      RecordingProcessingState.Tracking,
       RecordingProcessingState.ReTrack,
+      RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,
     ],
     thermalRaw: [
-      RecordingProcessingState.Tracking,
       RecordingProcessingState.ReTrack,
+      RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,
     ],
