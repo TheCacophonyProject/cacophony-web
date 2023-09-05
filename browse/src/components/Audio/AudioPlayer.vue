@@ -1268,7 +1268,6 @@ export default defineComponent({
         }
         storeVolume(volume.value);
       });
-
       setVolumeSlider(
         document.querySelector("#volume-slider") as HTMLInputElement
       );
@@ -1282,6 +1281,8 @@ export default defineComponent({
         } catch (e) {
           // do nothing
         }
+      } else {
+        setVolume({ volume: 0.5, muted: false });
       }
 
       player.value = WaveSurfer.create({
