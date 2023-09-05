@@ -265,6 +265,7 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
   isValidTagMode: (mode: TagMode) => boolean;
   processingAttributes: string[];
   processingStates: {
+    [RecordingType.InfraredVideo]: string[];
     [RecordingType.ThermalRaw]: string[];
     [RecordingType.Audio]: string[];
   };
@@ -1284,6 +1285,12 @@ from (
   ];
 
   Recording.processingStates = {
+    irRaw: [
+      RecordingProcessingState.Tracking,
+      RecordingProcessingState.ReTrack,
+      RecordingProcessingState.AnalyseThermal,
+      RecordingProcessingState.Finished,
+    ],
     thermalRaw: [
       RecordingProcessingState.Tracking,
       RecordingProcessingState.ReTrack,

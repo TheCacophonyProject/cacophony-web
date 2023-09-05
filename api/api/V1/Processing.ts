@@ -70,7 +70,10 @@ export default function (app: Application, baseUrl: string) {
           ]),
         ],
         [
-          query("type").equals(RecordingType.ThermalRaw),
+          query("type").isIn([
+            RecordingType.InfraredVideo,
+            RecordingType.ThermalRaw,
+          ]),
           query("state").isIn([
             RecordingProcessingState.Reprocess,
             RecordingProcessingState.AnalyseThermal,
@@ -572,7 +575,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {patch} /api/fileProcessing/:id/tracks/:trackId/archive Archives a track
-   * @apiName UpdateTrackData
+   * @apiName ArchiveTrack
    * @apiGroup FileProcessing
    *     *
    * @apiUse V1ResponseSuccess

@@ -92,7 +92,6 @@ async function createIRThumbnail(
   frame,
   thumbnail: TrackFramePosition
 ): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
-  console.log("Creating thumb from", frame);
   const frameMeta = frame.meta.imageData;
   try {
     const thumbMeta = {
@@ -124,8 +123,6 @@ export async function getIRFrame(
   // probably can get around this by uploading the mp4 in a different format
   try {
     fs.writeFileSync(tempName, bodyBuffer);
-
-    console.log("Getting ir frame");
 
     const frames = {};
     for (const frameNumber of frameNumbers) {
@@ -1309,12 +1306,6 @@ export const tracksFromMeta = async (
     }
     await Promise.all(promises);
     const tracks = await recording.getTracks();
-
-    await saveThumbnailInfo(
-      recording,
-      tracks,
-      recording.additionalMetadata["thumbnail_region"]
-    );
   } catch (err) {
     log.error(
       "Error creating recording tracks from metadata: %s",
