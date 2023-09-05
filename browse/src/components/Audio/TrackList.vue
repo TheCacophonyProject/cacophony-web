@@ -22,7 +22,8 @@
               Group Tag Filter
 
               <Help class="text-secondary"
-                >Admins can filter tags from a group</Help
+                >Admins can filter automatically created tags for the
+                group</Help
               >
             </h3>
           </div>

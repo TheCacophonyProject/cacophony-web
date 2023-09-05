@@ -249,7 +249,7 @@ import {
 
 import api from "@api";
 import store from "@/stores";
-import { shouldViewAsSuperUser, useState, UUIDv4 } from "@/utils";
+import { useState, UUIDv4 } from "@/utils";
 import { TagColours } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
@@ -262,7 +262,7 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import Help from "@/components/Help.vue";
 
 import { ApiTrackResponse, ApiTrackDataRequest } from "@typedefs/api/track";
-import { ApiTrackTagAttributes } from "@typedefs/api/trackTag";
+import { ApiTrackTag, ApiTrackTagAttributes } from "@typedefs/api/trackTag";
 import {
   ApiTrackTagRequest,
   ApiTrackTagResponse,
@@ -575,7 +575,7 @@ export default defineComponent({
         tag.automatic
       );
       if (response.success) {
-        const newTag: ApiTrackTagResponse = {
+        const newTag = {
           ...tag,
           id: response.result.trackTagId ?? 0,
           trackId,
@@ -583,7 +583,7 @@ export default defineComponent({
           userId,
           automatic,
           userName: username,
-        };
+        } as ApiTrackTag;
         const currTags = track.tags.filter((tag) => tag.userId !== userId);
         const newTags = [...currTags, newTag];
         const taggedTrack = modifyTrack(trackId, {
@@ -819,7 +819,7 @@ export default defineComponent({
               } else {
                 tags.includes(tag.what);
               }
-            })
+            }) || track.tags.some((tag) => !tag.automatic)
         );
         return filtered;
       }

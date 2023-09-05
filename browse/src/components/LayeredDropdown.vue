@@ -24,7 +24,7 @@
           <button
             :id="`options-button-${id}`"
             class="options-list-child"
-            v-show="option.children"
+            v-if="option.children"
             @click="() => setToPath(option.label)"
           >
             <font-awesome-icon
@@ -146,16 +146,15 @@ export default defineComponent({
       Map<string, { display: string; label: string; path: string[] }>
     >(new Map([["all", { display: "all", label: "all", path: ["all"] }]]));
     const showOptions = ref(false);
-
-    watch(
-      () => props.value,
-      (value) => {
-        showOptions.value = typeof props.value !== "string";
+    const selectedOptions = computed({
+      get() {
+        return props.value;
+      },
+      set(value) {
+        showOptions.value = typeof selectedOptions.value !== "string";
         emit("input", value);
-      }
-    );
-
-    // Search
+      },
+    }); // Search
     const searchTerm = ref("");
 
     // Breadth-first search for options matching the search term and "label" property, and "children" as nodes.
@@ -179,15 +178,15 @@ export default defineComponent({
 
     const addSelectedOption = (event: Event, option: Option) => {
       event.preventDefault();
-      if (typeof props.value === "string") {
-        emit("input", option.label);
+      if (typeof selectedOptions.value === "string") {
+        selectedOptions.value = option.label;
         return;
       }
-      if (Array.isArray(props.value)) {
-        if (props.value.find((o) => o === option.label)) {
+      if (Array.isArray(selectedOptions.value)) {
+        if (selectedOptions.value.find((o) => o === option.label)) {
           return;
         }
-        emit("input", [...props.value, option.label]);
+        selectedOptions.value = [...selectedOptions.value, option.label];
       }
     };
 
@@ -212,15 +211,14 @@ export default defineComponent({
     };
 
     const removeSelectedOption = (option: string) => {
-      if (typeof props.value === "string") {
-        emit("input", "");
+      if (typeof selectedOptions.value === "string") {
+        selectedOptions.value = "";
       } else if (
-        typeof props.value === "object" &&
-        Array.isArray(props.value)
+        typeof selectedOptions.value === "object" &&
+        Array.isArray(selectedOptions.value)
       ) {
-        emit(
-          "input",
-          props.value.filter((o) => o !== option)
+        selectedOptions.value = selectedOptions.value.filter(
+          (o) => o !== option
         );
       }
     };
@@ -307,7 +305,8 @@ export default defineComponent({
         // Existing conditions
         const isWithinDropdown = currentDropdown?.contains(target) ?? false;
         const isOptionList = target.contains(optionsList.value);
-        const isSelectedOptionString = typeof props.value === "string";
+        const isSelectedOptionString =
+          typeof selectedOptions.value === "string";
 
         const buttonId = `options-button-${id.value}`;
         const isSwitchedParent = target.closest("button")?.id === buttonId;
