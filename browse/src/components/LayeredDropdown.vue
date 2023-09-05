@@ -250,7 +250,6 @@ export default defineComponent({
     watch(
       () => props.options,
       () => {
-        console.log("NEW OPTIONS");
         createOptionsPaths(props.options);
         setToPath("all");
       },

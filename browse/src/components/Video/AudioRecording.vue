@@ -4,16 +4,14 @@
       <b-row class="mb-4">
         <b-col>
           <AudioPlayer
-            :key="`${url}-${
-              sampleRate === null ? 48000 : sampleRate
-            }-${colour}`"
+            :key="`${url}-${sampleRate}-${colour}`"
             v-if="buffer !== null && !deleted && !recording.redacted"
             :colour="colour"
             :setColour="setColour"
             :tracks="tracks"
             :buffer="buffer"
             :url="url"
-            :sampleRate="sampleRate === null ? 48000 : sampleRate"
+            :sampleRate="sampleRate"
             :setSampleRate="setSampleRate"
             :duration="recording.duration"
             :selectedTrack="selectedTrack"
@@ -336,7 +334,7 @@ export default defineComponent({
       props.audioRawUrl ? props.audioRawUrl : props.audioUrl
     );
     const buffer = ref<Blob>(null);
-    const [sampleRate, setSampleRate] = useState<number>(48000);
+    const [sampleRate, setSampleRate] = useState<number>(22050);
 
     const savedColour = localStorage.getItem("audio-colour");
     const [colour, setColour] = useState(savedColour ? savedColour : "cool");
@@ -352,7 +350,6 @@ export default defineComponent({
         setDeleted(false);
         // const url = newUrl ? newUrl : newRawUrl;
         const url = newRawUrl ? newRawUrl : newUrl;
-        setSampleRate(null);
         buffer.value = await fetchAudioBuffer(url);
         setUrl(url);
       }
@@ -995,7 +992,7 @@ export default defineComponent({
     });
 
     const updateGroupFilterTags = async (tags: string[]) => {
-      if (group.value) {
+      if (group.value && isGroupAdmin.value) {
         const res = await api.groups.updateGroupSettings(group.value.id, {
           filteredAudioTags: tags,
         });
