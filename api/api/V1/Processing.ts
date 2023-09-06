@@ -576,8 +576,8 @@ export default function (app: Application, baseUrl: string) {
   /**
    * @api {patch} /api/fileProcessing/:id/tracks/:trackId/archive Archives a track
    * @apiName ArchiveTrack
-   * @apiGroup FileProcessing
-   *     *
+   * @apiGroup Processing
+   * 
    * @apiUse V1ResponseSuccess
    * @apiuse V1ResponseError
    *
@@ -598,7 +598,7 @@ export default function (app: Application, baseUrl: string) {
   /**
    * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track data for recording and archives the old track data.
    * @apiName UpdateTrackData
-   * @apiGroup FileProcessing
+   * @apiGroup Processing
    *
    * @apiParam {JSON} data Data which defines the track (type specific).
    *
