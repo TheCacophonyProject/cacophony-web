@@ -5,7 +5,7 @@
     <b-row class="no-gutters">
       <b-col cols="12" lg="8">
         <div v-if="isMP4">
-          <ThermalVideoPlayer
+          <MPEGPlayer
             ref="player"
             :video-url="videoRawUrl"
             :tracks="tracks"
@@ -13,6 +13,7 @@
             :current-track="selectedTrack"
             @request-next-recording="nextRecording"
             @player-ready="playerReady"
+            :frame-rate="frameRate"
           />
         </div>
         <div v-else>
@@ -134,7 +135,7 @@
 /* eslint-disable no-console */
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
-import ThermalVideoPlayer from "./ThermalVideoPlayer.vue";
+import MPEGPlayer from "./MPEGPlayer.vue";
 import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
 import RecordingProperties from "./RecordingProperties.vue";
 import { TagColours, WALLABY_GROUP } from "@/const";
@@ -153,7 +154,7 @@ import { FILTERED_TOOLTIP } from "../../const";
 export default {
   name: "VideoRecording",
   components: {
-    ThermalVideoPlayer,
+    MPEGPlayer,
     RecordingControls,
     RecordingProperties,
     TrackInfo,
@@ -194,6 +195,13 @@ export default {
     };
   },
   computed: {
+    frameRate: function () {
+      // should get this from the actual files
+      if (this.isMP4) {
+        return 10;
+      }
+      return 9;
+    },
     isMP4: function () {
       return this.recording.type == RecordingType.InfraredVideo;
     },

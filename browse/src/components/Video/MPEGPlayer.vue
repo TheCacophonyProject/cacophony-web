@@ -67,7 +67,7 @@ import { Player } from "videojs";
 import { TagColours } from "../../const";
 
 export default {
-  name: "ThermalVideoPlayer",
+  name: "MPEGPlayer",
   components: {
     Spinner,
     videoPlayer,
@@ -102,6 +102,10 @@ export default {
     showOverlaysForCurrentTrackOnly: {
       type: Boolean,
       default: false,
+    },
+    frameRate: {
+      type: Number,
+      default: 10,
     },
   },
   data() {
@@ -403,7 +407,7 @@ export default {
       } else {
         tracks = this.tracks;
       }
-      const frameTime = 1 / 10;
+      const frameTime = 1 / this.frameRate;
       const currentFrame = Math.floor(this.currentVideoTime / frameTime);
       const data = tracks
         .filter(
@@ -429,7 +433,7 @@ export default {
     draw() {
       if (this.videoJsPlayer() && this.htmlPlayer) {
         // NOTE: Since our video is 9fps, we're don't need to update this at 60fps.
-        const frameTime = 1 / 10;
+        const frameTime = 1 / this.frameRate;
         try {
           // NOTE: This is just to suppress a spurious type error inside videojs when it hasn't initialised properly yet.
           this.currentVideoTime = this.videoJsPlayer().currentTime();

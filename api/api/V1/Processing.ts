@@ -577,7 +577,7 @@ export default function (app: Application, baseUrl: string) {
    * @api {patch} /api/fileProcessing/:id/tracks/:trackId/archive Archives a track
    * @apiName ArchiveTrack
    * @apiGroup Processing
-   * 
+   *
    * @apiUse V1ResponseSuccess
    * @apiuse V1ResponseError
    *
