@@ -272,7 +272,6 @@ export default defineComponent({
     });
 
     watch(searchTerm, () => {
-      console.log("search Term", searchTerm.value);
       if (searchTerm.value === "") {
         if (currPath.value[0] === "search") {
           setToPath("all");

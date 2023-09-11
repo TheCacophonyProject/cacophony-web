@@ -62,6 +62,7 @@ import { mapDevicesResponse } from "./Device.js";
 import type { Group } from "@/models/Group.js";
 import type {
   ApiGroupResponse,
+  ApiGroupSettings,
   ApiGroupUserResponse,
 } from "@typedefs/api/group.js";
 import type { ApiDeviceResponse } from "@typedefs/api/device.js";
@@ -194,6 +195,11 @@ interface ApiStationResponseSuccess {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiScheduleConfigs {
   schedules: ScheduleConfig[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupSettingsBody {
+  settings: ApiGroupSettings;
 }
 
 // NOTE: In theory someone could choose one of these as their group name,
@@ -1009,7 +1015,20 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  // TODO (docs)
+  /**
+   * @api {patch} /api/v1/groups/:groupIdOrName/my-settings Update group settings for the current user.
+   * @apiName UpdateMyGroupSettings
+   * @apiGroup Group
+   * @apiDescription Update the settings for a group specific to the current user, specified by the group name or group ID.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer|String} groupIdOrName Group name or group ID.
+   * @apiBody {apibody::apigroupsettings} settings New user-specific settings data, according to the `ApiGroupUserSettingsSchema`.
+   *
+   * @apiSuccess {String} message Success message indicating settings update for the user.
+   * @apiUse V1ResponseError
+   */
   app.patch(
     `${apiUrl}/:groupIdOrName/my-settings`,
     extractJwtAuthorizedUser,
@@ -1043,7 +1062,20 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
-  // TODO (docs)
+  /**
+   * @api {patch} /api/v1/groups/:groupIdOrName/group-settings Update group settings.
+   * @apiName UpdateGroupSettings
+   * @apiGroup Group
+   * @apiDescription Update the settings for a group specified by the group name or group ID.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer|String} groupIdOrName Group name or group ID.
+   * @apiBody {apibody::apigroupsettings} settings Group settings to update.
+   *
+   * @apiSuccess {String} message Success message indicating settings update.
+   * @apiUse V1ResponseError
+   */
   app.patch(
     `${apiUrl}/:groupIdOrName/group-settings`,
     extractJwtAuthorizedUser,
@@ -1054,8 +1086,9 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("settings")),
     async (request: Request, response: Response) => {
+      const existingSettings = response.locals.group.settings || {};
       await response.locals.group.update({
-        settings: response.locals.settings,
+        settings: { ...existingSettings, ...response.locals.settings },
       });
       return successResponse(response, "Updated group settings");
     }

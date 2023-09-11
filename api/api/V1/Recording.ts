@@ -1897,6 +1897,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} id Id of the recording
    * @apiParam {Integer} trackId Id of the recording track to update
    *
+   * @apiInterface {apiBody::ApiTrackDataRequest} data Object containing the
+   * new data object to replace the existing one.
    * @apiBody {JSON} data The new data object to replace the existing one.
    *
    * @apiUse V1ResponseSuccess
@@ -1907,14 +1909,17 @@ export default (app: Application, baseUrl: string) => {
   app.patch(
     `${apiUrl}/:id/tracks/:trackId/update-data`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("id")), idOf(param("trackId")), body("data")]),
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
+    ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         try {
           const track: Track = response.locals.track;
-          console.log(request.body.data);
 
           await track.update({
             data: { ...track.data, ...request.body.data },

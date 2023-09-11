@@ -334,7 +334,14 @@ export default defineComponent({
       props.audioRawUrl ? props.audioRawUrl : props.audioUrl
     );
     const buffer = ref<Blob>(null);
-    const [sampleRate, setSampleRate] = useState<number>(22050);
+    const [sampleRate, setSampleRate] = useState<number>(
+      localStorage.getItem("audio-sample-rate")
+        ? parseInt(localStorage.getItem("audio-sample-rate"))
+        : 24000
+    );
+    watch(sampleRate, (currSampleRate) => {
+      localStorage.setItem("audio-sample-rate", currSampleRate.toString());
+    });
 
     const savedColour = localStorage.getItem("audio-colour");
     const [colour, setColour] = useState(savedColour ? savedColour : "cool");
@@ -461,6 +468,7 @@ export default defineComponent({
       );
 
     const [tracks, setTracks] = useState<AudioTracks>(new Map());
+    const [displayTracks, setDisplayTracks] = useState<AudioTracks>(new Map());
     const [selectedTrack, setSelectedTrack] = useState<AudioTrack>(null);
 
     const playTrack = (track?: AudioTrack) => {
@@ -830,6 +838,7 @@ export default defineComponent({
       if (selectedTrack.value) {
         setSelectedTrack(tracks.value.get(selectedTrack.value.id));
       }
+      setDisplayTracks(mappedTracks(filterTracks([...tracks.value.values()])));
     });
 
     const createButtonLabels = () => {
@@ -949,35 +958,32 @@ export default defineComponent({
       if (response.success) {
         group.value = response.result.group;
         const settings = response.result.group.settings;
-        if (!settings) {
-          return;
+        if (settings) {
+          filterHuman.value = settings.filterHuman ?? false;
+          filteredAudioTags.value = settings.filteredAudioTags ?? [];
         }
-        filterHuman.value = settings.filterHuman ?? false;
-        filteredAudioTags.value = settings.filteredAudioTags ?? [];
         isGroupAdmin.value = response.result.group.admin;
-        watch(
-          filteredAudioTags,
-          () => {
-            setTracks(mappedTracks(filterTracks(props.recording.tracks)));
-            const currTrack = selectedTrack.value;
-            if (currTrack && !tracks.value.has(currTrack.id)) {
-              setSelectedTrack(null);
-            }
-          },
-          { immediate: true }
-        );
-        watch(
-          () => props.recording,
-          () => {
-            setTracks(mappedTracks(filterTracks(props.recording.tracks)));
-            setSelectedTrack(null);
-            setCacophonyIndex(props.recording.cacophonyIndex);
-          },
-          {
-            deep: true,
-          }
-        );
       }
+      watch(filteredAudioTags, () => {
+        const currTracks = [...tracks.value.values()];
+
+        setDisplayTracks(mappedTracks(filterTracks(currTracks)));
+        const currTrack = selectedTrack.value;
+        if (currTrack && !tracks.value.has(currTrack.id)) {
+          setSelectedTrack(null);
+        }
+      });
+      watch(
+        () => [props.recording],
+        () => {
+          setTracks(mappedTracks(filterTracks(props.recording.tracks)));
+          setSelectedTrack(null);
+          setCacophonyIndex(props.recording.cacophonyIndex);
+        },
+        {
+          immediate: true,
+        }
+      );
     });
 
     const isQueued = computed(() => {
@@ -1008,7 +1014,7 @@ export default defineComponent({
       labels: buttonLabels,
       cacophonyIndex,
       deleted,
-      tracks,
+      tracks: displayTracks,
       isGroupAdmin,
       isQueued,
       selectedTrack,
@@ -1104,9 +1110,6 @@ export default defineComponent({
   }
   h4 {
     font-size: 0.9em;
-  }
-  .classification-header {
-    font-weight: bold;
   }
 
   .track-time {

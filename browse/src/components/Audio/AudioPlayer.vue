@@ -341,6 +341,12 @@ export default defineComponent({
       enabled: false,
       scale: 3,
     });
+    const getOriginPx = () => {
+      const loader = document.getElementById(
+        "loader-progress"
+      ) as HTMLDivElement;
+      return parseFloat(loader.offsetWidth.toFixed(1));
+    };
 
     const showLabels = ref(false);
 
@@ -354,8 +360,8 @@ export default defineComponent({
       player.value;
       interacted.value = true;
     };
-    const applyScale = <T extends ElementCSSInlineStyle>(
-      element: T,
+    const applyScale = (
+      element: SVGElement | HTMLCanvasElement,
       origin: number,
       x: number,
       y: number
@@ -368,10 +374,6 @@ export default defineComponent({
       if (!overlay.value) {
         return;
       }
-      const loader = document.getElementById(
-        "loader-progress"
-      ) as HTMLDivElement;
-      const x = loader.offsetWidth;
 
       const zoomIndicatorStart = document.getElementById(
         "zoom-indicator-start"
@@ -384,29 +386,30 @@ export default defineComponent({
       const progress = document.getElementById(
         "loader-progress"
       ) as HTMLDivElement;
-      const totalShown = playerBar.offsetWidth / zoomed.value.scale;
-      const half = totalShown / 2;
-      const startPos = progress.offsetWidth - half;
-      const endPos = progress.offsetWidth + half;
-      const overEnd = Math.abs(Math.min(playerBar.offsetWidth - endPos, 0));
-      const overStart = Math.abs(Math.min(startPos, 0));
-      const origin = parseFloat(x.toFixed(1));
-      const xScale = parseFloat(zoomed.value.scale.toFixed(1));
+
+      // Apply zoom to overlay and spectrogram
+      const origin = getOriginPx();
+      const scale = zoomed.value.enabled ? zoomed.value.scale : 1;
+      const xScale = parseFloat(scale.toFixed(1));
       const yScale = props.sampleRate / newSampleRate.value;
       applyScale(overlay.value, origin, xScale, yScale);
       applyScale(spectrogram.value, origin, xScale, yScale);
+      // Apply zoom to zoom indicators
       const translateY = "translateY(-3px)";
-      zoomIndicatorStart.style.transform = `translateX(${(
-        -half -
-        overEnd +
-        overStart
-      ).toFixed(1)}px) ${translateY}`;
-      zoomIndicatorEnd.style.transform = `translateX(${(
-        half +
-        overStart -
-        overEnd +
-        8
-      ).toFixed(1)}px) ${translateY}`;
+      const totalShown = playerBar.offsetWidth / scale;
+      const half = totalShown / 2;
+      const startPos = progress.offsetWidth - half;
+      const endPos = progress.offsetWidth + half;
+      const endOffset = Math.abs(Math.min(playerBar.offsetWidth - endPos, 0));
+      const startOffset = Math.abs(Math.min(startPos, 0));
+      const start = -half - startOffset;
+      const end = half + endOffset;
+      zoomIndicatorStart.style.transform = `translateX(${start.toFixed(
+        1
+      )}px) ${translateY}`;
+      zoomIndicatorEnd.style.transform = `translateX(${end.toFixed(
+        1
+      )}px) ${translateY}`;
     };
     watch(newSampleRate, () => {
       requestAnimationFrame(updateZoom);
@@ -453,6 +456,7 @@ export default defineComponent({
             height: "0",
             stroke: "#c8d6e5",
             "stroke-width": strokeWidth,
+            opacity: "60%",
             fill: "none",
             cursor: "pointer",
           },
@@ -522,7 +526,14 @@ export default defineComponent({
       const pos = isTemp
         ? track.positions[1]
         : track.positions[track.positions.length - 1]; // Temp track uses second position
-      const { x, y, height, width } = convertRectangleToSVG(pos);
+      const { x, y, height, width } = pos
+        ? convertRectangleToSVG(pos)
+        : {
+            x: track.start / props.duration,
+            y: 0,
+            width: (track.end - track.start) / props.duration,
+            height: 1,
+          };
       let rect: HTMLElement | SVGElement | null = document.getElementById(id);
       if (!rect) {
         rect = createSVGElement(
@@ -571,7 +582,9 @@ export default defineComponent({
       }
       return rect;
     };
+    const controlsModified = ref(false);
     const hideControls = () => {
+      controlsModified.value = false;
       const prevTopLeft = document.getElementById("top-left-control");
       const prevBottomRight = document.getElementById("bottom-right-control");
       if (prevTopLeft) {
@@ -597,8 +610,8 @@ export default defineComponent({
 
       // Create top-left circle
       const topLeftCircle = createControl(
-        rectX,
-        rectY,
+        Math.max(rectX, 0),
+        Math.max(rectY, 0),
         colour,
         "top-left-control"
       );
@@ -606,8 +619,8 @@ export default defineComponent({
 
       // Create bottom-right circle
       const bottomRightCircle = createControl(
-        rectX + rectWidth,
-        rectY + rectHeight,
+        Math.max(rectX + rectWidth, 0),
+        Math.max(rectY + rectHeight, 0),
         colour,
         "bottom-right-control"
       );
@@ -630,6 +643,10 @@ export default defineComponent({
         circle.setAttribute("r", "5");
         circle.setAttribute("fill", colour);
         circle.setAttribute("cursor", "move");
+        // add stroke to make it more visible
+        circle.setAttribute("stroke", "white");
+        circle.setAttribute("stroke-width", "2");
+
         return circle;
       }
 
@@ -670,104 +687,120 @@ export default defineComponent({
         rectWidth = parseFloat(element.getAttribute("width") || "0");
         rectHeight = parseFloat(element.getAttribute("height") || "0");
 
-        let controlsModified = false;
-
         function toggleButtonContainerVisibility() {
           // Get the button container
           const buttonContainer = document.getElementById(
             "track-changes-container"
           ) as HTMLElement;
 
-          if (buttonContainer && controlsModified) {
+          if (buttonContainer && controlsModified.value) {
             // Show or hide the container based on the controlsModified state
             buttonContainer.style.visibility = "visible";
           }
         }
-
         const onPressMove = (event: MouseEvent | TouchEvent) => {
           if (event instanceof TouchEvent) {
             event.preventDefault(); // Prevent scrolling during touch move
           }
-          const { x, y } = getCoords(event);
 
-          let dx = x - startX;
-          let dy = y - startY;
+          const { x, y } = getCoords(event);
           const minSize = 8;
 
+          let dx = x - startX;
+          const dy = y - startY;
+
+          if (zoomed.value.enabled) {
+            dx = applyZoomAndOffset(dx, zoomed.value.scale);
+          }
+
           if (corner === "topLeft") {
-            // Constrain the top-left control within the bounds of the overlay and not beyond the bottom-right control
-            const newX = Math.min(
-              Math.max(rectX + dx, 0),
-              rectX + rectWidth - minSize
-            );
-            const newY = Math.min(
-              Math.max(rectY + dy, 0),
-              rectY + rectHeight - minSize
-            );
-
-            dx = newX - rectX; // Adjust the difference
-            dy = newY - rectY;
-            element.setAttribute("x", newX.toString());
-            element.setAttribute("y", newY.toString());
-            element.setAttribute("width", (rectWidth - dx).toString());
-            element.setAttribute("height", (rectHeight - dy).toString());
-
-            // Update the top-left control's position
-            topLeftCircle.setAttribute("cx", newX.toString());
-            topLeftCircle.setAttribute("cy", newY.toString());
+            updateTopLeftControl(dx, dy, minSize);
           } else {
-            // Constrain the bottom-right control within the bounds of the overlay and not beyond the top-left control
-            const newWidth = Math.min(
-              Math.max(rectWidth + dx, minSize),
-              overlay.value.clientWidth - rectX
-            );
-            const newHeight = Math.min(
-              Math.max(rectHeight + dy, minSize),
-              overlay.value.clientHeight - rectY
-            );
-
-            dx = newWidth - rectWidth; // Adjust the difference
-            dy = newHeight - rectHeight;
-            element.setAttribute("width", newWidth.toString());
-            element.setAttribute("height", newHeight.toString());
-
-            // Update the bottom-right control's position
-            bottomRightCircle.setAttribute("cx", (rectX + newWidth).toString());
-            bottomRightCircle.setAttribute(
-              "cy",
-              (rectY + newHeight).toString()
-            );
+            updateBottomRightControl(dx, dy, minSize);
           }
 
-          controlsModified = true;
-
-          // Update the button container's visibility based on the new state
+          controlsModified.value = true;
           toggleButtonContainerVisibility();
-
-          function updateButtonPosition() {
-            // Get the rectangle's position and dimensions
-            const rectX = parseFloat(element.getAttribute("x") || "0");
-            const rectY = parseFloat(element.getAttribute("y") || "0");
-            const rectWidth = parseFloat(element.getAttribute("width") || "0");
-
-            // Get the button container
-            const buttonContainer = document.getElementById(
-              "track-changes-container"
-            ) as HTMLElement;
-
-            if (buttonContainer) {
-              // Calculate the center top position
-              const leftPosition = rectX + rectWidth / 2 - 20;
-              const topPosition = rectY - 43;
-
-              // Set the CSS properties
-              buttonContainer.style.left = `${leftPosition}px`;
-              buttonContainer.style.top = `${topPosition}px`;
-            }
-          }
-          // Move save/cancel buttons
           updateButtonPosition();
         };
+
+        function applyZoomAndOffset(dx: number, currentScale: number): number {
+          return dx / currentScale;
+        }
+
+        function updateTopLeftControl(dx: number, dy: number, minSize: number) {
+          const newX = constrainValue(
+            rectX + dx,
+            0,
+            rectX + rectWidth - minSize
+          );
+          const newY = constrainValue(
+            rectY + dy,
+            0,
+            rectY + rectHeight - minSize
+          );
+
+          element.setAttribute("x", newX.toString());
+          element.setAttribute("y", newY.toString());
+          element.setAttribute(
+            "width",
+            (rectWidth - (newX - rectX)).toString()
+          );
+          element.setAttribute(
+            "height",
+            (rectHeight - (newY - rectY)).toString()
+          );
+
+          topLeftCircle.setAttribute("cx", newX.toString());
+          topLeftCircle.setAttribute("cy", newY.toString());
+        }
+
+        function updateBottomRightControl(
+          dx: number,
+          dy: number,
+          minSize: number
+        ) {
+          const newWidth = constrainValue(
+            rectWidth + dx,
+            minSize,
+            overlay.value.clientWidth - rectX
+          );
+          const newHeight = constrainValue(
+            rectHeight + dy,
+            minSize,
+            overlay.value.clientHeight - rectY
+          );
+
+          element.setAttribute("width", newWidth.toString());
+          element.setAttribute("height", newHeight.toString());
+
+          bottomRightCircle.setAttribute("cx", (rectX + newWidth).toString());
+          bottomRightCircle.setAttribute("cy", (rectY + newHeight).toString());
+        }
+
+        function constrainValue(
+          value: number,
+          min: number,
+          max: number
+        ): number {
+          return Math.min(Math.max(value, min), max);
+        }
+
+        function updateButtonPosition() {
+          const rectX = parseFloat(element.getAttribute("x") || "0");
+          const rectY = parseFloat(element.getAttribute("y") || "0");
+          const rectWidth = parseFloat(element.getAttribute("width") || "0");
+          const buttonContainer = document.getElementById(
+            "track-changes-container"
+          ) as HTMLElement;
+
+          if (buttonContainer) {
+            const leftPosition = rectX + rectWidth / 2 - 20;
+            const topPosition = rectY - 43;
+            buttonContainer.style.left = `${leftPosition}px`;
+            buttonContainer.style.top = `${topPosition}px`;
+          }
+        }
 
         toggleButtonContainerVisibility();
         const onPressUp = () => {
@@ -873,7 +906,7 @@ export default defineComponent({
           if (rect) {
             overlay.value.removeChild(rect);
           }
-        } else if (prev && curr?.id !== prev.id) {
+        } else if (prev && curr?.id !== prev.id && controlsModified.value) {
           cancelTrackChanges(prev);
         }
         if (curr) {
@@ -891,6 +924,7 @@ export default defineComponent({
                   width: (width * spectrogram.value.width).toString(),
                   height: (height * spectrogram.value.height).toString(),
                   stroke: "#c8d6e5",
+                  opacity: "60%",
                   "stroke-width": strokeWidth,
                   fill: "none",
                 },
@@ -911,6 +945,7 @@ export default defineComponent({
             playTrack(curr);
           }
         } else if (isPlaying.value && !isFinished.value) {
+          hideControls();
           play();
         }
       }
@@ -926,7 +961,6 @@ export default defineComponent({
     };
 
     const playTrack = (track: AudioTrack) => {
-      console.log(track);
       playRegion(track.start, track.end);
     };
 
@@ -1047,7 +1081,6 @@ export default defineComponent({
     };
     const currHandler = ref<(curr: number) => void>(null);
     function playRegion(start: number, end: number) {
-      console.log(currHandler.value, start, end);
       function handler(current: number) {
         if (current > end) {
           player.value.pause();
@@ -1087,9 +1120,10 @@ export default defineComponent({
     const [dragZoom, setDragZoom] = useState<{
       started: boolean;
       from: "start" | "end";
-    }>({ started: false, from: "start" });
-    const onDragStartZoom = (from: "start" | "end") => {
-      setDragZoom({ started: true, from });
+      initial: number;
+    }>({ started: false, from: "start", initial: 0 });
+    const onDragStartZoom = (from: "start" | "end", initial: number) => {
+      setDragZoom({ started: true, from, initial });
       // disable user select
       document.body.style.userSelect = "none";
     };
@@ -1101,7 +1135,7 @@ export default defineComponent({
         const difference = Math.min(Math.abs(percent - percComplete), 1);
         const scale = 1 / difference;
         setZoomed((zoom) => {
-          zoom.scale = scale;
+          zoom.scale = Math.max(scale / 2, 1);
         });
       }
     };
@@ -1151,7 +1185,7 @@ export default defineComponent({
     onMounted(async () => {
       const audio = new Audio();
       const audioContext = new AudioContext({
-        sampleRate: props.sampleRate,
+        sampleRate: defaultSampleRate,
       });
       const gainNode = audioContext.createGain();
       const filterNode = audioContext.createBiquadFilter();
@@ -1180,6 +1214,8 @@ export default defineComponent({
         media: audio,
         plugins: [SpectrogramPlugin.create(SpectrogramSettings)],
       };
+      // set showLabels
+      showLabels.value = localStorage.getItem("showAudioLabels") === "true";
 
       const addTracksToOverlay = (tracks: AudioTrack[]) =>
         tracks
@@ -1236,7 +1272,9 @@ export default defineComponent({
         (track) => {
           if (track?.maxFreq && track?.minFreq) {
             filterNode.type = "bandpass";
-            const { maxFreq, minFreq } = track;
+            let { maxFreq, minFreq } = track;
+            maxFreq = Math.min(maxFreq, props.sampleRate / 2);
+            minFreq = Math.max(minFreq, 0);
             const fcenter = Math.sqrt(maxFreq * minFreq);
             const deltaf = maxFreq - minFreq;
             filterNode.frequency.value = fcenter;
@@ -1476,17 +1514,18 @@ export default defineComponent({
         const zoomIndicatorEnd = document.getElementById(
           "zoom-indicator-end"
         ) as HTMLDivElement;
-        zoomIndicatorStart.addEventListener("mousedown", () => {
-          onDragStartZoom("start");
+        zoomIndicatorStart.addEventListener("mousedown", (event) => {
+          onDragStartZoom("start", event.clientX);
         });
-        zoomIndicatorStart.addEventListener("touchstart", () => {
-          onDragStartZoom("start");
+        zoomIndicatorStart.addEventListener("touchstart", (event) => {
+          const initial = event.touches[0].clientX;
+          onDragStartZoom("start", initial);
         });
-        zoomIndicatorEnd.addEventListener("mousedown", () => {
-          onDragStartZoom("end");
+        zoomIndicatorEnd.addEventListener("mousedown", (event) => {
+          onDragStartZoom("end", event.clientX);
         });
-        zoomIndicatorEnd.addEventListener("touchstart", () => {
-          onDragStartZoom("end");
+        zoomIndicatorEnd.addEventListener("touchstart", (event) => {
+          onDragStartZoom("end", event.touches[0].clientX);
         });
         document.addEventListener("mousemove", onDragZoom);
         document.addEventListener("touchmove", onDragZoom);
@@ -1508,9 +1547,10 @@ export default defineComponent({
         setPlayerTime(player.value.getDuration());
         setPlayerTime(0);
         // Due to spectrogram plugin, we need to wait for the canvas to be rendered
-        player.value.on("redraw", () => {
-          attachSpectrogramOverlay();
-          if (props.selectedTrack && props.selectedTrack.id === -1) {
+        //player.value.on("redraw", () => {
+        //  attachSpectrogramOverlay();
+        if (props.selectedTrack) {
+          if (props.selectedTrack.id === -1) {
             // remove previous
             const previousRect = overlay.value.querySelector(
               "#new_track"
@@ -1521,8 +1561,8 @@ export default defineComponent({
             const rect = createRectFromTrack(props.selectedTrack);
             overlay.value.appendChild(rect);
           }
-          addTracksToOverlay([...props.tracks.values()]);
-        });
+        }
+        //});
       };
 
       // Get indicator by id player-bar-loader-indicator
@@ -1552,6 +1592,9 @@ export default defineComponent({
             "#spectrogram canvas:nth-child(1)"
           ) as HTMLCanvasElement;
           labels.style.visibility = val ? "visible" : "hidden";
+          // save to local storage
+          localStorage.setItem("showAudioLabels", JSON.stringify(val));
+          labels.style.pointerEvents = "none";
         },
         { immediate: true }
       );

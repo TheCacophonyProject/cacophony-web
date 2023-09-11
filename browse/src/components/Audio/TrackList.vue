@@ -2,7 +2,7 @@
   <b-container class="tracklist-container">
     <div class="classification-header mb-2">
       <h2 class="mb-0">Classifications</h2>
-      <Dropdown v-show="isGroupAdmin">
+      <Dropdown>
         <template #button-content>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -16,7 +16,7 @@
             />
           </svg>
         </template>
-        <div class="classification-filter-container">
+        <div class="classification-filter-container" v-show="isGroupAdmin">
           <div class="d-flex">
             <h3>
               Group Tag Filter
@@ -53,7 +53,7 @@
               <b-col
                 v-on:click="() => playTrack(track)"
                 class="track-container"
-                lg="8"
+                lg="9"
               >
                 <b-row>
                   <b-col class="d-flex justify-content-center pr-0" cols="2">
@@ -268,6 +268,7 @@ import { TrackId } from "@typedefs/api/common";
 import store from "@/stores";
 import { shouldViewAsSuperUser } from "@/utils";
 import { ApiTrackTag, ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import { watchEffect } from "@vue/runtime-core";
 enum TrackListFilter {
   All = "all",
   Automatic = "automatic",
@@ -366,7 +367,7 @@ export default defineComponent({
     const toggledTrackHistory = ref<TrackId[]>([]);
     //TODO: Add filtering tracks
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [filter] = useState<TrackListFilter>(TrackListFilter.All);
+    const filter = ref(TrackListFilter.All);
     const filterTracks = (track: AudioTrack) => {
       switch (filter.value) {
         case TrackListFilter.All:
@@ -379,6 +380,11 @@ export default defineComponent({
           return false;
       }
     };
+
+    const setFilter = (newFilter: TrackListFilter) => {
+      filter.value = newFilter;
+    };
+
     const sortTracks = (trackA: AudioTrack, trackB: AudioTrack) => {
       return trackA.start - trackB.start;
     };
@@ -410,14 +416,26 @@ export default defineComponent({
       }
     );
 
+    watch(
+      () => props.audioTracks,
+      () => {
+        const list = document.getElementById("classification-list");
+        if (list) {
+          list.scrollTop = 0;
+        }
+      }
+    );
+
     return {
       userName: store.state.User.userData.userName,
       tracks,
+      setFilter,
       toggledTrackHistory,
       confirmTrack,
       filter,
       filterTracks,
       sortTracks,
+      TrackListFilter,
     };
   },
 });
