@@ -144,6 +144,7 @@
                       ) && !redacted
                     "
                     variant="outline-success"
+                    class="p-1"
                     size="sm"
                     @click.prevent="() => confirmTrack(track)"
                   >
