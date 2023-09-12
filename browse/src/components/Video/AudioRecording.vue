@@ -447,13 +447,13 @@ export default defineComponent({
     ): AudioTrack => {
       const displayTags = getDisplayTags(track);
       return {
-        ...track,
-        ...{ start: track.start ? track.start : 0 },
-        ...{ end: track.end ? track.end : 0 },
+        deleted: false,
         colour: TagColours[index % TagColours.length],
         displayTags,
         confirming: false,
-        deleted: false,
+        ...track,
+        ...{ start: track.start ? track.start : 0 },
+        ...{ end: track.end ? track.end : 0 },
       };
     };
 
@@ -468,7 +468,9 @@ export default defineComponent({
       );
 
     const [tracks, setTracks] = useState<AudioTracks>(new Map());
-    const [displayTracks, setDisplayTracks] = useState<AudioTracks>(new Map());
+    const displayTracks = computed(() => {
+      return mappedTracks(filterTracks([...tracks.value.values()]));
+    });
     const [selectedTrack, setSelectedTrack] = useState<AudioTrack>(null);
 
     const playTrack = (track?: AudioTrack) => {
@@ -814,7 +816,7 @@ export default defineComponent({
     );
     const group = ref<ApiGroupResponse>(null);
     const filteredAudioTags = ref<string[]>([]);
-    const filterTracks = (tracks: ApiTrackResponse[]) => {
+    const filterTracks = (tracks: (ApiTrackResponse | AudioTrack)[]) => {
       const tags = filteredAudioTags.value;
       if (tags) {
         const filtered = tracks.filter(
@@ -838,7 +840,6 @@ export default defineComponent({
       if (selectedTrack.value) {
         setSelectedTrack(tracks.value.get(selectedTrack.value.id));
       }
-      setDisplayTracks(mappedTracks(filterTracks([...tracks.value.values()])));
     });
 
     const createButtonLabels = () => {
@@ -965,9 +966,6 @@ export default defineComponent({
         isGroupAdmin.value = response.result.group.admin;
       }
       watch(filteredAudioTags, () => {
-        const currTracks = [...tracks.value.values()];
-
-        setDisplayTracks(mappedTracks(filterTracks(currTracks)));
         const currTrack = selectedTrack.value;
         if (currTrack && !tracks.value.has(currTrack.id)) {
           setSelectedTrack(null);
