@@ -418,8 +418,16 @@ export default defineComponent({
     );
 
     watch(
-      () => props.audioTracks,
-      () => {
+      () => [props.audioTracks, props.selectedTrack] as const,
+      (curr, prev) => {
+        const [tracks, selectedTrack] = curr;
+        const [prevTracks, prevSelectedTrack] = prev;
+        if (
+          selectedTrack?.id === prevSelectedTrack?.id ||
+          tracks === prevTracks
+        ) {
+          return;
+        }
         const list = document.getElementById("classification-list");
         if (list) {
           list.scrollTop = 0;
