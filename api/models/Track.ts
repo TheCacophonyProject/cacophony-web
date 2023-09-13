@@ -317,7 +317,7 @@ function isFiltered(tags): boolean {
         (tag.data && tag.data == "Master"))
   );
   if (masterTag) {
-    return !!filteredTags.some((filteredTag) => filteredTag == masterTag.what);
+    return filteredTags.some((filteredTag) => filteredTag == masterTag.what);
   }
   return true;
 }
