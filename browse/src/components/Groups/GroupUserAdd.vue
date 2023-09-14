@@ -35,7 +35,7 @@
           :disabled="users.length === 0"
           @update="resetFormSubmission"
           track-by="id"
-          label="name"
+          label="display"
           id="input-username"
           aria-describedby="username-live-help username-live-feedback"
           data-cy="user-name-input"
@@ -55,7 +55,6 @@
           id="input-user-admin"
           v-model="$v.form.isAdmin.$model"
           plain
-          value="true"
           unchecked-value="false"
         >
           Make this user an administrator
@@ -199,6 +198,7 @@ export default {
           this.users = usersListResponse.result.usersList.map(
             ({ userName, id, email }) => ({
               name: userName,
+              display: `${userName} ${email && `<${email}>`}`,
               email,
               id,
             })

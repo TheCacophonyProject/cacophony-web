@@ -69,7 +69,7 @@ export interface User extends Sequelize.Model, ModelCommon<User> {
 
 export interface UserStatic extends ModelStaticCommon<User> {
   new (values?: object, options?: BuildOptions): User;
-  getAll: (where: any) => Promise<User[]>;
+  getAll: (where: any, isSuperAdmin?: boolean) => Promise<User[]>;
   getFromName: (name: string) => Promise<User | null>;
   getFromEmail: (email: string) => Promise<User | null>;
   freeEmail: (email: string) => Promise<boolean>;
@@ -162,10 +162,10 @@ export default function (
     models.User.hasMany(models.Alert);
   };
 
-  User.getAll = async function (where) {
+  User.getAll = async function (where, isSuperAdmin: boolean) {
     return this.findAll({
       where,
-      attributes: this.publicFields,
+      attributes: [...this.publicFields, ...(isSuperAdmin && ["email"])],
     });
   };
 

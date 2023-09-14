@@ -28,6 +28,7 @@ export interface ApiGroupSettings {
   audioTags?: string[];
   // Delete audio recordings with human voices
   filterHuman?: boolean;
+  filteredAudioTags?: string[];
 }
 
 export interface ApiGroupUserSettings {

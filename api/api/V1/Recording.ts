@@ -1886,6 +1886,59 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
+   * @api {patch} /api/v1/recordings/:id/tracks/:trackId/update-data
+   * Updates a Track's Data
+   * @apiDescription Updates the "data" column of the specified track.
+   * @apiName PutTrackData
+   * @apiGroup Tracks
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId Id of the recording track to update
+   *
+   * @apiInterface {apiBody::ApiTrackDataRequest} data Object containing the
+   * new data object to replace the existing one.
+   * @apiBody {JSON} data The new data object to replace the existing one.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} message Success message.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/:id/tracks/:trackId/update-data`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.track.RecordingId === response.locals.recording.id) {
+        try {
+          const track: Track = response.locals.track;
+
+          await track.update({
+            data: { ...track.data, ...request.body.data },
+          });
+          return successResponse(response, "Track data updated.");
+        } catch (e) {
+          return next(
+            new FatalError(`Server error updating track data: ${e.toString()}`)
+          );
+        }
+      } else {
+        return next(
+          new FatalError("Track does not belong to specified recording")
+        );
+      }
+    }
+  );
+
+  /**
    * @api {patch} /api/v1/recordings/:id/tracks/:trackId/tags/:tagId
    * Updates a Track Tag with new request body
    * @apiDescription Adds or Replaces track tag based off:
