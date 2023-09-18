@@ -415,7 +415,7 @@ export default {
         await this.goToNextRecordingInList(direction, idsList);
       } else {
         const searchQueryCopy = JSON.parse(JSON.stringify(this.$route.query));
-        searchQueryCopy.type = RecordingType.ThermalRaw;
+        searchQueryCopy.type = this.recording.type;
         const resolvedTagMode = tagMode || searchQueryCopy.tagMode;
         const resolvedTags = tags || searchQueryCopy.tags;
         await this.getNextRecording(
@@ -489,7 +489,7 @@ export default {
       }
       params.order = JSON.stringify([["recordingDateTime", order]]);
       params.limit = 1;
-      params.type = RecordingType.ThermalRaw;
+      params.type = this.recording.type;
       params.hideFiltered = !this.$store.state.User.userData.showFiltered;
       params.countAll = false;
       delete params.offset;
