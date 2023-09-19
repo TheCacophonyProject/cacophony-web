@@ -3,7 +3,7 @@
     @click="$emit('click', $event)"
     ref="optionsContainerRef"
     class="options-container"
-    id="options-container"
+    :id="`options-container-${id}`"
   >
     <div v-show="showOptions" class="options-display-container">
       <div ref="optionsList" class="options-list-container">
@@ -17,9 +17,12 @@
             @click="(e) => addSelectedOption(e, option)"
           >
             {{ option.display ? option.display : option.label }}
+            <span v-show="option.display" class="text-secondary">
+              ({{ option.label }})
+            </span>
           </button>
           <button
-            id="child-button"
+            :id="`options-button-${id}`"
             class="options-list-child"
             v-if="option.children"
             @click="() => setToPath(option.label)"
@@ -46,11 +49,7 @@
     <div class="input-container">
       <div class="search-container">
         <input
-          v-if="
-            typeof selectedOptions !== 'string' ||
-            showOptions ||
-            !selectedOptions
-          "
+          v-if="typeof value !== 'string' || showOptions || !value"
           @keyup="addSearchTermOnSubmit"
           @keydown="
             (event) => {
@@ -62,6 +61,7 @@
           "
           type="text"
           ref="inputRef"
+          :id="`input-${id}`"
           :value="searchTerm"
           @input="(e) => (searchTerm = e.target.value)"
           :placeholder="placeholder"
@@ -69,26 +69,24 @@
         />
         <div
           v-if="
-            typeof selectedOptions === 'string' &&
+            typeof value === 'string' &&
             !showOptions &&
-            selectedOptions &&
-            optionsMap.has(selectedOptions.toLowerCase())
+            value &&
+            optionsMap.has(value.toLowerCase())
           "
         >
           <div class="selected-option">
-            {{ optionsMap.get(selectedOptions.toLowerCase()).display }}
+            {{ optionsMap.get(value.toLowerCase()).display }}
           </div>
         </div>
         <div
-          v-else-if="
-            typeof selectedOptions !== 'string' && selectedOptions.length !== 0
-          "
+          v-else-if="typeof value !== 'string' && value.length !== 0"
           class="selected-container"
         >
           <div
             class="selected-option"
             :key="option"
-            v-for="option in selectedOptions"
+            v-for="option in value"
             @click="() => removeSelectedOption(option)"
           >
             {{ optionsMap.get(option.toLowerCase()).display }}
@@ -103,6 +101,7 @@
 import {
   computed,
   defineComponent,
+  nextTick,
   onMounted,
   PropType,
   ref,
@@ -116,6 +115,7 @@ export type Option = {
 };
 
 export default defineComponent({
+  name: "LayeredDropdown",
   props: {
     options: {
       type: Object as PropType<Option>,
@@ -141,13 +141,11 @@ export default defineComponent({
     const inputRef = ref(null);
 
     // Options Reactive Variables
-    const displayedOptions = ref<Option[]>([]);
     const currPath = ref<string[]>([]);
     const optionsMap = ref<
       Map<string, { display: string; label: string; path: string[] }>
     >(new Map([["all", { display: "all", label: "all", path: ["all"] }]]));
     const showOptions = ref(false);
-
     const selectedOptions = computed({
       get() {
         return props.value;
@@ -156,9 +154,7 @@ export default defineComponent({
         showOptions.value = typeof selectedOptions.value !== "string";
         emit("input", value);
       },
-    });
-
-    // Search
+    }); // Search
     const searchTerm = ref("");
 
     // Breadth-first search for options matching the search term and "label" property, and "children" as nodes.
@@ -228,7 +224,9 @@ export default defineComponent({
     };
 
     const setToPath = (label: string) => {
-      currPath.value = optionsMap.value.get(label.toLowerCase()).path;
+      currPath.value = optionsMap.value.get(label.toLowerCase())?.path ?? [
+        "all",
+      ];
     };
 
     const createOptionsPaths = (root: Option) => {
@@ -253,10 +251,25 @@ export default defineComponent({
         createOptionsPaths(props.options);
         setToPath("all");
       },
-      {
-        immediate: true,
-      }
+      { immediate: true }
     );
+    const displayedOptions = computed(() => {
+      const searching = searchTerm.value === "";
+      if (!searching) {
+        return searchOptions(props.options.children);
+      } else {
+        return currPath.value.reduce((acc, path) => {
+          if (path === "all") {
+            return acc;
+          }
+          const children: Option = acc.children.find(
+            ({ label }) => label === path
+          );
+
+          return children;
+        }, props.options).children;
+      }
+    });
 
     watch(searchTerm, () => {
       if (searchTerm.value === "") {
@@ -266,23 +279,6 @@ export default defineComponent({
         return;
       }
       currPath.value = ["search"];
-      displayedOptions.value = searchOptions(props.options.children);
-    });
-
-    watch(currPath, () => {
-      if (currPath.value.includes("search")) {
-        return;
-      }
-      displayedOptions.value = currPath.value.reduce((acc, path) => {
-        if (path === "all") {
-          return acc;
-        }
-        const children: Option = acc.children.find(
-          ({ label }) => label === path
-        );
-
-        return children;
-      }, props.options).children;
     });
 
     watch(inputRef, () => {
@@ -290,8 +286,9 @@ export default defineComponent({
         inputRef.value.focus();
       }
     });
+    const id = ref(Math.random().toString(36).substring(2, 15)); // Use Vue's ref for reactivity
 
-    onMounted(() => {
+    onMounted((t) => {
       document.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
           showOptions.value = false;
@@ -301,20 +298,20 @@ export default defineComponent({
       });
 
       document.addEventListener("click", (e) => {
-        const target = e.target as Element;
-        const isDropdown = document
-          .getElementById("options-container")
-          ?.contains(target);
-        const selectedItem =
-          typeof target.className === "string" &&
-          target.className.includes("options-list") &&
-          typeof selectedOptions.value === "string";
-        const switchedParent =
-          target.id.includes("child-button") ||
-          target.parentElement?.id.includes("child-button");
+        const target = e.target as HTMLElement;
+        const currentDropdown = optionsContainerRef.value; // Note: Using id.value as id is a ref
 
-        if (!isDropdown || selectedItem) {
-          if (switchedParent) {
+        // Existing conditions
+        const isWithinDropdown = currentDropdown?.contains(target) ?? false;
+        const isOptionList = target.contains(optionsList.value);
+        const isSelectedOptionString =
+          typeof selectedOptions.value === "string";
+
+        const buttonId = `options-button-${id.value}`;
+        const isSwitchedParent = target.closest("button")?.id === buttonId;
+
+        if (!isWithinDropdown || (isOptionList && isSelectedOptionString)) {
+          if (isSwitchedParent) {
             showOptions.value = true;
             searchTerm.value = "";
           } else {
@@ -329,12 +326,12 @@ export default defineComponent({
     });
 
     return {
+      id,
       optionsMap,
       optionsContainerRef,
       optionsList,
       currPath,
       displayedOptions,
-      selectedOptions,
       showOptions,
       searchTerm,
       inputRef,

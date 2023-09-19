@@ -143,9 +143,11 @@ export function saveCreds(
   name: string,
   id = 0
 ) {
+  console.log(response.body);
   const creds = {
     name: name,
     password: "",
+    email: response?.body?.userData?.email ?? `${name}@email.com`,
     headers: {
       authorization: response.body.token,
     },

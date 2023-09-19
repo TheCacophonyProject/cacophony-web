@@ -111,7 +111,11 @@ export default function (app: Application, baseUrl: string) {
   const listUsersOptions = [
     extractJwtAuthorisedSuperAdminUser,
     async (request, response) => {
-      const users = await models.User.getAll({});
+      const users = await models.User.getAll(
+        {},
+        response.locals.viewAsSuperUser
+      );
+
       return successResponse(response, { usersList: mapUsers(users, true) });
     },
   ];

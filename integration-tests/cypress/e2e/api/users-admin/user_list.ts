@@ -18,14 +18,17 @@ describe("User: list", () => {
     cy.apiUserAdd("uliUser1").then(() => {
       expectedUser1.id = getCreds("uliUser1").id;
       expectedUser1.userName = getTestName("uliUser1");
+      expectedUser1.email = getCreds("uliUser1").email;
     });
     cy.apiUserAdd("uliUser2").then(() => {
       expectedUser2.id = getCreds("uliUser2").id;
       expectedUser2.userName = getTestName("uliUser2");
+      expectedUser2.email = getCreds("uliUser2").email;
     });
     cy.apiUserAdd("uliUser3").then(() => {
       expectedUser3.id = getCreds("uliUser3").id;
       expectedUser3.userName = getTestName("uliUser3");
+      expectedUser3.email = getCreds("uliUser3").email;
     });
   });
 

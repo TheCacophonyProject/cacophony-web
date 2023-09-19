@@ -300,106 +300,111 @@ export default function (app: Application, baseUrl: string) {
 
       const prevState = recording.processingState;
       if (success) {
-        if (newProcessedFileKey) {
-          recording.fileKey = newProcessedFileKey;
-        }
-        const nextJob = recording.getNextState();
-        const complete =
-          nextJob == models.Recording.finishedState(recording.type);
-        recording.processingState = nextJob;
-        recording.processingEndTime = new Date().toISOString();
-        // Process extra data from file processing
-        if (result && result.fieldUpdates) {
-          // TODO(jon): if the previous step was tracking, here would be the best time to consolidate tracks - however,
-          //  we need to make sure that the AI is reading these tracks back out to do its classifications:
-          //  #1283385 is a great example of why we need this.
+        try {
+          if (newProcessedFileKey) {
+            recording.fileKey = newProcessedFileKey;
+          }
+          const nextJob = recording.getNextState();
+          const complete =
+            nextJob == models.Recording.finishedState(recording.type);
+          recording.processingState = nextJob;
+          recording.processingEndTime = new Date().toISOString();
+          // Process extra data from file processing
+          if (result && result.fieldUpdates) {
+            // TODO(jon): if the previous step was tracking, here would be the best time to consolidate tracks - however,
+            //  we need to make sure that the AI is reading these tracks back out to do its classifications:
+            //  #1283385 is a great example of why we need this.
 
-          // NOTE: We used to re-match stations here if location changed, but really there's no good reason
-          //  why file processing should update the location.
-          delete result.fieldUpdates.location;
-          _.merge(recording, result.fieldUpdates);
-          for (const [key, value] of Object.entries(recording.dataValues)) {
-            if (typeof value === "object" && key in result.fieldUpdates) {
-              // We need to let sequelize know that deep json values have changed, since it doesn't
-              // check for deep equality.
-              recording.changed(key, true);
+            // NOTE: We used to re-match stations here if location changed, but really there's no good reason
+            //  why file processing should update the location.
+            delete result.fieldUpdates.location;
+            _.merge(recording, result.fieldUpdates);
+            for (const [key, value] of Object.entries(recording.dataValues)) {
+              if (typeof value === "object" && key in result.fieldUpdates) {
+                // We need to let sequelize know that deep json values have changed, since it doesn't
+                // check for deep equality.
+                recording.changed(key, true);
+              }
             }
           }
-        }
-        if (complete && recording.type === RecordingType.Audio) {
-          const device = await recording.getDevice();
-          const group = await device.getGroup();
-          const shouldFilter = group.settings?.filterHuman ?? true;
-          if (shouldFilter) {
-            const tracks: Track[] = await recording.getTracks();
-            let hasHuman = false;
-            for (const t of tracks) {
-              const tags = await t.getTrackTags({});
-              hasHuman = tags.some((tt) => tt.what === "human");
+
+          if (complete && recording.type === RecordingType.Audio) {
+            const device = await recording.getDevice();
+            const group = await device.getGroup();
+            const shouldFilter = group.settings?.filterHuman ?? true;
+            if (shouldFilter) {
+              const tracks: Track[] = await recording.getTracks();
+              let hasHuman = false;
+              for (const t of tracks) {
+                const tags = await t.getTrackTags({});
+                hasHuman = tags.some((tt) => tt.what === "human");
+                if (hasHuman) {
+                  break;
+                }
+              }
               if (hasHuman) {
-                break;
-              }
-            }
-            if (hasHuman) {
-              const rawFileKey = recording.rawFileKey;
-              const fileKey = recording.fileKey;
-              recording.redacted = true;
-              try {
-                if (rawFileKey) {
-                  await util.deleteS3Object(rawFileKey).catch((err) => {
-                    log.warning(err);
-                  });
+                const rawFileKey = recording.rawFileKey;
+                const fileKey = recording.fileKey;
+                recording.redacted = true;
+                try {
+                  if (rawFileKey) {
+                    await util.deleteS3Object(rawFileKey).catch((err) => {
+                      log.warning(err);
+                    });
+                  }
+                  if (fileKey) {
+                    await util.deleteS3Object(fileKey).catch((err) => {
+                      log.warning(err);
+                    });
+                  }
+                } catch (e) {
+                  log.warning("Failed to delete file: %s", e);
                 }
-                if (fileKey) {
-                  await util.deleteS3Object(fileKey).catch((err) => {
-                    log.warning(err);
-                  });
-                }
-              } catch (e) {
-                log.warning("Failed to delete file: %s", e);
               }
             }
           }
-        }
-        await recording.save();
-        if (
-          complete &&
-          (recording.type === RecordingType.ThermalRaw ||
-            recording.type === RecordingType.InfraredVideo)
-        ) {
-          const tracks = await recording.getTracks();
-          const results = await saveThumbnailInfo(
-            recording,
-            tracks,
-            recording.additionalMetadata["thumbnail_region"]
-          );
-          if (results) {
-            for (const result of results) {
-              if (result instanceof Error) {
-                log.warning(
-                  "Failed to upload thumbnail for %s",
-                  `${recording.rawFileKey}-thumb`
-                );
-                log.error("Reason: %s", result.message);
+          await recording.save();
+
+          if (
+            complete &&
+            (recording.type === RecordingType.ThermalRaw ||
+              recording.type === RecordingType.InfraredVideo)
+          ) {
+            const tracks = await recording.getTracks();
+            const results = await saveThumbnailInfo(
+              recording,
+              tracks,
+              recording.additionalMetadata["thumbnail_region"]
+            );
+            if (results) {
+              for (const result of results) {
+                if (result instanceof Error) {
+                  log.warning(
+                    "Failed to upload thumbnail for %s",
+                    `${recording.rawFileKey}-thumb`
+                  );
+                  log.error("Reason: %s", result.message);
+                }
               }
             }
           }
+
+          // If group filters out human audio, delete the file
+
+          const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+          const recordingAgeMs =
+            new Date().getTime() - recording.recordingDateTime.getTime();
+          if (
+            complete &&
+            prevState !== RecordingProcessingState.Reprocess &&
+            recording.uploader === "device" &&
+            recordingAgeMs < twentyFourHoursMs
+          ) {
+            await sendAlerts(models, recording.id);
+          }
+        } catch (e) {
+          log.error("Failed to save recording: %s", e);
         }
-
-        // If group filters out human audio, delete the file
-
-        const twentyFourHoursMs = 24 * 60 * 60 * 1000;
-        const recordingAgeMs =
-          new Date().getTime() - recording.recordingDateTime.getTime();
-        if (
-          complete &&
-          prevState !== RecordingProcessingState.Reprocess &&
-          recording.uploader === "device" &&
-          recordingAgeMs < twentyFourHoursMs
-        ) {
-          await sendAlerts(models, recording.id);
-        }
-
         return successResponse(response, "Processing finished.");
       } else {
         recording.processingState =

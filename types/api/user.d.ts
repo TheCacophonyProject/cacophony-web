@@ -4,6 +4,7 @@ import { UserGlobalPermission } from "./consts.js";
 export interface ApiUserResponse {
   userName: string; // Full name of user
   id: UserId; // Unique id of user
+  email?: string; // Email address of user (if superadmin)
 }
 
 export interface ApiLoggedInUserResponse extends ApiUserResponse {

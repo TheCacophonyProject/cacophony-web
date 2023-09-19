@@ -2,6 +2,7 @@ import { Seconds, TrackId } from "./common";
 import {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
+  ApiTrackTag,
 } from "./trackTag";
 
 export interface ApiTrackPosition {
@@ -21,7 +22,7 @@ export interface ApiTrackResponse {
   end: Seconds;
   automatic: boolean;
   positions?: ApiTrackPosition[];
-  tags: (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[];
+  tags: ApiTrackTag[];
   filtered: boolean;
   minFreq?: number;
   maxFreq?: number;

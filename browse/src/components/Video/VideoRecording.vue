@@ -113,7 +113,7 @@
         <RecordingControls
           :items="tagItems"
           :comment="recording.comment"
-          :groupId="recording.groupId"
+          :groupId="recording.groupId.toString()"
           :download-raw-url="videoRawUrl"
           :download-file-url="''"
           :processing-completed="processingCompleted"
@@ -425,6 +425,7 @@ export default {
           skipMessage
         );
       }
+      this.loadingNext = false;
     },
     async goToNextRecordingInList(direction, list: string[]) {
       const listIndex = list.indexOf(this.recording.id.toString());

@@ -52,7 +52,6 @@ const IS_DEBUG = config.server.loggerLevel === "debug";
 (dbConfig as any).logging = IS_DEBUG
   ? async (msg: string, timeMs: number) => {
       // Sequelize seems to happen in its own async context?
-      log.debug("%s [%dms]", msg, timeMs);
       let requestQueryCount =
         (asyncLocalStorage.getStore() as Map<string, any>)?.get("queryCount") ||
         0;

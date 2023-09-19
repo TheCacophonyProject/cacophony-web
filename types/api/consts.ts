@@ -51,6 +51,9 @@ export enum AcceptableTag {
   TrappedInTrap = "trapped in trap",
   MissedRecording = "missed recording",
   DigitalTrigger = "trap triggered",
+  Inside = "inside",
+  Outside = "outside",
+  Incursion = "incursion",
 }
 
 export enum DeviceType {
