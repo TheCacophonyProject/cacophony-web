@@ -48,7 +48,10 @@ export const streamS3Object = async (
   //  may have to attribute more bytes to the download than were actually used by the
   //  end-user browser request.
   response.setHeader("Content-disposition", "attachment; filename=" + fileName);
-  response.setHeader("Transfer-Encoding", "chunked");
+  if (request.headers.range) {
+    //seems like this removes content-length header and breaks chrome for mp4
+    response.setHeader("Transfer-Encoding", "chunked");
+  }
   response.setHeader("Content-type", mimeType);
   if (fileSize) {
     response.setHeader("Content-Length", fileSize);
@@ -69,7 +72,7 @@ export const streamS3Object = async (
       const positions = range.replace(/bytes=/, "").split("-");
       const start = parseInt(positions[0], 10);
       const end = positions[1] ? parseInt(positions[1], 10) : totalLength - 1;
-      response.setHeader("Content-Length", totalLength);
+      response.setHeader("Content-Length", end - start + 1);
       response.setHeader(
         "Content-Range",
         `bytes ${start}-${end}/${totalLength}`
