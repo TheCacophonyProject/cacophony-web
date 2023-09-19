@@ -1,22 +1,22 @@
 <template>
   <b-row fluid class="audio-recording-container">
-    <b-col lg="8">
+    <b-col>
       <b-row class="mb-4">
         <b-col>
           <AudioPlayer
-            :key="`${url}-${
-              sampleRate === null ? 44100 : sampleRate
-            }-${colour}`"
+            :key="`${url}-${sampleRate}-${colour}`"
             v-if="buffer !== null && !deleted && !recording.redacted"
             :colour="colour"
             :setColour="setColour"
             :tracks="tracks"
             :buffer="buffer"
+            :url="url"
             :sampleRate="sampleRate"
             :setSampleRate="setSampleRate"
             :duration="recording.duration"
             :selectedTrack="selectedTrack"
             :setSelectedTrack="playTrack"
+            :update-track="updateTrack"
           />
           <b-row
             v-else-if="deleted"
@@ -50,19 +50,24 @@
         </b-col>
       </b-row>
       <b-row class="bottom-container" v-show="!deleted">
-        <b-col lg="6">
-          <TrackList
-            :audio-tracks="tracks"
-            :selected-track="selectedTrack"
-            :play-track="playTrack"
-            :delete-track="deleteTrack"
-            :undo-delete-track="undoDeleteTrack"
-            :add-tag-to-track="addTagToTrack"
-            :redacted="recording.redacted"
-          />
+        <b-col lg="4">
+          <b-row>
+            <TrackList
+              :audio-tracks="tracks"
+              :selected-track="selectedTrack"
+              :play-track="playTrack"
+              :delete-track="deleteTrack"
+              :undo-delete-track="undoDeleteTrack"
+              :add-tag-to-track="addTagToTrack"
+              :redacted="recording.redacted"
+              :filtered-tags="filteredAudioTags"
+              :on-add-filter-tags="updateGroupFilterTags"
+              :is-group-admin="isGroupAdmin"
+            />
+          </b-row>
         </b-col>
-        <b-col>
-          <div class="mt-2 mb-2 d-flex align-items-center">
+        <b-col class="tag-container">
+          <div class="mx-2 mb-2 d-flex align-items-center">
             <ClassificationsDropdown
               v-model="selectedLabel"
               @input="() => addTagToSelectedTrack(selectedLabel)"
@@ -189,41 +194,44 @@
             </b-button-group>
           </b-row>
         </b-col>
+        <b-col lg="4" class="mb-4">
+          <Playlist
+            :recording-date-time="recording.recordingDateTime"
+            :url="url"
+            :delete-recording="deleteRecording"
+            :is-group-admin="isGroupAdmin"
+          />
+          <div v-if="recording.processing || isQueued" class="mt-4">
+            <h1 class="mb-0 ml-2" v-if="isQueued">Queued...</h1>
+            <div
+              class="d-flex align-items-center justify-content-center"
+              v-else-if="recording.processing"
+            >
+              <b-spinner />
+              <h1 class="mb-0 ml-2">Processing...</h1>
+            </div>
+          </div>
+          <h3 class="pt-4">Cacophony Index</h3>
+          <CacophonyIndexGraph
+            v-if="cacophonyIndex"
+            class="mt-2"
+            :cacophony-index="cacophonyIndex"
+            :id="recording.id"
+          />
+          <div v-if="recording.location" class="mt-2">
+            <MapWithPoints
+              :height="200"
+              :points="[
+                {
+                  name: recording.deviceName,
+                  location: recording.location,
+                },
+              ]"
+            />
+          </div>
+          <RecordingProperties :recording="recording" />
+        </b-col>
       </b-row>
-    </b-col>
-    <b-col lg="4" class="mb-4">
-      <Playlist
-        :recording-date-time="recording.recordingDateTime"
-        :url="url"
-        :delete-recording="deleteRecording"
-        :is-group-admin="isGroupAdmin"
-      />
-      <div v-if="recording.processing || isQueued" class="mt-4">
-        <h1 class="mb-0 ml-2" v-if="isQueued">Queued...</h1>
-        <div
-          class="d-flex align-items-center justify-content-center"
-          v-else-if="recording.processing"
-        >
-          <b-spinner />
-          <h1 class="mb-0 ml-2">Processing...</h1>
-        </div>
-      </div>
-      <h3 class="pt-4">Cacophony Index</h3>
-      <CacophonyIndexGraph
-        v-if="cacophonyIndex"
-        class="mt-2"
-        :cacophony-index="cacophonyIndex"
-        :id="recording.id"
-      />
-      <div v-if="recording.location" class="mt-2">
-        <MapWithPoints
-          :height="200"
-          :points="[
-            { name: recording.deviceName, location: recording.location },
-          ]"
-        />
-      </div>
-      <RecordingProperties :recording="recording" />
     </b-col>
   </b-row>
 </template>
@@ -241,7 +249,7 @@ import {
 
 import api from "@api";
 import store from "@/stores";
-import { shouldViewAsSuperUser, useState, UUIDv4 } from "@/utils";
+import { useState, UUIDv4 } from "@/utils";
 import { TagColours } from "@/const";
 
 import AudioPlayer from "../Audio/AudioPlayer.vue";
@@ -253,8 +261,8 @@ import RecordingProperties from "../Video/RecordingProperties.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import Help from "@/components/Help.vue";
 
-import { ApiTrackResponse, ApiTrackRequest } from "@typedefs/api/track";
-import { ApiTrackTagAttributes } from "@typedefs/api/trackTag";
+import { ApiTrackResponse, ApiTrackDataRequest } from "@typedefs/api/track";
+import { ApiTrackTag, ApiTrackTagAttributes } from "@typedefs/api/trackTag";
 import {
   ApiTrackTagRequest,
   ApiTrackTagResponse,
@@ -263,6 +271,7 @@ import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
 import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
+import { ApiGroupResponse } from "@typedefs/api/group";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -286,7 +295,7 @@ export type AudioTracks = Map<TrackId, AudioTrack>;
 
 const fetchAudioBuffer = async (url: string) => {
   const response = await fetch(url);
-  const arrayBuffer = await response.arrayBuffer();
+  const arrayBuffer = await response.blob();
   return arrayBuffer;
 };
 
@@ -324,8 +333,15 @@ export default defineComponent({
       // props.audioUrl ? props.audioUrl : props.audioRawUrl
       props.audioRawUrl ? props.audioRawUrl : props.audioUrl
     );
-    const buffer = ref<ArrayBuffer>(null);
-    const [sampleRate, setSampleRate] = useState<number>(null);
+    const buffer = ref<Blob>(null);
+    const [sampleRate, setSampleRate] = useState<number>(
+      localStorage.getItem("audio-sample-rate")
+        ? parseInt(localStorage.getItem("audio-sample-rate"))
+        : 24000
+    );
+    watch(sampleRate, (currSampleRate) => {
+      localStorage.setItem("audio-sample-rate", currSampleRate.toString());
+    });
 
     const savedColour = localStorage.getItem("audio-colour");
     const [colour, setColour] = useState(savedColour ? savedColour : "cool");
@@ -341,7 +357,6 @@ export default defineComponent({
         setDeleted(false);
         // const url = newUrl ? newUrl : newRawUrl;
         const url = newRawUrl ? newRawUrl : newUrl;
-        setSampleRate(null);
         buffer.value = await fetchAudioBuffer(url);
         setUrl(url);
       }
@@ -432,13 +447,13 @@ export default defineComponent({
     ): AudioTrack => {
       const displayTags = getDisplayTags(track);
       return {
-        ...track,
-        ...{ start: track.start ? track.start : 0 },
-        ...{ end: track.end ? track.end : 0 },
+        deleted: false,
         colour: TagColours[index % TagColours.length],
         displayTags,
         confirming: false,
-        deleted: false,
+        ...track,
+        ...{ start: track.start ? track.start : 0 },
+        ...{ end: track.end ? track.end : 0 },
       };
     };
 
@@ -452,9 +467,10 @@ export default defineComponent({
           })
       );
 
-    const [tracks, setTracks] = useState<AudioTracks>(
-      mappedTracks(props.recording.tracks)
-    );
+    const [tracks, setTracks] = useState<AudioTracks>(new Map());
+    const displayTracks = computed(() => {
+      return mappedTracks(filterTracks([...tracks.value.values()]));
+    });
     const [selectedTrack, setSelectedTrack] = useState<AudioTrack>(null);
 
     const playTrack = (track?: AudioTrack) => {
@@ -514,7 +530,6 @@ export default defineComponent({
         // console.error(error);
       }
     };
-
     const modifyTrack = (
       trackId: TrackId,
       trackChanges: Partial<AudioTrack>
@@ -570,7 +585,7 @@ export default defineComponent({
         tag.automatic
       );
       if (response.success) {
-        const newTag: ApiTrackTagResponse = {
+        const newTag = {
           ...tag,
           id: response.result.trackTagId ?? 0,
           trackId,
@@ -578,7 +593,7 @@ export default defineComponent({
           userId,
           automatic,
           userName: username,
-        };
+        } as ApiTrackTag;
         const currTags = track.tags.filter((tag) => tag.userId !== userId);
         const newTags = [...currTags, newTag];
         const taggedTrack = modifyTrack(trackId, {
@@ -688,11 +703,11 @@ export default defineComponent({
 
     const addTagToSelectedTrack = async (tag: string) => {
       if (selectedTrack.value) {
+        let track = selectedTrack.value;
         if (selectedTrack.value.id === -1) {
-          const track = await addTrack(selectedTrack.value);
-          setSelectedTrack(track);
+          track = await addTrack(selectedTrack.value);
         }
-        const newTrack = await addTagToTrack(selectedTrack.value.id, tag);
+        const newTrack = await addTagToTrack(track.id, tag);
         setSelectedTrack(newTrack);
       }
     };
@@ -714,6 +729,36 @@ export default defineComponent({
             setSelectedTrack(newTrack);
           }
         }
+      }
+    };
+
+    const updateTrack = async (
+      trackId: TrackId,
+      trackData: ApiTrackDataRequest
+    ) => {
+      const response = await api.recording.updateTrack(
+        trackId,
+        props.recording.id,
+        trackData
+      );
+      if (response.success) {
+        // update local state
+        setTracks((draftTracks) => {
+          const track = draftTracks.get(trackId);
+
+          draftTracks.set(
+            trackId,
+            produce(track, () => ({
+              ...track,
+              ...trackData,
+              start: trackData.start_s,
+              end: trackData.end_s,
+            }))
+          );
+        });
+        return { success: true };
+      } else {
+        return { success: false };
       }
     };
 
@@ -769,18 +814,28 @@ export default defineComponent({
     const [cacophonyIndex, setCacophonyIndex] = useState(
       props.recording.cacophonyIndex
     );
-
-    watch(
-      () => props.recording,
-      () => {
-        setTracks(mappedTracks(props.recording.tracks));
-        setSelectedTrack(null);
-        setCacophonyIndex(props.recording.cacophonyIndex);
-      },
-      {
-        deep: true,
+    const group = ref<ApiGroupResponse>(null);
+    const filteredAudioTags = ref<string[]>([]);
+    const filterTracks = (tracks: (ApiTrackResponse | AudioTrack)[]) => {
+      const tags = filteredAudioTags.value;
+      if (tags) {
+        const filtered = tracks.filter(
+          (track) =>
+            !track.tags.some((tag) => {
+              if (tag.automatic) {
+                return tag.data.name === "Master"
+                  ? tags.includes(tag.what)
+                  : false;
+              } else {
+                tags.includes(tag.what);
+              }
+            }) || track.tags.some((tag) => !tag.automatic)
+        );
+        return filtered;
       }
-    );
+      return tracks;
+    };
+
     watch(tracks, () => {
       if (selectedTrack.value) {
         setSelectedTrack(tracks.value.get(selectedTrack.value.id));
@@ -902,16 +957,31 @@ export default defineComponent({
       buffer.value = await fetchAudioBuffer(url.value);
       const response = await api.groups.getGroupById(props.recording.groupId);
       if (response.success) {
-        filterHuman.value =
-          response.result.group.settings?.filterHuman ?? false;
-        if (shouldViewAsSuperUser()) {
-          isGroupAdmin.value = true;
-        } else {
-          isGroupAdmin.value = response.result.group.admin;
+        group.value = response.result.group;
+        const settings = response.result.group.settings;
+        if (settings) {
+          filterHuman.value = settings.filterHuman ?? false;
+          filteredAudioTags.value = settings.filteredAudioTags ?? [];
         }
-      } else {
-        throw response.result;
+        isGroupAdmin.value = response.result.group.admin;
       }
+      watch(filteredAudioTags, () => {
+        const currTrack = selectedTrack.value;
+        if (currTrack && !tracks.value.has(currTrack.id)) {
+          setSelectedTrack(null);
+        }
+      });
+      watch(
+        () => [props.recording],
+        () => {
+          setTracks(mappedTracks(filterTracks(props.recording.tracks)));
+          setSelectedTrack(null);
+          setCacophonyIndex(props.recording.cacophonyIndex);
+        },
+        {
+          immediate: true,
+        }
+      );
     });
 
     const isQueued = computed(() => {
@@ -925,13 +995,24 @@ export default defineComponent({
       );
     });
 
+    const updateGroupFilterTags = async (tags: string[]) => {
+      if (group.value && isGroupAdmin.value) {
+        const res = await api.groups.updateGroupSettings(group.value.id, {
+          filteredAudioTags: tags,
+        });
+        if (res.success) {
+          filteredAudioTags.value = tags;
+        }
+      }
+    };
+
     return {
       url,
       buffer,
       labels: buttonLabels,
       cacophonyIndex,
       deleted,
-      tracks,
+      tracks: displayTracks,
       isGroupAdmin,
       isQueued,
       selectedTrack,
@@ -948,11 +1029,15 @@ export default defineComponent({
       addTagToTrack,
       addTrack,
       deleteTrack,
+      updateTrack,
       deleteTrackTag,
       deleteTagFromSelectedTrack,
       deleteRecording,
       undoDeleteRecording,
       undoDeleteTrack,
+      updateGroupFilterTags,
+      group,
+      filteredAudioTags,
     };
   },
 });
@@ -963,8 +1048,8 @@ export default defineComponent({
 @import "~bootstrap/scss/mixins";
 
 @include media-breakpoint-down(lg) {
-  .bottom-container {
-    flex-direction: column-reverse;
+  .tag-container {
+    order: -1;
   }
 }
 .audio-recording-container {
@@ -1003,7 +1088,7 @@ export default defineComponent({
     }
   }
   .redacted {
-    height: 343px;
+    height: 589px;
     display: flex;
     flex-direction: column;
   }
@@ -1023,9 +1108,6 @@ export default defineComponent({
   }
   h4 {
     font-size: 0.9em;
-  }
-  .classification-header {
-    font-weight: bold;
   }
 
   .track-time {

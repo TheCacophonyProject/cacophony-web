@@ -74,6 +74,26 @@
               >
                 Multiple animals
               </b-dropdown-item>
+
+              <b-dropdown-item
+                v-b-tooltip.hover.left="'There is an animal inside a trap/area'"
+                @click="addInsideTag"
+              >
+                Inside
+              </b-dropdown-item>
+
+              <b-dropdown-item
+                v-b-tooltip.hover.left="
+                  'There is an animal outside a trap/area'
+                "
+                @click="addOutsideTag"
+              >
+                Outside
+              </b-dropdown-item>
+
+              <b-dropdown-item @click="addIncursionTag">
+                Incursion
+              </b-dropdown-item>
             </b-dropdown>
           </b-button-group>
         </b-col>
@@ -239,6 +259,15 @@ export default {
     },
     addRequiresReviewTag: function () {
       this.addTag("requires review");
+    },
+    addInsideTag: function () {
+      this.addTag("inside");
+    },
+    addOutsideTag: function () {
+      this.addTag("outside");
+    },
+    addIncursionTag: function () {
+      this.addTag("incursion");
     },
     addTag: function (label) {
       this.$emit("addTag", {

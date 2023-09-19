@@ -157,7 +157,6 @@ export default {
       //alertToDeleteId = data.item.id
     },
     async removeAlert(id: AlertId) {
-      console.log(id);
       const response = await api.alerts.removeAlert(id);
       if (response.success) {
         this.$emit("alerts-changed");

@@ -285,7 +285,7 @@ export default {
         if (response.success) {
           this.users = response.result.usersList
             .map(({ userName, id, email }) => ({
-              name: userName,
+              name: `${userName} ${email && `<${email}>`}`,
               email,
               id,
             }))
