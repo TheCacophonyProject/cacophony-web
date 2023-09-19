@@ -4,6 +4,8 @@
 FROM cacophonyproject/server-base:ubuntu2204_amd64
 # Use for arm64 dev environments
 #FROM cacophonyproject/server-base:ubuntu2204_arm64
+RUN apt-get update
+RUN apt-get -y install ffmpeg
 
 WORKDIR /app
 

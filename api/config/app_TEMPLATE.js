@@ -74,5 +74,5 @@ export default {
   database,
   development: database,
   influx,
-  deviceErrorIgnoreList
+  deviceErrorIgnoreList,
 };

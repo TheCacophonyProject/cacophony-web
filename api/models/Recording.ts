@@ -265,6 +265,7 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
   isValidTagMode: (mode: TagMode) => boolean;
   processingAttributes: string[];
   processingStates: {
+    [RecordingType.InfraredVideo]: string[];
     [RecordingType.ThermalRaw]: string[];
     [RecordingType.Audio]: string[];
   };
@@ -615,6 +616,8 @@ from (
     let nextState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
       nextState = Recording.finishedState(this.type);
+    } else if (this.processingState == RecordingProcessingState.ReTrack) {
+      nextState = RecordingProcessingState.Analyse;
     } else {
       const job_index = jobs.indexOf(this.processingState);
       if (job_index == -1) {
@@ -1282,7 +1285,14 @@ from (
   ];
 
   Recording.processingStates = {
+    irRaw: [
+      RecordingProcessingState.ReTrack,
+      RecordingProcessingState.Tracking,
+      RecordingProcessingState.AnalyseThermal,
+      RecordingProcessingState.Finished,
+    ],
     thermalRaw: [
+      RecordingProcessingState.ReTrack,
       RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,

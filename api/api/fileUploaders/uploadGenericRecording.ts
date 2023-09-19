@@ -573,7 +573,7 @@ export const uploadGenericRecording =
       setInitialProcessingState(
         recordingTemplate,
         data,
-        wouldHaveSuppliedTracksWithPredictions
+        wouldHaveSuppliedTracks
       );
 
       const [recording, _station] = await Promise.all([
@@ -648,6 +648,8 @@ const recordingUploadedState = (type: RecordingType) => {
     return RecordingProcessingState.Analyse;
   } else if (type === RecordingType.ThermalRaw) {
     return RecordingProcessingState.Tracking;
+  } else if (type === RecordingType.InfraredVideo) {
+    return RecordingProcessingState.Tracking;
   }
   return RecordingProcessingState.Finished;
 };
@@ -685,11 +687,11 @@ const setInitialProcessingState = (
     ) {
       if (
         hasSuppliedTracks &&
-        recordingTemplate.type === RecordingType.ThermalRaw
+        (recordingTemplate.type === RecordingType.ThermalRaw ||
+          recordingTemplate.type === RecordingType.InfraredVideo)
       ) {
-        // NOTE: If there are supplied tracks, we have already done tracking on the device, so skip to analyse state.
-        recordingTemplate.processingState =
-          RecordingProcessingState.AnalyseThermal;
+        // NOTE: If there are supplied tracks, we have already done tracking on the device, so do post processing if required.
+        recordingTemplate.processingState = RecordingProcessingState.ReTrack;
       } else {
         recordingTemplate.processingState = recordingUploadedState(data.type);
       }

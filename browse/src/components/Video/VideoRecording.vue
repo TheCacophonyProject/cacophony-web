@@ -4,26 +4,40 @@
   >
     <b-row class="no-gutters">
       <b-col cols="12" lg="8">
-        <CptvPlayer
-          ref="player"
-          :cptv-url="videoRawUrl"
-          :cptv-size="videoRawSize"
-          :tracks="tracks"
-          :user-files="false"
-          :recording-id="recording.id"
-          :known-duration="recording.duration"
-          :current-track="selectedTrack"
-          :colours="colours"
-          :recently-added-tag="recentlyAddedTrackTag"
-          :can-go-backwards="canGoBackwardInSearch"
-          :can-go-forwards="canGoForwardInSearch"
-          :export-requested="requestedExport"
-          @track-selected="trackSelected"
-          @ready-to-play="playerReady"
-          @request-next-recording="nextRecording"
-          @request-prev-recording="prevRecording"
-          @export-complete="requestedExport = false"
-        />
+        <div v-if="isMP4">
+          <MPEGPlayer
+            ref="player"
+            :video-url="videoRawUrl"
+            :tracks="tracks"
+            @trackSelected="trackSelected"
+            :current-track="selectedTrack"
+            @request-next-recording="nextRecording"
+            @player-ready="playerReady"
+            :frame-rate="frameRate"
+          />
+        </div>
+        <div v-else>
+          <CptvPlayer
+            ref="player"
+            :cptv-url="videoRawUrl"
+            :cptv-size="videoRawSize"
+            :tracks="tracks"
+            :user-files="false"
+            :recording-id="recording.id"
+            :known-duration="recording.duration"
+            :current-track="selectedTrack"
+            :colours="colours"
+            :recently-added-tag="recentlyAddedTrackTag"
+            :can-go-backwards="canGoBackwardInSearch"
+            :can-go-forwards="canGoForwardInSearch"
+            :export-requested="requestedExport"
+            @track-selected="trackSelected"
+            @ready-to-play="playerReady"
+            @request-next-recording="nextRecording"
+            @request-prev-recording="prevRecording"
+            @export-complete="requestedExport = false"
+          />
+        </div>
       </b-col>
       <b-col cols="12" lg="4">
         <div v-if="tracks && tracks.length > 0" class="accordion">
@@ -121,6 +135,7 @@
 /* eslint-disable no-console */
 import RecordingControls from "./RecordingControls.vue";
 import TrackInfo from "./Track.vue";
+import MPEGPlayer from "./MPEGPlayer.vue";
 import CptvPlayer from "cptv-player-vue/src/CptvPlayer.vue";
 import RecordingProperties from "./RecordingProperties.vue";
 import { TagColours, WALLABY_GROUP } from "@/const";
@@ -139,6 +154,7 @@ import { FILTERED_TOOLTIP } from "../../const";
 export default {
   name: "VideoRecording",
   components: {
+    MPEGPlayer,
     RecordingControls,
     RecordingProperties,
     TrackInfo,
@@ -179,6 +195,16 @@ export default {
     };
   },
   computed: {
+    frameRate: function () {
+      // should get this from the actual files
+      if (this.isMP4) {
+        return 10;
+      }
+      return 9;
+    },
+    isMP4: function () {
+      return this.recording.type == RecordingType.InfraredVideo;
+    },
     tooltipTitle: function () {
       return FILTERED_TOOLTIP;
     },
@@ -186,7 +212,9 @@ export default {
       set: function (val) {
         localStorage.setItem("showFiltered", val);
         this.$store.state.User.userData.showFiltered = val;
-        this.$refs["player"].renderCurrentFrame(true);
+        if (!this.isMP4) {
+          this.$refs["player"].renderCurrentFrame(true);
+        }
         this.checkPreviousAndNextRecordings();
       },
       get: function () {
@@ -387,7 +415,7 @@ export default {
         await this.goToNextRecordingInList(direction, idsList);
       } else {
         const searchQueryCopy = JSON.parse(JSON.stringify(this.$route.query));
-        searchQueryCopy.type = RecordingType.ThermalRaw;
+        searchQueryCopy.type = this.recording.type;
         const resolvedTagMode = tagMode || searchQueryCopy.tagMode;
         const resolvedTags = tags || searchQueryCopy.tags;
         await this.getNextRecording(
@@ -462,7 +490,7 @@ export default {
       }
       params.order = JSON.stringify([["recordingDateTime", order]]);
       params.limit = 1;
-      params.type = RecordingType.ThermalRaw;
+      params.type = this.recording.type;
       params.hideFiltered = !this.$store.state.User.userData.showFiltered;
       params.countAll = false;
       delete params.offset;
