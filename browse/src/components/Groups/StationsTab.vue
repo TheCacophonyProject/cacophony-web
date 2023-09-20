@@ -50,8 +50,18 @@
           <template #cell(longitude)="data">
             <span v-html="Number(data.value).toFixed(5)" />
           </template>
+          <template #cell(recordingsCount)="data">
+            <span v-html="data.item.recordingsCount" />
+          </template>
           <template #cell(id)="data">
             <b-btn @click="renameStation(data)">Rename</b-btn>
+            <b-btn
+              v-if="data.item.recordingsCount === 0"
+              @click="() => removeStation(data.item.id)"
+              variant="danger"
+            >
+              Remove
+            </b-btn>
           </template>
         </b-table>
         <div class="bottom-buttons">
@@ -219,6 +229,11 @@ export default {
           sortable: true,
         },
         {
+          key: "recordingsCount",
+          label: "Total Recordings",
+          sortable: true,
+        },
+        {
           key: "latitude",
           label: "Latitude",
         },
@@ -230,19 +245,20 @@ export default {
       if (this.isGroupAdmin) {
         fields.push({
           key: "id",
-          label: "Rename",
+          label: "Edit",
         });
       }
       return fields;
     },
     stations() {
       return this.items
-        .map(({ name, location, id }) => ({
+        .map(({ name, location, id, recordingsCount }) => ({
           id,
           name,
           latitude: location.lat,
           longitude: location.lng,
           rename: "",
+          recordingsCount,
         }))
         .sort((a, b) => a.name.localeCompare(b.name));
     },
@@ -349,6 +365,10 @@ export default {
     renameStation(station) {
       this.renaming = true;
       this.stationToRename = station.item;
+    },
+    async removeStation(stationId: number) {
+      await api.station.deleteStationById(stationId);
+      this.$emit("change");
     },
     async doStationRename() {
       await api.station.renameStationById(

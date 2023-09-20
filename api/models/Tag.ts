@@ -62,6 +62,10 @@ export default function (sequelize, DataTypes): TagStatic {
       allowNull: false,
       defaultValue: false,
     },
+    comment: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     version: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -96,6 +100,7 @@ export default function (sequelize, DataTypes): TagStatic {
     "version",
     "createdAt",
     "taggerId",
+    "comment",
   ]);
 
   Tag.apiSettableFields = Object.freeze([
@@ -105,6 +110,7 @@ export default function (sequelize, DataTypes): TagStatic {
     "duration",
     "automatic",
     "version",
+    "comment",
   ]);
 
   return Tag;

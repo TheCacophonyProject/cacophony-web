@@ -86,6 +86,10 @@ export const mapStation = (station: Station): ApiStationResponse => {
   if (station.retiredAt) {
     stationResponse.retiredAt = station.retiredAt.toISOString();
   }
+  if (station.dataValues.recordingsCount !== undefined) {
+    stationResponse.recordingsCount = station.dataValues
+      .recordingsCount as number;
+  }
   return stationResponse;
 };
 
@@ -146,6 +150,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
+      debugger;
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });

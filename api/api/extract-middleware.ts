@@ -633,6 +633,18 @@ const getStations =
     }
     const allStationsOptions = {
       where: {},
+      attributes: {
+        include: [
+          [
+            models.sequelize.literal(`(
+        SELECT CAST(COUNT(*) AS INTEGER)
+        FROM "Recordings"
+        WHERE "Recordings"."StationId" = "Station"."id" AND "Recordings"."deletedAt" IS NULL
+      )`),
+            "recordingsCount",
+          ],
+        ],
+      },
       include: [
         {
           model: models.Group,
@@ -783,6 +795,25 @@ const getStation =
       };
     }
 
+    const recordingCountAttr = [
+      models.sequelize.literal(`(
+      SELECT CAST(COUNT(*) AS INTEGER)
+      FROM "Recordings"
+      WHERE "Recordings"."StationId" = "Station"."id" AND "Recordings"."deletedAt" IS NULL
+    )`),
+      "recordingsCount",
+    ];
+    console.log(getStationOptions);
+
+    if (getStationOptions.attributes) {
+      getStationOptions.attributes = [
+        ...getStationOptions.attributes,
+        recordingCountAttr,
+      ];
+    } else {
+      getStationOptions.attributes = { include: [recordingCountAttr] };
+    }
+
     if (context.onlyActive || !stationIsId) {
       (getStationOptions as any).where = (getStationOptions as any).where || {};
       (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
@@ -913,6 +944,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     attributes: [
       "id",
       "detail",
+      "comment",
       "taggerId",
       "automatic",
       "confidence",

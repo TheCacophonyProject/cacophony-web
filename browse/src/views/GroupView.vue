@@ -58,7 +58,7 @@
           @user-removed="(userId) => removedUser(userId)"
         />
       </tab-list-item>
-      <tab-list-item lazy>
+      <tab-list-item lazy v-if="visitsCount > 0">
         <template #title>
           <TabTemplate
             title="Visits"

@@ -42,6 +42,7 @@ export interface ApiStationResponse {
   updatedAt: IsoFormattedDateString;
   groupId: GroupId;
   groupName: string;
+  recordingsCount?: number;
 }
 
 export interface ApiStationSettings {

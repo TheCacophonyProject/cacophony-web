@@ -1009,6 +1009,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
     async (request: Request, response: Response) => {
       const stations = await response.locals.stations;
+      console.log(stations);
       return successResponse(response, "Got stations for group", {
         stations: mapStations(stations),
       });

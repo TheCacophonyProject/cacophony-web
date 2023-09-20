@@ -63,6 +63,7 @@
               :filtered-tags="filteredAudioTags"
               :on-add-filter-tags="updateGroupFilterTags"
               :is-group-admin="isGroupAdmin"
+              :set-filtered-noise="setFilteredNoise"
             />
           </b-row>
         </b-col>
@@ -201,23 +202,78 @@
             :delete-recording="deleteRecording"
             :is-group-admin="isGroupAdmin"
           />
-          <div v-if="recording.processing || isQueued" class="mt-4">
-            <h1 class="mb-0 ml-2" v-if="isQueued">Queued...</h1>
-            <div
-              class="d-flex align-items-center justify-content-center"
-              v-else-if="recording.processing"
-            >
-              <b-spinner />
-              <h1 class="mb-0 ml-2">Processing...</h1>
+          <div class="notes-container">
+            <div class="notes-header">
+              <label for="notes-textarea">Notes</label>
+            </div>
+            <div v-for="comment in comments" :key="comment.id">
+              <div>
+                <div class="d-flex justify-content-between">
+                  <div class="d-flex">
+                    <h4 class="mb-0">{{ comment.tagger }}</h4>
+                    <h4 class="text-secondary ml-1 mb-0">{{ comment.date }}</h4>
+                  </div>
+                  <div class="d-flex justify-self-end">
+                    <h4
+                      v-if="comment.tag !== 'comment'"
+                      class="comment-tag mb-0 mr-3"
+                    >
+                      {{ comment.tag }}
+                    </h4>
+                    <div
+                      v-if="userId === comment.taggerId"
+                      class="pointer text-secondary"
+                      role="button"
+                    >
+                      <font-awesome-icon
+                        icon="trash"
+                        size="1x"
+                        @click="() => deleteComment(comment.id)"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p>{{ comment.comment }}</p>
+            </div>
+
+            <b-form-textarea
+              id="notes-textarea"
+              rows="2"
+              no-resize
+              v-model="currComment"
+            />
+            <div class="d-flex justify-items-between pt-2">
+              <div class="d-flex align-items-center">
+                <label class="mb-0 pr-1">Label:</label>
+                <b-form-select
+                  v-model="currTag"
+                  :options="tags"
+                  placeholder="Label..."
+                  data-cy="tag-select"
+                />
+                <div
+                  class="pl-2 pr-2 pointer"
+                  role="button"
+                  v-if="currTag !== null"
+                  @click="() => (currTag = null)"
+                >
+                  <font-awesome-icon icon="times" />
+                </div>
+              </div>
+              <b-button
+                class="ml-auto"
+                variant="primary"
+                @click="
+                  () => {
+                    addRecordingTag();
+                  }
+                "
+              >
+                Submit
+              </b-button>
             </div>
           </div>
-          <h3 class="pt-4">Cacophony Index</h3>
-          <CacophonyIndexGraph
-            v-if="cacophonyIndex"
-            class="mt-2"
-            :cacophony-index="cacophonyIndex"
-            :id="recording.id"
-          />
           <div v-if="recording.location" class="mt-2">
             <MapWithPoints
               :height="200"
@@ -229,6 +285,36 @@
               ]"
             />
           </div>
+          <div v-if="recording.processing || isQueued" class="mt-4">
+            <h2 class="mb-0" v-if="isQueued">Queued for Processing...</h2>
+            <div
+              class="d-flex align-items-center justify-content-center"
+              v-else-if="recording.processing"
+            >
+              <b-spinner />
+              <h1 class="mb-0 ml-2">Processing...</h1>
+            </div>
+          </div>
+          <div
+            class="index-container pointer"
+            @click="() => (showCacophonyIndex = !showCacophonyIndex)"
+          >
+            <h3 class="pt-2">Cacophony Index</h3>
+            <div class="d-flex align-items-center pointer" role="button">
+              <font-awesome-icon
+                v-if="!showCacophonyIndex"
+                size="lg"
+                icon="angle-down"
+              />
+              <font-awesome-icon v-else size="lg" icon="angle-up" />
+            </div>
+          </div>
+          <CacophonyIndexGraph
+            v-if="cacophonyIndex && showCacophonyIndex"
+            class="mt-2"
+            :cacophony-index="cacophonyIndex"
+            :id="recording.id"
+          />
           <RecordingProperties :recording="recording" />
         </b-col>
       </b-row>
@@ -245,6 +331,7 @@ import {
   computed,
   ref,
   onMounted,
+  reactive,
 } from "@vue/composition-api";
 
 import api from "@api";
@@ -272,6 +359,7 @@ import { TrackId } from "@typedefs/api/common";
 import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { ApiGroupResponse } from "@typedefs/api/group";
+import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -366,6 +454,32 @@ export default defineComponent({
       const response = await api.recording.del(props.recording.id);
       if (response.success) {
         setDeleted(true);
+        // check if station is now empty and delete if it is
+        const response = await api.station.getStationById(
+          props.recording.stationId
+        );
+        if (response.success) {
+          const { station } = response.result;
+          if (station.recordingsCount === 0) {
+            //Prompt user to delete station
+
+            const shouldDelete = await context.root.$bvModal.msgBoxConfirm(
+              "This was the last recording on this station. Do you want to delete the station?",
+              {
+                title: "Delete Station",
+                okVariant: "danger",
+                okTitle: "Delete",
+                cancelTitle: "Cancel",
+                footerClass: "p-2",
+                hideHeaderClose: false,
+                centered: true,
+              }
+            );
+            if (shouldDelete) {
+              await api.station.deleteStationById(station.id);
+            }
+          }
+        }
       }
     };
 
@@ -456,16 +570,36 @@ export default defineComponent({
         ...{ end: track.end ? track.end : 0 },
       };
     };
+    const showFilteredNoise = ref(false);
+    const setFilteredNoise = (val: boolean) => {
+      showFilteredNoise.value = val;
+    };
 
     const mappedTracks = (tracks: ApiTrackResponse[]) =>
       new Map(
-        tracks
-          .filter((val) => !val.filtered)
-          .map((track, index) => {
-            const audioTrack = createAudioTrack(track, index);
-            return [track.id, audioTrack];
-          })
+        tracks.map((track, index) => {
+          const audioTrack = createAudioTrack(track, index);
+          return [track.id, audioTrack];
+        })
       );
+    const filterTracks = (tracks: (ApiTrackResponse | AudioTrack)[]) => {
+      const tags = filteredAudioTags.value ?? [];
+      const filtered = tracks
+        .filter(
+          (track) =>
+            !track.tags.some((tag) => {
+              if (tag.automatic) {
+                return tag.data.name === "Master"
+                  ? tags.includes(tag.what)
+                  : false;
+              } else {
+                tags.includes(tag.what);
+              }
+            }) || track.tags.some((tag) => !tag.automatic)
+        )
+        .filter((track) => showFilteredNoise.value || !track.filtered);
+      return filtered;
+    };
 
     const [tracks, setTracks] = useState<AudioTracks>(new Map());
     const displayTracks = computed(() => {
@@ -814,27 +948,9 @@ export default defineComponent({
     const [cacophonyIndex, setCacophonyIndex] = useState(
       props.recording.cacophonyIndex
     );
+    const showCacophonyIndex = ref(false);
     const group = ref<ApiGroupResponse>(null);
     const filteredAudioTags = ref<string[]>([]);
-    const filterTracks = (tracks: (ApiTrackResponse | AudioTrack)[]) => {
-      const tags = filteredAudioTags.value;
-      if (tags) {
-        const filtered = tracks.filter(
-          (track) =>
-            !track.tags.some((tag) => {
-              if (tag.automatic) {
-                return tag.data.name === "Master"
-                  ? tags.includes(tag.what)
-                  : false;
-              } else {
-                tags.includes(tag.what);
-              }
-            }) || track.tags.some((tag) => !tag.automatic)
-        );
-        return filtered;
-      }
-      return tracks;
-    };
 
     watch(tracks, () => {
       if (selectedTrack.value) {
@@ -974,7 +1090,7 @@ export default defineComponent({
       watch(
         () => [props.recording],
         () => {
-          setTracks(mappedTracks(filterTracks(props.recording.tracks)));
+          setTracks(mappedTracks(props.recording.tracks));
           setSelectedTrack(null);
           setCacophonyIndex(props.recording.cacophonyIndex);
         },
@@ -1006,17 +1122,99 @@ export default defineComponent({
       }
     };
 
+    const formatDateStr = (date: string) => {
+      const dateObj = new Date(date);
+      const day = dateObj.getDate();
+      const month = dateObj.getMonth() + 1;
+      const year = dateObj.getFullYear();
+      const hour = dateObj.getHours();
+      const min = dateObj.getMinutes();
+      return `${day}/${month}/${year} ${hour}:${min
+        .toString()
+        .padStart(2, "0")}`;
+    };
+
+    const tags = ["cool", "requires review"];
+    const currComment = ref("");
+    const currTag = ref(null);
+    const comments = ref<
+      {
+        id: string;
+        taggerId: number;
+        tag: string;
+        comment?: string;
+        tagger: string;
+        date: string;
+      }[]
+    >([]);
+    watch(
+      () => props.recording,
+      (recording) => {
+        comments.value = recording.tags.map((tag) => ({
+          id: tag.id.toString(),
+          taggerId: tag.taggerId,
+          tag: tag.detail,
+          comment: tag.comment,
+          tagger: tag.automatic ? "Automatic" : tag.taggerName,
+          date: formatDateStr(tag.createdAt),
+        }));
+      },
+      { immediate: true }
+    );
+    const addRecordingTag = async () => {
+      const detail = currTag.value ?? "comment";
+      const comment = currComment.value ?? undefined;
+      const tagReq: ApiRecordingTagRequest = {
+        detail,
+        confidence: 1,
+        comment,
+        automatic: false,
+      };
+
+      const res = await api.recording.addRecordingTag(
+        tagReq,
+        props.recording.id
+      );
+
+      if (res.success) {
+        const newComment = {
+          id: res.result.tagId.toString(),
+          tag: detail,
+          comment,
+          tagger: userName,
+          taggerId: userId,
+          date: formatDateStr(new Date().toISOString()),
+        };
+        comments.value = [...comments.value, newComment];
+        currComment.value = "";
+        currTag.value = null;
+      }
+    };
+
+    const deleteComment = async (id: string) => {
+      const res = await api.recording.deleteRecordingTag(
+        Number(id),
+        props.recording.id
+      );
+
+      if (res.success) {
+        comments.value = comments.value.filter((comment) => comment.id !== id);
+      }
+    };
+
     return {
       url,
       buffer,
       labels: buttonLabels,
       cacophonyIndex,
+      showCacophonyIndex,
       deleted,
       tracks: displayTracks,
       isGroupAdmin,
       isQueued,
       selectedTrack,
       selectedLabel,
+      showFilteredNoise,
       usersTag,
       sampleRate,
       setSampleRate,
@@ -1025,8 +1223,15 @@ export default defineComponent({
       playTrack,
       togglePinTag,
       toggleAttributeToTrackTag,
+      tags,
+      comments,
+      currTag,
+      currComment,
+      deleteComment,
+      addRecordingTag,
       addTagToSelectedTrack,
       addTagToTrack,
+      setFilteredNoise,
       addTrack,
       deleteTrack,
       updateTrack,
@@ -1037,6 +1242,7 @@ export default defineComponent({
       undoDeleteTrack,
       updateGroupFilterTags,
       group,
+      userId,
       filteredAudioTags,
     };
   },
@@ -1147,6 +1353,36 @@ export default defineComponent({
   }
   .tag-cross:enabled {
     color: #e74c3c;
+  }
+  .index-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    justify-content: space-between;
+    border-bottom: 1px solid #e8e8e8;
+    padding-top: 1.5em;
+    padding-bottom: 0.5em;
+    margin-bottom: 0.5em;
+    h3 {
+      margin-bottom: 0;
+    }
+  }
+  .notes-container {
+    border: solid 1px #e8e8e8;
+    padding: 1em;
+    border-radius: 0.5em;
+    margin-top: 0.2em;
+  }
+  .comment-tag {
+    padding: 0.2em 0.5em;
+    background: #545454;
+    border-radius: 0.5em;
+    font-weight: bold;
+    color: white;
+  }
+  .notes-header {
+    border-bottom: solid 1px #e8e8e8;
+    margin-bottom: 1em;
   }
 }
 </style>

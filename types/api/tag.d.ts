@@ -7,6 +7,7 @@ export interface ApiRecordingTagRequest {
   duration?: number; // Used for audio tags
   automatic?: boolean;
   version?: number;
+  comment?: string;
 }
 
 export interface ApiRecordingTagResponse {
@@ -18,6 +19,7 @@ export interface ApiRecordingTagResponse {
   startTime?: number;
   duration?: number;
   taggerName?: string;
+  comment?: string;
   automatic?: boolean;
   version?: number;
   createdAt: IsoFormattedDateString;

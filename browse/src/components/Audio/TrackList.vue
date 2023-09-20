@@ -33,6 +33,14 @@
             @input="onAddFilterTags($event)"
           />
         </div>
+        <div>
+          <input type="checkbox" v-model="showFilteredNoise" />
+          <Label
+            role="button"
+            @click="() => (showFilteredNoise = !showFilteredNoise)"
+            >Show Filtered Noise</Label
+          >
+        </div>
       </Dropdown>
     </div>
     <b-row id="classification-list">
@@ -258,7 +266,7 @@ import { PropType } from "vue";
 import { defineComponent, onMounted, ref, watch } from "@vue/composition-api";
 import Help from "@/components/Help.vue";
 
-import { useState } from "@/utils";
+import { debounce, useState } from "@/utils";
 
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 import Dropdown from "../Dropdown.vue";
@@ -326,6 +334,10 @@ export default defineComponent({
       type: Boolean,
       default: false,
     },
+    setFilteredNoise: {
+      type: Function as PropType<(show: boolean) => void>,
+      default: () => {},
+    },
   },
   computed: {
     isSuperUserAndViewingAsSuperUser(): boolean {
@@ -366,7 +378,11 @@ export default defineComponent({
       await props.addTagToTrack(track.id, tag.what);
     };
     const toggledTrackHistory = ref<TrackId[]>([]);
-    //TODO: Add filtering tracks
+    const showFilteredNoise = ref(false);
+    watch(showFilteredNoise, (val) => {
+      props.setFilteredNoise(val);
+    });
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const filter = ref(TrackListFilter.All);
     const filterTracks = (track: AudioTrack) => {
@@ -441,6 +457,7 @@ export default defineComponent({
       setFilter,
       toggledTrackHistory,
       confirmTrack,
+      showFilteredNoise,
       filter,
       filterTracks,
       sortTracks,
