@@ -25,6 +25,7 @@ describe("Stations: updating", () => {
     automatic: false,
     groupId: NOT_NULL,
     groupName: NOT_NULL_STRING,
+    recordingsCount: NOT_NULL,
   };
 
   before(() => {

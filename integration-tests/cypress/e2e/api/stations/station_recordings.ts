@@ -28,6 +28,7 @@ const templateExpectedStation = {
   needsRename: true,
   groupId: NOT_NULL,
   groupName: NOT_NULL_STRING,
+  recordingsCount: NOT_NULL,
 };
 
 describe("Stations: assign recordings to stations", () => {
