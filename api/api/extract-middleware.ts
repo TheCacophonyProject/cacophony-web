@@ -610,6 +610,15 @@ const getDevices =
     });
   };
 
+const StationRecordingsAttr = [
+  models.sequelize.literal(`(
+        SELECT CAST(COUNT(*) AS INTEGER)
+        FROM "Recordings"
+        WHERE "Recordings"."StationId" = "Station"."id" AND "Recordings"."deletedAt" IS NULL
+      )`),
+  "recordingsCount",
+];
+
 const getStations =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
   (
@@ -634,16 +643,7 @@ const getStations =
     const allStationsOptions = {
       where: {},
       attributes: {
-        include: [
-          [
-            models.sequelize.literal(`(
-        SELECT CAST(COUNT(*) AS INTEGER)
-        FROM "Recordings"
-        WHERE "Recordings"."StationId" = "Station"."id" AND "Recordings"."deletedAt" IS NULL
-      )`),
-            "recordingsCount",
-          ],
-        ],
+        include: [StationRecordingsAttr],
       },
       include: [
         {
@@ -795,23 +795,15 @@ const getStation =
       };
     }
 
-    const recordingCountAttr = [
-      models.sequelize.literal(`(
-      SELECT CAST(COUNT(*) AS INTEGER)
-      FROM "Recordings"
-      WHERE "Recordings"."StationId" = "Station"."id" AND "Recordings"."deletedAt" IS NULL
-    )`),
-      "recordingsCount",
-    ];
     console.log(getStationOptions);
 
     if (getStationOptions.attributes) {
       getStationOptions.attributes = [
         ...getStationOptions.attributes,
-        recordingCountAttr,
+        StationRecordingsAttr,
       ];
     } else {
-      getStationOptions.attributes = { include: [recordingCountAttr] };
+      getStationOptions.attributes = { include: [StationRecordingsAttr] };
     }
 
     if (context.onlyActive || !stationIsId) {

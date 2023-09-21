@@ -57,6 +57,7 @@ export const mapStation = (station: Station): ApiStationResponse => {
     location: station.location,
     updatedAt: station.updatedAt.toISOString(),
     automatic: station.automatic,
+    recordingsCount: 0,
   };
   if (station.lastUpdatedById) {
     stationResponse.lastUpdatedById = station.lastUpdatedById;
