@@ -30,6 +30,7 @@
           <StationLink
             :group-name="groupName"
             :station-name="stationName"
+            :station-id="stationId"
             context="recordings"
             :type="recording && recording.type"
           />
@@ -227,6 +228,9 @@ export default {
     },
     stationName(): string {
       return (this.recording as ApiRecordingResponse).stationName;
+    },
+    stationId(): number {
+      return (this.recording as ApiRecordingResponse).stationId;
     },
     groupName(): string {
       return (this.recording as ApiRecordingResponse).groupName;

@@ -271,7 +271,7 @@ export default {
     stationsForMap() {
       // Stations lat/lng as leaflet lat/lng objects
       return this.stations.map(({ name, latitude, longitude, id }) => ({
-        name,
+        name: name + `_${id}`,
         location: latLng(latitude, longitude),
         id,
       }));

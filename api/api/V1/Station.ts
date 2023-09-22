@@ -544,7 +544,6 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async (request: Request, response: Response) => {
-      console.log("hi");
       const cacophonyIndexBulk = await models.Station.getCacophonyIndexBulk(
         response.locals.requestUser,
         response.locals.station.id,

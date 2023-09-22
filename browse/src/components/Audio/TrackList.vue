@@ -1,14 +1,14 @@
 <template>
   <b-container class="tracklist-container">
-    <div class="classification-header mb-2">
-      <h2 class="mb-0">Classifications</h2>
+    <div class="classification-header">
+      <h3 class="mb-0">Classifications</h3>
       <Dropdown>
         <template #button-content>
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
           >
             <path
               fill="currentColor"
@@ -477,6 +477,8 @@ export default defineComponent({
 .track-container-side {
   flex-direction: column;
   align-items: flex-end;
+  padding-right: 1.4em;
+  padding-bottom: 0.4em;
 }
 
 .collapsed > .when-open,
@@ -497,7 +499,7 @@ export default defineComponent({
 #classification-list {
   overflow-y: auto;
   max-height: 22vh;
-  min-height: 350px;
+  min-height: 250px;
 }
 
 .tag-history-toggle {
@@ -577,7 +579,9 @@ export default defineComponent({
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.8em;
+  margin-bottom: 1em;
+  padding-bottom: 0.4em;
+  border-bottom: solid #e8e8e8 1px;
 }
 .classification-filter-container {
   width: 20em;

@@ -145,13 +145,17 @@ const recordingLabelsBase = [
   },
   {
     value: "cool",
-    text: "Cool video",
+    text: "Cool",
     specified: true,
   },
   {
     value: "requires review",
     text: "Flagged for review",
     specified: true,
+  },
+  {
+    value: "note",
+    text: "Note",
   },
   // inside, outside, incursion
   {

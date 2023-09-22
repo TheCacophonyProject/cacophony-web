@@ -227,29 +227,24 @@ export default {
       return hasAudio || hasUnknown;
     },
     tabNames() {
+      const permissions = ["devices", "stations", "recordings", "analysis"];
+
       if (this.isGroupAdmin) {
+        permissions.unshift("users");
         if (this.hasAudioOrUnknownDevices) {
-          return [
-            "manual-uploads",
-            "users",
-            "visits",
-            "devices",
-            "stations",
-            "recordings",
-            "analysis",
-          ];
-        } else {
-          return [
-            "users",
-            "visits",
-            "devices",
-            "stations",
-            "recordings",
-            "analysis",
-          ];
+          permissions.unshift("manual-uploads");
         }
       }
-      return ["visits", "devices", "stations", "recordings", "analysis"];
+
+      if (
+        this.devices.some(
+          (device: ApiDeviceResponse) => device.type === DeviceType.Thermal
+        )
+      ) {
+        permissions.splice(1, 0, "visits");
+      }
+
+      return permissions;
     },
     nonRetiredStationsCount(): number {
       return (
@@ -431,6 +426,7 @@ export default {
       this.devicesLoading = false;
     },
     async fetchStations() {
+      debugger;
       this.stationsLoading = true;
       {
         const stationsResponse = await api.groups.getStationsForGroup(

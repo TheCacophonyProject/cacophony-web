@@ -19,7 +19,7 @@
             :update-track="updateTrack"
           />
           <b-row
-            v-else-if="deleted"
+            v-else-if="deleted && !deletedStation"
             class="undo-delete w-100 justify-content-center align-items-center"
             @click="undoDeleteRecording"
             role="button"
@@ -51,149 +51,153 @@
       </b-row>
       <b-row class="bottom-container" v-show="!deleted">
         <b-col lg="4">
-          <b-row>
-            <TrackList
-              :audio-tracks="tracks"
-              :selected-track="selectedTrack"
-              :play-track="playTrack"
-              :delete-track="deleteTrack"
-              :undo-delete-track="undoDeleteTrack"
-              :add-tag-to-track="addTagToTrack"
-              :redacted="recording.redacted"
-              :filtered-tags="filteredAudioTags"
-              :on-add-filter-tags="updateGroupFilterTags"
-              :is-group-admin="isGroupAdmin"
-              :set-filtered-noise="setFilteredNoise"
-            />
-          </b-row>
-        </b-col>
-        <b-col class="tag-container">
-          <div class="mx-2 mb-2 d-flex align-items-center">
-            <ClassificationsDropdown
-              v-model="selectedLabel"
-              @input="() => addTagToSelectedTrack(selectedLabel)"
-              :disabled="!selectedTrack"
-              :exclude="['part', 'interesting', 'poor tracking']"
-            />
-            <div class="button-selectors d-flex">
-              <b-button
-                class="ml-2 tag-pin text-primary"
-                :disabled="!usersTag"
-                @click="togglePinTag(usersTag.what)"
-              >
-                <font-awesome-icon
-                  icon="thumbtack"
-                  size="1x"
-                  v-b-tooltip.hover
-                  title="Pin current tag to buttons"
-                />
-              </b-button>
-              <b-button
-                class="ml-2 tag-cross text-danger"
-                :disabled="!usersTag"
-                @click="deleteTagFromSelectedTrack()"
-              >
-                <font-awesome-icon
-                  icon="times"
-                  size="1x"
-                  v-b-tooltip.hover
-                  title="Remove Tag from Track"
-                />
-              </b-button>
-            </div>
+          <div class="basic-container h-100">
+            <b-row>
+              <TrackList
+                :audio-tracks="tracks"
+                :selected-track="selectedTrack"
+                :play-track="playTrack"
+                :delete-track="deleteTrack"
+                :undo-delete-track="undoDeleteTrack"
+                :add-tag-to-track="addTagToTrack"
+                :redacted="recording.redacted"
+                :filtered-tags="filteredAudioTags"
+                :on-add-filter-tags="updateGroupFilterTags"
+                :is-group-admin="isGroupAdmin"
+                :set-filtered-noise="setFilteredNoise"
+              />
+            </b-row>
           </div>
-          <LabelButtonGroup
-            :labels="labels"
-            :add-tag-to-selected-track="addTagToSelectedTrack"
-            :delete-tag-from-selected-track="deleteTagFromSelectedTrack"
-            :disabled="!selectedTrack"
-            :selected-label="selectedLabel"
-            :toggle-pin-tag="togglePinTag"
-          />
-          <b-row
-            class="
-              d-flex
-              mt-2
-              mb-4
-              flex-wrap
-              justify-content-center
-              button-selectors
-            "
-          >
-            <h3 class="w-100 ml-4">Attributes</h3>
-            <b-button-group class="mr-2">
-              <b-button
-                :class="{
-                  highlight:
-                    usersTag &&
-                    typeof usersTag.data === 'object' &&
-                    usersTag.data.gender === 'male',
-                }"
-                @click="
-                  toggleAttributeToTrackTag(
-                    { gender: 'male' },
-                    selectedTrack.id,
-                    usersTag.id
-                  )
-                "
-                :disabled="!usersTag"
-                >Male</b-button
-              >
-              <b-button
-                :class="{
-                  highlight:
-                    usersTag &&
-                    typeof usersTag.data === 'object' &&
-                    usersTag.data.gender === 'female',
-                }"
-                @click="
-                  toggleAttributeToTrackTag(
-                    { gender: 'female' },
-                    selectedTrack.id,
-                    usersTag.id
-                  )
-                "
-                :disabled="!usersTag"
-                >Female</b-button
-              >
-            </b-button-group>
-            <b-button-group class="ml-2">
-              <b-button
-                :class="{
-                  highlight:
-                    usersTag &&
-                    typeof usersTag.data === 'object' &&
-                    usersTag.data.maturity === 'adult',
-                }"
-                @click="
-                  toggleAttributeToTrackTag(
-                    { maturity: 'adult' },
-                    selectedTrack.id,
-                    usersTag.id
-                  )
-                "
-                :disabled="!usersTag"
-                >Adult</b-button
-              >
-              <b-button
-                :class="{
-                  highlight:
-                    usersTag &&
-                    typeof usersTag.data === 'object' &&
-                    usersTag.data.maturity === 'juvenile',
-                }"
-                @click="
-                  toggleAttributeToTrackTag(
-                    { maturity: 'juvenile' },
-                    selectedTrack.id,
-                    usersTag.id
-                  )
-                "
-                :disabled="!usersTag"
-                >Juvenile</b-button
-              >
-            </b-button-group>
-          </b-row>
+        </b-col>
+        <b-col class="tag-container p-0">
+          <div class="basic-container">
+            <div class="mx-2 mb-2 d-flex align-items-center">
+              <ClassificationsDropdown
+                v-model="selectedLabel"
+                @input="() => addTagToSelectedTrack(selectedLabel)"
+                :disabled="!selectedTrack"
+                :exclude="['part', 'interesting', 'poor tracking']"
+              />
+              <div class="button-selectors d-flex">
+                <b-button
+                  class="ml-2 tag-pin text-primary"
+                  :disabled="!usersTag"
+                  @click="togglePinTag(usersTag.what)"
+                >
+                  <font-awesome-icon
+                    icon="thumbtack"
+                    size="1x"
+                    v-b-tooltip.hover
+                    title="Pin current tag to buttons"
+                  />
+                </b-button>
+                <b-button
+                  class="ml-2 tag-cross text-danger"
+                  :disabled="!usersTag"
+                  @click="deleteTagFromSelectedTrack()"
+                >
+                  <font-awesome-icon
+                    icon="times"
+                    size="1x"
+                    v-b-tooltip.hover
+                    title="Remove Tag from Track"
+                  />
+                </b-button>
+              </div>
+            </div>
+            <LabelButtonGroup
+              :labels="labels"
+              :add-tag-to-selected-track="addTagToSelectedTrack"
+              :delete-tag-from-selected-track="deleteTagFromSelectedTrack"
+              :disabled="!selectedTrack"
+              :selected-label="selectedLabel"
+              :toggle-pin-tag="togglePinTag"
+            />
+            <b-row
+              class="
+                d-flex
+                mt-2
+                mb-4
+                flex-wrap
+                justify-content-center
+                button-selectors
+              "
+            >
+              <h3 class="w-100 ml-4">Attributes</h3>
+              <b-button-group class="mr-2">
+                <b-button
+                  :class="{
+                    highlight:
+                      usersTag &&
+                      typeof usersTag.data === 'object' &&
+                      usersTag.data.gender === 'male',
+                  }"
+                  @click="
+                    toggleAttributeToTrackTag(
+                      { gender: 'male' },
+                      selectedTrack.id,
+                      usersTag.id
+                    )
+                  "
+                  :disabled="!usersTag"
+                  >Male</b-button
+                >
+                <b-button
+                  :class="{
+                    highlight:
+                      usersTag &&
+                      typeof usersTag.data === 'object' &&
+                      usersTag.data.gender === 'female',
+                  }"
+                  @click="
+                    toggleAttributeToTrackTag(
+                      { gender: 'female' },
+                      selectedTrack.id,
+                      usersTag.id
+                    )
+                  "
+                  :disabled="!usersTag"
+                  >Female</b-button
+                >
+              </b-button-group>
+              <b-button-group class="ml-2">
+                <b-button
+                  :class="{
+                    highlight:
+                      usersTag &&
+                      typeof usersTag.data === 'object' &&
+                      usersTag.data.maturity === 'adult',
+                  }"
+                  @click="
+                    toggleAttributeToTrackTag(
+                      { maturity: 'adult' },
+                      selectedTrack.id,
+                      usersTag.id
+                    )
+                  "
+                  :disabled="!usersTag"
+                  >Adult</b-button
+                >
+                <b-button
+                  :class="{
+                    highlight:
+                      usersTag &&
+                      typeof usersTag.data === 'object' &&
+                      usersTag.data.maturity === 'juvenile',
+                  }"
+                  @click="
+                    toggleAttributeToTrackTag(
+                      { maturity: 'juvenile' },
+                      selectedTrack.id,
+                      usersTag.id
+                    )
+                  "
+                  :disabled="!usersTag"
+                  >Juvenile</b-button
+                >
+              </b-button-group>
+            </b-row>
+          </div>
         </b-col>
         <b-col lg="4" class="mb-4">
           <Playlist
@@ -202,9 +206,9 @@
             :delete-recording="deleteRecording"
             :is-group-admin="isGroupAdmin"
           />
-          <div class="notes-container">
+          <div class="basic-container mt-1">
             <div class="notes-header">
-              <label for="notes-textarea">Notes</label>
+              <h3 for="notes-textarea">Notes</h3>
             </div>
             <div v-for="comment in comments" :key="comment.id">
               <div>
@@ -214,12 +218,6 @@
                     <h4 class="text-secondary ml-1 mb-0">{{ comment.date }}</h4>
                   </div>
                   <div class="d-flex justify-self-end">
-                    <h4
-                      v-if="comment.tag !== 'comment'"
-                      class="comment-tag mb-0 mr-3"
-                    >
-                      {{ comment.tag }}
-                    </h4>
                     <div
                       v-if="userId === comment.taggerId"
                       class="pointer text-secondary"
@@ -232,6 +230,11 @@
                       />
                     </div>
                   </div>
+                </div>
+                <div v-if="comment.tag !== 'note'" class="d-flex pb-1">
+                  <h4 class="comment-tag mb-0 mr-3">
+                    {{ comment.tag }}
+                  </h4>
                 </div>
               </div>
               <p>{{ comment.comment }}</p>
@@ -266,6 +269,7 @@
                 variant="primary"
                 @click="
                   () => {
+                    if (!currComment) return;
                     addRecordingTag();
                   }
                 "
@@ -274,48 +278,55 @@
               </b-button>
             </div>
           </div>
-          <div v-if="recording.location" class="mt-2">
-            <MapWithPoints
-              :height="200"
-              :points="[
-                {
-                  name: recording.deviceName,
-                  location: recording.location,
-                },
-              ]"
-            />
-          </div>
-          <div v-if="recording.processing || isQueued" class="mt-4">
-            <h2 class="mb-0" v-if="isQueued">Queued for Processing...</h2>
+          <div class="basic-container mt-1">
             <div
-              class="d-flex align-items-center justify-content-center"
-              v-else-if="recording.processing"
+              class="d-flex align-items-center"
+              v-if="recording.processing || isQueued"
             >
-              <b-spinner />
-              <h1 class="mb-0 ml-2">Processing...</h1>
+              <h3>Status:</h3>
+              <h4 class="ml-1" v-if="isQueued">Queued for Processing...</h4>
+              <div
+                class="d-flex align-items-center justify-content-center"
+                v-else-if="recording.processing"
+              >
+                <b-spinner />
+                <h4 class="mb-0 ml-2">Processing...</h4>
+              </div>
             </div>
-          </div>
-          <div
-            class="index-container pointer"
-            @click="() => (showCacophonyIndex = !showCacophonyIndex)"
-          >
-            <h3 class="pt-2">Cacophony Index</h3>
-            <div class="d-flex align-items-center pointer" role="button">
-              <font-awesome-icon
-                v-if="!showCacophonyIndex"
-                size="lg"
-                icon="angle-down"
+            <div v-if="recording.location" class="mt-2">
+              <MapWithPoints
+                :height="200"
+                :points="[
+                  {
+                    name: recording.deviceName,
+                    location: recording.location,
+                  },
+                ]"
               />
-              <font-awesome-icon v-else size="lg" icon="angle-up" />
             </div>
+            <div
+              class="index-container pointer"
+              v-if="cacophonyIndex"
+              @click="() => (showCacophonyIndex = !showCacophonyIndex)"
+            >
+              <h3 class="pt-2">Cacophony Index</h3>
+              <div class="d-flex align-items-center pointer" role="button">
+                <font-awesome-icon
+                  v-if="!showCacophonyIndex"
+                  size="lg"
+                  icon="angle-down"
+                />
+                <font-awesome-icon v-else size="lg" icon="angle-up" />
+              </div>
+            </div>
+            <CacophonyIndexGraph
+              v-if="cacophonyIndex && showCacophonyIndex"
+              class="mt-2"
+              :cacophony-index="cacophonyIndex"
+              :id="recording.id"
+            />
+            <RecordingProperties :recording="recording" />
           </div>
-          <CacophonyIndexGraph
-            v-if="cacophonyIndex && showCacophonyIndex"
-            class="mt-2"
-            :cacophony-index="cacophonyIndex"
-            :id="recording.id"
-          />
-          <RecordingProperties :recording="recording" />
         </b-col>
       </b-row>
     </b-col>
@@ -450,6 +461,7 @@ export default defineComponent({
       }
     );
 
+    const deletedStation = ref(false);
     const deleteRecording = async () => {
       const response = await api.recording.del(props.recording.id);
       if (response.success) {
@@ -464,7 +476,7 @@ export default defineComponent({
             //Prompt user to delete station
 
             const shouldDelete = await context.root.$bvModal.msgBoxConfirm(
-              "This was the last recording on this station. Do you want to delete the station?",
+              "This was the last recording on this station. Do you want to delete the station? This action cannot be undone.",
               {
                 title: "Delete Station",
                 okVariant: "danger",
@@ -477,6 +489,7 @@ export default defineComponent({
             );
             if (shouldDelete) {
               await api.station.deleteStationById(station.id);
+              deletedStation.value = true;
             }
           }
         }
@@ -1162,7 +1175,7 @@ export default defineComponent({
       { immediate: true }
     );
     const addRecordingTag = async () => {
-      const detail = currTag.value ?? "comment";
+      const detail = currTag.value ?? "note";
       const comment = currComment.value ?? undefined;
       const tagReq: ApiRecordingTagRequest = {
         detail,
@@ -1216,6 +1229,7 @@ export default defineComponent({
       selectedLabel,
       showFilteredNoise,
       usersTag,
+      deletedStation,
       sampleRate,
       setSampleRate,
       colour,
@@ -1367,11 +1381,10 @@ export default defineComponent({
       margin-bottom: 0;
     }
   }
-  .notes-container {
+  .basic-container {
     border: solid 1px #e8e8e8;
     padding: 1em;
     border-radius: 0.5em;
-    margin-top: 0.2em;
   }
   .comment-tag {
     padding: 0.2em 0.5em;
