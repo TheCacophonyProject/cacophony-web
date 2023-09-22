@@ -269,7 +269,7 @@
                 variant="primary"
                 @click="
                   () => {
-                    if (!currComment) return;
+                    if (!currComment && currTag === null) return;
                     addRecordingTag();
                   }
                 "

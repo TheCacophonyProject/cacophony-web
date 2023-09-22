@@ -426,7 +426,6 @@ export default {
       this.devicesLoading = false;
     },
     async fetchStations() {
-      debugger;
       this.stationsLoading = true;
       {
         const stationsResponse = await api.groups.getStationsForGroup(
