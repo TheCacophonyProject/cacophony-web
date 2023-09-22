@@ -185,7 +185,6 @@ export const mapTracks = (tracks: Track[]): ApiTrackResponse[] => {
 };
 
 const mapTag = (tag: Tag): ApiRecordingTagResponse => {
-  debugger;
   const result: ApiRecordingTagResponse = {
     automatic: tag.automatic,
     confidence: tag.confidence,

@@ -642,9 +642,6 @@ const getStations =
     }
     const allStationsOptions = {
       where: {},
-      attributes: {
-        include: [StationRecordingsAttr],
-      },
       include: [
         {
           model: models.Group,
@@ -681,6 +678,15 @@ const getStations =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
     }
+    if (getStationsOptions.attributes) {
+      getStationsOptions.attributes = [
+        ...getStationsOptions.attributes,
+        StationRecordingsAttr,
+      ];
+    } else {
+      getStationsOptions.attributes = { include: [StationRecordingsAttr] };
+    }
+
     return models.Station.findAll({
       ...getStationsOptions,
       order: ["name"],
@@ -794,8 +800,6 @@ const getStation =
         ],
       };
     }
-
-    console.log(getStationOptions);
 
     if (getStationOptions.attributes) {
       getStationOptions.attributes = [
