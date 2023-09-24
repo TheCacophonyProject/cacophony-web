@@ -70,11 +70,15 @@ export default function (app: Application, baseUrl: string) {
           ]),
         ],
         [
-          query("type").equals(RecordingType.ThermalRaw),
+          query("type").isIn([
+            RecordingType.InfraredVideo,
+            RecordingType.ThermalRaw,
+          ]),
           query("state").isIn([
             RecordingProcessingState.Reprocess,
             RecordingProcessingState.AnalyseThermal,
             RecordingProcessingState.Tracking,
+            RecordingProcessingState.ReTrack,
           ]),
         ],
       ]),
@@ -361,7 +365,11 @@ export default function (app: Application, baseUrl: string) {
           }
           await recording.save();
 
-          if (complete && recording.type === RecordingType.ThermalRaw) {
+          if (
+            complete &&
+            (recording.type === RecordingType.ThermalRaw ||
+              recording.type === RecordingType.InfraredVideo)
+          ) {
             const tracks = await recording.getTracks();
             const results = await saveThumbnailInfo(
               recording,
@@ -567,6 +575,62 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Algorithm key retrieved.", {
         algorithmId: algorithm.id,
       });
+    }
+  );
+
+  /**
+   * @api {patch} /api/fileProcessing/:id/tracks/:trackId/archive Archives a track
+   * @apiName ArchiveTrack
+   * @apiGroup Processing
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/archive`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([idOf(param("id")), idOf(param("trackId"))]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    async (request: Request, response) => {
+      await response.locals.track.update({ archivedAt: Date.now() });
+
+      return successResponse(response, "Track archived");
+    }
+  );
+
+  /**
+   * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track data for recording and archives the old track data.
+   * @apiName UpdateTrackData
+   * @apiGroup Processing
+   *
+   * @apiParam {JSON} data Data which defines the track (type specific).
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
+    ]),
+    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
+    async (request: Request, response) => {
+      // make a copy of the original track
+      await response.locals.recording.createTrack({
+        data: response.locals.track.data,
+        AlgorithmId: response.locals.track.AlgorithmId,
+        archivedAt: Date.now(),
+      });
+      await response.locals.track.update({ data: response.locals.data });
+      return successResponse(response, "Track updated");
     }
   );
 }

@@ -8,6 +8,8 @@ ln -sf /usr/share/zoneinfo/Pacific/Auckland /etc/localtime
 #apt-get update --fix-missing
 apt-get -y install curl sudo make build-essential g++ git python3
 
+echo "Installing ffmpeg"
+apt-get -y install ffmpeg
 # install postgres
 apt-get -y install postgis postgresql postgresql-contrib libpq-dev
 echo "listen_addresses = '*'" >> /etc/postgresql/14/main/postgresql.conf

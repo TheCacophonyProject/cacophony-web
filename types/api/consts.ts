@@ -28,11 +28,12 @@ export enum TagMode {
 export enum RecordingProcessingState {
   Corrupt = "CORRUPT",
   Tracking = "tracking",
+  ReTrack = "retrack",
   AnalyseThermal = "analyse",
   Finished = "FINISHED",
   Analyse = "analyse",
   Reprocess = "reprocess",
-
+  ReTrackFailed = "retrack.failed",
   TrackingFailed = "tracking.failed",
   AnalyseThermalFailed = "analyse.failed",
   AnalyseFailed = "analyse.failed",
@@ -50,6 +51,7 @@ export enum AcceptableTag {
   MultipleAnimals = "multiple animals",
   TrappedInTrap = "trapped in trap",
   MissedRecording = "missed recording",
+  DigitalTrigger = "trap triggered",
   Inside = "inside",
   Outside = "outside",
   Incursion = "incursion",

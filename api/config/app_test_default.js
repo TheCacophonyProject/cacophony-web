@@ -1,7 +1,7 @@
 // A real test configuration
 // @todo: consider reading from env vars
 
-export const server  = {
+export const server = {
   passportSecret: "something",
   loggerLevel: "debug",
   http: {
@@ -38,7 +38,7 @@ export const s3Archive = {
   freeSpaceThresholdRatio: 0.7,
 };
 
-export const smtpDetails= {
+export const smtpDetails = {
   host: "localhost",
   port: 7777, //default for service is 25. 7777 used for smtp-tester
   tls: false, //default is true.  False used for smtp-tester
