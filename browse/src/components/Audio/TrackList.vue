@@ -1,5 +1,5 @@
 <template>
-  <b-container class="tracklist-container">
+  <div class="tracklist-container">
     <div class="classification-header">
       <h3 class="mb-0">Classifications</h3>
       <Dropdown>
@@ -43,222 +43,196 @@
         </div>
       </Dropdown>
     </div>
-    <b-row id="classification-list">
-      <b-col>
-        <b-row
-          v-for="track in tracks"
-          :key="track.id"
-          class="classification-item"
-          :id="`tag-item-${track.id}`"
+    <div v-if="tracks.length > 0" id="classification-list">
+      <div
+        v-for="track in tracks"
+        :key="track.id"
+        class="classification-item"
+        :class="{
+          'selected-track': selectedTrack && track.id === selectedTrack.id,
+        }"
+        :id="`tag-item-${track.id}`"
+      >
+        <div
+          v-if="track.deleted"
+          class="d-flex align-items-center justify-content-center"
         >
-          <b-col v-if="!track.deleted">
-            <b-row
-              :class="{
-                'selected-track':
-                  selectedTrack && selectedTrack.id === track.id,
-              }"
-            >
-              <b-col
-                v-on:click="() => playTrack(track)"
-                class="track-container"
-                lg="9"
-              >
-                <b-row>
-                  <b-col class="d-flex justify-content-center pr-0" cols="2">
-                    <span
-                      class="track-colour"
-                      :style="{
-                        background: `${track.colour}`,
-                        position: 'absolute',
-                      }"
-                    ></span>
-                  </b-col>
-                  <b-col>
-                    <b-row class="align-items-center justify-content-between">
-                      <h4 class="track-time m-0">
-                        Time: {{ track.start.toFixed(1) }} -
-                        {{ track.end.toFixed(1) }} (Δ{{
-                          (track.end - track.start).toFixed(1)
-                        }}s)
-                      </h4>
-                    </b-row>
-                    <b-row class="tags-container">
-                      <div
-                        v-for="tag in track.displayTags"
-                        :key="tag.id"
-                        class="
-                          capitalize
-                          text-white
-                          d-flex
-                          align-items-center
-                          p-0
-                          pl-2
-                          pr-2
-                          mr-1
-                          rounded
-                        "
-                        :class="{
-                          ['ai-tag']:
-                            tag.class === 'denied' || tag.class === 'automatic',
-                          ['aihuman-tag']: tag.class === 'confirmed',
-                          ['human-tag']: tag.class === 'human',
-                        }"
-                        v-b-tooltip.hover
-                        :title="`${
-                          tag.class === 'human'
-                            ? 'Tagged by human'
-                            : tag.class === 'automatic' ||
-                              tag.class === 'denied'
-                            ? 'Tagged by Cacophony AI'
-                            : tag.class === 'confirmed'
-                            ? 'Tagged by Cacophony AI and human'
-                            : ''
-                        }`"
-                      >
-                        <font-awesome-icon
-                          v-if="['denied', 'automatic'].includes(tag.class)"
-                          icon="cog"
-                          size="xs"
-                        />
-                        <font-awesome-icon
-                          v-else-if="tag.class === 'human'"
-                          icon="user"
-                          size="xs"
-                        />
-                        <font-awesome-icon
-                          v-else-if="tag.class === 'confirmed'"
-                          icon="user-cog"
-                          size="xs"
-                        />
-                        <span class="pl-1">
-                          {{ tag.what }}
-                        </span>
-                      </div>
-                    </b-row>
-                  </b-col>
-                </b-row>
-              </b-col>
-              <b-col
-                class="track-container-side d-flex justify-content-end mr-1"
-              >
-                <b-row class="d-flex align-items-center">
-                  <b-button
-                    v-if="
-                      track.displayTags.some(
-                        (tag) =>
-                          tag.class === 'automatic' ||
-                          (tag.class === 'confirmed' &&
-                            !track.tags.some((t) => t.userName === userName))
-                      ) && !redacted
-                    "
-                    variant="outline-success"
-                    class="p-1"
-                    size="sm"
-                    @click.prevent="() => confirmTrack(track)"
-                  >
-                    <b-spinner
-                      v-if="track.confirming"
-                      variant="success"
-                      small
-                    />
-                    <font-awesome-icon v-else icon="thumbs-up" />
-                    <span>Confirm</span>
-                  </b-button>
-                </b-row>
-                <b-row>
-                  <Dropdown class="track-settings-button">
-                    <template #button-content>
-                      <font-awesome-icon icon="cog" />
-                    </template>
-                    <button @click.prevent="() => deleteTrack(track.id)">
-                      <div class="text-danger">
-                        <font-awesome-icon icon="trash" />
-                        delete
-                      </div>
-                    </button>
-                  </Dropdown>
-                </b-row>
-              </b-col>
-            </b-row>
-            <b-row>
-              <b-col>
-                <div
-                  v-b-toggle="`tag-history-${track.id}`"
-                  class="tag-history-toggle"
-                  @click="
-                    () => {
-                      if (toggledTrackHistory.includes(track.id)) {
-                        toggledTrackHistory = toggledTrackHistory.filter(
-                          (id) => id !== track.id
-                        );
-                      } else {
-                        toggledTrackHistory.push(track.id);
-                      }
-                    }
-                  "
-                >
-                  <h4>Tag History</h4>
-                  <font-awesome-icon
-                    icon="angle-up"
-                    v-if="toggledTrackHistory.includes(track.id)"
-                  />
-                  <font-awesome-icon
-                    icon="angle-down"
-                    class="when-closed"
-                    v-else
-                  />
-                </div>
-                <!-- Table using html -->
-                <table
-                  v-if="toggledTrackHistory.includes(track.id)"
-                  class="tag-history-table"
-                >
-                  <thead>
-                    <tr>
-                      <th>Label</th>
-                      <th>Who</th>
-                      <th>Confidence</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="tag in tags(track)" :key="tag.id">
-                      <td>{{ tag.what }}</td>
-                      <td>
-                        <span v-if="tag.userName">
-                          {{ tag.userName }}
-                        </span>
-                        <span v-else>
-                          {{ aiName(tag) }}
-                        </span>
-                      </td>
-                      <td>{{ tag.confidence }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </b-col>
-            </b-row>
-          </b-col>
-          <b-col
-            class="d-flex align-items-center justify-content-center"
-            v-else
+          <div
+            @click="() => undoDeleteTrack(track.id)"
+            class="undo-button justify-content-center align-items-center"
           >
-            <b-row
-              @click="() => undoDeleteTrack(track.id)"
-              class="undo-button justify-content-center align-items-center"
-            >
-              <h2 class="pr-2">Undo Deletion</h2>
-              <font-awesome-icon class="mb-2" icon="undo" />
-            </b-row>
-          </b-col>
-        </b-row>
-      </b-col>
-    </b-row>
-    <b-row class="w-100 d-flex justify-content-center m-0">
-      <h4 class="select-track-message" v-if="tracks.length === 0">
+            <h2 class="pr-2">Undo Deletion</h2>
+            <font-awesome-icon class="mb-2" icon="undo" />
+          </div>
+        </div>
+        <div
+          v-else
+          :class="{
+            'classification-item-inner': true,
+          }"
+        >
+          <div v-on:click="() => playTrack(track)" class="track-container">
+            <div class="track-info">
+              <div
+                class="track-colour"
+                :style="{
+                  background: `${track.colour}`,
+                }"
+              />
+              <h4 class="track-time m-0">
+                Time: {{ track.start.toFixed(1) }} -
+                {{ track.end.toFixed(1) }} (Δ{{
+                  (track.end - track.start).toFixed(1)
+                }}s)
+              </h4>
+            </div>
+            <div class="tags-container">
+              <div
+                v-for="tag in track.displayTags"
+                :key="tag.id"
+                class="
+                  capitalize
+                  text-white
+                  d-flex
+                  align-items-center
+                  p-0
+                  pl-2
+                  pr-2
+                  mr-1
+                  rounded
+                "
+                :class="{
+                  ['ai-tag']:
+                    tag.class === 'denied' || tag.class === 'automatic',
+                  ['aihuman-tag']: tag.class === 'confirmed',
+                  ['human-tag']: tag.class === 'human',
+                }"
+                v-b-tooltip.hover
+                :title="`${
+                  tag.class === 'human'
+                    ? 'Tagged by human'
+                    : tag.class === 'automatic' || tag.class === 'denied'
+                    ? 'Tagged by Cacophony AI'
+                    : tag.class === 'confirmed'
+                    ? 'Tagged by Cacophony AI and human'
+                    : ''
+                }`"
+              >
+                <font-awesome-icon
+                  v-if="['denied', 'automatic'].includes(tag.class)"
+                  icon="cog"
+                  size="xs"
+                />
+                <font-awesome-icon
+                  v-else-if="tag.class === 'human'"
+                  icon="user"
+                  size="xs"
+                />
+                <font-awesome-icon
+                  v-else-if="tag.class === 'confirmed'"
+                  icon="user-cog"
+                  size="xs"
+                />
+                <span class="pl-1">
+                  {{ tag.what }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="track-container-side d-flex justify-content-end">
+            <div class="d-flex align-items-center">
+              <b-button
+                v-if="
+                  track.displayTags.some(
+                    (tag) =>
+                      tag.class === 'automatic' ||
+                      (tag.class === 'confirmed' &&
+                        !track.tags.some((t) => t.userName === userName))
+                  ) && !redacted
+                "
+                variant="outline-success"
+                class="p-1"
+                size="sm"
+                @click.prevent="() => confirmTrack(track)"
+              >
+                <b-spinner v-if="track.confirming" variant="success" small />
+                <font-awesome-icon v-else icon="thumbs-up" />
+                <span>Confirm</span>
+              </b-button>
+            </div>
+            <Dropdown class="track-settings-button">
+              <template #button-content>
+                <font-awesome-icon icon="cog" />
+              </template>
+              <button @click.prevent="() => deleteTrack(track.id)">
+                <div class="text-danger">
+                  <font-awesome-icon icon="trash" />
+                  delete
+                </div>
+              </button>
+            </Dropdown>
+          </div>
+        </div>
+        <div
+          v-b-toggle="`tag-history-${track.id}`"
+          class="tag-history-toggle"
+          @click="
+            () => {
+              if (toggledTrackHistory.includes(track.id)) {
+                toggledTrackHistory = toggledTrackHistory.filter(
+                  (id) => id !== track.id
+                );
+              } else {
+                toggledTrackHistory.push(track.id);
+              }
+            }
+          "
+        >
+          <h4>Tag History</h4>
+          <font-awesome-icon
+            icon="angle-up"
+            v-if="toggledTrackHistory.includes(track.id)"
+          />
+          <font-awesome-icon icon="angle-down" class="when-closed" v-else />
+        </div>
+        <!-- Table using html -->
+        <table
+          v-if="toggledTrackHistory.includes(track.id)"
+          class="tag-history-table"
+        >
+          <thead>
+            <tr>
+              <th>Label</th>
+              <th>Who</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="tag in tags(track)" :key="tag.id">
+              <td>{{ tag.what }}</td>
+              <td>
+                <span v-if="tag.userName">
+                  {{ tag.userName }}
+                </span>
+                <span v-else>
+                  {{ aiName(tag) }}
+                </span>
+              </td>
+              <td>{{ tag.confidence }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <b-row
+      v-if="tracks.length === 0"
+      class="w-100 d-flex justify-content-center m-0"
+    >
+      <h4 class="select-track-message">
         Select section of Audio by pressing and dragging...
       </h4>
     </b-row>
-  </b-container>
+  </div>
 </template>
 
 <script lang="ts">
@@ -266,7 +240,7 @@ import { PropType } from "vue";
 import { defineComponent, onMounted, ref, watch } from "@vue/composition-api";
 import Help from "@/components/Help.vue";
 
-import { debounce, useState } from "@/utils";
+import { useState } from "@/utils";
 
 import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 import Dropdown from "../Dropdown.vue";
@@ -276,8 +250,7 @@ import { TrackId } from "@typedefs/api/common";
 
 import store from "@/stores";
 import { shouldViewAsSuperUser } from "@/utils";
-import { ApiTrackTag, ApiTrackTagResponse } from "@typedefs/api/trackTag";
-import { watchEffect } from "@vue/runtime-core";
+import { ApiTrackTag } from "@typedefs/api/trackTag";
 enum TrackListFilter {
   All = "all",
   Automatic = "automatic",
@@ -416,6 +389,22 @@ export default defineComponent({
         );
       }
     );
+    onMounted(() => {
+      watch(
+        tracks,
+        (newTracks) => {
+          // temp style fix for sizing #classification-id
+          const list = document.getElementById("classification-list");
+          console.log(list);
+          if (list) {
+            const pxPerItem = 110;
+            const cssHeight = pxPerItem * newTracks.length;
+            list.style.height = `${cssHeight}px`;
+          }
+        },
+        { immediate: true }
+      );
+    });
 
     watch(
       () => props.selectedTrack,
@@ -475,9 +464,11 @@ export default defineComponent({
 }
 
 .track-container-side {
-  flex-direction: column;
+  display: flex;
   align-items: flex-end;
-  padding-right: 1.4em;
+  flex-direction: column;
+  gap: 0.5em;
+  padding-right: 1em;
   padding-bottom: 0.4em;
 }
 
@@ -486,34 +477,52 @@ export default defineComponent({
   display: none;
 }
 
-.classification-container {
-  padding-left: 0px;
-  padding-right: 0em;
-}
-
 .classification-item {
-  min-height: 90px;
   margin-left: 5px;
+  padding-left: 0.5em;
+  padding-top: 1em;
 }
 
 #classification-list {
+  max-height: 33vh;
   overflow-y: auto;
-  max-height: 22vh;
-  min-height: 250px;
+  position: relative;
+  margin: 0 -0.9em 0 -1em;
+
+  &::-webkit-scrollbar {
+    width: 5px;
+    position: absolute;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #999; /* Color of the scrollbar thumb */
+    border-radius: 4px; /* Rounded corners */
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #777;
+  }
 }
 
 .tag-history-toggle {
   display: flex;
   justify-content: space-between;
   border-bottom: 1px solid #f1f1f1;
-  margin-bottom: 8px;
-  width: 100%;
   cursor: pointer;
 }
 
 .tag-history-toggle > h4 {
   font-weight: 800;
   color: #272e39;
+  user-select: none;
+}
+
+.tag-history-toggle > svg {
+  margin-right: 1em;
 }
 
 .track-container {
@@ -526,8 +535,8 @@ export default defineComponent({
   font-weight: 600;
   text-align: center;
   max-width: 16em;
-  margin-top: 0.8em;
-  margin-bottom: 1em;
+  padding-top: 0.8em;
+  padding-bottom: 1em;
 }
 
 .track-settings-button {
@@ -566,20 +575,19 @@ export default defineComponent({
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid #f1f1f1;
-  margin-bottom: 1em;
+  padding-bottom: 1em;
 }
 .tags-container {
   display: flex;
   flex-wrap: wrap;
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
   gap: 0.3em;
 }
 .classification-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1em;
   padding-bottom: 0.4em;
   border-bottom: solid #e8e8e8 1px;
 }
@@ -588,5 +596,19 @@ export default defineComponent({
 }
 .selected-track {
   box-shadow: -5px 0px 0px 0px #9acd32;
+}
+.tracklist-container {
+}
+.track-info {
+  display: flex;
+  column-gap: 0.5em;
+}
+.classification-item-inner {
+  display: flex;
+  justify-content: space-between;
+}
+.undo-button {
+  display: flex;
+  min-height: 90px;
 }
 </style>

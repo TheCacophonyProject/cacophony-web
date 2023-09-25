@@ -51,22 +51,20 @@
       </b-row>
       <b-row class="bottom-container" v-show="!deleted">
         <b-col lg="4">
-          <div class="basic-container h-100">
-            <b-row>
-              <TrackList
-                :audio-tracks="tracks"
-                :selected-track="selectedTrack"
-                :play-track="playTrack"
-                :delete-track="deleteTrack"
-                :undo-delete-track="undoDeleteTrack"
-                :add-tag-to-track="addTagToTrack"
-                :redacted="recording.redacted"
-                :filtered-tags="filteredAudioTags"
-                :on-add-filter-tags="updateGroupFilterTags"
-                :is-group-admin="isGroupAdmin"
-                :set-filtered-noise="setFilteredNoise"
-              />
-            </b-row>
+          <div class="basic-container">
+            <TrackList
+              :audio-tracks="tracks"
+              :selected-track="selectedTrack"
+              :play-track="playTrack"
+              :delete-track="deleteTrack"
+              :undo-delete-track="undoDeleteTrack"
+              :add-tag-to-track="addTagToTrack"
+              :redacted="recording.redacted"
+              :filtered-tags="filteredAudioTags"
+              :on-add-filter-tags="updateGroupFilterTags"
+              :is-group-admin="isGroupAdmin"
+              :set-filtered-noise="setFilteredNoise"
+            />
           </div>
         </b-col>
         <b-col class="tag-container p-0">
@@ -342,7 +340,6 @@ import {
   computed,
   ref,
   onMounted,
-  reactive,
 } from "@vue/composition-api";
 
 import api from "@api";
