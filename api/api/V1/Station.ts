@@ -175,7 +175,7 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       const stationdId = response.locals.station.id;
 
-      response.locals.recordingsCount = await models.Recording.count({
+      const count = await models.Recording.count({
         where: {
           StationId: stationdId,
           deletedAt: null,
@@ -183,7 +183,7 @@ export default function (app: Application, baseUrl: string) {
       });
 
       return successResponse(response, "Got recordings count", {
-        count: response.locals.recordingsCount,
+        count,
       });
     }
   );
