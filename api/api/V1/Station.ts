@@ -104,7 +104,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiQuery {Boolean} [only-active=true] Only returns non-retired stations by default
-   * @apiQuery {Boolean} [include-recording-count=false] Include the number of recordings associated with each station
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationsResponseSuccess} stations Array of ApiStationResponse[] showing details of stations in group
@@ -172,8 +171,9 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
     ]),
+    fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
-      const stationdId = request.params.id;
+      const stationdId = response.locals.station.id;
 
       response.locals.recordingsCount = await models.Recording.count({
         where: {

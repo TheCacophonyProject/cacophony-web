@@ -1,3 +1,0 @@
-[32minfo[39m: Sending email with subject Stopped Devices to cy_jerry_c82032a0@api.created.com
-[31merror[39m: Error: connection encountered an error (connect ECONNREFUSED 127.0.0.1:7777)
-[31merror[39m: Failed sending stopped devices email to cy_jerry_c82032a0@api.created.com
