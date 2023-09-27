@@ -57,7 +57,6 @@ export const mapStation = (station: Station): ApiStationResponse => {
     location: station.location,
     updatedAt: station.updatedAt.toISOString(),
     automatic: station.automatic,
-    recordingsCount: 0,
   };
   if (station.lastUpdatedById) {
     stationResponse.lastUpdatedById = station.lastUpdatedById;
@@ -87,10 +86,6 @@ export const mapStation = (station: Station): ApiStationResponse => {
   if (station.retiredAt) {
     stationResponse.retiredAt = station.retiredAt.toISOString();
   }
-  if (station.dataValues.recordingsCount !== undefined) {
-    stationResponse.recordingsCount = station.dataValues
-      .recordingsCount as number;
-  }
   return stationResponse;
 };
 
@@ -109,6 +104,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiQuery {Boolean} [only-active=true] Only returns non-retired stations by default
+   * @apiQuery {Boolean} [include-recording-count=false] Include the number of recordings associated with each station
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationsResponseSuccess} stations Array of ApiStationResponse[] showing details of stations in group
@@ -153,6 +149,41 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/:id/recordings-count Get count of recordings for a station by id
+   * @apiName GetRecordingsCountForStation
+   * @apiGroup Station
+   * @apiDescription Get the count of recordings associated with a station by its id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiRecordingsCountResponseSuccess} count Number of recordings associated with the station
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/recordings-count`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    async (request: Request, response: Response) => {
+      const stationdId = request.params.id;
+
+      response.locals.recordingsCount = await models.Recording.count({
+        where: {
+          StationId: stationdId,
+          deletedAt: null,
+        },
+      });
+
+      return successResponse(response, "Got recordings count", {
+        count: response.locals.recordingsCount,
       });
     }
   );

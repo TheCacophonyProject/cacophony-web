@@ -610,15 +610,6 @@ const getDevices =
     });
   };
 
-const StationRecordingsAttr = [
-  models.sequelize.literal(`(
-        SELECT CAST(COUNT(*) AS INTEGER)
-        FROM "Recordings"
-        WHERE "Recordings"."StationId" = "Station"."id" AND "Recordings"."deletedAt" IS NULL
-      )`),
-  "recordingsCount",
-];
-
 const getStations =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
   (
@@ -677,14 +668,6 @@ const getStations =
       (getStationsOptions as any).where =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
-    }
-    if (getStationsOptions.attributes) {
-      getStationsOptions.attributes = [
-        ...getStationsOptions.attributes,
-        StationRecordingsAttr,
-      ];
-    } else {
-      getStationsOptions.attributes = { include: [StationRecordingsAttr] };
     }
 
     return models.Station.findAll({
@@ -799,15 +782,6 @@ const getStation =
           },
         ],
       };
-    }
-
-    if (getStationOptions.attributes) {
-      getStationOptions.attributes = [
-        ...getStationOptions.attributes,
-        StationRecordingsAttr,
-      ];
-    } else {
-      getStationOptions.attributes = { include: [StationRecordingsAttr] };
     }
 
     if (context.onlyActive || !stationIsId) {

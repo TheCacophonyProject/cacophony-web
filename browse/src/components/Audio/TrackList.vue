@@ -395,7 +395,6 @@ export default defineComponent({
         (newTracks) => {
           // temp style fix for sizing #classification-id
           const list = document.getElementById("classification-list");
-          console.log(list);
           if (list) {
             const pxPerItem = 110;
             const cssHeight = pxPerItem * newTracks.length;

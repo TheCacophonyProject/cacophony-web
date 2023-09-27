@@ -29,7 +29,6 @@ const templateExpectedStation = {
   needsRename: true,
   groupId: NOT_NULL,
   groupName: NOT_NULL_STRING,
-  recordingsCount: NOT_NULL,
 };
 
 const beforeRecordings = new Date();
@@ -76,7 +75,6 @@ describe("Device: fix-location of device and/or recordings", () => {
       expectedAutoStation.activeAt = firstTime.toISOString();
       expectedAutoStation.lastThermalRecordingTime = fourthTime.toISOString();
       expectedAutoStation.needsRename = true;
-      expectedAutoStation.recordingsCount = NOT_NULL;
 
       expectedManualStation = JSON.parse(
         JSON.stringify(templateExpectedStation)
@@ -85,7 +83,6 @@ describe("Device: fix-location of device and/or recordings", () => {
       expectedManualStation.activeAt = beforeRecordings.toISOString();
       expectedManualStation.lastUpdatedById = getCreds(Josie).id;
       expectedManualStation.automatic = false;
-      expectedManualStation.recordingsCount = NOT_NULL;
       delete expectedManualStation.needsRename;
 
       expectedHistory = [];

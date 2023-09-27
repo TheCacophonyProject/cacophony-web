@@ -469,7 +469,8 @@ export default defineComponent({
         );
         if (response.success) {
           const { station } = response.result;
-          if (station.recordingsCount === 0) {
+          const res = await api.station.getStationRecordingsCount(station.id);
+          if (res.success && res.result.count === 0) {
             //Prompt user to delete station
 
             const shouldDelete = await context.root.$bvModal.msgBoxConfirm(

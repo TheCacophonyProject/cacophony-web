@@ -29,7 +29,6 @@ const templateExpectedStation = {
   needsRename: true,
   groupId: NOT_NULL,
   groupName: NOT_NULL_STRING,
-  recordingsCount: NOT_NULL,
 };
 
 const beforeRecordings = new Date();
@@ -69,7 +68,6 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
       templateExpectedCypressRecording.groupName = getTestName(group);
       templateExpectedStation.groupId = getCreds(group).id;
       templateExpectedStation.groupName = getTestName(group);
-      templateExpectedStation.recordingsCount = NOT_NULL;
 
       expectedAutoStation = JSON.parse(JSON.stringify(templateExpectedStation));
       expectedAutoStation.location = oldLocation;

@@ -39,7 +39,7 @@
           </b-btn>
           <b-btn
             class="btn-light small"
-            v-if="station.recordingsCount === 0"
+            v-if="recordingsCount === 0"
             v-b-tooltip.hover
             title="Delete station"
             @click.prevent="deleteStation"

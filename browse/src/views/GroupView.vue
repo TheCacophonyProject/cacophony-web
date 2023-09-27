@@ -432,7 +432,16 @@ export default {
           this.groupName
         );
         if (stationsResponse.success) {
-          this.stations = stationsResponse.result.stations;
+          this.stations = await Promise.all(
+            stationsResponse.result.stations.map(async (val) => {
+              const res = await api.station.getStationRecordingsCount(val.id);
+              return {
+                ...val,
+                recordingsCount: res.success ? res.result.count : null,
+              };
+            })
+          );
+          // get recording count for each station
         }
       }
       this.stationsLoading = false;
