@@ -199,7 +199,7 @@ const taggingFilters = [
     specified: true,
   },
   {
-    value: "both-tagged",
+    value: "automatic+human",
     text: "AI and human tagged as...",
     specified: true,
   },
