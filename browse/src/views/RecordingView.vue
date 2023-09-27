@@ -315,11 +315,15 @@ export default {
             this.downloadRawJWT = downloadRawJWT;
             this.rawSize = rawSize;
             this.fileSize = fileSize;
-            const stationResponse = await api.station.getStationById(
-              this.recordingInternal.stationId
-            );
-            if (stationResponse.success) {
-              this.station = stationResponse.result.station;
+            if (recording.stationId) {
+              const stationResponse = await api.station.getStationById(
+                this.recordingInternal.stationId
+              );
+              if (stationResponse.success) {
+                this.station = stationResponse.result.station;
+              }
+            } else {
+              recording.stationId = 0;
             }
             this.modalImage = null;
           } else {
