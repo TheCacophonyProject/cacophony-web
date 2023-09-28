@@ -526,7 +526,7 @@ export default defineComponent({
       const pos = isTemp
         ? track.positions[1]
         : track.positions[track.positions.length - 1]; // Temp track uses second position
-      const { x, y, height, width } = pos
+      let { x, y, height, width } = pos
         ? convertRectangleToSVG(pos)
         : {
             x: track.start / props.duration,
@@ -534,6 +534,14 @@ export default defineComponent({
             width: (track.end - track.start) / props.duration,
             height: 1,
           };
+      // check if x and width are valid
+      const { start, end } = track;
+      const duration = player.value.getDuration();
+      const posTime = duration * width;
+      if (posTime.toFixed(1) !== (end - start).toFixed(1)) {
+        x = start / duration;
+        width = (end - start) / duration;
+      }
       let rect: HTMLElement | SVGElement | null = document.getElementById(id);
       if (!rect) {
         rect = createSVGElement(

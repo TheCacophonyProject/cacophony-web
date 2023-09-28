@@ -45,6 +45,7 @@ export enum RecordingProcessingState {
 export enum AcceptableTag {
   Cool = "cool",
   RequiresReview = "requires review",
+  Note = "note",
   InteractionWithTrap = "interaction with trap",
   MissedTrack = "missed track",
   MultipleAnimals = "multiple animals",

@@ -191,6 +191,7 @@ export default Vue.extend({
     async deleteVideo() {
       this.readyToPlay = false;
       await api.recording.del(this.currentRecording.RecordingId);
+
       await this.nextRecording();
     },
     isTagged(tagValue: string): boolean {

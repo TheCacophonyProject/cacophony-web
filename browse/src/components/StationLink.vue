@@ -26,7 +26,6 @@ export default {
     },
     stationName: {
       type: String,
-      required: true,
     },
     stationId: {
       type: Number,
