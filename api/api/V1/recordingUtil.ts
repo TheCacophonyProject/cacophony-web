@@ -38,7 +38,7 @@ import type {
   DeviceHistory,
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
-import type { Tag } from "@models/Tag.js";
+import type { Tag, TagStatic } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
 import type {
   DeviceId,
@@ -1042,7 +1042,6 @@ export async function reportRecordings(
   }
 
   const recording_url_base = config.server.recording_url_base || "";
-  debugger;
   const labels = [
     "Id",
     "Type",
@@ -1060,6 +1059,9 @@ export async function reportRecordings(
     "Automatic Track Tags",
     "Human Track Tags",
     "Recording Tags",
+    "URL",
+    "Cacophony Index",
+    "Species Classification",
   ];
 
   if (includeAudiobait) {
@@ -1070,7 +1072,6 @@ export async function reportRecordings(
       "Audio Bait Volume"
     );
   }
-  labels.push("URL", "Cacophony Index", "Species Classification");
 
   const out = [labels];
   for (const r of result) {
@@ -1089,7 +1090,11 @@ export async function reportRecordings(
       }
     }
 
-    const recording_tags = r.Tags.map((t) => t.what || t.detail) || [];
+    const recording_tags =
+      r.Tags.map((t: Tag) => [
+        (t as any).what || t.detail,
+        ...(t.comment ? [t.comment] : []),
+      ]) || [];
     const cacophonyIndex = getCacophonyIndex(r);
 
     const thisRow = [

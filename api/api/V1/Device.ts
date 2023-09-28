@@ -305,7 +305,6 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body("deviceName")),
     async (request: Request, response: Response) => {
-      console.log("here");
       try {
         const device: Device = await models.Device.create({
           deviceName: request.body.deviceName,

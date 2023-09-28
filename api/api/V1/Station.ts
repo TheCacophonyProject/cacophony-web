@@ -153,6 +153,42 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+   * @api {get} /api/v1/stations/:id/recordings-count Get count of recordings for a station by id
+   * @apiName GetRecordingsCountForStation
+   * @apiGroup Station
+   * @apiDescription Get the count of recordings associated with a station by its id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiRecordingsCountResponseSuccess} count Number of recordings associated with the station
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/recordings-count`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response) => {
+      const stationdId = response.locals.station.id;
+
+      const count = await models.Recording.count({
+        where: {
+          StationId: stationdId,
+          deletedAt: null,
+        },
+      });
+
+      return successResponse(response, "Got recordings count", {
+        count,
+      });
+    }
+  );
+
+  /**
    * @api {delete} /api/v1/stations/:id/reference-photo/:fileKey Delete a reference photo for a station given a fileKey
    * @apiName DeleteReferencePhotoForStation
    * @apiGroup Station
@@ -538,7 +574,6 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async (request: Request, response: Response) => {
-      console.log("hi");
       const cacophonyIndexBulk = await models.Station.getCacophonyIndexBulk(
         response.locals.requestUser,
         response.locals.station.id,

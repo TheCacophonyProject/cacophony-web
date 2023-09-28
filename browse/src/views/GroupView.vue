@@ -58,7 +58,7 @@
           @user-removed="(userId) => removedUser(userId)"
         />
       </tab-list-item>
-      <tab-list-item lazy>
+      <tab-list-item lazy v-if="visitsCount > 0">
         <template #title>
           <TabTemplate
             title="Visits"
@@ -227,29 +227,24 @@ export default {
       return hasAudio || hasUnknown;
     },
     tabNames() {
+      const permissions = ["devices", "stations", "recordings", "analysis"];
+
       if (this.isGroupAdmin) {
+        permissions.unshift("users");
         if (this.hasAudioOrUnknownDevices) {
-          return [
-            "manual-uploads",
-            "users",
-            "visits",
-            "devices",
-            "stations",
-            "recordings",
-            "analysis",
-          ];
-        } else {
-          return [
-            "users",
-            "visits",
-            "devices",
-            "stations",
-            "recordings",
-            "analysis",
-          ];
+          permissions.unshift("manual-uploads");
         }
       }
-      return ["visits", "devices", "stations", "recordings", "analysis"];
+
+      if (
+        this.devices.some(
+          (device: ApiDeviceResponse) => device.type === DeviceType.Thermal
+        )
+      ) {
+        permissions.splice(1, 0, "visits");
+      }
+
+      return permissions;
     },
     nonRetiredStationsCount(): number {
       return (
@@ -437,7 +432,16 @@ export default {
           this.groupName
         );
         if (stationsResponse.success) {
-          this.stations = stationsResponse.result.stations;
+          this.stations = await Promise.all(
+            stationsResponse.result.stations.map(async (val) => {
+              const res = await api.station.getStationRecordingsCount(val.id);
+              return {
+                ...val,
+                recordingsCount: res.success ? res.result.count : null,
+              };
+            })
+          );
+          // get recording count for each station
         }
       }
       this.stationsLoading = false;

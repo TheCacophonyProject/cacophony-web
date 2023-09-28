@@ -37,6 +37,15 @@
           >
             <font-awesome-icon icon="pencil-alt" size="sm" />
           </b-btn>
+          <b-btn
+            class="btn-light small"
+            v-if="recordingsCount === 0"
+            v-b-tooltip.hover
+            title="Delete station"
+            @click.prevent="deleteStation"
+          >
+            <font-awesome-icon class="text-danger" icon="trash" size="sm" />
+          </b-btn>
         </h1>
       </div>
       <div v-if="userIsGroupAdmin">
@@ -49,7 +58,7 @@
     </div>
     <div v-else-if="station" class="tabs-container">
       <tab-list v-model="currentTabIndex">
-        <tab-list-item lazy>
+        <tab-list-item v-if="visitsCount > 0" lazy>
           <template #title>
             <TabTemplate
               title="Visits"
@@ -66,16 +75,6 @@
         <tab-list-item lazy>
           <template #title>
             <TabTemplate
-              title="Reference photo"
-              :isLoading="!loadedStation"
-              :value="referencePhotos.length"
-            />
-          </template>
-          <StationReferencePhotosTab :station="station" :group="group" />
-        </tab-list-item>
-        <tab-list-item lazy>
-          <template #title>
-            <TabTemplate
               title="Recordings"
               :isLoading="recordingsCountLoading"
               :value="recordingsCount"
@@ -87,6 +86,16 @@
             :station-name="stationName"
             :recordings-query="recordingsQueryFinal"
           />
+        </tab-list-item>
+        <tab-list-item lazy>
+          <template #title>
+            <TabTemplate
+              title="Reference photo"
+              :isLoading="!loadedStation"
+              :value="referencePhotos.length"
+            />
+          </template>
+          <StationReferencePhotosTab :station="station" :group="group" />
         </tab-list-item>
         <tab-list-item lazy>
           <template #title>
@@ -235,6 +244,13 @@ export default {
         }
       },
     },
+    tabNames() {
+      const names = ["recordings", "reference-photo", "alerts"];
+      if (parseInt(this.visitsCount) > 0) {
+        names.unshift("visits");
+      }
+      return names;
+    },
   },
   data() {
     return {
@@ -252,7 +268,6 @@ export default {
       renaming: false,
       stationIsRetired: false,
       group: {},
-      tabNames: ["visits", "reference-photo", "recordings", "alerts"],
     };
   },
   async mounted() {
@@ -309,6 +324,9 @@ export default {
       if (visitsResponse.success) {
         const { result } = visitsResponse;
         this.visitsCount = `${result.params.pagesEstimate}`;
+        if (result.params.pagesEstimate > 0) {
+          this.tabNames = ["visits", ...this.tabNames];
+        }
       }
 
       this.visitsCountLoading = false;
@@ -321,6 +339,20 @@ export default {
       }
 
       this.alertsCountLoading = false;
+    },
+    async deleteStation() {
+      const deleteResponse = await api.station.deleteStationById(
+        this.station.id
+      );
+      if (deleteResponse.success) {
+        this.$router.push({
+          name: "group",
+          params: {
+            groupName: this.groupName,
+            tabName: "stations",
+          },
+        });
+      }
     },
     async fetchStation() {
       try {
@@ -399,6 +431,15 @@ export default {
         // this.visitsCountLoading = false;
       } catch (e) {
         // TODO - we will move away from global error handling, and show any errors locally in the component
+      }
+      if (!this.station) {
+        this.$router.push({
+          name: "group",
+          params: {
+            groupName: this.groupName,
+            tabName: "stations",
+          },
+        });
       }
       this.loadedStation = true;
     },
