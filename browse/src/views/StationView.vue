@@ -58,7 +58,7 @@
     </div>
     <div v-else-if="station" class="tabs-container">
       <tab-list v-model="currentTabIndex">
-        <tab-list-item v-if="visitsCount > 0" lazy>
+        <tab-list-item :show="visitsCount > 0" lazy>
           <template #title>
             <TabTemplate
               title="Visits"
@@ -222,7 +222,9 @@ export default {
     },
     currentTabIndex: {
       get() {
-        return Math.max(0, this.tabNames.indexOf(this.currentTabName));
+        const value = Math.max(0, this.tabNames.indexOf(this.currentTabName));
+        console.log(value);
+        return value;
       },
       set(tabIndex) {
         const nextTabName = this.tabNames[tabIndex];
@@ -330,6 +332,7 @@ export default {
       }
 
       this.visitsCountLoading = false;
+      this.currentTabIndex = this.visitsCount > 0 ? 0 : 1;
     },
     async fetchAlertsCount() {
       this.alertsCountLoading = true;

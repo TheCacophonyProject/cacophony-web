@@ -11,7 +11,6 @@ import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
 import {
   ApiTrackDataRequest,
-  ApiTrackPosition,
   ApiTrackRequest,
   ApiTrackResponse,
 } from "@typedefs/api/track";
@@ -229,6 +228,17 @@ function queryTrackTags(
   );
 }
 
+function queryTrackTagsCount(
+  params: TrackTagQuery
+): Promise<FetchResult<QueryResult<any>>> {
+  if (!shouldViewAsSuperUser()) {
+    params["view-mode"] = "user";
+  }
+  return CacophonyApi.get(
+    `${apiPath}/track-tags/count?${querystring.stringify({ ...params })}`
+  );
+}
+
 function addIfSet(map: any, value: string | number, submap: string, key = "") {
   if (value && typeof value === "string" && value.trim() !== "") {
     map[submap] = map[submap] || {};
@@ -245,8 +255,13 @@ function addIfSet(map: any, value: string | number, submap: string, key = "") {
 
 function makeApiQuery(query: RecordingQuery): any {
   const apiWhere = {};
-  addIfSet(apiWhere, query.minS || "0", "duration", "$gte");
+  addIfSet(apiWhere, query.minS, "duration", "$gte");
   addIfSet(apiWhere, query.maxS, "duration", "$lte");
+  // If minS and maxS are not set, then we want to include recordings with a duration (NOT NULL)
+  if (apiWhere["duration"] == null) {
+    apiWhere["duration"] = {};
+  }
+  apiWhere["duration"]["$ne"] = null;
 
   // Map between the mismatch in video type types between frontend and backend
   if (query.type === "video") {
@@ -619,6 +634,7 @@ export default {
   replaceTrackTag,
   updateTrackTag,
   addRecordingTag,
+  queryTrackTagsCount,
   deleteRecordingTag,
   makeApiQuery,
   needsTag,

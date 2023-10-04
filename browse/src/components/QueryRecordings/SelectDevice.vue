@@ -1,6 +1,6 @@
 <template>
   <b-form-group>
-    <label>Device, group, and station</label>
+    <label>{{ label }}</label>
     <multiselect
       :value="selectedValues"
       :options="options"
@@ -137,6 +137,10 @@ const disambiguateStationNames = (stations) => {
 export default defineComponent({
   name: "SelectDevice",
   props: {
+    hideSelectedType: {
+      type: Set as PropType<Set<"group" | "device" | "stations">>,
+      default: new Set(),
+    },
     selectedDevices: {
       type: Array as PropType<string[]>,
       required: true,
@@ -159,6 +163,13 @@ export default defineComponent({
     };
   },
   computed: {
+    label() {
+      const shownTypes = ["device", "group", "station"]
+        .filter((type) => !this.hideSelectedType.has(type))
+        .map((type) => type.charAt(0).toUpperCase() + type.slice(1) + "s");
+
+      return `${shownTypes.join(", ")}`;
+    },
     placeholder: function () {
       if (this.fetching) {
         return "loading";
@@ -219,16 +230,22 @@ export default defineComponent({
         const loadDevicePromises = [];
         const loadGroupPromises = [];
         const loadStationPromises = [];
-        for (const deviceId of this.selectedDevices) {
-          loadDevicePromises.push(api.device.getDeviceById(deviceId));
+        if (!this.hideSelectedType.has("device")) {
+          for (const deviceId of this.selectedDevices) {
+            loadDevicePromises.push(api.device.getDeviceById(deviceId));
+          }
         }
-        for (const groupId of this.selectedGroups) {
-          loadGroupPromises.push(api.groups.getGroupById(groupId));
+        if (!this.hideSelectedType.has("group")) {
+          for (const groupId of this.selectedGroups) {
+            loadGroupPromises.push(api.groups.getGroupById(groupId));
+          }
         }
-        for (const stationId of this.selectedStations) {
-          loadStationPromises.push(
-            api.station.getStationById(stationId as number)
-          );
+        if (!this.hideSelectedType.has("station")) {
+          for (const stationId of this.selectedStations) {
+            loadStationPromises.push(
+              api.station.getStationById(stationId as number)
+            );
+          }
         }
         const [devicesResponses, groupsResponses, stationsResponses] =
           await Promise.all([
@@ -300,56 +317,62 @@ export default defineComponent({
           api.station.getStations(),
         ]);
         if (devicesResponse.success) {
-          this.devices = Object.freeze(
-            disambiguateDeviceNames(
-              devicesResponse.result.devices
-                .map(({ id, deviceName, type, groupName }) => ({
-                  id: Number(id),
-                  type: "device",
-                  name: deviceName,
-                  kind: type,
-                  groupName,
-                  uid: `device_${id}`,
-                }))
-                .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
-            )
-          );
-          this.groups = Object.freeze(
-            devicesResponse.result.devices.reduce(
-              (acc, { groupId, groupName }) => {
-                acc[groupId] = acc[groupId] || {
-                  id: groupId,
-                  type: "group",
-                  name: groupName,
-                  uid: `group_${groupId}`,
-                  deviceCount: 0,
-                };
-                acc[groupId].deviceCount++;
-                return acc;
-              },
-              {}
-            )
-          );
-        }
-
-        if (stationsResponse.success) {
-          this.stations = Object.freeze(
-            disambiguateStationNames(
-              stationsResponse.result.stations.reduce(
-                (acc, { name, id, groupName }) => {
-                  acc[id] = {
-                    type: "station",
-                    name,
-                    id,
+          if (!this.hideSelectedType.has("device")) {
+            this.devices = Object.freeze(
+              disambiguateDeviceNames(
+                devicesResponse.result.devices
+                  .map(({ id, deviceName, type, groupName }) => ({
+                    id: Number(id),
+                    type: "device",
+                    name: deviceName,
+                    kind: type,
                     groupName,
-                    uid: `station_${id}`,
+                    uid: `device_${id}`,
+                  }))
+                  .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
+              )
+            );
+          }
+          if (!this.hideSelectedType.has("group")) {
+            this.groups = Object.freeze(
+              devicesResponse.result.devices.reduce(
+                (acc, { groupId, groupName }) => {
+                  acc[groupId] = acc[groupId] || {
+                    id: groupId,
+                    type: "group",
+                    name: groupName,
+                    uid: `group_${groupId}`,
+                    deviceCount: 0,
                   };
+                  acc[groupId].deviceCount++;
                   return acc;
                 },
                 {}
               )
-            )
-          );
+            );
+          }
+        }
+
+        if (stationsResponse.success) {
+          if (!this.hideSelectedType.has("station")) {
+            this.stations = Object.freeze(
+              disambiguateStationNames(
+                stationsResponse.result.stations.reduce(
+                  (acc, { name, id, groupName }) => {
+                    acc[id] = {
+                      type: "station",
+                      name,
+                      id,
+                      groupName,
+                      uid: `station_${id}`,
+                    };
+                    return acc;
+                  },
+                  {}
+                )
+              )
+            );
+          }
         }
       }
       this.fetching = false;

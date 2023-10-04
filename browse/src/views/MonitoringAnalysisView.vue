@@ -1,8 +1,8 @@
 <template>
-  <main>
+  <main class="monitoring-analysis-container">
     <div class="top-bar-container">
-      <h1>Monitoring Analysis</h1>
-      <div class="media-type-container">
+      <h4>Monitoring Analysis</h4>
+      <div class="media-type-container" v-if="availableTypes.size > 1">
         <h2 :class="{ selected: mediaType === MediaType.ThermalRaw }">Video</h2>
         <button
           class="media-type-switch"
@@ -26,123 +26,151 @@
         </button>
         <h2 :class="{ selected: mediaType === MediaType.Audio }">Audio</h2>
       </div>
+      <div v-else>
+        <h2>{{ mediaType }}</h2>
+      </div>
     </div>
-    <article class="stats-container">
-      <div class="tag-selector">
-        <label>Tag</label>
-        <multiselect
-          v-model="selectedLabels"
-          :options="labels"
-          placeholder="all"
-          multiple
-        />
-      </div>
-      <div class="location-selector">
-        <SelectDevice
-          :selected-devices="devices"
-          :selected-groups="groups"
-          :selected-stations="stations"
-          @update-device-selection="updateDeviceSelection"
-        />
-      </div>
-      <div class="chart-container">
-        <b-spinner v-show="isLoading" type="grow" size="lg"></b-spinner>
-        <canvas v-show="!isLoading" ref="chartDomRef" id="chart" />
-      </div>
-      <div class="totals-table">
-        <div class="totals-container">
-          <div class="d-flex justify-content-between">
-            <h2
-              role="button"
-              @click="() => (datasetFocus = DataType.Tag)"
-              :class="{ selected: DataType.Tag === datasetFocus }"
-            >
-              Tags
-            </h2>
-            <h2>Total: {{ filterTrackTags.length }}</h2>
+    <Transition name="fade">
+      <article class="stats-container" v-show="trackTags.length">
+        <div class="inner-div">
+          <div class="tag-selector">
+            <label>Tag</label>
+            <multiselect
+              v-model="selectedLabels"
+              :options="labels"
+              placeholder="all"
+              multiple
+            />
           </div>
-          <div class="totals-item-container">
-            <div
-              v-for="(value, key) in tagTotals"
-              :key="key"
-              class="totals-item"
-            >
-              <div class="totals-key">{{ key }}</div>
-              <div class="totals-value">{{ value }}</div>
-            </div>
+          <div class="location-selector">
+            <SelectDevice
+              :selected-devices="devices"
+              :selected-groups="groups"
+              :selected-stations="stations"
+              :hide-selected-type="hiddenType"
+              @update-device-selection="updateDeviceSelection"
+            />
           </div>
-        </div>
-        <div class="totals-container">
-          <h2
-            role="button"
-            @click="() => (datasetFocus = DataType.Group)"
-            :class="{ selected: DataType.Group === datasetFocus }"
-          >
-            Groups
-          </h2>
-          <div class="totals-item-container">
-            <div
-              v-for="(value, key) in groupTotals"
-              :key="key"
-              class="totals-item"
-            >
-              <div class="totals-key">{{ key }}</div>
-              <div class="totals-value">{{ value }}</div>
-            </div>
+          <div class="chart-container">
+            <b-spinner v-show="isLoading" type="grow" size="lg"></b-spinner>
+            <canvas v-show="!isLoading" ref="chartDomRef" id="chart" />
           </div>
-        </div>
-        <div class="totals-container">
-          <h2
-            role="button"
-            @click="() => (datasetFocus = DataType.Station)"
-            :class="{ selected: DataType.Station === datasetFocus }"
-          >
-            Stations
-          </h2>
-          <div class="totals-item-container">
-            <div
-              class="totals-item"
-              v-for="(value, key) in stationTotals"
-              :key="key"
-            >
-              <div class="totals-key">{{ key }}</div>
-              <div class="totals-value">{{ value }}</div>
-            </div>
-          </div>
-        </div>
-        <div>
-          <h2
-            role="button"
-            @click="() => (datasetFocus = DataType.User)"
-            :class="{ selected: DataType.User === datasetFocus }"
-          >
-            Users
-          </h2>
-          <div class="totals-item-container">
-            <div
-              class="totals-item"
-              v-for="(value, key) in userTotals"
-              :key="key"
-              @click="
-                () => {
-                  if (key === userFocus) {
-                    userFocus = null;
-                  } else {
-                    userFocus = key.toString();
-                  }
-                }
-              "
-              role="button"
-            >
-              <div class="totals-key" :class="{ selected: key === userFocus }">
-                {{ key === userFocus ? username : key }}
+          <div class="totals-table">
+            <div class="totals-container">
+              <div class="d-flex justify-content-between">
+                <h2
+                  role="button"
+                  @click="() => (datasetFocus = DataType.Tag)"
+                  :class="{ selected: DataType.Tag === datasetFocus }"
+                >
+                  Tags
+                </h2>
+                <h2>Total: {{ displayedTotal }}</h2>
               </div>
-              <div class="totals-value">{{ value }}</div>
+              <div class="totals-item-container">
+                <div
+                  v-for="(value, key) in tagTotals"
+                  :key="key"
+                  class="totals-item"
+                >
+                  <div
+                    class="totals-key"
+                    @click="() => toggleTag(key.toString())"
+                    role="button"
+                  >
+                    {{ key }}
+                  </div>
+                  <div class="totals-value">{{ value }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="totals-container">
+              <h2
+                role="button"
+                @click="() => (datasetFocus = DataType.Group)"
+                :class="{ selected: DataType.Group === datasetFocus }"
+                v-if="!groupId"
+              >
+                Groups
+              </h2>
+              <div class="totals-item-container">
+                <div
+                  v-for="(value, key) in groupTotals"
+                  :key="key"
+                  class="totals-item"
+                >
+                  <div class="totals-key">
+                    {{ key }}
+                  </div>
+                  <div class="totals-value">{{ value }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="totals-container">
+              <h2
+                role="button"
+                @click="() => (datasetFocus = DataType.Station)"
+                :class="{ selected: DataType.Station === datasetFocus }"
+              >
+                Stations
+              </h2>
+              <div class="totals-item-container">
+                <div
+                  class="totals-item"
+                  v-for="(value, key) in stationTotals"
+                  :key="key"
+                >
+                  <div class="totals-key">
+                    {{ key !== "null" ? key : "No Station" }}
+                  </div>
+                  <div class="totals-value">{{ value }}</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h2
+                role="button"
+                @click="() => (datasetFocus = DataType.User)"
+                :class="{ selected: DataType.User === datasetFocus }"
+              >
+                Users
+              </h2>
+              <div class="totals-item-container">
+                <div
+                  class="totals-item"
+                  v-for="(value, key) in userTotals"
+                  :key="key"
+                  @click="
+                    () => {
+                      if (key === userFocus) {
+                        userFocus = null;
+                      } else {
+                        userFocus = key.toString();
+                      }
+                    }
+                  "
+                  role="button"
+                >
+                  <div
+                    class="totals-key"
+                    :class="{ selected: key === userFocus }"
+                  >
+                    {{ key }}
+                  </div>
+                  <div class="totals-value">{{ value }}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </article>
+      </article>
+    </Transition>
+    <div v-show="isLoading">
+      <b-spinner type="grow" size="lg"></b-spinner>
+    </div>
+    <div class="no-data-message" v-show="!isLoading && trackTags.length === 0">
+      <h3>No data found</h3>
+    </div>
   </main>
 </template>
 <script lang="ts">
@@ -150,7 +178,15 @@ import RecordingApi, { TrackTagRow } from "@/api/Recording.api";
 import SelectDevice from "@/components/QueryRecordings/SelectDevice.vue";
 import { useRoute, useRouter } from "@/utils";
 import { RecordingType } from "@typedefs/api/consts";
-import { defineComponent, onMounted, ref, watch } from "@vue/composition-api";
+import {
+  computed,
+  defineComponent,
+  onMounted,
+  onUnmounted,
+  PropType,
+  ref,
+  watch,
+} from "@vue/composition-api";
 import _ from "lodash";
 import Multiselect from "vue-multiselect";
 import {
@@ -175,24 +211,27 @@ enum DataType {
 export default defineComponent({
   name: "MonitoringAnalysisView",
   components: { SelectDevice, Multiselect },
-  setup() {
+  props: {
+    groupId: { type: Number, required: false },
+    availableTypes: {
+      type: Set as PropType<Set<RecordingType>>,
+      default: () => new Set([RecordingType.Audio, RecordingType.ThermalRaw]),
+    },
+  },
+  setup(props) {
     // Browser
     const route = useRoute();
     const router = useRouter();
 
     // Track Tags
-    const trackTags = ref<TrackTagRow[]>([]);
-    const filterTrackTags = ref<TrackTagRow[]>([]);
+    const trackTags = ref<(TrackTagRow & { count: number })[]>([]);
+    const filterTrackTags = ref<(TrackTagRow & { count: number })[]>([]);
     const isLoading = ref(false);
 
     // Data Selectors
     const labels = ref<string[]>([]);
     const selectedLabels = ref<string[]>([]);
-    const mediaType = ref(
-      route.value.query.type === RecordingType.Audio
-        ? RecordingType.Audio
-        : RecordingType.ThermalRaw
-    );
+    const mediaType = ref(null);
     const devices = ref<string[]>([]);
     const groups = ref<string[]>([]);
     const stations = ref<string[]>([]);
@@ -200,6 +239,10 @@ export default defineComponent({
     const username = ref<string | null>(null);
 
     // Totals
+    const total = computed(() => {
+      return filterTrackTags.value.reduce((sum, tag) => sum + tag.count, 0);
+    });
+    const displayedTotal = ref("0");
     const tagTotals = ref<{ [key: string]: number }>({});
     const groupTotals = ref<{ [key: string]: number }>({});
     const stationTotals = ref<{ [key: string]: number }>({});
@@ -213,6 +256,34 @@ export default defineComponent({
       { [x: string]: number },
       unknown
     >;
+    let animationFrameId = null;
+
+    watch(total, (newTotal, oldTotal) => {
+      cancelAnimationFrame(animationFrameId);
+
+      let start = null;
+      const duration = 200; // Animation duration in milliseconds
+
+      const animate = (timestamp) => {
+        if (start === null) {
+          start = timestamp;
+        }
+
+        const elapsed = timestamp - start;
+        const progress = Math.min(elapsed / duration, 1);
+
+        displayedTotal.value = (
+          oldTotal +
+          (newTotal - oldTotal) * progress
+        ).toFixed(0);
+
+        if (progress < 1) {
+          animationFrameId = requestAnimationFrame(animate);
+        }
+      };
+
+      animationFrameId = requestAnimationFrame(animate);
+    });
 
     // State
     const updateDeviceSelection = (eventData) => {
@@ -228,35 +299,32 @@ export default defineComponent({
     };
 
     // User ID currently has id_ attached to it due to sorting
-    const getUserById = async (id: string) => {
-      const details = await UserApi.getUserDetails(id.replace("id_", ""));
-      if (details.success) {
-        return details.result.userData.userName;
-      }
-      return id;
-    };
-
-    const updateTrackTags = async () => {
+    const fetchTrackTagData = async () => {
       const type: RecordingType =
         route.value.query.type === "audio"
           ? RecordingType.Audio
           : RecordingType.ThermalRaw;
       isLoading.value = true;
-      const response = await RecordingApi.queryTrackTags({
+      const response = await RecordingApi.queryTrackTagsCount({
         type,
-        limit: 150000,
         exclude: [
           "unidentified",
           "false-positive",
           "false-positives",
           "unknown",
         ],
+        ...(props.groupId && { groupId: props.groupId }),
       });
       isLoading.value = false;
       if (response.success) {
-        trackTags.value = response.result.rows;
-
-        // console.log(response.result.rows);
+        trackTags.value = response.result.rows.map((row) => ({
+          label: row.what,
+          labeller: row.userName,
+          group: { id: row.groupId, name: row.groupName },
+          station: { id: row.stationId, name: row.stationName },
+          device: { id: row.deviceId, name: row.deviceName },
+          count: parseInt(row.trackTagCount),
+        }));
       }
     };
 
@@ -294,38 +362,66 @@ export default defineComponent({
             : true
         );
     };
-    watch(userFocus, async () => {
-      username.value = userFocus.value
-        ? await getUserById(userFocus.value)
-        : null;
-    });
 
-    watch(
-      [mediaType, selectedLabels, devices, groups, stations, userFocus],
-      () => {
-        router.push({
-          query: {
-            tag: selectedLabels.value,
-            type: mediaType.value,
-            device: devices.value,
-            group: groups.value,
-            station: stations.value,
-            ...(userFocus.value && { user: userFocus.value }),
-          },
+    watch([mediaType, selectedLabels, groups, stations, userFocus], () => {
+      const targetLocation = {
+        query: {
+          tag: selectedLabels.value ?? route.value.query.tag,
+          type: mediaType.value ?? route.value.query.type,
+          group: groups.value ?? route.value.query.group,
+          station: stations.value ?? route.value.query.station,
+          ...(userFocus.value && { user: userFocus.value }),
+        },
+      };
+      const resolvedTarget = router.resolve(targetLocation);
+      if (route.value.fullPath !== resolvedTarget.href) {
+        router.push(targetLocation).catch((err) => {
+          if (err.name !== "NavigationDuplicated") {
+            throw err;
+          }
         });
       }
-    );
-    watch(route, async (curr, prev) => {
-      if (curr.query.type !== prev.query.type) {
-        await updateTrackTags();
-        filterTrackTags.value = [];
-        labels.value = [
-          ...new Set(trackTags.value.map((trackTag) => trackTag.label)),
-        ];
-        selectedLabels.value = [];
-      }
-      setFilterTrackTags();
     });
+    const setTrackTags = async () => {
+      trackTags.value = [];
+      await fetchTrackTagData();
+      labels.value = [
+        ...new Set(trackTags.value.map((trackTag) => trackTag.label)),
+      ];
+      setFilterTrackTags();
+    };
+    const prevType = ref(null);
+    watch(
+      () => [route.value, props.availableTypes] as const,
+      async ([currRoute, availableTypes], [prevRoute, _pervType]) => {
+        if (availableTypes.size === 0) {
+          return;
+        }
+        if (prevType.value === null) {
+          prevType.value =
+            currRoute.query.type ?? availableTypes.values().next().value;
+          mediaType.value = prevType.value;
+          // set route to first available type
+          await setTrackTags();
+        } else {
+          const type = (currRoute.query.type as string) ?? mediaType.value;
+          const isRouteQuerySame = (query: string) =>
+            currRoute.query[query] === prevRoute.query[query];
+          const queries = ["tag", "group", "station", "device", "user"];
+          const isRouteSame = queries.every(isRouteQuerySame);
+          console.log(
+            "isRouteSame",
+            isRouteSame,
+            currRoute.query,
+            prevRoute.query
+          );
+          if (type !== prevType.value || !isRouteSame) {
+            prevType.value = type;
+            await setTrackTags();
+          }
+        }
+      }
+    );
 
     watch(
       [tagTotals, groupTotals, stationTotals, userTotals, datasetFocus],
@@ -333,14 +429,14 @@ export default defineComponent({
         if (!barChart) {
           return;
         }
-        if (datasetFocus.value === DataType.Tag) {
-          barChart.data.datasets[0].data = tagTotals.value;
-        } else if (datasetFocus.value === DataType.Group) {
-          barChart.data.datasets[0].data = groupTotals.value;
-        } else if (datasetFocus.value === DataType.Station) {
-          barChart.data.datasets[0].data = stationTotals.value;
-        } else if (datasetFocus.value === DataType.User) {
-          barChart.data.datasets[0].data = userTotals.value;
+        const types = {
+          [DataType.Tag]: tagTotals.value,
+          [DataType.Group]: groupTotals.value,
+          [DataType.Station]: stationTotals.value,
+          [DataType.User]: userTotals.value,
+        };
+        if (datasetFocus.value in types) {
+          barChart.data.datasets[0].data = types[datasetFocus.value];
         }
         const nshades = Math.max(
           Object.keys(barChart.data.datasets[0].data).length,
@@ -356,41 +452,19 @@ export default defineComponent({
     );
 
     watch([trackTags, filterTrackTags], () => {
-      const extractTotalOf =
-        (data: { [key: string]: any }[]) =>
-        (newKey: string, ...children: string[]) => {
-          return _(
-            data.reduce((acc, newCurr) => {
-              const [curr, key] = children.reduce(
-                ([currChild, key], childKey) => {
-                  if (typeof currChild[key] === "object") {
-                    return [currChild[key], childKey];
-                  } else {
-                    return [currChild, key];
-                  }
-                },
-                [newCurr, newKey]
-              );
-              if (curr === null) {
-                return acc;
-              }
-              if (acc.hasOwnProperty(curr[key])) {
-                acc[curr[key]] += 1;
-              } else {
-                acc[curr[key]] = 1;
-              }
-              return acc;
-            }, {})
-          )
-            .toPairs()
-            .orderBy([1], ["desc"])
-            .fromPairs()
-            .value();
-        };
-      const totalOf = extractTotalOf(filterTrackTags.value);
+      const totalOf = (key: string) => {
+        return _.chain(filterTrackTags.value)
+          .groupBy(key)
+          .mapValues((grouped) => _.sumBy(grouped, "count"))
+          .toPairs() // Convert the object to pairs [key, value]
+          .orderBy([1], ["desc"]) // Sort by the value (count) in descending order
+          .fromPairs() // Convert it back to an object
+          .value();
+      };
+
       tagTotals.value = totalOf("label");
-      stationTotals.value = totalOf("station", "name");
-      groupTotals.value = totalOf("group", "name");
+      stationTotals.value = totalOf("station.name");
+      groupTotals.value = totalOf("group.name");
       userTotals.value = totalOf("labeller");
     });
 
@@ -406,7 +480,6 @@ export default defineComponent({
     userFocus.value = user ? (user as string) : null;
 
     onMounted(async () => {
-      await updateTrackTags();
       Chart.register(BarElement, BarController, CategoryScale, LinearScale);
       const config = {
         type: "bar" as ChartType,
@@ -418,17 +491,30 @@ export default defineComponent({
           ],
         },
       };
-      barChart = new Chart(
-        document.getElementById("chart") as HTMLCanvasElement,
-        config
-      );
-      labels.value = [
-        ...new Set(trackTags.value.map((trackTag) => trackTag.label)),
-      ];
-      setFilterTrackTags();
+      barChart = new Chart(chartDomRef.value, config);
+      await setTrackTags();
     });
 
+    onUnmounted(() => {
+      if (barChart) {
+        barChart.destroy();
+      }
+    });
+
+    const toggleTag = (tag: string) => {
+      const index = selectedLabels.value.indexOf(tag);
+      if (index === -1) {
+        selectedLabels.value = [...selectedLabels.value, tag];
+      } else {
+        selectedLabels.value = [
+          ...selectedLabels.value.slice(0, index),
+          ...selectedLabels.value.slice(index + 1),
+        ];
+      }
+    };
+
     return {
+      toggleTag,
       chartDomRef,
       selectedLabels,
       labels,
@@ -437,6 +523,8 @@ export default defineComponent({
       devices,
       groups,
       stations,
+      total,
+      displayedTotal,
       tagTotals,
       groupTotals,
       stationTotals,
@@ -445,24 +533,46 @@ export default defineComponent({
       userFocus,
       username,
       DataType,
+      trackTags,
       filterTrackTags,
       isLoading,
       updateDeviceSelection,
-      getUserById,
+      hiddenType: props.groupId
+        ? new Set(["group", "device"])
+        : new Set(["device"]),
     };
   },
 });
 </script>
 
 <style lang="scss">
+.monitoring-analysis-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1em;
+  max-width: 1140px;
+  width: 100%;
+  margin: auto;
+}
+
 .top-bar-container {
   display: flex;
   width: 100%;
   justify-content: space-between;
   align-items: center;
-  padding: 1em;
-  background-color: #fafafa;
+  padding: 0.5em;
+  gap: 1em;
   border-bottom: 1px solid #eaeaea;
+  text-transform: capitalize;
+  max-width: 1140px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 767px) {
+  .top-bar-container {
+    justify-content: center;
+  }
 }
 
 main {
@@ -509,45 +619,69 @@ main {
 
 .stats-container {
   display: grid;
-  margin-top: 3em;
-  grid-template-columns: 0.3fr 1fr 1fr 1fr 0.3fr;
-  grid-template-rows: 6em auto;
-  grid-column-gap: 1em;
+  padding-top: 1em;
+  grid-template-columns: 1fr minmax(auto, 1140px) 1fr;
+
   & label {
     color: #1e1e1e;
     font-weight: bold;
     text-transform: capitalize;
   }
-  > div {
-    padding: 0 1em 0 1em;
+
+  /* Adjust inner divs to take up 3 columns within the middle column */
+  .inner-div {
+    grid-column: 2;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 6em auto;
+    grid-column-gap: 1em;
+    column-gap: 1em;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Adjust the max-width as needed */
+  .stats-container .inner-div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
   }
 }
 
 .tag-selector {
-  grid-column-start: 2;
-  grid-column-end: 3;
+  width: 100%;
+  grid-column-start: 1;
+  grid-column-end: 2;
   margin-bottom: 1rem;
 }
 
 .location-selector {
-  grid-column-start: 3;
-  grid-column-end: 4;
+  width: 100%;
+  grid-column-start: 2;
+  grid-column-end: 3;
 }
 
 .chart-container {
-  grid-column-start: 2;
-  grid-column-end: 4;
+  grid-column-start: 1;
+  grid-column-end: 3;
   grid-row-start: 2;
   grid-row-end: 3;
-  max-height: 30em;
+  max-height: 20em;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+
+  & #chart {
+    max-height: 20em;
+  }
 }
 
 .totals-table {
-  grid-column-start: 4;
-  grid-column-end: 5;
+  width: 100%;
+  grid-column-start: 3;
+  grid-column-end: 4;
   grid-row-start: 1;
   grid-row-end: 3;
   > div {
@@ -573,5 +707,21 @@ main {
 .selected {
   color: #303030;
   font-weight: bold;
+}
+.no-data-message {
+  display: flex;
+  justify-content: center;
+  padding-top: 1em;
+  & h4 {
+    color: #303030;
+    font-weight: 800;
+  }
+}
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s;
+}
+.fade-enter, .fade-leave-to /* .fade-leave-active in <2.1.8 */ {
+  opacity: 0;
 }
 </style>

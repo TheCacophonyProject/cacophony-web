@@ -97,6 +97,7 @@ import {
   bulkDelete,
   getThumbnail,
   getTrackTags,
+  getTrackTagsCount,
   queryRecordings,
   queryVisits,
   reportRecordings,
@@ -677,7 +678,7 @@ export default (app: Application, baseUrl: string) => {
         models,
         response.locals.requestUser.id,
         type as RecordingType,
-        !!countAll,
+        Boolean(countAll),
         {
           viewAsSuperUser,
           where,
@@ -1074,7 +1075,7 @@ export default (app: Application, baseUrl: string) => {
       query("exclude").default([]).optional().isArray(),
       query("includeAI").default(false).isBoolean(),
       integerOf(query("offset")).optional(),
-      integerOf(query("limit").default(50000)),
+      integerOf(query("limit").optional()),
       query("type")
         .default("thermalRaw")
         .optional()
@@ -1197,88 +1198,75 @@ export default (app: Application, baseUrl: string) => {
       csv.writeToStream(response, rows);
     }
   );
-
   /**
-   * @api {get} /api/v1/recordings/:id Get a recording
-   * @apiName GetRecording
-   * @apiGroup Recordings
+   * @api {get} /api/v1/recordings/track-tags/count Get track tag counts
+   * @apiName GetTrackTagCounts
+   * @apiGroup Tracks
+   * @apiDescription Fetches track tag counts grouped by tag, group, station, and user.
+   *                 Filters can be applied to narrow down the results.
    *
-   * @apiUse MetaDataAndJWT
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiUse V1ResponseSuccess
+   * @apiParam (Query) {String} [type=thermalRaw] Type of recordings (thermalRaw/audio).
+   * @apiParam (Query) {Boolean} [includeAI=false] Include AI tags.
+   * @apiParam (Query) {String} [view-mode] View mode. Allows a super-user to view as a regular user.
+   * @apiParam (Query) {String[]} [exclude] Exclude specified tags.
+   * @apiParam (Query) {Number} [offset] Zero-based page number. Use '0' to get the first page.
+   * @apiParam (Query) {Number} [limit] Max number of records to be returned.
+   * @apiParam (Query) {Number} [groupId] Optional group ID to filter results by a specific group.
    *
-   * @apiParam {Integer} id Id of the recording to get.
-   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
-   * recordings.
-   * @apiQuery {Boolean} [requires-signed-url=true] Whether or not to return a signed url with the recording data.
-   * @apiSuccess {int} fileSize the number of bytes in recording file.
-   * @apiSuccess {int} rawSize the number of bytes in raw recording file.
-   * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
-   * recording file.
-   * @apiSuccess {String} downloadRawJWT JSON Web Token to use to download
-   * the raw recording data.
-   * @apiInterface {apiSuccess::ApiRecordingResponseSuccess} recording The
-   * recording data.
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} rows List of track tag counts.
+   * @apiSuccess {String} rows.label Name of the track tag.
+   * @apiSuccess {Number} rows.userId User ID of the user who tagged or AI.
+   * @apiSuccess {Object} rows.group Group details.
+   * @apiSuccess {Number} rows.group.id ID of the group.
+   * @apiSuccess {String} rows.group.name Name of the group.
+   * @apiSuccess {Object} rows.station Station details.
+   * @apiSuccess {Number} rows.station.id ID of the station.
+   * @apiSuccess {String} rows.station.name Name of the station.
+   * @apiSuccess {Object} rows.device Device details.
+   * @apiSuccess {Number} rows.device.id ID of the device.
+   * @apiSuccess {String} rows.device.name Name of the device.
    *
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:id`,
+    `${apiUrl}/track-tags/count`,
     extractJwtAuthorizedUser,
     validateFields([
-      idOf(param("id")),
-      query("deleted").default(false).isBoolean().toBoolean(),
-      query("requires-signed-url").default(true).isBoolean().toBoolean(),
+      query("exclude").default([]).optional().isArray(),
+      query("includeAI").default(false).isBoolean(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit").optional()),
+      query("type")
+        .default("thermalRaw")
+        .optional()
+        .isIn(Object.values(RecordingType)),
+      query("view-mode").optional().equals("user"),
+      integerOf(query("groupId")).optional(), // Added validation for groupId
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    parseJSONField(query("exclude")),
+    parseJSONField(query("includeAI")),
     async (request: Request, response: Response) => {
-      const recordingItem = response.locals.recording;
-      const recording = mapRecordingResponse(response.locals.recording);
-      if (request.query["requires-signed-url"]) {
-        let rawJWT;
-        let cookedJWT;
-        let rawSize;
-        let cookedSize;
-        if (recordingItem.fileKey) {
-          cookedJWT = signedToken(
-            recordingItem.fileKey,
-            recordingItem.getFileName(),
-            recordingItem.fileMimeType,
-            response.locals.requestUser.id,
-            recordingItem.groupId
-          );
-          cookedSize =
-            recordingItem.fileSize ||
-            (await util.getS3ObjectFileSize(recordingItem.fileKey));
-        }
-        if (recordingItem.rawFileKey) {
-          rawJWT = signedToken(
-            recordingItem.rawFileKey,
-            recordingItem.getRawFileName(),
-            recordingItem.rawMimeType,
-            response.locals.requestUser.id,
-            recordingItem.GroupId
-          );
-          rawSize =
-            recordingItem.rawFileSize ||
-            (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
-        }
-        return successResponse(response, {
-          recording,
-          rawSize: rawSize,
-          fileSize: cookedSize,
-          downloadFileJWT: cookedJWT,
-          downloadRawJWT: rawJWT,
-        });
-      } else {
-        return successResponse(response, {
-          recording,
-        });
-      }
+      const result = await getTrackTagsCount({
+        models: models,
+        userId: response.locals.requestUser.id,
+        viewAsSuperUser: response.locals.viewAsSuperUser,
+        includeAI: Boolean(request.query.includeAI),
+        recordingType: request.query.type.toString() as RecordingType,
+        exclude: response.locals.exclude,
+        offset:
+          request.query.offset && parseInt(request.query.offset as string),
+        limit: request.query.limit && parseInt(request.query.limit as string),
+        groupId:
+          request.query.groupId && parseInt(request.query.groupId as string), // Added groupId
+      });
+      return successResponse(response, "Completed query.", {
+        rows: result,
+      });
     }
   );
-
   /**
    * @api {get} /api/v1/recordings/raw/:id Get a raw recording stream
    * @apiName GetRecordingRawFile
