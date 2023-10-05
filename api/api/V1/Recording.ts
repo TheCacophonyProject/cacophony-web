@@ -1198,6 +1198,90 @@ export default (app: Application, baseUrl: string) => {
       csv.writeToStream(response, rows);
     }
   );
+  
+
+  /**
+   * @api {get} /api/v1/recordings/:id Get a recording
+   * @apiName GetRecording
+   * @apiGroup Recordings
+   *
+   * @apiUse MetaDataAndJWT
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   *
+   * @apiParam {Integer} id Id of the recording to get.
+   * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
+   * recordings.
+   * @apiQuery {Boolean} [requires-signed-url=true] Whether or not to return a signed url with the recording data.
+   * @apiSuccess {int} fileSize the number of bytes in recording file.
+   * @apiSuccess {int} rawSize the number of bytes in raw recording file.
+   * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
+   * recording file.
+   * @apiSuccess {String} downloadRawJWT JSON Web Token to use to download
+   * the raw recording data.
+   * @apiInterface {apiSuccess::ApiRecordingResponseSuccess} recording The
+   * recording data.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("deleted").default(false).isBoolean().toBoolean(),
+      query("requires-signed-url").default(true).isBoolean().toBoolean(),
+    ]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response) => {
+      const recordingItem = response.locals.recording;
+      const recording = mapRecordingResponse(response.locals.recording);
+      if (request.query["requires-signed-url"]) {
+        let rawJWT;
+        let cookedJWT;
+        let rawSize;
+        let cookedSize;
+        if (recordingItem.fileKey) {
+          cookedJWT = signedToken(
+            recordingItem.fileKey,
+            recordingItem.getFileName(),
+            recordingItem.fileMimeType,
+            response.locals.requestUser.id,
+            recordingItem.groupId
+          );
+          cookedSize =
+            recordingItem.fileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.fileKey));
+        }
+        if (recordingItem.rawFileKey) {
+          rawJWT = signedToken(
+            recordingItem.rawFileKey,
+            recordingItem.getRawFileName(),
+            recordingItem.rawMimeType,
+            response.locals.requestUser.id,
+            recordingItem.GroupId
+          );
+          rawSize =
+            recordingItem.rawFileSize ||
+            (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
+        }
+        return successResponse(response, {
+          recording,
+          rawSize: rawSize,
+          fileSize: cookedSize,
+          downloadFileJWT: cookedJWT,
+          downloadRawJWT: rawJWT,
+        });
+      } else {
+        return successResponse(response, {
+          recording,
+        });
+      }
+    }
+  );
+
+
   /**
    * @api {get} /api/v1/recordings/track-tags/count Get track tag counts
    * @apiName GetTrackTagCounts
