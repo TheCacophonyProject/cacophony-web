@@ -1198,7 +1198,6 @@ export default (app: Application, baseUrl: string) => {
       csv.writeToStream(response, rows);
     }
   );
-  
 
   /**
    * @api {get} /api/v1/recordings/:id Get a recording
@@ -1280,7 +1279,6 @@ export default (app: Application, baseUrl: string) => {
       }
     }
   );
-
 
   /**
    * @api {get} /api/v1/recordings/track-tags/count Get track tag counts
