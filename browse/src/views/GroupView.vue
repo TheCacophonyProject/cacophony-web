@@ -314,7 +314,6 @@ export default defineComponent({
   },
   methods: {
     async setFilterHuman(newValue) {
-      console.log(newValue);
       if (newValue === null) {
         return;
       }

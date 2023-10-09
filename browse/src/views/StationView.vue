@@ -222,9 +222,7 @@ export default {
     },
     currentTabIndex: {
       get() {
-        const value = Math.max(0, this.tabNames.indexOf(this.currentTabName));
-        console.log(value);
-        return value;
+        return Math.max(0, this.tabNames.indexOf(this.currentTabName));
       },
       set(tabIndex) {
         const nextTabName = this.tabNames[tabIndex];

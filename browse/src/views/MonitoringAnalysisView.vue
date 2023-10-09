@@ -306,10 +306,6 @@ export default defineComponent({
 
     // User ID currently has id_ attached to it due to sorting
     const fetchTrackTagData = async () => {
-      console.log({
-        at: props.availableTypes,
-        route: route.value.query.type,
-      });
       if (props.availableTypes.size === 0) {
         return;
       } else if (!route.value.query.type) {
@@ -423,7 +419,6 @@ export default defineComponent({
             currRoute.query[query] === prevRoute.query[query];
           const queries = ["tag", "group", "station", "device", "user"];
           const isRouteSame = queries.every(isRouteQuerySame);
-          console.log(isRouteSame, currRoute.query, prevRoute.query);
           if (type !== prevType.value || !isRouteSame) {
             prevType.value = type;
             await setTrackTags();
