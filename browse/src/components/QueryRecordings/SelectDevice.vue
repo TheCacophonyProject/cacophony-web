@@ -153,6 +153,10 @@ export default defineComponent({
       type: Array as PropType<string[]>,
       default: () => [] as string[],
     },
+    lazy: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
@@ -383,9 +387,10 @@ export default defineComponent({
     if (
       this.selectedStations.length ||
       this.selectedDevices.length ||
-      this.selectedGroups.length
+      this.selectedGroups.length ||
+      !this.lazy
     ) {
-      await this.loadValues(true);
+      await this.loadValues(this.lazy);
     }
   },
 });

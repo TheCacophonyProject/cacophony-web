@@ -49,6 +49,7 @@
               :selected-stations="stations"
               :hide-selected-type="hiddenType"
               @update-device-selection="updateDeviceSelection"
+              :lazy="false"
             />
           </div>
           <div class="chart-container">
@@ -93,13 +94,17 @@
               >
                 Groups
               </h2>
-              <div class="totals-item-container">
+              <div class="totals-item-container" v-if="!groupId">
                 <div
                   v-for="(value, key) in groupTotals"
                   :key="key"
                   class="totals-item"
                 >
-                  <div class="totals-key">
+                  <div
+                    class="totals-key"
+                    @click="() => toggleGroup(key.toString())"
+                    role="button"
+                  >
                     {{ key }}
                   </div>
                   <div class="totals-value">{{ value }}</div>
@@ -120,7 +125,12 @@
                   v-for="(value, key) in stationTotals"
                   :key="key"
                 >
-                  <div class="totals-key">
+                  <div
+                    class="totals-key"
+                    @click="() => toggleStation(key.toString())"
+                    role="button"
+                    :class="{ selected: stations.includes(key.toString()) }"
+                  >
                     {{ key !== "null" ? key : "No Station" }}
                   </div>
                   <div class="totals-value">{{ value }}</div>
@@ -133,7 +143,7 @@
                 @click="() => (datasetFocus = DataType.User)"
                 :class="{ selected: DataType.User === datasetFocus }"
               >
-                Users
+                Taggers
               </h2>
               <div class="totals-item-container">
                 <div
@@ -151,10 +161,7 @@
                   "
                   role="button"
                 >
-                  <div
-                    class="totals-key"
-                    :class="{ selected: key === userFocus }"
-                  >
+                  <div class="totals-key">
                     {{ key }}
                   </div>
                   <div class="totals-value">{{ value }}</div>
@@ -199,7 +206,6 @@ import {
   ChartTypeRegistry,
 } from "chart.js";
 import colormap from "colormap";
-import UserApi from "@/api/User.api";
 
 enum DataType {
   Tag,
@@ -215,7 +221,7 @@ export default defineComponent({
     groupId: { type: Number, required: false },
     availableTypes: {
       type: Set as PropType<Set<RecordingType>>,
-      default: () => new Set([RecordingType.Audio, RecordingType.ThermalRaw]),
+      default: () => new Set([RecordingType.ThermalRaw, RecordingType.Audio]),
     },
   },
   setup(props) {
@@ -300,6 +306,15 @@ export default defineComponent({
 
     // User ID currently has id_ attached to it due to sorting
     const fetchTrackTagData = async () => {
+      console.log({
+        at: props.availableTypes,
+        route: route.value.query.type,
+      });
+      if (props.availableTypes.size === 0) {
+        return;
+      } else if (!route.value.query.type) {
+        mediaType.value = props.availableTypes.values().next().value;
+      }
       const type: RecordingType =
         route.value.query.type === "audio"
           ? RecordingType.Audio
@@ -375,7 +390,7 @@ export default defineComponent({
       };
       const resolvedTarget = router.resolve(targetLocation);
       if (route.value.fullPath !== resolvedTarget.href) {
-        router.push(targetLocation).catch((err) => {
+        router.replace(targetLocation).catch((err) => {
           if (err.name !== "NavigationDuplicated") {
             throw err;
           }
@@ -383,7 +398,6 @@ export default defineComponent({
       }
     });
     const setTrackTags = async () => {
-      trackTags.value = [];
       await fetchTrackTagData();
       labels.value = [
         ...new Set(trackTags.value.map((trackTag) => trackTag.label)),
@@ -409,12 +423,7 @@ export default defineComponent({
             currRoute.query[query] === prevRoute.query[query];
           const queries = ["tag", "group", "station", "device", "user"];
           const isRouteSame = queries.every(isRouteQuerySame);
-          console.log(
-            "isRouteSame",
-            isRouteSame,
-            currRoute.query,
-            prevRoute.query
-          );
+          console.log(isRouteSame, currRoute.query, prevRoute.query);
           if (type !== prevType.value || !isRouteSame) {
             prevType.value = type;
             await setTrackTags();
@@ -513,8 +522,46 @@ export default defineComponent({
       }
     };
 
+    const toggleGroup = (group: string) => {
+      const groupId = trackTags.value
+        .find((tag) => tag.group.name === group)
+        ?.group.id.toString();
+      if (!groupId) {
+        return;
+      }
+      const index = groups.value.indexOf(groupId);
+      if (index === -1) {
+        groups.value = [...groups.value, groupId];
+      } else {
+        groups.value = [
+          ...groups.value.slice(0, index),
+          ...groups.value.slice(index + 1),
+        ];
+      }
+    };
+
+    const toggleStation = (station: string) => {
+      const stationId = trackTags.value
+        .find((tag) => tag.station.name === station)
+        ?.station.id.toString();
+      if (!stationId) {
+        return;
+      }
+      const index = stations.value.indexOf(stationId);
+      if (index === -1) {
+        stations.value = [...stations.value, stationId];
+      } else {
+        stations.value = [
+          ...stations.value.slice(0, index),
+          ...stations.value.slice(index + 1),
+        ];
+      }
+    };
+
     return {
       toggleTag,
+      toggleStation,
+      toggleGroup,
       chartDomRef,
       selectedLabels,
       labels,
@@ -561,9 +608,7 @@ export default defineComponent({
   width: 100%;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5em;
   gap: 1em;
-  border-bottom: 1px solid #eaeaea;
   text-transform: capitalize;
   max-width: 1140px;
   flex-wrap: wrap;

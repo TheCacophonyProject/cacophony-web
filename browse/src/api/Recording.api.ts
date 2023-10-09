@@ -228,9 +228,22 @@ function queryTrackTags(
   );
 }
 
+export type TrackTagCount = {
+  what: string;
+  UserId: number;
+  userName: string;
+  trackTagCount: string;
+  groupId: number;
+  groupName: string;
+  stationId: number;
+  stationName: string;
+  deviceId: number;
+  deviceName: string;
+};
+
 function queryTrackTagsCount(
   params: TrackTagQuery
-): Promise<FetchResult<QueryResult<any>>> {
+): Promise<FetchResult<QueryResult<TrackTagCount>>> {
   if (!shouldViewAsSuperUser()) {
     params["view-mode"] = "user";
   }
