@@ -231,6 +231,8 @@ export default defineComponent({
 
     // Track Tags
     const trackTags = ref<(TrackTagRow & { count: number })[]>([]);
+    const audioTrackTags = ref<(TrackTagRow & { count: number })[]>([]);
+    const thermalTrackTags = ref<(TrackTagRow & { count: number })[]>([]);
     const filterTrackTags = ref<(TrackTagRow & { count: number })[]>([]);
     const isLoading = ref(false);
 
@@ -315,6 +317,16 @@ export default defineComponent({
         route.value.query.type === "audio"
           ? RecordingType.Audio
           : RecordingType.ThermalRaw;
+      if (type === RecordingType.Audio && audioTrackTags.value.length > 0) {
+        trackTags.value = audioTrackTags.value;
+        return;
+      } else if (
+        type === RecordingType.ThermalRaw &&
+        thermalTrackTags.value.length > 0
+      ) {
+        trackTags.value = thermalTrackTags.value;
+        return;
+      }
       isLoading.value = true;
       const response = await RecordingApi.queryTrackTagsCount({
         type,
@@ -336,6 +348,11 @@ export default defineComponent({
           device: { id: row.deviceId, name: row.deviceName },
           count: parseInt(row.trackTagCount),
         }));
+        if (type === RecordingType.Audio) {
+          audioTrackTags.value = trackTags.value;
+        } else {
+          thermalTrackTags.value = trackTags.value;
+        }
       }
     };
 
