@@ -369,6 +369,23 @@ export default defineComponent({
       element.style.transform = `scaleX(${x}) scaleY(${y})`;
       element.style.transformOrigin = `${origin}px bottom`;
     };
+    const applyScaleToElements = (
+      svgElement: SVGElement,
+      origin: number,
+      xScale: number,
+      yScale: number
+    ) => {
+      // Select both rect and circle elements
+      const elements = svgElement.querySelectorAll<SVGElement>("rect, circle");
+
+      elements.forEach((element) => {
+        // Apply scale
+        element.style.transform = `scale(${xScale}, ${yScale})`;
+
+        // Apply transform origin
+        element.style.transformOrigin = `${origin}px bottom`;
+      });
+    };
 
     const updateZoom = () => {
       if (!overlay.value) {
@@ -392,7 +409,7 @@ export default defineComponent({
       const scale = zoomed.value.enabled ? zoomed.value.scale : 1;
       const xScale = parseFloat(scale.toFixed(1));
       const yScale = props.sampleRate / newSampleRate.value;
-      applyScale(overlay.value, origin, xScale, yScale);
+      applyScaleToElements(overlay.value, origin, xScale, yScale);
       applyScale(spectrogram.value, origin, xScale, yScale);
       // Apply zoom to zoom indicators
       const translateY = "translateY(-3px)";
@@ -459,6 +476,7 @@ export default defineComponent({
             opacity: "60%",
             fill: "none",
             cursor: "pointer",
+            "vector-effect": "non-scaling-stroke",
           },
         },
         "rect"
@@ -557,6 +575,7 @@ export default defineComponent({
               opacity: "60%",
               cursor: "pointer",
               fill: "none",
+              "vector-effect": "non-scaling-stroke",
             },
           },
           "rect"
@@ -901,6 +920,7 @@ export default defineComponent({
       }
       createRectFromTrack(track);
       attachControls(track.id);
+      updateZoom();
     };
 
     // Watch for changes to the selected track and update the spectrogram
