@@ -461,10 +461,10 @@ const addFrame = (frame: CptvFrame) => {
 };
 
 const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
-  if (frameNumToRender > frames.length + 2 && !totalFrames.value) {
+  if (frameNumToRender > frames.length + 2) {
     buffering.value = true;
   }
-  while (frames.length <= frameNumToRender && !totalFrames.value) {
+  while (frames.length <= frameNumToRender) {
     seekingInProgress.value = true;
     const frame = await cptvDecoder.getNextFrame();
     if (frame === null) {
@@ -475,16 +475,18 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       }
       break;
     }
-    totalFrames.value = await cptvDecoder.getTotalFrames();
     if (!totalFrames.value) {
-      // If we got total frames, this frame is a duplicate.
-      addFrame(frame);
+      totalFrames.value = await cptvDecoder.getTotalFrames();
     }
+    //if (!totalFrames.value) {
+    // If we got total frames, this frame is a duplicate.
+    addFrame(frame);
+    //}
   }
   seekingInProgress.value = false;
   buffering.value = false;
 };
-
+let cNum = 0;
 const setCurrentFrameAndRender = (
   force: boolean,
   frameNumToRender?: number
@@ -500,6 +502,12 @@ const setCurrentFrameAndRender = (
   }
   if (frameData) {
     frameHeader.value = frameData.meta;
+    if (cNum !== frameNumToRender) {
+      if (frameData.meta.bitWidth == 16) {
+        console.log(frameNumToRender, frameData.meta);
+      }
+      cNum = frameNumToRender;
+    }
     renderFrame(frameData, frameNumToRender, force);
   }
 };
@@ -1645,11 +1653,16 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
   if (CurrentUserCreds.value) {
-    loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
-      nextRecordingId,
-      cptvSize || 0,
-      (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+    // loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+    //   nextRecordingId,
+    //   cptvSize || 0,
+    //   (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+    // );
+    const bytes = new Uint8Array(
+      //await (await fetch("/2023-10-12--15-49-29.cptv")).arrayBuffer()
+      await (await fetch("/2023-10-17--13-52-40.cptv")).arrayBuffer()
     );
+    loadedStream.value = await cptvDecoder.initWithLocalCptvFile(bytes);
   }
 
   if (loadedStream.value === true) {

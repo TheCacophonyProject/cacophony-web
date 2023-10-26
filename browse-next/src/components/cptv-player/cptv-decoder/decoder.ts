@@ -261,6 +261,7 @@ export interface CptvFrameHeader {
   lastFfcTempC: number | null;
   frameTempC: number | null;
   isBackgroundFrame: boolean;
+  bitWidth: number;
   imageData: {
     width: number;
     height: number;

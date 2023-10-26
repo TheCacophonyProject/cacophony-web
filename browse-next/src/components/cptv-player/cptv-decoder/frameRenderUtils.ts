@@ -107,6 +107,8 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
       motionConfig,
       timestamp,
       hasBackgroundFrame,
+      minValue,
+      maxValue
     } = header;
     const headerInfo: Record<
       string,
@@ -132,6 +134,12 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
     }
     if (firmwareVersion) {
       headerInfo["firmware"] = firmwareVersion;
+    }
+    if (minValue !== undefined) {
+      headerInfo["min value"] = minValue;
+    }
+    if (maxValue !== undefined) {
+      headerInfo["max value"] = maxValue;
     }
     if (motionConfig) {
       headerInfo["motion config"] = motionConfig
