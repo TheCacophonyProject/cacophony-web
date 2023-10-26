@@ -3,30 +3,24 @@
 /**
  */
 export class CptvPlayerContext {
-  ptr: number;
-
   free(): void;
   /**
-   * @param {any} stream
+   * @param {ReadableStreamDefaultReader} stream
    * @returns {Promise<CptvPlayerContext>}
    */
-  static newWithStream(stream: any): Promise<CptvPlayerContext>;
+  static newWithStream(stream: ReadableStreamDefaultReader): Promise<CptvPlayerContext>;
   /**
    * @returns {boolean}
    */
   streamComplete(): boolean;
   /**
-   * @param {CptvPlayerContext} context
-   * @returns {Promise<CptvPlayerContext>}
+   * @returns {Promise<void>}
    */
-  static countTotalFrames(
-    context: CptvPlayerContext
-  ): Promise<CptvPlayerContext>;
+  countTotalFrames(): Promise<void>;
   /**
-   * @param {CptvPlayerContext} context
-   * @returns {Promise<CptvPlayerContext>}
+   * @returns {Promise<void>}
    */
-  static fetchNextFrame(context: CptvPlayerContext): Promise<CptvPlayerContext>;
+  fetchNextFrame(): Promise<void>;
   /**
    * @returns {any}
    */
@@ -60,22 +54,16 @@ export class CptvPlayerContext {
    */
   getFramesPerIframe(): number;
   /**
-   * @param {CptvPlayerContext} context
-   * @returns {Promise<CptvPlayerContext>}
+   * @returns {Promise<void>}
    */
-  static fetchHeader(context: CptvPlayerContext): Promise<CptvPlayerContext>;
+  fetchHeader(): Promise<void>;
   /**
    * @returns {any}
    */
   getHeader(): any;
 }
 
-export type InitInput =
-  | RequestInfo
-  | URL
-  | Response
-  | BufferSource
-  | WebAssembly.Module;
+export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
@@ -94,23 +82,25 @@ export interface InitOutput {
   readonly cptvplayercontext_getFramesPerIframe: (a: number) => number;
   readonly cptvplayercontext_fetchHeader: (a: number) => number;
   readonly cptvplayercontext_getHeader: (a: number) => number;
-  readonly __wbindgen_malloc: (a: number) => number;
-  readonly __wbindgen_realloc: (a: number, b: number, c: number) => number;
+  readonly __wbindgen_malloc: (a: number, b: number) => number;
+  readonly __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
   readonly __wbindgen_export_2: WebAssembly.Table;
-  readonly _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h165f74291acd46b4: (
-    a: number,
-    b: number,
-    c: number
-  ) => void;
+  readonly _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h7220e89b344ffef7: (a: number, b: number, c: number) => void;
+  readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_exn_store: (a: number) => void;
-  readonly __wbindgen_free: (a: number, b: number) => void;
-  readonly wasm_bindgen__convert__closures__invoke2_mut__h7b4a9d0471de459f: (
-    a: number,
-    b: number,
-    c: number,
-    d: number
-  ) => void;
+  readonly wasm_bindgen__convert__closures__invoke2_mut__h18b31808c97857b2: (a: number, b: number, c: number, d: number) => void;
 }
+
+export type SyncInitInput = BufferSource | WebAssembly.Module;
+/**
+ * Instantiates the given `module`, which can either be bytes or
+ * a precompiled `WebAssembly.Module`.
+ *
+ * @param {SyncInitInput} module
+ *
+ * @returns {InitOutput}
+ */
+export function initSync(module: SyncInitInput): InitOutput;
 
 /**
  * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
@@ -120,6 +110,4 @@ export interface InitOutput {
  *
  * @returns {Promise<InitOutput>}
  */
-export default function init(
-  module_or_path?: InitInput | Promise<InitInput>
-): Promise<InitOutput>;
+export default function __wbg_init (module_or_path?: InitInput | Promise<InitInput>): Promise<InitOutput>;

@@ -447,6 +447,28 @@ const requestPrevVisit = () => {
   }
 };
 
+const requestNextVisit = () => {
+  if (hasNext) {
+    frameNum.value = 0;
+    targetFrameNum.value = 0;
+    buffering.value = true;
+    emit("request-next-visit");
+  } else {
+    showAtEndOfSearch.value = true;
+  }
+};
+
+const requestPrevVisit = () => {
+  if (hasPrev) {
+    frameNum.value = 0;
+    targetFrameNum.value = 0;
+    buffering.value = true;
+    emit("request-prev-visit");
+  } else {
+    showAtEndOfSearch.value = true;
+  }
+};
+
 const hasBackgroundFrame = computed<boolean>(() => {
   return (header.value?.hasBackgroundFrame as boolean) || false;
 });
@@ -461,10 +483,10 @@ const addFrame = (frame: CptvFrame) => {
 };
 
 const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
-  if (frameNumToRender > frames.length + 2 && !totalFrames.value) {
+  if (frameNumToRender > frames.length + 2) {
     buffering.value = true;
   }
-  while (frames.length <= frameNumToRender && !totalFrames.value) {
+  while (frames.length <= frameNumToRender) {
     seekingInProgress.value = true;
     const frame = await cptvDecoder.getNextFrame();
     if (frame === null) {
@@ -475,16 +497,18 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       }
       break;
     }
-    totalFrames.value = await cptvDecoder.getTotalFrames();
     if (!totalFrames.value) {
-      // If we got total frames, this frame is a duplicate.
-      addFrame(frame);
+      totalFrames.value = await cptvDecoder.getTotalFrames();
     }
+    //if (!totalFrames.value) {
+    // If we got total frames, this frame is a duplicate.
+    addFrame(frame);
+    //}
   }
   seekingInProgress.value = false;
   buffering.value = false;
 };
-
+let cNum = 0;
 const setCurrentFrameAndRender = (
   force: boolean,
   frameNumToRender?: number
@@ -500,6 +524,12 @@ const setCurrentFrameAndRender = (
   }
   if (frameData) {
     frameHeader.value = frameData.meta;
+    if (cNum !== frameNumToRender) {
+      if (frameData.meta.bitWidth == 16) {
+        console.log(frameNumToRender, frameData.meta);
+      }
+      cNum = frameNumToRender;
+    }
     renderFrame(frameData, frameNumToRender, force);
   }
 };
@@ -1645,11 +1675,16 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
   if (CurrentUserCreds.value) {
-    loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
-      nextRecordingId,
-      cptvSize || 0,
-      (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+    // loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+    //   nextRecordingId,
+    //   cptvSize || 0,
+    //   (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+    // );
+    const bytes = new Uint8Array(
+      //await (await fetch("/2023-10-12--15-49-29.cptv")).arrayBuffer()
+      await (await fetch("/2023-10-17--13-52-40.cptv")).arrayBuffer()
     );
+    loadedStream.value = await cptvDecoder.initWithLocalCptvFile(bytes);
   }
 
   if (loadedStream.value === true) {
@@ -1673,7 +1708,17 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         thisCanvas.width = thisHeader.width;
         thisCanvas.height = thisHeader.height;
       }
+        }
+      }
+    } catch (e) {
+      console.log("Image Error", e);
     }
+
+    frames = [];
+    header.value = null;
+    resetRecordingNormalisation();
+    buffering.value = false;
+
     while (!recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
@@ -1995,7 +2040,7 @@ watch(
           <font-awesome-icon icon="left-right" />
         </div>
       </div>
-    </div>
+        </div>
     <div
       key="playback-nav"
       class="playback-nav"
@@ -2105,6 +2150,16 @@ watch(
             <font-awesome-icon icon="info-circle" />
           </button>
         </div>
+        <button
+          :disabled="!hasReferencePhoto"
+          :class="{ selected: showingReferencePhoto }"
+          @click="toggleReferencePhotoComparison"
+          ref="toggleReferencePhoto"
+          class="reference-photo-btn"
+          data-tooltip="Reference photo"
+        >
+          <font-awesome-icon icon="panorama" />
+        </button>
         <button
           :disabled="!hasReferencePhoto"
           :class="{ selected: showingReferencePhoto }"

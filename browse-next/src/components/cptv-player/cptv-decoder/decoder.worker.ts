@@ -14,6 +14,50 @@ class Unlocker {
     this.fn && this.fn();
   }
 }
+const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): ReadableStreamDefaultReader => {
+  let state: { offsets: number[]; offset: number; bytes?: Uint8Array } = {
+    offsets: [],
+    offset: 0,
+  };
+  state.bytes = bytes;
+  const length = bytes.byteLength;
+  // How many reader chunks to split the file into
+  let numParts = 5;
+  if (maxChunkSize !== 0) {
+    numParts = Math.ceil(length / maxChunkSize);
+  }
+  const percentages = length / numParts;
+  for (let i = 0; i < numParts; i++) {
+    state.offsets.push(Math.ceil(percentages * i));
+  }
+  state.offsets.push(length);
+  return {
+    read(): Promise<{ value: Uint8Array; done: boolean }> {
+      return new Promise((resolve) => {
+        state.offset += 1;
+        const value = (state.bytes as Uint8Array).slice(
+          state.offsets[state.offset - 1],
+          state.offsets[state.offset]
+        );
+        resolve({
+          value,
+          done: state.offset === state.offsets.length - 1,
+        });
+      });
+    },
+    cancel(): Promise<void> {
+      // Reset state
+      delete state.bytes;
+      state = {
+        offsets: [],
+        offset: 0,
+      };
+      return new Promise((resolve) => {
+        resolve();
+      });
+    },
+  };
+};
 
 class CptvDecoderInterface {
   private framesRead = 0;
@@ -34,7 +78,7 @@ class CptvDecoderInterface {
     this.consumed = false;
     this.inited = false;
     this.prevFrameHeader = null;
-    this.playerContext && this.playerContext.ptr && this.playerContext.free();
+    this.playerContext && this.playerContext.free();
     this.reader && this.reader.cancel();
     this.streamError = null;
     this.reader = null;
@@ -42,7 +86,7 @@ class CptvDecoderInterface {
   }
 
   hasValidContext() {
-    return this.playerContext && this.playerContext.ptr;
+    return !!this.playerContext;
   }
 
   async initWithRecordingIdAndSize(
@@ -161,6 +205,30 @@ class CptvDecoderInterface {
       return `Failed to load CPTV url ${url}, ${e}`;
     }
   }
+  async initWithFileBytes(fileBytes: Uint8Array) {
+    this.free();
+    this.framesRead = 0;
+    this.streamError = null;
+    const unlocker = new Unlocker();
+    await this.lockIsUncontended(unlocker);
+    this.locked = true;
+
+    this.reader = FakeReader(fileBytes, 100000);
+    this.expectedSize = fileBytes.length;
+    let result;
+    try {
+      await init(wasmUrl);
+      this.playerContext = await CptvPlayerContext.newWithStream(this.reader as ReadableStreamDefaultReader);
+      this.inited = true;
+      result = true;
+    } catch (e: unknown) {
+      this.streamError = e as string | null;
+      result = `Failed to load CPTV file, ${e}`;
+    }
+    unlocker.unlock();
+    this.locked = false;
+    return result;
+  }
 
   async fetchNextFrame() {
     if (!this.inited) {
@@ -179,17 +247,9 @@ class CptvDecoderInterface {
     this.locked = true;
     if (this.hasValidContext()) {
       try {
-        this.playerContext = await CptvPlayerContext.fetchNextFrame(
-          this.playerContext as PlayerContext
-        );
-      } catch (e) {
-        this.streamError = e as string;
-      }
-      if (
-        !this.playerContext ||
-        (this.playerContext && !this.playerContext.ptr)
-      ) {
-        //debugger;
+        await (this.playerContext as PlayerContext).fetchNextFrame();
+      } catch (e: unknown) {
+        this.streamError = e as string | null;
       }
     } else {
       console.warn("Fetch next failed");
@@ -237,10 +297,7 @@ class CptvDecoderInterface {
       await this.lockIsUncontended(unlocker);
       this.locked = true;
       try {
-        this.playerContext = await CptvPlayerContext.countTotalFrames(
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          this.playerContext!
-        );
+        await (this.playerContext as PlayerContext).countTotalFrames();
       } catch (e) {
         this.streamError = e as string;
       }
@@ -296,9 +353,7 @@ class CptvDecoderInterface {
       const unlocker = new Unlocker();
       await this.lockIsUncontended(unlocker);
       this.locked = true;
-      this.playerContext = await CptvPlayerContext.fetchHeader(
-        this.playerContext as PlayerContext
-      );
+      await (this.playerContext as PlayerContext).fetchHeader();
       const header = (this.playerContext as PlayerContext).getHeader();
       if (header === "Unable to parse header") {
         this.streamError = header;
@@ -317,8 +372,7 @@ class CptvDecoderInterface {
     if (
       !this.locked &&
       this.inited &&
-      this.hasValidContext() &&
-      (this.playerContext as PlayerContext).streamComplete()
+      this.hasValidContext()
     ) {
       return (this.playerContext as PlayerContext).totalFrames();
     }
@@ -343,6 +397,13 @@ class CptvDecoderInterface {
 const player = new CptvDecoderInterface();
 self.addEventListener("message", async ({ data }) => {
   switch (data.type) {
+    case "initWithLocalCptvFile":
+      {
+        const result = await player.initWithFileBytes(data.arrayBuffer);
+        self.postMessage({ type: data.type, data: result });
+      }
+      break;
+
     case "initWithUrl":
       {
         const result = await player.initWithCptvUrlAndSize(data.url);

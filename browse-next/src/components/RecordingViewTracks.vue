@@ -143,9 +143,9 @@ const addOrRemoveUserTag = async ({
         );
         if (removeTagResponse.success) {
           const completelyRemoved = !track.tags.some(
-            (tag) =>
-              displayLabelForClassificationLabel(tag.what, tag.automatic) ===
-              displayLabelForClassificationLabel(thisUserTag.what)
+              (tag) =>
+                  displayLabelForClassificationLabel(tag.what, tag.automatic) ===
+                  displayLabelForClassificationLabel(thisUserTag.what)
           );
           if (completelyRemoved) {
             emit("track-tag-changed", { track, tag, action: "remove" });
@@ -155,13 +155,15 @@ const addOrRemoveUserTag = async ({
           track.tags.push(thisUserTag);
         }
       } else {
-        const tagAlreadyExists = track.tags.some(
-          (existingTag) =>
-            displayLabelForClassificationLabel(
-              existingTag.what,
-              existingTag.automatic
-            ) === displayLabelForClassificationLabel(tag)
-        );
+        const tagAlreadyExists = track.tags
+          .filter((tag) => tag.userId === currentUser.value?.id)
+          .some(
+            (existingTag) =>
+              displayLabelForClassificationLabel(
+                existingTag.what,
+                existingTag.automatic
+              ) === displayLabelForClassificationLabel(tag)
+          );
         // We are adding or replacing the current tag.
         const interimTag: ApiHumanTrackTagResponse = {
           trackId,
