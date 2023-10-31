@@ -1648,15 +1648,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
   if (CurrentUserCreds.value) {
-    // loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
-    //   nextRecordingId,
-    //   cptvSize || 0,
-    //   (CurrentUserCreds.value as LoggedInUserAuth).apiToken
-    // );
-    const bytes = new Uint8Array(
-      await (await fetch("/2023-10-17--13-52-40.cptv")).arrayBuffer()
+    loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+      nextRecordingId,
+      cptvSize || 0,
+      (CurrentUserCreds.value as LoggedInUserAuth).apiToken
     );
-    loadedStream.value = await cptvDecoder.initWithLocalCptvFile(bytes);
   }
 
   if (loadedStream.value === true) {
