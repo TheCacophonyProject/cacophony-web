@@ -87,6 +87,12 @@ function getStationRecordingsCount(
   return CacophonyApi.get(`/api/v1/stations/${stationId}/recordings-count`);
 }
 
+function getStationsRecordingsCount(
+  stationIds: StationId[]
+): Promise<FetchResult<{ counts: { stationId: number; count: number }[] }>> {
+  return CacophonyApi.post(`/api/v1/stations/recordings-count`, { stationIds });
+}
+
 function getStationCacophonyIndexBulk(
   id: StationId,
   from: String,
@@ -177,6 +183,7 @@ export default {
   getReferenceImage,
   deleteReferenceImage,
   getStationRecordingsCount,
+  getStationsRecordingsCount,
   getStationCacophonyIndex,
   getStationCacophonyIndexBulk,
   getStationSpeciesCount,

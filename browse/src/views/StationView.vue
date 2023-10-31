@@ -58,7 +58,7 @@
     </div>
     <div v-else-if="station" class="tabs-container">
       <tab-list v-model="currentTabIndex">
-        <tab-list-item v-if="visitsCount > 0" lazy>
+        <tab-list-item :show="visitsCount > 0" lazy>
           <template #title>
             <TabTemplate
               title="Visits"
@@ -330,6 +330,7 @@ export default {
       }
 
       this.visitsCountLoading = false;
+      this.currentTabIndex = this.visitsCount > 0 ? 0 : 1;
     },
     async fetchAlertsCount() {
       this.alertsCountLoading = true;
