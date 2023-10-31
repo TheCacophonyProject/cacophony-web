@@ -165,7 +165,7 @@ export default function (
   User.getAll = async function (where, isSuperAdmin: boolean) {
     return this.findAll({
       where,
-      attributes: [...this.publicFields, ...(isSuperAdmin && ["email"])],
+      attributes: [...this.publicFields, ...(isSuperAdmin ? ["email"] : [])],
     });
   };
 

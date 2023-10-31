@@ -15,8 +15,8 @@
           Manage the users associated with this group and view the devices
           associated with it.
         </p>
-        <b-form-checkbox v-model="filterHuman"
-          >Filter Audio Recordings of Human Speech.</b-form-checkbox
+        <b-form-checkbox v-model="filterHuman" @change="setFilterHuman">
+          Filter Audio Recordings of Human Speech.</b-form-checkbox
         >
       </div>
       <div v-else-if="group">
@@ -37,11 +37,11 @@
       <tab-list-item
         lazy
         title="Manual uploads"
-        v-if="isGroupAdmin && hasAudioOrUnknownDevices"
+        :show="isGroupAdmin && hasAudioOrUnknownDevices"
       >
         <ManualRecordingUploads :devices="devices" />
       </tab-list-item>
-      <tab-list-item lazy v-if="isGroupAdmin">
+      <tab-list-item lazy :show="isGroupAdmin">
         <template #title>
           <TabTemplate
             title="Users"
@@ -58,7 +58,7 @@
           @user-removed="(userId) => removedUser(userId)"
         />
       </tab-list-item>
-      <tab-list-item lazy v-if="visitsCount > 0">
+      <tab-list-item lazy :show="visitsCount > 0">
         <template #title>
           <TabTemplate
             title="Visits"
@@ -118,11 +118,14 @@
         />
       </tab-list-item>
 
-      <tab-list-item lazy title="Analysis" v-if="hasAudioOrUnknownDevices">
+      <tab-list-item lazy>
         <template #title>
-          <TabTemplate title="Analysis" />
+          <TabTemplate title="Stats" />
         </template>
-        <AnalysisTab :group-name="groupName" :group-id="groupId" />
+        <MonitoringAnalysisView
+          :group-id="groupId"
+          :available-types="availableMediaTypes"
+        />
       </tab-list-item>
 
       <!--      <b-tab lazy v-if="!limitedView">-->
@@ -151,10 +154,9 @@ import UsersTab from "@/components/Groups/UsersTab.vue";
 import DevicesTab from "@/components/Groups/DevicesTab.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
-import AnalysisTab from "@/components/Groups/AnalysisTab.vue";
 import { ApiGroupResponse, ApiGroupUserResponse } from "@typedefs/api/group";
 import { GroupId } from "@typedefs/api/common";
-import { DeviceType } from "@typedefs/api/consts";
+import { DeviceType, RecordingType } from "@typedefs/api/consts";
 import MonitoringTab from "@/components/MonitoringTab.vue";
 import GroupLink from "@/components/GroupLink.vue";
 import TabListItem from "@/components/TabListItem.vue";
@@ -162,13 +164,14 @@ import TabList from "@/components/TabList.vue";
 import ManualRecordingUploads from "@/components/ManualRecordingUploads.vue";
 import { ApiDeviceResponse } from "@typedefs/api/device";
 import Help from "@/components/Help.vue";
-
+import MonitoringAnalysisView from "./MonitoringAnalysisView.vue";
+import { defineComponent } from "@vue/composition-api";
 interface GroupViewData {
   group: ApiGroupResponse | null;
   groupId: GroupId | null;
 }
 
-export default {
+export default defineComponent({
   name: "GroupView",
   components: {
     TabListItem,
@@ -181,8 +184,8 @@ export default {
     MonitoringTab,
     TabList,
     ManualRecordingUploads,
-    AnalysisTab,
     Help,
+    MonitoringAnalysisView,
   },
   data(): Record<string, any> & GroupViewData {
     return {
@@ -204,7 +207,8 @@ export default {
       devices: [],
       stations: [],
       visits: [],
-      filterHuman: false,
+      filterHuman: null,
+      currentTabIndex: 0,
     };
   },
   computed: {
@@ -227,24 +231,15 @@ export default {
       return hasAudio || hasUnknown;
     },
     tabNames() {
-      const permissions = ["devices", "stations", "recordings", "analysis"];
-
-      if (this.isGroupAdmin) {
-        permissions.unshift("users");
-        if (this.hasAudioOrUnknownDevices) {
-          permissions.unshift("manual-uploads");
-        }
-      }
-
-      if (
-        this.devices.some(
-          (device: ApiDeviceResponse) => device.type === DeviceType.Thermal
-        )
-      ) {
-        permissions.splice(1, 0, "visits");
-      }
-
-      return permissions;
+      return [
+        "users",
+        "manual-uploads",
+        "visits",
+        "devices",
+        "stations",
+        "recordings",
+        "stats",
+      ];
     },
     nonRetiredStationsCount(): number {
       return (
@@ -256,31 +251,25 @@ export default {
     currentTabName() {
       return this.$route.params.tabName;
     },
-    currentTabIndex: {
-      get() {
-        return Math.max(0, this.tabNames.indexOf(this.currentTabName));
-      },
-      set(tabIndex) {
-        const nextTabName = this.tabNames[tabIndex];
-        if (nextTabName !== this.currentTabName) {
-          this.$router.push({
-            name: "group",
-            params: {
-              groupName: this.groupName,
-              tabName: nextTabName,
-            },
-          });
-        }
-      },
-    },
     anyDevicesAreUnhealthy() {
       return this.devices.some(
         (device) =>
           device.type === DeviceType.Thermal && device.isHealthy === false
       );
     },
+    availableMediaTypes(): Set<RecordingType> {
+      const types = new Set<RecordingType>();
+      // check if devices have thermal or audio recordings
+      if (this.devices.some((device) => device.type === DeviceType.Thermal)) {
+        types.add(RecordingType.ThermalRaw);
+      }
+      if (this.devices.some((device) => device.type === DeviceType.Audio)) {
+        types.add(RecordingType.Audio);
+      }
+      return types;
+    },
   },
-  async created() {
+  async mounted() {
     const groupRequest = await api.groups.getGroup(this.groupName);
     if (groupRequest.success) {
       const {
@@ -310,7 +299,24 @@ export default {
     }
   },
   watch: {
-    async filterHuman(newValue) {
+    currentTabIndex() {
+      const nextTabName = this.tabNames[this.currentTabIndex];
+      if (nextTabName !== this.currentTabName) {
+        this.$router.replace({
+          name: "group",
+          params: {
+            groupName: this.groupName,
+            tabName: nextTabName,
+          },
+        });
+      }
+    },
+  },
+  methods: {
+    async setFilterHuman(newValue) {
+      if (newValue === null) {
+        return;
+      }
       const res = await api.groups.updateGroupSettings(this.groupName, {
         ...this.group.settings,
         filterHuman: newValue,
@@ -321,8 +327,6 @@ export default {
         this.filterHuman = this.group.settings?.filterHuman ?? true;
       }
     },
-  },
-  methods: {
     recordingQuery() {
       return {
         tagMode: "any",
@@ -427,30 +431,40 @@ export default {
     },
     async fetchStations() {
       this.stationsLoading = true;
-      {
-        const stationsResponse = await api.groups.getStationsForGroup(
-          this.groupName
+
+      const stationsResponse = await api.groups.getStationsForGroup(
+        this.groupName
+      );
+      if (stationsResponse.success) {
+        const stationIds = stationsResponse.result.stations.map(
+          (station) => station.id
         );
-        if (stationsResponse.success) {
-          this.stations = await Promise.all(
-            stationsResponse.result.stations.map(async (val) => {
-              const res = await api.station.getStationRecordingsCount(val.id);
-              return {
-                ...val,
-                recordingsCount: res.success ? res.result.count : null,
-              };
-            })
-          );
-          // get recording count for each station
+
+        const recordingsCountsResponse =
+          await api.station.getStationsRecordingsCount(stationIds);
+        const countsById = {};
+        if (recordingsCountsResponse.success) {
+          recordingsCountsResponse.result.counts.forEach((item) => {
+            countsById[item.stationId] = item.count;
+          });
         }
+
+        this.stations = stationsResponse.result.stations.map((station) => ({
+          ...station,
+          recordingsCount:
+            countsById[station.id] !== undefined
+              ? countsById[station.id]
+              : null,
+        }));
       }
+
       this.stationsLoading = false;
     },
     removedUser(userId: number) {
       this.users = this.users.filter((user) => user.id !== userId);
     },
   },
-};
+});
 </script>
 
 <style lang="scss">
