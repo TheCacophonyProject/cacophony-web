@@ -228,7 +228,6 @@ export async function getCPTVFrames(
     const stream = (
       await openS3().getObject(recording.rawFileKey)
     ).Body.transformToWebStream();
-    //work around for error in cptv-decoder
     const decoder = new CptvDecoder();
     const result = await decoder.initWithReadableStream(
       stream as ReadableStream
@@ -242,16 +241,20 @@ export async function getCPTVFrames(
     let currentFrame = 0;
     const frames: Record<number, CptvFrame> = {};
     log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
+    const header = await decoder.getHeader();
+    const totalFrames = header.totalFrames || null;
+    let numFrames = 0;
     while (!finished) {
       const frame: CptvFrame | null = await decoder.getNextFrame();
       if (frame && frame.meta.isBackgroundFrame) {
         // Skip over background frame without incrementing counter.
         continue;
       }
-      finished = frame === null || (await decoder.getTotalFrames()) !== null;
+      finished = frame === null || (totalFrames && numFrames === totalFrames);
       if (frameNumbers.has(currentFrame)) {
         frameNumbers.delete(currentFrame);
         frames[currentFrame] = frame;
+        numFrames = Object.values(frames).length;
       }
       if (frameNumbers.size === 0) {
         break;
@@ -294,6 +297,7 @@ export async function saveThumbnailInfo(
     }
   } else {
     frames = await getCPTVFrames(recording, frameNumbers);
+    log.error("GOT CPTV Frames %s", Object.values(frames).length);
     if (!frames) {
       throw new Error(`Failed to extract frames ${frameNumbers}`);
     }

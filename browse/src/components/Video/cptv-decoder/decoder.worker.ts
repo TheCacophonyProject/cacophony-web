@@ -1,9 +1,14 @@
-import type { CptvFrameHeader } from "@/components/cptv-player/cptv-decoder/decoder";
-import type { ReadableStreamDefaultReader } from "stream/web";
-import type { CptvPlayerContext as PlayerContext } from "@/components/cptv-player/cptv-decoder/decoder/decoder";
-import wasmUrl from "./decoder/decoder_bg.wasm?url";
-import init, { CptvPlayerContext } from "./decoder/decoder.js";
-import type { RecordingId } from "@typedefs/api/common";
+import type { CptvFrameHeader } from "./decoder";
+import { CptvPlayerContext } from "./decoder/decoder";
+let ThisPlayerContext: any;
+
+async function initWasm() {
+  if (!ThisPlayerContext) {
+    ThisPlayerContext = (await import("./decoder/decoder.js"))
+      .CptvPlayerContext;
+    console.log("Player context", ThisPlayerContext);
+  }
+}
 
 class Unlocker {
   fn: (() => void) | null = null;
@@ -14,7 +19,10 @@ class Unlocker {
     this.fn && this.fn();
   }
 }
-const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): ReadableStreamDefaultReader => {
+const FakeReader = (
+  bytes: Uint8Array,
+  maxChunkSize = 0
+): ReadableStreamDefaultReader => {
   let state: { offsets: number[]; offset: number; bytes?: Uint8Array } = {
     offsets: [],
     offset: 0,
@@ -32,7 +40,7 @@ const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): ReadableStreamDefaultR
   }
   state.offsets.push(length);
   return {
-    read(): Promise<{ value: Uint8Array; done: boolean }> {
+    read(): Promise<ReadableStreamDefaultReadResult<any>> {
       return new Promise((resolve) => {
         state.offset += 1;
         const value = (state.bytes as Uint8Array).slice(
@@ -41,7 +49,7 @@ const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): ReadableStreamDefaultR
         );
         resolve({
           value,
-          done: state.offset === state.offsets.length - 1,
+          done: (state.offset === state.offsets.length - 1) as any,
         });
       });
     },
@@ -56,6 +64,12 @@ const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): ReadableStreamDefaultR
         resolve();
       });
     },
+    releaseLock() {
+      return;
+    },
+    closed: new Promise((resolve) => {
+      resolve(undefined);
+    }),
   };
 };
 
@@ -66,7 +80,7 @@ class CptvDecoderInterface {
   private prevFrameHeader: CptvFrameHeader | null = null;
   private response: Response | null = null;
   private reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-  private playerContext: PlayerContext | null = null;
+  private playerContext: CptvPlayerContext | null = null;
   private expectedSize = 0;
   private inited = false;
   private currentContentType = "application/x-cptv";
@@ -90,7 +104,7 @@ class CptvDecoderInterface {
   }
 
   async initWithRecordingIdAndSize(
-    id: RecordingId,
+    id: number,
     apiToken: string,
     apiRoot: string,
     size?: number
@@ -124,8 +138,8 @@ class CptvDecoderInterface {
           if (this.currentContentType === "application/x-cptv") {
             this.reader =
               this.response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
-            await init(wasmUrl);
-            this.playerContext = await CptvPlayerContext.newWithStream(
+            await initWasm();
+            this.playerContext = await ThisPlayerContext.newWithStream(
               this.reader
             );
           } else if (this.currentContentType === "image/webp") {
@@ -177,8 +191,8 @@ class CptvDecoderInterface {
             size = Number(this.response.headers.get("Content-Length")) || 0;
           }
           this.expectedSize = size;
-          await init(wasmUrl);
-          this.playerContext = await CptvPlayerContext.newWithStream(
+          await initWasm();
+          this.playerContext = await ThisPlayerContext.newWithStream(
             this.reader
           );
           unlocker.unlock();
@@ -217,8 +231,10 @@ class CptvDecoderInterface {
     this.expectedSize = fileBytes.length;
     let result;
     try {
-      await init(wasmUrl);
-      this.playerContext = await CptvPlayerContext.newWithStream(this.reader as ReadableStreamDefaultReader);
+      await initWasm();
+      this.playerContext = await ThisPlayerContext.newWithStream(
+        this.reader as ReadableStreamDefaultReader
+      );
       this.inited = true;
       result = true;
     } catch (e: unknown) {
@@ -247,7 +263,7 @@ class CptvDecoderInterface {
     this.locked = true;
     if (this.hasValidContext()) {
       try {
-        await (this.playerContext as PlayerContext).fetchNextFrame();
+        await (this.playerContext as CptvPlayerContext).fetchNextFrame();
       } catch (e: unknown) {
         this.streamError = e as string | null;
       }
@@ -260,9 +276,11 @@ class CptvDecoderInterface {
       return null;
     }
     if (this.hasValidContext()) {
-      const frameData = (this.playerContext as PlayerContext).getNextFrame();
+      const frameData = (
+        this.playerContext as CptvPlayerContext
+      ).getNextFrame();
       const frameHeader = (
-        this.playerContext as PlayerContext
+        this.playerContext as CptvPlayerContext
       ).getFrameHeader();
       // NOTE(jon): Work around a bug where the mlx sensor doesn't report timeOn times, just hardcodes 60000
       if (frameHeader && frameHeader.imageData.width !== 32) {
@@ -297,7 +315,7 @@ class CptvDecoderInterface {
       await this.lockIsUncontended(unlocker);
       this.locked = true;
       try {
-        await (this.playerContext as PlayerContext).countTotalFrames();
+        await (this.playerContext as CptvPlayerContext).countTotalFrames();
       } catch (e) {
         this.streamError = e as string;
       }
@@ -353,8 +371,8 @@ class CptvDecoderInterface {
       const unlocker = new Unlocker();
       await this.lockIsUncontended(unlocker);
       this.locked = true;
-      await (this.playerContext as PlayerContext).fetchHeader();
-      const header = (this.playerContext as PlayerContext).getHeader();
+      await (this.playerContext as CptvPlayerContext).fetchHeader();
+      const header = (this.playerContext as CptvPlayerContext).getHeader();
       if (header === "Unable to parse header") {
         this.streamError = header;
       }
@@ -369,12 +387,8 @@ class CptvDecoderInterface {
     if (this.streamError) {
       return this.framesRead;
     }
-    if (
-      !this.locked &&
-      this.inited &&
-      this.hasValidContext()
-    ) {
-      return (this.playerContext as PlayerContext).totalFrames();
+    if (!this.locked && this.inited && this.hasValidContext()) {
+      return (this.playerContext as CptvPlayerContext).totalFrames();
     }
     return null;
   }
@@ -385,7 +399,8 @@ class CptvDecoderInterface {
     }
     // This doesn't actually tell us how much has downloaded, just how much has been lazily read.
     return (
-      (this.playerContext as PlayerContext).bytesLoaded() / this.expectedSize
+      (this.playerContext as CptvPlayerContext).bytesLoaded() /
+      this.expectedSize
     );
   }
 

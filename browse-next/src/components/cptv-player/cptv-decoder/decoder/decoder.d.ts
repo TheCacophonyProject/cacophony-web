@@ -1,65 +1,65 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- */
+*/
 export class CptvPlayerContext {
   free(): void;
-  /**
-   * @param {ReadableStreamDefaultReader} stream
-   * @returns {Promise<CptvPlayerContext>}
-   */
+/**
+* @param {ReadableStreamDefaultReader} stream
+* @returns {Promise<CptvPlayerContext>}
+*/
   static newWithStream(stream: ReadableStreamDefaultReader): Promise<CptvPlayerContext>;
-  /**
-   * @returns {boolean}
-   */
+/**
+* @returns {boolean}
+*/
   streamComplete(): boolean;
-  /**
-   * @returns {Promise<void>}
-   */
+/**
+* @returns {Promise<void>}
+*/
   countTotalFrames(): Promise<void>;
-  /**
-   * @returns {Promise<void>}
-   */
+/**
+* @returns {Promise<void>}
+*/
   fetchNextFrame(): Promise<void>;
-  /**
-   * @returns {any}
-   */
+/**
+* @returns {any}
+*/
   totalFrames(): any;
-  /**
-   * @returns {number}
-   */
+/**
+* @returns {number}
+*/
   bytesLoaded(): number;
-  /**
-   * @returns {Uint16Array}
-   */
+/**
+* @returns {Uint16Array}
+*/
   getNextFrame(): Uint16Array;
-  /**
-   * @returns {any}
-   */
+/**
+* @returns {any}
+*/
   getFrameHeader(): any;
-  /**
-   * @returns {number}
-   */
+/**
+* @returns {number}
+*/
   getWidth(): number;
-  /**
-   * @returns {number}
-   */
+/**
+* @returns {number}
+*/
   getHeight(): number;
-  /**
-   * @returns {number}
-   */
+/**
+* @returns {number}
+*/
   getFrameRate(): number;
-  /**
-   * @returns {number}
-   */
+/**
+* @returns {number}
+*/
   getFramesPerIframe(): number;
-  /**
-   * @returns {Promise<void>}
-   */
+/**
+* @returns {Promise<void>}
+*/
   fetchHeader(): Promise<void>;
-  /**
-   * @returns {any}
-   */
+/**
+* @returns {any}
+*/
   getHeader(): any;
 }
 
@@ -93,21 +93,21 @@ export interface InitOutput {
 
 export type SyncInitInput = BufferSource | WebAssembly.Module;
 /**
- * Instantiates the given `module`, which can either be bytes or
- * a precompiled `WebAssembly.Module`.
- *
- * @param {SyncInitInput} module
- *
- * @returns {InitOutput}
- */
+* Instantiates the given `module`, which can either be bytes or
+* a precompiled `WebAssembly.Module`.
+*
+* @param {SyncInitInput} module
+*
+* @returns {InitOutput}
+*/
 export function initSync(module: SyncInitInput): InitOutput;
 
 /**
- * If `module_or_path` is {RequestInfo} or {URL}, makes a request and
- * for everything else, calls `WebAssembly.instantiate` directly.
- *
- * @param {InitInput | Promise<InitInput>} module_or_path
- *
- * @returns {Promise<InitOutput>}
- */
+* If `module_or_path` is {RequestInfo} or {URL}, makes a request and
+* for everything else, calls `WebAssembly.instantiate` directly.
+*
+* @param {InitInput | Promise<InitInput>} module_or_path
+*
+* @returns {Promise<InitOutput>}
+*/
 export default function __wbg_init (module_or_path?: InitInput | Promise<InitInput>): Promise<InitOutput>;

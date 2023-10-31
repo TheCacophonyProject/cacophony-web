@@ -447,28 +447,6 @@ const requestPrevVisit = () => {
   }
 };
 
-const requestNextVisit = () => {
-  if (hasNext) {
-    frameNum.value = 0;
-    targetFrameNum.value = 0;
-    buffering.value = true;
-    emit("request-next-visit");
-  } else {
-    showAtEndOfSearch.value = true;
-  }
-};
-
-const requestPrevVisit = () => {
-  if (hasPrev) {
-    frameNum.value = 0;
-    targetFrameNum.value = 0;
-    buffering.value = true;
-    emit("request-prev-visit");
-  } else {
-    showAtEndOfSearch.value = true;
-  }
-};
-
 const hasBackgroundFrame = computed<boolean>(() => {
   return (header.value?.hasBackgroundFrame as boolean) || false;
 });
@@ -500,10 +478,7 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
     if (!totalFrames.value) {
       totalFrames.value = await cptvDecoder.getTotalFrames();
     }
-    //if (!totalFrames.value) {
-    // If we got total frames, this frame is a duplicate.
     addFrame(frame);
-    //}
   }
   seekingInProgress.value = false;
   buffering.value = false;
@@ -525,9 +500,6 @@ const setCurrentFrameAndRender = (
   if (frameData) {
     frameHeader.value = frameData.meta;
     if (cNum !== frameNumToRender) {
-      if (frameData.meta.bitWidth == 16) {
-        console.log(frameNumToRender, frameData.meta);
-      }
       cNum = frameNumToRender;
     }
     renderFrame(frameData, frameNumToRender, force);
@@ -541,6 +513,7 @@ const seekToSpecifiedFrameAndRender = async (
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
   }
+
   await makeSureWeHaveTheFrame(frameNumToRender);
   const gotFrame = frameNumToRender < frames.length;
   if (gotFrame) {
@@ -1681,7 +1654,6 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     //   (CurrentUserCreds.value as LoggedInUserAuth).apiToken
     // );
     const bytes = new Uint8Array(
-      //await (await fetch("/2023-10-12--15-49-29.cptv")).arrayBuffer()
       await (await fetch("/2023-10-17--13-52-40.cptv")).arrayBuffer()
     );
     loadedStream.value = await cptvDecoder.initWithLocalCptvFile(bytes);
@@ -1708,16 +1680,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         thisCanvas.width = thisHeader.width;
         thisCanvas.height = thisHeader.height;
       }
-        }
-      }
-    } catch (e) {
-      console.log("Image Error", e);
     }
-
-    frames = [];
-    header.value = null;
-    resetRecordingNormalisation();
-    buffering.value = false;
 
     while (!recording) {
       // Wait for the recording data to be loaded if it's not,
@@ -2150,16 +2113,6 @@ watch(
             <font-awesome-icon icon="info-circle" />
           </button>
         </div>
-        <button
-          :disabled="!hasReferencePhoto"
-          :class="{ selected: showingReferencePhoto }"
-          @click="toggleReferencePhotoComparison"
-          ref="toggleReferencePhoto"
-          class="reference-photo-btn"
-          data-tooltip="Reference photo"
-        >
-          <font-awesome-icon icon="panorama" />
-        </button>
         <button
           :disabled="!hasReferencePhoto"
           :class="{ selected: showingReferencePhoto }"
