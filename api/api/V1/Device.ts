@@ -1463,7 +1463,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {Number} deviceId ID of the device.
+   * @apiParam {Number} deviceId ID of the device.
    * @apiBody {Number} scheduleId ID of the schedule to assign to the device.
    * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
    * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
@@ -1481,7 +1481,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(),
       query("view-mode").optional().equals("user"),
     ]),
-    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
     (request, response, next) => {
       if (
