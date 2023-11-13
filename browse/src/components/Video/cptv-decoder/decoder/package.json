@@ -1,0 +1,16 @@
+{
+  "name": "cptv-decoder",
+  "version": "0.1.0",
+  "files": [
+    "decoder_bg.wasm",
+    "decoder.js",
+    "decoder_bg.js",
+    "decoder.d.ts"
+  ],
+  "module": "decoder.js",
+  "types": "decoder.d.ts",
+  "sideEffects": [
+    "./decoder.js",
+    "./snippets/*"
+  ]
+}
