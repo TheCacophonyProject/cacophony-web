@@ -1532,7 +1532,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(),
       query("view-mode").optional().equals("user"),
     ]),
-    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
     (request, response, next) => {
       if (
