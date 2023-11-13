@@ -1,5 +1,10 @@
 <template>
-  <b-tab :title="title" :lazy="lazy" v-if="showTabs">
+  <b-tab
+    :title-item-class="showTab"
+    :title="title"
+    :lazy="lazy"
+    v-if="showTabs"
+  >
     <template #title>
       <slot name="title"></slot>
     </template>
@@ -45,11 +50,21 @@ export default {
       type: Boolean,
       default: true,
     },
+    show: {
+      type: Boolean,
+      default: true,
+    },
   },
   methods: {
     select() {
       this.$parent.$emit("selected");
       this.$parent.$emit("input", this.index);
+    },
+  },
+
+  computed: {
+    showTab() {
+      return this.show ? "" : "d-none";
     },
   },
 };

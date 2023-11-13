@@ -113,7 +113,7 @@ export default function (app: Application, baseUrl: string) {
     async (request, response) => {
       const users = await models.User.getAll(
         {},
-        response.locals.viewAsSuperUser
+        response.locals.requestUser.hasGlobalWrite()
       );
 
       return successResponse(response, { usersList: mapUsers(users, true) });

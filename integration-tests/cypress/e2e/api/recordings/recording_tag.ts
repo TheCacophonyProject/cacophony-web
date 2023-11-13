@@ -33,6 +33,7 @@ describe("Recordings: tag", () => {
     taggerId: 99,
     taggerName: "xxx",
     createdAt: NOT_NULL_STRING,
+    comment: null,
   };
 
   before(() => {
@@ -187,6 +188,7 @@ describe("Recordings: tag", () => {
       duration: 2.3,
       automatic: true,
       version: 1,
+      comment: "hello",
     };
     const expectedTag: ApiRecordingTagResponse = {
       id: -99,
@@ -198,6 +200,7 @@ describe("Recordings: tag", () => {
       createdAt: NOT_NULL_STRING,
       taggerId: getCreds("tagGroupAdmin").id,
       taggerName: getTestName("tagGroupAdmin"),
+      comment: "hello",
     };
 
     const recording1 = TestCreateRecordingData(templateRecording);

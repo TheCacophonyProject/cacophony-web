@@ -669,6 +669,7 @@ const getStations =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
     }
+
     return models.Station.findAll({
       ...getStationsOptions,
       order: ["name"],
@@ -913,6 +914,7 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     attributes: [
       "id",
       "detail",
+      "comment",
       "taggerId",
       "automatic",
       "confidence",

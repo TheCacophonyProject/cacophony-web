@@ -29,8 +29,8 @@
 
       <b-collapse id="navbarToggler" is-nav>
         <b-navbar-nav>
-          <b-nav-item to="/analysis">Analysis</b-nav-item>
           <b-nav-item to="/recordings">Recordings</b-nav-item>
+          <b-nav-item to="/monitoring-analysis">Stats</b-nav-item>
         </b-navbar-nav>
 
         <b-navbar-nav class="ml-auto align-items-center">
@@ -51,7 +51,7 @@
           >
             <template slot="button-content">
               <font-awesome-icon
-                v-if="hasGlobalReadPermissions"
+                v-if="isSuperUser"
                 :icon="['fas', 'user-secret']"
                 class="icon"
               />
@@ -60,12 +60,12 @@
                 :icon="['far', 'user-circle']"
                 class="icon"
               />&nbsp;{{ userName }}
-              <span v-if="hasGlobalReadPermissions && !isViewingAsOtherUser()">
+              <span v-if="isSuperUser && !isViewingAsOtherUser()">
                 {{ isViewingAsSuperUser ? "(super admin)" : "(user)" }}
               </span>
             </template>
 
-            <b-dropdown-group header="View as" v-if="hasGlobalReadPermissions">
+            <b-dropdown-group header="View as" v-if="isSuperUser">
               <b-dropdown-item
                 :active="isViewingAsSuperUser"
                 @click="viewAsSuperUser"
@@ -227,11 +227,6 @@ export default {
     isSuperUser() {
       return this.globalPermission === "write";
     },
-    hasGlobalReadPermissions() {
-      return (
-        this.globalPermission === "write" || this.globalPermission === "read"
-      );
-    },
     showChangeUserViewDialog: {
       async set(val) {
         this.internalShowChangeUserViewDialog = val;
@@ -280,12 +275,12 @@ export default {
       window.localStorage.setItem("dismissed-browse-next-message", "true");
     },
     async initUsersList() {
-      if (this.hasGlobalReadPermissions) {
+      if (this.isSuperUser) {
         const response = await User.list();
         if (response.success) {
           this.users = response.result.usersList
             .map(({ userName, id, email }) => ({
-              name: `${userName} ${email && `<${email}>`}`,
+              name: `${userName} ${email ? `<${email}>` : ""}`,
               email,
               id,
             }))

@@ -33,6 +33,7 @@ import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@models/util/locationUtils.js";
+import { Op, QueryTypes } from "sequelize";
 
 const models = await modelsInit();
 
@@ -148,6 +149,104 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
+      });
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/stations/recordings-count Get count of recordings for multiple stations using their ids in the request body
+   * @apiName GetRecordingsCountForStations
+   * @apiGroup Station
+   * @apiDescription Get the count of recordings associated with multiple stations using their ids in the request body
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiRecordingsCountResponseSuccess} counts Number of recordings associated with each station
+   * @apiUse V1ResponseError
+   *
+   * @apiBody {Number[]} stationIds Array of station IDs
+   * @apiBody {String} [from-date] Date the station should be active from
+   */
+  app.post(
+    `${apiUrl}/recordings-count`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("stationIds")
+        .isArray({ min: 1 })
+        .withMessage("At least one station ID is required"),
+      query("view-mode").optional().equals("user"),
+    ]),
+    async (request: Request, response: Response) => {
+      const stationIds = request.body.stationIds;
+      const userId = response.locals.requestUser.id;
+      const sql = `
+          SELECT
+          R."StationId",
+          COUNT(R.id) AS "count"
+          FROM "Recordings" R
+          INNER JOIN "Stations" S ON R."StationId" = S."id"
+          AND S."id" IN (:stationIds)
+          INNER JOIN "Groups" G ON S."GroupId" = G."id"
+          INNER JOIN "GroupUsers" GU ON G."id" = GU."GroupId"
+          INNER JOIN "Users" U ON U."id" = GU."UserId" AND U."id" = :userId
+          WHERE R."deletedAt" IS NULL
+          GROUP BY R."StationId";`;
+
+      const replacements = {
+        stationIds: stationIds,
+        userId: userId,
+      };
+
+      const result = await models.sequelize.query<{
+        StationId: number;
+        count: string;
+      }>(sql, {
+        replacements: replacements,
+        type: QueryTypes.SELECT,
+      });
+
+      return successResponse(response, "Got recordings counts", {
+        counts: result.map((c) => ({
+          stationId: c.StationId,
+          count: parseInt(c.count),
+        })),
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/:id/recordings-count Get count of recordings for a station by id
+   * @apiName GetRecordingsCountForStation
+   * @apiGroup Station
+   * @apiDescription Get the count of recordings associated with a station by its id
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiRecordingsCountResponseSuccess} count Number of recordings associated with the station
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/recordings-count`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+    ]),
+    fetchAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response) => {
+      const stationdId = response.locals.station.id;
+
+      const count = await models.Recording.count({
+        where: {
+          StationId: stationdId,
+          deletedAt: null,
+        },
+      });
+
+      return successResponse(response, "Got recordings count", {
+        count,
       });
     }
   );
@@ -538,7 +637,6 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async (request: Request, response: Response) => {
-      console.log("hi");
       const cacophonyIndexBulk = await models.Station.getCacophonyIndexBulk(
         response.locals.requestUser,
         response.locals.station.id,

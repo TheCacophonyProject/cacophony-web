@@ -329,11 +329,11 @@ export default function (
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [results, _] =
-      (await sequelize.query(`SELECT tt.what, count(*) as count 
-      FROM "Recordings" r 
-      JOIN "Tracks" t ON r.id = t."RecordingId" 
-      JOIN "TrackTags" tt ON t.id = tt."TrackId" 
-      WHERE r."StationId" = ${stationId} 
+      (await sequelize.query(`SELECT tt.what, count(*) as count
+      FROM "Recordings" r
+      JOIN "Tracks" t ON r.id = t."RecordingId"
+      JOIN "TrackTags" tt ON t.id = tt."TrackId"
+      WHERE r."StationId" = ${stationId}
       AND r."type" = '${type}'
       AND r."recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
       GROUP BY tt.what;

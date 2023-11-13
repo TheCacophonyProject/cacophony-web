@@ -193,7 +193,6 @@ export default defineComponent({
   background: white;
   border: solid #e8e8e8 1px;
   border-radius: 6px;
-  box-shadow: 0px 0px 4px 0px rgba(190, 189, 189, 0.25);
   color: #353746;
 }
 .disabled {

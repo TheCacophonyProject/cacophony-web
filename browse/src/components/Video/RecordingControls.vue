@@ -190,6 +190,10 @@ export default {
       type: String,
       default: "",
     },
+    stationId: {
+      type: String,
+      default: "",
+    },
     downloadRawUrl: {
       type: String,
       default: "",
@@ -281,6 +285,30 @@ export default {
     async deleteRecording() {
       this.deleteDisabled = true;
       const { success } = await api.recording.del(this.$route.params.id);
+      if (success) {
+        const response = await api.station.getStationById(this.stationId);
+        if (response.success) {
+          const { station } = response.result;
+          if (station.recordingsCount === 0) {
+            //Prompt user to delete station
+            const shouldDelete = await this.$bvModal.msgBoxConfirm(
+              "This was the last recording on this station. Do you want to delete the station?",
+              {
+                title: "Delete Station",
+                okVariant: "danger",
+                okTitle: "Delete",
+                cancelTitle: "Cancel",
+                footerClass: "p-2",
+                hideHeaderClose: false,
+                centered: true,
+              }
+            );
+            if (shouldDelete) {
+              await api.station.deleteStationById(station.id);
+            }
+          }
+        }
+      }
       this.deleteDisabled = false;
       if (success) {
         this.$emit("deleted-recording");
