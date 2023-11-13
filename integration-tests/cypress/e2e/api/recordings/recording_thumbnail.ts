@@ -32,7 +32,7 @@ describe("Recording thumbnails", () => {
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
 
-  // tempate thermal recoridng with no tracks - force into Analyse state to do thumbnail generation
+  // template thermal recording with no tracks - force into Analyse state to do thumbnail generation
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );

@@ -1,10 +1,10 @@
-import viridis from "scale-color-perceptual/rgb/viridis.json";
-import plasma from "scale-color-perceptual/rgb/plasma.json";
-import magma from "scale-color-perceptual/rgb/magma.json";
-import inferno from "scale-color-perceptual/rgb/inferno.json";
+import viridis from "./viridis";
+import plasma from "./plasma";
+import magma from "./magma";
+import inferno from "./inferno";
 
-import defaultColourmap from "./DefaultColourmap.js";
-import type { CptvHeader } from "@/components/cptv-player/cptv-decoder/decoder";
+import defaultColourmap from "./DefaultColourmap";
+import type { CptvHeader } from "./decoder";
 type RgbZeroOneArray = [number, number, number][];
 // Colour maps
 const mapRgba = ([r, g, b]: [number, number, number]): number =>
@@ -108,7 +108,7 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
       timestamp,
       hasBackgroundFrame,
       minValue,
-      maxValue
+      maxValue,
     } = header;
     const headerInfo: Record<
       string,

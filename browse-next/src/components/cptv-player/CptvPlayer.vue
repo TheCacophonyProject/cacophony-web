@@ -461,10 +461,10 @@ const addFrame = (frame: CptvFrame) => {
 };
 
 const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
-  if (frameNumToRender > frames.length + 2 && !totalFrames.value) {
+  if (frameNumToRender > frames.length + 2) {
     buffering.value = true;
   }
-  while (frames.length <= frameNumToRender && !totalFrames.value) {
+  while (frames.length <= frameNumToRender) {
     seekingInProgress.value = true;
     const frame = await cptvDecoder.getNextFrame();
     if (frame === null) {
@@ -475,16 +475,15 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       }
       break;
     }
-    totalFrames.value = await cptvDecoder.getTotalFrames();
     if (!totalFrames.value) {
-      // If we got total frames, this frame is a duplicate.
-      addFrame(frame);
+      totalFrames.value = await cptvDecoder.getTotalFrames();
     }
+    addFrame(frame);
   }
   seekingInProgress.value = false;
   buffering.value = false;
 };
-
+let cNum = 0;
 const setCurrentFrameAndRender = (
   force: boolean,
   frameNumToRender?: number
@@ -500,6 +499,9 @@ const setCurrentFrameAndRender = (
   }
   if (frameData) {
     frameHeader.value = frameData.meta;
+    if (cNum !== frameNumToRender) {
+      cNum = frameNumToRender;
+    }
     renderFrame(frameData, frameNumToRender, force);
   }
 };
@@ -511,6 +513,7 @@ const seekToSpecifiedFrameAndRender = async (
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
   }
+
   await makeSureWeHaveTheFrame(frameNumToRender);
   const gotFrame = frameNumToRender < frames.length;
   if (gotFrame) {
@@ -1674,6 +1677,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         thisCanvas.height = thisHeader.height;
       }
     }
+
     while (!recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
@@ -1995,7 +1999,7 @@ watch(
           <font-awesome-icon icon="left-right" />
         </div>
       </div>
-    </div>
+        </div>
     <div
       key="playback-nav"
       class="playback-nav"

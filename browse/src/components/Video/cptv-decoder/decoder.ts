@@ -1,6 +1,3 @@
-import type { RecordingId } from "@typedefs/api/common";
-import { API_ROOT } from "@api/root";
-
 interface MessageData {
   type: string;
   data: unknown;
@@ -71,24 +68,24 @@ export class CptvDecoder {
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
-  /**
-   * Initialises a new player and associated stream reader.
-   * @param id (Number)
-   * @param apiToken (String)
-   * @param size (Number)
-   * @returns Content type on success, or an error string on failure (String | Boolean)
-   */
-  async initWithRecordingIdAndKnownSize(
-    id: RecordingId,
-    size: number,
-    apiToken?: string
-  ): Promise<string | boolean | Blob> {
-    await this.init();
-    const type = "initWithRecordingIdAndSize";
-    decoder &&
-      decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
-    return (await this.waitForMessage(type)) as string | boolean | Blob;
-  }
+  // /**
+  //  * Initialises a new player and associated stream reader.
+  //  * @param id (Number)
+  //  * @param apiToken (String)
+  //  * @param size (Number)
+  //  * @returns Content type on success, or an error string on failure (String | Boolean)
+  //  */
+  // async initWithRecordingIdAndKnownSize(
+  //   id: RecordingId,
+  //   size: number,
+  //   apiToken?: string
+  // ): Promise<string | boolean | Blob> {
+  //   await this.init();
+  //   const type = "initWithRecordingIdAndSize";
+  //   decoder &&
+  //     decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
+  //   return (await this.waitForMessage(type)) as string | boolean | Blob;
+  // }
 
   /**
    * Initialises a new player and associated stream reader.
