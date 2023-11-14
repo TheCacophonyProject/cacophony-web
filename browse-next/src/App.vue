@@ -186,7 +186,7 @@ onMounted(() => {
   />
   <join-existing-project-modal
     v-if="joiningNewProject.enabled"
-    id="join-group-modal"
+    id="join-project-modal"
   />
   <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
   <main
