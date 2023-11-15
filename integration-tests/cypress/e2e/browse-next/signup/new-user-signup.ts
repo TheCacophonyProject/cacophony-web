@@ -78,46 +78,7 @@ describe("New users can sign up and confirm their email address", () => {
     startMailServerStub();
   });
 
-  // it("Existing user (with projects) is able to invite an existing user to their project", () => {
-  //   const password = uniqueName("pass");
-
-  //   cy.log("User 1 creates a project");
-  //   const user1 = uniqueName("Bob");
-  //   const project1 = uniqueName("project");
-  //   registerNewUser(user1, password);
-  //   confirmNewUserEmailAddress(user1);
-  //   createProjectFromInitialSetup(project1);
-  //   signOut();
-
-  //   cy.log("User 2 creates a project");
-  //   const user2 = uniqueName("Alice");
-  //   const project2 = uniqueName("Alice project");
-  //   registerNewUser(user2, password);
-  //   confirmNewUserEmailAddress(user2);
-  //   createProjectFromInitialSetup(project2);
-
-  //   cy.log("Alice invites Bob to her project Alice-project");
-  //   cy.visit(`/${urlNormaliseProjectName(project2)}/settings/users`);
-  //   cyEl("invite someone to project button").click();
-  //   cyEl("invitee email address").type(getEmail(user1));
-  //   modalOkayButton("invite-someone-modal").click();
-  //   signOut();
-
-  //   waitForEmail("invite").then((email) => {
-  //     const { payload, token } = extractTokenStartingWith(
-  //       email,
-  //       ACCEPT_INVITE_PREFIX
-  //     );
-  //     cy.log("Bob signs in and accepts the email link");
-  //     signInExistingUser(user1, password);
-  //     cy.url().should("contain", urlNormaliseProjectName(project1));
-  //     cy.visit(`/accept-invite/${token}`);
-
-  //     cy.url().should("contain", urlNormaliseProjectName(project2));
-  //   });
-  // });
-
-  it.only("Existing user (with projects) is able to request to join an existing project from main view", () => {
+  it("Existing user (with projects) is able to request to join an existing project from main view", () => {
     cy.log("User 1 creates a project");
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
@@ -316,13 +277,46 @@ describe("New users can sign up and confirm their email address", () => {
       signInExistingUser(user1, password);
       cy.url().should("contain", urlNormaliseProjectName(project1));
       cy.visit(`/accept-invite/${token}`);
-
       cy.url().should("contain", urlNormaliseProjectName(project2));
     });
   });
 
   it("Logged in user with a project invite link is able to accept the invitation", () => {
-    // TODO:
+    cy.log("User 1 registers and creates a project");
+    const user1 = uniqueName("Bob");
+    const password1 = uniqueName("pass");
+    const project1 = uniqueName("project");
+    registerNewUser(user1, password1);
+    confirmNewUserEmailAddress(user1);
+    createProjectFromInitialSetup(project1);
+    signOut();
+
+    cy.log("User 2 registers and creates a project");
+    const user2 = uniqueName("Alice");
+    const password2 = uniqueName("pass");
+    const project2 = uniqueName("project");
+    registerNewUser(user2, password2);
+    confirmNewUserEmailAddress(user2);
+    createProjectFromInitialSetup(project2);
+
+    cy.log("User 2 invites User 1 to their project");
+    cy.visit(`/${user2})}/settings/users`);
+    cyEl("invite someone to project button").click();
+    cyEl("invitee email address").type(getEmail(user1));
+    modalOkayButton("invite-someone-modal").click();
+    signOut();
+
+    cy.log("User 1 signs in and accepts the email link");
+    signInExistingUser(user1, password1);
+    waitForEmail("invite").then((email) => {
+      const { payload, token } = extractTokenStartingWith(
+        email,
+        ACCEPT_INVITE_PREFIX
+      );
+      cy.url().should("contain", urlNormaliseProjectName(project1));
+      cy.visit(`/accept-invite/${token}`);
+      cy.url().should("contain", urlNormaliseProjectName(project2));
+    });
   });
 
   it("Logged out user with a project invite link is able to accept the invitation after login", () => {
