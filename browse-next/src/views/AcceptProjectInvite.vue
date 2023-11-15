@@ -23,8 +23,9 @@ const { params } = useRoute();
 onMounted(async () => {
   // Get the token, and sent it to the backend.
   checkingValidateEmailToken.value = true;
-  if (params.token) {
+  if (params.token && validateToken.value == "") {
     const token = (params.token as string).replace(/:/g, ".");
+    validateToken.value = token;
     const jwtToken = decodeJWT(token) as JwtAcceptInviteTokenPayload | null;
     if (jwtToken && jwtToken.group) {
       const alreadyAddedToProject =

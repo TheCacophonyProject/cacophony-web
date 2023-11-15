@@ -9,7 +9,7 @@ export const clearMailServerLog = () => {
   cy.log("Clearing mail server stub log");
   return cy.exec(
     `cd ../api && docker-compose exec -T server bash -lic "echo "" > mailServerStub.log;"`,
-    { log: false }
+    { log: true }
   );
 };
 export const waitForEmail = (type: string = "") => {
@@ -17,10 +17,11 @@ export const waitForEmail = (type: string = "") => {
   cy.log(`Wait for ${type} email`);
   return cy
     .exec(
-      `cd ../api && docker-compose exec -T server bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
-      { log: false, timeout: 3500 }
+      `cd ../api && docker exec cacophony-api bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
+      { log: true, failOnNonZeroExit: false }
     )
     .then((response) => {
+      cy.log(response.stdout, response.stderr);
       email = response.stdout;
       expect(email.split("\n")[0], "Received an email").to.include(
         "SERVER: received email"
@@ -31,17 +32,21 @@ export const waitForEmail = (type: string = "") => {
 export const startMailServerStub = () => {
   cy.log("Starting mail server stub");
   cy.exec(
-    `cd ../api && docker-compose exec -T server bash -lic "rm mailServerStub.log || true;"`,
-    { log: false }
-  );
+    `cd ../api && docker exec cacophony-api bash -lic rm mailServerStub.log || true;"`,
+    { log: true, failOnNonZeroExit: false }
+  ).then((response) => {
+    cy.log(response.stdout);
+  });
   cy.exec(
-    `cd ../api && docker-compose exec -d -T server bash -lic "node ./api/scripts/mailServerStub.js"`,
-    { log: false }
-  );
+    `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js"`,
+    { log: true }
+  ).then((response) => {
+    cy.log(response.stdout, response.stderr);
+  });
   // Wait for the mail server log file to be created
   return cy.exec(
-    `cd ../api && docker-compose exec -T server bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
-    { log: false }
+    `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
+    { log: true, failOnNonZeroExit: false }
   );
 };
 export const extractTokenStartingWith = (

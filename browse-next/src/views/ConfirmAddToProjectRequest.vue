@@ -23,14 +23,12 @@ const { params } = useRoute();
 onMounted(async () => {
   // Get the token, and sent it to the backend.
   checkingValidateEmailToken.value = true;
-  if (params.token) {
-    debugger;
+  if (params.token && validateToken.value === "") {
     const token = (params.token as string).replace(/:/g, ".");
+    validateToken.value = token;
     const jwtToken = decodeJWT(token) as JwtAcceptInviteTokenPayload | null;
     if (jwtToken && jwtToken.group) {
-      const validateTokenResponse = await confirmAddToProjectRequest(
-        token
-      );
+      const validateTokenResponse = await confirmAddToProjectRequest(token);
       if (!validateTokenResponse.success) {
         if (
           validateTokenResponse.status === HttpStatusCode.AuthorizationError
@@ -42,7 +40,9 @@ onMounted(async () => {
           // Grab the error.
           isValidValidateToken.value = false;
           validateError.value = validateTokenResponse.result;
-          if (validateError.value.messages[0] === "User already belongs to group") {
+          if (
+            validateError.value.messages[0] === "User already belongs to group"
+          ) {
             alreadyPartOfProject.value = true;
           }
         }

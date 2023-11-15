@@ -121,15 +121,15 @@ describe("New users can sign up and confirm their email address", () => {
     cy.log("User 1 creates a project");
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
-    const project1 = uniqueName("project");
+    const project1 = uniqueName("bobs project");
     registerNewUser(user1, password);
     confirmNewUserEmailAddress(user1);
     createProjectFromInitialSetup(project1);
     signOut();
 
     cy.log("User 2 creates a project");
-    const user2 = uniqueName("Bob");
-    const project2 = uniqueName("project");
+    const user2 = uniqueName("Alice");
+    const project2 = uniqueName("alices project");
     registerNewUser(user2, password);
     confirmNewUserEmailAddress(user2);
     createProjectFromInitialSetup(project2);
@@ -143,7 +143,7 @@ describe("New users can sign up and confirm their email address", () => {
 
     signOut();
 
-    waitForEmail("request").then((email) => {
+    waitForEmail("join request").then((email) => {
       const { payload, token } = extractTokenStartingWith(
         email,
         JOIN_GROUP_REQUEST_PREFIX
@@ -154,7 +154,7 @@ describe("New users can sign up and confirm their email address", () => {
       cy.url().should("contain", urlNormaliseProjectName(project1));
       cy.visit(`/confirm-project-membership-request/${token}`);
       cy.url().should("contain", urlNormaliseProjectName(project1));
-    }); 
+    });
   });
 
   it("New user signup works, and email confirmation works while user is logged in", () => {

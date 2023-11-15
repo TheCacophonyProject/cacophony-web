@@ -705,6 +705,7 @@ export default function (app: Application, baseUrl: string) {
           pending: { [Op.eq]: null },
         },
       });
+
       if (existingUserOfGroup) {
         return next(new UnprocessableError("User already belongs to group"));
       }
