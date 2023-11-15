@@ -195,7 +195,7 @@ const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
     const mappedWhat = getClassificationForLabel(tag.what);
     return {
       ...tag,
-      what: mappedWhat.label,
+      what: mappedWhat ? mappedWhat.label : tag.what,
     } as ApiAutomaticTrackTagResponse;
   }
   return null;

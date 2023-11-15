@@ -1,10 +1,7 @@
 {
     "label": "all",
-    "version": "edb82422-89ec-42ff-bc36-d7b79915a5ef",
+    "version": "adb82422-89ec-42ff-bc36-d7b79915a5ef",
     "children": [
-      {"label" : "animal",
-      "children":[]
-    },
         {
             "label": "mammal",
             "children": [

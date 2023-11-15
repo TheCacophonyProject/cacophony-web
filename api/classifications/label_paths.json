@@ -1,6 +1,5 @@
 {
     "all": "all",
-    "animal": "all.animal",
     "mammal": "all.mammal",
     "cat": "all.mammal.cat",
     "deer": "all.mammal.deer",
