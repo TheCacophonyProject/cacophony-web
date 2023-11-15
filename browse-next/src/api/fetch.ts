@@ -219,7 +219,7 @@ export async function fetch<T>(
       );
       if (isJSON) {
         const result = await response.json();
-        debugger;
+        // debugger;
       }
     }
 

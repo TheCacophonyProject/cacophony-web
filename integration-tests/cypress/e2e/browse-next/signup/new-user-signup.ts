@@ -1,6 +1,7 @@
 import { uniqueName } from "@commands/testUtils";
 import {
   ACCEPT_INVITE_PREFIX,
+  JOIN_GROUP_REQUEST_PREFIX,
   extractTokenStartingWith,
   startMailServerStub,
   waitForEmail,
@@ -75,6 +76,85 @@ const confirmNewUserEmailAddress = (user: string) => {
 describe("New users can sign up and confirm their email address", () => {
   before(() => {
     startMailServerStub();
+  });
+
+  // it("Existing user (with projects) is able to invite an existing user to their project", () => {
+  //   const password = uniqueName("pass");
+
+  //   cy.log("User 1 creates a project");
+  //   const user1 = uniqueName("Bob");
+  //   const project1 = uniqueName("project");
+  //   registerNewUser(user1, password);
+  //   confirmNewUserEmailAddress(user1);
+  //   createProjectFromInitialSetup(project1);
+  //   signOut();
+
+  //   cy.log("User 2 creates a project");
+  //   const user2 = uniqueName("Alice");
+  //   const project2 = uniqueName("Alice project");
+  //   registerNewUser(user2, password);
+  //   confirmNewUserEmailAddress(user2);
+  //   createProjectFromInitialSetup(project2);
+
+  //   cy.log("Alice invites Bob to her project Alice-project");
+  //   cy.visit(`/${urlNormaliseProjectName(project2)}/settings/users`);
+  //   cyEl("invite someone to project button").click();
+  //   cyEl("invitee email address").type(getEmail(user1));
+  //   modalOkayButton("invite-someone-modal").click();
+  //   signOut();
+
+  //   waitForEmail("invite").then((email) => {
+  //     const { payload, token } = extractTokenStartingWith(
+  //       email,
+  //       ACCEPT_INVITE_PREFIX
+  //     );
+  //     cy.log("Bob signs in and accepts the email link");
+  //     signInExistingUser(user1, password);
+  //     cy.url().should("contain", urlNormaliseProjectName(project1));
+  //     cy.visit(`/accept-invite/${token}`);
+
+  //     cy.url().should("contain", urlNormaliseProjectName(project2));
+  //   });
+  // });
+
+  it.only("Existing user (with projects) is able to request to join an existing project from main view", () => {
+    cy.log("User 1 creates a project");
+    const user1 = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const project1 = uniqueName("project");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createProjectFromInitialSetup(project1);
+    signOut();
+
+    cy.log("User 2 creates a project");
+    const user2 = uniqueName("Bob");
+    const project2 = uniqueName("project");
+    registerNewUser(user2, password);
+    confirmNewUserEmailAddress(user2);
+    createProjectFromInitialSetup(project2);
+    cyEl("switch or join project button").click();
+    cyEl("join existing project button").click();
+    cyEl("project admin email address").type(getEmail(user1));
+    cyEl("list joinable projects button").click();
+
+    // Since there is only one project, it won't show a list of options to choose from.
+    modalOkayButton("join-project-modal").click();
+
+    signOut();
+
+    waitForEmail("request").then((email) => {
+      const { payload, token } = extractTokenStartingWith(
+        email,
+        JOIN_GROUP_REQUEST_PREFIX
+      );
+
+      cy.log("Bob signs in and accepts the email link");
+      signInExistingUser(user1, password);
+      cy.url().should("contain", urlNormaliseProjectName(project1));
+      cy.visit(`/confirm-project-membership-request/${token}`);
+      cy.url().should("contain", urlNormaliseProjectName(project1));
+    }); 
   });
 
   it("New user signup works, and email confirmation works while user is logged in", () => {
@@ -202,10 +282,6 @@ describe("New users can sign up and confirm their email address", () => {
     signOut();
   });
 
-  it("Existing user (with projects) is able to request to join an existing project from main view", () => {
-    // TODO:
-  });
-
   it("Existing user (with projects) is able to invite an existing user to their project", () => {
     const password = uniqueName("pass");
 
@@ -217,7 +293,7 @@ describe("New users can sign up and confirm their email address", () => {
     createProjectFromInitialSetup(project1);
     signOut();
 
-    cy.log("User 1 creates a project");
+    cy.log("User 2 creates a project");
     const user2 = uniqueName("Alice");
     const project2 = uniqueName("Alice project");
     registerNewUser(user2, password);

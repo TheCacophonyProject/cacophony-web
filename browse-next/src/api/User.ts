@@ -166,7 +166,7 @@ export const requestToJoinGroup = (
   CacophonyApi.post(
     `/api/v1/users/request-group-membership`,
     {
-      groupAdminEmail,
+      groupAdminEmail, 
       groupId,
     },
     abortable
@@ -176,5 +176,14 @@ export const acceptProjectInvitation = (groupId: GroupId, abortable = false) =>
   CacophonyApi.post(
     `/api/v1/groups/${groupId}/accept-invitation`,
     {},
+    abortable
+  ) as Promise<FetchResult<void>>;
+
+export const confirmAddToProjectRequest = (membershipRequestJWT: string, abortable = false) =>
+  CacophonyApi.post(
+    `/api/v1/users/validate-group-membership-request`,
+    {
+      membershipRequestJWT
+    },
     abortable
   ) as Promise<FetchResult<void>>;
