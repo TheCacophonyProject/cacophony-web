@@ -542,7 +542,7 @@ export default defineComponent({
         } else {
           return automaticTags.map((automaticTag) => ({
             ...automaticTag,
-            class: TagClass.Denied,
+            class: TagClass.Automatic,
           }));
         }
       } else if (humanTags.length > 0) {
