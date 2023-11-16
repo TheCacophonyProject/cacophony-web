@@ -1704,7 +1704,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
           const dw = canvasWidth / pixelRatio.value;
           ctx.drawImage(imageBitmap, 0, dy, dw, dh);
           for (const track of recording?.tracks) {
-            let pos = { ...track.positions[0] };
+            const pos = { ...track.positions[0] };
             // convert from bottom left, to top left origin
             pos.y = (1 - (pos.y + pos.height)) * dh + dy;
             pos.x = pos.x * dw;
@@ -2008,7 +2008,7 @@ watch(
           <font-awesome-icon icon="left-right" />
         </div>
       </div>
-        </div>
+    </div>
     <div
       key="playback-nav"
       class="playback-nav"

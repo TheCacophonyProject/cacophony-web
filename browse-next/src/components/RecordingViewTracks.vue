@@ -143,9 +143,9 @@ const addOrRemoveUserTag = async ({
         );
         if (removeTagResponse.success) {
           const completelyRemoved = !track.tags.some(
-              (tag) =>
-                  displayLabelForClassificationLabel(tag.what, tag.automatic) ===
-                  displayLabelForClassificationLabel(thisUserTag.what)
+            (tag) =>
+              displayLabelForClassificationLabel(tag.what, tag.automatic) ===
+              displayLabelForClassificationLabel(thisUserTag.what)
           );
           if (completelyRemoved) {
             emit("track-tag-changed", { track, tag, action: "remove" });
