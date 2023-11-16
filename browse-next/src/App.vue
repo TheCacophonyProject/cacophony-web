@@ -15,6 +15,7 @@ import {
   showSwitchProject,
   creatingNewProject,
   joiningNewProject,
+  showTooltips,
   urlNormalisedCurrentProjectName,
   rafFps,
   pinSideNav,
@@ -67,6 +68,10 @@ const CreateProjectModal = defineAsyncComponent(
 
 const JoinExistingProjectModal = defineAsyncComponent(
   () => import("@/components/JoinExistingProjectModal.vue")
+);
+
+const FirstLoginTooltipsModal = defineAsyncComponent(
+  () => import("@/components/FirstLoginTooltipsModal.vue")
 );
 
 const _userIsSuperAdmin = false;
@@ -188,6 +193,10 @@ onMounted(() => {
     v-if="joiningNewProject.enabled"
     id="join-project-modal"
   />
+  <first-login-tooltips-modal
+    v-if="showTooltips.enabled"
+    id="opening-tooltips-modal"
+  />
   <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
   <main
     class="justify-content-center align-items-center d-flex"
@@ -294,6 +303,16 @@ onMounted(() => {
                   @click.stop.prevent="joiningNewProject.enabled = true"
                 >
                   Join an existing project
+                </button>
+              </li>
+              <li>
+                <button
+                  class="dropdown-item"
+                  type="button"
+                  data-cy="first login tooltips"
+                  @click.stop.prevent="showTooltips.enabled = true"
+                >
+                  First login tooltips
                 </button>
               </li>
             </ul>

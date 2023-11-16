@@ -468,6 +468,7 @@ export const showEUAOutOfDate = computed<{
   visible: boolean;
 }>(() => ({ enabled: euaIsOutOfDate.value, visible: false }));
 export const joiningNewProject = reactive({ enabled: false, visible: false });
+export const showTooltips = reactive({ enabled: false, visible: false });
 export const showSwitchProject = reactive({ enabled: false, visible: false });
 export const pinSideNav = ref(false);
 
