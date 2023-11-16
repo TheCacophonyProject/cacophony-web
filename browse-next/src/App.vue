@@ -309,7 +309,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
-                  data-cy="first login tooltips"
+                  data-cy="first login tooltips button"
                   @click.stop.prevent="showTooltips.enabled = true"
                 >
                   First login tooltips

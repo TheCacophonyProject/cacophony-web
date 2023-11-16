@@ -165,6 +165,23 @@ describe("New users can sign up and confirm their email address", () => {
     expect(cyEl("join existing project button")).to.exist;
   });
 
+  it("New user is able to navigate and close tooltips modal", () => {
+    cy.log("User 1 registers");
+    const user1 = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const project = uniqueName("project");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createProjectFromInitialSetup(project);
+
+    cyEl("switch or join project button").click();
+    cyEl("first login tooltips button").click();
+    cyEl("cycle through tips button").click();
+    cyEl("cycle through tips button").click();
+    cyEl("cycle through tips button").click();
+    cyEl("cycle through tips button").click();
+  });
+
   it("Existing new user is able to create a new project from setup view", () => {
     const user = uniqueName("Bob");
     const password = uniqueName("pass");
