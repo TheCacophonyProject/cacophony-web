@@ -108,7 +108,7 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
       timestamp,
       hasBackgroundFrame,
       minValue,
-      maxValue
+      maxValue,
     } = header;
     const headerInfo: Record<
       string,

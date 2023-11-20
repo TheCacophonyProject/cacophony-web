@@ -73,6 +73,7 @@ export default function (app: Application, baseUrl: string) {
           query("type").isIn([
             RecordingType.InfraredVideo,
             RecordingType.ThermalRaw,
+            RecordingType.TrailCamImage,
           ]),
           query("state").isIn([
             RecordingProcessingState.Reprocess,
