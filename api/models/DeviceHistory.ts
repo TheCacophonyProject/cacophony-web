@@ -49,6 +49,7 @@ export interface DeviceHistorySettings {
     exclude?: boolean;
     label?: string;
   }[];
+  ratThresh?: [];
 }
 
 export interface DeviceHistory

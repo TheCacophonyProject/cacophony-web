@@ -37,8 +37,11 @@ import {
   fetchUnauthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
+  fetchAuthorizedRequiredDeviceById,
 } from "@api/extract-middleware.js";
 import type { Track } from "@/models/Track.js";
+import type { DeviceHistory } from "@models/DeviceHistory.js";
+import Sequelize, { Op } from "sequelize";
 
 const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
@@ -632,6 +635,61 @@ export default function (app: Application, baseUrl: string) {
       });
       await response.locals.track.update({ data: response.locals.data });
       return successResponse(response, "Track updated");
+    }
+  );
+
+  /**
+   * @api {get} /api/fileProcessing/ratThresh/:deviceId-Get rat threshold values for a device
+   * @apiName RatThreshold
+   * @apiGroup Processing
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the rat rheshold should be current.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess DeviceHistory
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/ratThresh/:id`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      query("at-time").isISO8601().toDate().optional(),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const atTime =
+        (request.query["at-time"] &&
+          (request.query["at-time"] as unknown as Date)) ||
+        new Date();
+      const device = response.locals.device;
+      const deviceHistoryEntry: DeviceHistory =
+        await models.DeviceHistory.findOne({
+          where: {
+            DeviceId: device.id,
+            GroupId: device.GroupId,
+            fromDateTime: { [Op.lte]: atTime },
+          },
+          order: [["fromDateTime", "DESC"]],
+          attributes: [
+            "DeviceId",
+            "fromDateTime",
+            "location",
+            [
+              Sequelize.fn(
+                "json_build_object",
+                "ratThresh",
+                Sequelize.literal(`"DeviceHistory"."settings"#>'{ratThresh}'`)
+              ),
+              "settings",
+            ],
+          ],
+        });
+      return successResponse(response, "Got device history", {
+        deviceHistoryEntry,
+      });
     }
   );
 }
