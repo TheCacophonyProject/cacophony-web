@@ -21,7 +21,6 @@ async function main() {
   const pgClient = await pgConnect();
   const devices = await getDeviceLocation(pgClient);
   for (const devHistory of devices.rows) {
-    console.log("Checking device ", devHistory["uuid"]);
     const rodentQ = await getRodentData(
       pgClient,
       devHistory["DeviceId"],
@@ -31,7 +30,6 @@ async function main() {
     // byDevice = {}
     let currentDevice = null;
     if (rodentQ.rows.length == 0) {
-      console.log("No data skipping");
       continue;
     }
     for (const rodentRec of rodentQ.rows) {
@@ -48,8 +46,8 @@ async function main() {
         currentDevice.trackData.push(...positions);
       }
     }
-    const rows = Math.ceil(WIDTH / BOX_DIM);
-    const columns = Math.ceil(HEIGHT / BOX_DIM);
+    const rows = Math.ceil(HEIGHT / BOX_DIM);
+    const columns = Math.ceil(WIDTH / BOX_DIM);
     const gridData = [...Array(rows)].map((e) =>
       [...Array(columns)].map((e) => Array())
     );
@@ -110,7 +108,7 @@ async function main() {
     if (!settings) {
       settings = {};
     }
-    settings["ratThresh"] = gridData;
+    settings["ratThresh"]={"gridSize": BOX_DIM,"version": Date.now(),"thresholds" : gridData};
     devHistory["settings"] = settings;
     console.log(
       "Updating device History",
@@ -177,7 +175,7 @@ right join "Tracks" t on
 	tt."TrackId" = t.id
 right join "Recordings" r on t."RecordingId"  = r.id
 where
-r."DeviceId"='${deviceId}' and ${locQuery} and r."recordingDateTime" > ${fromDateTime}
+r."DeviceId"='${deviceId}' and ${locQuery} and r."recordingDateTime" > '${fromDateTime.toISOString()}' and
 tt.automatic =false and
 	tt.path ='all.mammal.rodent.mouse' order by r."DeviceId",r."recordingDateTime" desc`
   );
