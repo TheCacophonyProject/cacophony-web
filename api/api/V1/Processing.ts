@@ -639,7 +639,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/fileProcessing/ratThresh/:deviceId-Get rat threshold values for a device
+   * @api {get} /api/fileProcessing/ratThresh/:deviceId Get rat threshold values for a device
    * @apiName RatThreshold
    * @apiGroup Processing
    * @apiParam {Integer} deviceId Id of the device
