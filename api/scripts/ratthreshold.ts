@@ -108,7 +108,11 @@ async function main() {
     if (!settings) {
       settings = {};
     }
-    settings["ratThresh"]={"gridSize": BOX_DIM,"version": Date.now(),"thresholds" : gridData};
+    settings["ratThresh"] = {
+      gridSize: BOX_DIM,
+      version: Date.now(),
+      thresholds: gridData,
+    };
     devHistory["settings"] = settings;
     console.log(
       "Updating device History",
