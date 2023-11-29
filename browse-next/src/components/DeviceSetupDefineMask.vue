@@ -442,6 +442,28 @@ function cancelCreatingRegion(): void {
     padding: 0.8em;
     border-radius: 1em;
   }
+
+  .existingRegions {
+    display: grid;
+    position: relative;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.8em;
+    padding-bottom: 0;
+    border-radius: 0.4em;
+    color: white;
+    margin-bottom: 0.5em;
+  }
+
+  .regionCreationToolsContainer {
+    display: grid;
+    position: absolute;
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.8em;
+    padding-bottom: 0px;
+    border-radius: 0.4em;
+    color: white;
+  }
 }
 
 @media screen and (min-width: 768px) and (max-width: 1023px) {
@@ -471,6 +493,29 @@ function cancelCreatingRegion(): void {
     padding: 0.6em;
     border-radius: 0.4em;
   }
+
+  .existingRegions {
+    display: grid;  
+    width: 14em;
+    position: relative;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.8em;
+    padding-bottom: 0;
+    border-radius: 0.4em;
+    color: white;
+    margin-bottom: 0.5em;
+  }
+
+  .regionCreationToolsContainer {
+    display: grid;
+    width: 14em;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.8em;
+    padding-bottom: 0px;
+    border-radius: 0.4em;
+    color: white;
+  }
 }
 
 @media screen and (min-width: 1024px) {
@@ -491,6 +536,29 @@ function cancelCreatingRegion(): void {
     background-color: rgba(0, 0, 0, 0.9);
     padding: 0.7em;
     border-radius: 0.4em;
+  }
+
+  .existingRegions {
+    display: grid;
+    width: 14em;
+    position: relative;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.8em;
+    padding-bottom: 0;
+    border-radius: 0.4em;
+    color: white;
+    margin-bottom: 0.5em;
+  }
+
+  .regionCreationToolsContainer {
+    display: grid;
+    width: 14em;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.8em;
+    padding-bottom: 0px;
+    border-radius: 0.4em;
+    color: white;
   }
 }
 
@@ -517,18 +585,18 @@ function cancelCreatingRegion(): void {
 }
 
 .regionsList ul {
-  width: 6em;
+  /* width: 6em; */
   list-style: none;
 }
 
-.regionsList li:last-child .regionContent {
-  padding-bottom: 0.25em;
+.regionsList li:first-child .regionContent {
+  padding-top: 0.3em;
 }
 
 .regionsList li {
   display: flex;
   align-items: center;
-  margin-bottom: 0.3em;
+  /* margin-bottom: 0.3em; */
 }
 
 .regionContent {
@@ -538,39 +606,12 @@ function cancelCreatingRegion(): void {
   width: 100%;
 }
 
-.regionContent p {
-  margin: 0;
-}
-
 .deleteButton {
   margin-left: auto;
 }
 
 .selectAreaButton {
   width: 8em;
-}
-
-.existingRegions {
-  display: grid;
-  width: 14em;
-  position: relative;
-  background-color: rgba(0, 0, 0, 0.9);
-  padding: 0.8em;
-  padding-bottom: 0;
-  border-radius: 0.4em;
-  color: white;
-  margin-bottom: 0.5em;
-}
-
-.regionCreationToolsContainer {
-  display: grid;
-  width: 14em;
-  position: absolute;
-  background-color: rgba(0, 0, 0, 0.9);
-  padding: 0.8em;
-  padding-bottom: 0px;
-  border-radius: 0.4em;
-  color: white;
 }
 
 canvas {
@@ -588,7 +629,7 @@ canvas {
 
 .regionCreationToolsHeading,
 .existingRegionsHeading {
-  margin-bottom: 0.7em;
+  margin-bottom: 0.6em;
 }
 
 .regionMaskSwitch {
