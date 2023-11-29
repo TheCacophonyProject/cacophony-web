@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed, watch } from "vue";
+import type { Ref } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, inject } from "vue";
 import { useDevicePixelRatio } from "@vueuse/core";
+import {
+  getLatestStatusRecordingForDevice,
+  getReferenceImageForDeviceAtCurrentLocation,
+  updateReferenceImageForDeviceAtCurrentLocation,
+} from "@api/Device";
+import { useRoute } from "vue-router";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type { DeviceId } from "@typedefs/api/common";
+import { selectedProjectDevices } from "@models/provides";
+import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 
 interface Point {
   x: number;
@@ -18,6 +30,7 @@ const imageWidth = ref<number>(0);
 const imageHeight = ref<number>(0);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const container = ref<HTMLCanvasElement | null>(null);
+const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
 const regionsArray = ref<Region[]>([]);
 const points = ref<Point[]>([]);
 const selectingArea = ref<boolean>(false);
@@ -26,6 +39,25 @@ const maskEnabled = ref<boolean>(true);
 const creatingRegionAborted = ref<boolean>(false);
 const devicePixelRatio = useDevicePixelRatio();
 const polygonClosedTolerance = ref(10);
+const referenceImage = ref<ImageBitmap | null>(null);
+const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
+const latestReferenceImageURL = ref<string | null>(null);
+const route = useRoute();
+const cptvFrameScale = ref<string>("1.0");
+const deviceId = Number(route.params.deviceId) as DeviceId;
+const device = computed<ApiDeviceResponse | null>(() => {
+  return (
+    (devices.value &&
+      devices.value.find(
+        (device: ApiDeviceResponse) => device.id === deviceId
+      )) ||
+    null
+  );
+});
+
+const devices = inject(selectedProjectDevices) as Ref<
+  ApiDeviceResponse[] | null
+>;
 
 const enableAddRegionsButton = computed(() => {
   return isPolygonClosed();
@@ -47,11 +79,26 @@ const computeImageDimensions = () => {
     const canvasElement = canvas.value;
     canvasElement.width = imageWidth.value * devicePixelRatio.pixelRatio.value;
     canvasElement.height =
-    imageHeight.value * devicePixelRatio.pixelRatio.value;
+      imageHeight.value * devicePixelRatio.pixelRatio.value;
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
+  if (device.value && device.value.type === "thermal") {
+    const [latestReferenceImage, _] = await Promise.allSettled([
+      getReferenceImageForDeviceAtCurrentLocation(device.value.id),
+      loadLatestStatusFrame(),
+    ]);
+    if (
+      latestReferenceImage.status === "fulfilled" &&
+      latestReferenceImage.value.success
+    ) {
+      latestReferenceImageURL.value = URL.createObjectURL(
+        latestReferenceImage.value.result
+      );
+    }
+  }
+  console.log("Latest status recording", latestStatusRecording.value);
   computeImageDimensions();
   window.addEventListener("resize", () => {
     clearMask();
@@ -60,6 +107,19 @@ onMounted(() => {
   });
 });
 
+const loadLatestStatusFrame = async () => {
+  if (device.value && device.value.type === "thermal") {
+    const latestStatus = await getLatestStatusRecordingForDevice(
+      device.value.id,
+      device.value.groupId
+    );
+    if (latestStatus) {
+      latestStatusRecording.value = latestStatus;
+    }
+  }
+};
+
+
 onBeforeUnmount(() => {
   window.removeEventListener("resize", computeImageDimensions);
   window.removeEventListener("resize", generateMask);
@@ -67,8 +127,8 @@ onBeforeUnmount(() => {
 });
 
 function normalise(x: number, y: number): Point {
-  const normalisedX = x / imageWidth.value;
-  const normalisedY = y / imageHeight.value;
+  const normalisedX = x / cptvFrameWidth.value;
+  const normalisedY = y / cptvFrameHeight.value;
   return {
     x: normalisedX,
     y: normalisedY,
@@ -76,6 +136,7 @@ function normalise(x: number, y: number): Point {
 }
 
 function pointSelect(event: MouseEvent): void {
+  console.log("Points: ", points.value);
   if (creatingRegion.value && !enableAddRegionsButton.value) {
     const { left, top } = container.value.getBoundingClientRect();
     const clickedX = event.clientX - left;
@@ -304,6 +365,27 @@ function cancelCreatingRegion(): void {
   clearMask();
   generateMask();
 }
+
+const cptvFrameWidth = computed<number>(() => {
+  if (referenceImageIsLandscape.value) {
+    return 480 * parseFloat(cptvFrameScale.value);
+  }
+  return 320 * parseFloat(cptvFrameScale.value);
+});
+
+const cptvFrameHeight = computed<number>(() => {
+  if (referenceImageIsLandscape.value) {
+    return 360 * parseFloat(cptvFrameScale.value);
+  }
+  return 240 * parseFloat(cptvFrameScale.value);
+});
+
+const referenceImageIsLandscape = computed<boolean>(() => {
+  if (referenceImage.value) {
+    return referenceImage.value?.width >= referenceImage.value?.height;
+  }
+  return true;
+});
 </script>
 
 <template>
@@ -313,14 +395,19 @@ function cancelCreatingRegion(): void {
       <div class="leftSideContent">
         <div class="darkContainer">
           <div class="imageContainer" ref="container" @click="pointSelect">
-            <img
-              src="../assets/camera-view.jpeg"
-              :style="{ width: '100%', height: 'auto' }"
-              ref="container"
-              @load="computeImageDimensions"
+            <cptv-single-frame
+              :recording="latestStatusRecording"
+              v-if="latestStatusRecording"
+              :width="cptvFrameWidth"
+              :height="cptvFrameHeight"
+              ref="singleFrameCanvas"
+              @loaded="(el) => (singleFrame = el)"
             />
             <canvas
-              :style="{ width: imageWidth + 'px', height: imageHeight + 'px' }"
+              :style="{
+                width: '480px',
+                height: '360px',
+              }"
               @click="generateMask"
               ref="canvas"
             ></canvas>
@@ -438,7 +525,7 @@ function cancelCreatingRegion(): void {
   }
 
   .darkContainer {
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.8em;
     border-radius: 1em;
   }
@@ -446,7 +533,7 @@ function cancelCreatingRegion(): void {
   .existingRegions {
     display: grid;
     position: relative;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.8em;
     padding-bottom: 0;
     border-radius: 0.4em;
@@ -458,7 +545,7 @@ function cancelCreatingRegion(): void {
     display: grid;
     position: absolute;
     width: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.8em;
     padding-bottom: 0px;
     border-radius: 0.4em;
@@ -485,11 +572,10 @@ function cancelCreatingRegion(): void {
     padding-bottom: 0.4em;
     position: relative;
     border-radius: 0.4em;
-    background-color: green;
   }
 
   .darkContainer {
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.6em;
     border-radius: 0.4em;
   }
@@ -498,7 +584,7 @@ function cancelCreatingRegion(): void {
     display: grid;  
     width: 14em;
     position: relative;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.8em;
     padding-bottom: 0;
     border-radius: 0.4em;
@@ -510,7 +596,7 @@ function cancelCreatingRegion(): void {
     display: grid;
     width: 14em;
     position: absolute;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.8em;
     padding-bottom: 0px;
     border-radius: 0.4em;
@@ -533,7 +619,7 @@ function cancelCreatingRegion(): void {
   }
 
   .darkContainer {
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.7em;
     border-radius: 0.4em;
   }
@@ -542,7 +628,7 @@ function cancelCreatingRegion(): void {
     display: grid;
     width: 14em;
     position: relative;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.8em;
     padding-bottom: 0;
     border-radius: 0.4em;
@@ -554,7 +640,7 @@ function cancelCreatingRegion(): void {
     display: grid;
     width: 14em;
     position: absolute;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(58, 58, 58);
     padding: 0.8em;
     padding-bottom: 0px;
     border-radius: 0.4em;

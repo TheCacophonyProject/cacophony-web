@@ -107,8 +107,8 @@ const hasMaskRegionsDefined = computed<boolean>(() => {
           >
         </b-list-group>
       </div>
-      <!-- <DeviceSetupReferencePhoto /> -->
       <div>
+        <!-- <DeviceSetupReferencePhoto /> -->
         <DeviceSetupDefineMask />
       </div>
     </div>
