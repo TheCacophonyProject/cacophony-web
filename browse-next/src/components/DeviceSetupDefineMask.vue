@@ -14,7 +14,6 @@ interface Region {
   }[];
 }
 
-const count = ref<number>(0);
 const imageWidth = ref<number>(0);
 const imageHeight = ref<number>(0);
 const canvas = ref<HTMLCanvasElement | null>(null);
@@ -48,7 +47,7 @@ const computeImageDimensions = () => {
     const canvasElement = canvas.value;
     canvasElement.width = imageWidth.value * devicePixelRatio.pixelRatio.value;
     canvasElement.height =
-      imageHeight.value * devicePixelRatio.pixelRatio.value;
+    imageHeight.value * devicePixelRatio.pixelRatio.value;
   }
 };
 
@@ -309,6 +308,7 @@ function cancelCreatingRegion(): void {
 
 <template>
   <div>
+    <p>Select multiple points on the image to form a closed polygon</p>
     <div class="contentContainer">
       <div class="leftSideContent">
         <div class="darkContainer">
@@ -344,7 +344,7 @@ function cancelCreatingRegion(): void {
       </div>
       <div class="rightSideContent">
         <div class="existingRegions">
-          <h5 class="existingRegionsHeading">Existing regions</h5>
+          <h6 class="existingRegionsHeading">Existing regions</h6>
           <div class="existingRegionsContent">
             <div v-if="!areExistingRegions">
               <p>No existing regions</p>
@@ -379,10 +379,7 @@ function cancelCreatingRegion(): void {
           >
         </div>
         <div v-if="selectingArea" class="regionCreationToolsContainer">
-          <h5 class="regionCreationToolsHeading">Region Creation Tools</h5>
-          <p v-if="selectingArea && creatingRegion">
-            Select multiple points on the image to form a closed polygon
-          </p>
+          <h6 class="regionCreationToolsHeading">Region Creation Tools</h6>
           <b-button
             v-if="selectingArea && !creatingRegion"
             class="createRegionButton"
@@ -427,8 +424,7 @@ function cancelCreatingRegion(): void {
 @media screen and (max-width: 767px) {
   .contentContainer {
     display: grid;
-    width: 80vw;
-    /* background-color: green; */
+    width: 100vw;
     grid-template-columns: 1fr;
   }
 
@@ -441,23 +437,8 @@ function cancelCreatingRegion(): void {
     font-size: 0.9em;
   }
 
-  .cancelNewRegionButton,
-  .selectAreaButton {
-    width: 40%;
-    font-size: 0.7em;
-  }
-
-  .removePointButton,
-  .addRegionButton,
-  .saveRegionsButton,
-  .createRegionButton,
-  .deleteButton {
-    font-size: 0.7em;
-    width: 80%;
-  }
-
   .darkContainer {
-    background-color: rgba(0, 0, 15, 0.7);
+    background-color: rgba(0, 0, 0, 0.9);
     padding: 0.8em;
     border-radius: 1em;
   }
@@ -466,7 +447,7 @@ function cancelCreatingRegion(): void {
 @media screen and (min-width: 768px) and (max-width: 1023px) {
   .contentContainer {
     display: grid;
-    width: 90vw;
+    width: 100vw;
     grid-template-columns: 60% 40%;
   }
 
@@ -477,52 +458,49 @@ function cancelCreatingRegion(): void {
     font-size: 0.9em;
   }
 
-  .removePointButton,
-  .addRegionButton,
-  .saveRegionsButton,
-  .createRegionButton,
-  .deleteButton,
-  .selectAreaButton,
-  .cancelNewRegionButton {
-    font-size: 0.8em;
-  }
-
   .rightSideContent {
-    padding-left: 1.5em;
-    padding-bottom: 1.5em;
+    padding-left: 0.5em;
+    padding-bottom: 0.4em;
     position: relative;
-    border-radius: 12px;
+    border-radius: 0.4em;
+    background-color: green;
   }
 
   .darkContainer {
-    background-color: rgba(0, 0, 15, 0.7);
-    padding: 1em;
-    border-radius: 1em;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.6em;
+    border-radius: 0.4em;
   }
 }
 
 @media screen and (min-width: 1024px) {
   .contentContainer {
     display: grid;
-    width: 80vw;
+    width: 100vw;
     grid-template-columns: 70% 30%;
   }
 
   .rightSideContent {
-    padding-left: 1.5em;
-    padding-bottom: 1.5em;
     position: relative;
-    border-radius: 1em;
+    border-radius: 0.4em;
+    /* background-color: green; */
+    padding-left: 0.6em;
   }
 
   .darkContainer {
-    background-color: rgba(0, 0, 15, 0.7);
-    padding: 1.2em;
-    border-radius: 1em;
+    background-color: rgba(0, 0, 0, 0.9);
+    padding: 0.7em;
+    border-radius: 0.4em;
   }
-  .cancelNewRegionButton {
-    width: 40%;
-  }
+}
+
+.removePointButton,
+.addRegionButton,
+.createRegionButton,
+.cancelNewRegionButton,
+.deleteButton,
+.selectAreaButton {
+  margin-bottom: 0.6em;
 }
 
 .contentContainer {
@@ -539,8 +517,8 @@ function cancelCreatingRegion(): void {
 }
 
 .regionsList ul {
+  width: 6em;
   list-style: none;
-  padding: 0;
 }
 
 .regionsList li:last-child .regionContent {
@@ -568,29 +546,30 @@ function cancelCreatingRegion(): void {
   margin-left: auto;
 }
 
-.removePointButton,
-.addRegionButton,
-.saveRegionsButton,
-.createRegionButton {
-  width: 80%;
-  margin-bottom: 20px;
+.selectAreaButton {
+  width: 8em;
 }
 
 .existingRegions {
-  width: 100%;
+  display: grid;
+  width: 14em;
   position: relative;
-  background-color: rgba(0, 0, 15, 0.7);
+  background-color: rgba(0, 0, 0, 0.9);
   padding: 0.8em;
-  border-radius: 15px;
+  padding-bottom: 0;
+  border-radius: 0.4em;
   color: white;
-  margin-bottom: 25px;
+  margin-bottom: 0.5em;
 }
 
 .regionCreationToolsContainer {
-  width: 100%;
-  background-color: rgba(0, 0, 15, 0.7);
+  display: grid;
+  width: 14em;
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.9);
   padding: 0.8em;
-  border-radius: 15px;
+  padding-bottom: 0px;
+  border-radius: 0.4em;
   color: white;
 }
 
@@ -600,15 +579,11 @@ canvas {
   left: 0;
 }
 
-.deleteButton {
-  margin-left: auto;
-}
-
 .existingRegionsContent {
   background-color: white;
   color: black;
-  border-radius: 0.5em;
-  padding-top: 0.25em;
+  border-radius: 0.3em;
+  margin-bottom: 0.6em;
 }
 
 .regionCreationToolsHeading,
@@ -623,7 +598,6 @@ canvas {
 }
 
 .existingRegionContainer {
-  margin-bottom: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
