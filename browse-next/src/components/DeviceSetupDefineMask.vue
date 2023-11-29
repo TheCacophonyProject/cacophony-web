@@ -25,9 +25,6 @@ interface Region {
     y: number;
   }[];
 }
-
-const imageWidth = ref<number>(0);
-const imageHeight = ref<number>(0);
 const canvas = ref<HTMLCanvasElement | null>(null);
 const container = ref<HTMLCanvasElement | null>(null);
 const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
@@ -74,12 +71,12 @@ const areExistingRegions = computed(() => {
 const computeImageDimensions = () => {
   const img = document.querySelector(".imageContainer img");
   if (img) {
-    imageWidth.value = img.clientWidth;
-    imageHeight.value = img.clientHeight;
+    // cptvFrameWidth.value = img.clientWidth;
+    // cptvFrameHeight.value = img.clientHeight;
     const canvasElement = canvas.value;
-    canvasElement.width = imageWidth.value * devicePixelRatio.pixelRatio.value;
+    canvasElement.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
     canvasElement.height =
-      imageHeight.value * devicePixelRatio.pixelRatio.value;
+      cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
   }
 };
 
@@ -98,7 +95,9 @@ onMounted(async () => {
       );
     }
   }
-  console.log("Latest status recording", latestStatusRecording.value);
+  const canvasElement = canvas.value;
+  canvasElement.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
+  canvasElement.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
   computeImageDimensions();
   window.addEventListener("resize", () => {
     clearMask();
@@ -129,6 +128,7 @@ onBeforeUnmount(() => {
 function normalise(x: number, y: number): Point {
   const normalisedX = x / cptvFrameWidth.value;
   const normalisedY = y / cptvFrameHeight.value;
+
   return {
     x: normalisedX,
     y: normalisedY,
@@ -136,7 +136,6 @@ function normalise(x: number, y: number): Point {
 }
 
 function pointSelect(event: MouseEvent): void {
-  console.log("Points: ", points.value);
   if (creatingRegion.value && !enableAddRegionsButton.value) {
     const { left, top } = container.value.getBoundingClientRect();
     const clickedX = event.clientX - left;
@@ -146,30 +145,6 @@ function pointSelect(event: MouseEvent): void {
     drawPolygon();
   }
 }
-
-// function drawRegionIndices() {
-//   const canvasElement = canvas.value;
-//   const context = canvasElement.getContext('2d');
-//   let fontSize = 18 * devicePixelRatio.pixelRatio.value;
-//   context.font = `bold ${fontSize}px Arial`;
-//   for (let i = 0; i < regionsArray.value.length; i++) {
-//     const regionData = regionsArray.value[i].regionData;
-//     const firstPoint = regionData[0];
-//     const text = `${i + 1}`;
-//     const textWidth = context.measureText(text).width;
-//     const circleRadius = (textWidth + 2);
-//     const circleX = firstPoint.x * canvas.value.width;
-//     const circleY = firstPoint.y * canvas.value.height + ( 3 * devicePixelRatio.pixelRatio.value);
-
-//     context.fillStyle = 'rgba(13, 110, 253)';
-//     context.beginPath();
-//     context.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
-//     context.closePath();
-//     context.fill();
-//     context.fillStyle = '#ffffff';
-//     context.fillText(text, firstPoint.x * canvas.value.width - textWidth / 2, firstPoint.y * canvas.value.height + 10);
-//   }
-// }
 
 function drawRegionIndices() {
   const canvasElement = canvas.value;
@@ -316,8 +291,8 @@ function generateMask() {
 
   const maskCanvas = canvas.value;
   const maskContext = maskCanvas.getContext("2d");
-  maskCanvas.width = imageWidth.value * devicePixelRatio.pixelRatio.value;
-  maskCanvas.height = imageHeight.value * devicePixelRatio.pixelRatio.value;
+  maskCanvas.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
+  maskCanvas.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
 
   regionsArray.value.forEach((region) => {
     maskContext.beginPath();
