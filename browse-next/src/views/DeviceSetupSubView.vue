@@ -17,6 +17,7 @@ import { useElementSize } from "@vueuse/core";
 import { encode } from "@jsquash/webp";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceSetupReferencePhoto from "@/components/DeviceSetupReferencePhoto.vue";
+import DeviceSetupDefineMask from "@/components/DeviceSetupDefineMask.vue";
 
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
@@ -484,9 +485,8 @@ const deviceTypeIsKnown = computed<boolean>(() => {
           >
         </b-list-group>
       </div>
-    </div>
-    <div>
-      <DeviceSetupReferencePhoto />
+      <!-- <DeviceSetupReferencePhoto /> -->
+      <DeviceSetupDefineMask />
     </div>
   </div>
 </template>
