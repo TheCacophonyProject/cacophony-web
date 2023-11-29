@@ -16,7 +16,6 @@ import { drawSkewedImage } from "@/components/skew-image";
 import { useElementSize } from "@vueuse/core";
 import { encode } from "@jsquash/webp";
 import { DeviceType } from "@typedefs/api/consts.ts";
-import DeviceSetupReferencePhoto from "@/components/DeviceSetupReferencePhoto.vue";
 
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
@@ -459,34 +458,161 @@ const deviceTypeIsKnown = computed<boolean>(() => {
 });
 </script>
 <template>
-  <div>
-    <div class="d-flex flex-row justify-content-between p-3">
-      <div>
-        <h6 class="ms-3">Setup checklist</h6>
-        <b-list-group>
-          <b-list-group-item :to="{ name: 'reference-photo' }" button>
-            <font-awesome-icon
-              :icon="
-                hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
-              "
+  <div class="d-flex flex-row justify-content-between p-3">
+    <div class="w-100">
+      <div
+        class="d-flex justify-content-center align-items-center flex-column"
+        v-if="!latestReferenceImageURL"
+      >
+        <p>
+          Choose a reference photo, then adjust it to make it match what the
+          thermal camera sees as closely as possible.
+        </p>
+        <div
+          class="d-flex justify-content-center align-items-center position-relative skew-container mt-3"
+        >
+          <cptv-single-frame
+            :recording="latestStatusRecording"
+            v-if="latestStatusRecording"
+            :width="cptvFrameWidth"
+            :height="cptvFrameHeight"
+            ref="singleFrameCanvas"
+            @loaded="(el) => (singleFrame = el)"
+          />
+          <input
+            type="file"
+            class="form-control select-reference-image"
+            @change="onSelectReferenceImage"
+            v-if="!referenceImage"
+            accept="image/png, image/jpeg"
+          />
+          <div class="skew-canvas" v-if="referenceImage">
+            <canvas
+              ref="referenceImageSkew"
+              width="1280"
+              height="960"
+              class="skew-canvas"
             />
-            Set a reference photo</b-list-group-item
-          >
-          <b-list-group-item :to="{ name: 'define-masking' }" button>
-            <font-awesome-icon
-              :icon="
-                hasMaskRegionsDefined
-                  ? ['far', 'circle-check']
-                  : ['far', 'circle']
-              "
+            <div
+              class="handle"
+              ref="handle0"
+              @pointerdown="grabHandle"
+              @pointerup="releaseHandle"
+              @pointermove="moveHandle"
             />
-            Define mask regions (optional)</b-list-group-item
+            <div
+              class="handle"
+              ref="handle1"
+              @pointerdown="grabHandle"
+              @pointerup="releaseHandle"
+              @pointermove="moveHandle"
+            />
+            <div
+              class="handle"
+              ref="handle2"
+              @pointerdown="grabHandle"
+              @pointerup="releaseHandle"
+              @pointermove="moveHandle"
+            />
+            <div
+              class="handle"
+              ref="handle3"
+              @pointerdown="grabHandle"
+              @pointerup="releaseHandle"
+              @pointermove="moveHandle"
+            />
+          </div>
+        </div>
+        <div class="d-flex align-items-center mt-3">
+          <div
+            v-if="referenceImage"
+            class="d-flex justify-content-between align-items-center"
           >
-        </b-list-group>
+            <div class="me-5">
+              <div>
+                <label for="opacity">Reference image opacity</label>
+                <b-form-input
+                  id="opacity"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  v-model="overlayOpacity"
+                />
+              </div>
+              <div>
+                <label for="opacity">Location view scale</label>
+                <b-form-input
+                  id="opacity"
+                  type="range"
+                  min="0.75"
+                  max="1"
+                  step="0.01"
+                  v-model="cptvFrameScale"
+                />
+              </div>
+            </div>
+            <div class="d-flex flex-column">
+              <button
+                type="button"
+                class="btn btn-outline-warning"
+                @click="() => (referenceImage = null)"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary mt-2"
+                @click="saveReferenceImage"
+              >
+                Save reference image
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-    <div>
-      <DeviceSetupReferencePhoto />
+      <div
+        class="d-flex justify-content-center align-items-center flex-column"
+        v-else
+      >
+        <div class="position-relative">
+          <div class="existing-reference-image position-relative">
+            <cptv-single-frame
+              :recording="latestStatusRecording"
+              v-if="latestStatusRecording"
+              width="640"
+              height="480"
+              ref="singleFrameCanvas"
+              class="position-absolute"
+              @loaded="(el) => (singleFrame = el)"
+            />
+            <div class="reveal-slider position-absolute" ref="revealSlider">
+              <img
+                alt="Current device point-of-view reference photo"
+                :src="latestReferenceImageURL"
+                width="640"
+                height="480"
+              />
+            </div>
+          </div>
+          <div
+            class="reveal-handle d-flex align-items-center justify-content-center"
+            ref="revealHandle"
+            @pointerdown="grabRevealHandle"
+            @pointerup="releaseRevealHandle"
+            @pointermove="moveRevealHandle"
+          >
+            <font-awesome-icon icon="left-right" />
+          </div>
+        </div>
+        <button
+          type="button"
+          class="btn btn-secondary mt-3"
+          @click="replaceExistingReferenceImage"
+        >
+          Choose a new reference image
+        </button>
+      </div>
     </div>
   </div>
 </template>
