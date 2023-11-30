@@ -80,6 +80,10 @@ const hasMaskRegionsDefined = computed<boolean>(() => {
   return false;
 });
 
+function navigateToReferencePhoto() {
+  console.log("Navigating to reference-photo route");
+}
+
 </script>
 <template>
   <div>
@@ -87,15 +91,15 @@ const hasMaskRegionsDefined = computed<boolean>(() => {
       <div>
         <h6 class="ms-3">Setup checklist</h6>
         <b-list-group>
-          <b-list-group-item :to="{ name: 'reference-photo' }" button>
+          <b-button :to="{ name: 'reference-photo' }" @click="navigateToReferencePhoto" button>
             <font-awesome-icon
               :icon="
                 hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
               "
             />
-            Set a reference photo</b-list-group-item
+            Set a reference photo</b-button
           >
-          <b-list-group-item :to="{ name: 'define-masking' }" button>
+          <b-button :to="{ name: 'define-masking' }" button>
             <font-awesome-icon
               :icon="
                 hasMaskRegionsDefined
@@ -103,7 +107,7 @@ const hasMaskRegionsDefined = computed<boolean>(() => {
                   : ['far', 'circle']
               "
             />
-            Define mask regions (optional)</b-list-group-item
+            Define mask regions (optional)</b-button
           >
         </b-list-group>
       </div>
