@@ -408,28 +408,21 @@ const referenceImageIsLandscape = computed<boolean>(() => {
         <div class="existingRegions">
           <h6 class="existingRegionsHeading">Existing regions</h6>
           <div class="existingRegionsContent">
-            <div v-if="!areExistingRegions">
+            <div class="noExistingRegionsLabel" v-if="!areExistingRegions">
               <p>No existing regions</p>
             </div>
-            <div class="regionsList">
-              <ul>
-                <li v-for="(item, index) in regionsArray" :key="index">
-                  <div class="regionContent">
-                    <b-col>
-                      <p>Region {{ index + 1 }}</p>
-                    </b-col>
-                    <b-col v-if="selectingArea">
-                      <b-button
-                        class="deleteButton"
-                        v-if="selectingArea"
-                        variant="danger"
-                        @click="deleteRegion(index)"
-                        >Delete</b-button
-                      >
-                    </b-col>
-                  </div>
-                </li>
-              </ul>
+            <div class="regionsListContainer">
+              <div v-for="(item, index) in regionsArray" :key="index" class="regionContent">
+                <p class="regionLabel">Region {{ index + 1 }}</p>
+                <b-button
+                  class="deleteButton"
+                  v-if="selectingArea"
+                  variant="danger"
+                  @click="deleteRegion(index)"
+                >
+                  Delete
+                </b-button>
+              </div>
             </div>
           </div>
           <b-button
@@ -556,7 +549,7 @@ const referenceImageIsLandscape = computed<boolean>(() => {
   }
 
   .existingRegions {
-    display: grid;  
+    display: grid; 
     width: 14em;
     position: relative;
     background-color: rgba(58, 58, 58);
@@ -625,13 +618,17 @@ const referenceImageIsLandscape = computed<boolean>(() => {
 
 .removePointButton,
 .addRegionButton,
-.createRegionButton,
-.cancelNewRegionButton,
-.deleteButton,
-.selectAreaButton {
+.createRegionButton {
   margin-bottom: 0.6em;
 }
 
+.selectAreaButton, .cancelNewRegionButton{
+  display: block;
+  margin: 0 auto; /* Center horizontally */
+  margin-bottom: 0.6em;
+  text-align: center; /* Center text content */
+
+}
 .contentContainer {
   width: 100%;
 }
@@ -644,31 +641,27 @@ const referenceImageIsLandscape = computed<boolean>(() => {
   position: relative;
   border-radius: 1em;
 }
-
-.regionsList ul {
-  /* width: 6em; */
-  list-style: none;
+.noExistingRegionsLabel {
+  margin: 0.2em;
+  transform: translateY(20%);
+  text-align: center;
 }
-
-.regionsList li:first-child .regionContent {
-  padding-top: 0.3em;
-}
-
-.regionsList li {
-  display: flex;
-  align-items: center;
-  /* margin-bottom: 0.3em; */
-}
-
 .regionContent {
+  background-color: rgb(222, 221, 221);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  margin: 0.2em;
+  border-radius: 0.3em;
+}
+
+.regionLabel {
+  position: relative;
+  transform: translateY(30%);
+  text-align: center;
+  flex: 10;
 }
 
 .deleteButton {
-  margin-left: auto;
+  flex: 1;
 }
 
 .selectAreaButton {
