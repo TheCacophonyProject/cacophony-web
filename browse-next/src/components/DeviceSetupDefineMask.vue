@@ -366,7 +366,7 @@ const referenceImageIsLandscape = computed<boolean>(() => {
 <template>
   <div>
     <p>Select multiple points on the image to form a closed polygon</p>
-    <div class="contentContainer">
+    <div class="d-flex justify-content-center">
       <div class="leftSideContent">
         <div class="darkContainer">
           <div class="imageContainer" ref="container" @click="pointSelect">
