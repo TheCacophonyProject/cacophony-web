@@ -91,7 +91,7 @@ function navigateToReferencePhoto() {
       <div>
         <h6 class="ms-3">Setup checklist</h6>
         <b-list-group>
-          <b-button :to="{ name: 'reference-photo' }" @click="navigateToReferencePhoto" button>
+          <b-button :to="{ name: 'reference-photo' }" @click="navigateToReferencePhoto">
             <font-awesome-icon
               :icon="
                 hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
@@ -99,7 +99,7 @@ function navigateToReferencePhoto() {
             />
             Set a reference photo</b-button
           >
-          <b-button :to="{ name: 'define-masking' }" button>
+          <b-button :to="{ name: 'define-masking' }">
             <font-awesome-icon
               :icon="
                 hasMaskRegionsDefined
