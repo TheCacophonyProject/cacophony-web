@@ -184,6 +184,18 @@ const router = createRouter({
               path: "setup",
               name: "device-setup",
               component: () => import("@/views/DeviceSetupSubView.vue"),
+              children: [
+                {
+                  path: "reference",
+                  name: "reference-photo",
+                  component: () => import("@/components/DeviceSetupReferencePhoto.vue"),
+                },
+                {
+                  path: "mask",
+                  name: "define-masking",
+                  component: () => import("@/components/DeviceSetupDefineMask.vue"),
+                },
+              ],
             },
             {
               path: "schedules",
