@@ -21,6 +21,8 @@ import DeviceSetupDefineMask from "@/components/DeviceSetupDefineMask.vue";
 
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
+const isMobile = ref(false);
+const mobileWidthThreshold = 768;
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
@@ -57,6 +59,12 @@ onMounted(async () => {
       );
     }
   }
+  isMobile.value = window.innerWidth < mobileWidthThreshold;
+
+  // Add event listener to dynamically update isMobile value on window resize
+  window.addEventListener('resize', () => {
+    isMobile.value = window.innerWidth < mobileWidthThreshold;
+  });
 });
 
 const loadLatestStatusFrame = async () => {
@@ -87,7 +95,10 @@ function navigateToReferencePhoto() {
 </script>
 <template>
   <div>
-    <div class="d-flex flex-row justify-content-between p-3">
+    <div v-if="isMobile">
+      <p>It's mobile baby</p>
+    </div>
+    <div v-if="!isMobile" class="d-flex flex-row justify-content-between p-3">
       <div>
         <h6 class="ms-3">Setup checklist</h6>
         <b-list-group>
