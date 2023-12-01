@@ -78,12 +78,17 @@ const computeImageDimensions = () => {
   const img = document.querySelector(".imageContainer");
   if (img) {
     const viewportWidth = window.innerWidth;
-    cptvFrameWidth.value = 160 * (viewportWidth / 450);
-    cptvFrameHeight.value = 120 * (viewportWidth / 450);
+    if (!isMobile.value) {
+      cptvFrameWidth.value = 160 * (viewportWidth / 450);
+      cptvFrameHeight.value = 120 * (viewportWidth / 450);
+    } else {
+      cptvFrameWidth.value = 160 * (viewportWidth / 225);
+      cptvFrameHeight.value = 120 * (viewportWidth / 225);
+    }
     const canvasElement = canvas.value;
     canvasElement.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
     canvasElement.height =
-      cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
+    cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
   }
 };
 
