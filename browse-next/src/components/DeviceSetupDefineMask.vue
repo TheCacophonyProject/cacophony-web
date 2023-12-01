@@ -388,8 +388,8 @@ const referenceImageIsLandscape = computed<boolean>(() => {
             ></canvas>
           </div>
         </div>
-        <div class="form-check form-switch">
-          <div class="regionMaskSwitch">
+        <div class="regionMaskSwitch">
+          <div class="form-check form-switch">
             <label class="form-check-label" for="flexSwitchCheckChecked"
               >Region Mask</label
             >
@@ -687,8 +687,9 @@ canvas {
 }
 
 .regionMaskSwitch {
-  display: inline-block;
-  vertical-align: middle;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-top: 10px;
 }
 
