@@ -161,7 +161,6 @@ function navigateToReferencePhoto() {
     display: flex;
     padding-top: 0.4em;
     padding-bottom: 0.4em;
-    background-color: rgb(250, 250, 206)
   }
 
   .setupMenuButton {

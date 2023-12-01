@@ -25,6 +25,9 @@ interface Region {
     y: number;
   }[];
 }
+
+const isMobile = ref(false);
+const mobileWidthThreshold = 768;
 const canvas = ref<HTMLCanvasElement | null>(null);
 const container = ref<HTMLCanvasElement | null>(null);
 const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
@@ -69,6 +72,8 @@ const areExistingRegions = computed(() => {
 });
 
 const computeImageDimensions = () => {
+  isMobile.value = window.innerWidth < mobileWidthThreshold;
+  console.log("dims: ", cptvFrameWidth, cptvFrameHeight);
   const img = document.querySelector(".imageContainer img");
   if (img) {
     // cptvFrameWidth.value = img.clientWidth;
@@ -342,17 +347,31 @@ function cancelCreatingRegion(): void {
 }
 
 const cptvFrameWidth = computed<number>(() => {
-  if (referenceImageIsLandscape.value) {
-    return 480 * parseFloat(cptvFrameScale.value);
+  if (isMobile.value) {
+    if (referenceImageIsLandscape.value) {
+      return 360 * parseFloat(cptvFrameScale.value);
+    }
+    return 240 * parseFloat(cptvFrameScale.value);
+  } else {
+    if (referenceImageIsLandscape.value) {
+      return 480 * parseFloat(cptvFrameScale.value);
+    }
+    return 320 * parseFloat(cptvFrameScale.value);
   }
-  return 320 * parseFloat(cptvFrameScale.value);
 });
 
 const cptvFrameHeight = computed<number>(() => {
-  if (referenceImageIsLandscape.value) {
-    return 360 * parseFloat(cptvFrameScale.value);
+  if (isMobile.value) {
+    if (referenceImageIsLandscape.value) {
+      return 270 * parseFloat(cptvFrameScale.value);
+    }
+    return 280 * parseFloat(cptvFrameScale.value);
+  } else {
+    if (referenceImageIsLandscape.value) {
+      return 360 * parseFloat(cptvFrameScale.value);
+    }
+    return 240 * parseFloat(cptvFrameScale.value);
   }
-  return 240 * parseFloat(cptvFrameScale.value);
 });
 
 const referenceImageIsLandscape = computed<boolean>(() => {
@@ -365,8 +384,10 @@ const referenceImageIsLandscape = computed<boolean>(() => {
 
 <template>
   <div>
-    <p>Select multiple points on the image to form a closed polygon</p>
-    <div class="d-flex justify-content-center">
+    <div class=" d-flex justify-content-center align-items-center flex-column">
+      <p>Select multiple points on the image to form a closed polygon</p>
+    </div>
+    <div class="contentContainer">
       <div class="leftSideContent">
         <div class="darkContainer">
           <div class="imageContainer" ref="container" @click="pointSelect">
@@ -380,8 +401,8 @@ const referenceImageIsLandscape = computed<boolean>(() => {
             />
             <canvas
               :style="{
-                width: '480px',
-                height: '360px',
+                width: '360px',
+                height: '270px',
               }"
               @click="generateMask"
               ref="canvas"
@@ -478,14 +499,12 @@ const referenceImageIsLandscape = computed<boolean>(() => {
 <style scoped>
 @media screen and (max-width: 767px) {
   .contentContainer {
+    justify-content: center;
     display: grid;
-    width: 100vw;
-    grid-template-columns: 1fr;
   }
-
   .rightSideContent {
     position: relative;
-    border-radius: 12px;
+    border-radius: 0.6em;;
   }
 
   p {
@@ -494,8 +513,8 @@ const referenceImageIsLandscape = computed<boolean>(() => {
 
   .darkContainer {
     background-color: rgba(58, 58, 58);
-    padding: 0.8em;
-    border-radius: 1em;
+    padding: 0.6em;
+    border-radius: 0.4em;
   }
 
   .existingRegions {
@@ -510,6 +529,7 @@ const referenceImageIsLandscape = computed<boolean>(() => {
   }
 
   .regionCreationToolsContainer {
+    grid-area: create-region;
     display: grid;
     position: absolute;
     width: 100%;
@@ -523,9 +543,8 @@ const referenceImageIsLandscape = computed<boolean>(() => {
 
 @media screen and (min-width: 768px) and (max-width: 1023px) {
   .contentContainer {
-    display: grid;
-    width: 100vw;
-    grid-template-columns: 60% 40%;
+    display: flex;
+    justify-content: center;
   }
 
   h5 {
@@ -574,9 +593,8 @@ const referenceImageIsLandscape = computed<boolean>(() => {
 
 @media screen and (min-width: 1024px) {
   .contentContainer {
-    display: grid;
-    width: 100vw;
-    grid-template-columns: 70% 30%;
+    display: flex;
+    justify-content: center;
   }
 
   .rightSideContent {
@@ -628,9 +646,6 @@ const referenceImageIsLandscape = computed<boolean>(() => {
   margin-bottom: 0.6em;
   text-align: center; /* Center text content */
 
-}
-.contentContainer {
-  width: 100%;
 }
 
 .imageContainer {
