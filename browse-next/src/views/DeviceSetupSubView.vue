@@ -96,11 +96,37 @@ function navigateToReferencePhoto() {
 <template>
   <div>
     <div v-if="isMobile">
-      <p>It's mobile baby</p>
+      <div class="setupChecklistOptions">
+        <div class="setupMenuButton">
+          <b-button class="setupMenuButton" variant="outline-secondary" :to="{ name: 'reference-photo' }" @click="navigateToReferencePhoto">
+          <font-awesome-icon
+            :icon="
+              hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
+            "
+          />
+          Set a reference photo</b-button
+        >
+        </div>
+        <div class="setupMenuButton">
+          <b-button class="setupMenuButton" variant="outline-secondary" :to="{ name: 'define-masking' }">
+            <font-awesome-icon
+              :icon="
+                hasMaskRegionsDefined
+                  ? ['far', 'circle-check']
+                  : ['far', 'circle']
+              "
+            />
+            Define mask regions</b-button
+          >
+        </div>
+      </div>
+      <div>
+        <router-view></router-view>
+      </div>
     </div>
     <div v-if="!isMobile" class="d-flex flex-row justify-content-between p-3">
       <div>
-        <h6 class="ms-3">Setup checklist</h6>
+        <h6>Setup checklist</h6>
         <b-list-group>
           <b-button style="margin-bottom: 0.4em;" variant="outline-dark" :to="{ name: 'reference-photo' }" @click="navigateToReferencePhoto">
             <font-awesome-icon
@@ -129,6 +155,20 @@ function navigateToReferencePhoto() {
   </div>
 </template>
 <style scoped lang="less">
+
+@media screen and (max-width: 767px) {
+  .setupChecklistOptions {
+    display: flex;
+    padding-top: 0.4em;
+    padding-bottom: 0.4em;
+    background-color: rgb(250, 250, 206)
+  }
+
+  .setupMenuButton {
+    flex: 1;
+    text-align: center;
+  }
+}
 
 .skew-container {
   width: 640px;
