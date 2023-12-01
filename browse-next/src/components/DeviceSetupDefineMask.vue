@@ -43,8 +43,9 @@ const referenceImage = ref<ImageBitmap | null>(null);
 const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
 const latestReferenceImageURL = ref<string | null>(null);
 const route = useRoute();
-const cptvFrameScale = ref<string>("1.0");
 const deviceId = Number(route.params.deviceId) as DeviceId;
+const cptvFrameHeight = ref<number>(0);
+const cptvFrameWidth = ref<number>(0);
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
@@ -74,10 +75,11 @@ const areExistingRegions = computed(() => {
 const computeImageDimensions = () => {
   isMobile.value = window.innerWidth < mobileWidthThreshold;
   console.log("dims: ", cptvFrameWidth, cptvFrameHeight);
-  const img = document.querySelector(".imageContainer img");
+  const img = document.querySelector(".imageContainer");
   if (img) {
-    // cptvFrameWidth.value = img.clientWidth;
-    // cptvFrameHeight.value = img.clientHeight;
+    const viewportWidth = window.innerWidth;
+    cptvFrameWidth.value = 160 * (viewportWidth / 450);
+    cptvFrameHeight.value = 120 * (viewportWidth / 450);
     const canvasElement = canvas.value;
     canvasElement.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
     canvasElement.height =
@@ -346,40 +348,40 @@ function cancelCreatingRegion(): void {
   generateMask();
 }
 
-const cptvFrameWidth = computed<number>(() => {
-  if (isMobile.value) {
-    if (referenceImageIsLandscape.value) {
-      return 360 * parseFloat(cptvFrameScale.value);
-    }
-    return 240 * parseFloat(cptvFrameScale.value);
-  } else {
-    if (referenceImageIsLandscape.value) {
-      return 480 * parseFloat(cptvFrameScale.value);
-    }
-    return 320 * parseFloat(cptvFrameScale.value);
-  }
-});
+// const cptvFrameWidth = computed<number>(() => {
+//   if (isMobile.value) {
+//     if (referenceImageIsLandscape.value) {
+//       return 360 * parseFloat(cptvFrameScale.value);
+//     }
+//     return 240 * parseFloat(cptvFrameScale.value);
+//   } else {
+//     if (referenceImageIsLandscape.value) {
+//       return 480 * parseFloat(cptvFrameScale.value);
+//     }
+//     return 320 * parseFloat(cptvFrameScale.value);
+//   }
+// });
 
-const cptvFrameHeight = computed<number>(() => {
-  if (isMobile.value) {
-    if (referenceImageIsLandscape.value) {
-      return 270 * parseFloat(cptvFrameScale.value);
-    }
-    return 280 * parseFloat(cptvFrameScale.value);
-  } else {
-    if (referenceImageIsLandscape.value) {
-      return 360 * parseFloat(cptvFrameScale.value);
-    }
-    return 240 * parseFloat(cptvFrameScale.value);
-  }
-});
+// const cptvFrameHeight = computed<number>(() => {
+//   if (isMobile.value) {
+//     if (referenceImageIsLandscape.value) {
+//       return 270 * parseFloat(cptvFrameScale.value);
+//     }
+//     return 280 * parseFloat(cptvFrameScale.value);
+//   } else {
+//     if (referenceImageIsLandscape.value) {
+//       return 360 * parseFloat(cptvFrameScale.value);
+//     }
+//     return 240 * parseFloat(cptvFrameScale.value);
+//   }
+// });
 
-const referenceImageIsLandscape = computed<boolean>(() => {
-  if (referenceImage.value) {
-    return referenceImage.value?.width >= referenceImage.value?.height;
-  }
-  return true;
-});
+// const referenceImageIsLandscape = computed<boolean>(() => {
+//   if (referenceImage.value) {
+//     return referenceImage.value?.width >= referenceImage.value?.height;
+//   }
+//   return true;
+// });
 </script>
 
 <template>
@@ -394,16 +396,13 @@ const referenceImageIsLandscape = computed<boolean>(() => {
             <cptv-single-frame
               :recording="latestStatusRecording"
               v-if="latestStatusRecording"
-              :width="cptvFrameWidth"
+              :style="{ width: cptvFrameWidth + 'px', height: cptvFrameHeight + 'px' }"
               :height="cptvFrameHeight"
               ref="singleFrameCanvas"
               @loaded="(el) => (singleFrame = el)"
             />
             <canvas
-              :style="{
-                width: '480px',
-                height: '360px',
-              }"
+              :style="{ width: cptvFrameWidth + 'px', height: cptvFrameHeight + 'px' }"
               @click="generateMask"
               ref="canvas"
             ></canvas>
