@@ -401,8 +401,8 @@ const referenceImageIsLandscape = computed<boolean>(() => {
             />
             <canvas
               :style="{
-                width: '360px',
-                height: '270px',
+                width: '480px',
+                height: '360px',
               }"
               @click="generateMask"
               ref="canvas"
