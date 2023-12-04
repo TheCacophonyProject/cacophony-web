@@ -36,6 +36,7 @@ const points = ref<Point[]>([]);
 const selectingArea = ref<boolean>(false);
 const creatingRegion = ref<boolean>(false);
 const maskEnabled = ref<boolean>(true);
+const inclusionRegion = ref<boolean>(true);
 const creatingRegionAborted = ref<boolean>(false);
 const devicePixelRatio = useDevicePixelRatio();
 const polygonClosedTolerance = ref(10);
@@ -74,7 +75,6 @@ const areExistingRegions = computed(() => {
 
 const computeImageDimensions = () => {
   isMobile.value = window.innerWidth < mobileWidthThreshold;
-  console.log("dims: ", cptvFrameWidth, cptvFrameHeight);
   const img = document.querySelector(".imageContainer");
   if (img) {
     const viewportWidth = window.innerWidth;
@@ -86,9 +86,10 @@ const computeImageDimensions = () => {
       cptvFrameHeight.value = 120 * (viewportWidth / 225);
     }
     const canvasElement = canvas.value;
-    canvasElement.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
+    canvasElement.width =
+      cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
     canvasElement.height =
-    cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
+      cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
   }
 };
 
@@ -108,8 +109,10 @@ onMounted(async () => {
     }
   }
   const canvasElement = canvas.value;
-  canvasElement.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
-  canvasElement.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
+  canvasElement.width =
+    cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
+  canvasElement.height =
+    cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
   computeImageDimensions();
   window.addEventListener("resize", () => {
     clearMask();
@@ -129,7 +132,6 @@ const loadLatestStatusFrame = async () => {
     }
   }
 };
-
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", computeImageDimensions);
@@ -152,7 +154,7 @@ function pointSelect(event: MouseEvent): void {
     const { left, top } = container.value.getBoundingClientRect();
     const clickedX = event.clientX - left;
     const clickedY = event.clientY - top;
-    let values = normalise(clickedX, clickedY);
+    const values = normalise(clickedX, clickedY);
     points.value.push({ x: values.x, y: values.y });
     drawPolygon();
   }
@@ -161,7 +163,7 @@ function pointSelect(event: MouseEvent): void {
 function drawRegionIndices() {
   const canvasElement = canvas.value;
   const context = canvasElement.getContext("2d");
-  let fontSize = 18 * devicePixelRatio.pixelRatio.value;
+  const fontSize = 18 * devicePixelRatio.pixelRatio.value;
   context.font = `bold ${fontSize}px Arial`;
   for (let i = 0; i < regionsArray.value.length; i++) {
     const regionData = regionsArray.value[i].regionData;
@@ -273,6 +275,11 @@ const toggleMaskEnabled = () => {
   }
 };
 
+const toggleInclusionRegion = () => {
+  inclusionRegion.value = !inclusionRegion.value;
+  generateMask();
+};
+
 function removePoint(): void {
   if (points.value.length > 1) {
     points.value.pop();
@@ -300,29 +307,55 @@ function generateMask() {
   if (regionsArray.value.length === 0) {
     return;
   }
-
   const maskCanvas = canvas.value;
   const maskContext = maskCanvas.getContext("2d");
   maskCanvas.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
   maskCanvas.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
 
-  regionsArray.value.forEach((region) => {
-    maskContext.beginPath();
-    const regionData = region.regionData;
-    maskContext.moveTo(
-      regionData[0].x * maskCanvas.width,
-      regionData[0].y * maskCanvas.height
-    );
-    for (let i = 1; i < regionData.length; i++) {
-      maskContext.lineTo(
-        regionData[i].x * maskCanvas.width,
-        regionData[i].y * maskCanvas.height
+  if (inclusionRegion.value) {
+    regionsArray.value.forEach((region) => {
+      maskContext.beginPath();
+      const regionData = region.regionData;
+      maskContext.moveTo(
+        regionData[0].x * maskCanvas.width,
+        regionData[0].y * maskCanvas.height
       );
-    }
-    maskContext.closePath();
+      for (let i = 1; i < regionData.length; i++) {
+        maskContext.lineTo(
+          regionData[i].x * maskCanvas.width,
+          regionData[i].y * maskCanvas.height
+        );
+      }
+      maskContext.closePath();
+      maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
+      maskContext.fill("evenodd");
+    });
+  } else {
+    maskContext.beginPath();
+    maskContext.moveTo(0, 0);
+    maskContext.lineTo(maskCanvas.width, 0);
+    maskContext.lineTo(maskCanvas.width, maskCanvas.height);
+    maskContext.lineTo(0, maskCanvas.height);
+    maskContext.lineTo(0, 0);
+
+    regionsArray.value.forEach((region) => {
+      const regionData = region.regionData;
+      maskContext.moveTo(
+        regionData[0].x * maskCanvas.width,
+        regionData[0].y * maskCanvas.height
+      );
+      for (let i = 1; i < regionData.length; i++) {
+        maskContext.lineTo(
+          regionData[i].x * maskCanvas.width,
+          regionData[i].y * maskCanvas.height
+        );
+      }
+      maskContext.closePath();
+    });
+
     maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
     maskContext.fill("evenodd");
-  });
+  }
   drawRegionIndices();
 }
 
@@ -391,7 +424,7 @@ function cancelCreatingRegion(): void {
 
 <template>
   <div>
-    <div class=" d-flex justify-content-center align-items-center flex-column">
+    <div class="d-flex justify-content-center align-items-center flex-column">
       <p>Select multiple points on the image to form a closed polygon</p>
     </div>
     <div class="contentContainer">
@@ -401,13 +434,19 @@ function cancelCreatingRegion(): void {
             <cptv-single-frame
               :recording="latestStatusRecording"
               v-if="latestStatusRecording"
-              :style="{ width: cptvFrameWidth + 'px', height: cptvFrameHeight + 'px' }"
+              :style="{
+                width: cptvFrameWidth + 'px',
+                height: cptvFrameHeight + 'px',
+              }"
               :height="cptvFrameHeight"
               ref="singleFrameCanvas"
               @loaded="(el) => (singleFrame = el)"
             />
             <canvas
-              :style="{ width: cptvFrameWidth + 'px', height: cptvFrameHeight + 'px' }"
+              :style="{
+                width: cptvFrameWidth + 'px',
+                height: cptvFrameHeight + 'px',
+              }"
               @click="generateMask"
               ref="canvas"
             ></canvas>
@@ -428,6 +467,21 @@ function cancelCreatingRegion(): void {
             />
           </div>
         </div>
+        <div class="inclusionSwitch">
+          <div class="form-check form-switch">
+            <label class="form-check-label" for="flexSwitchCheckChecked"
+              >Exclusion Region</label
+            >
+            <input
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="flexSwitchCheckChecked"
+              @click="toggleInclusionRegion"
+              checked
+            />
+          </div>
+        </div>
       </div>
       <div class="rightSideContent">
         <div class="existingRegions">
@@ -437,7 +491,11 @@ function cancelCreatingRegion(): void {
               <p>No existing regions</p>
             </div>
             <div class="regionsListContainer">
-              <div v-for="(item, index) in regionsArray" :key="index" class="regionContent">
+              <div
+                v-for="(item, index) in regionsArray"
+                :key="index"
+                class="regionContent"
+              >
                 <p class="regionLabel">Region {{ index + 1 }}</p>
                 <b-button
                   class="deleteButton"
@@ -508,7 +566,7 @@ function cancelCreatingRegion(): void {
   }
   .rightSideContent {
     position: relative;
-    border-radius: 0.6em;;
+    border-radius: 0.6em;
   }
 
   p {
@@ -572,7 +630,7 @@ function cancelCreatingRegion(): void {
   }
 
   .existingRegions {
-    display: grid; 
+    display: grid;
     width: 14em;
     position: relative;
     background-color: rgba(58, 58, 58);
@@ -644,12 +702,12 @@ function cancelCreatingRegion(): void {
   margin-bottom: 0.6em;
 }
 
-.selectAreaButton, .cancelNewRegionButton{
+.selectAreaButton,
+.cancelNewRegionButton {
   display: block;
   margin: 0 auto; /* Center horizontally */
   margin-bottom: 0.6em;
   text-align: center; /* Center text content */
-
 }
 
 .imageContainer {
@@ -710,6 +768,13 @@ canvas {
   justify-content: center;
   align-items: center;
   margin-top: 10px;
+  /* background-color: green; */
+}
+
+.inclusionSwitch {
+  display: flex; 
+  justify-content: center;
+  align-items: center;
 }
 
 .existingRegionContainer {
