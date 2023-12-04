@@ -45,7 +45,11 @@ export interface DeviceHistorySettings {
     bottomRight: [number, number];
   };
   maskPolygons?: {
-    points: [number, number];
+    points: {
+      [key: number]: {
+        x: number;
+        y: number;
+      } 
     exclude?: boolean;
     label?: string;
   }[];
