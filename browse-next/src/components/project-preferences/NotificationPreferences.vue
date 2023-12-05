@@ -1,89 +1,69 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import SectionHeader from "@/components/SectionHeader.vue";
-import type { ApiAlertResponse } from "@typedefs/api/alerts";
 import { getAlertsForCurrentUser } from "@api/Alert";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 import { useRoute } from "vue-router";
 import NotificationPreferences from "@/components/project-preferences/NotificationPreferences.vue";
-import TaggingPreferences from "@/components/project-preferences/TaggingPreferences.vue";
 // import DeviceSetupDefineMask from "@/components/DeviceSetupDefineMask.vue";
-
 const route = useRoute();
-const selectedLeaveProject = ref(false);
-const alerts = ref<ApiAlertResponse[]>([]);
-const isNotOnlyProjectOwnerOrAdmin = ref<true>(true);
-const preferencesModalEnabled = ref<boolean>(true);
-const initialSpecies = ['Possum', 'Rat', 'Cat'];
-const speciesArray = ref<string[]>(initialSpecies);
-const preferencesModalRef = ref<any>(null);
-const preferenceNavigationItems = ['Notifications', 'Media', 'Tagging', 'Species'];
-const preferenceNavigationItemsArray = ref<string[]>(preferenceNavigationItems);
 const emailDailyDigestSwitch = ref(true);
 const emailVisitEventSwitch = ref(true);
 const pushDailyDigestSwitch = ref(true);
 const pushVisitEventSwitch = ref(true);
-
-function togglePreferencesModal() {
-  preferencesModalEnabled.value = !preferencesModalEnabled.value;
-  console.log("Enabled?: ", preferencesModalEnabled.value);
-}
-
-onMounted(async () => {
-  const response = await getAlertsForCurrentUser();
-  if (response.success) {
-    alerts.value = response.result.alerts;
-  }
-});
-
-function cancel() {
-  preferencesModalEnabled.value = false;
-}
-
-function savePreferences() {
-  preferencesModalEnabled.value = false;
-}
-
-function toggleSpecies(species: string) {
-  if (speciesArray.value.includes(species)) {
-    speciesArray.value = speciesArray.value.filter((s) => s !== species);
-  } else {
-    speciesArray.value.push(species);
-  }
-}
-
-function getRouteForIndex(index) {
-  const routes = ['notification-settings', 'media-settings', 'tagging-settings', 'species-settings'];
-  return { name: routes[index] };
-}
-
-function getIconForIndex(index) {
-  const icons = [['fas', 'envelope'], ['fas', 'camera'], ['fas', 'tag'], ['fas', 'cat']];
-  return icons[index];
-}
 </script>
+
 <template>
   <div>
-    <section-header>Project preferences</section-header>
-    <div class="pageContent">
-      <div class="preferencesNavigation">
-        <nav>
-          <ul>
-            <li v-for="(item, index) in preferenceNavigationItemsArray" :key="index">
-              <router-link :to="getRouteForIndex(index)" class="navItem">
-                <font-awesome-icon
-                  :icon="getIconForIndex(index)"
-                  class="navIcon"
-                />
-                {{ item }}
-              </router-link>
-            </li>
-          </ul>
-        </nav>
+    <div class="notificationContent">
+      <h3>Notification Settings</h3>
+      <p style="color: #525252">Select the kinds of notifications you get about your project</p>
+      <div class="divider"></div>
+      <div class="emailNotifications">
+        <div class="emailHeading">
+          <h6>Email notifications</h6>
+          <p style="color: grey">Recieve emails to find out what's going on when you're not online</p>
+        </div>
+        <div class="emailSettings">
+          <div class="digestHeading">
+            <h6 class="digestTitle">Daily digest</h6>
+            <div class="digestSwitch">
+              <b-form-checkbox v-model="emailDailyDigestSwitch" switch></b-form-checkbox>
+            </div>
+          </div>
+          <p style="color: grey">A daily overview of your project</p>
+          <div class="visitHeading">
+            <h6 class="visitTitle">Visit event</h6>
+            <div class="visitSwitch">
+              <b-form-checkbox v-model="emailVisitEventSwitch" switch></b-form-checkbox>
+            </div>
+          </div>
+          <p style="color: grey">Recieve a notification upon every visit</p>
+        </div>
       </div>
-      <div class="preferencesContent">
-        <router-view></router-view>
+      <div class="divider"></div>
+      <div class="pushNotifications">
+        <div class="pushHeading">
+          <h6>Push notifications</h6>
+          <p style="color: grey">Recieve push notifications to find out what's going on when you're not online</p>
+        </div>
+        <div class="pushSettings">
+          <div class="digestHeading">
+            <h6 class="digestTitle">Daily digest</h6>
+            <div class="digestSwitch">
+              <b-form-checkbox v-model="pushDailyDigestSwitch" switch></b-form-checkbox>
+            </div>
+          </div>
+          <p style="color: grey">A daily overview of your project</p>
+          <div class="visitHeading">
+            <h6 class="visitTitle">Visit event</h6>
+            <div class="visitSwitch">
+              <b-form-checkbox v-model="pushVisitEventSwitch" switch></b-form-checkbox>
+            </div>
+          </div>
+          <p style="color: grey">Recieve a notification upon every visit</p>
+        </div>
       </div>
     </div>
   </div>

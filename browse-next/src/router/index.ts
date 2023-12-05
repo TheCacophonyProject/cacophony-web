@@ -229,6 +229,28 @@ const router = createRouter({
       meta: { requiresLogin: true, title: "My settings for :projectName" },
       component: () => import("@/views/UserGroupPreferencesView.vue"),
       beforeEnter: cancelPendingRequests,
+      children: [
+        {
+          path: "notifications",
+          name: "notification-settings",
+          component: () => import("@/components/project-preferences/NotificationPreferences.vue"),
+        },
+        {
+          path: "media",
+          name: "media-settings",
+          component: () => import("@/components/project-preferences/MediaPreferences.vue"),
+        },
+        {
+          path: "tagging",
+          name: "tagging-settings",
+          component: () => import("@/components/project-preferences/TaggingPreferences.vue"),
+        },
+        {
+          path: "species",
+          name: "species-settings",
+          component: () => import("@/components/project-preferences/SpeciesPreferences.vue"),
+        },
+      ],
     },
     {
       path: "/:projectName/settings",
