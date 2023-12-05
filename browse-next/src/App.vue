@@ -439,7 +439,7 @@ onMounted(() => {
         <li class="nav-item">
           <router-link
             :to="{
-              name: 'user-project-settings',
+              name: 'notification-settings',
               params: {
                 projectName: urlNormalisedCurrentProjectName,
               },
