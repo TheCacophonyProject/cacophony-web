@@ -8,6 +8,10 @@ let Config;
 const HEIGHT = 120;
 const WIDTH = 160;
 const BOX_DIM = 30;
+
+const rows = Math.ceil(HEIGHT / BOX_DIM);
+const columns = Math.ceil(WIDTH / BOX_DIM);
+
 async function main() {
   program
     .option("--config <path>", "Configuration file", "./config/app.js")
@@ -32,6 +36,11 @@ async function main() {
     if (rodentQ.rows.length == 0) {
       continue;
     }
+
+    const gridData = [...Array(rows)].map((e) =>
+      [...Array(columns)].map((e) => Array())
+    );
+    // get x ,y values for each track
     for (const rodentRec of rodentQ.rows) {
       const positions = rodentRec["data"]["positions"].filter(
         (x) => x["mass"] > 0 && !x["blank"]
@@ -40,70 +49,25 @@ async function main() {
         currentDevice = {
           uuid: rodentRec["uuid"],
           location: rodentRec["location"],
-          trackData: positions,
+          trackData: getGridData(
+            rodentRec["id"],
+            rodentRec["what"],
+            positions,
+            gridData
+          ),
         };
       } else {
-        currentDevice.trackData.push(...positions);
+        // merge data
+        getGridData(
+          rodentRec["id"],
+          rodentRec["what"],
+          positions,
+          currentDevice.trackData
+        );
       }
     }
-    const rows = Math.ceil(HEIGHT / BOX_DIM);
-    const columns = Math.ceil(WIDTH / BOX_DIM);
-    const gridData = [...Array(rows)].map((e) =>
-      [...Array(columns)].map((e) => Array())
-    );
-    // could speed this up
-    for (const pos of currentDevice.trackData) {
-      for (let y = 0; y < gridData.length; y++) {
-        for (let x = 0; x < gridData[y].length; x++) {
-          if (overlap_rect(pos, [x * BOX_DIM, y * BOX_DIM, BOX_DIM, BOX_DIM])) {
-            gridData[y][x].push(pos["mass"]);
-          }
-        }
-      }
-    }
-    const rowMins = Array(rows);
-    const columnMins = Array(columns);
 
-    for (let y = 0; y < gridData.length; y++) {
-      let rowMin = null;
-      for (let x = 0; x < gridData[y].length; x++) {
-        let masses = gridData[y][x];
-        if (masses.length > 0) {
-          masses = masses.sort(function (a, b) {
-            return a - b;
-          });
-          const percentile80 = Math.floor(masses.length * 0.8);
-          gridData[y][x] = masses[percentile80];
-          if (rowMin == null || masses[percentile80] < rowMin) {
-            rowMin = masses[percentile80];
-          }
-          if (
-            columnMins[x] == undefined ||
-            masses[percentile80] < columnMins[x]
-          ) {
-            columnMins[x] = masses[percentile80];
-          }
-        } else {
-          gridData[y][x] = null;
-        }
-      }
-      rowMins[y] = rowMin;
-    }
-    // can think about propogating data into empty regions, but probably no need
-    //
-    // for (let y = 0; y < gridData.length; y++) {
-    //   for (let x = 0; x < gridData[y].length; x++) {
-    //     if(gridData[y][x] == -1 as any){
-    //
-    //       if(rowMins[y]){
-    //         gridData[y][x] = rowMins[y]
-    //       }else if(columnMins[x]){
-    //         gridData[y][x] = columnMins[x]
-    //       }
-    //
-    //     }
-    //   }
-    // }
+    const thresholds = getThresholds(currentDevice.trackData);
     let settings = devHistory["settings"];
     if (!settings) {
       settings = {};
@@ -111,7 +75,7 @@ async function main() {
     settings["ratThresh"] = {
       gridSize: BOX_DIM,
       version: Date.now(),
-      thresholds: gridData,
+      thresholds: thresholds,
     };
     devHistory["settings"] = settings;
     console.log(
@@ -127,6 +91,101 @@ async function main() {
       devHistory["settings"]
     );
   }
+}
+const MEDIAN_THRESH = 1.8;
+const MINPOINTS = 2;
+// calculate median of all data before hand if new point is above a certain percentage of previous median, this change indicates a mouse vs rat
+// only bother using data we dont know about i.e. tagged as rodent
+function getThresholds(gridData) {
+  const thresholds = [...Array(rows)].map((e) => [...Array(columns)]);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      thresholds[y][x] = null;
+      const sorted = gridData[y][x].sort(function (a, b) {
+        return a.threshold - b.threshold;
+      });
+      let ratStart = null;
+      let unknownStart = 0;
+      for (let i = 0; i < sorted.length; i++) {
+        if (sorted[i].tag == "rat") {
+          ratStart = i;
+          break;
+        } else if (sorted[i].tag == "mouse") {
+          unknownStart = i + 1;
+        }
+      }
+      let ratIndex = null;
+
+      for (let i = unknownStart; i < sorted.length; i++) {
+        let prevMedian = quantile(
+          sorted.slice(0, i).map((data) => data.threshold),
+          0.5
+        );
+        if (
+          i == ratStart ||
+          (sorted[i].threshold / prevMedian >= MEDIAN_THRESH && i > MINPOINTS)
+        ) {
+          ratIndex = i;
+          break;
+        }
+      }
+      if (!ratIndex) {
+        thresholds[y][x] = null;
+      } else {
+        if (ratIndex == 0) {
+          thresholds[y][x] = Math.max(1, sorted[ratIndex].threshold * 0.8);
+        } else {
+          thresholds[y][x] = sorted[ratIndex - 1].threshold;
+        }
+      }
+    }
+  }
+  return thresholds;
+}
+
+const quantile = (arr, q) => {
+  const sorted = arr.sort(function (a, b) {
+    return a - b;
+  });
+  const pos = (sorted.length - 1) * q;
+  const base = Math.floor(pos);
+  const rest = pos - base;
+  if (sorted[base + 1] !== undefined) {
+    return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+  } else {
+    return sorted[base];
+  }
+};
+function getGridData(u_id, tag, positions, existingGridData) {
+  const gridData = [...Array(rows)].map((e) =>
+    [...Array(columns)].map((e) => Array())
+  );
+
+  for (const p of positions) {
+    const xStart = Math.floor(p["x"] / BOX_DIM);
+    const xEnd = Math.floor((p["x"] + p["width"]) / BOX_DIM);
+    const yStart = Math.floor(p["y"] / BOX_DIM);
+    const yEnd = Math.floor((p["y"] + p["height"]) / BOX_DIM);
+    for (let y = yStart; y <= yEnd; y++) {
+      for (let x = xStart; x <= xEnd; x++) {
+        gridData[y][x].push(p["mass"]);
+      }
+    }
+  }
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < columns; x++) {
+      let masses = gridData[y][x];
+      if (masses.length == 0) {
+        continue;
+      }
+      existingGridData[y][x].push({
+        tag: tag,
+        id: u_id,
+        threshold: quantile(masses, 0.8),
+      });
+    }
+  }
+  return existingGridData;
 }
 
 function overlap_rect(region, grid) {
@@ -172,7 +231,7 @@ async function getRodentData(client, deviceId, location, fromDateTime) {
   }
   const res = await client.query(
     `select r."recordingDateTime",
-r."DeviceId" ,t.id,r."location" ,t.data
+r."DeviceId" ,t.id,r."location" ,t.data,tt."what"
 from
 	"TrackTags" tt
 right join "Tracks" t on
@@ -181,7 +240,7 @@ right join "Recordings" r on t."RecordingId"  = r.id
 where
 r."DeviceId"='${deviceId}' and ${locQuery} and r."recordingDateTime" > '${fromDateTime.toISOString()}' and
 tt.automatic =false and
-	tt.path ='all.mammal.rodent.mouse' order by r."DeviceId",r."recordingDateTime" desc`
+	tt.path <@'all.mammal.rodent' order by r."DeviceId",r."recordingDateTime" desc`
   );
   return res;
 }
