@@ -6,6 +6,34 @@ import { library } from '@fortawesome/fontawesome-svg-core'
 import Chart from "chart.js/auto";
 
 const pieChart = ref(null);
+const lineChart = ref(null);
+const barChart = ref(null);
+
+function renderLineChart() {
+  const ctx = lineChart.value.getContext("2d");
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+      datasets: [
+        {
+          label: "Visits Trend",
+          data: [12, 18, 13, 20, 15, 22],
+          borderColor: "#355e3b",
+          backgroundColor: "transparent",
+          pointBackgroundColor: "#355e3b",
+        },
+      ],
+    },
+    options: {
+      plugins: {
+        legend: {
+          display: false
+        },
+      },
+    },
+  });
+}
 
 function renderPieChart() {
   const ctx = pieChart.value.getContext("2d");
@@ -32,8 +60,39 @@ function renderPieChart() {
   });
 }
 
+function renderBarChart() {
+  const ctx = barChart.value.getContext("2d");
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+      datasets: [
+        {
+          label: "Battery Life",
+          data: [80, 85, 70, 90, 75, 95, 85], 
+          backgroundColor: ["#355e3b", "#6ca070", "#aac997", "#355e3b", "#6ca070", "#aac997", "#355e3b"], // Use the same colors as other graphs
+          borderWidth: 1,
+        },
+      ],
+    },
+    options: {
+      scales: {
+        y: {
+          beginAtZero: true,
+        },
+      },
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+      },
+    },
+  });
+}
 onMounted(() => {
   renderPieChart();
+  renderLineChart();
+  renderBarChart();
 });
 </script>
 <template>
@@ -74,7 +133,15 @@ onMounted(() => {
       </div>
       <div class="graph3">
         <h5>Visits Trend</h5>
-        <p>Display visits per night with option to specify the timeframe</p>
+        <div class="graph3Container">
+          <canvas class="visitsTrendChart" ref="lineChart"></canvas>
+        </div>
+      </div>
+      <div class="graph4">
+        <h5>Battery Life</h5>
+        <div class="graph4Container">
+          <canvas class="batteryLifeChart" ref="barChart"></canvas>
+        </div>
       </div>
     </div>
   </div>
@@ -82,16 +149,18 @@ onMounted(() => {
 <style scoped>
 .graphContainer {
   display: grid;
-  grid-template-areas: "graph-1 graph-2" "graph-3 graph-3";
+  grid-template-areas: "graph-1 graph-2" "graph-3 graph-4";
   grid-template-columns: 1fr 2fr;
 }
 
-.graph1 {
+.graph1,
+.graph3 {
   grid-area: graph-1;
   margin-right: 0.3rem;
 }
 
-.graph2 {
+.graph2,
+.graph4 {
   grid-area: graph-2;
   margin-left: 0.3rem;
 }
@@ -105,9 +174,14 @@ onMounted(() => {
   grid-area: graph-3;
 }
 
+.graph4 {
+  grid-area: graph-4;
+}
+
 .graph1,
 .graph2,
-.graph3 {
+.graph3,
+.graph4 {
   border-radius: 0.4rem;
   background-color: white;
   color: #0e122b;
@@ -123,11 +197,20 @@ onMounted(() => {
 .graph1Container {
   display: flex;
   padding: 0 4rem;
-  /* width: 300px; */
 }
 
 .graph2Container {
   display: flex;
+}
+
+.graph3Container {
+  height: 34vh;
+}
+
+.graph4Container {
+  display: flex; 
+  justify-content: center;
+  height: 16rem;
 }
 
 .totalUsers,
