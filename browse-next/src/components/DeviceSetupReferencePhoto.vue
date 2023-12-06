@@ -314,6 +314,56 @@ watch(singleFrameCanvasWidth, (w) => {
   renderSkewedImage();
 });
 watch(cptvFrameScale, renderSkewedImage);
+watch(overlayOpacity, renderSkewedImage);
+watch(singleFrameCanvasWidth, (w) => {
+  // When the cptv single frame is scaled small, and the handle constraints are close around it,
+  // if we scale it large again we need to re-evaluate the handle contraints.
+  if (singleFrame.value && handle0.value) {
+    const singleFrameBounds = singleFrame.value.getBoundingClientRect();
+    const singleFrameParentBounds = (
+      (singleFrame.value.parentElement as HTMLDivElement)
+        .parentElement as HTMLDivElement
+    ).getBoundingClientRect();
+    const outerHeight = singleFrameParentBounds.height;
+    const outerWidth = singleFrameParentBounds.width;
+    const sfLeft = singleFrameBounds.left - singleFrameParentBounds.left;
+    const sfTop = singleFrameBounds.top - singleFrameParentBounds.top;
+    const sfRight = sfLeft + singleFrameBounds.width; //singleFrameBounds.right - singleFrameParentBounds.right;
+    const sfBottom = sfTop + singleFrameBounds.height; //singleFrameBounds.bottom - singleFrameParentBounds.bottom;
+    const parentBounds = (
+      handle0.value.parentElement as HTMLDivElement
+    ).getBoundingClientRect();
+    for (const handle of [
+      handle0.value,
+      handle1.value,
+      handle2.value,
+      handle3.value,
+    ]) {
+      const h = handle as HTMLDivElement;
+      const { left: handleX, top: handleY, width } = h.getBoundingClientRect();
+      const dim = width / 2;
+      let x = handleX - parentBounds.left;
+      let y = handleY - parentBounds.top;
+      if (h === handle0.value) {
+        x = Math.min(x, sfLeft - dim);
+        y = Math.min(y, sfTop - dim);
+      } else if (h === handle1.value) {
+        x = Math.max(x, sfRight - dim);
+        y = Math.min(y, sfTop - dim);
+      } else if (h === handle2.value) {
+        x = Math.max(x, sfRight - dim);
+        y = Math.max(y, sfBottom - dim);
+      } else if (h === handle3.value) {
+        x = Math.min(x, sfLeft - dim);
+        y = Math.max(y, sfBottom - dim);
+      }
+      h.style.left = `${x}px`;
+      h.style.top = `${y}px`;
+    }
+  }
+  renderSkewedImage();
+});
+watch(cptvFrameScale, renderSkewedImage);
 
 const grabHandle = (event: PointerEvent) => {
   // NOTE: Maintain the offset of the cursor on the pointer when it's selected.

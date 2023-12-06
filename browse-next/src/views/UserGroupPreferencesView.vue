@@ -65,7 +65,7 @@ function getIconForIndex(index) {
 </script>
 <template>
   <div>
-    <section-header>Project preferences</section-header>
+    <section-header>My project preferences</section-header>
     <div class="pageContent">
       <div class="preferencesNavigation">
         <nav>
