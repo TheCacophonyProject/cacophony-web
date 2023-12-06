@@ -144,7 +144,7 @@ nav ul {
 }
 
 .navItem:hover {
-  background-color: #1a2430;
+  background-color: #25422a;
   margin-left: 0.5em;
   margin-right: 0.5em;
   border-radius: 0.4em;

@@ -110,6 +110,7 @@ const pushVisitEventSwitch = ref(true);
 .section-header {
   padding-left: 1em;
 }
+
 .preferencesNavigation {
   background-color: #283447;
   border-radius: 0.5em;
@@ -121,13 +122,6 @@ const pushVisitEventSwitch = ref(true);
 nav ul {
   list-style-type: none;
   padding: 0;
-}
-
-.navItem:hover {
-  background-color: #1a2430;
-  margin-left: 0.5em;
-  margin-right: 0.5em;
-  border-radius: 0.4em;
 }
 
 .navItem {
@@ -152,7 +146,8 @@ nav ul {
 .mediaContent,
 .speciesContent,
 .taggingContent {
-  background-color:rgb(231, 230, 230);
+  /* background-color:rgb(231, 230, 230); */
+  background-color: white;
   border-radius: 0.5em;
   margin-top: 0.7em;
   margin-left: 0.7em;

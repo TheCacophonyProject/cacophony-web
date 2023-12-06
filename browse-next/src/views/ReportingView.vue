@@ -19,9 +19,9 @@ function renderLineChart() {
         {
           label: "Visits Trend",
           data: [12, 18, 13, 20, 15, 22],
-          borderColor: "#355e3b",
+          borderColor: "#6ca070",
           backgroundColor: "transparent",
-          pointBackgroundColor: "#355e3b",
+          pointBackgroundColor: "#6ca070",
         },
       ],
     },
