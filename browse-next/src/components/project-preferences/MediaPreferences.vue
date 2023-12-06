@@ -19,7 +19,7 @@ const route = useRoute();
 
 <style scoped>
 .mediaContent {
-  background-color:rgb(231, 230, 230);
+  background-color: white;
   border-radius: 0.5em;
   margin-left: 0.7em;
   padding-top: 1.7em;

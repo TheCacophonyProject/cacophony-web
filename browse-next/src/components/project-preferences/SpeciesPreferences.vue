@@ -44,7 +44,7 @@ function getSpeciesIcon(species: string) {
   <div>
     <div class="speciesContent">
       <h3>Species Preferences</h3>
-      <b-button v-b-modal.projectPreferencesModal class="preferencesModal" @click="openModal">Species preferences</b-button>
+      <b-button v-b-modal.projectPreferencesModal variant="outline-light" class="preferencesModal" @click="openModal">Species preferences</b-button>
     </div>
     <div>
       <b-modal id="projectPreferencesModal" hide-header hide-footer>
@@ -76,7 +76,7 @@ function getSpeciesIcon(species: string) {
 }
 
 .speciesContent {
-  background-color:rgb(231, 230, 230);
+  background-color: white;
   border-radius: 0.5em;
   margin-left: 0.7em;
   padding-top: 1.7em;
@@ -112,7 +112,6 @@ function getSpeciesIcon(species: string) {
   cursor: pointer;
   margin-right: 10px;
 }
-
 .checked {
   color: #5cb85c;
 }
@@ -128,5 +127,12 @@ function getSpeciesIcon(species: string) {
 
 .preferencesModal {
   width: 15em;
+  border: none;
+  color: white;
+  background-color: #355e3b;
+}
+
+.preferencesModal:hover {
+  background-color: #25422a;
 }
 </style>
