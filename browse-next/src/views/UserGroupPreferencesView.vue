@@ -131,7 +131,7 @@ function getIconForIndex(index) {
   padding-left: 1em;
 }
 .preferencesNavigation {
-  background-color: #283447;
+  background-color: #355e3b;
   border-radius: 0.5em;
   padding: 0.5em 0px;
   flex: 1;
