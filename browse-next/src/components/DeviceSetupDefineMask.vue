@@ -432,15 +432,6 @@ function cancelCreatingRegion(): void {
         <div class="darkContainer">
           <div class="imageContainer" ref="container" @click="pointSelect">
             <cptv-single-frame
-              :recording="latestStatusRecording"
-              v-if="latestStatusRecording"
-              :style="{
-                width: cptvFrameWidth + 'px',
-                height: cptvFrameHeight + 'px',
-              }"
-              :height="cptvFrameHeight"
-              ref="singleFrameCanvas"
-              @loaded="(el) => (singleFrame = el)"
             />
             <canvas
               :style="{
@@ -788,3 +779,6 @@ canvas {
   padding-bottom: 0.6em;
 }
 </style>
+
+// width: cptvFrameWidth + 'px'
+// height: cptvFrameHeight + 'px'

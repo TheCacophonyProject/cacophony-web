@@ -45,8 +45,8 @@ const pushVisitEventSwitch = ref(true);
       <div class="divider"></div>
       <div class="pushNotifications">
         <div class="pushHeading">
-          <h6>Push notifications</h6>
-          <p style="color: grey">Recieve push notifications to find out what's going on when you're not online</p>
+          <h6>Text notifications</h6>
+          <p style="color: grey">Recieve text notifications to find out what's going on while you're away</p>
         </div>
         <div class="pushSettings">
           <div class="digestHeading">

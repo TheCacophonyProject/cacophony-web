@@ -1063,6 +1063,70 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+ * @api {post} /api/v1/devices/:deviceId/mask-regions Set mask regions for a device
+ * @apiName SetDeviceMaskRegions
+ * @apiGroup Device
+ * @apiParam {Integer} deviceId Id of the device
+ * @apiBody {Object[]} maskRegions Collection of mask regions (x, y points)
+ * @apiBodyExample {json} Request-Example:
+ *    [
+ *      { "x": 10, "y": 20 },
+ *      { "x": 30, "y": 40 },
+ *      { "x": 50, "y": 60 }
+ *    ]
+ *
+ * @apiDescription Sets mask regions for a device in the DeviceHistory table.
+ * These mask regions will be stored in the settings column as JSON.
+ *
+ * @apiUse V1UserAuthorizationHeader
+ *
+ * @apiUse V1ResponseSuccess
+ * @apiSuccess {String} message Success message
+ * @apiUse V1ResponseError
+ */
+
+app.post(
+  `${apiUrl}/:id/mask-regions`,
+  extractJwtAuthorizedUser,
+  validateFields([
+    idOf(param("id")),
+    body("maskRegions").isArray().not().isEmpty(),
+  ]),
+  fetchAuthorizedRequiredDeviceById(param("id")),
+  async (request: Request, response: Response) => {
+    try {
+      const maskRegions = request.body.maskRegions; // Extract mask regions from request body
+      const device = response.locals.device;
+      const latestDeviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          GroupId: device.GroupId,
+        },
+        order: [["fromDateTime", "DESC"]],
+      });
+
+      if (latestDeviceHistoryEntry) {
+        await latestDeviceHistoryEntry.update({
+          settings: {
+            ...latestDeviceHistoryEntry.settings,
+            maskRegions: maskRegions,
+          },
+        });
+
+        return successResponse(response, "Mask regions added successfully");
+      } else {
+        return successResponse(
+          response,
+          "No device history entry found to add mask regions"
+        );
+      }
+    } catch (error) {
+      // return errorResponse(response, "An error occurred while adding mask regions", error);
+    }
+  }
+);
+
+  /**
    * @api {patch} /api/v1/devices/:deviceId/fix-location Fix a device location at a given time
    * @apiName FixupDeviceLocationAtTimeById
    * @apiGroup Device

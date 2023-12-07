@@ -4,7 +4,7 @@ import SectionHeader from "@/components/SectionHeader.vue";
 import type { ApiAlertResponse } from "@typedefs/api/alerts";
 import { getAlertsForCurrentUser } from "@api/Alert";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { useRoute } from "vue-router";
 
 const route = useRoute();
@@ -12,10 +12,15 @@ const selectedLeaveProject = ref(false);
 const alerts = ref<ApiAlertResponse[]>([]);
 const isNotOnlyProjectOwnerOrAdmin = ref<true>(true);
 const preferencesModalEnabled = ref<boolean>(true);
-const initialSpecies = ['Possum', 'Rat', 'Cat'];
+const initialSpecies = ["Possum", "Rat", "Cat"];
 const speciesArray = ref<string[]>(initialSpecies);
 const preferencesModalRef = ref<any>(null);
-const preferenceNavigationItems = ['Notifications', 'Media', 'Tagging', 'Species'];
+const preferenceNavigationItems = [
+  "Notifications",
+  "Media",
+  "Tagging",
+  "Species",
+];
 const preferenceNavigationItemsArray = ref<string[]>(preferenceNavigationItems);
 const emailDailyDigestSwitch = ref(true);
 const emailVisitEventSwitch = ref(true);
@@ -36,21 +41,32 @@ function toggleSpecies(species: string) {
 }
 
 function getSpeciesIcon(species: string) {
-  return speciesArray.value.includes(species) ? ['fas', 'circle-check'] : ['far', 'circle'];
+  return speciesArray.value.includes(species)
+    ? ["fas", "circle-check"]
+    : ["far", "circle"];
 }
-
 </script>
 <template>
   <div>
     <div class="speciesContent">
       <h3>Species Preferences</h3>
-      <b-button v-b-modal.projectPreferencesModal variant="outline-light" class="preferencesModal" @click="openModal">Species preferences</b-button>
+      <b-button
+        v-b-modal.projectPreferencesModal
+        variant="outline-light"
+        class="preferencesModal"
+        @click="openModal"
+        >Species preferences</b-button
+      >
     </div>
     <div>
       <b-modal id="projectPreferencesModal" hide-header hide-footer>
         <div class="projectPreferencesContent">
           <h5>What species would you like to monitor?</h5>
-          <div v-for="(species, index) in initialSpecies" :key="index" class="species-checkbox">
+          <div
+            v-for="(species, index) in initialSpecies"
+            :key="index"
+            class="species-checkbox"
+          >
             <span @click="toggleSpecies(species)" class="checkbox-icon">
               <font-awesome-icon
                 :icon="getSpeciesIcon(species)"
@@ -117,12 +133,12 @@ function getSpeciesIcon(species: string) {
 }
 
 .icon {
-  font-size: 24px; 
+  font-size: 24px;
   color: grey;
 }
 
 .label {
-  font-size: 18px; 
+  font-size: 18px;
 }
 
 .preferencesModal {

@@ -52,7 +52,8 @@ export interface DeviceHistorySettings {
       } 
     exclude?: boolean;
     label?: string;
-  }[];
+   }[];
+  }
 }
 
 export interface DeviceHistory
