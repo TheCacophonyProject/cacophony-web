@@ -1095,9 +1095,9 @@ app.post(
   fetchAuthorizedRequiredDeviceById(param("id")),
   async (request: Request, response: Response) => {
     try {
-      const maskRegions = request.body.maskRegions; // Extract mask regions from request body
+      const maskRegions = request.body.maskRegions;
       const device = response.locals.device;
-      const latestDeviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
+      const deviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
@@ -1105,10 +1105,10 @@ app.post(
         order: [["fromDateTime", "DESC"]],
       });
 
-      if (latestDeviceHistoryEntry) {
-        await latestDeviceHistoryEntry.update({
+      if (deviceHistoryEntry) {
+        await deviceHistoryEntry.update({
           settings: {
-            ...latestDeviceHistoryEntry.settings,
+            ...deviceHistoryEntry.settings,
             maskRegions: maskRegions,
           },
         });
@@ -1117,15 +1117,58 @@ app.post(
       } else {
         return successResponse(
           response,
-          "No device history entry found to add mask regions"
+          "No device history settings entry found to add mask regions"
         );
       }
-    } catch (error) {
-      // return errorResponse(response, "An error occurred while adding mask regions", error);
+    } catch (e) {
+      console.log(e);
     }
   }
 );
 
+/**
+ * @api {get} /api/v1/devices/:deviceId/settings Get device settings
+ * @apiName GetDeviceSettings
+ * @apiGroup Device
+ * @apiParam {Integer} deviceId Id of the device
+ *
+ * @apiDescription Retrieves settings for a device from the DeviceHistory table.
+ *
+ * @apiUse V1UserAuthorizationHeader
+ *
+ * @apiUse V1ResponseSuccess
+ * @apiSuccess {Object} settings Device settings
+ * @apiUse V1ResponseError
+ */
+
+app.get(
+  `${apiUrl}/:id/mask-regions`,
+  extractJwtAuthorizedUser,
+  validateFields([
+    idOf(param("id")),
+  ]),
+  fetchAuthorizedRequiredDeviceById(param("id")),
+  async (request: Request, response: Response) => {
+    try {
+      const device = response.locals.device;
+      const deviceSettings: DeviceHistory | null = await models.DeviceHistory.findOne({
+        where: {
+          uuid: device.uuid,
+          GroupId: device.GroupId,
+        },
+        order: [["fromDateTime", "DESC"]],
+      });
+
+      if (deviceSettings) {
+        return successResponse(response, "Device mask-regions retrieved successfully", deviceSettings.settings);
+      } else {
+        return successResponse(response, "No device mask-regions found");
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  }
+);
   /**
    * @api {patch} /api/v1/devices/:deviceId/fix-location Fix a device location at a given time
    * @apiName FixupDeviceLocationAtTimeById
