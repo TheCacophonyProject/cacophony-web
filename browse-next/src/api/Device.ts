@@ -392,7 +392,7 @@ export const updateMaskRegionsForDevice = (
   deviceId: DeviceId,
   maskRegionsData: { maskRegions: { region: string; points: { x: number; y: number }[] }[] }
 ) => {
-  return CacophonyApi.post(`/api/v1/devices/${deviceId}/update-mask-regions`, maskRegionsData) as Promise<FetchResult<{ id: DeviceId }>>;
+  return CacophonyApi.post(`/api/v1/devices/${deviceId}/mask-regions`, maskRegionsData) as Promise<FetchResult<{ id: DeviceId }>>;
 };
 
 export const getReferenceImageForDeviceAtTime = (

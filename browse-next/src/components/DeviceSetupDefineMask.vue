@@ -66,17 +66,30 @@ const getExistingMaskRegions = async () => {
     points.value = existingMaskRegions.result.maskRegions[0].points;
     regionsArray.value.push({ regionData: points.value });
     console.log("regionsArray: ", regionsArray);
-    // regionsArray.value[0].regionData[0] = existingMaskRegions.result.maskRegions[0].points
-    // regionsArray.value = existingMaskRegions.maskRegions; 
-    // existingMaskRegions.result.maskRegions = existingMaskRegions.result.maskRegions[0][0].regionData;
-    // regionsArray.value[0].regionData =
-    // console.log("Regions: ", regionsArray);
   }
 };
 
 const updateExistingMaskRegions = async () => {
-  const outcome = await updateMaskRegionsForDevice(device.value.id, regionsArray);
+  const data = JSON.parse(formatRegionData(regionsArray));
+  console.log("new", data);
+  const outcome = await updateMaskRegionsForDevice(device.value.id, data);
   console.log("post request", outcome);
+}
+
+function formatRegionData(regionsArray) {
+  console.log("Values: ", JSON.stringify(regionsArray.value[1].regionData));
+  const extractedPoints = regionsArray.value[1].regionData;
+  const jsonStructure = {
+    "maskRegions": [
+      {
+        "region": "0",
+        "points": []
+      }
+    ]
+  };
+
+  jsonStructure.maskRegions[0].points = extractedPoints;
+  return JSON.stringify(jsonStructure, null, 2);
 }
 
 const devices = inject(selectedProjectDevices) as Ref<
