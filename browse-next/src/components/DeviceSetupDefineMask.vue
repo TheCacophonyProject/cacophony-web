@@ -62,33 +62,33 @@ const device = computed<ApiDeviceResponse | null>(() => {
 const getExistingMaskRegions = async () => {
   if (device.value) {
     const existingMaskRegions = await getMaskRegionsForDevice(device.value.id);
-    console.log("Existing Regions: ", existingMaskRegions.result.maskRegions[0].points);
-    points.value = existingMaskRegions.result.maskRegions[0].points;
-    regionsArray.value.push({ regionData: points.value });
+    console.log("Lenbth", existingMaskRegions.result.maskRegions.length);
+    for (let i = 0; i < existingMaskRegions.result.maskRegions.length; i++) {
+      points.value = existingMaskRegions.result.maskRegions[i].points;
+      regionsArray.value.push({ regionData: points.value });
+    }
     console.log("regionsArray: ", regionsArray);
   }
 };
 
 const updateExistingMaskRegions = async () => {
   const data = JSON.parse(formatRegionData(regionsArray));
-  console.log("new", data);
   const outcome = await updateMaskRegionsForDevice(device.value.id, data);
-  console.log("post request", outcome);
 }
 
 function formatRegionData(regionsArray) {
-  console.log("Values: ", JSON.stringify(regionsArray.value[1].regionData));
-  const extractedPoints = regionsArray.value[1].regionData;
   const jsonStructure = {
-    "maskRegions": [
-      {
-        "region": "0",
-        "points": []
-      }
-    ]
+    "maskRegions": []
   };
 
-  jsonStructure.maskRegions[0].points = extractedPoints;
+  for (let i = 0; i < regionsArray.value.length; i++) {
+    const extractedPoints = regionsArray.value[i].regionData;
+    const regionObj = {
+      "region": i.toString(),
+      "points": extractedPoints
+    };
+    jsonStructure.maskRegions.push(regionObj);
+  }
   return JSON.stringify(jsonStructure, null, 2);
 }
 
@@ -296,6 +296,7 @@ function isPolygonClosed(): boolean {
 }
 
 const toggleAreaSelect = () => {
+  updateExistingMaskRegions();
   selectingArea.value = !selectingArea.value;
   points.value = [];
   clearMask();
@@ -332,8 +333,6 @@ function removePoint(): void {
 
 function addRegionSelection(): void {
   regionsArray.value.push({ regionData: points.value });
-  updateExistingMaskRegions();
-  console.log("regionsArray: ", regionsArray.value[0].regionData[0]);
   points.value = [];
   toggleCreatingRegion();
   const canvasElement = canvas.value;
