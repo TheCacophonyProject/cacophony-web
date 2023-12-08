@@ -5,7 +5,7 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
   getLatestStatusRecordingForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
-  updateReferenceImageForDeviceAtCurrentLocation,
+  updateReferenceImageForDeviceAtCurrentLocation
 } from "@api/Device";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";

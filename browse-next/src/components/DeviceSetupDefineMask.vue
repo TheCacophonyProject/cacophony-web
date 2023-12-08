@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { Ref } from "vue";
-import { ref, onMounted, onBeforeUnmount, computed, inject } from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, inject, reactive} from "vue";
 import { useDevicePixelRatio } from "@vueuse/core";
 import {
   getLatestStatusRecordingForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
   updateReferenceImageForDeviceAtCurrentLocation,
+  getMaskRegionsForDevice,
+  updateMaskRegionsForDevice
 } from "@api/Device";
 import { useRoute } from "vue-router";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
@@ -57,6 +59,26 @@ const device = computed<ApiDeviceResponse | null>(() => {
   );
 });
 
+const getExistingMaskRegions = async () => {
+  if (device.value) {
+    const existingMaskRegions = await getMaskRegionsForDevice(device.value.id);
+    console.log("Existing Regions: ", existingMaskRegions.result.maskRegions[0].points);
+    points.value = existingMaskRegions.result.maskRegions[0].points;
+    regionsArray.value.push({ regionData: points.value });
+    console.log("regionsArray: ", regionsArray);
+    // regionsArray.value[0].regionData[0] = existingMaskRegions.result.maskRegions[0].points
+    // regionsArray.value = existingMaskRegions.maskRegions; 
+    // existingMaskRegions.result.maskRegions = existingMaskRegions.result.maskRegions[0][0].regionData;
+    // regionsArray.value[0].regionData =
+    // console.log("Regions: ", regionsArray);
+  }
+};
+
+const updateExistingMaskRegions = async () => {
+  const outcome = await updateMaskRegionsForDevice(device.value.id, regionsArray);
+  console.log("post request", outcome);
+}
+
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
@@ -94,6 +116,7 @@ const computeImageDimensions = () => {
 };
 
 onMounted(async () => {
+  getExistingMaskRegions();
   if (device.value && device.value.type === "thermal") {
     const [latestReferenceImage, _] = await Promise.allSettled([
       getReferenceImageForDeviceAtCurrentLocation(device.value.id),
@@ -114,6 +137,8 @@ onMounted(async () => {
   canvasElement.height =
     cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
   computeImageDimensions();
+  clearMask();
+  generateMask();
   window.addEventListener("resize", () => {
     clearMask();
     computeImageDimensions();
@@ -294,6 +319,8 @@ function removePoint(): void {
 
 function addRegionSelection(): void {
   regionsArray.value.push({ regionData: points.value });
+  updateExistingMaskRegions();
+  console.log("regionsArray: ", regionsArray.value[0].regionData[0]);
   points.value = [];
   toggleCreatingRegion();
   const canvasElement = canvas.value;
