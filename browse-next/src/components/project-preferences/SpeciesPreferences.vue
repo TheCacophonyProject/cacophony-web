@@ -12,7 +12,7 @@ const selectedLeaveProject = ref(false);
 const alerts = ref<ApiAlertResponse[]>([]);
 const isNotOnlyProjectOwnerOrAdmin = ref<true>(true);
 const preferencesModalEnabled = ref<boolean>(true);
-const initialSpecies = ["Possum", "Rat", "Cat"];
+const initialSpecies = ["Possum", "Rat", "Cat", "Mustelid", "Deer"];
 const speciesArray = ref<string[]>(initialSpecies);
 const preferencesModalRef = ref<any>(null);
 const preferenceNavigationItems = [
@@ -50,13 +50,34 @@ function getSpeciesIcon(species: string) {
   <div>
     <div class="speciesContent">
       <h3>Species Preferences</h3>
-      <b-button
+      <p style="color: #525252">Select the animals you would like to keep track of</p>
+      <div class="divider"></div>
+      <div
+        v-for="(species, index) in initialSpecies"
+        :key="index"
+        class="species-checkbox"
+      >
+        <span @click="toggleSpecies(species)" class="checkbox-icon">
+          <font-awesome-icon
+            :icon="getSpeciesIcon(species)"
+            :class="{ checked: speciesArray.includes(species) }"
+          />
+        </span>
+        <label>{{ species }}</label>
+      </div>
+      <div class="modal-buttons">
+        <b-button variant="outline-light" class="savePreferencesButton"
+          >Save</b-button
+        >
+        <button class="btn btn-secondary">Cancel</button>
+      </div>
+      <!-- <b-button
         v-b-modal.projectPreferencesModal
         variant="outline-light"
         class="preferencesModal"
         @click="openModal"
         >Species preferences</b-button
-      >
+      > -->
     </div>
     <div>
       <b-modal id="projectPreferencesModal" hide-header hide-footer>
@@ -143,6 +164,12 @@ function getSpeciesIcon(species: string) {
 
 .preferencesModal {
   width: 15em;
+  border: none;
+  color: white;
+  background-color: #355e3b;
+}
+
+.savePreferencesButton {
   border: none;
   color: white;
   background-color: #355e3b;
