@@ -16,22 +16,10 @@
       <div
         v-for="{ image, key, loading } of images"
         :key="key"
-        class="
-          d-flex
-          flex-column
-          justify-content-between
-          px-1
-          mb-3
-          align-items-center
-        "
+        class="d-flex flex-column justify-content-between px-1 mb-3 align-items-center"
       >
         <div
-          class="
-            spinner-container
-            d-flex
-            align-items-center
-            justify-content-center
-          "
+          class="spinner-container d-flex align-items-center justify-content-center"
           v-if="loading"
         >
           <b-spinner small />

@@ -106,6 +106,8 @@ function getThresholds(gridData) {
       });
       let ratStart = null;
       let unknownStart = 0;
+      // This doesn't take into account outliers but best to predict more rats
+      // otherwise could look for 2 consecutive rat tags or a #of rat tags
       for (let i = 0; i < sorted.length; i++) {
         if (sorted[i].tag == "rat") {
           ratStart = i;
@@ -117,9 +119,10 @@ function getThresholds(gridData) {
       let ratIndex = null;
 
       for (let i = unknownStart; i < sorted.length; i++) {
-        let prevMedian = quantile(
+        const prevMedian = quantile(
           sorted.slice(0, i).map((data) => data.threshold),
-          0.5
+          0.5,
+          true
         );
         if (
           i == ratStart ||
@@ -129,7 +132,7 @@ function getThresholds(gridData) {
           break;
         }
       }
-      if (!ratIndex) {
+      if (ratIndex == null) {
         thresholds[y][x] = null;
       } else {
         if (ratIndex == 0) {
@@ -143,10 +146,15 @@ function getThresholds(gridData) {
   return thresholds;
 }
 
-const quantile = (arr, q) => {
-  const sorted = arr.sort(function (a, b) {
-    return a - b;
-  });
+const quantile = (arr, q, isSorted = false) => {
+  let sorted;
+  if (isSorted) {
+    sorted = arr;
+  } else {
+    sorted = arr.sort(function (a, b) {
+      return a - b;
+    });
+  }
   const pos = (sorted.length - 1) * q;
   const base = Math.floor(pos);
   const rest = pos - base;
@@ -174,7 +182,7 @@ function getGridData(u_id, tag, positions, existingGridData) {
   }
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < columns; x++) {
-      let masses = gridData[y][x];
+      const masses = gridData[y][x];
       if (masses.length == 0) {
         continue;
       }
