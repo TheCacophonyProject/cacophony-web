@@ -7,7 +7,7 @@ let Config;
 
 const HEIGHT = 120;
 const WIDTH = 160;
-const BOX_DIM = 30;
+const BOX_DIM = 10;
 
 const rows = Math.ceil(HEIGHT / BOX_DIM);
 const columns = Math.ceil(WIDTH / BOX_DIM);
