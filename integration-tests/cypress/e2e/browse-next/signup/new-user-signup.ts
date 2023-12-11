@@ -125,6 +125,17 @@ describe("New users can sign up and confirm their email address", () => {
     confirmNewUserEmailAddress(user);
   });
 
+  // it.only("User can create a mask region for a device", () => {
+  //   cy.log("Bob creates a project");
+  //   const user1 = uniqueName("Bob");
+  //   const password = uniqueName("pass");
+  //   const project1 = uniqueName("bobs project");
+  //   registerNewUser(user1, password);
+  //   confirmNewUserEmailAddress(user1);
+  //   createProjectFromInitialSetup(project1);
+  //   cy.visit("/");
+  // });
+
   it("New user signup works, and email confirmation works if the user is not signed in, after signing in.", () => {
     const user = uniqueName("Bob");
     const password = uniqueName("pass");
