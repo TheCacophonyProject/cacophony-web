@@ -1095,7 +1095,7 @@ app.post(
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
-          location: device.location,
+          location: { [Op.ne]: null },
         },
         order: [["fromDateTime", "DESC"]],
       });
@@ -1120,71 +1120,6 @@ app.post(
     }
   }
 );
-
-// /**
-//  * @api {post} /api/v1/devices/:deviceId/update-location Update device location
-//  * @apiName UpdateDeviceLocation
-//  * @apiGroup Device
-//  * @apiParam {Integer} deviceId Id of the device
-//  * @apiBody {Object} location Object containing longitude and latitude
-//  * @apiBodyExample {json} 
-//  *    {
-//  *      "longitude": 123.456,
-//  *      "latitude": 78.901
-//  *    }
-//  * @apiDescription Updates the location of a device in the DeviceHistory table.
-//  * The location is stored as longitude and latitude.
-//  *
-//  * @apiUse V1UserAuthorizationHeader
-//  *
-//  * @apiUse V1ResponseSuccess
-//  * @apiSuccess {String} message Success message
-//  * @apiUse V1ResponseError
-//  */
-
-// app.post(
-//   `${apiUrl}/:id/update-location`,
-//   extractJwtAuthorizedUser,
-//   validateFields([
-//     idOf(param("id")),
-//     body("location.longitude").isNumeric().not().isEmpty(),
-//     body("location.latitude").isNumeric().not().isEmpty(),
-//   ]),
-//   fetchAuthorizedRequiredDeviceById(param("id")),
-//   async (request: Request, response: Response) => {
-//     try {
-//       const { longitude, latitude } = request.body.location;
-//       const device = response.locals.device;
-//       const deviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
-//         where: {
-//           uuid: device.uuid,
-//           DeviceId: device.DeviceId,
-//           GroupId: device.GroupId,
-//         },
-//         order: [["fromDateTime", "DESC"]],
-//       });
-
-//       if (deviceHistoryEntry) {
-//         await deviceHistoryEntry.update({
-//           location: {
-//             longitude,
-//             latitude,
-//           },
-//         });
-
-//         return successResponse(response, "Device location updated successfully");
-//       } else {
-//         return successResponse(
-//           response,
-//           "No device history settings entry found to update location"
-//         );
-//       }
-//     } catch (e) {
-//       console.log(e);
-//     }
-//   }
-// );
-
 
 /**
  * @api {get} /api/v1/devices/:deviceId/settings Get device settings
@@ -1215,7 +1150,7 @@ app.get(
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
-          location: device.location,
+          location: { [Op.ne]: null },
         },
         order: [["fromDateTime", "DESC"]],
       });
@@ -1230,6 +1165,7 @@ app.get(
     }
   }
 );
+
   /**
    * @api {patch} /api/v1/devices/:deviceId/fix-location Fix a device location at a given time
    * @apiName FixupDeviceLocationAtTimeById
