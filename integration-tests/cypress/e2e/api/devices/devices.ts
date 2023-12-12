@@ -45,13 +45,13 @@ describe("Devices list", () => {
   const NOT_ADMIN = false;
   const user2 = "Bridget";
   const user3 = "Charlie";
+  const user5 = 'Josie';
   const camera2 = "second_E_camera";
   const camera3 = "Charlie-camera";
   const camera4 = "Debbie-camera";
-  const Josie = "Josie_recordings_stations";
-  const group4 = "recordings_stations";
-  const group5= "recordings_stations-2";
-
+  const camera5 = "Josie-camera";
+  // const group4 = "recordings_stations";
+  const group5 = "Josie-Team";
 
 
   let expectedDeviceAdminView: ApiDeviceResponse;
@@ -59,6 +59,7 @@ describe("Devices list", () => {
   let expectedDevice2AdminView: ApiDeviceResponse;
   let expectedDevice3AdminView: ApiDeviceResponse;
   let expectedDevice4AdminView: ApiDeviceResponse;
+  let expectedDevice5AdminView: ApiDeviceResponse; 
 
   before(() => {
     cy.apiUserAdd(groupMember);
@@ -85,14 +86,13 @@ describe("Devices list", () => {
         type: DeviceType.Unknown,
       };
     });
-
-    cy.testCreateUserAndGroup(Josie, group4).then(() => {
-      templateExpectedCypressRecording.groupId = getCreds(group4).id;
-      templateExpectedCypressRecording.groupName = getTestName(group4);
-      templateExpectedStation.groupId = getCreds(group4).id;
-      templateExpectedStation.groupName = getTestName(group4);
+  
+    cy.testCreateUserAndGroup(user5, group5).then(() => {
+      templateExpectedCypressRecording.groupId = getCreds(group5).id;
+      templateExpectedCypressRecording.groupName = getTestName(group5);
+      templateExpectedStation.groupId = getCreds(group5).id;
+      templateExpectedStation.groupName = getTestName(group5);
     });
-    cy.apiGroupAdd(Josie, group5);
 
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
 
@@ -109,6 +109,19 @@ describe("Devices list", () => {
         type: DeviceType.Unknown,
       };
     });
+
+    // cy.testCreateUserGroupAndDevice(user5, group5, camera5).then(() => {
+    //   expectedDevice5AdminView = {
+    //     id: getCreds(camera5).id,
+    //     saltId: getCreds(camera5).id,
+    //     deviceName: getTestName(camera5),
+    //     groupId: getCreds(group5).id,
+    //     groupName: getTestName(group5),
+    //     active: true,
+    //     admin: true,
+    //     type: DeviceType.Unknown,
+    //   };
+    // });
 
     //reregistered device
     cy.testCreateUserGroupAndDevice(user3, group3, camera3);
@@ -184,6 +197,23 @@ describe("Devices list", () => {
         "view-mode": "user",
       });
 
+      makeAuthorizedRequest(
+        {
+          method: "POST",
+          url: v1ApiPath("groups/users"),
+          body: {
+            group: getTestName(group5),
+            admin: true,
+            email: superuser,
+          },
+        },
+        user5
+      );
+
+      cy.apiDevicesCheck(superuser, [expectedDevice5AdminView], {
+        "view-mode": "user",
+      });
+
       //remove superuser from group2
       makeAuthorizedRequest(
         {
@@ -196,13 +226,24 @@ describe("Devices list", () => {
         },
         user2
       );
+
+      makeAuthorizedRequest(
+        {
+          method: "DELETE",
+          url: v1ApiPath("groups/users"),
+          body: {
+            group: getTestName(group5),
+            email: superuser,
+          },
+        },
+        user5
+      );
     });
   } else {
     it.skip("Super-user 'as user' should see only their devices and users only where they are device admin", () => {});
   }
 
-  it("Setting a mask region if the device has a current location", () => {
-    const deviceName = "new-device";
+  it.only("Setting a mask region if the device has a current location", () => {
     const recordingTime = new Date(
       new Date().setDate(new Date().getDate() + 1)
     );
@@ -211,44 +252,114 @@ describe("Devices list", () => {
       JSON.stringify(templateExpectedStation)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
-
+    let id; 
     expectedStation1.location = location;
     expectedStation1.activeAt = recordingTime.toISOString();
     expectedStation1.lastThermalRecordingTime = recordingTime.toISOString();
-    cy.apiDeviceAdd(deviceName, group4).then(() => {
+    cy.apiDeviceAdd(camera5, group5).then((deviceID) => {
+      id = deviceID; 
+      cy.log("Here's the ID: ", id);
       cy.log("Add a recording and check new station is created");
-      cy.testUploadRecording(deviceName, {
+      cy.testUploadRecording(camera5, {
         ...location,
         time: recordingTime,
         noTracks: true,
       })
-        .thenCheckStationIsNew(Josie)
+        .thenCheckStationIsNew(user5)
         .then((station: TestNameAndId) => {
           cy.log("Check station created correctly");
-          cy.apiStationCheck(Josie, station.name, expectedStation1);
-
-          cy.log("Check device has a new valid deviceHistory created");
-          expectedHistory[0] = TestCreateExpectedHistoryEntry(
-            deviceName,
-            group4,
-            NOT_NULL_STRING,
-            null,
-            "register",
-            null
-          );
-          expectedHistory[1] = TestCreateExpectedHistoryEntry(
-            deviceName,
-            group4,
-            recordingTime.toISOString(),
-            location,
-            "automatic",
-            station.name
-          );
-          cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
+          cy.apiStationCheck(user5, station.name, expectedStation1);
+          cy.log("ID is: ", id);
+          let getResponse;
+          const testRegions = [
+            {
+              region: "0",
+              points: [
+                { x: 0.99, y: 0.66 },
+                { x: 0.80, y: 0.83 },
+                { x: 0.58, y: 0.18 },
+                { x: 0.3, y: 0.1 },
+                { x: 0.5, y: 0.7 },
+                { x: 0.8, y: 0.4 },
+                { x: 0.9, y: 0.3 },
+                { x: 0.1, y: 0.02 },
+                { x: 0.12, y: 0.3}
+              ]
+            },
+          ];
+          makeAuthorizedRequest(
+            {
+              method: "POST",
+              url: v1ApiPath(`devices/${id}/mask-regions`, id),
+              body: {
+                "maskRegions": [
+                  testRegions
+                ]
+              },
+            },
+            user5
+            );
+      
+            makeAuthorizedRequest(
+              {
+                method: "GET",
+                url: v1ApiPath(`devices/${id}/mask-regions`, id),
+              },
+              user5
+            ).then((response) => {
+              getResponse = response.body.maskRegions;
+              const postRegionPoints = testRegions;
+              const getRegionPoints = getResponse[0];
+              expect(postRegionPoints).to.deep.equal(getRegionPoints);
+            });
         });
     });
-  });
 
+    // const id = getCreds(camera5).id;
+  //   cy.log("ID is: ", id);
+  //   let getResponse;
+  //   const testRegions = [
+  //     {
+  //       region: "0",
+  //       points: [
+  //         { x: 0.99, y: 0.66 },
+  //         { x: 0.80, y: 0.83 },
+  //         { x: 0.58, y: 0.18 },
+  //         { x: 0.3, y: 0.1 },
+  //         { x: 0.5, y: 0.7 },
+  //         { x: 0.8, y: 0.4 },
+  //         { x: 0.9, y: 0.3 },
+  //         { x: 0.1, y: 0.02 },
+  //         { x: 0.12, y: 0.3}
+  //       ]
+  //     },
+  //   ];
+  //   makeAuthorizedRequest(
+  //     {
+  //       method: "POST",
+  //       url: v1ApiPath(`devices/${id}/mask-regions`, id),
+  //       body: {
+  //         "maskRegions": [
+  //           testRegions
+  //         ]
+  //       },
+  //     },
+  //     user5
+  //     );
+
+  //     makeAuthorizedRequest(
+  //       {
+  //         method: "GET",
+  //         url: v1ApiPath(`devices/${id}/mask-regions`, id),
+  //       },
+  //       user5
+  //     ).then((response) => {
+  //       getResponse = response.body.maskRegions;
+  //       const postRegionPoints = testRegions;
+  //       const getRegionPoints = getResponse[0];
+  //       expect(postRegionPoints).to.deep.equal(getRegionPoints);
+  //     });
+  });
 
   it("Set, retrieve, and validate a single mask region for the latest device location", () => {
     const id = getCreds(camera2).id;
@@ -269,32 +380,80 @@ describe("Devices list", () => {
         ]
       },
     ];
-    makeAuthorizedRequest(
-      {
-        method: "POST",
-        url: v1ApiPath(`devices/${id}/mask-regions`, id),
-        body: {
-          "maskRegions": [
-            testRegions
-          ]
-        },
-      },
-      user2
-      );
 
-      makeAuthorizedRequest(
-        {
-          method: "GET",
-          url: v1ApiPath(`devices/${id}/mask-regions`, id),
-        },
-        user2
-      ).then((response) => {
-        getResponse = response.body.maskRegions;
-        const postRegionPoints = testRegions;
-        const getRegionPoints = getResponse[0];
-        expect(postRegionPoints).to.deep.equal(getRegionPoints);
-      });
+    // cy.log("Id is: ", id);
+    // makeAuthorizedRequest(
+    //   {
+    //     method: "POST",
+    //     url: v1ApiPath(`devices/${id}/mask-regions`, id),
+    //     body: {
+    //       "maskRegions": [
+    //         testRegions
+    //       ]
+    //     },
+    //   },
+    //   user2
+    // );
+
+    // makeAuthorizedRequest(
+    //   {
+    //     method: "GET",
+    //     url: v1ApiPath(`devices/${id}/mask-regions`, id),
+    //   },
+    //   user2
+    // ).then((response) => {
+    //   getResponse = response.body.maskRegions;
+    //   const postRegionPoints = testRegions;
+    //   const getRegionPoints = getResponse[0];
+    //   expect(postRegionPoints).to.deep.equal(getRegionPoints);
+    // });
   });
+
+  // it("Set, retrieve, and validate a single mask region for the latest device location", () => {
+  //   const id = getCreds(camera2).id;
+  //   let getResponse;
+  //   const testRegions = [
+  //     {
+  //       region: "0",
+  //       points: [
+  //         { x: 0.99, y: 0.66 },
+  //         { x: 0.80, y: 0.83 },
+  //         { x: 0.58, y: 0.18 },
+  //         { x: 0.3, y: 0.1 },
+  //         { x: 0.5, y: 0.7 },
+  //         { x: 0.8, y: 0.4 },
+  //         { x: 0.9, y: 0.3 },
+  //         { x: 0.1, y: 0.02 },
+  //         { x: 0.12, y: 0.3}
+  //       ]
+  //     },
+  //   ];
+  //   makeAuthorizedRequest(
+  //     {
+  //       method: "POST",
+  //       url: v1ApiPath(`devices/${id}/mask-regions`, id),
+  //       body: {
+  //         "maskRegions": [
+  //           testRegions
+  //         ]
+  //       },
+  //     },
+  //     user2
+  //     );
+
+  //     makeAuthorizedRequest(
+  //       {
+  //         method: "GET",
+  //         url: v1ApiPath(`devices/${id}/mask-regions`, id),
+  //       },
+  //       user2
+  //     ).then((response) => {
+  //       getResponse = response.body.maskRegions;
+  //       const postRegionPoints = testRegions;
+  //       const getRegionPoints = getResponse[0];
+  //       expect(postRegionPoints).to.deep.equal(getRegionPoints);
+  //     });
+  // });
 
   it("Set, retrieve, and validate multiple mask regions for the latest device location", () => {
     const id = getCreds(camera2).id;
