@@ -2,4 +2,4 @@
 # cron.d/cacophony-api-rat-thresholds
 #
 # Every day at 10
-# 0 10 * * * root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader ./scripts/ratthreshold.js) 2>&1 | logger --tag rat-threshold
+0 10 * * * root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader ./scripts/ratthreshold.js) 2>&1 | logger --tag rat-threshold
