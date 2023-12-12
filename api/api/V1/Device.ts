@@ -1141,16 +1141,22 @@ app.get(
   extractJwtAuthorizedUser,
   validateFields([
     idOf(param("id")),
+    query("at-time").isISO8601().toDate().optional(),
   ]),
   fetchAuthorizedRequiredDeviceById(param("id")),
   async (request: Request, response: Response) => {
     try {
+      const atTime =
+      (request.query["at-time"] &&
+        (request.query["at-time"] as unknown as Date)) ||
+      new Date();
       const device = response.locals.device;
       const deviceSettings: DeviceHistory | null = await models.DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
+          fromDateTime: { [Op.lte]: atTime },
         },
         order: [["fromDateTime", "DESC"]],
       });
