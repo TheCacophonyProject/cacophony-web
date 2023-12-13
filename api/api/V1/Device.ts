@@ -1101,11 +1101,17 @@ app.post(
       });
 
       if (deviceHistoryEntry) {
-        await deviceHistoryEntry.update({
+        await models.DeviceHistory.update({
           settings: {
             ...deviceHistoryEntry.settings,
             maskRegions: maskRegions,
-          },
+          }
+        }, {
+          where: {
+            fromDateTime: deviceHistoryEntry.fromDateTime,
+            uuid: device.uuid,
+            GroupId: device.GroupId,
+          }
         });
 
         return successResponse(response, "Mask regions added successfully");
@@ -1146,6 +1152,8 @@ app.get(
   fetchAuthorizedRequiredDeviceById(param("id")),
   async (request: Request, response: Response) => {
     try {
+
+     
       const atTime = request.query["at-time"] as unknown as Date;
       const device = response.locals.device;
       const deviceSettings: DeviceHistory | null = await models.DeviceHistory.findOne({

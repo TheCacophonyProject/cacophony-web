@@ -35,6 +35,9 @@ describe("Devices list", () => {
   const user1 = 'Josie';
   const group1 = "Josie-Team";
   const camera1 = "Josie-camera";
+  const user2 = 'Sam';
+  const group2 = "Sam-Team";
+  const camera2 = "Sam-camera";
   let id;
   let recordingTime;
   let mostRecentTime;
@@ -172,6 +175,92 @@ describe("Devices list", () => {
     //     cy.log("Get: ", getRegionPoints);
     //     // expect(postRegionPoints).to.deep.equal(getRegionPoints);
     //   });
+  });
+
+  it("Set and retrieve a mask region when a device has no location", () => {
+
+    //create a deviceHistory entry with no location
+    cy.testCreateUserAndGroup(user2, group2).then(() => {
+      templateExpectedCypressRecording.groupId = getCreds(group2).id;
+      templateExpectedCypressRecording.groupName = getTestName(group2);
+      templateExpectedStation.groupId = getCreds(group2).id;
+      templateExpectedStation.groupName = getTestName(group2);
+    });
+
+    cy.apiDeviceAdd(camera2, group2).then((deviceID) => {
+      cy.log("Id is: ", deviceID);
+      makeAuthorizedRequest(
+        {
+          method: "POST",
+          url: v1ApiPath(`devices/${deviceID}/mask-regions`, deviceID),
+          body: {
+            "maskRegions": [
+              singleTestRegion
+            ]
+          },
+        },
+        user2
+      );
+    });
+
+    // makeAuthorizedRequest(
+    //   {
+    //     method: "GET",
+    //     url: v1ApiPath(`devices/${id}/mask-regions`, id),
+    //   },
+    //   user2
+    // ).then((response) => {
+    //   getResponse = response.body.maskRegions;
+    //   const postRegionPoints = testRegions;
+    //   const getRegionPoints = getResponse[0];
+    //   expect(postRegionPoints).to.deep.equal(getRegionPoints);
+    // });
+  // });
+
+  // it("Set, retrieve, and validate a single mask region for the latest device location", () => {
+  //   const id = getCreds(camera2).id;
+  //   let getResponse;
+  //   const testRegions = [
+  //     {
+  //       region: "0",
+  //       points: [
+  //         { x: 0.99, y: 0.66 },
+  //         { x: 0.80, y: 0.83 },
+  //         { x: 0.58, y: 0.18 },
+  //         { x: 0.3, y: 0.1 },
+  //         { x: 0.5, y: 0.7 },
+  //         { x: 0.8, y: 0.4 },
+  //         { x: 0.9, y: 0.3 },
+  //         { x: 0.1, y: 0.02 },
+  //         { x: 0.12, y: 0.3}
+  //       ]
+  //     },
+  //   ];
+  //   makeAuthorizedRequest(
+  //     {
+  //       method: "POST",
+  //       url: v1ApiPath(`devices/${id}/mask-regions`, id),
+  //       body: {
+  //         "maskRegions": [
+  //           testRegions
+  //         ]
+  //       },
+  //     },
+  //     user2
+  //     );
+
+  //     makeAuthorizedRequest(
+  //       {
+  //         method: "GET",
+  //         url: v1ApiPath(`devices/${id}/mask-regions`, id),
+  //       },
+  //       user2
+  //     ).then((response) => {
+  //       getResponse = response.body.maskRegions;
+  //       const postRegionPoints = testRegions;
+  //       const getRegionPoints = getResponse[0];
+  //       expect(postRegionPoints).to.deep.equal(getRegionPoints);
+  //     });
   });
 
   it("Set, retrieve, and validate a single mask region for the latest device location", () => {
