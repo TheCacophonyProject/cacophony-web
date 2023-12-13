@@ -1095,11 +1095,10 @@ app.post(
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
-          location: { [Op.ne]: null },
+          // location: { [Op.ne]: null },
         },
         order: [["fromDateTime", "DESC"]],
       });
-
       if (deviceHistoryEntry) {
         await models.DeviceHistory.update({
           settings: {
@@ -1160,7 +1159,7 @@ app.get(
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
-          location: { [Op.ne]: null },
+          // location: { [Op.ne]: null },
           fromDateTime: { [Op.lte]: atTime },
         },
         order: [["fromDateTime", "DESC"]],

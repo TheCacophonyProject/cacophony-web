@@ -140,9 +140,8 @@ describe("Devices list", () => {
 
   it.only("Set and retrieve a mask region for the latest device location", () => {
     let getResponse;
-    cy.log("Id is: ", id);
     mostRecentTime = new Date(
-      new Date().setDate(new Date().getDate() + 8)
+      new Date().setDate(new Date().getDate() + 5)
     );
     cy.log("Time: ", mostRecentTime.toISOString().toString());
     
@@ -181,7 +180,8 @@ describe("Devices list", () => {
     });
   });
 
-  it("Set and retrieve a mask region when a device has no location", () => {
+  it.only("Set and retrieve a mask region when a device has no location", () => {
+    let getResponse;
     //create a deviceHistory entry with no location
     cy.testCreateUserAndGroup(user2, group2).then(() => {
       templateExpectedCypressRecording.groupId = getCreds(group2).id;
@@ -191,7 +191,14 @@ describe("Devices list", () => {
     });
 
     cy.apiDeviceAdd(camera2, group2).then((deviceID) => {
-      cy.log("Id is: ", deviceID);
+      mostRecentTime = new Date(
+        new Date().setDate(new Date().getDate() + 5)
+      );
+      cy.log("Time: ", mostRecentTime.toISOString().toString());
+      const params = new URLSearchParams();
+      params.append("at-time", mostRecentTime.toISOString().toString());
+      const queryString = params.toString();
+      const apiUrl = v1ApiPath(`devices/${deviceID}/mask-regions`);
       makeAuthorizedRequest(
         {
           method: "POST",
@@ -203,7 +210,20 @@ describe("Devices list", () => {
           },
         },
         user2
-      );
+      ).then(() => {
+        makeAuthorizedRequest(
+          {
+            method: "GET",
+            url: `${apiUrl}?${queryString}`,
+          },
+          user2
+        ).then((response) => {
+          getResponse = response.body.maskRegions;
+          const postRegionPoints = singleTestRegion;
+          const getRegionPoints = getResponse[0];
+          expect(postRegionPoints).to.deep.equal(getRegionPoints);
+        });
+      });
     });
 
     // makeAuthorizedRequest(
