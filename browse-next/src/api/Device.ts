@@ -380,11 +380,11 @@ export const getReferenceImageForDeviceAtCurrentLocation = (
   ) as Promise<FetchResult<any>>;
 };
 
-export const getMaskRegionsForDevice = (
-  deviceId: DeviceId
-) => {
+export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime: Date) => {
+  const params = new URLSearchParams();
+  params.append("at-time", atTime.toISOString());
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/mask-regions`
+    `/api/v1/devices/${deviceId}/mask-regions?${params}`
   ) as Promise<FetchResult<any>>;
 };
 
