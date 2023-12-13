@@ -1051,6 +1051,7 @@ export default function (app: Application, baseUrl: string) {
             ...newSettings,
           },
         });
+        
         return successResponse(response, { key, size });
       } else {
         // We can't add an image, because we don't have a device location.
