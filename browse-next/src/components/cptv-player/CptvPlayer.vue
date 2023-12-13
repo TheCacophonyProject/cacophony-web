@@ -461,10 +461,10 @@ const addFrame = (frame: CptvFrame) => {
 };
 
 const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
-  if (frameNumToRender > frames.length + 2 && !totalFrames.value) {
+  if (frameNumToRender > frames.length + 2) {
     buffering.value = true;
   }
-  while (frames.length <= frameNumToRender && !totalFrames.value) {
+  while (frames.length <= frameNumToRender) {
     seekingInProgress.value = true;
     const frame = await cptvDecoder.getNextFrame();
     if (frame === null) {
@@ -475,16 +475,15 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       }
       break;
     }
-    totalFrames.value = await cptvDecoder.getTotalFrames();
     if (!totalFrames.value) {
-      // If we got total frames, this frame is a duplicate.
-      addFrame(frame);
+      totalFrames.value = await cptvDecoder.getTotalFrames();
     }
+    addFrame(frame);
   }
   seekingInProgress.value = false;
   buffering.value = false;
 };
-
+let cNum = 0;
 const setCurrentFrameAndRender = (
   force: boolean,
   frameNumToRender?: number
@@ -500,6 +499,9 @@ const setCurrentFrameAndRender = (
   }
   if (frameData) {
     frameHeader.value = frameData.meta;
+    if (cNum !== frameNumToRender) {
+      cNum = frameNumToRender;
+    }
     renderFrame(frameData, frameNumToRender, force);
   }
 };
@@ -511,6 +513,7 @@ const seekToSpecifiedFrameAndRender = async (
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
   }
+
   await makeSureWeHaveTheFrame(frameNumToRender);
   const gotFrame = frameNumToRender < frames.length;
   if (gotFrame) {
@@ -1617,7 +1620,6 @@ watch(
 );
 
 const currentRecordingType = ref<"cptv" | "image">("cptv");
-
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
   streamLoadError.value = null;
@@ -1674,6 +1676,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         thisCanvas.height = thisHeader.height;
       }
     }
+
     while (!recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
@@ -1700,6 +1703,16 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
           const dy = (canvasHeight / pixelRatio.value - dh) / 2;
           const dw = canvasWidth / pixelRatio.value;
           ctx.drawImage(imageBitmap, 0, dy, dw, dh);
+          for (const track of recording?.tracks) {
+            const pos = { ...track.positions[0] };
+            // convert from bottom left, to top left origin
+            pos.y = (1 - (pos.y + pos.height)) * dh + dy;
+            pos.x = pos.x * dw;
+            pos.height = pos.height * dh;
+            pos.width = pos.width * dw;
+            ctx.strokeStyle = "green";
+            ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
+          }
         }
       }
     } catch (e) {

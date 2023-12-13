@@ -679,7 +679,7 @@ export default function (app: Application, baseUrl: string) {
       const device = response.locals.device;
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
-          uuid: device.uuid,
+          DeviceId: device.id,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
           fromDateTime: { [Op.lte]: atTime },
@@ -1000,7 +1000,7 @@ export default function (app: Application, baseUrl: string) {
       const previousDeviceHistoryEntry: DeviceHistory =
         await models.DeviceHistory.findOne({
           where: {
-            uuid: device.uuid,
+            DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
             fromDateTime: { [Op.lt]: atTime },
@@ -1463,7 +1463,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {Number} deviceId ID of the device.
+   * @apiParam {Number} deviceId ID of the device.
    * @apiBody {Number} scheduleId ID of the schedule to assign to the device.
    * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
    * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
@@ -1481,7 +1481,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(),
       query("view-mode").optional().equals("user"),
     ]),
-    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
     (request, response, next) => {
       if (
@@ -1532,7 +1532,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(),
       query("view-mode").optional().equals("user"),
     ]),
-    fetchAuthorizedRequiredDeviceById(body("deviceId")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
     (request, response, next) => {
       if (
@@ -1879,7 +1879,7 @@ export default function (app: Application, baseUrl: string) {
     //  not available in production builds.
 
     /**
-     * @api {post} /api/v1/:deviceId/history Get device history
+     * @api {post} /api/v1/devices/:deviceId/history Get device history
      * @apiName history
      * @apiGroup Device
      *

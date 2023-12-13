@@ -27,7 +27,7 @@ import config from "@config";
 import type { Recording, RecordingQueryOptions } from "@models/Recording.js";
 import type { Event, QueryOptions } from "@models/Event.js";
 import type { User } from "@models/User.js";
-import Sequelize, { Op } from "sequelize";
+import Sequelize, { Op, QueryTypes } from "sequelize";
 import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
 import { DeviceSummary, Visit } from "./Visits.js";
 import type { Station } from "@models/Station.js";
@@ -228,7 +228,6 @@ export async function getCPTVFrames(
     const stream = (
       await openS3().getObject(recording.rawFileKey)
     ).Body.transformToWebStream();
-    //work around for error in cptv-decoder
     const decoder = new CptvDecoder();
     const result = await decoder.initWithReadableStream(
       stream as ReadableStream
@@ -242,16 +241,20 @@ export async function getCPTVFrames(
     let currentFrame = 0;
     const frames: Record<number, CptvFrame> = {};
     log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
+    const header = await decoder.getHeader();
+    const totalFrames = header.totalFrames || null;
+    let numFrames = 0;
     while (!finished) {
       const frame: CptvFrame | null = await decoder.getNextFrame();
       if (frame && frame.meta.isBackgroundFrame) {
         // Skip over background frame without incrementing counter.
         continue;
       }
-      finished = frame === null || (await decoder.getTotalFrames()) !== null;
+      finished = frame === null || (totalFrames && numFrames === totalFrames);
       if (frameNumbers.has(currentFrame)) {
         frameNumbers.delete(currentFrame);
         frames[currentFrame] = frame;
+        numFrames = Object.values(frames).length;
       }
       if (frameNumbers.size === 0) {
         break;
@@ -294,6 +297,7 @@ export async function saveThumbnailInfo(
     }
   } else {
     frames = await getCPTVFrames(recording, frameNumbers);
+    log.error("GOT CPTV Frames %s", Object.values(frames).length);
     if (!frames) {
       throw new Error(`Failed to extract frames ${frameNumbers}`);
     }
@@ -978,6 +982,123 @@ export async function getTrackTags(
     // TODO - The exact AI model you will need data attribute from track tag
     labeller: row.UserId ? `id_${row.UserId.toString()}` : "AI",
   }));
+}
+interface TrackTagsCountOptions {
+  models: ModelsDictionary;
+  userId: string;
+  viewAsSuperUser: boolean;
+  includeAI: boolean;
+  recordingType: RecordingType;
+  exclude: number;
+  offset: number;
+  limit: number;
+  groupId?: number;
+}
+
+function buildTrackTagCountSQL(options: TrackTagsCountOptions): string {
+  const { viewAsSuperUser, includeAI, groupId } = options;
+
+  // Array to hold different parts of the SQL query
+  const sqlParts: string[] = [];
+
+  // Basic SQL structure
+  sqlParts.push(`
+  WITH FilteredTags AS (
+    SELECT
+      TT."what",
+      TT."UserId",
+      U."userName",
+      R."type",
+      G."id" AS "groupId",
+      G."groupName",
+      S."id" AS "stationId",
+      S."name" AS "stationName",
+      D."id" AS "deviceId",
+      D."deviceName"
+    FROM "TrackTags" TT
+    INNER JOIN "Users" U ON TT."UserId" = U."id"
+    INNER JOIN "Tracks" T ON TT."TrackId" = T."id"
+    INNER JOIN "Recordings" R ON T."RecordingId" = R."id"
+    INNER JOIN "Groups" G ON R."GroupId" = G."id"
+    INNER JOIN "Devices" D ON R."DeviceId" = D."id"
+    INNER JOIN "Stations" S ON R."StationId" = S."id"
+  `);
+
+  // Adding condition for user group check if not a super user
+  if (!viewAsSuperUser) {
+    sqlParts.push(
+      `INNER JOIN "GroupUsers" GU ON G."id" = GU."GroupId" AND GU."UserId" = :userId`
+    );
+  }
+
+  // Adding WHERE clause and initial conditions
+  sqlParts.push(`
+    WHERE R."type" = :recordingType
+    AND TT."what" NOT IN (:exclude)
+  `);
+
+  if (!includeAI) {
+    sqlParts.push(`AND TT."UserId" IS NOT NULL`);
+  }
+
+  if (groupId) {
+    sqlParts.push(`AND G."id" = :groupId`);
+  }
+
+  // Completing the CTE and starting the main query
+  sqlParts.push(`
+  )
+  SELECT
+    "what",
+    "UserId",
+    "userName",
+    COUNT("what") AS "trackTagCount",
+    "groupId",
+    "groupName",
+    "stationId",
+    "stationName",
+    "deviceId",
+    "deviceName"
+  FROM FilteredTags
+  GROUP BY
+    "what",
+    "UserId",
+    "userName",
+    "groupId",
+    "groupName",
+    "stationId",
+    "stationName",
+    "deviceId",
+    "deviceName"
+  `);
+
+  if (options.limit) {
+    sqlParts.push(`LIMIT :limit`);
+  }
+
+  if (options.offset) {
+    sqlParts.push(`OFFSET :offset`);
+  }
+
+  // Join all parts to form the final SQL query
+  return sqlParts.join(" ");
+}
+
+export async function getTrackTagsCount(options: TrackTagsCountOptions) {
+  const sql = buildTrackTagCountSQL(options);
+  const replacements = {
+    recordingType: options.recordingType,
+    exclude: options.exclude,
+    limit: options.limit,
+    offset: options.offset,
+    userId: options.userId,
+    groupId: options.groupId,
+  };
+  const result = await options.models.sequelize.query(sql, {
+    replacements,
+    type: QueryTypes.SELECT,
+  });
+  return result;
 }
 
 // Returns a promise for report rows for a set of recordings. Takes

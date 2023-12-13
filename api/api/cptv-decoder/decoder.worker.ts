@@ -19,7 +19,10 @@ class Unlocker {
 }
 
 // For use in nodejs to wrap an already loaded array buffer into a Reader interface
-const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): Reader => {
+const FakeReader = (
+  bytes: Uint8Array,
+  maxChunkSize = 0
+): ReadableStreamDefaultReader => {
   let state: { offsets: number[]; offset: number; bytes?: Uint8Array } = {
     offsets: [],
     offset: 0,
@@ -61,13 +64,12 @@ const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): Reader => {
         resolve();
       });
     },
+    releaseLock() {},
+    closed: new Promise((resolve) => {
+      resolve(undefined);
+    }),
   };
 };
-
-interface Reader {
-  cancel: () => Promise<void>;
-  read: () => Promise<{ value: Uint8Array; done: boolean }>;
-}
 
 let wasmBytes: Buffer;
 class CptvDecoderInterface {
@@ -76,7 +78,7 @@ class CptvDecoderInterface {
   private consumed = false;
   private prevFrameHeader: CptvFrameHeader | null = null;
   private response: Response | null = null;
-  private reader: Reader | null = null;
+  private reader: ReadableStreamDefaultReader | null = null;
   private playerContext: PlayerContext | null = null;
   private expectedSize = 0;
   private inited = false;
@@ -89,7 +91,7 @@ class CptvDecoderInterface {
     this.consumed = false;
     this.inited = false;
     this.prevFrameHeader = null;
-    this.playerContext && this.playerContext.ptr && this.playerContext.free();
+    this.playerContext && this.playerContext.free();
     this.reader && this.reader.cancel();
     this.streamError = null;
     this.reader = null;
@@ -97,7 +99,7 @@ class CptvDecoderInterface {
   }
 
   hasValidContext() {
-    return this.playerContext && this.playerContext.ptr;
+    return !!this.playerContext;
   }
 
   async initWithFileBytes(fileBytes: Uint8Array) {
@@ -138,7 +140,7 @@ class CptvDecoderInterface {
     const unlocker = new Unlocker();
     await this.lockIsUncontended(unlocker);
     this.locked = true;
-    this.reader = stream.getReader() as Reader;
+    this.reader = stream.getReader() as ReadableStreamDefaultReader;
     let result;
     try {
       if (!wasmBytes) {
@@ -179,17 +181,9 @@ class CptvDecoderInterface {
     this.locked = true;
     if (this.hasValidContext()) {
       try {
-        this.playerContext = await CptvPlayerContext.fetchNextFrame(
-          this.playerContext as PlayerContext
-        );
-      } catch (e) {
-        this.streamError = e as string;
-      }
-      if (
-        !this.playerContext ||
-        (this.playerContext && !this.playerContext.ptr)
-      ) {
-        //debugger;
+        await (this.playerContext as PlayerContext).fetchNextFrame();
+      } catch (e: unknown) {
+        this.streamError = e as string | null;
       }
     } else {
       console.warn("Fetch next failed");
@@ -237,10 +231,7 @@ class CptvDecoderInterface {
       await this.lockIsUncontended(unlocker);
       this.locked = true;
       try {
-        this.playerContext = await CptvPlayerContext.countTotalFrames(
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          this.playerContext!
-        );
+        await (this.playerContext as PlayerContext).countTotalFrames();
       } catch (e) {
         this.streamError = e as string;
       }
@@ -312,9 +303,7 @@ class CptvDecoderInterface {
       const unlocker = new Unlocker();
       await this.lockIsUncontended(unlocker);
       this.locked = true;
-      this.playerContext = await CptvPlayerContext.fetchHeader(
-        this.playerContext as PlayerContext
-      );
+      await (this.playerContext as PlayerContext).fetchHeader();
       const header = (this.playerContext as PlayerContext).getHeader();
       if (header === "Unable to parse header") {
         this.streamError = header;

@@ -52,7 +52,10 @@
 <script lang="ts">
 import api from "@api";
 import { DeviceType, RecordingType } from "@typedefs/api/consts";
-import { CptvDecoder, CptvHeader } from "cptv-decoder";
+import {
+  CptvDecoder,
+  CptvHeader,
+} from "../components/Video/cptv-decoder/decoder.ts";
 
 export default {
   name: "ManualRecordingUploads",

@@ -97,6 +97,7 @@ import {
   bulkDelete,
   getThumbnail,
   getTrackTags,
+  getTrackTagsCount,
   queryRecordings,
   queryVisits,
   reportRecordings,
@@ -677,7 +678,7 @@ export default (app: Application, baseUrl: string) => {
         models,
         response.locals.requestUser.id,
         type as RecordingType,
-        !!countAll,
+        Boolean(countAll),
         {
           viewAsSuperUser,
           where,
@@ -1074,7 +1075,7 @@ export default (app: Application, baseUrl: string) => {
       query("exclude").default([]).optional().isArray(),
       query("includeAI").default(false).isBoolean(),
       integerOf(query("offset")).optional(),
-      integerOf(query("limit").default(50000)),
+      integerOf(query("limit").optional()),
       query("type")
         .default("thermalRaw")
         .optional()
@@ -1279,6 +1280,75 @@ export default (app: Application, baseUrl: string) => {
     }
   );
 
+  /**
+   * @api {get} /api/v1/recordings/track-tags/count Get track tag counts
+   * @apiName GetTrackTagCounts
+   * @apiGroup Tracks
+   * @apiDescription Fetches track tag counts grouped by tag, group, station, and user.
+   *                 Filters can be applied to narrow down the results.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam (Query) {String} [type=thermalRaw] Type of recordings (thermalRaw/audio).
+   * @apiParam (Query) {Boolean} [includeAI=false] Include AI tags.
+   * @apiParam (Query) {String} [view-mode] View mode. Allows a super-user to view as a regular user.
+   * @apiParam (Query) {String[]} [exclude] Exclude specified tags.
+   * @apiParam (Query) {Number} [offset] Zero-based page number. Use '0' to get the first page.
+   * @apiParam (Query) {Number} [limit] Max number of records to be returned.
+   * @apiParam (Query) {Number} [groupId] Optional group ID to filter results by a specific group.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} rows List of track tag counts.
+   * @apiSuccess {String} rows.label Name of the track tag.
+   * @apiSuccess {Number} rows.userId User ID of the user who tagged or AI.
+   * @apiSuccess {Object} rows.group Group details.
+   * @apiSuccess {Number} rows.group.id ID of the group.
+   * @apiSuccess {String} rows.group.name Name of the group.
+   * @apiSuccess {Object} rows.station Station details.
+   * @apiSuccess {Number} rows.station.id ID of the station.
+   * @apiSuccess {String} rows.station.name Name of the station.
+   * @apiSuccess {Object} rows.device Device details.
+   * @apiSuccess {Number} rows.device.id ID of the device.
+   * @apiSuccess {String} rows.device.name Name of the device.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/track-tags/count`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("exclude").default([]).optional().isArray(),
+      query("includeAI").default(false).isBoolean(),
+      integerOf(query("offset")).optional(),
+      integerOf(query("limit").optional()),
+      query("type")
+        .default("thermalRaw")
+        .optional()
+        .isIn(Object.values(RecordingType)),
+      query("view-mode").optional().equals("user"),
+      integerOf(query("groupId")).optional(), // Added validation for groupId
+    ]),
+    parseJSONField(query("exclude")),
+    parseJSONField(query("includeAI")),
+    async (request: Request, response: Response) => {
+      const result = await getTrackTagsCount({
+        models: models,
+        userId: response.locals.requestUser.id,
+        viewAsSuperUser: response.locals.viewAsSuperUser,
+        includeAI: Boolean(request.query.includeAI),
+        recordingType: request.query.type.toString() as RecordingType,
+        exclude: response.locals.exclude,
+        offset:
+          request.query.offset && parseInt(request.query.offset as string),
+        limit: request.query.limit && parseInt(request.query.limit as string),
+        groupId:
+          request.query.groupId && parseInt(request.query.groupId as string), // Added groupId
+      });
+      return successResponse(response, "Completed query.", {
+        rows: result,
+      });
+    }
+  );
   /**
    * @api {get} /api/v1/recordings/raw/:id Get a raw recording stream
    * @apiName GetRecordingRawFile

@@ -505,7 +505,7 @@ export default defineComponent({
     const filterHuman = ref(false);
 
     const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
-      const automaticTag = track.tags.find(
+      const automaticTags = track.tags.filter(
         (tag) => tag.automatic && tag.data.name === "Master"
       );
       const humanTags = track.tags.filter((tag) => !tag.automatic);
@@ -521,10 +521,10 @@ export default defineComponent({
                 return { ...humanTags[0], what: "Multiple" };
               }
             });
-      if (automaticTag) {
+      if (automaticTags) {
         if (humanTags.length > 0) {
-          const confirmedTag = humanTags.find(
-            (tag) => automaticTag.what === tag.what
+          const confirmedTag = humanTags.find((tag) =>
+            automaticTags.find((autoTag) => autoTag.what === tag.what)
           );
           if (confirmedTag) {
             return [
@@ -540,19 +540,17 @@ export default defineComponent({
                 ...humanTag,
                 class: TagClass.Human,
               },
-              {
+              ...automaticTags.map((automaticTag) => ({
                 ...automaticTag,
                 class: TagClass.Denied,
-              },
+              })),
             ];
           }
         } else {
-          return [
-            {
-              ...automaticTag,
-              class: TagClass.Automatic,
-            },
-          ];
+          return automaticTags.map((automaticTag) => ({
+            ...automaticTag,
+            class: TagClass.Automatic,
+          }));
         }
       } else if (humanTags.length > 0) {
         return [

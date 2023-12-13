@@ -265,6 +265,7 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
   isValidTagMode: (mode: TagMode) => boolean;
   processingAttributes: string[];
   processingStates: {
+    [RecordingType.TrailCamImage]: string[];
     [RecordingType.InfraredVideo]: string[];
     [RecordingType.ThermalRaw]: string[];
     [RecordingType.Audio]: string[];
@@ -1285,6 +1286,10 @@ from (
   ];
 
   Recording.processingStates = {
+    "trailcam-image": [
+      RecordingProcessingState.Analyse,
+      RecordingProcessingState.Finished,
+    ],
     irRaw: [
       RecordingProcessingState.ReTrack,
       RecordingProcessingState.Tracking,
@@ -1304,7 +1309,7 @@ from (
   };
 
   Recording.uploadedState = function (type: RecordingType) {
-    if (type == RecordingType.Audio) {
+    if (type == RecordingType.Audio || type == RecordingType.TrailCamImage) {
       return RecordingProcessingState.Analyse;
     } else {
       return RecordingProcessingState.Tracking;

@@ -16,17 +16,22 @@ export function cptvplayercontext_getFrameRate(a: number): number;
 export function cptvplayercontext_getFramesPerIframe(a: number): number;
 export function cptvplayercontext_fetchHeader(a: number): number;
 export function cptvplayercontext_getHeader(a: number): number;
-export function __wbindgen_malloc(a: number): number;
-export function __wbindgen_realloc(a: number, b: number, c: number): number;
+export function __wbindgen_malloc(a: number, b: number): number;
+export function __wbindgen_realloc(
+  a: number,
+  b: number,
+  c: number,
+  d: number
+): number;
 export const __wbindgen_export_2: WebAssembly.Table;
-export function _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h165f74291acd46b4(
+export function _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h7220e89b344ffef7(
   a: number,
   b: number,
   c: number
 ): void;
+export function __wbindgen_free(a: number, b: number, c: number): void;
 export function __wbindgen_exn_store(a: number): void;
-export function __wbindgen_free(a: number, b: number): void;
-export function wasm_bindgen__convert__closures__invoke2_mut__h7b4a9d0471de459f(
+export function wasm_bindgen__convert__closures__invoke2_mut__h18b31808c97857b2(
   a: number,
   b: number,
   c: number,
