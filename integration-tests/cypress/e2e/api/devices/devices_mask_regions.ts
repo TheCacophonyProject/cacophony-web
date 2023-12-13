@@ -139,19 +139,14 @@ describe("Devices list", () => {
 
     cy.log("Id is: ", id);
     mostRecentTime = new Date(
-      new Date().setDate(new Date().getDate() + 5)
+      new Date().setDate(new Date().getDate() + 8)
     );
     cy.log("Time: ", mostRecentTime.toISOString().toString());
-    const params = new URLSearchParams();
-    params.append("at-time", mostRecentTime.toISOString().toString());
-    
-    const queryString = params.toString();
-    const apiUrl = v1ApiPath(`devices/${id}/mask-regions`);
     
     makeAuthorizedRequest(
       {
         method: "POST",
-        url: `${apiUrl}?${queryString}`,
+        url: v1ApiPath(`devices/${id}/mask-regions`),
         body: {
           "maskRegions": [
             singleTestRegion
