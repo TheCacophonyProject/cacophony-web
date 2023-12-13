@@ -139,7 +139,7 @@ describe("Devices list", () => {
   });
 
   it.only("Set and retrieve a mask region for the latest device location", () => {
-
+    let getResponse;
     cy.log("Id is: ", id);
     mostRecentTime = new Date(
       new Date().setDate(new Date().getDate() + 8)
@@ -158,27 +158,30 @@ describe("Devices list", () => {
       },
       user1
     );
+    
+    const params = new URLSearchParams();
+    params.append("at-time", mostRecentTime.toISOString().toString());
 
-    //   const params = new URLSearchParams();
-    //   params.append("at-time", recordingTime.toISOString());
-    //   makeAuthorizedRequest(
-    //     {
-    //       method: "GET",
-    //       url: v1ApiPath(`devices/${id}/mask-regions`, id),
-    //     },
-    //     user1
-    //   ).then((response) => {
-    //     getResponse = response.body.maskRegions;
-    //     const postRegionPoints = singleTestRegion;
-    //     cy.log("Post: ", postRegionPoints);
-    //     const getRegionPoints = getResponse[0];
-    //     cy.log("Get: ", getRegionPoints);
-    //     // expect(postRegionPoints).to.deep.equal(getRegionPoints);
-    //   });
+    const queryString = params.toString();
+    const apiUrl = v1ApiPath(`devices/${id}/mask-regions`);
+
+    makeAuthorizedRequest(
+      {
+        method: "GET",
+        url: `${apiUrl}?${queryString}`,
+      },
+      user1
+    ).then((response) => {
+      getResponse = response.body.maskRegions;
+      const postRegionPoints = singleTestRegion;
+      cy.log("Post: ", postRegionPoints);
+      const getRegionPoints = getResponse[0];
+      cy.log("Get: ", getRegionPoints);
+      expect(postRegionPoints).to.deep.equal(getRegionPoints);
+    });
   });
 
   it("Set and retrieve a mask region when a device has no location", () => {
-
     //create a deviceHistory entry with no location
     cy.testCreateUserAndGroup(user2, group2).then(() => {
       templateExpectedCypressRecording.groupId = getCreds(group2).id;
