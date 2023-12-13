@@ -35,7 +35,9 @@ describe("Devices list", () => {
   const user1 = 'Josie';
   const group1 = "Josie-Team";
   const camera1 = "Josie-camera";
-
+  let id;
+  let recordingTime;
+  let mostRecentTime;
   const singleTestRegion = [
     {
       region: "0",
@@ -84,18 +86,13 @@ describe("Devices list", () => {
       templateExpectedStation.groupName = getTestName(group1);
     });
 
-
-    let recordingTime = new Date(
+    recordingTime = new Date(
       new Date().setDate(new Date().getDate() + 1)
     );
-    let location = TestGetLocation(1);
-
-    let id; 
 
     cy.apiDeviceAdd(camera1, group1).then((deviceID) => {
+      let location = TestGetLocation(1);
       id = deviceID; 
-      cy.log("Here's the ID: ", id);
-      cy.log("Add a recording and check new station is created");
       cy.testUploadRecording(camera1, {
         ...location,
         time: recordingTime,
@@ -104,8 +101,8 @@ describe("Devices list", () => {
         recordingTime = new Date(
           new Date().setDate(new Date().getDate() + 2)
         );
-        location = TestGetLocation(2);
 
+        location = TestGetLocation(2);
         cy.testUploadRecording(camera1, {
           ...location,
           time: recordingTime,
@@ -116,7 +113,6 @@ describe("Devices list", () => {
           new Date().setDate(new Date().getDate() + 3)
         );
         location = TestGetLocation(3);
-
         cy.testUploadRecording(camera1, {
           ...location,
           time: recordingTime,
@@ -125,76 +121,62 @@ describe("Devices list", () => {
           recordingTime = new Date(
             new Date().setDate(new Date().getDate() + 4)
           );
+
           location = TestGetLocation(4);
-  
           cy.testUploadRecording(camera1, {
             ...location,
             time: recordingTime,
             noTracks: true,
+            
           });
+          id = deviceID;
         });
       });
     });
   });
 
-  it.only("Set a device location, then add and retrieve a mask region on that device", () => {
-    // const recordingTime = new Date(
-    //   new Date().setDate(new Date().getDate() + 1)
-    // );
-    // const location = TestGetLocation(1);
-    // const expectedStation1 = JSON.parse(
-    //   JSON.stringify(templateExpectedStation)
-    // );
-    // let id; 
-    // expectedStation1.location = location;
-    // expectedStation1.activeAt = recordingTime.toISOString();
-    // expectedStation1.lastThermalRecordingTime = recordingTime.toISOString();
-    // cy.apiDeviceAdd(camera1, group1).then((deviceID) => {
-    //   id = deviceID; 
-    //   cy.log("Here's the ID: ", id);
-    //   cy.log("Add a recording and check new station is created");
-    //   cy.testUploadRecording(camera1, {
-    //     ...location,
-    //     time: recordingTime,
-    //     noTracks: true,
-    //   })
-    //     .thenCheckStationIsNew(user1)
-    //     .then((station: TestNameAndId) => {
-    //       cy.log("Check station created correctly");
-    //       cy.apiStationCheck(user1, station.name, expectedStation1);
-    //       cy.log("ID is: ", id);
-    //       let getResponse;
-    //       makeAuthorizedRequest(
-    //         {
-    //           method: "POST",
-    //           url: v1ApiPath(`devices/${id}/mask-regions`),
-    //           body: {
-    //             "maskRegions": [
-    //               singleTestRegion
-    //             ]
-    //           },
-    //         },
-    //         user1
-    //         );
+  it.only("Set and retrieve a mask region for the latest device location", () => {
 
-    //         const params = new URLSearchParams();
-    //         params.append("at-time", recordingTime.toISOString());
-    //         makeAuthorizedRequest(
-    //           {
-    //             method: "GET",
-    //             url: v1ApiPath(`devices/${id}/mask-regions`, id),
-    //           },
-    //           user1
-    //         ).then((response) => {
-              // getResponse = response.body.maskRegions;
-              // const postRegionPoints = singleTestRegions;
-              // cy.log("Post: ", postRegionPoints);
-              // const getRegionPoints = getResponse[0];
-              // cy.log("Get: ", getRegionPoints);
-              // expect(postRegionPoints).to.deep.equal(getRegionPoints);
-            // });
-    //     });
-    // });
+    cy.log("Id is: ", id);
+    mostRecentTime = new Date(
+      new Date().setDate(new Date().getDate() + 5)
+    );
+    cy.log("Time: ", mostRecentTime.toISOString().toString());
+    const params = new URLSearchParams();
+    params.append("at-time", mostRecentTime.toISOString().toString());
+    
+    const queryString = params.toString();
+    const apiUrl = v1ApiPath(`devices/${id}/mask-regions`);
+    
+    makeAuthorizedRequest(
+      {
+        method: "POST",
+        url: `${apiUrl}?${queryString}`,
+        body: {
+          "maskRegions": [
+            singleTestRegion
+          ]
+        },
+      },
+      user1
+    );
+
+    //   const params = new URLSearchParams();
+    //   params.append("at-time", recordingTime.toISOString());
+    //   makeAuthorizedRequest(
+    //     {
+    //       method: "GET",
+    //       url: v1ApiPath(`devices/${id}/mask-regions`, id),
+    //     },
+    //     user1
+    //   ).then((response) => {
+    //     getResponse = response.body.maskRegions;
+    //     const postRegionPoints = singleTestRegion;
+    //     cy.log("Post: ", postRegionPoints);
+    //     const getRegionPoints = getResponse[0];
+    //     cy.log("Get: ", getRegionPoints);
+    //     // expect(postRegionPoints).to.deep.equal(getRegionPoints);
+    //   });
   });
 
   it("Set, retrieve, and validate a single mask region for the latest device location", () => {

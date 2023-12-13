@@ -1085,10 +1085,12 @@ app.post(
   validateFields([
     idOf(param("id")),
     body("maskRegions").isArray().not().isEmpty(),
+    query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
   ]),
   fetchAuthorizedRequiredDeviceById(param("id")),
   async (request: Request, response: Response) => {
     try {
+      const atTime = request.query["at-time"] as unknown as Date;
       const maskRegions = request.body.maskRegions;
       const device = response.locals.device;
       const deviceHistoryEntry: DeviceHistory = await models.DeviceHistory.findOne({
@@ -1096,6 +1098,7 @@ app.post(
           uuid: device.uuid,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
+          fromDateTime: { [Op.lt]: atTime },
         },
         order: [["fromDateTime", "DESC"]],
       });
