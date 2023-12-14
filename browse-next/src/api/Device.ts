@@ -24,6 +24,7 @@ import type { DeviceEventType } from "@typedefs/api/consts";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
+
 export const createProxyDevice = (
   projectNameOrId: string,
   deviceName: string
@@ -382,9 +383,11 @@ export const getReferenceImageForDeviceAtCurrentLocation = (
 
 export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime: Date) => {
   const params = new URLSearchParams();
-  params.append("at-time", atTime.toISOString());
+  params.append("at-time", atTime.toISOString().toString());
+  const queryString = params.toString();
+
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/mask-regions?${params}`
+    `/api/v1/devices/${deviceId}/mask-regions?${queryString}`
   ) as Promise<FetchResult<any>>;
 };
 

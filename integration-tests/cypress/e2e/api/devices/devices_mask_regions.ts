@@ -205,7 +205,6 @@ describe("Devices list", () => {
     });
 
   it("Retrieve a mask region for a historical device location", () => {
-    let getResponse;
     cy.log("Time: ", recordingTime.toISOString().toString());
     
     const params = new URLSearchParams();
@@ -221,11 +220,9 @@ describe("Devices list", () => {
       },
       user1
     ).then((response) => {
-      getResponse = response.body.maskRegions[0].points;
-      cy.log(response.body.maskRegions);
+      expect(response.status).to.equal(200);
     });
   });
-
 
   it("Attempt to set  a single mask region for a device that has no location", () => {
     //create a deviceHistory entry with no location

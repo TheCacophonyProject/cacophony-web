@@ -1152,8 +1152,6 @@ app.get(
   fetchAuthorizedRequiredDeviceById(param("id")),
   async (request: Request, response: Response) => {
     try {
-
-     
       const atTime = request.query["at-time"] as unknown as Date;
       const device = response.locals.device;
       const deviceSettings: DeviceHistory | null = await models.DeviceHistory.findOne({

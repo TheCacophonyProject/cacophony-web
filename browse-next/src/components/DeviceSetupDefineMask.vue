@@ -60,21 +60,23 @@ const device = computed<ApiDeviceResponse | null>(() => {
 });
 
 const getExistingMaskRegions = async () => {
+  const mostRecentTime = new Date(new Date().setDate(new Date().getDate() + 100));
   if (device.value) {
-    const existingMaskRegions = await getMaskRegionsForDevice(device.value.id);
-    console.log("Lenbth", existingMaskRegions.result.maskRegions.length);
+    const existingMaskRegions = await getMaskRegionsForDevice(
+      device.value.id,
+      mostRecentTime
+    );
     for (let i = 0; i < existingMaskRegions.result.maskRegions.length; i++) {
       points.value = existingMaskRegions.result.maskRegions[i].points;
       regionsArray.value.push({ regionData: points.value });
     }
-    console.log("regionsArray: ", regionsArray);
   }
 };
 
 const updateExistingMaskRegions = async () => {
   const data = JSON.parse(formatRegionData(regionsArray));
-  const outcome = await updateMaskRegionsForDevice(device.value.id, data);
-}
+  await updateMaskRegionsForDevice(device.value.id, data);
+};
 
 function formatRegionData(regionsArray) {
   const jsonStructure = {
@@ -471,6 +473,15 @@ function cancelCreatingRegion(): void {
         <div class="darkContainer">
           <div class="imageContainer" ref="container" @click="pointSelect">
             <cptv-single-frame
+              :recording="latestStatusRecording"
+              v-if="latestStatusRecording"
+              :style="{
+                width: cptvFrameWidth + 'px',
+                height: cptvFrameHeight + 'px',
+              }"
+              :height="cptvFrameHeight"
+              ref="singleFrameCanvas"
+              @loaded="(el) => (singleFrame = el)"
             />
             <canvas
               :style="{
