@@ -13,7 +13,7 @@ import type {
   IsoFormattedDateString,
   LatLng,
 } from "@typedefs/api/common";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type { ApiDeviceResponse, MaskRegionsData } from "@typedefs/api/device";
 import type { ScheduleId } from "@typedefs/api/common";
 import type {
   DeviceConfigDetail,
@@ -388,12 +388,21 @@ export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime: Date) => {
 
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/mask-regions?${queryString}`
+  ) as Promise<FetchResult<MaskRegionsData>>;
+};
+
+export const getSettingsForDevice = (deviceId: DeviceId, atTime: Date) => {
+  const params = new URLSearchParams();
+  params.append("at-time", atTime.toISOString().toString());
+  const queryString = params.toString();
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/settings?${queryString}`
   ) as Promise<FetchResult<any>>;
 };
 
 export const updateMaskRegionsForDevice = (
   deviceId: DeviceId,
-  maskRegionsData: { maskRegions: { region: string; points: { x: number; y: number }[] }[] },
+  maskRegionsData: MaskRegionsData
 ) => {
   return CacophonyApi.post(`/api/v1/devices/${deviceId}/mask-regions`, maskRegionsData) as Promise<FetchResult<{ id: DeviceId }>>;
 };

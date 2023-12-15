@@ -153,7 +153,7 @@ describe("Devices list", () => {
       },
       user1
     ).then((response) => {
-      getResponse = response.body.maskRegions;
+      getResponse = response.body;
       const postRegionPoints = singleTestRegion;
       cy.log("Post: ", postRegionPoints);
       const getRegionPoints = getResponse[0];
@@ -195,7 +195,7 @@ describe("Devices list", () => {
       },
       user1
     ).then((response) => {
-      getResponse = response.body.maskRegions;
+      getResponse = response.body;
       const postRegionPoints = multipleTestRegions;
       cy.log("Post: ", postRegionPoints);
       const getRegionPoints = getResponse[0];
@@ -224,7 +224,7 @@ describe("Devices list", () => {
     });
   });
 
-  it("Attempt to set  a single mask region for a device that has no location", () => {
+  it("Attempt to set a single mask region for a device that has no location", () => {
     //create a deviceHistory entry with no location
     cy.testCreateUserAndGroup(user2, group2).then(() => {
       templateExpectedCypressRecording.groupId = getCreds(group2).id;
@@ -246,10 +246,14 @@ describe("Devices list", () => {
               singleTestRegion
             ]
           },
+          failOnStatusCode: false
         },
         user2
       ).then((response) => {
-        expect(response.body.messages[0]).to.equal("No device history settings entry found to add mask regions");
+        expect(response.status).to.eq(400);
+        expect(response.body.messages[0]).to.equal(
+          "No device history settings entry found to add mask regions"
+        );
       });
     });
   });
@@ -308,7 +312,7 @@ describe("Devices list", () => {
         },
         user3
       );
-      apiUrl = v1ApiPath(`devices/${id3}/mask-regions`);
+      apiUrl = v1ApiPath(`devices/${id3}/settings`);
 
       makeAuthorizedRequest(
         {

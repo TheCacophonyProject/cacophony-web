@@ -60,14 +60,19 @@ const device = computed<ApiDeviceResponse | null>(() => {
 });
 
 const getExistingMaskRegions = async () => {
+  let regionsLength = 0;
   const mostRecentTime = new Date(new Date().setDate(new Date().getDate() + 100));
   if (device.value) {
     const existingMaskRegions = await getMaskRegionsForDevice(
       device.value.id,
       mostRecentTime
     );
-    for (let i = 0; i < existingMaskRegions.result.maskRegions.length; i++) {
-      points.value = existingMaskRegions.result.maskRegions[i].points;
+    // calculate number of regions present
+    while (existingMaskRegions.result[regionsLength]) {
+      regionsLength++;
+    }
+    for (let i = 0; i < regionsLength; i++) {
+      points.value = existingMaskRegions.result[i].points;
       regionsArray.value.push({ regionData: points.value });
     }
   }
@@ -86,8 +91,8 @@ function formatRegionData(regionsArray) {
   for (let i = 0; i < regionsArray.value.length; i++) {
     const extractedPoints = regionsArray.value[i].regionData;
     const regionObj = {
-      "region": i.toString(),
-      "points": extractedPoints
+      region: i.toString(),
+      points: extractedPoints,
     };
     jsonStructure.maskRegions.push(regionObj);
   }
