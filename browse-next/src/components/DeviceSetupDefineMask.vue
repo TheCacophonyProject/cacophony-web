@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Ref } from "vue";
-import { ref, onMounted, onBeforeUnmount, computed, inject, reactive} from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, inject, reactive, watch} from "vue";
 import { useDevicePixelRatio } from "@vueuse/core";
 import {
   getLatestStatusRecordingForDevice,
@@ -30,7 +30,7 @@ interface Region {
 
 const isMobile = ref(false);
 const mobileWidthThreshold = 768;
-const canvas = ref<HTMLCanvasElement | null>(null);
+const canvas = ref<HTMLCanvasElement>(null);
 const container = ref<HTMLCanvasElement | null>(null);
 const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
 const regionsArray = ref<Region[]>([]);
@@ -296,7 +296,7 @@ function isPolygonClosed(): boolean {
     points.value[points.value.length - 1] = points.value[0];
   }
 
-  clearMask(); //causes them to snap as desired, however recursion error
+  clearMask();
   generateMask();
   drawPolygon();
   return distance < polygonClosedTolerance.value;
@@ -310,16 +310,13 @@ const toggleAreaSelect = () => {
   generateMask();
 };
 
-const toggleMaskEnabled = () => {
-  maskEnabled.value = !maskEnabled.value;
-  if (maskEnabled.value) {
+watch(maskEnabled, (newValue) => {
+  if (newValue) {
     points.value = [];
-    clearMask();
     generateMask();
-  } else {
-    clearMask();
   }
-};
+  clearMask();
+});
 
 const toggleInclusionRegion = () => {
   inclusionRegion.value = !inclusionRegion.value;
@@ -329,7 +326,6 @@ const toggleInclusionRegion = () => {
 function removePoint(): void {
   if (points.value.length > 1) {
     points.value.pop();
-    drawPolygon();
   } else {
     points.value = [];
   }
@@ -342,9 +338,7 @@ function addRegionSelection(): void {
   regionsArray.value.push({ regionData: points.value });
   points.value = [];
   toggleCreatingRegion();
-  const canvasElement = canvas.value;
-  const context = canvasElement.getContext("2d");
-  context.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  clearMask();
   generateMask();
 }
 
@@ -359,9 +353,8 @@ function generateMask() {
   maskCanvas.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
 
   if (inclusionRegion.value) {
-    regionsArray.value.forEach((region) => {
+    regionsArray.value.forEach(({ regionData }) => {
       maskContext.beginPath();
-      const regionData = region.regionData;
       maskContext.moveTo(
         regionData[0].x * maskCanvas.width,
         regionData[0].y * maskCanvas.height
@@ -508,8 +501,8 @@ function cancelCreatingRegion(): void {
               type="checkbox"
               role="switch"
               id="flexSwitchCheckChecked"
-              @click="toggleMaskEnabled"
-              checked
+              :checked="maskEnabled"
+              @change="maskEnabled = !maskEnabled"
             />
           </div>
         </div>
