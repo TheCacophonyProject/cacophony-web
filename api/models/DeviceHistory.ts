@@ -45,15 +45,9 @@ export interface DeviceHistorySettings {
     bottomRight: [number, number];
   };
   maskRegions?: {
-    points: {
-      [key: number]: {
-        x: number;
-        y: number;
-      } 
-    exclude?: boolean;
-    label?: string;
-   }[];
-  }
+    region: string;
+    points: { x: number; y: number }[];
+  }[];
 }
 
 export interface DeviceHistory

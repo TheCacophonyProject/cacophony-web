@@ -53,8 +53,10 @@ import type { Device } from "models/Device.js";
 import type {
   ApiDeviceLocationFixup,
   ApiDeviceResponse,
+  MaskRegionsData
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
+import MaskRegionsDataSchema from "@schemas/api/device/MaskRegionsData.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
@@ -163,6 +165,11 @@ interface ApiCreateProxyDeviceRequestBody {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDeviceLocationFixupBody {
   setStationAtTime: ApiDeviceLocationFixup;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface MaskRegionsDataBody {
+  maskRegions: MaskRegionsData;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1070,6 +1077,7 @@ export default function (app: Application, baseUrl: string) {
  * @apiParam {Integer} deviceId Id of the device
  * @apiBody {Object[]} maskRegions collection of mask regions 
  * @apiBodyExample {json} 
+ * @apiInterface {apiBody::MaskRegionsDataBody} recording The recording data.
  * @apiDescription Sets mask regions for a device in the DeviceHistory table.
  * These mask regions will be stored in the settings column as JSON.
  *
@@ -1086,6 +1094,9 @@ app.post(
   validateFields([
     idOf(param("id")),
     body("maskRegions"),
+    // body("maskRegions").custom(
+    //   jsonSchemaOf(MaskRegionsDataSchema)
+    // ),
   ]),
   fetchAuthorizedRequiredDeviceById(param("id")),
   async (request: Request, response: Response, next: NextFunction) => {
@@ -1170,7 +1181,7 @@ app.post(
  * @apiUse V1UserAuthorizationHeader
  *
  * @apiUse V1ResponseSuccess
- * @apiSuccess {Object} settings Device settings
+ * @apiSuccess {apiSuccess::MaskRegionsData}
  * @apiUse V1ResponseError
  */
 

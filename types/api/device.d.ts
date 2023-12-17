@@ -36,10 +36,12 @@ export interface ApiDeviceResponse {
 }
 
 export interface MaskRegionsData {
-  maskRegions: {
-    region: string;
-    points: { x: number; y: number }[];
-  }[];
+  maskRegions: [
+    {
+      region?: string;
+      points?: { x: number; y: number }[];
+    }[]
+  ];
 }
 
 export interface ApiDeviceLocationFixup {
