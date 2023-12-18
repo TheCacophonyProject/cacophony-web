@@ -35,13 +35,13 @@ export interface ApiDeviceResponse {
   users?: ApiGroupUserResponse[];
 }
 
+export interface MaskRegion {
+  region: string;
+  points: { x: number; y: number }[];
+}
+
 export interface MaskRegionsData {
-  maskRegions: [
-    {
-      region?: string;
-      points?: { x: number; y: number }[];
-    }[]
-  ];
+  maskRegions: MaskRegion[];
 }
 
 export interface ApiDeviceLocationFixup {

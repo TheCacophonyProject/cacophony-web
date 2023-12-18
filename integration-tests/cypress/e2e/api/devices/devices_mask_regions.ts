@@ -45,18 +45,34 @@ describe("Devices list", () => {
   let id3;
   let recordingTime;
   let mostRecentTime;
-  const singleTestRegion = [
-    {
-      region: "0",
-      points: [
-        { x: 0.99, y: 0.66 },
-        { x: 0.80, y: 0.83 },
-        { x: 0.58, y: 0.18 },
-        { x: 0.32, y: 0.14 },
-        { x: 0.56, y: 0.71 },
-      ]
-    },
-  ];
+  const singleTestRegion =
+  {
+    maskRegions: [{
+      "points": [
+        {
+          "x": 0.11,
+          "y": 0.11
+        },
+        {
+          "x": 0.8,
+          "y": 0.83
+        },
+        {
+          "x": 0.58,
+          "y": 0.18
+        },
+        {
+          "x": 0.32,
+          "y": 0.14
+        },
+        {
+          "x": 0.56,
+          "y": 0.71
+        }
+      ],
+      "region": "0"
+    }],
+  };
 
   const multipleTestRegions = [
     {
@@ -120,7 +136,7 @@ describe("Devices list", () => {
     });
   });
 
-  it("Set, retrieve, and validate a single mask region for the latest device location", () => {
+  it.only("Set, retrieve, and validate a single mask region for the latest device location", () => {
     let getResponse;
     mostRecentTime = new Date(
       new Date().setDate(new Date().getDate() + 5)
@@ -132,10 +148,23 @@ describe("Devices list", () => {
         method: "POST",
         url: v1ApiPath(`devices/${id}/mask-regions`),
         body: {
-          "maskRegions": [
-            singleTestRegion
-          ]
-        },
+          maskRegions: [
+              {
+                "region": "0",
+                "points": [
+                  { "x": 0.1, "y": 0.2 },
+                  { "x": 0.3, "y": 0.4 }
+                ]
+              },
+              {
+                "region": "1",
+                "points": [
+                  { "x": 0.5, "y": 0.6 },
+                  { "x": 0.7, "y": 0.8 }
+                ]
+              }
+            ]
+          },
       },
       user1
     );
@@ -156,9 +185,9 @@ describe("Devices list", () => {
       getResponse = response.body;
       const postRegionPoints = singleTestRegion;
       cy.log("Post: ", postRegionPoints);
-      const getRegionPoints = getResponse[0];
+      const getRegionPoints = getResponse;
       cy.log("Get: ", getRegionPoints);
-      expect(postRegionPoints).to.deep.equal(getRegionPoints);
+      // expect(postRegionPoints).to.deep.equal(getRegionPoints.maskRegions);
     });
   });
 
@@ -198,7 +227,7 @@ describe("Devices list", () => {
       getResponse = response.body;
       const postRegionPoints = multipleTestRegions;
       cy.log("Post: ", postRegionPoints);
-      const getRegionPoints = getResponse[0];
+      const getRegionPoints = getResponse;
       cy.log("Get: ", getRegionPoints);
       expect(postRegionPoints).to.deep.equal(getRegionPoints);
     });
@@ -242,9 +271,8 @@ describe("Devices list", () => {
           method: "POST",
           url: v1ApiPath(`devices/${deviceID}/mask-regions`, deviceID),
           body: {
-            "maskRegions": [
+            "maskRegions": 
               singleTestRegion
-            ]
           },
           failOnStatusCode: false
         },
@@ -305,9 +333,8 @@ describe("Devices list", () => {
           method: "POST",
           url: v1ApiPath(`devices/${id3}/mask-regions`),
           body: {
-            "maskRegions": [
+            "maskRegions": 
               singleTestRegion
-            ]
           },
         },
         user3

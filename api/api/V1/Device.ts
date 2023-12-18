@@ -52,11 +52,10 @@ import {
 import type { Device } from "models/Device.js";
 import type {
   ApiDeviceLocationFixup,
-  ApiDeviceResponse,
-  MaskRegionsData
+  ApiDeviceResponse
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
-import MaskRegionsDataSchema from "@schemas/api/device/MaskRegionsData.schema.json" assert { type: "json" };
+import MaskRegionSchema from "@schemas/api/device/MaskRegion.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
@@ -167,10 +166,10 @@ interface ApiDeviceLocationFixupBody {
   setStationAtTime: ApiDeviceLocationFixup;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface MaskRegionsDataBody {
-  maskRegions: MaskRegionsData;
-}
+// // eslint-disable-next-line @typescript-eslint/no-unused-vars
+// interface MaskRegionsDataBody {
+//   maskRegions: MaskRegionsData;
+// }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDevicesResponseSuccess {
@@ -1093,10 +1092,9 @@ app.post(
   extractJwtAuthorizedUser,
   validateFields([
     idOf(param("id")),
-    body("maskRegions"),
-    // body("maskRegions").custom(
-    //   jsonSchemaOf(MaskRegionsDataSchema)
-    // ),
+    body("maskRegions").custom(
+      jsonSchemaOf(MaskRegionSchema)
+    ),
   ]),
   fetchAuthorizedRequiredDeviceById(param("id")),
   async (request: Request, response: Response, next: NextFunction) => {
