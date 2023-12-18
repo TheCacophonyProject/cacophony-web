@@ -311,11 +311,8 @@ const toggleAreaSelect = () => {
 };
 
 watch(maskEnabled, (newValue) => {
-  if (newValue) {
-    points.value = [];
-    generateMask();
-  }
-  clearMask();
+  points.value = [];
+  generateMask();
 });
 
 const toggleInclusionRegion = () => {
@@ -343,59 +340,63 @@ function addRegionSelection(): void {
 }
 
 function generateMask() {
-  polygonClosedTolerance.value = devicePixelRatio.pixelRatio.value * 10;
-  if (regionsArray.value.length === 0) {
-    return;
-  }
-  const maskCanvas = canvas.value;
-  const maskContext = maskCanvas.getContext("2d");
-  maskCanvas.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
-  maskCanvas.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
+  if (maskEnabled.value) {
+    polygonClosedTolerance.value = devicePixelRatio.pixelRatio.value * 10;
+    if (regionsArray.value.length === 0) {
+      return;
+    }
+    const maskCanvas = canvas.value;
+    const maskContext = maskCanvas.getContext("2d");
+    maskCanvas.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
+    maskCanvas.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
 
-  if (inclusionRegion.value) {
-    regionsArray.value.forEach(({ regionData }) => {
-      maskContext.beginPath();
-      maskContext.moveTo(
-        regionData[0].x * maskCanvas.width,
-        regionData[0].y * maskCanvas.height
-      );
-      for (let i = 1; i < regionData.length; i++) {
-        maskContext.lineTo(
-          regionData[i].x * maskCanvas.width,
-          regionData[i].y * maskCanvas.height
+    if (inclusionRegion.value) {
+      regionsArray.value.forEach(({ regionData }) => {
+        maskContext.beginPath();
+        maskContext.moveTo(
+          regionData[0].x * maskCanvas.width,
+          regionData[0].y * maskCanvas.height
         );
-      }
-      maskContext.closePath();
+        for (let i = 1; i < regionData.length; i++) {
+          maskContext.lineTo(
+            regionData[i].x * maskCanvas.width,
+            regionData[i].y * maskCanvas.height
+          );
+        }
+        maskContext.closePath();
+        maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
+        maskContext.fill("evenodd");
+      });
+    } else {
+      maskContext.beginPath();
+      maskContext.moveTo(0, 0);
+      maskContext.lineTo(maskCanvas.width, 0);
+      maskContext.lineTo(maskCanvas.width, maskCanvas.height);
+      maskContext.lineTo(0, maskCanvas.height);
+      maskContext.lineTo(0, 0);
+
+      regionsArray.value.forEach((region) => {
+        const regionData = region.regionData;
+        maskContext.moveTo(
+          regionData[0].x * maskCanvas.width,
+          regionData[0].y * maskCanvas.height
+        );
+        for (let i = 1; i < regionData.length; i++) {
+          maskContext.lineTo(
+            regionData[i].x * maskCanvas.width,
+            regionData[i].y * maskCanvas.height
+          );
+        }
+        maskContext.closePath();
+      });
+
       maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
       maskContext.fill("evenodd");
-    });
+    }
+    drawRegionIndices();
   } else {
-    maskContext.beginPath();
-    maskContext.moveTo(0, 0);
-    maskContext.lineTo(maskCanvas.width, 0);
-    maskContext.lineTo(maskCanvas.width, maskCanvas.height);
-    maskContext.lineTo(0, maskCanvas.height);
-    maskContext.lineTo(0, 0);
-
-    regionsArray.value.forEach((region) => {
-      const regionData = region.regionData;
-      maskContext.moveTo(
-        regionData[0].x * maskCanvas.width,
-        regionData[0].y * maskCanvas.height
-      );
-      for (let i = 1; i < regionData.length; i++) {
-        maskContext.lineTo(
-          regionData[i].x * maskCanvas.width,
-          regionData[i].y * maskCanvas.height
-        );
-      }
-      maskContext.closePath();
-    });
-
-    maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
-    maskContext.fill("evenodd");
+    clearMask();
   }
-  drawRegionIndices();
 }
 
 const clearMask = () => {
