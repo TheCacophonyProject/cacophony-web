@@ -52,7 +52,8 @@ import {
 import type { Device } from "models/Device.js";
 import type {
   ApiDeviceLocationFixup,
-  ApiDeviceResponse
+  ApiDeviceResponse, 
+  MaskRegion
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
 // import MaskRegionsDataSchema from "@schemas/api/device/MaskRegionsData.schema.json" assert { type: "json" };
@@ -167,10 +168,10 @@ interface ApiDeviceLocationFixupBody {
   setStationAtTime: ApiDeviceLocationFixup;
 }
 
-// // eslint-disable-next-line @typescript-eslint/no-unused-vars
-// interface MaskRegionsDataBody {
-//   maskRegions: MaskRegionsData;
-// }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface MaskRegionsDataBody {
+  maskRegions: MaskRegion;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDevicesResponseSuccess {

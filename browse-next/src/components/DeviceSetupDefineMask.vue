@@ -117,7 +117,7 @@ const areExistingRegions = computed(() => {
 
 const computeImageDimensions = () => {
   isMobile.value = window.innerWidth < mobileWidthThreshold;
-  const img = document.querySelector(".imageContainer");
+  const img = document.querySelector(".image-container");
   if (img) {
     const viewportWidth = window.innerWidth;
     if (!isMobile.value) {
@@ -467,10 +467,10 @@ function cancelCreatingRegion(): void {
     <div class="d-flex justify-content-center align-items-center flex-column">
       <p>Select multiple points on the image to form a closed polygon</p>
     </div>
-    <div class="contentContainer">
-      <div class="leftSideContent">
-        <div class="darkContainer">
-          <div class="imageContainer" ref="container" @click="pointSelect">
+    <div class="content-container">
+      <div class="left-side-container">
+        <div class="dark-container">
+          <div class="image-container" ref="container" @click="pointSelect">
             <cptv-single-frame
               :recording="latestStatusRecording"
               v-if="latestStatusRecording"
@@ -492,7 +492,7 @@ function cancelCreatingRegion(): void {
             ></canvas>
           </div>
         </div>
-        <div class="regionMaskSwitch">
+        <div class="region-mask-switch">
           <div class="form-check form-switch">
             <label class="form-check-label" for="flexSwitchCheckChecked"
               >Region Mask</label
@@ -507,7 +507,7 @@ function cancelCreatingRegion(): void {
             />
           </div>
         </div>
-        <div class="inclusionSwitch">
+        <div class="inclusion-switch">
           <div class="form-check form-switch">
             <label class="form-check-label" for="flexSwitchCheckChecked"
               >Exclusion Region</label
@@ -523,22 +523,22 @@ function cancelCreatingRegion(): void {
           </div>
         </div>
       </div>
-      <div class="rightSideContent">
-        <div class="existingRegions">
-          <h6 class="existingRegionsHeading">Existing regions</h6>
-          <div class="existingRegionsContent">
-            <div class="noExistingRegionsLabel" v-if="!areExistingRegions">
+      <div class="right-side-content">
+        <div class="existing-regions">
+          <h6 class="existing-regions-heading">Existing regions</h6>
+          <div class="existing-regions-content">
+            <div class="no-existing-regions-label" v-if="!areExistingRegions">
               <p>No existing regions</p>
             </div>
             <div class="regionsListContainer">
               <div
                 v-for="(item, index) in regionsArray"
                 :key="index"
-                class="regionContent"
+                class="region-content"
               >
-                <p class="regionLabel">Region {{ index + 1 }}</p>
+                <p class="region-label">Region {{ index + 1 }}</p>
                 <b-button
-                  class="deleteButton"
+                  class="delete-button"
                   v-if="selectingArea"
                   variant="danger"
                   @click="deleteRegion(index)"
@@ -549,18 +549,18 @@ function cancelCreatingRegion(): void {
             </div>
           </div>
           <b-button
-            class="selectAreaButton"
+            class="select-area-button"
             :variant="selectingArea ? 'success' : 'primary'"
             @click="toggleAreaSelect"
           >
             {{ selectingArea ? "Save Regions" : "Edit Regions" }}</b-button
           >
         </div>
-        <div v-if="selectingArea" class="regionCreationToolsContainer">
-          <h6 class="regionCreationToolsHeading">Region Creation Tools</h6>
+        <div v-if="selectingArea" class="region-creation-tools-container">
+          <h6 class="region-creation-tools-heading">Region Creation Tools</h6>
           <b-button
             v-if="selectingArea && !creatingRegion"
-            class="createRegionButton"
+            class="create-region-button"
             variant="danger"
             @click="toggleCreatingRegion"
           >
@@ -569,7 +569,7 @@ function cancelCreatingRegion(): void {
           <b-button
             v-if="selectingArea && creatingRegion"
             :disabled="isFirstPoint"
-            class="removePointButton"
+            class="remove-point-button"
             variant="danger"
             @click="removePoint"
           >
@@ -578,7 +578,7 @@ function cancelCreatingRegion(): void {
           <b-button
             v-if="selectingArea && creatingRegion"
             :disabled="!enableAddRegionsButton"
-            class="addRegionButton"
+            class="add-region-button"
             variant="success"
             @click="addRegionSelection"
           >
@@ -586,7 +586,7 @@ function cancelCreatingRegion(): void {
           </b-button>
           <b-button
             v-if="selectingArea && creatingRegion"
-            class="cancelNewRegionButton"
+            class="cancel-new-region-button"
             variant="primary"
             @click="cancelCreatingRegion"
           >
@@ -600,11 +600,11 @@ function cancelCreatingRegion(): void {
 
 <style scoped>
 @media screen and (max-width: 767px) {
-  .contentContainer {
+  .content-container {
     justify-content: center;
     display: grid;
   }
-  .rightSideContent {
+  .right-side-content {
     position: relative;
     border-radius: 0.6em;
   }
@@ -613,13 +613,13 @@ function cancelCreatingRegion(): void {
     font-size: 0.9em;
   }
 
-  .darkContainer {
+  .dark-container {
     background-color: rgba(58, 58, 58);
     padding: 0.6em;
     border-radius: 0.4em;
   }
 
-  .existingRegions {
+  .existing-regions {
     display: grid;
     position: relative;
     background-color: rgba(58, 58, 58);
@@ -630,7 +630,7 @@ function cancelCreatingRegion(): void {
     margin-bottom: 0.5em;
   }
 
-  .regionCreationToolsContainer {
+  .region-creation-tools-container {
     grid-area: create-region;
     display: grid;
     position: absolute;
@@ -644,7 +644,7 @@ function cancelCreatingRegion(): void {
 }
 
 @media screen and (min-width: 768px) and (max-width: 1023px) {
-  .contentContainer {
+  .content-container {
     display: flex;
     justify-content: center;
   }
@@ -656,20 +656,20 @@ function cancelCreatingRegion(): void {
     font-size: 0.9em;
   }
 
-  .rightSideContent {
+  .right-side-content {
     padding-left: 0.5em;
     padding-bottom: 0.4em;
     position: relative;
     border-radius: 0.4em;
   }
 
-  .darkContainer {
+  .dark-container {
     background-color: rgba(58, 58, 58);
     padding: 0.6em;
     border-radius: 0.4em;
   }
 
-  .existingRegions {
+  .existing-regions {
     display: grid;
     width: 14em;
     position: relative;
@@ -681,7 +681,7 @@ function cancelCreatingRegion(): void {
     margin-bottom: 0.5em;
   }
 
-  .regionCreationToolsContainer {
+  .region-creation-tools-container {
     display: grid;
     width: 14em;
     position: absolute;
@@ -694,25 +694,25 @@ function cancelCreatingRegion(): void {
 }
 
 @media screen and (min-width: 1024px) {
-  .contentContainer {
+  .content-container {
     display: flex;
     justify-content: center;
   }
 
-  .rightSideContent {
+  .right-side-content {
     position: relative;
     border-radius: 0.4em;
     /* background-color: green; */
     padding-left: 0.6em;
   }
 
-  .darkContainer {
+  .dark-container {
     background-color: rgba(58, 58, 58);
     padding: 0.7em;
     border-radius: 0.4em;
   }
 
-  .existingRegions {
+  .existing-regions {
     display: grid;
     width: 14em;
     position: relative;
@@ -724,7 +724,7 @@ function cancelCreatingRegion(): void {
     margin-bottom: 0.5em;
   }
 
-  .regionCreationToolsContainer {
+  .region-creation-tools-container {
     display: grid;
     width: 14em;
     position: absolute;
@@ -736,52 +736,52 @@ function cancelCreatingRegion(): void {
   }
 }
 
-.removePointButton,
-.addRegionButton,
-.createRegionButton {
+.remove-point-button,
+.add-region-button,
+.create-region-button {
   margin-bottom: 0.6em;
 }
 
-.selectAreaButton,
-.cancelNewRegionButton {
+.select-area-button,
+.cancel-new-region-button {
   display: block;
   margin: 0 auto; /* Center horizontally */
   margin-bottom: 0.6em;
   text-align: center; /* Center text content */
 }
 
-.imageContainer {
+.image-container {
   position: relative;
 }
 
-.leftSideContent {
+.left-side-container {
   position: relative;
   border-radius: 1em;
 }
-.noExistingRegionsLabel {
+.no-existing-regions-label {
   margin: 0.2em;
   transform: translateY(20%);
   text-align: center;
 }
-.regionContent {
+.region-content {
   background-color: rgb(222, 221, 221);
   display: flex;
   margin: 0.2em;
   border-radius: 0.3em;
 }
 
-.regionLabel {
+.region-label {
   position: relative;
   transform: translateY(30%);
   text-align: center;
   flex: 10;
 }
 
-.deleteButton {
+.delete-button {
   flex: 1;
 }
 
-.selectAreaButton {
+.select-area-button {
   width: 8em;
 }
 
@@ -791,19 +791,19 @@ canvas {
   left: 0;
 }
 
-.existingRegionsContent {
+.existing-regions-content {
   background-color: white;
   color: black;
   border-radius: 0.3em;
   margin-bottom: 0.6em;
 }
 
-.regionCreationToolsHeading,
-.existingRegionsHeading {
+.region-creation-tools-heading,
+.existing-regions-heading {
   margin-bottom: 0.6em;
 }
 
-.regionMaskSwitch {
+.region-mask-switch {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -811,23 +811,20 @@ canvas {
   /* background-color: green; */
 }
 
-.inclusionSwitch {
+.inclusion-switch {
   display: flex; 
   justify-content: center;
   align-items: center;
 }
 
-.existingRegionContainer {
+.existing-region-container {
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100%;
 }
 
-.areaOfInterestHeading {
+.area-of-interest-heading {
   padding-bottom: 0.6em;
 }
 </style>
-
-// width: cptvFrameWidth + 'px'
-// height: cptvFrameHeight + 'px'
