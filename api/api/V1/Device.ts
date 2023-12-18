@@ -53,10 +53,9 @@ import type { Device } from "models/Device.js";
 import type {
   ApiDeviceLocationFixup,
   ApiDeviceResponse, 
-  MaskRegion
+  MaskRegion, 
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
-// import MaskRegionsDataSchema from "@schemas/api/device/MaskRegionsData.schema.json" assert { type: "json" };
 import MaskRegionSchema from "@schemas/api/device/MaskRegion.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
@@ -1075,10 +1074,8 @@ export default function (app: Application, baseUrl: string) {
  * @api {post} /api/v1/devices/:deviceId/mask-regions Set mask regions for a device
  * @apiName SetDeviceMaskRegions
  * @apiGroup Device
- * @apiParam {Integer} deviceId Id of the device
- * @apiBody {Object[]} maskRegions collection of mask regions 
  * @apiBodyExample {json} 
- * @apiInterface {apiBody::MaskRegionsDataBody} recording The recording data.
+ * @apiInterface {apiBody::MaskRegion} recording The recording data.
  * @apiDescription Sets mask regions for a device in the DeviceHistory table.
  * These mask regions will be stored in the settings column as JSON.
  *
@@ -1138,7 +1135,6 @@ app.post(
 
       return successResponse(response, "Mask regions added successfully");
     } catch (e) {
-      console.log(e);
       return next(
         new UnprocessableError(
           "An error occurred while processing the request"
@@ -1153,7 +1149,7 @@ app.post(
  * @apiName GetDeviceMaskRegions
  * @apiGroup Device
  * @apiParam {Integer} deviceId Id of the device
- *
+ * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
  * @apiDescription Retrieves mask regions for a device from the DeviceHistory table.
  *
  * @apiSuccessExample {JSON} device:
@@ -1181,7 +1177,7 @@ app.post(
  * @apiUse V1UserAuthorizationHeader
  *
  * @apiUse V1ResponseSuccess
- * @apiSuccess {apiSuccess::MaskRegionsData}
+ * @apiInterface {apiInterface::MaskRegionsData}
  * @apiUse V1ResponseError
  */
 
@@ -1222,7 +1218,7 @@ app.get(
  * @apiGroup Device
  * @apiParam {Integer} deviceId Id of the device
  *
- * @apiDescription Retrieves mask regions for a device from the DeviceHistory table.
+ * @apiDescription Retrieves settings from the DeviceHistory table for a specified device.
  *
  * @apiSuccessExample {JSON} device:
  * {
