@@ -45,61 +45,33 @@ describe("Devices list", () => {
   let id3;
   let recordingTime;
   let mostRecentTime;
-  const singleTestRegion =
-  {
-    maskRegions: [{
-      "points": [
-        {
-          "x": 0.11,
-          "y": 0.11
-        },
-        {
-          "x": 0.8,
-          "y": 0.83
-        },
-        {
-          "x": 0.58,
-          "y": 0.18
-        },
-        {
-          "x": 0.32,
-          "y": 0.14
-        },
-        {
-          "x": 0.56,
-          "y": 0.71
-        }
-      ],
-      "region": "0"
-    }],
-  };
 
-  const multipleTestRegions = [
-    {
-      region: "0",
-      points: [
-        { x: 0.99, y: 0.66 },
-        { x: 0.80, y: 0.83 },
-        { x: 0.58, y: 0.18 }
+  const testRegions = {
+    maskRegions: [
+        {
+          "region": "0",
+          "points": [
+            { "x": 0.69, "y": 0.2 },
+            { "x": 0.3, "y": 0.4 }
+          ]
+        },
+        {
+          "region": "1",
+          "points": [
+            { "x": 0.5, "y": 0.6 },
+            { "x": 0.7, "y": 0.8 }
+          ]
+        },
+        {
+          "region": "2",
+          "points": [
+            { "x": 0.4, "y": 0.3},
+            { "x": 0.7, "y": 0.8 }
+          ]
+        }
       ]
-    },
-    {
-      region: "1", 
-      points: [
-        { x: 0.3, y: 0.1 },
-        { x: 0.5, y: 0.7 },
-        { x: 0.8, y: 0.4 }
-      ]
-    },
-    {
-      region: "2",
-      points: [
-        { x: 0.9, y: 0.3 },
-        { x: 0.1, y: 0.02 },
-        { x: 0.12, y: 0.3}
-      ]
-    }
-  ];
+    };
+
 
   before(() => {
     cy.testCreateUserAndGroup(user1, group1).then(() => {
@@ -136,7 +108,7 @@ describe("Devices list", () => {
     });
   });
 
-  it.only("Set, retrieve, and validate a single mask region for the latest device location", () => {
+  it("Set, retrieve, and validate a mask region for the latest device location", () => {
     let getResponse;
     mostRecentTime = new Date(
       new Date().setDate(new Date().getDate() + 5)
@@ -147,24 +119,7 @@ describe("Devices list", () => {
       {
         method: "POST",
         url: v1ApiPath(`devices/${id}/mask-regions`),
-        body: {
-          maskRegions: [
-              {
-                "region": "0",
-                "points": [
-                  { "x": 0.1, "y": 0.2 },
-                  { "x": 0.3, "y": 0.4 }
-                ]
-              },
-              {
-                "region": "1",
-                "points": [
-                  { "x": 0.5, "y": 0.6 },
-                  { "x": 0.7, "y": 0.8 }
-                ]
-              }
-            ]
-          },
+        body: testRegions
       },
       user1
     );
@@ -183,55 +138,18 @@ describe("Devices list", () => {
       user1
     ).then((response) => {
       getResponse = response.body;
-      const postRegionPoints = singleTestRegion;
-      cy.log("Post: ", postRegionPoints);
+      const postRegionPoints = testRegions;
       const getRegionPoints = getResponse;
-      cy.log("Get: ", getRegionPoints);
-      // expect(postRegionPoints).to.deep.equal(getRegionPoints.maskRegions);
+      // cy.log("Post: ", postRegionPoints.maskRegions);
+      // const { maskRegionsData } = getRegionPoints;
+
+      cy.log("Post type: ", postRegionPoints.maskRegions);
+      cy.log("Get type: ", getRegionPoints['maskRegions']);
+      for (let i = 0; i < postRegionPoints.maskRegions.length; i++) {
+        expect(postRegionPoints.maskRegions[i]).to.deep.equal(getRegionPoints[i]);
+      } 
     });
   });
-
-  it("Set, retrieve, and validate multiple mask regions for the latest device location", () => {
-    let getResponse;
-    mostRecentTime = new Date(
-      new Date().setDate(new Date().getDate() + 5)
-    );
-    cy.log("Time: ", mostRecentTime.toISOString().toString());
-    
-    makeAuthorizedRequest(
-      {
-        method: "POST",
-        url: v1ApiPath(`devices/${id}/mask-regions`),
-        body: {
-          "maskRegions": [
-            multipleTestRegions
-          ]
-        },
-      },
-      user1
-    );
-    
-    const params = new URLSearchParams();
-    params.append("at-time", mostRecentTime.toISOString().toString());
-
-    const queryString = params.toString();
-    const apiUrl = v1ApiPath(`devices/${id}/mask-regions`);
-
-    makeAuthorizedRequest(
-      {
-        method: "GET",
-        url: `${apiUrl}?${queryString}`,
-      },
-      user1
-    ).then((response) => {
-      getResponse = response.body;
-      const postRegionPoints = multipleTestRegions;
-      cy.log("Post: ", postRegionPoints);
-      const getRegionPoints = getResponse;
-      cy.log("Get: ", getRegionPoints);
-      expect(postRegionPoints).to.deep.equal(getRegionPoints);
-    });
-    });
 
   it("Retrieve a mask region for a historical device location", () => {
     cy.log("Time: ", recordingTime.toISOString().toString());
@@ -270,10 +188,7 @@ describe("Devices list", () => {
         {
           method: "POST",
           url: v1ApiPath(`devices/${deviceID}/mask-regions`, deviceID),
-          body: {
-            "maskRegions": 
-              singleTestRegion
-          },
+          body: testRegions,
           failOnStatusCode: false
         },
         user2
@@ -332,10 +247,7 @@ describe("Devices list", () => {
         {
           method: "POST",
           url: v1ApiPath(`devices/${id3}/mask-regions`),
-          body: {
-            "maskRegions": 
-              singleTestRegion
-          },
+          body: testRegions
         },
         user3
       );

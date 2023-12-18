@@ -55,10 +55,11 @@ import type {
   ApiDeviceResponse
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
+// import MaskRegionsDataSchema from "@schemas/api/device/MaskRegionsData.schema.json" assert { type: "json" };
 import MaskRegionSchema from "@schemas/api/device/MaskRegion.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
-import { jsonSchemaOf } from "@api/schema-validation.js";
+import { jsonSchemaOf, arrayOf } from "@api/schema-validation.js";
 import Sequelize, { Op } from "sequelize";
 import type {
   DeviceHistory,
@@ -1093,7 +1094,7 @@ app.post(
   validateFields([
     idOf(param("id")),
     body("maskRegions").custom(
-      jsonSchemaOf(MaskRegionSchema)
+      jsonSchemaOf(arrayOf(MaskRegionSchema))
     ),
   ]),
   fetchAuthorizedRequiredDeviceById(param("id")),
