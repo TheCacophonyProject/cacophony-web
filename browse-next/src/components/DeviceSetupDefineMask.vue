@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { Ref } from "vue";
-import { ref, onMounted, onBeforeUnmount, computed, inject, reactive, watch} from "vue";
+import { ref, onMounted, onBeforeUnmount, computed, inject, watch } from "vue";
 import { useDevicePixelRatio } from "@vueuse/core";
 import {
   getLatestStatusRecordingForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
-  updateReferenceImageForDeviceAtCurrentLocation,
   getMaskRegionsForDevice,
-  updateMaskRegionsForDevice
+  updateMaskRegionsForDevice,
 } from "@api/Device";
 import { useRoute } from "vue-router";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
@@ -28,7 +27,7 @@ interface Region {
 
 const isMobile = ref(false);
 const mobileWidthThreshold = 768;
-const canvas = ref<HTMLCanvasElement>(null);
+const canvas = ref<HTMLCanvasElement | null>(null);
 const container = ref<HTMLCanvasElement | null>(null);
 const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
 const regionsArray = ref<Region[]>([]);
@@ -40,7 +39,7 @@ const inclusionRegion = ref<boolean>(true);
 const creatingRegionAborted = ref<boolean>(false);
 const devicePixelRatio = useDevicePixelRatio();
 const polygonClosedTolerance = ref(10);
-const referenceImage = ref<ImageBitmap | null>(null);
+const contentLoading = ref<boolean>(true);
 const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
 const latestReferenceImageURL = ref<string | null>(null);
 const route = useRoute();
@@ -59,7 +58,9 @@ const device = computed<ApiDeviceResponse | null>(() => {
 });
 
 const getExistingMaskRegions = async () => {
-  const mostRecentTime = new Date(new Date().setDate(new Date().getDate() + 100));
+  const mostRecentTime = new Date(
+    new Date().setDate(new Date().getDate() + 100)
+  );
   if (device.value) {
     const existingMaskRegions = await getMaskRegionsForDevice(
       device.value.id,
@@ -67,9 +68,7 @@ const getExistingMaskRegions = async () => {
     );
 
     if (existingMaskRegions.success) {
-      console.log("Gotttit: ", existingMaskRegions.result.maskRegions);
       const regionKeys = Object.keys(existingMaskRegions.result.maskRegions);
-      console.log("region keys:", regionKeys);
       for (let i = 0; i < regionKeys.length; i++) {
         regionsArray.value.push({
           regionData: existingMaskRegions.result.maskRegions[i].regionData,
@@ -80,23 +79,16 @@ const getExistingMaskRegions = async () => {
   }
 };
 
-// const updateExistingMaskRegions = async () => {
-//   const jsonStructure = {
-//     maskRegions: regionsArray,
-//   };
-//   const data = JSON.parse(JSON.stringify(jsonStructure, null, 2));
-//   console.log("Data is: ", JSON.stringify(data));
-//   await updateMaskRegionsForDevice(device.value.id, data);
-// };
-
 const updateExistingMaskRegions = async () => {
   const formattedRegions = regionsArray.value.map(region => ({
     regionLabel: region.regionLabel,
     regionData: region.regionData,
   }));
-  await updateMaskRegionsForDevice(device.value.id, {
-    maskRegions: formattedRegions,
-  });
+  if (device.value) {
+    await updateMaskRegionsForDevice(device.value.id, {
+      maskRegions: formattedRegions,
+    });
+  }
 };
 
 const devices = inject(selectedProjectDevices) as Ref<
@@ -131,7 +123,7 @@ const computeImageDimensions = () => {
       cptvFrameWidth.value = 160 * (viewportWidth / 225);
       cptvFrameHeight.value = 120 * (viewportWidth / 225);
     }
-    const canvasElement = canvas.value;
+    const canvasElement = canvas.value as HTMLCanvasElement;
     canvasElement.width =
       cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
     canvasElement.height =
@@ -140,10 +132,10 @@ const computeImageDimensions = () => {
 };
 
 onMounted(async () => {
-  getExistingMaskRegions();
   if (device.value && device.value.type === "thermal") {
     const [latestReferenceImage, _] = await Promise.allSettled([
       getReferenceImageForDeviceAtCurrentLocation(device.value.id),
+      getExistingMaskRegions(),
       loadLatestStatusFrame(),
     ]);
     if (
@@ -154,8 +146,9 @@ onMounted(async () => {
         latestReferenceImage.value.result
       );
     }
+    contentLoading.value = false;
   }
-  const canvasElement = canvas.value;
+  const canvasElement = canvas.value as HTMLCanvasElement;
   canvasElement.width =
     cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
   canvasElement.height =
@@ -200,7 +193,9 @@ function normalise(x: number, y: number): Point {
 
 function pointSelect(event: MouseEvent): void {
   if (creatingRegion.value && !enableAddRegionsButton.value) {
-    const { left, top } = container.value.getBoundingClientRect();
+    const { left, top } = (
+      container.value as HTMLCanvasElement
+    ).getBoundingClientRect();
     const clickedX = event.clientX - left;
     const clickedY = event.clientY - top;
     const values = normalise(clickedX, clickedY);
@@ -210,63 +205,102 @@ function pointSelect(event: MouseEvent): void {
 }
 
 function drawRegionIndices() {
-  const canvasElement = canvas.value;
+  const canvasElement = canvas.value as HTMLCanvasElement;
   const context = canvasElement.getContext("2d");
-  const fontSize = 18 * devicePixelRatio.pixelRatio.value;
-  context.font = `bold ${fontSize}px Arial`;
-  for (let i = 0; i < regionsArray.value.length; i++) {
-    const regionData = regionsArray.value[i].regionData;
-    const firstPoint = regionData[0];
-    const text = `${i + 1}`;
-    const textMetrics = context.measureText(text);
-    const textWidth = textMetrics.width;
-    const circleRadius = devicePixelRatio.pixelRatio.value * 14; // Radius based on half of the text width
+  if (context) {
+    const fontSize = 18 * devicePixelRatio.pixelRatio.value;
+    context.font = `bold ${fontSize}px Arial`;
+    for (let i = 0; i < regionsArray.value.length; i++) {
+      const regionData = regionsArray.value[i].regionData;
 
-    const circleX = firstPoint.x * canvas.value.width;
-    const circleY =
-      firstPoint.y * canvas.value.height +
-      2 * devicePixelRatio.pixelRatio.value;
+      let minX = Number.MAX_VALUE;
+      let minY = Number.MAX_VALUE;
+      let maxX = Number.MIN_VALUE;
+      let maxY = Number.MIN_VALUE;
 
-    context.fillStyle = "rgba(13, 110, 253)";
-    context.beginPath();
-    context.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
-    context.closePath();
-    context.fill();
+      for (let j = 0; j < regionData.length; j++) {
+        const point = regionData[j];
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+      }
 
-    context.fillStyle = "#ffffff";
-    context.fillText(
-      text,
-      circleX - textMetrics.width / 2,
-      circleY + fontSize / 2
-    );
+      const centerX = ((minX + maxX) / 2) * canvasElement.width;
+      const centerY = ((minY + maxY) / 2) * canvasElement.height;
+
+      const text = `${regionsArray.value[i].regionLabel}`;
+      const textMetrics = context.measureText(text);
+      context.fillStyle = "#ffffff";
+      context.fillText(
+        text,
+        centerX - textMetrics.width / 2,
+        centerY + fontSize / 2
+      );
+    }
   }
 }
 
-function drawPolygon(): void {
-  const canvasElement = canvas.value;
-  const context = canvasElement.getContext("2d");
-  context.lineWidth = 4 * devicePixelRatio.pixelRatio.value;
-  context.strokeStyle = "rgba(13, 110, 253, 1)";
-  context.beginPath();
-  for (let i = 0; i < points.value.length; i++) {
-    const x = points.value[i].x * canvas.value.width;
-    const y = points.value[i].y * canvas.value.height;
-    if (i === 0) {
-      context.moveTo(x, y);
-    } else {
-      context.lineTo(x, y);
-    }
-  }
-  context.stroke();
+// function drawRegionIndices() {
+//   const canvasElement = canvas.value;
+//   const context = canvasElement.getContext("2d");
+//   const fontSize = 18 * devicePixelRatio.pixelRatio.value;
+//   context.font = `bold ${fontSize}px Arial`;
+//   for (let i = 0; i < regionsArray.value.length; i++) {
+//     const regionData = regionsArray.value[i].regionData;
+//     const firstPoint = regionData[0];
+//     const text = `${regionsArray.value[i].regionLabel}`;
+//     const textMetrics = context.measureText(text);
+//     const textWidth = textMetrics.width;
+//     const circleRadius = devicePixelRatio.pixelRatio.value * 14; // Radius based on half of the text width
 
-  context.fillStyle = "rgba(13, 110, 253, 1)";
-  for (let i = 0; i < points.value.length; i++) {
-    const x = points.value[i].x * canvas.value.width;
-    const y = points.value[i].y * canvas.value.height;
+//     const circleX = firstPoint.x * canvas.value.width;
+//     const circleY =
+//       firstPoint.y * canvas.value.height +
+//       2 * devicePixelRatio.pixelRatio.value;
+
+//     context.fillStyle = "rgba(13, 110, 253)";
+//     context.beginPath();
+//     context.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+//     context.closePath();
+//     context.fill();
+
+//     context.fillStyle = "#ffffff";
+//     context.fillText(
+//       text,
+//       circleX - textMetrics.width / 2,
+//       circleY + fontSize / 2
+//     );
+//   }
+// }
+
+function drawPolygon(): void {
+  const canvasElement = canvas.value as HTMLCanvasElement;
+  const context = canvasElement.getContext("2d");
+  if (context) {
+    context.lineWidth = 4 * devicePixelRatio.pixelRatio.value;
+    context.strokeStyle = "rgba(13, 110, 253, 1)";
     context.beginPath();
-    context.arc(x, y, 4 * devicePixelRatio.pixelRatio.value, 0, Math.PI * 2);
-    context.closePath();
-    context.fill();
+    for (let i = 0; i < points.value.length; i++) {
+      const x = points.value[i].x * canvasElement.width;
+      const y = points.value[i].y * canvasElement.height;
+      if (i === 0) {
+        context.moveTo(x, y);
+      } else {
+        context.lineTo(x, y);
+      }
+    }
+    context.stroke();
+
+    context.fillStyle = "rgba(13, 110, 253, 1)";
+    for (let i = 0; i < points.value.length; i++) {
+      const x = points.value[i].x * canvasElement.width;
+      const y = points.value[i].y * canvasElement.height;
+      context.beginPath();
+      context.arc(x, y, 4 * devicePixelRatio.pixelRatio.value, 0, Math.PI * 2);
+      context.closePath();
+      context.fill();
+    }
   }
 }
 
@@ -285,13 +319,15 @@ function isPolygonClosed(): boolean {
     return false;
   }
 
+  const canvasElement = canvas.value as HTMLCanvasElement;
   const distance = Math.sqrt(
     Math.pow(
-      firstPoint.x * canvas.value.width - lastPoint.x * canvas.value.width,
+      firstPoint.x * canvasElement.width - lastPoint.x * canvasElement.width,
       2
     ) +
       Math.pow(
-        firstPoint.y * canvas.value.height - lastPoint.y * canvas.value.height,
+        firstPoint.y * canvasElement.height -
+          lastPoint.y * canvasElement.height,
         2
       )
   );
@@ -341,7 +377,6 @@ function addRegionSelection(): void {
     regionLabel: userInput.value,
   });
 
-  console.log("Regions array is: ", regionsArray);
   points.value = [];
   toggleCreatingRegion();
   clearMask();
@@ -354,64 +389,70 @@ function generateMask() {
     if (regionsArray.value.length === 0) {
       return;
     }
-    const maskCanvas = canvas.value;
+    const maskCanvas = canvas.value as HTMLCanvasElement;
     const maskContext = maskCanvas.getContext("2d");
-    maskCanvas.width = cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
-    maskCanvas.height = cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
+    if (maskContext) {
+      maskCanvas.width =
+        cptvFrameWidth.value * devicePixelRatio.pixelRatio.value;
+      maskCanvas.height =
+        cptvFrameHeight.value * devicePixelRatio.pixelRatio.value;
 
-    if (inclusionRegion.value) {
-      regionsArray.value.forEach(({ regionData }) => {
-        maskContext.beginPath();
-        maskContext.moveTo(
-          regionData[0].x * maskCanvas.width,
-          regionData[0].y * maskCanvas.height
-        );
-        for (let i = 1; i < regionData.length; i++) {
-          maskContext.lineTo(
-            regionData[i].x * maskCanvas.width,
-            regionData[i].y * maskCanvas.height
+      if (inclusionRegion.value) {
+        regionsArray.value.forEach(({ regionData }) => {
+          maskContext.beginPath();
+          maskContext.moveTo(
+            regionData[0].x * maskCanvas.width,
+            regionData[0].y * maskCanvas.height
           );
-        }
-        maskContext.closePath();
+          for (let i = 1; i < regionData.length; i++) {
+            maskContext.lineTo(
+              regionData[i].x * maskCanvas.width,
+              regionData[i].y * maskCanvas.height
+            );
+          }
+          maskContext.closePath();
+          maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
+          maskContext.fill("evenodd");
+        });
+      } else {
+        maskContext.beginPath();
+        maskContext.moveTo(0, 0);
+        maskContext.lineTo(maskCanvas.width, 0);
+        maskContext.lineTo(maskCanvas.width, maskCanvas.height);
+        maskContext.lineTo(0, maskCanvas.height);
+        maskContext.lineTo(0, 0);
+
+        regionsArray.value.forEach((region) => {
+          const regionData = region.regionData;
+          maskContext.moveTo(
+            regionData[0].x * maskCanvas.width,
+            regionData[0].y * maskCanvas.height
+          );
+          for (let i = 1; i < regionData.length; i++) {
+            maskContext.lineTo(
+              regionData[i].x * maskCanvas.width,
+              regionData[i].y * maskCanvas.height
+            );
+          }
+          maskContext.closePath();
+        });
+
         maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
         maskContext.fill("evenodd");
-      });
+      }
+      drawRegionIndices();
     } else {
-      maskContext.beginPath();
-      maskContext.moveTo(0, 0);
-      maskContext.lineTo(maskCanvas.width, 0);
-      maskContext.lineTo(maskCanvas.width, maskCanvas.height);
-      maskContext.lineTo(0, maskCanvas.height);
-      maskContext.lineTo(0, 0);
-
-      regionsArray.value.forEach((region) => {
-        const regionData = region.regionData;
-        maskContext.moveTo(
-          regionData[0].x * maskCanvas.width,
-          regionData[0].y * maskCanvas.height
-        );
-        for (let i = 1; i < regionData.length; i++) {
-          maskContext.lineTo(
-            regionData[i].x * maskCanvas.width,
-            regionData[i].y * maskCanvas.height
-          );
-        }
-        maskContext.closePath();
-      });
-
-      maskContext.fillStyle = "rgba(0, 0, 0, 0.7)";
-      maskContext.fill("evenodd");
+      clearMask();
     }
-    drawRegionIndices();
-  } else {
-    clearMask();
   }
 }
 
 const clearMask = () => {
-  const canvasElement = canvas.value;
+  const canvasElement = canvas.value as HTMLCanvasElement;
   const context = canvasElement.getContext("2d");
-  context.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  if (context) {
+    context.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  }
 };
 
 function deleteRegion(index: number) {
@@ -473,6 +514,9 @@ function cancelCreatingRegion(): void {
 
 <template>
   <div>
+    <div class="d-grid justify-content-center" v-if="contentLoading">
+      <b-spinner></b-spinner>
+    </div>
     <div class="d-flex justify-content-center align-items-center flex-column">
       <p>Select multiple points on the image to form a closed polygon</p>
     </div>
@@ -545,7 +589,7 @@ function cancelCreatingRegion(): void {
                 :key="index"
                 class="region-content"
               >
-                <p class="region-label">Region {{ index + 1 }}</p>
+                <p class="region-label"> {{ regionsArray[index].regionLabel }}</p>
                 <b-button
                   class="delete-button"
                   v-if="selectingArea"
