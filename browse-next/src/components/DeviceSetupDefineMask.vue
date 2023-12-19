@@ -22,10 +22,8 @@ interface Point {
 }
 
 interface Region {
-  regionData: {
-    x: number;
-    y: number;
-  }[];
+  regionData: Point[];
+  regionLabel: string;
 }
 
 const isMobile = ref(false);
@@ -49,6 +47,7 @@ const route = useRoute();
 const deviceId = Number(route.params.deviceId) as DeviceId;
 const cptvFrameHeight = ref<number>(0);
 const cptvFrameWidth = ref<number>(0);
+const userInput = ref("");
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
@@ -67,40 +66,42 @@ const getExistingMaskRegions = async () => {
       mostRecentTime
     );
     if (existingMaskRegions.success) {
-      const regionKeys = Object.keys(existingMaskRegions.result).filter(key => !isNaN(Number(key)));
+      const regionKeys = Object.keys(existingMaskRegions.result);
       for (let i = 0; i < regionKeys.length; i++) {
-       regionsArray.value.push({ regionData: existingMaskRegions.result[i].points });
+        regionsArray.value.push({
+          regionData: existingMaskRegions.result[i].regionData,
+          regionLabel: existingMaskRegions.result[i].regionLabel,
+        });
       }
     }
   }
 };
 
-const updateExistingMaskRegions = async () => {
-  const data = JSON.parse(formatRegionData(regionsArray));
-  await updateMaskRegionsForDevice(device.value.id, data);
-};
+// const updateExistingMaskRegions = async () => {
+//   const jsonStructure = {
+//     maskRegions: regionsArray,
+//   };
+//   const data = JSON.parse(JSON.stringify(jsonStructure, null, 2));
+//   console.log("Data is: ", JSON.stringify(data));
+//   await updateMaskRegionsForDevice(device.value.id, data);
+// };
 
-function formatRegionData(regionsArray) {
-  const jsonStructure = {
-    maskRegions: [],
-  };
-  for (let i = 0; i < regionsArray.value.length; i++) {
-    const extractedPoints = regionsArray.value[i].regionData;
-    const regionObj = {
-      region: i.toString(),
-      points: extractedPoints,
-    };
-    jsonStructure.maskRegions.push(regionObj);
-  }
-  return JSON.stringify(jsonStructure, null, 2);
-}
+const updateExistingMaskRegions = async () => {
+  const formattedRegions = regionsArray.value.map(region => ({
+    regionLabel: region.regionLabel,
+    regionData: region.regionData,
+  }));
+  await updateMaskRegionsForDevice(device.value.id, {
+    maskRegions: formattedRegions,
+  });
+};
 
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
 
 const enableAddRegionsButton = computed(() => {
-  return isPolygonClosed();
+  return isPolygonClosed() && isInputNotEmpty.value;
 });
 
 const isFirstPoint = computed(() => {
@@ -109,6 +110,10 @@ const isFirstPoint = computed(() => {
 
 const areExistingRegions = computed(() => {
   return regionsArray.value.length > 0;
+});
+
+const isInputNotEmpty = computed(() => {
+  return userInput.value.trim().length > 0;
 });
 
 const computeImageDimensions = () => {
@@ -328,7 +333,12 @@ function removePoint(): void {
 }
 
 function addRegionSelection(): void {
-  regionsArray.value.push({ regionData: points.value });
+  regionsArray.value.push({
+    regionData: points.value,
+    regionLabel: userInput.value,
+  });
+
+  console.log("Regions array is: ", regionsArray);
   points.value = [];
   toggleCreatingRegion();
   clearMask();
@@ -571,6 +581,13 @@ function cancelCreatingRegion(): void {
           >
             Undo Point
           </b-button>
+          <input
+            v-if="selectingArea && creatingRegion"
+            class="label-input"
+            type="text"
+            v-model="userInput"
+            placeholder="Region label"
+          />
           <b-button
             v-if="selectingArea && creatingRegion"
             :disabled="!enableAddRegionsButton"
@@ -822,5 +839,21 @@ canvas {
 
 .area-of-interest-heading {
   padding-bottom: 0.6em;
+}
+
+.label-input {
+  display: block;
+  width: 100%; /* Adjust width as needed */
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #495057;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid #ced4da;
+  border-radius: 0.25rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  margin-bottom: 0.6em; /* Adjust margin as needed */
 }
 </style>

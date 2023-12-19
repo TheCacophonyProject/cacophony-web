@@ -36,8 +36,8 @@ export interface ApiDeviceResponse {
 }
 
 export interface MaskRegion {
-  region: string;
-  points: { x: number; y: number }[];
+  regionLabel: string;
+  regionData: { x: number; y: number }[];
 }
 
 export interface MaskRegionsData {
