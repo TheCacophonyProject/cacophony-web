@@ -1075,7 +1075,7 @@ export default function (app: Application, baseUrl: string) {
  * @apiName SetDeviceMaskRegions
  * @apiGroup Device
  * @apiBodyExample {json} 
- * @apiInterface {apiBody::MaskRegion} recording The recording data.
+ * @apiInterface {apiBody::MaskRegion} device Mask region data.
  * @apiDescription Sets mask regions for a device in the DeviceHistory table.
  * These mask regions will be stored in the settings column as JSON.
  *
@@ -1190,7 +1190,7 @@ app.get(
     query("at-time").isISO8601().toDate().optional(),
   ]),
   fetchAuthorizedRequiredDeviceById(param("id")),
-  async (request: Request, response: Response) => {
+  async (request: Request, response: Response, next: NextFunction) => {
     const atTime = request.query["at-time"] as unknown as Date;
     const device = response.locals.device;
     const deviceSettings: DeviceHistory | null = await models.DeviceHistory.findOne({
@@ -1203,10 +1203,16 @@ app.get(
       order: [["fromDateTime", "DESC"]],
     });
 
-    if (deviceSettings) {
-      return successResponse(response, "Device mask-regions retrieved successfully", deviceSettings.settings.maskRegions);
+    if (deviceSettings.settings.maskRegions) {
+      return successResponse(response,
+        "Device mask-regions retrieved successfully",
+        { "maskRegions": deviceSettings.settings.maskRegions });
     } else {
-      return successResponse(response, "No device mask-regions found");
+      return next(
+        new UnprocessableError(
+          "No device mask-regions found"
+        )
+      );
     } 
   }
 );

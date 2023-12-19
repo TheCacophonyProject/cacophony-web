@@ -65,12 +65,15 @@ const getExistingMaskRegions = async () => {
       device.value.id,
       mostRecentTime
     );
+
     if (existingMaskRegions.success) {
-      const regionKeys = Object.keys(existingMaskRegions.result);
+      console.log("Gotttit: ", existingMaskRegions.result.maskRegions);
+      const regionKeys = Object.keys(existingMaskRegions.result.maskRegions);
+      console.log("region keys:", regionKeys);
       for (let i = 0; i < regionKeys.length; i++) {
         regionsArray.value.push({
-          regionData: existingMaskRegions.result[i].regionData,
-          regionLabel: existingMaskRegions.result[i].regionLabel,
+          regionData: existingMaskRegions.result.maskRegions[i].regionData,
+.maskRegions[i].regionLabel,
         });
       }
     }
