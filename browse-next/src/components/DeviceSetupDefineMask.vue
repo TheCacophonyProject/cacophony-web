@@ -73,7 +73,7 @@ const getExistingMaskRegions = async () => {
       for (let i = 0; i < regionKeys.length; i++) {
         regionsArray.value.push({
           regionData: existingMaskRegions.result.maskRegions[i].regionData,
-.maskRegions[i].regionLabel,
+          regionLabel: existingMaskRegions.result.maskRegions[i].regionLabel,
         });
       }
     }

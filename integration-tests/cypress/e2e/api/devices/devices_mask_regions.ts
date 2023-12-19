@@ -154,7 +154,7 @@ describe("Devices list", () => {
       },
       user1
     ).then((response) => {
-      getResponse = response.body;
+      getResponse = response.body.maskRegions;
       const postRegionPoints = testRegions;
       const getRegionPoints = getResponse;
       // cy.log("Post: ", postRegionPoints.maskRegions);
