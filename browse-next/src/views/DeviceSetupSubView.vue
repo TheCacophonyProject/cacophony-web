@@ -1,26 +1,16 @@
 <script lang="ts" setup>
 import type { Ref } from "vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, inject, onMounted, ref } from "vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
   getLatestStatusRecordingForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
-  updateReferenceImageForDeviceAtCurrentLocation
 } from "@api/Device";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
-import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import type { DeviceId } from "@typedefs/api/common";
-import { drawSkewedImage } from "@/components/skew-image";
-import { useElementSize } from "@vueuse/core";
-import { encode } from "@jsquash/webp";
-import { DeviceType } from "@typedefs/api/consts.ts";
-import DeviceSetupReferencePhoto from "@/components/DeviceSetupReferencePhoto.vue";
-import DeviceSetupDefineMask from "@/components/DeviceSetupDefineMask.vue";
 
-const overlayOpacity = ref<string>("1.0");
-const cptvFrameScale = ref<string>("1.0");
 const isMobile = ref(false);
 const mobileWidthThreshold = 768;
 const devices = inject(selectedProjectDevices) as Ref<
@@ -38,11 +28,7 @@ const device = computed<ApiDeviceResponse | null>(() => {
   );
 });
 const latestReferenceImageURL = ref<string | null>(null);
-const referenceImage = ref<ImageBitmap | null>(null);
-const referenceImageSkew = ref<HTMLCanvasElement>();
-const singleFrameCanvas = ref<HTMLDivElement>();
 const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
-const { width: singleFrameCanvasWidth } = useElementSize(singleFrameCanvas);
 
 onMounted(async () => {
   if (device.value && device.value.type === "thermal") {
@@ -62,7 +48,7 @@ onMounted(async () => {
   isMobile.value = window.innerWidth < mobileWidthThreshold;
 
   // Add event listener to dynamically update isMobile value on window resize
-  window.addEventListener('resize', () => {
+  window.addEventListener("resize", () => {
     isMobile.value = window.innerWidth < mobileWidthThreshold;
   });
 });
@@ -87,28 +73,31 @@ const hasMaskRegionsDefined = computed<boolean>(() => {
   // TODO
   return false;
 });
-
-function navigateToReferencePhoto() {
-  console.log("Navigating to reference-photo route");
-}
-
 </script>
 <template>
   <div>
     <div v-if="isMobile">
       <div class="setupChecklistOptions">
         <div class="setupMenuButton">
-          <b-button class="setupMenuButton" variant="outline-secondary" :to="{ name: 'reference-photo' }" @click="navigateToReferencePhoto">
-          <font-awesome-icon
-            :icon="
-              hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
-            "
-          />
-          Set a reference photo</b-button
-        >
+          <b-button
+            class="setupMenuButton"
+            variant="outline-secondary"
+            :to="{ name: 'reference-photo' }"
+          >
+            <font-awesome-icon
+              :icon="
+                hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
+              "
+            />
+            Set a reference photo</b-button
+          >
         </div>
         <div class="setupMenuButton">
-          <b-button class="setupMenuButton" variant="outline-secondary" :to="{ name: 'define-masking' }">
+          <b-button
+            class="setupMenuButton"
+            variant="outline-secondary"
+            :to="{ name: 'define-masking' }"
+          >
             <font-awesome-icon
               :icon="
                 hasMaskRegionsDefined
@@ -128,7 +117,12 @@ function navigateToReferencePhoto() {
       <div>
         <h6>Setup checklist</h6>
         <b-list-group>
-          <b-button style="margin-bottom: 0.4em;" variant="outline-dark" :to="{ name: 'reference-photo' }" @click="navigateToReferencePhoto">
+          <b-button
+            style="margin-bottom: 0.4em"
+            variant="outline-dark"
+            :to="{ name: 'reference-photo' }"
+            @click="navigateToReferencePhoto"
+          >
             <font-awesome-icon
               :icon="
                 hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
@@ -155,7 +149,6 @@ function navigateToReferencePhoto() {
   </div>
 </template>
 <style scoped lang="less">
-
 @media screen and (max-width: 767px) {
   .setupChecklistOptions {
     display: flex;

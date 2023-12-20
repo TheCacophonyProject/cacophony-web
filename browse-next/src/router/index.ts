@@ -188,12 +188,14 @@ const router = createRouter({
                 {
                   path: "reference",
                   name: "reference-photo",
-                  component: () => import("@/components/DeviceSetupReferencePhoto.vue"),
+                  component: () =>
+                    import("@/components/DeviceSetupReferencePhoto.vue"),
                 },
                 {
                   path: "mask",
                   name: "define-masking",
-                  component: () => import("@/components/DeviceSetupDefineMask.vue"),
+                  component: () =>
+                    import("@/components/DeviceSetupDefineMask.vue"),
                 },
               ],
             },
@@ -233,22 +235,28 @@ const router = createRouter({
         {
           path: "notifications",
           name: "notification-settings",
-          component: () => import("@/components/project-preferences/NotificationPreferences.vue"),
+          component: () =>
+            import(
+              "@/components/project-preferences/NotificationPreferences.vue"
+            ),
         },
         {
           path: "media",
           name: "media-settings",
-          component: () => import("@/components/project-preferences/MediaPreferences.vue"),
+          component: () =>
+            import("@/components/project-preferences/MediaPreferences.vue"),
         },
         {
           path: "tagging",
           name: "tagging-settings",
-          component: () => import("@/components/project-preferences/TaggingPreferences.vue"),
+          component: () =>
+            import("@/components/project-preferences/TaggingPreferences.vue"),
         },
         {
           path: "species",
           name: "species-settings",
-          component: () => import("@/components/project-preferences/SpeciesPreferences.vue"),
+          component: () =>
+            import("@/components/project-preferences/SpeciesPreferences.vue"),
         },
       ],
     },

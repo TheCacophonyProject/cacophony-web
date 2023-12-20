@@ -14,7 +14,10 @@ class Unlocker {
     this.fn && this.fn();
   }
 }
-const FakeReader = (bytes: Uint8Array, maxChunkSize = 0): ReadableStreamDefaultReader => {
+const FakeReader = (
+  bytes: Uint8Array,
+  maxChunkSize = 0
+): ReadableStreamDefaultReader => {
   let state: { offsets: number[]; offset: number; bytes?: Uint8Array } = {
     offsets: [],
     offset: 0,
@@ -218,7 +221,9 @@ class CptvDecoderInterface {
     let result;
     try {
       await init(wasmUrl);
-      this.playerContext = await CptvPlayerContext.newWithStream(this.reader as ReadableStreamDefaultReader);
+      this.playerContext = await CptvPlayerContext.newWithStream(
+        this.reader as ReadableStreamDefaultReader
+      );
       this.inited = true;
       result = true;
     } catch (e: unknown) {
@@ -369,11 +374,7 @@ class CptvDecoderInterface {
     if (this.streamError) {
       return this.framesRead;
     }
-    if (
-      !this.locked &&
-      this.inited &&
-      this.hasValidContext()
-    ) {
+    if (!this.locked && this.inited && this.hasValidContext()) {
       return (this.playerContext as PlayerContext).totalFrames();
     }
     return null;

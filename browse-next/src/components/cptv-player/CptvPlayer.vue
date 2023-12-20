@@ -1999,7 +1999,7 @@ watch(
           <font-awesome-icon icon="left-right" />
         </div>
       </div>
-        </div>
+    </div>
     <div
       key="playback-nav"
       class="playback-nav"

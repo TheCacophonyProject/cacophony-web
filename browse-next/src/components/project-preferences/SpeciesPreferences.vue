@@ -50,7 +50,9 @@ function getSpeciesIcon(species: string) {
   <div>
     <div class="speciesContent">
       <h3>Species Preferences</h3>
-      <p style="color: #525252">Select the animals you would like to keep track of</p>
+      <p style="color: #525252">
+        Select the animals you would like to keep track of
+      </p>
       <div class="divider"></div>
       <div
         v-for="(species, index) in initialSpecies"

@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue";
 import SectionHeader from "@/components/SectionHeader.vue";
 import { getAlertsForCurrentUser } from "@api/Alert";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { useRoute } from "vue-router";
 import NotificationPreferences from "@/components/project-preferences/NotificationPreferences.vue";
 // import DeviceSetupDefineMask from "@/components/DeviceSetupDefineMask.vue";
@@ -18,25 +18,35 @@ const pushVisitEventSwitch = ref(true);
   <div>
     <div class="notificationContent">
       <h3>Notification Settings</h3>
-      <p style="color: #525252">Select the kinds of notifications you get about your project</p>
+      <p style="color: #525252">
+        Select the kinds of notifications you get about your project
+      </p>
       <div class="divider"></div>
       <div class="emailNotifications">
         <div class="emailHeading">
           <h6>Email notifications</h6>
-          <p style="color: grey">Recieve emails to find out what's going on when you're not online</p>
+          <p style="color: grey">
+            Recieve emails to find out what's going on when you're not online
+          </p>
         </div>
         <div class="emailSettings">
           <div class="digestHeading">
             <h6 class="digestTitle">Daily digest</h6>
             <div class="digestSwitch">
-              <b-form-checkbox v-model="emailDailyDigestSwitch" switch></b-form-checkbox>
+              <b-form-checkbox
+                v-model="emailDailyDigestSwitch"
+                switch
+              ></b-form-checkbox>
             </div>
           </div>
           <p style="color: grey">A daily overview of your project</p>
           <div class="visitHeading">
             <h6 class="visitTitle">Visit event</h6>
             <div class="visitSwitch">
-              <b-form-checkbox v-model="emailVisitEventSwitch" switch></b-form-checkbox>
+              <b-form-checkbox
+                v-model="emailVisitEventSwitch"
+                switch
+              ></b-form-checkbox>
             </div>
           </div>
           <p style="color: grey">Recieve a notification upon every visit</p>
@@ -46,20 +56,29 @@ const pushVisitEventSwitch = ref(true);
       <div class="pushNotifications">
         <div class="pushHeading">
           <h6>Text notifications</h6>
-          <p style="color: grey">Recieve text notifications to find out what's going on while you're away</p>
+          <p style="color: grey">
+            Recieve text notifications to find out what's going on while you're
+            away
+          </p>
         </div>
         <div class="pushSettings">
           <div class="digestHeading">
             <h6 class="digestTitle">Daily digest</h6>
             <div class="digestSwitch">
-              <b-form-checkbox v-model="pushDailyDigestSwitch" switch></b-form-checkbox>
+              <b-form-checkbox
+                v-model="pushDailyDigestSwitch"
+                switch
+              ></b-form-checkbox>
             </div>
           </div>
           <p style="color: grey">A daily overview of your project</p>
           <div class="visitHeading">
             <h6 class="visitTitle">Visit event</h6>
             <div class="visitSwitch">
-              <b-form-checkbox v-model="pushVisitEventSwitch" switch></b-form-checkbox>
+              <b-form-checkbox
+                v-model="pushVisitEventSwitch"
+                switch
+              ></b-form-checkbox>
             </div>
           </div>
           <p style="color: grey">Recieve a notification upon every visit</p>
@@ -214,12 +233,12 @@ nav ul {
 }
 
 .icon {
-  font-size: 24px; 
+  font-size: 24px;
   color: grey;
 }
 
 .label {
-  font-size: 18px; 
+  font-size: 18px;
 }
 
 .preferencesModal {

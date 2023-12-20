@@ -231,7 +231,6 @@ import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
 import {
   ApiTrackDataRequest,
   ApiTrackPosition,
-  ApiTrackResponse,
 } from "@typedefs/api/track";
 import { TrackId } from "@typedefs/api/common";
 interface Rectangle {

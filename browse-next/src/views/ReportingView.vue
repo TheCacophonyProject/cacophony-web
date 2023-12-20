@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
 import { ref, onMounted } from "vue";
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { library } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { library } from "@fortawesome/fontawesome-svg-core";
 import Chart from "chart.js/auto";
 
 const pieChart = ref(null);
@@ -28,7 +28,7 @@ function renderLineChart() {
     options: {
       plugins: {
         legend: {
-          display: false
+          display: false,
         },
       },
     },
@@ -69,8 +69,16 @@ function renderBarChart() {
       datasets: [
         {
           label: "Battery Life",
-          data: [80, 85, 70, 90, 75, 95, 85], 
-          backgroundColor: ["#355e3b", "#6ca070", "#aac997", "#355e3b", "#6ca070", "#aac997", "#355e3b"], // Use the same colors as other graphs
+          data: [80, 85, 70, 90, 75, 95, 85],
+          backgroundColor: [
+            "#355e3b",
+            "#6ca070",
+            "#aac997",
+            "#355e3b",
+            "#6ca070",
+            "#aac997",
+            "#355e3b",
+          ], // Use the same colors as other graphs
           borderWidth: 1,
         },
       ],
@@ -208,7 +216,7 @@ onMounted(() => {
 }
 
 .graph4Container {
-  display: flex; 
+  display: flex;
   justify-content: center;
   height: 16rem;
 }

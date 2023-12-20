@@ -80,7 +80,7 @@ const getExistingMaskRegions = async () => {
 };
 
 const updateExistingMaskRegions = async () => {
-  const formattedRegions = regionsArray.value.map(region => ({
+  const formattedRegions = regionsArray.value.map((region) => ({
     regionLabel: region.regionLabel,
     regionData: region.regionData,
   }));
@@ -589,7 +589,9 @@ function cancelCreatingRegion(): void {
                 :key="index"
                 class="region-content"
               >
-                <p class="region-label"> {{ regionsArray[index].regionLabel }}</p>
+                <p class="region-label">
+                  {{ regionsArray[index].regionLabel }}
+                </p>
                 <b-button
                   class="delete-button"
                   v-if="selectingArea"
@@ -805,9 +807,9 @@ function cancelCreatingRegion(): void {
 .select-area-button,
 .cancel-new-region-button {
   display: block;
-  margin: 0 auto; /* Center horizontally */
+  margin: 0 auto;
   margin-bottom: 0.6em;
-  text-align: center; /* Center text content */
+  text-align: center;
 }
 
 .image-container {
@@ -872,7 +874,7 @@ canvas {
 }
 
 .inclusion-switch {
-  display: flex; 
+  display: flex;
   justify-content: center;
   align-items: center;
 }

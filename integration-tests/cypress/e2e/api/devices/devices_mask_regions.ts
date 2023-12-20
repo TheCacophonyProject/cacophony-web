@@ -2,14 +2,9 @@
 import { getTestName } from "@commands/names";
 import { makeAuthorizedRequest, v1ApiPath, getCreds } from "@commands/server";
 import { TestGetLocation } from "@commands/api/station";
-import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
-import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType } from "@typedefs/api/consts";
 import {
-  TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
-import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
 import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 

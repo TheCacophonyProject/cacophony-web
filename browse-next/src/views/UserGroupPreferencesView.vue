@@ -4,7 +4,7 @@ import SectionHeader from "@/components/SectionHeader.vue";
 import type { ApiAlertResponse } from "@typedefs/api/alerts";
 import { getAlertsForCurrentUser } from "@api/Alert";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { useRoute } from "vue-router";
 import NotificationPreferences from "@/components/project-preferences/NotificationPreferences.vue";
 import TaggingPreferences from "@/components/project-preferences/TaggingPreferences.vue";
@@ -15,10 +15,15 @@ const selectedLeaveProject = ref(false);
 const alerts = ref<ApiAlertResponse[]>([]);
 const isNotOnlyProjectOwnerOrAdmin = ref<true>(true);
 const preferencesModalEnabled = ref<boolean>(true);
-const initialSpecies = ['Possum', 'Rat', 'Cat'];
+const initialSpecies = ["Possum", "Rat", "Cat"];
 const speciesArray = ref<string[]>(initialSpecies);
 const preferencesModalRef = ref<any>(null);
-const preferenceNavigationItems = ['Notifications', 'Media', 'Tagging', 'Species'];
+const preferenceNavigationItems = [
+  "Notifications",
+  "Media",
+  "Tagging",
+  "Species",
+];
 const preferenceNavigationItemsArray = ref<string[]>(preferenceNavigationItems);
 const emailDailyDigestSwitch = ref(true);
 const emailVisitEventSwitch = ref(true);
@@ -54,12 +59,22 @@ function toggleSpecies(species: string) {
 }
 
 function getRouteForIndex(index) {
-  const routes = ['notification-settings', 'media-settings', 'tagging-settings', 'species-settings'];
+  const routes = [
+    "notification-settings",
+    "media-settings",
+    "tagging-settings",
+    "species-settings",
+  ];
   return { name: routes[index] };
 }
 
 function getIconForIndex(index) {
-  const icons = [['fas', 'envelope'], ['fas', 'camera'], ['fas', 'tag'], ['fas', 'cat']];
+  const icons = [
+    ["fas", "envelope"],
+    ["fas", "camera"],
+    ["fas", "tag"],
+    ["fas", "cat"],
+  ];
   return icons[index];
 }
 </script>
@@ -70,7 +85,10 @@ function getIconForIndex(index) {
       <div class="preferencesNavigation">
         <nav>
           <ul>
-            <li v-for="(item, index) in preferenceNavigationItemsArray" :key="index">
+            <li
+              v-for="(item, index) in preferenceNavigationItemsArray"
+              :key="index"
+            >
               <router-link :to="getRouteForIndex(index)" class="navItem">
                 <font-awesome-icon
                   :icon="getIconForIndex(index)"
@@ -172,7 +190,7 @@ nav ul {
 .mediaContent,
 .speciesContent,
 .taggingContent {
-  background-color:rgb(231, 230, 230);
+  background-color: rgb(231, 230, 230);
   border-radius: 0.5em;
   margin-top: 0.7em;
   margin-left: 0.7em;
@@ -239,12 +257,12 @@ nav ul {
 }
 
 .icon {
-  font-size: 24px; 
+  font-size: 24px;
   color: grey;
 }
 
 .label {
-  font-size: 18px; 
+  font-size: 18px;
 }
 
 .preferencesModal {

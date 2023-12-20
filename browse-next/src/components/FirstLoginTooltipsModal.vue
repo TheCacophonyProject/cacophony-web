@@ -9,10 +9,10 @@ import { computed, onMounted, ref } from "vue";
 const currentTipIndex = ref(0);
 const currentTip = computed(() => tips.value[currentTipIndex.value]);
 const tips = ref([
-  { text: 'Information about tip 1' },
-  { text: 'Information about tip 2' },
-  { text: 'Information about tip 3' },
-  { text: 'Information about tip 4' },
+  { text: "Information about tip 1" },
+  { text: "Information about tip 2" },
+  { text: "Information about tip 3" },
+  { text: "Information about tip 4" },
 ]);
 
 onMounted(() => {
@@ -44,9 +44,7 @@ const closeModal = () => {
     <p>
       {{ currentTip.text }}
     </p>
-    <div
-      class="justify-content-end d-flex"
-    >
+    <div class="justify-content-end d-flex">
       <button
         v-if="currentTipIndex < tips.length - 1"
         class="btn btn-primary"
