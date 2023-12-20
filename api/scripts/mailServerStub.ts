@@ -5,14 +5,14 @@ import net from "net";
 const port = 7777;
 
 const server = net.createServer();
-server.once('error', (err) => {
-  if ((err as any).code === 'EADDRINUSE') {
+server.once("error", (err) => {
+  if ((err as any).code === "EADDRINUSE") {
     // port is currently in use
     console.log("port in use");
     process.exit(0);
   }
 });
-server.once('listening', () => {
+server.once("listening", () => {
   // close the server if listening doesn't fail
   server.close();
 });
@@ -23,12 +23,10 @@ let num = 1;
 const stubFile = "mailServerStub.log";
 console.log("Init mailserver stub");
 writeFile(stubFile, "SERVER: started", (err) => {
-  appendFile(stubFile, `HERE ${num++}`, () => {
-  });
+  appendFile(stubFile, `HERE ${num++}`, () => {});
   if (err) {
     console.error(err);
-    appendFile(stubFile, err.toString(), () => {
-    });
+    appendFile(stubFile, err.toString(), () => {});
     return;
   }
 });
@@ -57,11 +55,9 @@ mailServer.bind((addr: string, id: number, email: any) => {
     writeFile(stubFile, content, (err) => {
       if (err) {
         console.error(err);
-        appendFile(stubFile, err.toString(), () => {
-        });
+        appendFile(stubFile, err.toString(), () => {});
         return;
       }
     });
   }
 });
-
