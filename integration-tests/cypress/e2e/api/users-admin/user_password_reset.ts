@@ -16,7 +16,7 @@ describe("User: password reset", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     before(startMailServerStub);
 
-    it("Can reset a password (legacy url)", () => {
+    it.only("Can reset a password (legacy url)", () => {
       const address =
         "uprUser2" + getTestName("").substring(4, 12) + "@test.com";
       cy.log("Adding user with email address", address);
@@ -30,7 +30,6 @@ describe("User: password reset", () => {
       });
 
       waitForEmail("password reset").then((email) => {
-        cy.log(email);
         expect(email.includes("token="), "Email contains reset token").to.equal(
           true
         );

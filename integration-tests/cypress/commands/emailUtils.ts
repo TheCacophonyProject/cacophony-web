@@ -8,8 +8,8 @@ export const RESET_PASSWORD_PREFIX = "/reset-password/";
 export const clearMailServerLog = () => {
   cy.log("Clearing mail server stub log");
   return cy.exec(
-    `cd ../api && docker-compose exec -T server bash -lic "echo "" > mailServerStub.log;"`,
-    { log: true , failOnNonZeroExit: false }
+    `cd ../api && docker exec cacophony-api bash -lic "echo "" > mailServerStub.log;"`,
+    { log: false }
   );
 };
 export const waitForEmail = (type: string = "") => {
@@ -18,10 +18,9 @@ export const waitForEmail = (type: string = "") => {
   return cy
     .exec(
       `cd ../api && docker exec cacophony-api bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
-      { log: true, failOnNonZeroExit: false }
+      { log: false }
     )
     .then((response) => {
-      cy.log(response.stdout, response.stderr);
       email = response.stdout;
       expect(email.split("\n")[0], "Received an email").to.include(
         "SERVER: received email"
@@ -30,23 +29,15 @@ export const waitForEmail = (type: string = "") => {
     });
 };
 export const startMailServerStub = () => {
-  cy.log("Starting mail server stub");
-  cy.exec(
-    `cd ../api && docker exec cacophony-api bash -lic rm mailServerStub.log || true;"`,
-    { log: true, failOnNonZeroExit: false }
-  ).then((response) => {
-    cy.log(response.stdout);
-  });
+  cy.log("Attempting to start mail server stub");
   cy.exec(
     `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js"`,
-    { log: true, failOnNonZeroExit: false }
-  ).then((response) => {
-    cy.log(response.stdout, response.stderr);
-  });
+    { log: false }
+  );
   // Wait for the mail server log file to be created
   return cy.exec(
     `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
-    { log: true, failOnNonZeroExit: false }
+    { log: false }
   );
 };
 export const extractTokenStartingWith = (
