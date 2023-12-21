@@ -36,8 +36,8 @@ export const startMailServerStub = () => {
   ).then(() => {
     // Wait for the mail server log file to be created
     return cy.exec(
-        `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
-        { log: false }
+      `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
+      { log: false }
     );
   });
 };
