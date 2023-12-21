@@ -259,13 +259,14 @@ describe("Devices list", () => {
           },
           user3
         ).then((response) => {
-          const maskRegionsExist = response.body.hasOwnProperty("maskRegions");
+          const settings = response.body.settings;
+          expect(settings).to.exist;
+          const maskRegionsExist = settings.hasOwnProperty("maskRegions");
           const referenceImagePOVExist =
-            response.body.hasOwnProperty("referenceImagePOV");
-          const referenceImagePOVFileSizeExist = response.body.hasOwnProperty(
+            settings.hasOwnProperty("referenceImagePOV");
+          const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
             "referenceImagePOVFileSize"
           );
-
           expect(maskRegionsExist).to.be.true;
           expect(referenceImagePOVExist).to.be.true;
           expect(referenceImagePOVFileSizeExist).to.be.true;

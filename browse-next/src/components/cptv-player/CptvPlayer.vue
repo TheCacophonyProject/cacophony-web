@@ -700,7 +700,7 @@ const secondsSinceLastFFC = computed<number | null>(() => {
   ) {
     return (
       ((frameHeader.value as CptvFrameHeader).timeOnMs -
-        (frameHeader.value as CptvFrameHeader).lastFfcTimeMs) /
+        ((frameHeader.value as CptvFrameHeader).lastFfcTimeMs || 0)) /
       1000
     );
   }
@@ -745,7 +745,7 @@ const totalPlayableFrames = computed<number>(() => {
     const backgroundAdjust = (header.value as CptvHeader).hasBackgroundFrame
       ? 1
       : 0;
-    return (header.value as CptvHeader).totalFrames - backgroundAdjust;
+    return ((header.value as CptvHeader).totalFrames || 0) - backgroundAdjust;
   } else {
     if (totalFrames.value !== null) {
       const backgroundAdjust = header.value?.hasBackgroundFrame ? 1 : 0;
@@ -1124,7 +1124,7 @@ const download = (url: string, filename: string) => {
 const ambientTemperature = computed<string | null>(() => {
   if (frameHeader.value && (frameHeader.value as CptvFrameHeader).frameTempC) {
     return `About ${Math.round(
-      (frameHeader.value as CptvFrameHeader).frameTempC
+      (frameHeader.value as CptvFrameHeader).frameTempC || 0
     )}ºC`;
   }
   return null;
@@ -1703,15 +1703,19 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
           const dy = (canvasHeight / pixelRatio.value - dh) / 2;
           const dw = canvasWidth / pixelRatio.value;
           ctx.drawImage(imageBitmap, 0, dy, dw, dh);
-          for (const track of recording?.tracks) {
-            const pos = { ...track.positions[0] };
-            // convert from bottom left, to top left origin
-            pos.y = (1 - (pos.y + pos.height)) * dh + dy;
-            pos.x = pos.x * dw;
-            pos.height = pos.height * dh;
-            pos.width = pos.width * dw;
-            ctx.strokeStyle = "green";
-            ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
+          if (recording && recording.tracks) {
+            for (const track of recording.tracks) {
+              if (track.positions && track.positions.length) {
+                const pos = { ...track.positions[0] };
+                // convert from bottom left, to top left origin
+                pos.y = (1 - (pos.y + pos.height)) * dh + dy;
+                pos.x = pos.x * dw;
+                pos.height = pos.height * dh;
+                pos.width = pos.width * dw;
+                ctx.strokeStyle = "green";
+                ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
+              }
+            }
           }
         }
       }
@@ -1731,7 +1735,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     }
     if (recording && recording.id === recordingId) {
       await loadedNextRecordingData();
-      emit("ready-to-play", header.value as CptvHeader);
+      emit("ready-to-play", header.value as unknown as CptvHeader);
       playing.value = true;
     }
   } else if (typeof loadedStream.value === "string") {
@@ -1993,6 +1997,7 @@ watch(
       >
         <div class="reveal-slider position-absolute" ref="revealSlider">
           <img
+            v-if="referenceImageURL"
             ref="referenceImage"
             alt="Device point-of-view reference photo at the time of recording"
             :src="referenceImageURL"

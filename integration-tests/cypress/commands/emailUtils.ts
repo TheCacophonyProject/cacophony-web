@@ -9,7 +9,7 @@ export const clearMailServerLog = () => {
   cy.log("Clearing mail server stub log");
   return cy.exec(
     `cd ../api && docker-compose exec -T server bash -lic "echo "" > mailServerStub.log;"`,
-    { log: true }
+    { log: true , failOnNonZeroExit: false }
   );
 };
 export const waitForEmail = (type: string = "") => {
@@ -39,7 +39,7 @@ export const startMailServerStub = () => {
   });
   cy.exec(
     `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js"`,
-    { log: true }
+    { log: true, failOnNonZeroExit: false }
   ).then((response) => {
     cy.log(response.stdout, response.stderr);
   });
