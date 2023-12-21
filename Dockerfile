@@ -1,9 +1,9 @@
 # Build:                   sudo docker build --no-cache . -t cacophony-api
 # Run interactive session: sudo docker run -it cacophony-api
 
-#FROM cacophonyproject/server-base:ubuntu2204_amd64
+FROM cacophonyproject/server-base:ubuntu2204_amd64
 # Use for arm64 dev environments
-FROM cacophonyproject/server-base:ubuntu2204_arm64
+#FROM cacophonyproject/server-base:ubuntu2204_arm64
 RUN apt-get update
 RUN apt-get -y install ffmpeg
 
