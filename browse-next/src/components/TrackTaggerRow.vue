@@ -93,6 +93,9 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
           " ",
           "&nbsp;"
         ),
+        confidence: tag.automatic
+          ? Math.round(100 * tag.confidence).toString() + "%"
+          : "",
       };
       if (userIsGroupAdmin.value) {
         item._deleteAction = {
@@ -192,7 +195,7 @@ const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
     const mappedWhat = getClassificationForLabel(tag.what);
     return {
       ...tag,
-      what: mappedWhat.label,
+      what: mappedWhat ? mappedWhat.label : tag.what,
     } as ApiAutomaticTrackTagResponse;
   }
   return null;

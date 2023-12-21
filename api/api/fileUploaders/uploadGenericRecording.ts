@@ -650,6 +650,8 @@ const recordingUploadedState = (type: RecordingType) => {
     return RecordingProcessingState.Tracking;
   } else if (type === RecordingType.InfraredVideo) {
     return RecordingProcessingState.Tracking;
+  } else if (type == RecordingType.TrailCamImage) {
+    return RecordingProcessingState.Analyse;
   }
   return RecordingProcessingState.Finished;
 };

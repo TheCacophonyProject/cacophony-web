@@ -686,7 +686,7 @@ export default function (app: Application, baseUrl: string) {
       const device = response.locals.device;
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
-          uuid: device.uuid,
+          DeviceId: device.id,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
           fromDateTime: { [Op.lte]: atTime },
@@ -1007,7 +1007,7 @@ export default function (app: Application, baseUrl: string) {
       const previousDeviceHistoryEntry: DeviceHistory =
         await models.DeviceHistory.findOne({
           where: {
-            uuid: device.uuid,
+            DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
             fromDateTime: { [Op.lt]: atTime },
@@ -2107,7 +2107,7 @@ export default function (app: Application, baseUrl: string) {
     //  not available in production builds.
 
     /**
-     * @api {post} /api/v1/:deviceId/history Get device history
+     * @api {post} /api/v1/devices/:deviceId/history Get device history
      * @apiName history
      * @apiGroup Device
      *

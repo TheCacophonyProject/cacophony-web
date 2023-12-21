@@ -48,6 +48,7 @@ export interface DeviceHistorySettings {
     region: string;
     points: { x: number; y: number }[];
   }[];
+  ratThresh?: any;
 }
 
 export interface DeviceHistory

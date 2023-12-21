@@ -1620,7 +1620,6 @@ watch(
 );
 
 const currentRecordingType = ref<"cptv" | "image">("cptv");
-
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
   streamLoadError.value = null;
@@ -1704,6 +1703,16 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
           const dy = (canvasHeight / pixelRatio.value - dh) / 2;
           const dw = canvasWidth / pixelRatio.value;
           ctx.drawImage(imageBitmap, 0, dy, dw, dh);
+          for (const track of recording?.tracks) {
+            const pos = { ...track.positions[0] };
+            // convert from bottom left, to top left origin
+            pos.y = (1 - (pos.y + pos.height)) * dh + dy;
+            pos.x = pos.x * dw;
+            pos.height = pos.height * dh;
+            pos.width = pos.width * dw;
+            ctx.strokeStyle = "green";
+            ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
+          }
         }
       }
     } catch (e) {
