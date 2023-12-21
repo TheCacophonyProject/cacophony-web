@@ -31,14 +31,15 @@ export const waitForEmail = (type: string = "") => {
 export const startMailServerStub = () => {
   cy.log("Attempting to start mail server stub");
   cy.exec(
-    `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js"`,
-    { log: false }
-  );
-  // Wait for the mail server log file to be created
-  return cy.exec(
-    `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
-    { log: false }
-  );
+    `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js" > /dev/null &`,
+    { log: false, failOnNonZeroExit: false }
+  ).then(() => {
+    // Wait for the mail server log file to be created
+    return cy.exec(
+        `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
+        { log: false }
+    );
+  });
 };
 export const extractTokenStartingWith = (
   email: string,
