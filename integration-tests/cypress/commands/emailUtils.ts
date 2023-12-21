@@ -31,7 +31,7 @@ export const waitForEmail = (type: string = "") => {
 export const startMailServerStub = () => {
   cy.log("Attempting to start mail server stub");
   cy.exec(
-    `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js" > /dev/null &`,
+    `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js > /dev/null &"`,
     { log: false, failOnNonZeroExit: false }
   ).then(() => {
     // Wait for the mail server log file to be created
