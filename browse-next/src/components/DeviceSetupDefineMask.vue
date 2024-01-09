@@ -352,13 +352,12 @@ const toggleAreaSelect = () => {
 
 watch(maskEnabled, (newValue) => {
   points.value = [];
-  generateMask();
+  if (newValue) {
+    generateMask();
+  } else {
+    clearMask();
+  }
 });
-
-const toggleInclusionRegion = () => {
-  inclusionRegion.value = !inclusionRegion.value;
-  generateMask();
-};
 
 function removePoint(): void {
   if (points.value.length > 1) {
@@ -560,7 +559,7 @@ function cancelCreatingRegion(): void {
             />
           </div>
         </div>
-        <div class="inclusion-switch">
+        <!-- <div class="inclusion-switch">
           <div class="form-check form-switch">
             <label class="form-check-label" for="flexSwitchCheckChecked"
               >Exclusion Region</label
@@ -574,7 +573,7 @@ function cancelCreatingRegion(): void {
               checked
             />
           </div>
-        </div>
+        </div> -->
       </div>
       <div class="right-side-content">
         <div class="existing-regions">
