@@ -40,7 +40,7 @@ export interface MaskRegion {
   regionData: { x: number; y: number }[];
 }
 
-export interface MaskRegionsData {
+export interface ApiMaskRegionsData {
   maskRegions: MaskRegion[];
 }
 
@@ -48,4 +48,22 @@ export interface ApiDeviceLocationFixup {
   fromDateTime: IsoFormattedDateString;
   stationId: StationId;
   location?: LatLng; // Supply a location to map to the station
+}
+
+export interface ApiDeviceHistorySettings {
+  referenceImagePOV?: string; // S3 Key for a device reference image
+  referenceImagePOVFileSize?: number;
+
+  referenceImageInSitu?: string; // S3 Key for a device reference image
+  referenceImageInSituFileSize?: number;
+  warp?: {
+    dimensions?: { width: number; height: number };
+    origin: [number, number];
+    topLeft: [number, number];
+    topRight: [number, number];
+    bottomLeft: [number, number];
+    bottomRight: [number, number];
+  };
+  maskRegions?: MaskRegion[];
+  ratThresh?: any;
 }

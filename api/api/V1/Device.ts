@@ -51,6 +51,7 @@ import {
 } from "../validation-middleware.js";
 import type { Device } from "models/Device.js";
 import type {
+  ApiDeviceHistorySettings,
   ApiDeviceLocationFixup,
   ApiDeviceResponse,
   MaskRegion,
@@ -61,10 +62,7 @@ import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf, arrayOf } from "@api/schema-validation.js";
 import Sequelize, { Op } from "sequelize";
-import type {
-  DeviceHistory,
-  DeviceHistorySettings,
-} from "@models/DeviceHistory.js";
+import type { DeviceHistory } from "@models/DeviceHistory.js";
 import {
   DeviceType,
   HttpStatusCode,
@@ -169,7 +167,7 @@ interface ApiDeviceLocationFixupBody {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface MaskRegionsDataBody {
-  maskRegions: MaskRegion;
+  maskRegions: MaskRegion[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -200,6 +198,11 @@ interface ApiLocationResponseSuccess {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiLocationsResponseSuccess {
   locations: { fromDateTime: Date; location: ApiStationResponse }[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceSettingsResponseSuccess {
+  settings: ApiDeviceHistorySettings;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -565,11 +568,11 @@ export default function (app: Application, baseUrl: string) {
         (request.query["at-time"] &&
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       const deviceHistoryEntry: DeviceHistory =
         await models.DeviceHistory.findOne({
           where: {
-            uuid: device.uuid,
+            DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
             fromDateTime: { [Op.lte]: atTime },
@@ -598,7 +601,7 @@ export default function (app: Application, baseUrl: string) {
             await models.DeviceHistory.findOne({
               where: [
                 {
-                  uuid: device.uuid,
+                  DeviceId: device.id,
                   GroupId: device.GroupId,
                   fromDateTime: { [Op.gt]: fromTime },
                 },
@@ -631,7 +634,7 @@ export default function (app: Application, baseUrl: string) {
             ?.toISOString()
             .replace(/:/g, "_")
             .replace(".", "_");
-          const filename = `device-${device.uuid}-reference-image@${time}.webp`;
+          const filename = `device-${device.id}-reference-image@${time}.webp`;
           // Get reference image for device at time if any.
           return streamS3Object(
             request,
@@ -640,7 +643,7 @@ export default function (app: Application, baseUrl: string) {
             filename,
             mimeType,
             response.locals.requestUser.id,
-            device.groupId,
+            device.GroupId,
             referenceImageFileSize
           );
         }
@@ -683,10 +686,10 @@ export default function (app: Application, baseUrl: string) {
         (request.query["at-time"] &&
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
-          uuid: device.uuid,
+          DeviceId: device.id,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
           fromDateTime: { [Op.lte]: atTime },
@@ -923,7 +926,7 @@ export default function (app: Application, baseUrl: string) {
       const device = response.locals.device;
       const deviceLocations = await models.DeviceHistory.findAll({
         where: {
-          uuid: device.uuid,
+          DeviceId: device.id,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
         },
@@ -1003,11 +1006,11 @@ export default function (app: Application, baseUrl: string) {
       const referenceType = request.query.type || "pov";
       // TODO: Make some tests for this.
       const atTime = request.query["at-time"] as unknown as Date;
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       const previousDeviceHistoryEntry: DeviceHistory =
         await models.DeviceHistory.findOne({
           where: {
-            uuid: device.uuid,
+            DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
             fromDateTime: { [Op.lt]: atTime },
@@ -1016,7 +1019,7 @@ export default function (app: Application, baseUrl: string) {
         });
       if (previousDeviceHistoryEntry) {
         // If there was a previous reference image for this location entry, delete it.
-        const previousSettings: DeviceHistorySettings =
+        const previousSettings: ApiDeviceHistorySettings =
           previousDeviceHistoryEntry.settings || {};
         if (previousSettings) {
           if (referenceType === "pov" && previousSettings.referenceImagePOV) {
@@ -1052,12 +1055,21 @@ export default function (app: Application, baseUrl: string) {
                 referenceImageInSituFileSize: size,
                 referenceImageInSitu: key,
               };
-        await previousDeviceHistoryEntry.update({
-          settings: {
-            ...previousSettings,
-            ...newSettings,
+        await previousDeviceHistoryEntry.update(
+          {
+            settings: {
+              ...previousSettings,
+              ...newSettings,
+            },
           },
-        });
+          {
+            where: {
+              fromDateTime: previousDeviceHistoryEntry.fromDateTime,
+              DeviceId: device.id,
+              GroupId: device.GroupId,
+            },
+          }
+        );
 
         return successResponse(response, { key, size });
       } else {
@@ -1074,8 +1086,7 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/devices/:deviceId/mask-regions Set mask regions for a device
    * @apiName SetDeviceMaskRegions
    * @apiGroup Device
-   * @apiBodyExample {json}
-   * @apiInterface {apiBody::MaskRegion} device Mask region data.
+   * @apiInterface {apiBody::MaskRegionsDataBody} device Mask region data.
    * @apiDescription Sets mask regions for a device in the DeviceHistory table.
    * These mask regions will be stored in the settings column as JSON.
    *
@@ -1096,12 +1107,12 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       const maskRegions = request.body.maskRegions;
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       try {
         const deviceHistoryEntry: DeviceHistory =
           await models.DeviceHistory.findOne({
             where: {
-              uuid: device.uuid,
+              DeviceId: device.id,
               GroupId: device.GroupId,
               location: { [Op.ne]: null },
             },
@@ -1126,7 +1137,7 @@ export default function (app: Application, baseUrl: string) {
           {
             where: {
               fromDateTime: deviceHistoryEntry.fromDateTime,
-              uuid: device.uuid,
+              DeviceId: device.id,
               GroupId: device.GroupId,
             },
           }
@@ -1176,7 +1187,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiInterface::MaskRegionsData}
+   * @apiInterface {apiSuccess::MaskRegionsDataBody}
    * @apiUse V1ResponseError
    */
 
@@ -1190,11 +1201,11 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       const atTime = request.query["at-time"] as unknown as Date;
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       const deviceSettings: DeviceHistory | null =
         await models.DeviceHistory.findOne({
           where: {
-            uuid: device.uuid,
+            DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
             fromDateTime: { [Op.lte]: atTime },
@@ -1222,34 +1233,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiDescription Retrieves settings from the DeviceHistory table for a specified device.
    *
-   * @apiSuccessExample {JSON} device:
-   * {
-   *   "maskRegions": [
-   *     {
-   *       "region": "0",
-   *       "points": [
-   *         { "x": 0.99, "y": 0.66 },
-   *         { "x": 0.80, "y": 0.83 },
-   *         { "x": 0.58, "y": 0.18 }
-   *       ]
-   *     },
-   *     {
-   *       "region": "1",
-   *       "points": [
-   *         { "x": 0.3, "y": 0.1 },
-   *         { "x": 0.5, "y": 0.7 },
-   *         { "x": 0.8, "y": 0.4 }
-   *       ]
-   *     }
-   *   ],
-   *   "referenceImagePOV": "ref/2023/12/15/d53ad0db-5ea9-4eff-a9f7-68aa9145f464",
-   *   "referenceImagePOVFileSize": 0
-   * }
-   *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Object} settings Device settings
+   * @apiInterface {apiSuccess::ApiDeviceSettingsResponseSuccess}
    * @apiUse V1ResponseError
    */
 
@@ -1264,11 +1251,11 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
-        const device = response.locals.device;
+        const device = response.locals.device as Device;
         const deviceSettings: DeviceHistory | null =
           await models.DeviceHistory.findOne({
             where: {
-              uuid: device.uuid,
+              DeviceId: device.id,
               GroupId: device.GroupId,
               location: { [Op.ne]: null },
               fromDateTime: { [Op.lte]: atTime },
@@ -1280,7 +1267,7 @@ export default function (app: Application, baseUrl: string) {
           return successResponse(
             response,
             "Device settings retrieved successfully",
-            deviceSettings.settings
+            { settings: deviceSettings.settings }
           );
         } else {
           return successResponse(response, "No device settings found");
@@ -2107,7 +2094,7 @@ export default function (app: Application, baseUrl: string) {
     //  not available in production builds.
 
     /**
-     * @api {post} /api/v1/:deviceId/history Get device history
+     * @api {post} /api/v1/devices/:deviceId/history Get device history
      * @apiName history
      * @apiGroup Device
      *

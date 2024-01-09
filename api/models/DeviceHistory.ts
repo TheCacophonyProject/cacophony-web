@@ -22,6 +22,7 @@ import type {
   StationId,
 } from "@typedefs/api/common.js";
 import { locationField } from "@models/util/util.js";
+import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
 
 export type DeviceHistorySetBy =
   | "automatic"
@@ -29,26 +30,6 @@ export type DeviceHistorySetBy =
   | "config"
   | "register"
   | "re-register";
-
-export interface DeviceHistorySettings {
-  referenceImagePOV?: string; // S3 Key for a device reference image
-  referenceImagePOVFileSize?: number;
-
-  referenceImageInSitu?: string; // S3 Key for a device reference image
-  referenceImageInSituFileSize?: number;
-  warp?: {
-    dimensions?: { width: number; height: number };
-    origin: [number, number];
-    topLeft: [number, number];
-    topRight: [number, number];
-    bottomLeft: [number, number];
-    bottomRight: [number, number];
-  };
-  maskRegions?: {
-    region: string;
-    points: { x: number; y: number }[];
-  }[];
-}
 
 export interface DeviceHistory
   extends Sequelize.Model,
@@ -61,7 +42,7 @@ export interface DeviceHistory
   saltId: number;
   uuid: number;
   setBy: DeviceHistorySetBy;
-  settings?: DeviceHistorySettings;
+  settings?: ApiDeviceHistorySettings;
 }
 
 export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {}

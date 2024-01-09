@@ -436,10 +436,14 @@ export default defineComponent({
         this.groupName
       );
       if (stationsResponse.success) {
+        if (stationsResponse.result.stations.length === 0) {
+          this.stations = [];
+          this.stationsLoading = false;
+          return;
+        }
         const stationIds = stationsResponse.result.stations.map(
           (station) => station.id
         );
-
         const recordingsCountsResponse =
           await api.station.getStationsRecordingsCount(stationIds);
         const countsById = {};
