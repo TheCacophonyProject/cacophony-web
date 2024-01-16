@@ -402,7 +402,6 @@ export default function (
           },
           attributes: [
             ...(models.Recording as RecordingStatic).processingAttributes,
-            "uploader",
             [
               Sequelize.literal(`exists(
           	select
