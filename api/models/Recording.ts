@@ -414,17 +414,13 @@ export default function (
           	limit 1)`),
               "hasAlert",
             ],
-            [
-              Sequelize.literal(
-                `"Recording"."recordingDateTime" > now() - interval '1 day'`
-              ),
-              "recentRec",
-            ],
           ],
           order: [
             ["processing", "DESC NULLS FIRST"],
             Sequelize.literal(`"hasAlert" DESC`),
-            Sequelize.literal(`"recentRec" DESC`),
+            Sequelize.literal(
+              `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`
+            ),
             ["uploader", "DESC NULLS LAST"],
             ["recordingDateTime", "asc"],
             ["id", "asc"], // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
