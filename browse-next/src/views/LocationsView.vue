@@ -12,10 +12,21 @@ import LocationsOverviewTable from "@/components/LocationsOverviewTable.vue";
 import { currentSelectedProject } from "@models/provides";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
+import Shepherd from "shepherd.js";
+import { offset } from "@floating-ui/dom";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 const loadingLocations = ref(false);
+
+const tour = new Shepherd.Tour({
+  useModalOverlay: true,
+  defaultStepOptions: {
+    cancelIcon: {
+      enabled: true,
+    }
+  },
+});
 
 onMounted(async () => {
   loadingLocations.value = true;
@@ -27,6 +38,99 @@ onMounted(async () => {
   }
   loadingLocations.value = false;
 });
+
+const SHEPHERD_NEXT_PREV_BUTTONS = [
+  {
+    action(): any {
+      return (this as any).back();
+    },
+    classes: "shepherd-button-secondary",
+    text: "Back",
+  },
+  {
+    action(): any {
+      return (this as any).next();
+    },
+    text: "Next",
+  },
+];
+
+const initTour = () => {
+  tour.addStep({
+    title: `Welcome to Locations`,
+    text: `Discover what do in the shadows: see how far they roam, hear how often they call and uncover who they are interacting with.`,
+    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+  });
+  tour.addStep({
+    attachTo: {
+      element: document.querySelector(".tour-element") as HTMLElement,
+      on: "right",
+    },
+    title: "1/4",
+    text: `Something...`,
+    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    modalOverlayOpeningPadding: 6,
+    modalOverlayOpeningRadius: 4,
+  });
+  tour.addStep({
+    attachTo: {
+      element: document.querySelector(".handle") as HTMLElement,
+      on: "top",
+    },
+    title: "2/4",
+    text: `Something else...`,
+    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    modalOverlayOpeningPadding: 6,
+    modalOverlayOpeningRadius: 4,
+    floatingUIOptions: {
+      middleware: [offset({ mainAxis: 20, crossAxis: 0 })],
+    },
+  });
+  tour.addStep({
+    attachTo: {
+      element: document.querySelector(".resize-right") as HTMLElement,
+      on: "top",
+    },
+    title: "3/4",
+    text: "Something more...",
+    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    modalOverlayOpeningPadding: 6,
+    modalOverlayOpeningRadius: 4,
+    floatingUIOptions: {
+      middleware: [offset({ mainAxis: 20, crossAxis: 0 })],
+    },
+  });
+  tour.addStep({
+    attachTo: {
+      element: document.querySelector(".vis-center") as HTMLElement,
+      on: "top",
+    },
+    title: "4/4",
+    text: `Something final...`,
+    buttons: [
+      {
+        action(): any {
+          return (this as any).back();
+        },
+        classes: "custom-button",
+        text: "Back",
+      },
+      {
+        action(): any {
+          window.localStorage.setItem("show-onboarding", "false");
+          return (this as any).complete();
+        },
+        text: "Finish",
+      },
+    ],
+    modalOverlayOpeningPadding: 16,
+    modalOverlayOpeningRadius: 4,
+  });
+  tour.on("cancel", () => {
+    window.localStorage.setItem("show-onboarding", "false");
+  });
+  tour.start();
+};
 
 const locationsForMap = computed<NamedPoint[]>(() => {
   if (locations.value) {
@@ -163,10 +267,15 @@ const projectHasLocations = computed<boolean>(() => {
     locations.value && (locations.value as ApiLocationResponse[]).length !== 0
   );
 });
+
 </script>
 <template>
   <div>
     <section-header>Locations</section-header>
+    <b-button @click="initTour()"></b-button>
+    <!-- <div id="tour-element">Mounted</div> -->
+    <!-- <div @mounted="(el) => ("tour-element" = el)">This is the mounted div</div> -->
+    <div class="tour-element">Tour</div>
     <div
       class="justify-content-center align-items-center d-flex flex-fill"
       v-if="loadingLocations"
@@ -261,5 +370,10 @@ const projectHasLocations = computed<boolean>(() => {
     height: 100vh !important;
     width: 500px !important;
   }
+}
+
+.tour-element {
+  background-color: pink;
+  width: 200px;
 }
 </style>

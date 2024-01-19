@@ -17,6 +17,9 @@ import { BSpinner } from "bootstrap-vue-3";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
+import Shepherd from "shepherd.js";
+import 'shepherd.js/dist/css/shepherd.css';
+import { offset } from "@floating-ui/dom";
 import {
   classifications,
   getClassifications,
@@ -41,6 +44,106 @@ const currentlyHighlightedLocation = ref<LocationId | null>(null);
 const visitsContext = ref<ApiVisitResponse[] | null>(null);
 provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
+
+const tour = new Shepherd.Tour({
+  useModalOverlay: true,
+  defaultStepOptions: {
+    classes: "shepherd-theme-arrows",
+    scrollTo: true,
+  },
+  // defaultStepOptions: {
+  //   classes: "shepherd-custom-content",
+  // },
+});
+
+const SHEPHERD_NEXT_PREV_BUTTONS = [
+  {
+    action(): any {
+      return (this as any).back();
+    },
+    classes: "shepherd-button-secondary",
+    text: "Back",
+  },
+  {
+    action(): any {
+      return (this as any).next();
+    },
+    text: "Next",
+  },
+];
+
+const initTour = () => {
+  tour.addStep({
+    title: `Welcome to your Dashboard`,
+    text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
+    Each group can host multiple devices which have their own associated recordings`,
+    classes: "shepherd-custom-content",
+    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+  });
+  tour.addStep({
+    attachTo: {
+      element: document.querySelector(
+        ".project-visits-summary-section"
+      ) as HTMLElement,
+      on: "top",
+    },
+    title: "1/3",
+    text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
+    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    modalOverlayOpeningPadding: 6,
+    modalOverlayOpeningRadius: 4,
+    floatingUIOptions: {
+      middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
+    },
+  });
+  tour.addStep({
+    attachTo: {
+      element: document.querySelector(".species-summary-heading") as HTMLElement,
+      on: "bottom",
+    },
+    title: "2/3",
+    text: `This is your species overview - gives you a breakdown on species over the specified period.`,
+    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    modalOverlayOpeningPadding: 6,
+    modalOverlayOpeningRadius: 4,
+    floatingUIOptions: {
+      middleware: [offset({ mainAxis: 0, crossAxis: 50 })],
+    },
+  });
+  tour.addStep({
+    attachTo: {
+      element: document.querySelector(".stations-summary-heading") as HTMLElement,
+      on: "right",
+    },
+    title: "3/3",
+    text: "This is your stations summary",
+    buttons: [
+      {
+        action(): any {
+          return (this as any).back();
+        },
+        classes: "shepherd-button-secondary",
+        text: "Back",
+      },
+      {
+        action(): any {
+          window.localStorage.setItem("show-onboarding", "false");
+          return (this as any).complete();
+        },
+        text: "Finish",
+      },
+    ],
+    modalOverlayOpeningPadding: 6,
+    modalOverlayOpeningRadius: 4,
+    floatingUIOptions: {
+      middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
+    },
+  });
+  tour.on("cancel", () => {
+    window.localStorage.setItem("show-onboarding", "false");
+  });
+  tour.start();
+};
 
 const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
   null
@@ -240,6 +343,7 @@ onMounted(async () => {
   if (!classifications.value) {
     await getClassifications();
   }
+  initTour();
 });
 // I don't think the underlying data changes?
 //watch(visitsOrRecordings, reloadDashboard);
@@ -418,36 +522,38 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       </div>
     </div>
   </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Species summary
-  </h2>
-  <horizontal-overflow-carousel
-    class="species-summary-container mb-sm-5 mb-4"
-    v-if="hasVisitsForSelectedTimePeriod"
-  >
-    <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
-      <div
-        v-for="[key, val] in speciesSummarySorted"
-        :key="key"
-        class="d-flex flex-row species-summary-item align-items-center"
-        @click="showVisitsForTag(key)"
-      >
-        <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
+  <div class="species-summary-heading">
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Species summary
+    </h2>
+    <horizontal-overflow-carousel
+      class="species-summary-container mb-sm-5 mb-4"
+      v-if="hasVisitsForSelectedTimePeriod"
+    >
+      <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
         <div
-          class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+          v-for="[key, val] in speciesSummarySorted"
+          :key="key"
+          class="d-flex flex-row species-summary-item align-items-center"
+          @click="showVisitsForTag(key)"
         >
-          <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
-          <div class="species-name lh-sm small text-capitalize">
-            {{ displayLabelForClassificationLabel(key) }}
+          <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
+          <div
+            class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+          >
+            <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
+            <div class="species-name lh-sm small text-capitalize">
+              {{ displayLabelForClassificationLabel(key) }}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </horizontal-overflow-carousel>
+    </horizontal-overflow-carousel>
+  </div>
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
     Visits summary
   </h2>
-  <div class="d-md-flex flex-md-row">
+  <div class="project-visits-summary-section d-md-flex flex-md-row">
     <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
       class="mb-5 flex-md-fill"
@@ -467,34 +573,36 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       "
     />
   </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Stations summary {{ loadedRouteName }}
-  </h2>
-  <horizontal-overflow-carousel class="mb-5">
-    <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
-    <b-spinner v-if="isLoading" />
-    <div
-      class="card-group species-summary flex-sm-nowrap"
-      v-else-if="hasVisitsForSelectedTimePeriod"
-    >
-      <location-visit-summary
-        v-for="(
-          station, index
-        ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-        :location="station"
-        :active-locations="
-          locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
-        "
-        :locations="allLocations"
-        :visits="maybeFilteredDashboardVisitsContext"
-        :key="index"
-      />
-    </div>
-    <div v-else>
-      There were no active locations in the last {{ timePeriodDays }} days for
-      this project.
-    </div>
-  </horizontal-overflow-carousel>
+  <div class="stations-summary-heading">
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Stations summary {{ loadedRouteName }}
+    </h2>
+    <horizontal-overflow-carousel class="mb-5">
+      <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
+      <b-spinner v-if="isLoading" />
+      <div
+        class="card-group species-summary flex-sm-nowrap"
+        v-else-if="hasVisitsForSelectedTimePeriod"
+      >
+        <location-visit-summary
+          v-for="(
+            station, index
+          ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+          :location="station"
+          :active-locations="
+            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+          "
+          :locations="allLocations"
+          :visits="maybeFilteredDashboardVisitsContext"
+          :key="index"
+        />
+      </div>
+      <div v-else>
+        There were no active locations in the last {{ timePeriodDays }} days for
+        this project.
+      </div>
+    </horizontal-overflow-carousel>
+  </div>
   <inline-view-modal
     @close="selectedVisit = null"
     :fade-in="loadedRouteName === 'dashboard'"
@@ -631,6 +739,9 @@ h2 {
   }
 }
 
+.custom-class {
+  border: 2px solid green;
+}
 .dashboard-subhead {
   .fs-6();
   @media screen and (min-width: 576px) {

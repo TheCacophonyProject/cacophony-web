@@ -142,6 +142,26 @@ export const updateUserFields = (
     FetchResult<void>
   >;
 
+export const updateUserOnboarding = (fields: { settings?: ApiUserSettings }) =>
+  CacophonyApi.patch("/api/v1/users/onboarding", fields) as Promise<
+    FetchResult<void>
+  >;
+
+export const getUserOnboarding = () =>
+  CacophonyApi.get("/api/v1/users/onboarding") as Promise<
+    FetchResult<{
+      onboardTracking?: {
+        type: "object";
+        propertyNames: {
+          type: "string";
+        };
+        propertyValues: {
+          type: "boolean";
+        };
+      };
+    }>
+  >;
+
 export const getEUAVersion = () =>
   CacophonyApi.get("/api/v1/end-user-agreement/latest", NO_ABORT) as Promise<
     FetchResult<{ euaVersion: number }>

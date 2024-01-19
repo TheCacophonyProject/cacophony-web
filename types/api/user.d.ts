@@ -27,4 +27,13 @@ export interface ApiUserSettings {
     groupName: string;
     id: GroupId;
   };
+  onboardTracking?: {
+    type: "object";
+    propertyNames: {
+      type: "string";
+    };
+    propertyValues: {
+      type: "boolean";
+    };
+  };
 }
