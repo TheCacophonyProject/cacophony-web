@@ -18,7 +18,7 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import Shepherd from "shepherd.js";
-import 'shepherd.js/dist/css/shepherd.css';
+import "shepherd.js/dist/css/shepherd.css";
 import { offset } from "@floating-ui/dom";
 import {
   classifications,
@@ -38,12 +38,35 @@ import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
 import type { StationId as LocationId } from "@typedefs/api/common";
+import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
 const visitsContext = ref<ApiVisitResponse[] | null>(null);
+const showUserDashboardOnboarding = ref<boolean>(false);
 provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
+
+const initUserSettings = async () => {
+  updateUserOnboarding({ settings: { onboardTracking: { Dashboard: false } } })
+    .then((response) => {
+      console.log("Initialised user onboarding data successfully", response);
+    })
+    .catch((error) => {
+      console.error("Error initialising user onboarding data", error);
+    });
+};
+
+const getUserDashboardOnboardingStatus = async () => {
+  try {
+    const result = await getUserOnboarding();
+    const onboardTrackingData = result || {};
+    return onboardTrackingData.result.onboardTracking.Dashboard;
+  } catch (error) {
+    console.error("Error getting user onboarding data", error);
+    return false;
+  }
+};
 
 const tour = new Shepherd.Tour({
   useModalOverlay: true,
@@ -72,77 +95,90 @@ const SHEPHERD_NEXT_PREV_BUTTONS = [
   },
 ];
 
-const initTour = () => {
-  tour.addStep({
-    title: `Welcome to your Dashboard`,
-    text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
-    Each group can host multiple devices which have their own associated recordings`,
-    classes: "shepherd-custom-content",
-    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
-  });
-  tour.addStep({
-    attachTo: {
-      element: document.querySelector(
-        ".project-visits-summary-section"
-      ) as HTMLElement,
-      on: "top",
-    },
-    title: "1/3",
-    text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
-    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
-    modalOverlayOpeningPadding: 6,
-    modalOverlayOpeningRadius: 4,
-    floatingUIOptions: {
-      middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
-    },
-  });
-  tour.addStep({
-    attachTo: {
-      element: document.querySelector(".species-summary-heading") as HTMLElement,
-      on: "bottom",
-    },
-    title: "2/3",
-    text: `This is your species overview - gives you a breakdown on species over the specified period.`,
-    buttons: SHEPHERD_NEXT_PREV_BUTTONS,
-    modalOverlayOpeningPadding: 6,
-    modalOverlayOpeningRadius: 4,
-    floatingUIOptions: {
-      middleware: [offset({ mainAxis: 0, crossAxis: 50 })],
-    },
-  });
-  tour.addStep({
-    attachTo: {
-      element: document.querySelector(".stations-summary-heading") as HTMLElement,
-      on: "right",
-    },
-    title: "3/3",
-    text: "This is your stations summary",
-    buttons: [
-      {
-        action(): any {
-          return (this as any).back();
-        },
-        classes: "shepherd-button-secondary",
-        text: "Back",
+const initDashboardTour = () => {
+  if (!showUserDashboardOnboarding.value) {
+    tour.addStep({
+      title: `Welcome to your Dashboard`,
+      text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
+      Each group can host multiple devices which have their own associated recordings`,
+      classes: "shepherd-custom-content",
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".project-visits-summary-section"
+        ) as HTMLElement,
+        on: "top",
       },
-      {
-        action(): any {
-          window.localStorage.setItem("show-onboarding", "false");
-          return (this as any).complete();
-        },
-        text: "Finish",
+      title: "1/3",
+      text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
       },
-    ],
-    modalOverlayOpeningPadding: 6,
-    modalOverlayOpeningRadius: 4,
-    floatingUIOptions: {
-      middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
-    },
-  });
-  tour.on("cancel", () => {
-    window.localStorage.setItem("show-onboarding", "false");
-  });
-  tour.start();
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".species-summary-heading"
+        ) as HTMLElement,
+        on: "bottom",
+      },
+      title: "2/3",
+      text: `This is your species overview - gives you a breakdown on species over the specified period.`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 0, crossAxis: 50 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".stations-summary-heading"
+        ) as HTMLElement,
+        on: "right",
+      },
+      title: "3/3",
+      text: "This is your stations summary",
+      buttons: [
+        {
+          action(): any {
+            return (this as any).back();
+          },
+          classes: "shepherd-button-secondary",
+          text: "Back",
+        },
+        {
+          action(): any {
+            window.localStorage.setItem("show-onboarding", "false");
+            return (this as any).complete();
+          },
+          text: "Finish",
+        },
+      ],
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
+      },
+    });
+    tour.on("cancel", () => {
+      window.localStorage.setItem("show-onboarding", "false");
+    });
+    tour.start();
+    updateUserOnboarding({ settings: { onboardTracking: { Dashboard: true } } })
+      .then((response) => {
+        console.log("User onboarding data updated successfully", response);
+      })
+      .catch((error) => {
+        console.error("Error updating user onboarding data", error);
+      });
+  }
 };
 
 const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
@@ -343,7 +379,9 @@ onMounted(async () => {
   if (!classifications.value) {
     await getClassifications();
   }
-  initTour();
+  initUserSettings();
+  showUserDashboardOnboarding.value = await getUserDashboardOnboardingStatus();
+  initDashboardTour();
 });
 // I don't think the underlying data changes?
 //watch(visitsOrRecordings, reloadDashboard);

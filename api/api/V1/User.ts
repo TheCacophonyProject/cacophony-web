@@ -331,13 +331,15 @@ export default function (app: Application, baseUrl: string) {
     const requestUser = await models.User.findByPk(
       response.locals.requestUser.id
     );
-
     const currentSettings = requestUser.settings || {};
-
+    const updatedOnboardTracking = {
+      ...currentSettings.onboardTracking,
+      ...onboardTrackingData,
+    };
     await requestUser.update({
       settings: {
         ...currentSettings,
-        onboardTracking: onboardTrackingData
+        onboardTracking: updatedOnboardTracking
       },
     });
 
