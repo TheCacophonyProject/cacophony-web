@@ -306,6 +306,44 @@ export default function (app: Application, baseUrl: string) {
   }
 
 /**
+ * @api {post} ${apiUrl}/onboarding Sets the user's onboard tracking data
+  * @apiName SetUserOnboarding
+  * @apiGroup User
+  *
+  * @apiUse V1UserAuthorizationHeader
+  *
+  * @apiParam {Object} onboardTracking New onboard tracking data.
+  * data structure is "onboardTracker": {
+                        "Dashboard": false,
+                        "Location": false,
+                        "Activity": false...
+  * @apiUse V1ResponseSuccess
+  * @apiUse V1ResponseError
+  */
+app.post(
+  `${apiUrl}/onboarding`,
+  extractJwtAuthorizedUser,
+  validateFields([
+    body("settings").isObject(),
+  ]),
+  async (request: Request, response: Response, next: NextFunction) => {
+    const onboardTrackingData = request.body.settings.onboardTracking;
+    const requestUser = await models.User.findByPk(
+      response.locals.requestUser.id
+    );
+
+    const currentSettings = requestUser.settings || {};
+    
+    await requestUser.update({
+      settings: {
+        ...currentSettings,
+        onboardTracking: onboardTrackingData
+      },
+    });
+    return successResponse(response, `Updated user's onboard tracking data.`);
+  }
+);
+/**
  * @api {patch} ${apiUrl}/onboarding Updates the user's onboard tracking data
   * @apiName UpdateUserOnboarding
   * @apiGroup User

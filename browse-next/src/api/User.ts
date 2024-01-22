@@ -147,6 +147,12 @@ export const updateUserOnboarding = (fields: { settings?: ApiUserSettings }) =>
     FetchResult<void>
   >;
 
+
+export const setUserOnboarding = (fields: { settings?: ApiUserSettings }) =>
+  CacophonyApi.post("/api/v1/users/onboarding", fields) as Promise<
+    FetchResult<void>
+  >;
+
 export const getUserOnboarding = () =>
   CacophonyApi.get("/api/v1/users/onboarding") as Promise<
     FetchResult<{
