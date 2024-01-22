@@ -51,7 +51,26 @@ const tour = new Shepherd.Tour({
   },
 });
 
+const initUserSettings = async () => {
+  const result = await getUserOnboarding();
+  if (JSON.stringify(result.result.onboardTracking) === "{}") {
+    const postResult = await setUserOnboarding({
+      settings: {
+        onboardTracking: {
+          dashboard: false,
+          locations: false,
+          activity: false,
+          devices: false,
+          manage_project: false,
+          recording_view: false,
+        },
+      },
+    });
+  }
+};
+
 onMounted(async () => {
+  initUserSettings();
   shownUserManageProjectOnboarding.value = await getUserManageProjectOnboardingStatus();
   initManageProjectTour();
 });
@@ -59,9 +78,8 @@ onMounted(async () => {
 const initManageProjectTour = () => {
   if (!shownUserManageProjectOnboarding.value) {
     tour.addStep({
-      title: `Welcome to your Dashboard`,
-      text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
-    Each group can host multiple devices which have their own associated recordings`,
+      title: `Welcome to your manage project`,
+      text: `The manage project page allows you to administrate your project. This includes adding or removing users who have access to this project and changing default tags that users of this project see when tagging tracks`,
       classes: "shepherd-custom-content",
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
     });
@@ -73,7 +91,7 @@ const initManageProjectTour = () => {
         on: "top",
       },
       title: "1/3",
-      text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
+      text: `...`,
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
@@ -89,7 +107,7 @@ const initManageProjectTour = () => {
         on: "bottom",
       },
       title: "2/3",
-      text: `This is your species overview - gives you a breakdown on species over the specified period.`,
+      text: `...`,
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
@@ -105,7 +123,7 @@ const initManageProjectTour = () => {
         on: "right",
       },
       title: "3/3",
-      text: "This is your stations summary",
+      text: "...",
       buttons: [
         {
           action(): any {

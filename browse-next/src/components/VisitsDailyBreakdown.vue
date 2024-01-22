@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { StationId as LocationId } from "@typedefs/api/common";
-import { computed, inject, ref } from "vue";
+import { computed, inject, ref, onMounted} from "vue";
 import type { Ref } from "vue";
 import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,

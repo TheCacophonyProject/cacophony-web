@@ -74,21 +74,20 @@ const SHEPHERD_NEXT_PREV_BUTTONS = [
 const initLocationsTour = () => {
   if (!shownUserLocationsOnboarding.value) {
     tour.addStep({
-      title: `Welcome to your Dashboard`,
-      text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
-    Each group can host multiple devices which have their own associated recordings`,
+      title: `Welcome to Locations`,
+      text: `Locations provides an overview of the devices within a group and where they are out in the field`,
       classes: "shepherd-custom-content",
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
     });
     tour.addStep({
       attachTo: {
         element: document.querySelector(
-          ".project-visits-summary-section"
+          ".location-activity-history"
         ) as HTMLElement,
-        on: "top",
+        on: "right",
       },
-      title: "1/3",
-      text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
+      title: "1/2",
+      text: `This card displays the acitvity at different locations across time`,
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
@@ -98,29 +97,11 @@ const initLocationsTour = () => {
     });
     tour.addStep({
       attachTo: {
-        element: document.querySelector(
-          ".species-summary-heading"
-        ) as HTMLElement,
-        on: "bottom",
+        element: document.querySelector(".right-side-map") as HTMLElement,
+        on: "left",
       },
-      title: "2/3",
-      text: `This is your species overview - gives you a breakdown on species over the specified period.`,
-      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
-      modalOverlayOpeningPadding: 6,
-      modalOverlayOpeningRadius: 4,
-      floatingUIOptions: {
-        middleware: [offset({ mainAxis: 0, crossAxis: 50 })],
-      },
-    });
-    tour.addStep({
-      attachTo: {
-        element: document.querySelector(
-          ".stations-summary-heading"
-        ) as HTMLElement,
-        on: "right",
-      },
-      title: "3/3",
-      text: "This is your stations summary",
+      title: "2/2",
+      text: "The map displays device location in context",
       buttons: [
         {
           action(): any {
@@ -310,7 +291,7 @@ const projectHasLocations = computed<boolean>(() => {
       <div v-if="!projectHasLocations">
         There are no existing locations for this project
       </div>
-      <div v-else>
+      <div class="location-activity-history" v-else>
         <!--        <h6>Things that need to appear here:</h6>-->
         <!--        <ul>-->
         <!--          <li>-->
@@ -374,6 +355,7 @@ const projectHasLocations = computed<boolean>(() => {
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
         :radius="30"
+        class="right-side-map"
       />
     </div>
   </div>

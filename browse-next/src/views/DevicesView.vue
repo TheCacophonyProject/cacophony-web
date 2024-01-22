@@ -196,21 +196,20 @@ const initDevicesTour = () => {
   console.log("Activity: ", shownUserDevicesOnboarding.value);
   if (!shownUserDevicesOnboarding.value) {
     tour.addStep({
-      title: `Welcome to your Dashboard`,
-      text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
-    Each group can host multiple devices which have their own associated recordings`,
+      title: `Welcome to Devices`,
+      text: `The devices page allows you to manage and configure existing devices within a group. You are also able to manually add devices`,
       classes: "shepherd-custom-content",
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
     });
     tour.addStep({
       attachTo: {
         element: document.querySelector(
-          ".project-visits-summary-section"
+          ".devices-table"
         ) as HTMLElement,
         on: "top",
       },
-      title: "1/3",
-      text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
+      title: "1/2",
+      text: `Selecting a device from the table allows you to configure its setup and settings`,
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
@@ -221,28 +220,12 @@ const initDevicesTour = () => {
     tour.addStep({
       attachTo: {
         element: document.querySelector(
-          ".species-summary-heading"
+          ".device-map"
         ) as HTMLElement,
         on: "bottom",
       },
-      title: "2/3",
-      text: `This is your species overview - gives you a breakdown on species over the specified period.`,
-      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
-      modalOverlayOpeningPadding: 6,
-      modalOverlayOpeningRadius: 4,
-      floatingUIOptions: {
-        middleware: [offset({ mainAxis: 0, crossAxis: 50 })],
-      },
-    });
-    tour.addStep({
-      attachTo: {
-        element: document.querySelector(
-          ".stations-summary-heading"
-        ) as HTMLElement,
-        on: "right",
-      },
-      title: "3/3",
-      text: "This is your stations summary",
+      title: "2/2",
+      text: `Device locations can be viewed graphically through the map`,
       buttons: [
         {
           action(): any {
@@ -262,7 +245,7 @@ const initDevicesTour = () => {
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
       floatingUIOptions: {
-        middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
+        middleware: [offset({ mainAxis: 0, crossAxis: 0 })],
       },
     });
     tour.on("cancel", () => {
@@ -599,6 +582,7 @@ const openSelectedDevice = async () => {
         :default-sort="'lastSeen'"
         compact
         :break-point="0"
+        class="devices-table"
       >
         <template #deviceName="{ cell, row }">
           <div class="d-flex align-items-center">

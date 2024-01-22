@@ -62,6 +62,7 @@ const initUserSettings = async () => {
           activity: false,
           devices: false,
           manage_project: false,
+          recording_view: false,
         },
       },
     });
@@ -120,7 +121,7 @@ const initDashboardTour = () => {
         ) as HTMLElement,
         on: "top",
       },
-      title: "1/3",
+      title: "1/4",
       text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
       modalOverlayOpeningPadding: 6,
@@ -136,7 +137,7 @@ const initDashboardTour = () => {
         ) as HTMLElement,
         on: "bottom",
       },
-      title: "2/3",
+      title: "2/4",
       text: `This is your species overview - gives you a breakdown on species over the specified period.`,
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
       modalOverlayOpeningPadding: 6,
@@ -147,12 +148,26 @@ const initDashboardTour = () => {
     });
     tour.addStep({
       attachTo: {
+        element: document.querySelector(".visits-breakdown") as HTMLElement,
+        on: "left",
+      },
+      title: "3/4",
+      text: `View your individual recordings`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 20, crossAxis: 0 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
         element: document.querySelector(
           ".stations-summary-heading"
         ) as HTMLElement,
-        on: "right",
+        on: "top",
       },
-      title: "3/3",
+      title: "4/4",
       text: "This is your stations summary",
       buttons: [
         {
@@ -173,7 +188,7 @@ const initDashboardTour = () => {
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
       floatingUIOptions: {
-        middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
+        middleware: [offset({ mainAxis: 20, crossAxis: 0 })],
       },
     });
     tour.on("cancel", () => {
@@ -610,15 +625,17 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       :start-date="earliestDate"
       :loading="isLoading"
     />
-    <visits-breakdown-list
-      :visits="maybeFilteredDashboardVisitsContext"
-      :location="canonicalLatLngForActiveLocations"
-      :highlighted-location="currentlyHighlightedLocation"
-      @selected-visit="(visit) => (selectedVisit = visit)"
-      @change-highlighted-location="
-        (loc) => (currentlyHighlightedLocation = loc)
-      "
-    />
+    <div class="visits-breakdown">
+      <visits-breakdown-list
+        :visits="maybeFilteredDashboardVisitsContext"
+        :location="canonicalLatLngForActiveLocations"
+        :highlighted-location="currentlyHighlightedLocation"
+        @selected-visit="(visit) => (selectedVisit = visit)"
+        @change-highlighted-location="
+          (loc) => (currentlyHighlightedLocation = loc)
+        "
+      />
+    </div>
   </div>
   <div class="stations-summary-heading">
     <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">

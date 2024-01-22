@@ -951,21 +951,20 @@ const resetQuery = (
 const initActivityTour = () => {
   if (!shownUserActivityOnboarding.value) {
     tour.addStep({
-      title: `Welcome to your Dashboard`,
-      text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
-    Each group can host multiple devices which have their own associated recordings`,
+      title: `Welcome to the Activity Search`,
+      text: `Activity search allows you to comprehensively search through your recordings based on parameters such as time, species, and location`,
       classes: "shepherd-custom-content",
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
     });
     tour.addStep({
       attachTo: {
         element: document.querySelector(
-          ".project-visits-summary-section"
+          ".search-controls"
         ) as HTMLElement,
-        on: "top",
+        on: "right",
       },
-      title: "1/3",
-      text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
+      title: "1/2",
+      text: `The left hand card allows you to search through visits or recordings by date or location.`,
       buttons: SHEPHERD_NEXT_PREV_BUTTONS,
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
@@ -976,28 +975,12 @@ const initActivityTour = () => {
     tour.addStep({
       attachTo: {
         element: document.querySelector(
-          ".species-summary-heading"
+          ".search-items-container"
         ) as HTMLElement,
-        on: "bottom",
+        on: "left",
       },
-      title: "2/3",
-      text: `This is your species overview - gives you a breakdown on species over the specified period.`,
-      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
-      modalOverlayOpeningPadding: 6,
-      modalOverlayOpeningRadius: 4,
-      floatingUIOptions: {
-        middleware: [offset({ mainAxis: 0, crossAxis: 50 })],
-      },
-    });
-    tour.addStep({
-      attachTo: {
-        element: document.querySelector(
-          ".stations-summary-heading"
-        ) as HTMLElement,
-        on: "right",
-      },
-      title: "3/3",
-      text: "This is your stations summary",
+      title: "2/2",
+      text: `The right hand card shows the results based on the search parameters`,
       buttons: [
         {
           action(): any {
@@ -1017,7 +1000,7 @@ const initActivityTour = () => {
       modalOverlayOpeningPadding: 6,
       modalOverlayOpeningRadius: 4,
       floatingUIOptions: {
-        middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
+        middleware: [offset({ mainAxis: 0, crossAxis: 0 })],
       },
     });
     tour.on("cancel", () => {
