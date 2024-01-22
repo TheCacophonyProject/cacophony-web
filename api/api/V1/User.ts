@@ -314,9 +314,9 @@ export default function (app: Application, baseUrl: string) {
   *
   * @apiParam {Object} onboardTracking New onboard tracking data.
   * data structure is "onboardTracker": {
-                        "Dashboard": false,
-                        "Location": false,
-                        "Activity": false...
+                        "dashboard": false,
+                        "locations": false,
+                        "activity": false...
   * @apiUse V1ResponseSuccess
   * @apiUse V1ResponseError
   */

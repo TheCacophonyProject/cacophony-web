@@ -38,7 +38,11 @@ import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
 import type { StationId as LocationId } from "@typedefs/api/common";
-import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
+import {
+  setUserOnboarding,
+  updateUserOnboarding,
+  getUserOnboarding,
+} from "@/api/User";
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -48,20 +52,28 @@ provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
 
 const initUserSettings = async () => {
-  updateUserOnboarding({ settings: { onboardTracking: { Dashboard: false } } })
-    .then((response) => {
-      console.log("Initialised user onboarding data successfully", response);
-    })
-    .catch((error) => {
-      console.error("Error initialising user onboarding data", error);
+  const result = await getUserOnboarding();
+  if (JSON.stringify(result.result.onboardTracking) === "{}") {
+    const postResult = await setUserOnboarding({
+      settings: {
+        onboardTracking: {
+          dashboard: false,
+          locations: false,
+          activity: false,
+          devices: false,
+          manage_project: false,
+        },
+      },
     });
+    console.log(postResult.result.messages);
+  }
 };
 
 const getUserDashboardOnboardingStatus = async () => {
   try {
     const result = await getUserOnboarding();
     const onboardTrackingData = result || {};
-    return onboardTrackingData.result.onboardTracking.Dashboard;
+    return onboardTrackingData.result.onboardTracking.dashboard;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -74,9 +86,6 @@ const tour = new Shepherd.Tour({
     classes: "shepherd-theme-arrows",
     scrollTo: true,
   },
-  // defaultStepOptions: {
-  //   classes: "shepherd-custom-content",
-  // },
 });
 
 const SHEPHERD_NEXT_PREV_BUTTONS = [
@@ -171,7 +180,7 @@ const initDashboardTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({ settings: { onboardTracking: { Dashboard: true } } })
+    updateUserOnboarding({ settings: { onboardTracking: { dashboard: true } } })
       .then((response) => {
         console.log("User onboarding data updated successfully", response);
       })

@@ -58,9 +58,14 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { getAllVisitsForProjectBetweenTimes } from "@api/Monitoring";
+import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
+import Shepherd from "shepherd.js";
+import { offset } from "@floating-ui/dom";
+import "shepherd.js/dist/css/shepherd.css";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
+const shownUserActivityOnboarding = ref<boolean>(false);
 
 const { right: searchContainerRight, top: searchContainerTop } =
   useElementBounding(searchContainer);
@@ -79,6 +84,42 @@ const setSearchContainerHeight = (winHeight: number) => {
     //searchContainer.value.style.height = `${windowHeight.value - searchContainerTop.value}px`;
   }
 };
+
+const getUserActivityOnboardingStatus = async () => {
+  try {
+    const result = await getUserOnboarding();
+    const onboardTrackingData = result || {};
+    return onboardTrackingData.result.onboardTracking.activity;
+  } catch (error) {
+    console.error("Error getting user onboarding data", error);
+    return false;
+  }
+};
+
+const SHEPHERD_NEXT_PREV_BUTTONS = [
+  {
+    action(): any {
+      return (this as any).back();
+    },
+    classes: "shepherd-button-secondary",
+    text: "Back",
+  },
+  {
+    action(): any {
+      return (this as any).next();
+    },
+    text: "Next",
+  },
+];
+
+const tour = new Shepherd.Tour({
+  useModalOverlay: true,
+  defaultStepOptions: {
+    classes: "shepherd-theme-arrows",
+    scrollTo: true,
+  },
+});
+
 watch(searchContainerRight, setMapBufferWidth);
 watch(windowHeight, setSearchContainerHeight);
 
@@ -673,6 +714,8 @@ onMounted(async () => {
     await doSearch();
   }
   loading.value = false;
+  shownUserActivityOnboarding.value = await getUserActivityOnboardingStatus();
+  initActivityTour();
 });
 
 interface RecordingQueryCursor {
@@ -903,6 +946,92 @@ const resetQuery = (
     fromDateTime,
     untilDateTime,
   };
+};
+
+const initActivityTour = () => {
+  if (!shownUserActivityOnboarding.value) {
+    tour.addStep({
+      title: `Welcome to your Dashboard`,
+      text: `The dashboard gives you an overview of the animal visits from your devices within the group. 
+    Each group can host multiple devices which have their own associated recordings`,
+      classes: "shepherd-custom-content",
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".project-visits-summary-section"
+        ) as HTMLElement,
+        on: "top",
+      },
+      title: "1/3",
+      text: `This is yor visits summary - it highlights the animal visits across a time period, with location and timestamped information`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".species-summary-heading"
+        ) as HTMLElement,
+        on: "bottom",
+      },
+      title: "2/3",
+      text: `This is your species overview - gives you a breakdown on species over the specified period.`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 0, crossAxis: 50 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".stations-summary-heading"
+        ) as HTMLElement,
+        on: "right",
+      },
+      title: "3/3",
+      text: "This is your stations summary",
+      buttons: [
+        {
+          action(): any {
+            return (this as any).back();
+          },
+          classes: "shepherd-button-secondary",
+          text: "Back",
+        },
+        {
+          action(): any {
+            window.localStorage.setItem("show-onboarding", "false");
+            return (this as any).complete();
+          },
+          text: "Finish",
+        },
+      ],
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
+      },
+    });
+    tour.on("cancel", () => {
+      window.localStorage.setItem("show-onboarding", "false");
+    });
+    tour.start();
+    updateUserOnboarding({ settings: { onboardTracking: { activity: true } } })
+      .then((response) => {
+        console.log("Locations onboarding data updated successfully", response);
+      })
+      .catch((error) => {
+        console.error("Error updating locations onboarding data", error);
+      });
+  }
 };
 
 // NOTE: We try to load at most one month at a time.
