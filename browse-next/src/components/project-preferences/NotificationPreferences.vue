@@ -26,10 +26,20 @@ const pushVisitEventSwitch = ref(true);
         <div class="emailHeading">
           <h6>Email notifications</h6>
           <p style="color: grey">
-            Recieve emails to find out what's going on when you're not online
+            Receive emails to find out what's going on when you're not online
           </p>
         </div>
         <div class="emailSettings">
+          <div class="digestHeading">
+            <h6 class="digestTitle">Weekly digest</h6>
+            <div class="digestSwitch">
+              <b-form-checkbox
+                v-model="emailDailyDigestSwitch"
+                switch
+              ></b-form-checkbox>
+            </div>
+          </div>
+          <p style="color: grey">A weekly overview of your project</p>
           <div class="digestHeading">
             <h6 class="digestTitle">Daily digest</h6>
             <div class="digestSwitch">
@@ -41,7 +51,7 @@ const pushVisitEventSwitch = ref(true);
           </div>
           <p style="color: grey">A daily overview of your project</p>
           <div class="visitHeading">
-            <h6 class="visitTitle">Visit event</h6>
+            <h6 class="visitTitle">Tag alerts</h6>
             <div class="visitSwitch">
               <b-form-checkbox
                 v-model="emailVisitEventSwitch"
@@ -49,21 +59,20 @@ const pushVisitEventSwitch = ref(true);
               ></b-form-checkbox>
             </div>
           </div>
-          <p style="color: grey">Recieve a notification upon every visit</p>
+          <p style="color: grey">Receive an alert notification based on specified tags</p>
         </div>
       </div>
       <div class="divider"></div>
       <div class="pushNotifications">
         <div class="pushHeading">
-          <h6>Text notifications</h6>
+          <h6>Company updates</h6>
           <p style="color: grey">
-            Recieve text notifications to find out what's going on while you're
-            away
+            Receive updates on company progress through notifications about the newsletter and blog posts 
           </p>
         </div>
         <div class="pushSettings">
           <div class="digestHeading">
-            <h6 class="digestTitle">Daily digest</h6>
+            <h6 class="digestTitle">Newsletter</h6>
             <div class="digestSwitch">
               <b-form-checkbox
                 v-model="pushDailyDigestSwitch"
@@ -71,9 +80,9 @@ const pushVisitEventSwitch = ref(true);
               ></b-form-checkbox>
             </div>
           </div>
-          <p style="color: grey">A daily overview of your project</p>
+          <p style="color: grey">Receive the latest cacophony news</p>
           <div class="visitHeading">
-            <h6 class="visitTitle">Visit event</h6>
+            <h6 class="visitTitle">Blog posts</h6>
             <div class="visitSwitch">
               <b-form-checkbox
                 v-model="pushVisitEventSwitch"
@@ -81,7 +90,7 @@ const pushVisitEventSwitch = ref(true);
               ></b-form-checkbox>
             </div>
           </div>
-          <p style="color: grey">Recieve a notification upon every visit</p>
+          <p style="color: grey">Receive a notification upon every blog post</p>
         </div>
       </div>
     </div>
