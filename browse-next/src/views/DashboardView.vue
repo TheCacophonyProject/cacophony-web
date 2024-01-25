@@ -39,10 +39,10 @@ import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import {
-  setUserOnboarding,
-  updateUserOnboarding,
-  getUserOnboarding,
+  updateUserSettings,
+  getUserSettings,
 } from "@/api/User";
+import { cptvplayercontext_streamComplete } from "@/components/cptv-player/cptv-decoder/decoder/decoder_bg.wasm";
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -52,9 +52,9 @@ provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
 
 const initUserSettings = async () => {
-  const result = await getUserOnboarding();
-  if (JSON.stringify(result.result.onboardTracking) === "{}") {
-    const postResult = await setUserOnboarding({
+  const result = await getUserSettings();
+  if (JSON.stringify(result.result.settings) === "{}") {
+    const postResult = await updateUserSettings({
       settings: {
         onboardTracking: {
           dashboard: false,
@@ -66,15 +66,14 @@ const initUserSettings = async () => {
         },
       },
     });
-    console.log(postResult.result.messages);
   }
 };
 
 const getUserDashboardOnboardingStatus = async () => {
   try {
-    const result = await getUserOnboarding();
+    const result = await getUserSettings();
     const onboardTrackingData = result || {};
-    return onboardTrackingData.result.onboardTracking.dashboard;
+    return onboardTrackingData.result.settings.onboardTracking.dashboard;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -195,7 +194,7 @@ const initDashboardTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({ settings: { onboardTracking: { dashboard: true } } })
+    updateUserSettings({ settings: { onboardTracking: { dashboard: true } } })
       .then((response) => {
         console.log("User onboarding data updated successfully", response);
       })
@@ -539,140 +538,142 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
-  <div class="header-container">
-    <section-header>Dashboard</section-header>
-    <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <bimodal-switch
-        :modes="['Thermal', 'Audio']"
-        v-model="recordingMode"
-        v-if="currentSelectedProjectHasAudioAndThermal"
-      />
-      <div
-        class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
-      >
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span>View </span>
-          <select
-            class="form-select form-select-sm text-end"
-            v-model="visitsOrRecordings"
-          >
-            <option>visits</option>
-            <option>recordings</option>
-          </select>
-        </div>
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span> in the last </span>
-          <select
-            class="form-select form-select-sm text-end"
-            v-model="timePeriodDays"
-          >
-            <option value="7">7 days</option>
-            <option value="1">24 hours</option>
-            <option value="3">3 days</option>
-          </select>
-        </div>
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span> grouped by </span>
-          <select
-            class="form-select form-select-sm text-end"
-            v-model="speciesOrLocations"
-          >
-            <option>species</option>
-            <option>location</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="species-summary-heading">
-    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-      Species summary
-    </h2>
-    <horizontal-overflow-carousel
-      class="species-summary-container mb-sm-5 mb-4"
-      v-if="hasVisitsForSelectedTimePeriod"
-    >
-      <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
+  <div>
+    <div class="header-container">
+      <section-header>Dashboard</section-header>
+      <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
+        <bimodal-switch
+          :modes="['Thermal', 'Audio']"
+          v-model="recordingMode"
+          v-if="currentSelectedProjectHasAudioAndThermal"
+        />
         <div
-          v-for="[key, val] in speciesSummarySorted"
-          :key="key"
-          class="d-flex flex-row species-summary-item align-items-center"
-          @click="showVisitsForTag(key)"
+          class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
         >
-          <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
-          <div
-            class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
-          >
-            <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
-            <div class="species-name lh-sm small text-capitalize">
-              {{ displayLabelForClassificationLabel(key) }}
-            </div>
+          <div class="d-flex flex-row align-items-center justify-content-between">
+            <span>View </span>
+            <select
+              class="form-select form-select-sm text-end"
+              v-model="visitsOrRecordings"
+            >
+              <option>visits</option>
+              <option>recordings</option>
+            </select>
+          </div>
+          <div class="d-flex flex-row align-items-center justify-content-between">
+            <span> in the last </span>
+            <select
+              class="form-select form-select-sm text-end"
+              v-model="timePeriodDays"
+            >
+              <option value="7">7 days</option>
+              <option value="1">24 hours</option>
+              <option value="3">3 days</option>
+            </select>
+          </div>
+          <div class="d-flex flex-row align-items-center justify-content-between">
+            <span> grouped by </span>
+            <select
+              class="form-select form-select-sm text-end"
+              v-model="speciesOrLocations"
+            >
+              <option>species</option>
+              <option>location</option>
+            </select>
           </div>
         </div>
       </div>
-    </horizontal-overflow-carousel>
-  </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Visits summary
-  </h2>
-  <div class="project-visits-summary-section d-md-flex flex-md-row">
-    <project-visits-summary
-      v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-5 flex-md-fill"
-      :locations="allLocations"
-      :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-      :visits="maybeFilteredDashboardVisitsContext"
-      :start-date="earliestDate"
-      :loading="isLoading"
-    />
-    <div class="visits-breakdown">
-      <visits-breakdown-list
-        :visits="maybeFilteredDashboardVisitsContext"
-        :location="canonicalLatLngForActiveLocations"
-        :highlighted-location="currentlyHighlightedLocation"
-        @selected-visit="(visit) => (selectedVisit = visit)"
-        @change-highlighted-location="
-          (loc) => (currentlyHighlightedLocation = loc)
-        "
-      />
     </div>
-  </div>
-  <div class="stations-summary-heading">
-    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-      Stations summary {{ loadedRouteName }}
-    </h2>
-    <horizontal-overflow-carousel class="mb-5">
-      <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
-      <b-spinner v-if="isLoading" />
-      <div
-        class="card-group species-summary flex-sm-nowrap"
-        v-else-if="hasVisitsForSelectedTimePeriod"
+    <div class="species-summary-heading">
+      <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+        Species summary
+      </h2>
+      <horizontal-overflow-carousel
+        class="species-summary-container mb-sm-5 mb-4"
+        v-if="hasVisitsForSelectedTimePeriod"
       >
-        <location-visit-summary
-          v-for="(
-            station, index
-          ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-          :location="station"
-          :active-locations="
-            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
-          "
-          :locations="allLocations"
+        <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
+          <div
+            v-for="[key, val] in speciesSummarySorted"
+            :key="key"
+            class="d-flex flex-row species-summary-item align-items-center"
+            @click="showVisitsForTag(key)"
+          >
+            <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
+            <div
+              class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+            >
+              <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
+              <div class="species-name lh-sm small text-capitalize">
+                {{ displayLabelForClassificationLabel(key) }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </horizontal-overflow-carousel>
+    </div>
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Visits summary
+    </h2>
+    <div class="project-visits-summary-section d-md-flex flex-md-row">
+      <project-visits-summary
+        v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
+        class="mb-5 flex-md-fill"
+        :locations="allLocations"
+        :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+        :visits="maybeFilteredDashboardVisitsContext"
+        :start-date="earliestDate"
+        :loading="isLoading"
+      />
+      <div class="visits-breakdown">
+        <visits-breakdown-list
           :visits="maybeFilteredDashboardVisitsContext"
-          :key="index"
+          :location="canonicalLatLngForActiveLocations"
+          :highlighted-location="currentlyHighlightedLocation"
+          @selected-visit="(visit) => (selectedVisit = visit)"
+          @change-highlighted-location="
+            (loc) => (currentlyHighlightedLocation = loc)
+          "
         />
       </div>
-      <div v-else>
-        There were no active locations in the last {{ timePeriodDays }} days for
-        this project.
-      </div>
-    </horizontal-overflow-carousel>
+    </div>
+    <div class="stations-summary-heading">
+      <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+        Stations summary {{ loadedRouteName }}
+      </h2>
+      <horizontal-overflow-carousel class="mb-5">
+        <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
+        <b-spinner v-if="isLoading" />
+        <div
+          class="card-group species-summary flex-sm-nowrap"
+          v-else-if="hasVisitsForSelectedTimePeriod"
+        >
+          <location-visit-summary
+            v-for="(
+              station, index
+            ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+            :location="station"
+            :active-locations="
+              locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+            "
+            :locations="allLocations"
+            :visits="maybeFilteredDashboardVisitsContext"
+            :key="index"
+          />
+        </div>
+        <div v-else>
+          There were no active locations in the last {{ timePeriodDays }} days for
+          this project.
+        </div>
+      </horizontal-overflow-carousel>
+    </div>
+    <inline-view-modal
+      @close="selectedVisit = null"
+      :fade-in="loadedRouteName === 'dashboard'"
+      :parent-route-name="'dashboard'"
+      @shown="() => (loadedRouteName = 'dashboard')"
+    />
   </div>
-  <inline-view-modal
-    @close="selectedVisit = null"
-    :fade-in="loadedRouteName === 'dashboard'"
-    :parent-route-name="'dashboard'"
-    @shown="() => (loadedRouteName = 'dashboard')"
-  />
 </template>
 <style lang="less" scoped>
 @import "../assets/font-sizes.less";

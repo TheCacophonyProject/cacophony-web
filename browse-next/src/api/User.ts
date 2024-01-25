@@ -142,26 +142,32 @@ export const updateUserFields = (
     FetchResult<void>
   >;
 
-export const updateUserOnboarding = (fields: { settings?: ApiUserSettings }) =>
-  CacophonyApi.patch("/api/v1/users/onboarding", fields) as Promise<
+export const updateUserSettings = (fields: { settings?: ApiUserSettings }) =>
+  CacophonyApi.patch("/api/v1/users/user-settings", fields) as Promise<
     FetchResult<void>
   >;
 
-export const setUserOnboarding = (fields: { settings?: ApiUserSettings }) =>
-  CacophonyApi.post("/api/v1/users/onboarding", fields) as Promise<
-    FetchResult<void>
-  >;
-
-export const getUserOnboarding = () =>
-  CacophonyApi.get("/api/v1/users/onboarding") as Promise<
+export const getUserSettings = () =>
+  CacophonyApi.get("/api/v1/users/user-settings") as Promise<
     FetchResult<{
-      onboardTracking?: {
-        type: "object";
-        propertyNames: {
-          type: "string";
+      settings?: {
+        onboardTracking?: {
+          type: "object";
+          propertyNames: {
+            type: "string";
+          };
+          propertyValues: {
+            type: "boolean";
+          };
         };
-        propertyValues: {
-          type: "boolean";
+        emailNotifications?: {
+          type: "object";
+          propertyNames: {
+            type: "string";
+          };
+          propertyValues: {
+            type: "boolean";
+          };
         };
       };
     }>

@@ -12,7 +12,7 @@ import LocationsOverviewTable from "@/components/LocationsOverviewTable.vue";
 import { currentSelectedProject } from "@models/provides";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
-import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
+import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
@@ -24,9 +24,9 @@ const shownUserLocationsOnboarding = ref<boolean>(false);
 
 const getUserLocationsOnboardingStatus = async () => {
   try {
-    const result = await getUserOnboarding();
+    const result = await getUserSettings();
     const onboardTrackingData = result || {};
-    return onboardTrackingData.result.onboardTracking.locations;
+    return onboardTrackingData.result.settings.onboardTracking.locations;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -128,7 +128,7 @@ const initLocationsTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({ settings: { onboardTracking: { locations: true } } })
+    updateUserSettings({ settings: { onboardTracking: { locations: true } } })
       .then((response) => {
         console.log("Locations onboarding data updated successfully", response);
       })

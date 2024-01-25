@@ -19,21 +19,30 @@ export interface ApiUserSettings {
   // Define user-specific preferences.
   // Maybe define what mode the user wants to see their dashboard in, whether they prefer seeing
   // recordings or visits for that group?  This can also be defined at a group by group level, and remembered there?
-  reports?: "recordings" | "visits";
-  savedSearchQueries?: string[];
-  displayMode?: "audio" | "thermal";
-  viewAsSuperUser?: boolean;
-  currentSelectedGroup?: {
-    groupName: string;
-    id: GroupId;
-  };
-  onboardTracking?: {
-    type: "object";
-    propertyNames: {
-      type: "string";
+    reports?: "recordings" | "visits";
+    savedSearchQueries?: string[];
+    displayMode?: "audio" | "thermal";
+    viewAsSuperUser?: boolean;
+    currentSelectedGroup?: {
+      groupName: string;
+      id: GroupId;
     };
-    propertyValues: {
-      type: "boolean";
+    onboardTracking?: {
+      type: "object";
+      propertyNames: {
+        type: "string";
+      };
+      propertyValues: {
+        type: "boolean";
+      };
     };
-  };
-}
+    emailNotifications?: {
+      type: "object";
+      propertyNames: {
+        type: "string";
+      };
+      propertyValues: {
+        type: "boolean";
+      };
+    };
+  }

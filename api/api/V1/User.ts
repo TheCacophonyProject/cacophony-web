@@ -305,45 +305,9 @@ export default function (app: Application, baseUrl: string) {
     );
   }
 
-  /**
- * @api {post} ${apiUrl}/onboarding Sets the user's onboard tracking data
-  * @apiName SetUserOnboarding
-  * @apiGroup User
-  *
-  * @apiUse V1UserAuthorizationHeader
-  *
-  * @apiParam {Object} onboardTracking New onboard tracking data.
-  * data structure is "onboardTracker": {
-                        "dashboard": false,
-                        "locations": false,
-                        "activity": false...
-  * @apiUse V1ResponseSuccess
-  * @apiUse V1ResponseError
-  */
-  app.post(
-    `${apiUrl}/onboarding`,
-    extractJwtAuthorizedUser,
-    validateFields([body("settings").isObject()]),
-    async (request: Request, response: Response, next: NextFunction) => {
-      const onboardTrackingData = request.body.settings.onboardTracking;
-      const requestUser = await models.User.findByPk(
-        response.locals.requestUser.id
-      );
-
-      const currentSettings = requestUser.settings || {};
-
-      await requestUser.update({
-        settings: {
-          ...currentSettings,
-          onboardTracking: onboardTrackingData,
-        },
-      });
-      return successResponse(response, `Updated user's onboard tracking data.`);
-    }
-  );
-  /**
+/**
  * @api {patch} ${apiUrl}/onboarding Updates the user's onboard tracking data
-  * @apiName UpdateUserOnboarding
+  * @apiName UpdateUserSettings
   * @apiGroup User
   *
   * @apiUse V1UserAuthorizationHeader
@@ -356,34 +320,38 @@ export default function (app: Application, baseUrl: string) {
   * @apiUse V1ResponseSuccess
   * @apiUse V1ResponseError
   */
-  app.patch(
-    `${apiUrl}/onboarding`,
-    extractJwtAuthorizedUser,
-    validateFields([body("settings").isObject()]),
-    async (request: Request, response: Response, next: NextFunction) => {
-      const onboardTrackingData = request.body.settings.onboardTracking;
-      const requestUser = await models.User.findByPk(
-        response.locals.requestUser.id
-      );
-      const currentSettings = requestUser.settings || {};
-      const updatedOnboardTracking = {
-        ...currentSettings.onboardTracking,
-        ...onboardTrackingData,
-      };
-      await requestUser.update({
-        settings: {
-          ...currentSettings,
-          onboardTracking: updatedOnboardTracking,
-        },
-      });
+app.patch(
+  `${apiUrl}/user-settings`,
+  extractJwtAuthorizedUser,
+  validateFields([body("settings").isObject()]),
+  async (request: Request, response: Response, next: NextFunction) => {
+    const updatedSettings = request.body.settings;
+    const requestUser = await models.User.findByPk(
+      response.locals.requestUser.id
+    );
 
-      return successResponse(response, `Updated user's onboard tracking data.`);
+    const currentSettings = requestUser.settings || {};
+    const result: any = { ...currentSettings };
+
+    for (const key in updatedSettings) {
+      if (typeof updatedSettings[key] === 'object' && updatedSettings[key] !== null) {
+        result[key] = { ...result[key], ...updatedSettings[key] };
+      } else {
+        result[key] = updatedSettings[key];
+      }
     }
-  );
 
+    await requestUser.update({
+      settings: result,
+    });
+
+    return successResponse(response, `Updated user's settings.`);
+  }
+);
+                                   
   /**
    * @api {get} ${apiUrl}/onboarding Get the user's onboard tracking data
-   * @apiName GetUserOnboarding
+   * @apiName GetUserSettings
    * @apiGroup User
    *
    * @apiUse V1UserAuthorizationHeader
@@ -392,7 +360,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/onboarding`,
+    `${apiUrl}/user-settings`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
       try {
@@ -400,11 +368,12 @@ export default function (app: Application, baseUrl: string) {
           response.locals.requestUser.id
         );
         const userSettings = requestUser.settings || {};
+        
         return successResponse(
           response,
-          "Retrieved user's onboard tracking data",
+          "Retrieved user settings",
           {
-            onboardTracking: userSettings.onboardTracking || {},
+            settings: userSettings,
           }
         );
       } catch (error) {

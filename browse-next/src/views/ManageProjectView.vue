@@ -2,7 +2,7 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
+import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
@@ -17,9 +17,9 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
 
 const getUserManageProjectOnboardingStatus = async () => {
   try {
-    const result = await getUserOnboarding();
+    const result = await getUserSettings();
     const onboardTrackingData = result || {};
-    return onboardTrackingData.result.onboardTracking.manage_project;
+    return onboardTrackingData.result.settings.onboardTracking.manage_project;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -51,9 +51,9 @@ const tour = new Shepherd.Tour({
 });
 
 const initUserSettings = async () => {
-  const result = await getUserOnboarding();
-  if (JSON.stringify(result.result.onboardTracking) === "{}") {
-    const postResult = await setUserOnboarding({
+  const result = await getUserSettings();
+  if (JSON.stringify(result.result.settings) === "{}") {
+    const postResult = await updateUserSettings({
       settings: {
         onboardTracking: {
           dashboard: false,
@@ -150,7 +150,7 @@ const initManageProjectTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({
+    updateUserSettings({
       settings: { onboardTracking: { manage_project: true } },
     })
       .then((response) => {
@@ -163,56 +163,58 @@ const initManageProjectTour = () => {
 };
 </script>
 <template>
-  <section-header>Manage project</section-header>
-  <div class="px-3 p-md-0">
-    <p>
-      Administrate project to add or remove users who have access to this
-      project, change the default tags that users of this project see when
-      tagging tracks.
-    </p>
-    <p>
-      If I'm the only user, and there are no devices, and no recordings, then we
-      should show the setup screen
-    </p>
-    <p>TODO: Would be nice to have the option of renaming the project here?</p>
-  </div>
-  <ul class="nav nav-tabs justify-content-md-center justify-content-evenly">
-    <router-link
-      :class="[
-        ...navLinkClasses,
-        { active: activeTabName === 'project-users' },
-      ]"
-      title="Users"
-      :to="{
-        name: 'project-users',
-      }"
-      >Users</router-link
-    >
-    <router-link
-      :class="[
-        ...navLinkClasses,
-        { active: activeTabName === 'project-tag-settings' },
-      ]"
-      title="Tag settings"
-      :to="{
-        name: 'project-tag-settings',
-      }"
-      >Tag settings</router-link
-    >
-    <router-link
-      :class="[
-        ...navLinkClasses,
-        { active: activeTabName === 'fix-project-locations' },
-      ]"
-      title="Fix locations"
-      :to="{
-        name: 'fix-project-locations',
-      }"
-      >Fix locations</router-link
-    >
-  </ul>
-  <div class="py-3">
-    <router-view />
+  <div>
+    <section-header>Manage project</section-header>
+    <div class="px-3 p-md-0">
+      <p>
+        Administrate project to add or remove users who have access to this
+        project, change the default tags that users of this project see when
+        tagging tracks.
+      </p>
+      <p>
+        If I'm the only user, and there are no devices, and no recordings, then we
+        should show the setup screen
+      </p>
+      <p>TODO: Would be nice to have the option of renaming the project here?</p>
+    </div>
+    <ul class="nav nav-tabs justify-content-md-center justify-content-evenly">
+      <router-link
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabName === 'project-users' },
+        ]"
+        title="Users"
+        :to="{
+          name: 'project-users',
+        }"
+        >Users</router-link
+      >
+      <router-link
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabName === 'project-tag-settings' },
+        ]"
+        title="Tag settings"
+        :to="{
+          name: 'project-tag-settings',
+        }"
+        >Tag settings</router-link
+      >
+      <router-link
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabName === 'fix-project-locations' },
+        ]"
+        title="Fix locations"
+        :to="{
+          name: 'fix-project-locations',
+        }"
+        >Fix locations</router-link
+      >
+    </ul>
+    <div class="py-3">
+      <router-view />
+    </div>
   </div>
 </template>
 <style lang="less" scoped>

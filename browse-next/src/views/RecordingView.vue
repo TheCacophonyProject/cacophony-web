@@ -49,7 +49,7 @@ import {
 import type { LoadedResource } from "@api/types";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import { hasReferenceImageForDeviceAtCurrentLocation } from "@api/Device.ts";
-import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
+import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
@@ -73,9 +73,9 @@ const shownUserRecordingViewOnboarding = ref<boolean>(false);
 
 const getUserRecordingViewOnboardingStatus = async () => {
   try {
-    const result = await getUserOnboarding();
+    const result = await getUserSettings();
     const onboardTrackingData = result || {};
-    return onboardTrackingData.result.onboardTracking.recording_view;
+    return onboardTrackingData.result.settings.onboardTracking.recording_view;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -845,7 +845,7 @@ const initRecordingViewTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({
+    updateUserSettings({
       settings: { onboardTracking: { recording_view: true } },
     })
       .then((response) => {

@@ -33,7 +33,7 @@ import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
-import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
+import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
@@ -67,9 +67,9 @@ const showInactiveDevicesInternalCheck = ref<boolean>(
 
 const getUserDevicesOnboardingStatus = async () => {
   try {
-    const result = await getUserOnboarding();
+    const result = await getUserSettings();
     const onboardTrackingData = result || {};
-    return onboardTrackingData.result.onboardTracking.devices;
+    return onboardTrackingData.result.settings.onboardTracking.devices;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -187,11 +187,11 @@ onMounted(async () => {
     const _ = findProbablyOnlineDevices();
   }
   shownUserDevicesOnboarding.value = await getUserDevicesOnboardingStatus();
+  console.log("value is: ", getUserDevicesOnboardingStatus.value);
   initDevicesTour();
 });
 
 const initDevicesTour = () => {
-  console.log("Activity: ", shownUserDevicesOnboarding.value);
   if (!shownUserDevicesOnboarding.value) {
     tour.addStep({
       title: `Welcome to Devices`,
@@ -246,7 +246,7 @@ const initDevicesTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({ settings: { onboardTracking: { devices: true } } })
+    updateUserSettings({ settings: { onboardTracking: { devices: true } } })
       .then((response) => {
         console.log("Locations onboarding data updated successfully", response);
       })

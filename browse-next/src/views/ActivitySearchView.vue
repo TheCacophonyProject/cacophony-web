@@ -58,7 +58,7 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { getAllVisitsForProjectBetweenTimes } from "@api/Monitoring";
-import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
+import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
@@ -87,9 +87,9 @@ const setSearchContainerHeight = (winHeight: number) => {
 
 const getUserActivityOnboardingStatus = async () => {
   try {
-    const result = await getUserOnboarding();
+    const result = await getUserSettings();
     const onboardTrackingData = result || {};
-    return onboardTrackingData.result.onboardTracking.activity;
+    return onboardTrackingData.result.settings.onboardTracking.activity;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -1005,7 +1005,7 @@ const initActivityTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({ settings: { onboardTracking: { activity: true } } })
+    updateUserSettings({ settings: { onboardTracking: { activity: true } } })
       .then((response) => {
         console.log("Locations onboarding data updated successfully", response);
       })
