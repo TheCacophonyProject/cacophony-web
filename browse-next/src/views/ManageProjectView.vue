@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, ref, onMounted} from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { updateUserOnboarding, getUserOnboarding } from "@/api/User";
 import Shepherd from "shepherd.js";
@@ -14,7 +14,6 @@ const activeTabName = computed(() => {
 const shownUserManageProjectOnboarding = ref<boolean>(false);
 
 const navLinkClasses = ["nav-item", "nav-link", "border-0"];
-
 
 const getUserManageProjectOnboardingStatus = async () => {
   try {
@@ -71,7 +70,8 @@ const initUserSettings = async () => {
 
 onMounted(async () => {
   initUserSettings();
-  shownUserManageProjectOnboarding.value = await getUserManageProjectOnboardingStatus();
+  shownUserManageProjectOnboarding.value =
+    await getUserManageProjectOnboardingStatus();
   initManageProjectTour();
 });
 
@@ -150,7 +150,9 @@ const initManageProjectTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({ settings: { onboardTracking: { manage_project: true } } })
+    updateUserOnboarding({
+      settings: { onboardTracking: { manage_project: true } },
+    })
       .then((response) => {
         console.log("Locations onboarding data updated successfully", response);
       })
@@ -159,7 +161,6 @@ const initManageProjectTour = () => {
       });
   }
 };
-
 </script>
 <template>
   <section-header>Manage project</section-header>

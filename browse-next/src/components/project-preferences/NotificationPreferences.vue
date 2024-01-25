@@ -59,7 +59,9 @@ const pushVisitEventSwitch = ref(true);
               ></b-form-checkbox>
             </div>
           </div>
-          <p style="color: grey">Receive an alert notification based on specified tags</p>
+          <p style="color: grey">
+            Receive an alert notification based on specified tags
+          </p>
         </div>
       </div>
       <div class="divider"></div>
@@ -67,7 +69,8 @@ const pushVisitEventSwitch = ref(true);
         <div class="pushHeading">
           <h6>Company updates</h6>
           <p style="color: grey">
-            Receive updates on company progress through notifications about the newsletter and blog posts 
+            Receive updates on company progress through notifications about the
+            newsletter and blog posts
           </p>
         </div>
         <div class="pushSettings">

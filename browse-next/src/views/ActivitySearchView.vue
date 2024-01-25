@@ -958,9 +958,7 @@ const initActivityTour = () => {
     });
     tour.addStep({
       attachTo: {
-        element: document.querySelector(
-          ".search-controls"
-        ) as HTMLElement,
+        element: document.querySelector(".search-controls") as HTMLElement,
         on: "right",
       },
       title: "1/2",
