@@ -4,7 +4,7 @@ import { createEmailWithTemplate } from "../emails/htmlEmailUtils.js";
 (async () => {
   const templateFilename = "weekly-digest.html";
   const interpolants = {
-    groupName: "Morgans Valley",
+    groupName: "Group",
     groupURL: "https://browse-next.cacophony.org.nz/",
     visitsTotal: 100,
     speciesList: "10 possum\n3 cats\n1 hedgehog",
@@ -28,8 +28,8 @@ import { createEmailWithTemplate } from "../emails/htmlEmailUtils.js";
 
   const emailData = {
     text: text,
-    from: "Will @ Cacophony <willgeorgeson123@gmail.com>",
-    to: "Recipient <will@cacophony.org.nz>",
+    from: "User hello@gmail.com>",
+    to: "Recipient <noinfo@cacophony.org.nz>",
     subject: "Weekly digest",
     attachment: [{ data: html, alternative: true }],
   };
