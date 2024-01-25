@@ -2,7 +2,7 @@
 // Gets visits, divides into chunks of one "night".
 // Farms out to visit breakdown dropdown component.
 
-import { computed, onMounted, ref} from "vue";
+import { computed, onMounted, ref } from "vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import VisitsDailyBreakdown from "@/components/VisitsDailyBreakdown.vue";

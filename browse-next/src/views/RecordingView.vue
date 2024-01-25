@@ -845,9 +845,14 @@ const initRecordingViewTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserOnboarding({ settings: { onboardTracking: { recording_view: true } } })
+    updateUserOnboarding({
+      settings: { onboardTracking: { recording_view: true } },
+    })
       .then((response) => {
-        console.log("Visits breakdown onboarding data updated successfully", response);
+        console.log(
+          "Visits breakdown onboarding data updated successfully",
+          response
+        );
       })
       .catch((error) => {
         console.error("Error updating visits breakdown onboarding data", error);

@@ -55,7 +55,6 @@ const loadingDevices = ref<boolean>(false);
 const currentlyPoweredOnDevices = ref<ApiDeviceResponse[]>([]);
 const shownUserDevicesOnboarding = ref<boolean>(false);
 
-
 const noWrap = (str: string) => str.replace(/ /g, "&nbsp;");
 
 const showInactiveDevices = computed<boolean>(() => {
@@ -191,7 +190,6 @@ onMounted(async () => {
   initDevicesTour();
 });
 
-
 const initDevicesTour = () => {
   console.log("Activity: ", shownUserDevicesOnboarding.value);
   if (!shownUserDevicesOnboarding.value) {
@@ -203,9 +201,7 @@ const initDevicesTour = () => {
     });
     tour.addStep({
       attachTo: {
-        element: document.querySelector(
-          ".devices-table"
-        ) as HTMLElement,
+        element: document.querySelector(".devices-table") as HTMLElement,
         on: "top",
       },
       title: "1/2",
@@ -219,9 +215,7 @@ const initDevicesTour = () => {
     });
     tour.addStep({
       attachTo: {
-        element: document.querySelector(
-          ".device-map"
-        ) as HTMLElement,
+        element: document.querySelector(".device-map") as HTMLElement,
         on: "bottom",
       },
       title: "2/2",

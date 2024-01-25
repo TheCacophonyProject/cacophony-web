@@ -305,7 +305,7 @@ export default function (app: Application, baseUrl: string) {
     );
   }
 
-/**
+  /**
  * @api {post} ${apiUrl}/onboarding Sets the user's onboard tracking data
   * @apiName SetUserOnboarding
   * @apiGroup User
@@ -320,30 +320,28 @@ export default function (app: Application, baseUrl: string) {
   * @apiUse V1ResponseSuccess
   * @apiUse V1ResponseError
   */
-app.post(
-  `${apiUrl}/onboarding`,
-  extractJwtAuthorizedUser,
-  validateFields([
-    body("settings").isObject(),
-  ]),
-  async (request: Request, response: Response, next: NextFunction) => {
-    const onboardTrackingData = request.body.settings.onboardTracking;
-    const requestUser = await models.User.findByPk(
-      response.locals.requestUser.id
-    );
+  app.post(
+    `${apiUrl}/onboarding`,
+    extractJwtAuthorizedUser,
+    validateFields([body("settings").isObject()]),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const onboardTrackingData = request.body.settings.onboardTracking;
+      const requestUser = await models.User.findByPk(
+        response.locals.requestUser.id
+      );
 
-    const currentSettings = requestUser.settings || {};
-    
-    await requestUser.update({
-      settings: {
-        ...currentSettings,
-        onboardTracking: onboardTrackingData
-      },
-    });
-    return successResponse(response, `Updated user's onboard tracking data.`);
-  }
-);
-/**
+      const currentSettings = requestUser.settings || {};
+
+      await requestUser.update({
+        settings: {
+          ...currentSettings,
+          onboardTracking: onboardTrackingData,
+        },
+      });
+      return successResponse(response, `Updated user's onboard tracking data.`);
+    }
+  );
+  /**
  * @api {patch} ${apiUrl}/onboarding Updates the user's onboard tracking data
   * @apiName UpdateUserOnboarding
   * @apiGroup User
@@ -358,61 +356,62 @@ app.post(
   * @apiUse V1ResponseSuccess
   * @apiUse V1ResponseError
   */
- app.patch(
-   `${apiUrl}/onboarding`,
-   extractJwtAuthorizedUser,
-   validateFields([
-    body("settings").isObject(),
-  ]),
-   async (request: Request, response: Response, next: NextFunction) => {
-    const onboardTrackingData = request.body.settings.onboardTracking;
-    const requestUser = await models.User.findByPk(
-      response.locals.requestUser.id
-    );
-    const currentSettings = requestUser.settings || {};
-    const updatedOnboardTracking = {
-      ...currentSettings.onboardTracking,
-      ...onboardTrackingData,
-    };
-    await requestUser.update({
-      settings: {
-        ...currentSettings,
-        onboardTracking: updatedOnboardTracking
-      },
-    });
-
-    return successResponse(response, `Updated user's onboard tracking data.`);
-   }
- );
- 
- /**
- * @api {get} ${apiUrl}/onboarding Get the user's onboard tracking data
- * @apiName GetUserOnboarding
- * @apiGroup User
- *
- * @apiUse V1UserAuthorizationHeader
- *
- * @apiUse V1ResponseSuccess
- * @apiUse V1ResponseError
- */
-app.get(
-  `${apiUrl}/onboarding`,
-  extractJwtAuthorizedUser,
-  async (request: Request, response: Response, next: NextFunction) => {
-    try {
+  app.patch(
+    `${apiUrl}/onboarding`,
+    extractJwtAuthorizedUser,
+    validateFields([body("settings").isObject()]),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const onboardTrackingData = request.body.settings.onboardTracking;
       const requestUser = await models.User.findByPk(
         response.locals.requestUser.id
       );
-      const userSettings = requestUser.settings || {};
-      return successResponse(response, "Retrieved user's onboard tracking data", {
-        onboardTracking: userSettings.onboardTracking || {},
+      const currentSettings = requestUser.settings || {};
+      const updatedOnboardTracking = {
+        ...currentSettings.onboardTracking,
+        ...onboardTrackingData,
+      };
+      await requestUser.update({
+        settings: {
+          ...currentSettings,
+          onboardTracking: updatedOnboardTracking,
+        },
       });
-    } catch (error) {
-      next(error);
-    }
-  }
-);
 
+      return successResponse(response, `Updated user's onboard tracking data.`);
+    }
+  );
+
+  /**
+   * @api {get} ${apiUrl}/onboarding Get the user's onboard tracking data
+   * @apiName GetUserOnboarding
+   * @apiGroup User
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/onboarding`,
+    extractJwtAuthorizedUser,
+    async (request: Request, response: Response, next: NextFunction) => {
+      try {
+        const requestUser = await models.User.findByPk(
+          response.locals.requestUser.id
+        );
+        const userSettings = requestUser.settings || {};
+        return successResponse(
+          response,
+          "Retrieved user's onboard tracking data",
+          {
+            onboardTracking: userSettings.onboardTracking || {},
+          }
+        );
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
   /**
    * @api {patch} /api/v1/users Updates the authenticated user's details
