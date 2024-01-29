@@ -1,40 +1,96 @@
 import { SMTPClient } from "emailjs";
 import { createEmailWithTemplate } from "../emails/htmlEmailUtils.js";
+import modelsInit from "@models/index.js";
+import { Op } from "sequelize";
 
 (async () => {
-  const templateFilename = "daily-digest.html";
-  const interpolants = {
-    groupName: "Group",
-    groupURL: "https://browse-next.cacophony.org.nz/",
-    visitsTotal: 100,
-    speciesList: "10 possum\n3 cats\n1 hedgehog",
-    recordingUrl: "https://browse-next.cacophony.org.nz/",
-    emailSettingsUrl: "gmail.com",
-    cacophonyBrowseUrl: "https://browse-next.cacophony.org.nz/",
-    cacophonyDisplayUrl: "Cacophony monitoring platform",
-  };
+  try {
+    const models = await modelsInit();
+    const users = await models.User.findAll({where: {
+      'settings.emailNotifications.dailyDigest': true
+    }});
 
-  const { text, html } = await createEmailWithTemplate(
-    templateFilename,
-    interpolants
-  );
+    const templateFilename = "daily-digest.html";
 
-  const client = new SMTPClient({
-    user: "",
-    password: "",
-    host: "smtp.gmail.com",
-    ssl: true,
-  });
+    const client = new SMTPClient({
+      user: "",
+      password: "",
+      host: "smtp.gmail.com",
+      ssl: true,
+    });
 
-  const emailData = {
-    text: text,
-    from: "User <hello@gmail.com>",
-    to: "Recipient <noinfo@cacophony.org.nz>",
-    subject: "Daily digest",
-    attachment: [{ data: html, alternative: true }],
-  };
+    users.forEach(async user => {
+      const recordingData = {};
+      //find the id of the group the users in 
+      const group = await models.GroupUsers.findOne({where: {
+        'UserId': user.id
+      }});
 
-  client.send(emailData, (err, message) => {
-    console.log(err || message);
-  });
+      //find the name of the group the users in
+      const name = await models.Group.findOne({where: {
+        'id': group.GroupId
+      }});
+
+      const twentyFourHoursAgo = new Date();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+
+      //find all the visits that are in that group in past week
+      const visits = await models.Recording.findAll({where: {
+        'GroupId': group.GroupId,
+        'recordingDateTime': {
+          [Op.gte]: twentyFourHoursAgo
+        }
+      }});
+
+      const visitPromises = visits.map(async visit => {
+        const recordingInfo = await models.Track.findOne({
+            where: { 'RecordingId': visit.id }
+        });
+    
+        const tag = recordingInfo.data.predictions[0].confident_tag;
+        if (recordingData[tag] !== undefined) {
+            recordingData[tag] += 1;
+        } else {
+            recordingData[tag] = 1;
+        }
+       });
+
+      await Promise.all(visitPromises);
+
+      let visitsTotal = 0;
+      for (const key in recordingData) {
+        visitsTotal += recordingData[key];
+      }
+
+      const interpolants = {
+        groupName: `${name.groupName}`,
+        groupURL: `https://browse-next.cacophony.org.nz/${name.groupName}`,
+        visitsTotal: visitsTotal,
+        speciesList: JSON.stringify(recordingData),
+        recordingUrl: "https://browse-next.cacophony.org.nz/",
+        emailSettingsUrl: "https://browse-next.cacophony.org.nz/",
+        cacophonyBrowseUrl: "https://browse-next.cacophony.org.nz/",
+        cacophonyDisplayUrl: "Cacophony monitoring platform",
+      };
+
+      const { text, html } = await createEmailWithTemplate(
+        templateFilename,
+        interpolants
+      );
+
+      const emailData = {
+        text: text,
+        from: "Cacophony <>",
+        to: `${user.userName} <${user.email}>`,
+        subject: "Daily digest",
+        attachment: [{ data: html, alternative: true }],
+      };
+
+      client.send(emailData, (err, message) => {
+        console.log(err || message);
+      });
+    });
+  } catch (error) {
+    console.error("An error occurred:", error);
+  }
 })();
