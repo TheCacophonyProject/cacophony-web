@@ -62,11 +62,15 @@ import { Op } from "sequelize";
         visitsTotal += recordingData[key];
       }
 
+      const speciesListArray = Object.entries(recordingData).map(([species, count]) => {
+        return { species, count, widthPercent: 100 / Object.keys(recordingData).length };
+      });
+
       const interpolants = {
         groupName: `${name.groupName}`,
         groupURL: `https://browse-next.cacophony.org.nz/${name.groupName}`,
         visitsTotal: visitsTotal,
-        speciesList: JSON.stringify(recordingData),
+        speciesList: speciesListArray,
         recordingUrl: "https://browse-next.cacophony.org.nz/",
         emailSettingsUrl: "https://browse-next.cacophony.org.nz/",
         cacophonyBrowseUrl: "https://browse-next.cacophony.org.nz/",
@@ -76,19 +80,22 @@ import { Op } from "sequelize";
         templateFilename,
         interpolants
       );
-
+      const speciesListWidth = `calc(100% / ${speciesListArray.length})`;
+      const speciesListStyle = `border: 2px solid #666666; width: 100%; margin-top: 10px; overflow: hidden; text-align: center; font-size: 0;`;
+      
       const emailData = {
         text: text,
         from: "Cacophony <>",
         to: `${user.userName} <${user.email}>`,
         subject: "Weekly digest",
-        attachment: [{ data: html, alternative: true }],
+        attachment: [{ data: html.replace('<div id="speciesListContainer"', `<div id="speciesListContainer"`), alternative: true }],
       };
 
       client.send(emailData, (err, message) => {
         console.log(err || message);
       });
     });
+
   } catch (error) {
     console.error("An error occurred:", error);
   }
