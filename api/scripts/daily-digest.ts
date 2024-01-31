@@ -5,6 +5,13 @@ import { Op } from "sequelize";
 
 (async () => {
   try {
+    const iconPaths = [
+      "../public/tag-icons/cat.svg",
+      "../public/tag-icons/possum.svg",
+      "../public/tag-icons/human.svg",
+      "../public/tag-icons/hedgehog.svg",
+    ];
+
     const models = await modelsInit();
     const users = await models.User.findAll({where: {
       'settings.emailNotifications.dailyDigest': true
@@ -75,7 +82,7 @@ import { Op } from "sequelize";
 
       const { text, html } = await createEmailWithTemplate(
         templateFilename,
-        interpolants
+        { ...interpolants, iconPaths }
       );
 
       const emailData = {

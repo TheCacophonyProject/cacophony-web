@@ -2,24 +2,6 @@ import { SMTPClient } from "emailjs";
 import { createEmailWithTemplate } from "../emails/htmlEmailUtils.js";
 import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
-import fs from "fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const commonAttachments = async () => {
-  const svgFilePath = path.join(__dirname, 'possum.svg');
-  const buffer = await fs.readFile(svgFilePath);
-  return [
-    {
-      content: buffer.toString('base64'),
-      mimeType: 'image/svg+xml',
-      cid: 'possum-svg',
-    },
-  ];
-};
 
 (async () => {
   try {
@@ -106,10 +88,7 @@ const commonAttachments = async () => {
         from: "Cacophony <>",
         to: `${user.userName} <${user.email}>`,
         subject: "Weekly digest",
-        attachment: [
-          { data: html.replace('<div id="speciesListContainer"', `<div id="speciesListContainer"`), alternative: true },
-        ],
-        attachments: commonAttachments(),
+        attachment: [{ data: html.replace('<div id="speciesListContainer"', `<div id="speciesListContainer"`), alternative: true }],
       };
 
       client.send(emailData, (err, message) => {
