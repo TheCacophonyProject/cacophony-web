@@ -10,7 +10,18 @@
       <br><br>
       This included... 
       <br>
-      {{ speciesList }} 
+      <div id="speciesListContainer" style="border: 2px solid #666666; width: 100%; margin-top: 10px; overflow: hidden; text-align: center; font-size: 0;">
+        {{#each speciesList}}
+          <div class="speciesListItem" style="display: inline-block; text-align: left; font-size: 16px; box-sizing: border-box; width: {{widthPercent}}%; border-right: 1px solid #cccccc; {{#unless @last}}margin-right: -1px;{{/unless}}">
+            <div style="width: 100%; padding: 10px; display: flex; align-items: center;">
+              <div style="margin-right: 10px;">
+                <div style="font-weight: bold; font-size: 18px;">{{ count }}</div>
+                <div style="font-size: 14px;">{{ species }}</div>
+              </div>
+            </div>
+          </div>
+        {{/each}}
+      </div>
       <br><br>
       <a href="{{ recordingUrl }}" style="background-color: #2f67f6;border:none;border-radius:3px;color:#ffffff;cursor:auto;padding:15px 25px;display: inline-block;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
           View the recordings

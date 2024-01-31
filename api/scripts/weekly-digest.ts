@@ -84,7 +84,9 @@ const commonAttachments = async () => {
         return { species, count, widthPercent: 100 / Object.keys(recordingData).length };
       });
 
-      const interpolants = {
+      const interpolants : {
+        [key: string]: any;
+      } = {
         groupName: `${name.groupName}`,
         groupURL: `https://browse-next.cacophony.org.nz/${name.groupName}`,
         visitsTotal: visitsTotal,
@@ -106,10 +108,7 @@ const commonAttachments = async () => {
         from: "Cacophony <>",
         to: `${user.userName} <${user.email}>`,
         subject: "Weekly digest",
-        attachment: [
-          { data: html.replace('<div id="speciesListContainer"', `<div id="speciesListContainer"`), alternative: true },
-        ],
-        attachments: commonAttachments(),
+        attachment: [{ data: html.replace('<div id="speciesListContainer"', `<div id="speciesListContainer"`), alternative: true }],
       };
 
       client.send(emailData, (err, message) => {
