@@ -5,13 +5,6 @@ import { Op } from "sequelize";
 
 (async () => {
   try {
-    const iconPaths = [
-      "../public/tag-icons/cat.svg",
-      "../public/tag-icons/possum.svg",
-      "../public/tag-icons/human.svg",
-      "../public/tag-icons/hedgehog.svg",
-    ];
-
     const models = await modelsInit();
     const users = await models.User.findAll({where: {
       'settings.emailNotifications.dailyDigest': true
@@ -38,14 +31,14 @@ import { Op } from "sequelize";
         'id': group.GroupId
       }});
 
-      const twentyFourHoursAgo = new Date();
-      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setHours(oneWeekAgo.getHours() - 168);
 
       //find all the visits that are in that group in past week
       const visits = await models.Recording.findAll({where: {
         'GroupId': group.GroupId,
         'recordingDateTime': {
-          [Op.gte]: twentyFourHoursAgo
+          [Op.gte]: oneWeekAgo
         }
       }});
 
@@ -69,34 +62,40 @@ import { Op } from "sequelize";
         visitsTotal += recordingData[key];
       }
 
+      const speciesListArray = Object.entries(recordingData).map(([species, count]) => {
+        return { species, count, widthPercent: 100 / Object.keys(recordingData).length };
+      });
+
       const interpolants = {
         groupName: `${name.groupName}`,
         groupURL: `https://browse-next.cacophony.org.nz/${name.groupName}`,
         visitsTotal: visitsTotal,
-        speciesList: JSON.stringify(recordingData),
+        speciesList: speciesListArray,
         recordingUrl: "https://browse-next.cacophony.org.nz/",
         emailSettingsUrl: "https://browse-next.cacophony.org.nz/",
         cacophonyBrowseUrl: "https://browse-next.cacophony.org.nz/",
         cacophonyDisplayUrl: "Cacophony monitoring platform",
       };
-
       const { text, html } = await createEmailWithTemplate(
         templateFilename,
-        { ...interpolants, iconPaths }
+        interpolants
       );
-
+      const speciesListWidth = `calc(100% / ${speciesListArray.length})`;
+      const speciesListStyle = `border: 2px solid #666666; width: 100%; margin-top: 10px; overflow: hidden; text-align: center; font-size: 0;`;
+      
       const emailData = {
         text: text,
         from: "Cacophony <>",
         to: `${user.userName} <${user.email}>`,
         subject: "Daily digest",
-        attachment: [{ data: html, alternative: true }],
+        attachment: [{ data: html.replace('<div id="speciesListContainer"', `<div id="speciesListContainer"`), alternative: true }],
       };
 
       client.send(emailData, (err, message) => {
         console.log(err || message);
       });
     });
+
   } catch (error) {
     console.error("An error occurred:", error);
   }
