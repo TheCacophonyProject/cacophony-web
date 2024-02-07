@@ -6,6 +6,8 @@ type ApiUserResponse = import("@typedefs/api/user").ApiUserResponse;
 type UserId = import("@typedefs/api/common").UserId;
 type GroupId = import("@typedefs/api/common").GroupId;
 type DeviceId = import("@typedefs/api/common").DeviceId;
+import type { ApiUserSettings } from "@typedefs/api/user";
+
 
 declare namespace Cypress {
   interface Chainable {
@@ -27,6 +29,13 @@ declare namespace Cypress {
       additionalChecks?: any,
       inviteToken?: string
     ): Cypress.Chainable<UserId>;
+
+
+    apiAddUserSettings(
+      userName: string,
+      settings: ApiUserSettings,
+      statusCode?: number,
+    )
 
     /**
      * Update user with parameters supplied in updates. Valid updates parameters are:

@@ -17,6 +17,8 @@ import { logTestDescription, prettyLog } from "../descriptions";
 import { LATEST_END_USER_AGREEMENT } from "../constants";
 import { ApiLoggedInUserResponse, ApiUserResponse } from "@typedefs/api/user";
 import { GroupId, UserId } from "@typedefs/api/common";
+import type { ApiUserSettings } from "@typedefs/api/user";
+
 
 Cypress.Commands.add(
   "apiUserAdd",
@@ -318,6 +320,20 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiAddUserSettings",
+  (settings: ApiUserSettings) => {
+    const fullUrl = v1ApiPath("users/user-settings");
+    cy.request({
+      method: "PATCH",
+      url: fullUrl,
+      body: settings,
+      failOnStatusCode: true,
+    });
+  }
+);
+
+
+Cypress.Commands.add(
   "apiResetPasswordLegacy",
   (userName: string, statusCode: number, additionalChecks: any = {}) => {
     const fullUrl = apiPath() + "/resetpassword";
@@ -342,19 +358,25 @@ Cypress.Commands.add(
   }
 );
 
-Cypress.Commands.add("apiConfirmEmailAddress", (token: string) => {
-  const fullUrl = v1ApiPath("users/validate-email-confirmation-request");
-  const data = {
-    emailConfirmationJWT: token.replace(/:/g, "."),
-  };
+Cypress.Commands.add(
+  "apiAddUserSettings",
+  (
+    userName: string,
+    settings: ApiUserSettings,
+    statusCode: number = 200,
+  ) => {
 
-  cy.request({
-    method: "POST",
-    url: fullUrl,
-    body: data,
-    failOnStatusCode: true,
-  });
-});
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "PATCH",
+        url: v1ApiPath("users/user-settings"),
+        body: settings,
+      },
+      userName,
+      statusCode
+    );
+  }
+);
 
 Cypress.Commands.add(
   "apiUserChangePassword",

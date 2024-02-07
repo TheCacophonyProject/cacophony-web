@@ -1,6 +1,7 @@
 import {
   ACCEPT_INVITE_PREFIX,
   clearMailServerLog,
+  
   CONFIRM_EMAIL_PREFIX,
   confirmEmailAddress,
   extractTokenStartingWith,
@@ -11,11 +12,14 @@ import {
   startMailServerStub,
   waitForEmail,
 } from "@commands/emailUtils";
+
 import { getTestEmail, getTestName } from "@commands/names";
 import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts";
 import { LATEST_END_USER_AGREEMENT } from "@commands/constants";
-import { getCreds } from "@commands/server";
+import { getCreds, makeAuthorizedRequestWithStatus, v1ApiPath} from "@commands/server";
 import { uniqueName } from "@commands/testUtils";
+import { apiAddUserSettings } from "@commands/api/user";
+
 
 describe("Transactional emails for different user lifecycle actions", () => {
   if (Cypress.env("running_in_a_dev_environment") == true) {
@@ -27,22 +31,51 @@ describe("Transactional emails for different user lifecycle actions", () => {
       clearMailServerLog();
     });
 
-    it("Should send a weekly digest email to users with emailNotifications.weeklyDigest set to true", () => {
+    it("Should send a daily digest email to users with emailNotifications.dailyDigest set to true", () => {
       const adminUser = uniqueName("admin");
       const group = uniqueName("group");
       cy.log("Create a group to add new user to");
       cy.testCreateUserAndGroup(adminUser, group);
+      cy.log("Add user settings");
 
-      const expectedUser = {
-        userName: getTestName(adminUser),
-        email: getTestEmail(adminUser),
-        globalPermission: UserGlobalPermission.Off,
-        endUserAgreement: 3,
-        emailConfirmed: true,
+      const settings = {
+        "settings": {
+          "onboardTracking": {
+            "dashboard": false,
+            "location": false,
+            "activity": false,
+            "devices": false,
+            "manage-project": false,
+            "recording_view": false
+          },
+          "emailNotifications": {
+              "dailyDigest": true,
+              "weeklyDigest": true
+          }
+        }
       };
-      
-      cy.log("Add a new user");
-      // cy.apiUserAdd(adminUser).then((userId) => {
+
+      clearMailServerLog();
+      cy.apiAddUserSettings(
+        adminUser,
+        settings,
+        200
+      ).then((response: any) => {
+        clearMailServerLog();
+        cy.log("User settings have been added");
+        const command = 'cd api && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader --experimental-json-modules ./scripts/daily-digest.js  > /dev/null &';
+        cy.exec(
+          `cd ../api && docker exec cacophony-api bash -lic "${command}"`
+        ).then((result) => {
+          waitForEmail("daily digest").then((email) => {
+          expect(getEmailSubject(email)).to.equal(`Daily digest`);
+          // expect(getEmailToAddress(email)).to.equal(getTestEmail(adminUser));
+        });
+        });
+      });
+    });
+  }
+});
       //   cy.log(
       //     "Add the user to the group, then remove them and check that they get a notification email"
       //   );
@@ -55,7 +88,3 @@ describe("Transactional emails for different user lifecycle actions", () => {
       //   //   );
       //   //   expect(getEmailToAddress(email)).to.equal(getTestEmail(adminUser));
       //   // });
-      // });
-    });
-  }
-});
