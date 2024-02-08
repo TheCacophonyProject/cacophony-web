@@ -3,8 +3,8 @@ import Handlebars from "handlebars";
 import { JSDOM } from "jsdom";
 import path from "path";
 import { fileURLToPath } from "url";
-import type {EmailImageAttachment} from "@/scripts/emailUtil.js";
-import type {ResizeOptions} from "sharp";
+import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
+import type { ResizeOptions } from "sharp";
 import sharp from "sharp";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,7 +106,10 @@ export const createEmailWithTemplate = async (
   try {
     const full = Handlebars.compile(baseTemplate, { noEscape: true });
     const fullTemplate = full({ contentAndFooter });
-    const template = Handlebars.compile(fullTemplate, { strict: true, noEscape: true });
+    const template = Handlebars.compile(fullTemplate, {
+      strict: true,
+      noEscape: true,
+    });
     // FIXME Emails - we need to make sure we're sending emails with the recipients time-zone, so add timezone offsets to users when they login.
     const html = template(interpolants);
     const plainText = scrapePlainTextFromHtml(html);
@@ -116,7 +119,11 @@ export const createEmailWithTemplate = async (
   }
 };
 
-export const embedImage = async (cid: string, imageAttachments: EmailImageAttachment[], src: string) => {
+export const embedImage = async (
+  cid: string,
+  imageAttachments: EmailImageAttachment[],
+  src: string
+) => {
   const filePath = `${__dirname}/templates/image-attachments/${src}`;
   let imageBuffer: Buffer;
   const sharpOptions = {
@@ -125,29 +132,29 @@ export const embedImage = async (cid: string, imageAttachments: EmailImageAttach
   const resizeOptions: ResizeOptions = {
     fit: "cover",
     width: 600,
-    height: null
+    height: null,
   };
   try {
     imageBuffer = await fs.readFile(filePath);
-    if (imageBuffer.toString('utf8').trim().startsWith("<svg")) {
+    if (imageBuffer.toString("utf8").trim().startsWith("<svg")) {
       imageBuffer = await sharp(imageBuffer, sharpOptions)
-          .resize(resizeOptions)
-          .png({
-            palette: false,
-            compressionLevel: 9,
-          })
-          .toBuffer();
+        .resize(resizeOptions)
+        .png({
+          palette: false,
+          compressionLevel: 9,
+        })
+        .toBuffer();
     }
-  } catch(e) {
+  } catch (e) {
     // File doesn't exist, check if it's an svg string
     if (src.trim().startsWith("<svg")) {
       imageBuffer = await sharp(Buffer.from(src), sharpOptions)
-          .resize(resizeOptions)
-          .png({
-            palette: false,
-            compressionLevel: 9,
-          })
-          .toBuffer();
+        .resize(resizeOptions)
+        .png({
+          palette: false,
+          compressionLevel: 9,
+        })
+        .toBuffer();
     } else {
       // TODO Handle file missing errors
       throw new Error(`File not found: ${filePath}`);
@@ -156,7 +163,7 @@ export const embedImage = async (cid: string, imageAttachments: EmailImageAttach
   imageAttachments.push({
     buffer: imageBuffer,
     mimeType: "image/png",
-    cid
+    cid,
   });
   return `cid:${cid}`;
 };

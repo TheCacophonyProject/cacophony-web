@@ -66,7 +66,7 @@ export async function sendEmail(
         stream: Readable.from(image.buffer),
         type: image.mimeType,
         headers: { "Content-ID": `<${image.cid}>` },
-        name: image.cid
+        name: image.cid,
       });
     }
     await client.sendAsync(message);
