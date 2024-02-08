@@ -1,4 +1,5 @@
-import type { StoppedDevice } from "@/emails/htmlEmailUtils.js";
+import type { StoppedDevice} from "@/emails/htmlEmailUtils.js";
+import {embedImage} from "@/emails/htmlEmailUtils.js";
 import {
   createEmailWithTemplate,
   urlNormaliseName,
@@ -15,14 +16,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
-  const buffer = await fs.readFile(`${__dirname}/templates/cacophony-logo.png`);
-  return [
-    {
-      buffer,
-      mimeType: "image/png",
-      cid: "cacophony-logo",
-    },
-  ];
+  const attachments: EmailImageAttachment[] = [];
+  await embedImage("cacophony-logo", attachments, "cacophony-logo.svg");
+  return attachments;
 };
 
 const commonInterpolants = (origin: string) => {
@@ -432,7 +428,7 @@ export const sendAnimalAlertEmail = async (
     [
       ...(await commonAttachments()),
       {
-        buffer: await fs.readFile(`${__dirname}/templates/test-thumb.png`),
+        buffer: await fs.readFile(`${__dirname}/templates/image-attachments/test-thumb.png`),
         mimeType: "image/png",
         cid: "thumbnail",
       },
@@ -485,7 +481,7 @@ export const sendAnimalAlertEmailForEvent = async (
     [
       ...(await commonAttachments()),
       {
-        buffer: await fs.readFile(`${__dirname}/templates/test-thumb.png`),
+        buffer: await fs.readFile(`${__dirname}/templates/image-attachments/test-thumb.png`),
         mimeType: "image/png",
         cid: "thumbnail",
       },
@@ -514,5 +510,46 @@ export const sendPasswordResetEmail = async (
     userEmailAddress,
     "Reset your Cacophony Monitoring password",
     await commonAttachments()
+  );
+};
+
+
+export const sendPlatformUsageEmail = async (
+    origin: string,
+    recipientEmailAddress: string,
+    weekEnding: Date,
+    platformUsageStats: string,
+    imageAttachments: EmailImageAttachment[] = []
+) => {
+  const common = commonInterpolants(origin);
+  const getMonthName = (num: number) => {
+    switch (num) {
+      case 1: return "Jan";
+      case 2: return "Feb";
+      case 3: return "Mar";
+      case 4: return "Apr";
+      case 5: return "May";
+      case 6: return "Jun";
+      case 7: return "Jul";
+      case 8: return "Aug";
+      case 9: return "Sep";
+      case 10: return "Oct";
+      case 11: return "Nov";
+      case 12: return "Dec";
+    }
+  };
+
+  const weekEndingDate = `${getMonthName(weekEnding.getMonth() + 1)}&nbsp;${weekEnding.getDate()},&nbsp;${weekEnding.getFullYear()}`;
+  const { text, html } = await createEmailWithTemplate("platform-usage-report.html", {
+    platformUsageStats,
+    weekEndingDate,
+    ...common,
+  });
+  return await sendEmail(
+      html,
+      text,
+      recipientEmailAddress,
+      "📈 Cacophony Monitoring Platform usage report",
+      [...(await commonAttachments()), ...imageAttachments]
   );
 };

@@ -1,4 +1,4 @@
 #
 # cron.d/cacophony-api-stopped-devices
 # every hour
-0 * * * * root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader --experimental-json-modules ./scripts/report-stopped-devices.js) 2>&1 | logger --tag report-errors
+0 * * * * root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader --experimental-json-modules ./scripts/report-stopped-devices.js) 2>&1 | logger --tag report-stopped-devices

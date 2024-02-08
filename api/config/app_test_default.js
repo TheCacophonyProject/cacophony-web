@@ -42,7 +42,8 @@ export const smtpDetails = {
   host: "localhost",
   port: 7777, //default for service is 25. 7777 used for smtp-tester
   tls: false, //default is true.  False used for smtp-tester
-  from_name: "Cacophony Reporting",
+  fromName: "Cacophony Reporting",
+  platformUsageEmail: "usage@example.com"
 
   //   service: "gmail",
   //   auth: {
@@ -51,6 +52,13 @@ export const smtpDetails = {
   //   }
 };
 
+
+// List of devices to ignore when making the service error report.
+export const deviceErrorIgnoreList = [];
+// List of Cacophony users to ignore in platform usage report
+export const cacophonyUserIds = [];
+// List of Cacophony groups to ignore in platform usage report
+export const cacophonyGroupIds = [];
 // This is needed because Sequelize looks for development by default
 // when using db:migrate
 export const development = database;
@@ -61,4 +69,7 @@ export default {
   s3Archive,
   database,
   development: database,
+  deviceErrorIgnoreList,
+  cacophonyUserIds,
+  cacophonyGroupIds
 };

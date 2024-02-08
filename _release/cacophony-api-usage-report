@@ -1,0 +1,4 @@
+#
+# cron.d/cacophony-api-usage-report
+# every monday @ 9.30am
+0 9 * * 1 root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader --experimental-json-modules ./scripts/platform-usage-report.js) 2>&1 | logger --tag report-platform-usage
