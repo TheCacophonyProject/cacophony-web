@@ -13,7 +13,11 @@ import type {
   IsoFormattedDateString,
   LatLng,
 } from "@typedefs/api/common";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type {
+  ApiDeviceHistorySettings,
+  ApiDeviceResponse,
+  ApiMaskRegionsData,
+} from "@typedefs/api/device";
 import type { ScheduleId } from "@typedefs/api/common";
 import type {
   DeviceConfigDetail,
@@ -24,6 +28,7 @@ import type { DeviceEventType } from "@typedefs/api/consts";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
+
 export const createProxyDevice = (
   projectNameOrId: string,
   deviceName: string
@@ -377,7 +382,36 @@ export const getReferenceImageForDeviceAtCurrentLocation = (
 ) => {
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/reference-image`
-  ) as Promise<FetchResult<any>>;
+  ) as Promise<FetchResult<Blob>>;
+};
+
+export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime: Date) => {
+  const params = new URLSearchParams();
+  params.append("at-time", atTime.toISOString().toString());
+  const queryString = params.toString();
+
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/mask-regions?${queryString}`
+  ) as Promise<FetchResult<ApiMaskRegionsData>>;
+};
+
+export const getSettingsForDevice = (deviceId: DeviceId, atTime: Date) => {
+  const params = new URLSearchParams();
+  params.append("at-time", atTime.toISOString().toString());
+  const queryString = params.toString();
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/settings?${queryString}`
+  ) as Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>>;
+};
+
+export const updateMaskRegionsForDevice = (
+  deviceId: DeviceId,
+  maskRegionsData: ApiMaskRegionsData
+) => {
+  return CacophonyApi.post(
+    `/api/v1/devices/${deviceId}/mask-regions`,
+    maskRegionsData
+  ) as Promise<FetchResult<void>>;
 };
 
 export const getReferenceImageForDeviceAtTime = (
@@ -388,7 +422,7 @@ export const getReferenceImageForDeviceAtTime = (
   params.append("at-time", atTime.toISOString());
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/reference-image?${params}`
-  ) as Promise<FetchResult<any>>;
+  ) as Promise<FetchResult<Blob>>;
 };
 
 export const hasReferenceImageForDeviceAtTime = (

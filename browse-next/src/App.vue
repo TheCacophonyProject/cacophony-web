@@ -15,6 +15,7 @@ import {
   showSwitchProject,
   creatingNewProject,
   joiningNewProject,
+  showTooltips,
   urlNormalisedCurrentProjectName,
   rafFps,
   pinSideNav,
@@ -67,6 +68,10 @@ const CreateProjectModal = defineAsyncComponent(
 
 const JoinExistingProjectModal = defineAsyncComponent(
   () => import("@/components/JoinExistingProjectModal.vue")
+);
+
+const FirstLoginTooltipsModal = defineAsyncComponent(
+  () => import("@/components/FirstLoginTooltipsModal.vue")
 );
 
 const _userIsSuperAdmin = false;
@@ -186,7 +191,11 @@ onMounted(() => {
   />
   <join-existing-project-modal
     v-if="joiningNewProject.enabled"
-    id="join-group-modal"
+    id="join-project-modal"
+  />
+  <first-login-tooltips-modal
+    v-if="showTooltips.enabled"
+    id="opening-tooltips-modal"
   />
   <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
   <main
@@ -266,6 +275,7 @@ onMounted(() => {
               class="btn btn-light add-group"
               type="button"
               id="switch-or-join-group-button"
+              data-cy="switch or join project button"
               data-bs-toggle="dropdown"
               @click="pinSideNav = true"
               @blur="pinSideNav = false"
@@ -289,9 +299,20 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
+                  data-cy="join existing project button"
                   @click.stop.prevent="joiningNewProject.enabled = true"
                 >
                   Join an existing project
+                </button>
+              </li>
+              <li>
+                <button
+                  class="dropdown-item"
+                  type="button"
+                  data-cy="first login tooltips button"
+                  @click.stop.prevent="showTooltips.enabled = true"
+                >
+                  First login tooltips
                 </button>
               </li>
             </ul>
@@ -418,7 +439,7 @@ onMounted(() => {
         <li class="nav-item">
           <router-link
             :to="{
-              name: 'user-project-settings',
+              name: 'notification-settings',
               params: {
                 projectName: urlNormalisedCurrentProjectName,
               },
