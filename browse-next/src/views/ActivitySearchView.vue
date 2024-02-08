@@ -58,10 +58,17 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { getAllVisitsForProjectBetweenTimes } from "@api/Monitoring";
-import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
+import {
+  updateUserFields
+} from "@/api/User";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -87,9 +94,7 @@ const setSearchContainerHeight = (winHeight: number) => {
 
 const getUserActivityOnboardingStatus = async () => {
   try {
-    const result = await getUserSettings();
-    const onboardTrackingData = result || {};
-    return onboardTrackingData.result.settings.onboardTracking.activity;
+    return await currentUserSettings.value.onboardTracking.activity;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -948,7 +953,7 @@ const resetQuery = (
   };
 };
 
-const initActivityTour = () => {
+const initActivityTour = async () => {
   if (!shownUserActivityOnboarding.value) {
     tour.addStep({
       title: `Welcome to the Activity Search`,
@@ -1005,13 +1010,23 @@ const initActivityTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserSettings({ settings: { onboardTracking: { activity: true } } })
-      .then((response) => {
-        console.log("Locations onboarding data updated successfully", response);
-      })
-      .catch((error) => {
-        console.error("Error updating locations onboarding data", error);
-      });
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          activity: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          activity: true
+        }
+      },
+    });
   }
 };
 

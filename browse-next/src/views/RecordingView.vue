@@ -36,7 +36,6 @@ import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
 import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import { API_ROOT } from "@api/root";
@@ -49,10 +48,17 @@ import {
 import type { LoadedResource } from "@api/types";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import { hasReferenceImageForDeviceAtCurrentLocation } from "@api/Device.ts";
-import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
+import { updateUserFields } from "@/api/User";
+import {
+  currentUserSettings,
+  setLoggedInUserData,
+  CurrentUser,
+  LoggedInUser,
+  LoggedInUserAuth
+} from "../models/LoggedInUser";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -73,9 +79,7 @@ const shownUserRecordingViewOnboarding = ref<boolean>(false);
 
 const getUserRecordingViewOnboardingStatus = async () => {
   try {
-    const result = await getUserSettings();
-    const onboardTrackingData = result || {};
-    return onboardTrackingData.result.settings.onboardTracking.recording_view;
+    return await currentUserSettings.value.onboardTracking.recording_view;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -813,7 +817,7 @@ onMounted(async () => {
   initRecordingViewTour();
 });
 
-const initRecordingViewTour = () => {
+const initRecordingViewTour = async () => {
   if (!shownUserRecordingViewOnboarding.value) {
     tour.addStep({
       attachTo: {
@@ -845,18 +849,23 @@ const initRecordingViewTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserSettings({
-      settings: { onboardTracking: { recording_view: true } },
-    })
-      .then((response) => {
-        console.log(
-          "Visits breakdown onboarding data updated successfully",
-          response
-        );
-      })
-      .catch((error) => {
-        console.error("Error updating visits breakdown onboarding data", error);
-      });
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          recording_view: true,
+        },
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          recording_view: true,
+        },
+      },
+    });
   }
 };
 

@@ -115,15 +115,15 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
     try {
       prevUserData = JSON.parse(JSON.stringify(prevUserData)) as LoggedInUser;
       if (prevUserData.settings && user.settings) {
-        if (
-          prevUserData.settings.currentSelectedGroup?.id !==
-          user.settings.currentSelectedGroup?.id
-        ) {
-          // Update settings on server?
-          saveUserSettings(user.settings).then((response) => {
-            console.warn("User settings updated", response);
-          });
-        }
+        // if (
+        //   prevUserData.settings.currentSelectedGroup?.id !==
+        //   user.settings.currentSelectedGroup?.id
+        // ) {
+        //   // Update settings on server?
+        saveUserSettings(user.settings).then((response) => {
+          console.warn("User settings updated", response);
+        });
+        // }
         // Check to see if new user values have settings changed.
         // If so, persist to the server.
       }

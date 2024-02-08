@@ -2,10 +2,17 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
-import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
+import {
+  updateUserFields
+} from "@/api/User";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const route = useRoute();
 const activeTabName = computed(() => {
@@ -17,9 +24,7 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
 
 const getUserManageProjectOnboardingStatus = async () => {
   try {
-    const result = await getUserSettings();
-    const onboardTrackingData = result || {};
-    return onboardTrackingData.result.settings.onboardTracking.manage_project;
+    return await currentUserSettings.value.onboardTracking.manage_project;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -51,9 +56,8 @@ const tour = new Shepherd.Tour({
 });
 
 const initUserSettings = async () => {
-  const result = await getUserSettings();
-  if (JSON.stringify(result.result.settings) === "{}") {
-    const postResult = await updateUserSettings({
+  if (!currentUserSettings.value.hasOwnProperty('onboardTracking')) {
+    await updateUserFields({
       settings: {
         onboardTracking: {
           dashboard: false,
@@ -65,7 +69,20 @@ const initUserSettings = async () => {
         },
       },
     });
-  }
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          dashboard: false,
+          locations: false,
+          activity: false,
+          devices: false,
+          manage_project: false,
+          recording_view: false,
+        },
+      },
+    });
+  };
 };
 
 onMounted(async () => {
@@ -75,7 +92,7 @@ onMounted(async () => {
   initManageProjectTour();
 });
 
-const initManageProjectTour = () => {
+const initManageProjectTour = async () => {
   if (!shownUserManageProjectOnboarding.value) {
     tour.addStep({
       title: `Welcome to your manage project`,
@@ -150,15 +167,23 @@ const initManageProjectTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserSettings({
-      settings: { onboardTracking: { manage_project: true } },
-    })
-      .then((response) => {
-        console.log("Locations onboarding data updated successfully", response);
-      })
-      .catch((error) => {
-        console.error("Error updating locations onboarding data", error);
-      });
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          manage_project: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          manage_project: true
+        }
+      },
+    });
   }
 };
 </script>
