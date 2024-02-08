@@ -369,7 +369,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       {
         method: "PATCH",
-        url: v1ApiPath("users/user-settings"),
+        url: v1ApiPath("users/"),
         body: settings,
       },
       userName,
