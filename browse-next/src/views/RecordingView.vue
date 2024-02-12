@@ -36,7 +36,6 @@ import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
-import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
 import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import { API_ROOT } from "@api/root";
@@ -49,6 +48,17 @@ import {
 import type { LoadedResource } from "@api/types";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import { hasReferenceImageForDeviceAtCurrentLocation } from "@api/Device.ts";
+import Shepherd from "shepherd.js";
+import { offset } from "@floating-ui/dom";
+import "shepherd.js/dist/css/shepherd.css";
+import { updateUserFields } from "@/api/User";
+import {
+  currentUserSettings,
+  setLoggedInUserData,
+  CurrentUser,
+  LoggedInUser,
+  LoggedInUserAuth
+} from "../models/LoggedInUser";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -64,6 +74,42 @@ const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
 const inlineModalEl = ref<HTMLDivElement>();
 
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
+
+const shownUserRecordingViewOnboarding = ref<boolean>(false);
+
+const getUserRecordingViewOnboardingStatus = async () => {
+  try {
+    return await currentUserSettings.value.onboardTracking.recording_view;
+  } catch (error) {
+    console.error("Error getting user onboarding data", error);
+    return false;
+  }
+};
+
+const SHEPHERD_NEXT_PREV_BUTTONS = [
+  {
+    action(): any {
+      return (this as any).back();
+    },
+    classes: "shepherd-button-secondary",
+    text: "Back",
+  },
+  {
+    action(): any {
+      return (this as any).next();
+    },
+    text: "Next",
+  },
+];
+
+const tour = new Shepherd.Tour({
+  useModalOverlay: true,
+  defaultStepOptions: {
+    classes: "shepherd-theme-arrows",
+    scrollTo: true,
+  },
+});
+
 watch(inlineModalHeight, (newHeight) => {
   if (inlineModalEl.value) {
     (inlineModalEl.value as HTMLDivElement).style.top = `calc(50% - ${
@@ -766,7 +812,62 @@ const selectedTrackWrapped = ({
 
 onMounted(async () => {
   await loadRecording();
+  shownUserRecordingViewOnboarding.value =
+    await getUserRecordingViewOnboardingStatus();
+  initRecordingViewTour();
 });
+
+const initRecordingViewTour = async () => {
+  if (!shownUserRecordingViewOnboarding.value) {
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(".player-container") as HTMLElement,
+        on: "top",
+      },
+      text: `This is the recordings window`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(".tags-overflow") as HTMLElement,
+        on: "top",
+      },
+      text: `You can classify recordings here and validate the AI classification`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
+      },
+    });
+    tour.on("cancel", () => {
+      window.localStorage.setItem("show-onboarding", "false");
+    });
+    tour.start();
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          recording_view: true,
+        },
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          recording_view: true,
+        },
+      },
+    });
+  }
+};
 
 const visitDurationString = computed<string>(() => {
   if (selectedVisit.value && locationContext && locationContext.value) {

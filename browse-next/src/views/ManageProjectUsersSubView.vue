@@ -218,7 +218,7 @@ const permissionsOptions = computed(() => [
         type="button"
         class="btn btn-outline-secondary ms-2"
         @click.stop.prevent="() => (showInviteUserModal = true)"
-        data-cy="invite someone to group button"
+        data-cy="invite someone to project button"
       >
         <font-awesome-icon icon="envelope" />
         <span class="ps-2">Invite someone</span>

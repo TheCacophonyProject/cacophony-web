@@ -27,4 +27,6 @@ export interface ApiUserSettings {
     groupName: string;
     id: GroupId;
   };
+  onboardTracking?: Record<string, boolean>;
+  emailNotifications?: Record<string, boolean>;
 }

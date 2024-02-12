@@ -161,7 +161,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
       });
     });
 
-    it("When an user removes themself from a group, they shouldn't receive email confirmation", () => {
+    it("When a user removes themself from a group, they shouldn't receive email confirmation", () => {
       const adminUser = uniqueName("admin");
       const secondAdminUser = uniqueName("admin");
       const group = uniqueName("group");
@@ -222,7 +222,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
       });
     });
 
-    it("When an user changes their own group permissions, they shouldn't receive email confirmation", () => {
+    it("When a user changes their own group permissions, they shouldn't receive email confirmation", () => {
       const adminUser = uniqueName("admin");
       const secondAdminUser = uniqueName("admin");
       const group = uniqueName("group");

@@ -12,10 +12,39 @@ import LocationsOverviewTable from "@/components/LocationsOverviewTable.vue";
 import { currentSelectedProject } from "@models/provides";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
+import Shepherd from "shepherd.js";
+import { offset } from "@floating-ui/dom";
+import "shepherd.js/dist/css/shepherd.css";
+import {
+  updateUserFields
+} from "@/api/User";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 const loadingLocations = ref(false);
+const shownUserLocationsOnboarding = ref<boolean>(false);
+
+const getUserLocationsOnboardingStatus = async () => {
+  try {
+    return await currentUserSettings.value.onboardTracking.locations;
+  } catch (error) {
+    console.error("Error getting user onboarding data", error);
+    return false;
+  }
+};
+
+const tour = new Shepherd.Tour({
+  useModalOverlay: true,
+  defaultStepOptions: {
+    classes: "shepherd-theme-arrows",
+    scrollTo: true,
+  },
+});
 
 onMounted(async () => {
   loadingLocations.value = true;
@@ -26,7 +55,102 @@ onMounted(async () => {
     );
   }
   loadingLocations.value = false;
+  shownUserLocationsOnboarding.value = await getUserLocationsOnboardingStatus();
+  initLocationsTour();
 });
+
+const SHEPHERD_NEXT_PREV_BUTTONS = [
+  {
+    action(): any {
+      return (this as any).back();
+    },
+    classes: "shepherd-button-secondary",
+    text: "Back",
+  },
+  {
+    action(): any {
+      return (this as any).next();
+    },
+    text: "Next",
+  },
+];
+
+const initLocationsTour = async () => {
+  if (!shownUserLocationsOnboarding.value) {
+    tour.addStep({
+      title: `Welcome to Locations`,
+      text: `Locations provides an overview of the devices within a group and where they are out in the field`,
+      classes: "shepherd-custom-content",
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".location-activity-history"
+        ) as HTMLElement,
+        on: "right",
+      },
+      title: "1/2",
+      text: `This card displays the acitvity at different locations across time`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(".right-side-map") as HTMLElement,
+        on: "left",
+      },
+      title: "2/2",
+      text: "The map displays device location in context",
+      buttons: [
+        {
+          action(): any {
+            return (this as any).back();
+          },
+          classes: "shepherd-button-secondary",
+          text: "Back",
+        },
+        {
+          action(): any {
+            window.localStorage.setItem("show-onboarding", "false");
+            return (this as any).complete();
+          },
+          text: "Finish",
+        },
+      ],
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: -100, crossAxis: -120 })],
+      },
+    });
+    tour.on("cancel", () => {
+      window.localStorage.setItem("show-onboarding", "false");
+    });
+    tour.start();
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          locations: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          locations: true
+        }
+      },
+    });
+  }
+};
 
 const locationsForMap = computed<NamedPoint[]>(() => {
   if (locations.value) {
@@ -181,7 +305,7 @@ const projectHasLocations = computed<boolean>(() => {
       <div v-if="!projectHasLocations">
         There are no existing locations for this project
       </div>
-      <div v-else>
+      <div class="location-activity-history" v-else>
         <!--        <h6>Things that need to appear here:</h6>-->
         <!--        <ul>-->
         <!--          <li>-->
@@ -245,6 +369,7 @@ const projectHasLocations = computed<boolean>(() => {
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
         :radius="30"
+        class="right-side-map"
       />
     </div>
   </div>

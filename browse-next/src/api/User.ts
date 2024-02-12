@@ -142,6 +142,37 @@ export const updateUserFields = (
     FetchResult<void>
   >;
 
+export const updateUserSettings = (fields: { settings?: ApiUserSettings }) =>
+  CacophonyApi.patch("/api/v1/users/user-settings", fields) as Promise<
+    FetchResult<void>
+  >;
+
+export const getUserSettings = () =>
+  CacophonyApi.get("/api/v1/users/user-settings") as Promise<
+    FetchResult<{
+      settings?: {
+        onboardTracking?: {
+          type: "object";
+          propertyNames: {
+            type: "string";
+          };
+          propertyValues: {
+            type: "boolean";
+          };
+        };
+        emailNotifications?: {
+          type: "object";
+          propertyNames: {
+            type: "string";
+          };
+          propertyValues: {
+            type: "boolean";
+          };
+        };
+      };
+    }>
+  >;
+
 export const getEUAVersion = () =>
   CacophonyApi.get("/api/v1/end-user-agreement/latest", NO_ABORT) as Promise<
     FetchResult<{ euaVersion: number }>
@@ -176,5 +207,17 @@ export const acceptProjectInvitation = (groupId: GroupId, abortable = false) =>
   CacophonyApi.post(
     `/api/v1/groups/${groupId}/accept-invitation`,
     {},
+    abortable
+  ) as Promise<FetchResult<void>>;
+
+export const confirmAddToProjectRequest = (
+  membershipRequestJWT: string,
+  abortable = true
+) =>
+  CacophonyApi.post(
+    `/api/v1/users/validate-group-membership-request`,
+    {
+      membershipRequestJWT,
+    },
     abortable
   ) as Promise<FetchResult<void>>;

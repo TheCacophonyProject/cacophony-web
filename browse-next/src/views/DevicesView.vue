@@ -33,6 +33,17 @@ import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
+import Shepherd from "shepherd.js";
+import { offset } from "@floating-ui/dom";
+import "shepherd.js/dist/css/shepherd.css";
+import {
+  updateUserFields
+} from "@/api/User";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const projectDevices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -49,6 +60,7 @@ const devices = computed<ApiDeviceResponse[]>(() => {
 });
 const loadingDevices = ref<boolean>(false);
 const currentlyPoweredOnDevices = ref<ApiDeviceResponse[]>([]);
+const shownUserDevicesOnboarding = ref<boolean>(false);
 
 const noWrap = (str: string) => str.replace(/ /g, "&nbsp;");
 
@@ -59,6 +71,39 @@ const showInactiveDevicesInternal = ref<boolean>(showInactiveDevices.value);
 const showInactiveDevicesInternalCheck = ref<boolean>(
   showInactiveDevices.value
 );
+
+const getUserDevicesOnboardingStatus = async () => {
+  try {
+    return await currentUserSettings.value.onboardTracking.devices;
+  } catch (error) {
+    console.error("Error getting user onboarding data", error);
+    return false;
+  }
+};
+
+const SHEPHERD_NEXT_PREV_BUTTONS = [
+  {
+    action(): any {
+      return (this as any).back();
+    },
+    classes: "shepherd-button-secondary",
+    text: "Back",
+  },
+  {
+    action(): any {
+      return (this as any).next();
+    },
+    text: "Next",
+  },
+];
+
+const tour = new Shepherd.Tour({
+  useModalOverlay: true,
+  defaultStepOptions: {
+    classes: "shepherd-theme-arrows",
+    scrollTo: true,
+  },
+});
 
 const toggleActiveAndInactive = async () => {
   if (!showInactiveDevicesInternal.value) {
@@ -146,7 +191,85 @@ onMounted(async () => {
     await projectDevicesLoaded();
     const _ = findProbablyOnlineDevices();
   }
+  shownUserDevicesOnboarding.value = await getUserDevicesOnboardingStatus();
+  console.log("value is: ", getUserDevicesOnboardingStatus.value);
+  initDevicesTour();
 });
+
+const initDevicesTour = async () => {
+  if (!shownUserDevicesOnboarding.value) {
+    tour.addStep({
+      title: `Welcome to Devices`,
+      text: `The devices page allows you to manage and configure existing devices within a group. You are also able to manually add devices`,
+      classes: "shepherd-custom-content",
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(".devices-table") as HTMLElement,
+        on: "top",
+      },
+      title: "1/2",
+      text: `Selecting a device from the table allows you to configure its setup and settings`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(".device-map") as HTMLElement,
+        on: "bottom",
+      },
+      title: "2/2",
+      text: `Device locations can be viewed graphically through the map`,
+      buttons: [
+        {
+          action(): any {
+            return (this as any).back();
+          },
+          classes: "shepherd-button-secondary",
+          text: "Back",
+        },
+        {
+          action(): any {
+            window.localStorage.setItem("show-onboarding", "false");
+            return (this as any).complete();
+          },
+          text: "Finish",
+        },
+      ],
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 0, crossAxis: 0 })],
+      },
+    });
+    tour.on("cancel", () => {
+      window.localStorage.setItem("show-onboarding", "false");
+    });
+    tour.start();
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          devices: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          devices: true
+        }
+      },
+    });
+  }
+};
 
 // Last seen, last recording time, current ref image if any, current station, total recordings?, active/inactive, rename?
 // firmware, events
@@ -468,6 +591,7 @@ const openSelectedDevice = async () => {
         :default-sort="'lastSeen'"
         compact
         :break-point="0"
+        class="devices-table"
       >
         <template #deviceName="{ cell, row }">
           <div class="d-flex align-items-center">

@@ -58,9 +58,21 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { getAllVisitsForProjectBetweenTimes } from "@api/Monitoring";
+import Shepherd from "shepherd.js";
+import { offset } from "@floating-ui/dom";
+import "shepherd.js/dist/css/shepherd.css";
+import {
+  updateUserFields
+} from "@/api/User";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
+const shownUserActivityOnboarding = ref<boolean>(false);
 
 const { right: searchContainerRight, top: searchContainerTop } =
   useElementBounding(searchContainer);
@@ -79,6 +91,40 @@ const setSearchContainerHeight = (winHeight: number) => {
     //searchContainer.value.style.height = `${windowHeight.value - searchContainerTop.value}px`;
   }
 };
+
+const getUserActivityOnboardingStatus = async () => {
+  try {
+    return await currentUserSettings.value.onboardTracking.activity;
+  } catch (error) {
+    console.error("Error getting user onboarding data", error);
+    return false;
+  }
+};
+
+const SHEPHERD_NEXT_PREV_BUTTONS = [
+  {
+    action(): any {
+      return (this as any).back();
+    },
+    classes: "shepherd-button-secondary",
+    text: "Back",
+  },
+  {
+    action(): any {
+      return (this as any).next();
+    },
+    text: "Next",
+  },
+];
+
+const tour = new Shepherd.Tour({
+  useModalOverlay: true,
+  defaultStepOptions: {
+    classes: "shepherd-theme-arrows",
+    scrollTo: true,
+  },
+});
+
 watch(searchContainerRight, setMapBufferWidth);
 watch(windowHeight, setSearchContainerHeight);
 
@@ -673,6 +719,8 @@ onMounted(async () => {
     await doSearch();
   }
   loading.value = false;
+  shownUserActivityOnboarding.value = await getUserActivityOnboardingStatus();
+  initActivityTour();
 });
 
 interface RecordingQueryCursor {
@@ -903,6 +951,83 @@ const resetQuery = (
     fromDateTime,
     untilDateTime,
   };
+};
+
+const initActivityTour = async () => {
+  if (!shownUserActivityOnboarding.value) {
+    tour.addStep({
+      title: `Welcome to the Activity Search`,
+      text: `Activity search allows you to comprehensively search through your recordings based on parameters such as time, species, and location`,
+      classes: "shepherd-custom-content",
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(".search-controls") as HTMLElement,
+        on: "right",
+      },
+      title: "1/2",
+      text: `The left hand card allows you to search through visits or recordings by date or location.`,
+      buttons: SHEPHERD_NEXT_PREV_BUTTONS,
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 30, crossAxis: 0 })],
+      },
+    });
+    tour.addStep({
+      attachTo: {
+        element: document.querySelector(
+          ".search-items-container"
+        ) as HTMLElement,
+        on: "left",
+      },
+      title: "2/2",
+      text: `The right hand card shows the results based on the search parameters`,
+      buttons: [
+        {
+          action(): any {
+            return (this as any).back();
+          },
+          classes: "shepherd-button-secondary",
+          text: "Back",
+        },
+        {
+          action(): any {
+            window.localStorage.setItem("show-onboarding", "false");
+            return (this as any).complete();
+          },
+          text: "Finish",
+        },
+      ],
+      modalOverlayOpeningPadding: 6,
+      modalOverlayOpeningRadius: 4,
+      floatingUIOptions: {
+        middleware: [offset({ mainAxis: 0, crossAxis: 0 })],
+      },
+    });
+    tour.on("cancel", () => {
+      window.localStorage.setItem("show-onboarding", "false");
+    });
+    tour.start();
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          activity: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          activity: true
+        }
+      },
+    });
+  }
 };
 
 // NOTE: We try to load at most one month at a time.
