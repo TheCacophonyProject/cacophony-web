@@ -12,10 +12,17 @@ import LocationsOverviewTable from "@/components/LocationsOverviewTable.vue";
 import { currentSelectedProject } from "@models/provides";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
-import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
+import {
+  updateUserFields
+} from "@/api/User";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
@@ -24,9 +31,7 @@ const shownUserLocationsOnboarding = ref<boolean>(false);
 
 const getUserLocationsOnboardingStatus = async () => {
   try {
-    const result = await getUserSettings();
-    const onboardTrackingData = result || {};
-    return onboardTrackingData.result.settings.onboardTracking.locations;
+    return await currentUserSettings.value.onboardTracking.locations;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -50,7 +55,6 @@ onMounted(async () => {
     );
   }
   loadingLocations.value = false;
-
   shownUserLocationsOnboarding.value = await getUserLocationsOnboardingStatus();
   initLocationsTour();
 });
@@ -71,7 +75,7 @@ const SHEPHERD_NEXT_PREV_BUTTONS = [
   },
 ];
 
-const initLocationsTour = () => {
+const initLocationsTour = async () => {
   if (!shownUserLocationsOnboarding.value) {
     tour.addStep({
       title: `Welcome to Locations`,
@@ -128,13 +132,23 @@ const initLocationsTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserSettings({ settings: { onboardTracking: { locations: true } } })
-      .then((response) => {
-        console.log("Locations onboarding data updated successfully", response);
-      })
-      .catch((error) => {
-        console.error("Error updating locations onboarding data", error);
-      });
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          locations: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          locations: true
+        }
+      },
+    });
   }
 };
 

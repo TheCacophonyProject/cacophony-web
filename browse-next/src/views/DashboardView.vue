@@ -30,6 +30,7 @@ import TagImage from "@/components/TagImage.vue";
 import {
   activeLocations,
   currentSelectedProject as currentActiveProject,
+  currentUser,
   latLngForActiveLocations,
   userProjects,
 } from "@models/provides";
@@ -39,10 +40,13 @@ import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import {
-  updateUserSettings,
-  getUserSettings,
+  updateUserFields
 } from "@/api/User";
-import { cptvplayercontext_streamComplete } from "@/components/cptv-player/cptv-decoder/decoder/decoder_bg.wasm";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -50,11 +54,12 @@ const visitsContext = ref<ApiVisitResponse[] | null>(null);
 const showUserDashboardOnboarding = ref<boolean>(false);
 provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
+import { currentUser as currentUserInfo } from "@models/provides";
+import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
 const initUserSettings = async () => {
-  const result = await getUserSettings();
-  if (JSON.stringify(result.result.settings) === "{}") {
-    const postResult = await updateUserSettings({
+  if (!currentUserSettings.value.hasOwnProperty('onboardTracking')) {
+    await updateUserFields({
       settings: {
         onboardTracking: {
           dashboard: false,
@@ -66,14 +71,25 @@ const initUserSettings = async () => {
         },
       },
     });
-  }
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          dashboard: false,
+          locations: false,
+          activity: false,
+          devices: false,
+          manage_project: false,
+          recording_view: false,
+        },
+      },
+    });
+  };
 };
 
 const getUserDashboardOnboardingStatus = async () => {
   try {
-    const result = await getUserSettings();
-    const onboardTrackingData = result || {};
-    return onboardTrackingData.result.settings.onboardTracking.dashboard;
+    return await currentUserSettings.value.onboardTracking.dashboard;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -104,7 +120,7 @@ const SHEPHERD_NEXT_PREV_BUTTONS = [
   },
 ];
 
-const initDashboardTour = () => {
+const initDashboardTour = async () => {
   if (!showUserDashboardOnboarding.value) {
     tour.addStep({
       title: `Welcome to your Dashboard`,
@@ -194,14 +210,24 @@ const initDashboardTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserSettings({ settings: { onboardTracking: { dashboard: true } } })
-      .then((response) => {
-        console.log("User onboarding data updated successfully", response);
-      })
-      .catch((error) => {
-        console.error("Error updating user onboarding data", error);
-      });
-  }
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          dashboard: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          dashboard: true
+        }
+      },
+    });
+  };
 };
 
 const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
@@ -398,6 +424,7 @@ watch(currentProject, reloadDashboard);
 
 const loadedRouteName = ref<string>("");
 onMounted(async () => {
+  await reloadDashboard();
   loadedRouteName.value = route.name as string;
   if (!classifications.value) {
     await getClassifications();
@@ -462,12 +489,6 @@ const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
 
 // TODO - Maybe this should be some global context variable too.
 provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
-
-onMounted(async () => {
-  await reloadDashboard();
-  // Load visits for time period.
-  // Get species summary.
-});
 
 const isLoading = computed<boolean>(
   () => locations.value === null || visitsContext.value === null

@@ -33,10 +33,17 @@ import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
-import { updateUserSettings, getUserSettings } from "@/api/User";
 import Shepherd from "shepherd.js";
 import { offset } from "@floating-ui/dom";
 import "shepherd.js/dist/css/shepherd.css";
+import {
+  updateUserFields
+} from "@/api/User";
+import {currentUserSettings,
+        setLoggedInUserData,
+        CurrentUser,
+        LoggedInUser
+} from "../models/LoggedInUser"
 
 const projectDevices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -67,9 +74,7 @@ const showInactiveDevicesInternalCheck = ref<boolean>(
 
 const getUserDevicesOnboardingStatus = async () => {
   try {
-    const result = await getUserSettings();
-    const onboardTrackingData = result || {};
-    return onboardTrackingData.result.settings.onboardTracking.devices;
+    return await currentUserSettings.value.onboardTracking.devices;
   } catch (error) {
     console.error("Error getting user onboarding data", error);
     return false;
@@ -191,7 +196,7 @@ onMounted(async () => {
   initDevicesTour();
 });
 
-const initDevicesTour = () => {
+const initDevicesTour = async () => {
   if (!shownUserDevicesOnboarding.value) {
     tour.addStep({
       title: `Welcome to Devices`,
@@ -246,13 +251,23 @@ const initDevicesTour = () => {
       window.localStorage.setItem("show-onboarding", "false");
     });
     tour.start();
-    updateUserSettings({ settings: { onboardTracking: { devices: true } } })
-      .then((response) => {
-        console.log("Locations onboarding data updated successfully", response);
-      })
-      .catch((error) => {
-        console.error("Error updating locations onboarding data", error);
-      });
+    await updateUserFields({
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          devices: true
+        }
+      },
+    });
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      settings: {
+        onboardTracking: {
+          ...CurrentUser.value.settings.onboardTracking,
+          devices: true
+        }
+      },
+    });
   }
 };
 
