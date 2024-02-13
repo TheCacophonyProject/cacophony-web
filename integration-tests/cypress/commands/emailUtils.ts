@@ -34,11 +34,11 @@ export const startMailServerStub = () => {
     `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js > /dev/null &"`,
     { log: false, failOnNonZeroExit: false }
   ).then(() => {
-  // Wait for the mail server log file to be created
-  return cy.exec(
+    // Wait for the mail server log file to be created
+    return cy.exec(
       `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
-    { log: false }
-  );
+      { log: false }
+    );
   });
 };
 export const extractTokenStartingWith = (

@@ -34,45 +34,45 @@ const checkOnlyInstanceOfScriptRunning = async () => {
 };
 (async function main() {
   await checkOnlyInstanceOfScriptRunning();
-const mailServer = init(port);
-const stubFile = "mailServerStub.log";
-console.log("Init mailserver stub");
-writeFile(stubFile, "SERVER: started", (err) => {
-  if (err) {
-    console.error(err);
-    appendFile(stubFile, err.toString(), () => {});
-    return;
-  }
-});
+  const mailServer = init(port);
+  const stubFile = "mailServerStub.log";
+  console.log("Init mailserver stub");
+  writeFile(stubFile, "SERVER: started", (err) => {
+    if (err) {
+      console.error(err);
+      appendFile(stubFile, err.toString(), () => {});
+      return;
+    }
+  });
 
-// process single emails
-mailServer.bind((addr: string, id: number, email: any) => {
-  if (email.headers.to.includes("pump-smtp")) {
-    // A special email address to simply pump the SMTP stub,
-    // when we're expecting *NO* email to be sent on an event,
-    // but we don't want the cypress test to just timeout.
-    const content: string = "SERVER: received email\n";
-    appendFile(stubFile, content, (err) => {
-      if (err) {
-        console.error(err);
-        return;
-      }
-    });
-  } else {
-    let content: string = "";
-    content += "SERVER: received email\n";
-    content += `SERVER: from: ${email.sender}\n`;
-    content += `SERVER: subject: ${email.headers.subject}\n`;
-    content += `SERVER: to: ${email.headers.to}\n`;
-    content += `SERVER: body: ${email.data}\n`;
-    content += "SERVER: end of mail\n";
-    writeFile(stubFile, content, (err) => {
-      if (err) {
-        console.error(err);
-        appendFile(stubFile, err.toString(), () => {});
-        return;
-      }
-    });
-  }
-});
+  // process single emails
+  mailServer.bind((addr: string, id: number, email: any) => {
+    if (email.headers.to.includes("pump-smtp")) {
+      // A special email address to simply pump the SMTP stub,
+      // when we're expecting *NO* email to be sent on an event,
+      // but we don't want the cypress test to just timeout.
+      const content: string = "SERVER: received email\n";
+      appendFile(stubFile, content, (err) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+    } else {
+      let content: string = "";
+      content += "SERVER: received email\n";
+      content += `SERVER: from: ${email.sender}\n`;
+      content += `SERVER: subject: ${email.headers.subject}\n`;
+      content += `SERVER: to: ${email.headers.to}\n`;
+      content += `SERVER: body: ${email.data}\n`;
+      content += "SERVER: end of mail\n";
+      writeFile(stubFile, content, (err) => {
+        if (err) {
+          console.error(err);
+          appendFile(stubFile, err.toString(), () => {});
+          return;
+        }
+      });
+    }
+  });
 })();
