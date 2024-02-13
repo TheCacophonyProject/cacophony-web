@@ -58,7 +58,7 @@ export async function sendEmail(
       text,
       to,
       subject,
-      from: config.smtpDetails.from_name,
+      from: config.smtpDetails.fromName,
       attachment: [{ data: html, alternative: true }],
     });
     for (const image of imageAttachments) {
@@ -66,6 +66,7 @@ export async function sendEmail(
         stream: Readable.from(image.buffer),
         type: image.mimeType,
         headers: { "Content-ID": `<${image.cid}>` },
+        name: image.cid,
       });
     }
     await client.sendAsync(message);

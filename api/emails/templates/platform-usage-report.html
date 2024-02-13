@@ -1,0 +1,51 @@
+<style>
+    @media only screen and (max-width: 480px){
+        #templateColumns{
+            width:100% !important;
+        }
+
+        .templateColumnContainer{
+            display:block !important;
+            width:100% !important;
+        }
+
+        .columnImage{
+            height:auto !important;
+            max-width:480px !important;
+            width:100% !important;
+        }
+
+        .columnContent{
+            font-size:16px !important;
+            line-height:125% !important;
+        }
+    }
+</style>
+<tr>
+  <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+    <br>
+    <div style="font-family:Helvetica, Arial, sans-serif;padding-bottom:12px;color:rgb(13, 115, 38);padding-right:24px">
+      <span style="font-size:26px;font-weight:bold;">Platform usage report</span><br><span style="font-size:22px;">Week ending {{ weekEndingDate }}</span>
+    </div>
+    <br>
+    <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333">
+      Hi! <br>Here's your weekly update on how people are using the Cacophony Monitoring Platform.
+      <br><br>
+      {{ platformUsageStats }}
+      <br><br>
+      &ndash; The Cacophony Team.
+      <br><br>
+    </div>
+  </td>
+</tr>
+<tr>
+  <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
+    <br><br>
+    <strong>The Cacophony Project.</strong><br>
+    <span class="ios-footer">
+New Zealand.<br>
+</span>
+    <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+    <br><br>
+  </td>
+</tr>
