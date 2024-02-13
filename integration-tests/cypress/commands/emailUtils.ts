@@ -8,7 +8,7 @@ export const RESET_PASSWORD_PREFIX = "/reset-password/";
 export const clearMailServerLog = () => {
   cy.log("Clearing mail server stub log");
   return cy.exec(
-    `cd ../api && docker-compose exec -T server bash -lic "echo "" > mailServerStub.log;"`,
+    `cd ../api && docker exec cacophony-api bash -lic "echo "" > mailServerStub.log;"`,
     { log: false }
   );
 };
@@ -17,8 +17,8 @@ export const waitForEmail = (type: string = "") => {
   cy.log(`Wait for ${type} email`);
   return cy
     .exec(
-      `cd ../api && docker-compose exec -T server bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
-      { log: false, timeout: 3500 }
+      `cd ../api && docker exec cacophony-api bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
+      { log: false }
     )
     .then((response) => {
       email = response.stdout;
@@ -29,20 +29,17 @@ export const waitForEmail = (type: string = "") => {
     });
 };
 export const startMailServerStub = () => {
-  cy.log("Starting mail server stub");
+  cy.log("Attempting to start mail server stub");
   cy.exec(
-    `cd ../api && docker-compose exec -T server bash -lic "rm mailServerStub.log || true;"`,
-    { log: false }
-  );
-  cy.exec(
-    `cd ../api && docker-compose exec -d -T server bash -lic "node ./api/scripts/mailServerStub.js"`,
-    { log: false }
-  );
-  // Wait for the mail server log file to be created
-  return cy.exec(
-    `cd ../api && docker-compose exec -T server bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
-    { log: false }
-  );
+    `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js > /dev/null &"`,
+    { log: false, failOnNonZeroExit: false }
+  ).then(() => {
+    // Wait for the mail server log file to be created
+    return cy.exec(
+      `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
+      { log: false }
+    );
+  });
 };
 export const extractTokenStartingWith = (
   email: string,
