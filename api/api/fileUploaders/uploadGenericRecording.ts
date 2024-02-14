@@ -847,6 +847,11 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     return new Promise((resolve, _reject) => {
       uploadingDevice.update(updateDevicePayload).then(() => resolve());
     });
+  } else if (hasGroupUpdate) {
+    // Is it possible to have a group update without a device update?
+    return new Promise((resolve, _reject) => {
+      uploadingGroup.update(updateGroupPayload).then(() => resolve());
+    });
   } else {
     return new Promise((resolve, _reject) => {
       resolve();

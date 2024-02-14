@@ -124,7 +124,7 @@ const getGroupsForAdmin = async () => {
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="project admin email address"
           placeholder="project admin email address"
-          data-cy="group admin email address"
+          data-cy="project admin email address"
           :disabled="submittingJoinRequest"
           @input="joinableProjects = null"
           required
@@ -139,7 +139,7 @@ const getGroupsForAdmin = async () => {
       >
         <button
           class="btn btn-primary"
-          data-cy="list joinable groups button"
+          data-cy="list joinable projects button"
           :disabled="!isValidEmailAddress || submittingJoinRequest"
           @click.stop.prevent="getGroupsForAdmin"
         >

@@ -51,18 +51,18 @@ import {
 } from "../validation-middleware.js";
 import type { Device } from "models/Device.js";
 import type {
+  ApiDeviceHistorySettings,
   ApiDeviceLocationFixup,
   ApiDeviceResponse,
+  MaskRegion,
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
+import MaskRegionSchema from "@schemas/api/device/MaskRegion.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
-import { jsonSchemaOf } from "@api/schema-validation.js";
+import { jsonSchemaOf, arrayOf } from "@api/schema-validation.js";
 import Sequelize, { Op } from "sequelize";
-import type {
-  DeviceHistory,
-  DeviceHistorySettings,
-} from "@models/DeviceHistory.js";
+import type { DeviceHistory } from "@models/DeviceHistory.js";
 import {
   DeviceType,
   HttpStatusCode,
@@ -151,6 +151,7 @@ interface ApiRegisterDeviceRequestBody {
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
+  deviceType?: DeviceType; // Hint about the kind of hardware we're registering.
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -163,6 +164,11 @@ interface ApiCreateProxyDeviceRequestBody {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDeviceLocationFixupBody {
   setStationAtTime: ApiDeviceLocationFixup;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface MaskRegionsDataBody {
+  maskRegions: MaskRegion[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -196,6 +202,11 @@ interface ApiLocationsResponseSuccess {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceSettingsResponseSuccess {
+  settings: ApiDeviceHistorySettings;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDeviceUsersResponseSuccess {
   users: ApiGroupUserResponse[];
 }
@@ -223,6 +234,7 @@ export default function (app: Application, baseUrl: string) {
       anyOf(validNameOf(body("devicename")), validNameOf(body("deviceName"))),
       validPasswordOf(body("password")),
       idOf(body("saltId")).optional(),
+      body("deviceType").optional().isIn(Object.values(DeviceType)),
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
@@ -558,11 +570,11 @@ export default function (app: Application, baseUrl: string) {
         (request.query["at-time"] &&
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       const deviceHistoryEntry: DeviceHistory =
         await models.DeviceHistory.findOne({
           where: {
-            uuid: device.uuid,
+            DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
             fromDateTime: { [Op.lte]: atTime },
@@ -591,7 +603,7 @@ export default function (app: Application, baseUrl: string) {
             await models.DeviceHistory.findOne({
               where: [
                 {
-                  uuid: device.uuid,
+                  DeviceId: device.id,
                   GroupId: device.GroupId,
                   fromDateTime: { [Op.gt]: fromTime },
                 },
@@ -624,7 +636,7 @@ export default function (app: Application, baseUrl: string) {
             ?.toISOString()
             .replace(/:/g, "_")
             .replace(".", "_");
-          const filename = `device-${device.uuid}-reference-image@${time}.webp`;
+          const filename = `device-${device.id}-reference-image@${time}.webp`;
           // Get reference image for device at time if any.
           return streamS3Object(
             request,
@@ -633,7 +645,7 @@ export default function (app: Application, baseUrl: string) {
             filename,
             mimeType,
             response.locals.requestUser.id,
-            device.groupId,
+            device.GroupId,
             referenceImageFileSize
           );
         }
@@ -676,7 +688,7 @@ export default function (app: Application, baseUrl: string) {
         (request.query["at-time"] &&
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       const deviceHistoryEntry = await models.DeviceHistory.findOne({
         where: {
           DeviceId: device.id,
@@ -916,7 +928,7 @@ export default function (app: Application, baseUrl: string) {
       const device = response.locals.device;
       const deviceLocations = await models.DeviceHistory.findAll({
         where: {
-          uuid: device.uuid,
+          DeviceId: device.id,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
         },
@@ -996,7 +1008,7 @@ export default function (app: Application, baseUrl: string) {
       const referenceType = request.query.type || "pov";
       // TODO: Make some tests for this.
       const atTime = request.query["at-time"] as unknown as Date;
-      const device = response.locals.device;
+      const device = response.locals.device as Device;
       const previousDeviceHistoryEntry: DeviceHistory =
         await models.DeviceHistory.findOne({
           where: {
@@ -1009,7 +1021,7 @@ export default function (app: Application, baseUrl: string) {
         });
       if (previousDeviceHistoryEntry) {
         // If there was a previous reference image for this location entry, delete it.
-        const previousSettings: DeviceHistorySettings =
+        const previousSettings: ApiDeviceHistorySettings =
           previousDeviceHistoryEntry.settings || {};
         if (previousSettings) {
           if (referenceType === "pov" && previousSettings.referenceImagePOV) {
@@ -1045,12 +1057,22 @@ export default function (app: Application, baseUrl: string) {
                 referenceImageInSituFileSize: size,
                 referenceImageInSitu: key,
               };
-        await previousDeviceHistoryEntry.update({
-          settings: {
-            ...previousSettings,
-            ...newSettings,
+        await previousDeviceHistoryEntry.update(
+          {
+            settings: {
+              ...previousSettings,
+              ...newSettings,
+            },
           },
-        });
+          {
+            where: {
+              fromDateTime: previousDeviceHistoryEntry.fromDateTime,
+              DeviceId: device.id,
+              GroupId: device.GroupId,
+            },
+          }
+        );
+
         return successResponse(response, { key, size });
       } else {
         // We can't add an image, because we don't have a device location.
