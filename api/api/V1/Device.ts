@@ -151,7 +151,7 @@ interface ApiRegisterDeviceRequestBody {
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
-  deviceType?: DeviceType // Hint about the kind of hardware we're registering.
+  deviceType?: DeviceType; // Hint about the kind of hardware we're registering.
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -234,7 +234,7 @@ export default function (app: Application, baseUrl: string) {
       anyOf(validNameOf(body("devicename")), validNameOf(body("deviceName"))),
       validPasswordOf(body("password")),
       idOf(body("saltId")).optional(),
-      body("deviceType").optional().isIn(Object.values(DeviceType))
+      body("deviceType").optional().isIn(Object.values(DeviceType)),
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
@@ -1057,11 +1057,12 @@ export default function (app: Application, baseUrl: string) {
                 referenceImageInSituFileSize: size,
                 referenceImageInSitu: key,
               };
-        await previousDeviceHistoryEntry.update({
-          settings: {
-            ...previousSettings,
-            ...newSettings,
-          },
+        await previousDeviceHistoryEntry.update(
+          {
+            settings: {
+              ...previousSettings,
+              ...newSettings,
+            },
           },
           {
             where: {
