@@ -1,6 +1,7 @@
 import { uniqueName } from "@commands/testUtils";
 import {
   ACCEPT_INVITE_PREFIX,
+  JOIN_GROUP_REQUEST_PREFIX,
   extractTokenStartingWith,
   startMailServerStub,
   waitForEmail,
@@ -13,7 +14,7 @@ const cyEl = (str: string) => {
 const getEmailConfirmationToken = `${apiRoot}/users/get-email-confirmation-token`;
 const getEmail = (userName: string) =>
   `${userName.replace(/ /g, "-")}@api.created.com`.toLowerCase();
-export const urlNormaliseGroupName = (name: string): string => {
+export const urlNormaliseProjectName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
 };
 
@@ -42,14 +43,14 @@ const signInExistingUser = (userName: string, password: string) => {
   cyEl("sign in button").click();
 };
 
-const createGroupFromInitialSetup = (group: string) => {
+const createProjectFromInitialSetup = (project: string) => {
   cy.url().should("contain", "/setup");
-  cyEl("create new group button").click();
-  cyEl("new group name").type(group);
-  cyEl("create group button").click();
+  cyEl("create new project button").click();
+  cyEl("new project name").type(project);
+  cyEl("create project button").click();
 
-  // We should be taken to the group page (probably the dashboard page?)
-  cy.url().should("contain", urlNormaliseGroupName(group));
+  // We should be taken to the project page (probably the dashboard page?)
+  cy.url().should("contain", urlNormaliseProjectName(project));
 };
 
 const confirmNewUserEmailAddress = (user: string) => {
@@ -66,8 +67,8 @@ const confirmNewUserEmailAddress = (user: string) => {
         `/confirm-account-email/${response.body.token.replace(/\./g, ":")}`
       );
       cy.url().should("contain", "/setup");
-      expect(cyEl("create new group button")).to.exist;
-      expect(cyEl("join existing group button")).to.exist;
+      expect(cyEl("create new project button")).to.exist;
+      expect(cyEl("join existing project button")).to.exist;
     }
   );
 };
@@ -75,6 +76,46 @@ const confirmNewUserEmailAddress = (user: string) => {
 describe("New users can sign up and confirm their email address", () => {
   before(() => {
     startMailServerStub();
+  });
+
+  it("Existing user (with projects) is able to request to join an existing project from main view", () => {
+    cy.log("User 1 creates a project");
+    const user1 = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const project1 = uniqueName("bobs project");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createProjectFromInitialSetup(project1);
+    signOut();
+
+    cy.log("User 2 creates a project");
+    const user2 = uniqueName("Alice");
+    const project2 = uniqueName("alices project");
+    registerNewUser(user2, password);
+    confirmNewUserEmailAddress(user2);
+    createProjectFromInitialSetup(project2);
+    cyEl("switch or join project button").click();
+    cyEl("join existing project button").click();
+    cyEl("project admin email address").type(getEmail(user1));
+    cyEl("list joinable projects button").click();
+
+    // Since there is only one project, it won't show a list of options to choose from.
+    modalOkayButton("join-project-modal").click();
+
+    signOut();
+
+    waitForEmail("join request").then((email) => {
+      const { payload, token } = extractTokenStartingWith(
+        email,
+        JOIN_GROUP_REQUEST_PREFIX
+      );
+
+      cy.log("Bob signs in and accepts the email link");
+      signInExistingUser(user1, password);
+      cy.url().should("contain", urlNormaliseProjectName(project1));
+      cy.visit(`/confirm-project-membership-request/${token}`);
+      cy.url().should("contain", urlNormaliseProjectName(project1));
+    });
   });
 
   it("New user signup works, and email confirmation works while user is logged in", () => {
@@ -108,8 +149,8 @@ describe("New users can sign up and confirm their email address", () => {
       signInExistingUser(user, password);
 
       cy.url().should("contain", "/setup");
-      expect(cyEl("create new group button")).to.exist;
-      expect(cyEl("join existing group button")).to.exist;
+      expect(cyEl("create new project button")).to.exist;
+      expect(cyEl("join existing project button")).to.exist;
     });
   });
 
@@ -121,71 +162,71 @@ describe("New users can sign up and confirm their email address", () => {
     signOut();
     signInExistingUser(user, password);
     cy.url().should("contain", "/setup");
-    expect(cyEl("create new group button")).to.exist;
-    expect(cyEl("join existing group button")).to.exist;
+    expect(cyEl("create new project button")).to.exist;
+    expect(cyEl("join existing project button")).to.exist;
   });
 
-  it("Existing new user is able to create a new group from setup view", () => {
+  it("Existing new user is able to create a new project from setup view", () => {
     const user = uniqueName("Bob");
     const password = uniqueName("pass");
-    const group = uniqueName("group");
+    const project = uniqueName("project");
     registerNewUser(user, password);
     confirmNewUserEmailAddress(user);
-    createGroupFromInitialSetup(group);
+    createProjectFromInitialSetup(project);
 
     // TODO: Assert that we're taken to the dashboard or somewhere else to complete setup.
 
     signOut();
   });
 
-  it("Existing new user is able to request to join an existing group from setup view", () => {
-    cy.log("User 1 creates a group");
+  it("Existing new user is able to request to join an existing project from setup view", () => {
+    cy.log("User 1 creates a project");
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
-    const group = uniqueName("group");
+    const project = uniqueName("project");
     registerNewUser(user1, password);
     confirmNewUserEmailAddress(user1);
-    createGroupFromInitialSetup(group);
+    createProjectFromInitialSetup(project);
     signOut();
 
-    cy.log("User 2 requests permission to join the group");
+    cy.log("User 2 requests permission to join the project");
     const user2 = uniqueName("Bob");
     registerNewUser(user2, password);
     confirmNewUserEmailAddress(user2);
     cy.url().should("contain", "/setup");
-    cyEl("join existing group button").click();
-    cyEl("group admin email address").type(getEmail(user1));
+    cyEl("join existing project button").click();
+    cyEl("project admin email address").type(getEmail(user1));
 
-    cyEl("list joinable groups button").click();
-    // Since there is only one group, it won't show a list of options to choose from.
-    modalOkayButton("join-group-modal").click();
+    cyEl("list joinable projects button").click();
+    // Since there is only one project, it won't show a list of options to choose from.
+    modalOkayButton("join-project-modal").click();
 
     cy.log(
-      "User should we should see our requested group listed with a pending status"
+      "User should we should see our requested project listed with a pending status"
     );
-    expect(cyEl("pending group memberships")).to.exist;
-    expect(cyEl("pending group memberships").contains(group)).to.exist;
+    expect(cyEl("pending project memberships")).to.exist;
+    expect(cyEl("pending project memberships").contains(project)).to.exist;
     expect(
-      cyEl("pending group memberships").contains(
-        "Waiting for approval from group admin"
+      cyEl("pending project memberships").contains(
+        "Waiting for approval from project admin"
       )
     ).to.exist;
   });
 
   it("New user with a pending invitation is able to see and accept that invitation from their setup screen", () => {
-    cy.log("User 1 creates a group");
+    cy.log("User 1 creates a project");
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
-    const group = uniqueName("group");
+    const project = uniqueName("project");
     registerNewUser(user1, password);
     confirmNewUserEmailAddress(user1);
-    createGroupFromInitialSetup(group);
-    cy.log("They invite a non-member to join their group via email address.");
+    createProjectFromInitialSetup(project);
+    cy.log("They invite a non-member to join their project via email address.");
 
     const user2 = uniqueName("Bob");
 
-    cy.visit(`/${urlNormaliseGroupName(group)}/settings/users`);
-    cyEl("invite someone to group button").click();
+    cy.visit(`/${urlNormaliseProjectName(project)}/settings/users`);
+    cyEl("invite someone to project button").click();
     cyEl("invitee email address").type(getEmail(user2));
     modalOkayButton("invite-someone-modal").click();
     signOut();
@@ -194,40 +235,36 @@ describe("New users can sign up and confirm their email address", () => {
     registerNewUser(user2, password);
     confirmNewUserEmailAddress(user2);
     cy.url().should("contain", "/setup");
-    cy.log("Should see our invited group listed with a pending status");
-    expect(cyEl("pending group memberships")).to.exist;
-    expect(cyEl("pending group memberships").contains(group)).to.exist;
-    cyEl("accept group invitation button").click();
-    cy.log("User is redirected to dashboard for joined group");
-    cy.url().should("contain", `/${urlNormaliseGroupName(group)}`);
+    cy.log("Should see our invited project listed with a pending status");
+    expect(cyEl("pending project memberships")).to.exist;
+    expect(cyEl("pending project memberships").contains(project)).to.exist;
+    cyEl("accept project invitation button").click();
+    cy.log("User is redirected to dashboard for joined project");
+    cy.url().should("contain", `/${urlNormaliseProjectName(project)}`);
     signOut();
   });
 
-  it("Existing user (with groups) is able to request to join an existing group from main view", () => {
-    // TODO:
-  });
-
-  it("Existing user (with groups) is able to invite an existing user to their group", () => {
+  it("Existing user (with projects) is able to invite an existing user to their project", () => {
     const password = uniqueName("pass");
 
-    cy.log("User 1 creates a group");
+    cy.log("User 1 creates a project");
     const user1 = uniqueName("Bob");
-    const group1 = uniqueName("group");
+    const project1 = uniqueName("project");
     registerNewUser(user1, password);
     confirmNewUserEmailAddress(user1);
-    createGroupFromInitialSetup(group1);
+    createProjectFromInitialSetup(project1);
     signOut();
 
-    cy.log("User 1 creates a group");
+    cy.log("User 2 creates a project");
     const user2 = uniqueName("Alice");
-    const group2 = uniqueName("Alice group");
+    const project2 = uniqueName("Alice project");
     registerNewUser(user2, password);
     confirmNewUserEmailAddress(user2);
-    createGroupFromInitialSetup(group2);
+    createProjectFromInitialSetup(project2);
 
-    cy.log("Alice invites Bob to her group Alice-group");
-    cy.visit(`/${urlNormaliseGroupName(group2)}/settings/users`);
-    cyEl("invite someone to group button").click();
+    cy.log("Alice invites Bob to her project Alice-project");
+    cy.visit(`/${urlNormaliseProjectName(project2)}/settings/users`);
+    cyEl("invite someone to project button").click();
     cyEl("invitee email address").type(getEmail(user1));
     modalOkayButton("invite-someone-modal").click();
     signOut();
@@ -239,31 +276,64 @@ describe("New users can sign up and confirm their email address", () => {
       );
       cy.log("Bob signs in and accepts the email link");
       signInExistingUser(user1, password);
-      cy.url().should("contain", urlNormaliseGroupName(group1));
+      cy.url().should("contain", urlNormaliseProjectName(project1));
       cy.visit(`/accept-invite/${token}`);
-
-      cy.url().should("contain", urlNormaliseGroupName(group2));
+      cy.url().should("contain", urlNormaliseProjectName(project2));
     });
   });
 
-  it("Logged in user with a group invite link is able to accept the invitation", () => {
-    // TODO:
+  it("Logged in user with a project invite link is able to accept the invitation", () => {
+    cy.log("User 1 registers and creates a project");
+    const user1 = uniqueName("Bob");
+    const password1 = uniqueName("pass");
+    const project1 = uniqueName("project");
+    registerNewUser(user1, password1);
+    confirmNewUserEmailAddress(user1);
+    createProjectFromInitialSetup(project1);
+    signOut();
+
+    cy.log("User 2 registers and creates a project");
+    const user2 = uniqueName("Alice");
+    const password2 = uniqueName("pass");
+    const project2 = uniqueName("project");
+    registerNewUser(user2, password2);
+    confirmNewUserEmailAddress(user2);
+    createProjectFromInitialSetup(project2);
+
+    cy.log("User 2 invites User 1 to their project");
+    cy.visit(`/${user2})}/settings/users`);
+    cyEl("invite someone to project button").click();
+    cyEl("invitee email address").type(getEmail(user1));
+    modalOkayButton("invite-someone-modal").click();
+    signOut();
+
+    cy.log("User 1 signs in and accepts the email link");
+    signInExistingUser(user1, password1);
+    waitForEmail("invite").then((email) => {
+      const { payload, token } = extractTokenStartingWith(
+        email,
+        ACCEPT_INVITE_PREFIX
+      );
+      cy.url().should("contain", urlNormaliseProjectName(project1));
+      cy.visit(`/accept-invite/${token}`);
+      cy.url().should("contain", urlNormaliseProjectName(project2));
+    });
   });
 
-  it("Logged out user with a group invite link is able to accept the invitation after login", () => {
+  it("Logged out user with a project invite link is able to accept the invitation after login", () => {
     // TODO:
   });
 
   it("Legacy browse users can sign in and have the option of confirming their current email address or choosing a new one", () => {
     cy.log(
-      "Create an existing user with groups but without confirming email address"
+      "Create an existing user with projects but without confirming email address"
     );
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
-    const group = uniqueName("group");
+    const project = uniqueName("project");
     registerNewUser(user1, password);
     confirmNewUserEmailAddress(user1);
-    createGroupFromInitialSetup(group);
+    createProjectFromInitialSetup(project);
 
     cy.visit("/my-settings");
 

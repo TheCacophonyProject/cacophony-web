@@ -30,7 +30,6 @@ describe("User: password reset", () => {
       });
 
       waitForEmail("password reset").then((email) => {
-        cy.log(email);
         expect(email.includes("token="), "Email contains reset token").to.equal(
           true
         );

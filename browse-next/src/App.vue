@@ -186,7 +186,7 @@ onMounted(() => {
   />
   <join-existing-project-modal
     v-if="joiningNewProject.enabled"
-    id="join-group-modal"
+    id="join-project-modal"
   />
   <git-release-info-bar v-if="hasGitReleaseInfoBar" id="release-info-modal" />
   <main
@@ -266,6 +266,7 @@ onMounted(() => {
               class="btn btn-light add-group"
               type="button"
               id="switch-or-join-group-button"
+              data-cy="switch or join project button"
               data-bs-toggle="dropdown"
               @click="pinSideNav = true"
               @blur="pinSideNav = false"
@@ -289,6 +290,7 @@ onMounted(() => {
                 <button
                   class="dropdown-item"
                   type="button"
+                  data-cy="join existing project button"
                   @click.stop.prevent="joiningNewProject.enabled = true"
                 >
                   Join an existing project

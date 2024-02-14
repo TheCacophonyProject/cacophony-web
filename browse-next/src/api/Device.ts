@@ -377,7 +377,7 @@ export const getReferenceImageForDeviceAtCurrentLocation = (
 ) => {
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/reference-image`
-  ) as Promise<FetchResult<any>>;
+  ) as Promise<FetchResult<Blob>>;
 };
 
 export const getReferenceImageForDeviceAtTime = (
@@ -388,7 +388,7 @@ export const getReferenceImageForDeviceAtTime = (
   params.append("at-time", atTime.toISOString());
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/reference-image?${params}`
-  ) as Promise<FetchResult<any>>;
+  ) as Promise<FetchResult<Blob>>;
 };
 
 export const hasReferenceImageForDeviceAtTime = (

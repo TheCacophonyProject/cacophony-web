@@ -371,7 +371,7 @@ const debugConfirmEmail = async () => {
           <div
             class="card-body d-flex flex-column"
             v-if="userHasPendingProjects"
-            data-cy="pending group memberships"
+            data-cy="pending project memberships"
           >
             <h5 class="card-title">Pending project memberships</h5>
             <card-table :items="pendingProjectTableItems">
