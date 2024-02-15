@@ -133,11 +133,24 @@ async function main() {
 function generateText(stoppedDevices: Device[]): string {
   let textBody = `Stopped Devices ${moment().format("MMM ddd Do ha")}\r\n`;
   for (const device of stoppedDevices) {
+    let lastTime: Date;
+    let nextTime: Date;
+    if (device.kind == DeviceType.Audio) {
+      lastTime = device.lastConnectionTime;
+      const date = new Date(lastTime.getTime());
+      nextTime = new Date(date.setDate(date.getDate() + 1));
+    } else if (
+      device.kind == DeviceType.Thermal ||
+      device.kind == DeviceType.Hybrid
+    ) {
+      lastTime = device.heartbeat;
+      nextTime = device.nextHeartbeat;
+    }
     const deviceText = `${device.Group.groupName}- ${device.deviceName} id: ${
       device.id
-    } has stopped, last last message at ${moment(device.heartbeat).format(
+    } has stopped, last last message at ${moment(lastTime).format(
       "MMM ddd Do ha"
-    )} expected to hear again at  ${moment(device.nextHeartbeat).format(
+    )} expected to hear again at  ${moment(nextTime).format(
       "MMM ddd Do ha"
     )}\r\n`;
     textBody += deviceText;
@@ -150,12 +163,25 @@ function generateHtml(stoppedDevices: Device[]): string {
   let html = `<b>Stopped Devices ${moment().format("MMM ddd Do ha")} </b>`;
   html += "<ul>";
   for (const device of stoppedDevices) {
+    let lastTime: Date;
+    let nextTime: Date;
+    if (device.kind == DeviceType.Audio) {
+      lastTime = device.lastConnectionTime;
+      const date = new Date(lastTime.getTime());
+      nextTime = new Date(date.setDate(date.getDate() + 1));
+    } else if (
+      device.kind == DeviceType.Thermal ||
+      device.kind == DeviceType.Hybrid
+    ) {
+      lastTime = device.heartbeat;
+      nextTime = device.nextHeartbeat;
+    }
     const deviceText = `<li>${device.Group.groupName}-${
       device.deviceName
     } id: ${device.id} has stopped, received last message at ${moment(
-      device.heartbeat
+      lastTime
     ).format("MMM ddd Do ha")} expected to hear again at ${moment(
-      device.nextHeartbeat
+      nextTime
     ).format("MMM ddd Do ha")}</li>`;
     html += deviceText;
   }
