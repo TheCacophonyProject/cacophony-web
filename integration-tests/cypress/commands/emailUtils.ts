@@ -12,6 +12,20 @@ export const clearMailServerLog = () => {
     { log: false }
   );
 };
+
+export const waitForEmails = (type: string = "") => {
+  return cy
+    .exec(
+      `cd ../api && docker exec cacophony-api bash -lic "while ! grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
+      { log: false }
+    )
+    .then((response) => {
+      const emails: string[] = response.stdout.split("\n").filter((line) => line.includes("SERVER: received email"));
+      expect(emails.length, "Received an email").to.be.greaterThan(0);
+      return cy.wrap(emails, { log: false });
+    });
+};
+
 export const waitForEmail = (type: string = "") => {
   let email: string;
   cy.log(`Wait for ${type} email`);
