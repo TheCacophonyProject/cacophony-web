@@ -6,7 +6,7 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils.ts";
 import { currentSelectedProject } from "@models/provides.ts";
 import type { SelectedProject } from "@models/LoggedInUser.ts";
-import { latLng, LatLngBounds, latLngBounds } from "leaflet";
+import { latLngBounds } from "leaflet";
 import type { LatLng } from "@typedefs/api/common";
 const format = ref<"latlng" | "nztm">("latlng");
 
@@ -14,7 +14,7 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: { name: string; location: LatLng }): void;
 }>();
 
-const { modelValue, existingLocations } = defineProps<{
+const props = defineProps<{
   modelValue: { name: string; location: LatLng };
   existingLocations: NamedPoint[];
 }>();
@@ -129,7 +129,7 @@ const setInitialMapCenter = (locations: NamedPoint[]) => {
     latInternal.value = location.lat;
   }
 };
-watch(() => existingLocations, setInitialMapCenter);
+watch(() => props.existingLocations, setInitialMapCenter);
 
 const defaultCenter: NamedPoint = {
   location: {
@@ -140,8 +140,8 @@ const defaultCenter: NamedPoint = {
   project: currentProject.value?.groupName || "",
 };
 onBeforeMount(() => {
-  latInternal.value = modelValue.location.lat;
-  lngInternal.value = modelValue.location.lng;
+  latInternal.value = props.modelValue.location.lat;
+  lngInternal.value = props.modelValue.location.lng;
   defaultCenter.location.lat = latInternal.value;
   defaultCenter.location.lng = lngInternal.value;
 });
@@ -159,14 +159,17 @@ const initMap = () => {
 const updateCenter = (latLng: LatLng) => {
   latInternal.value = latLng.lat;
   lngInternal.value = latLng.lng;
-  const northingEasting = convertLatLngToNZTM(lng.value, lat.value);
+  const northingEasting = convertLatLngToNZTM(
+    lng.value as number,
+    lat.value as number
+  );
   northing.value = northingEasting.northing;
   easting.value = northingEasting.easting;
 };
 </script>
 <template>
-  <div class="d-flex flex-row justify-content-between">
-    <div class="w-50 me-3">
+  <div class="d-flex flex-column flex-md-row justify-content-between">
+    <div class="me-md-3 flex-grow-1">
       <label class="fs-7">Location</label>
       <b-form-input
         v-model="newLocationName"
@@ -176,6 +179,7 @@ const updateCenter = (latLng: LatLng) => {
       <b-form-radio-group
         id="radio-group-1"
         v-model="format"
+        class="mt-3 mt-md-0"
         name="radio-options"
       >
         <b-form-radio value="latlng">Latitude/Longitude</b-form-radio>
@@ -231,12 +235,11 @@ const updateCenter = (latLng: LatLng) => {
     </div>
     <map-with-points
       :center="defaultCenter.location"
-      :zoom-level="5"
       :points="existingLocations"
       show-cross-hairs
       @move-map="updateCenter"
       @init-map="initMap"
-      class="map"
+      class="map mt-3 mt-md-0"
     />
   </div>
 </template>
@@ -244,6 +247,6 @@ const updateCenter = (latLng: LatLng) => {
 <style scoped lang="less">
 .map {
   height: 400px;
-  width: 50%;
+  min-width: 400px;
 }
 </style>

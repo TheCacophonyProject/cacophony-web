@@ -35,13 +35,10 @@ export interface ApiDeviceResponse {
   users?: ApiGroupUserResponse[];
 }
 
-export interface MaskRegion {
-  regionLabel: string;
-  regionData: { x: number; y: number }[];
-}
+export interface MaskRegion { regionData: { x: number; y: number }[], alertOnEnter?: boolean }
 
 export interface ApiMaskRegionsData {
-  maskRegions: MaskRegion[];
+  maskRegions: Record<string, MaskRegion>;
 }
 
 export interface ApiDeviceLocationFixup {
@@ -64,6 +61,6 @@ export interface ApiDeviceHistorySettings {
     bottomLeft: [number, number];
     bottomRight: [number, number];
   };
-  maskRegions?: MaskRegion[];
+  maskRegions?: ApiMaskRegionsData;
   ratThresh?: any;
 }

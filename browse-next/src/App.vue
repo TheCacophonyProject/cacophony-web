@@ -42,7 +42,7 @@ import {
   watch,
 } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import { BSpinner } from "bootstrap-vue-3";
+import { BSpinner } from "bootstrap-vue-next";
 import SwitchProjectsModal from "@/components/SwitchProjectsModal.vue";
 import type { LoadedResource } from "@api/types.ts";
 
@@ -166,7 +166,7 @@ onMounted(() => {
   <div class="debug">Logged in? {{ userIsLoggedIn }}</div>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal id="network-issue-modal" />
-  <b-modal
+  <BModal
     id="unimplemented-modal"
     v-model="showUnimplementedModal"
     centered
@@ -175,7 +175,7 @@ onMounted(() => {
     hide-backdrop
   >
     <div>Sorry, this feature is not yet implemented.</div>
-  </b-modal>
+  </BModal>
   <switch-projects-modal
     v-if="showSwitchProject.enabled"
     id="switch-groups-modal"
@@ -261,43 +261,31 @@ onMounted(() => {
             >{{ selectedProject.groupName }}</span
           >
 
-          <div class="dropdown">
-            <button
-              class="btn btn-light add-group"
-              type="button"
-              id="switch-or-join-group-button"
-              data-cy="switch or join project button"
-              data-bs-toggle="dropdown"
-              @click="pinSideNav = true"
-              @blur="pinSideNav = false"
+          <b-dropdown
+            no-caret
+            auto-close
+            no-flip
+            @show="pinSideNav = true"
+            @hide="pinSideNav = false"
+            data-cy="switch or join project button"
+            id="switch-or-join-group-button"
+            variant="light"
+          >
+            <template #button-content>
+              <font-awesome-icon icon="plus" color="rgb(153, 153, 153)" />
+            </template>
+            <b-dropdown-item-button
+              @click.stop.prevent="creatingNewProject.enabled = true"
             >
-              <font-awesome-icon icon="plus" />
-            </button>
-            <ul
-              class="dropdown-menu"
-              aria-labelledby="switch-or-join-group-button"
+              Create a new project
+            </b-dropdown-item-button>
+            <b-dropdown-item-button
+              data-cy="join existing project button"
+              @click.stop.prevent="joiningNewProject.enabled = true"
             >
-              <li>
-                <button
-                  class="dropdown-item"
-                  type="button"
-                  @click.stop.prevent="creatingNewProject.enabled = true"
-                >
-                  Create a new project
-                </button>
-              </li>
-              <li>
-                <button
-                  class="dropdown-item"
-                  type="button"
-                  data-cy="join existing project button"
-                  @click.stop.prevent="joiningNewProject.enabled = true"
-                >
-                  Join an existing project
-                </button>
-              </li>
-            </ul>
-          </div>
+              Join an existing project
+            </b-dropdown-item-button>
+          </b-dropdown>
         </div>
       </div>
       <ul class="nav nav-pills nav-flush flex-column mb-auto pt-3">
@@ -531,7 +519,7 @@ onMounted(() => {
 #app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100svh;
 }
 #global-side-nav {
   #cacophony-logo-full {
@@ -569,6 +557,11 @@ onMounted(() => {
     display: none;
   }
 }
+
+.dropdown-toggle.dropdown-toggle-no-caret.btn-hi.btn-square::before {
+  display: block !important;
+}
+
 .btn-hi,
 .dropdown-btn {
   border: 0;
@@ -577,7 +570,7 @@ onMounted(() => {
   &::before {
     content: "";
     position: absolute;
-    display: block;
+    display: block !important;
     left: 6px;
     right: 6px;
     top: 6px;
@@ -598,8 +591,9 @@ onMounted(() => {
     }
   }
   &.btn-square {
-    aspect-ratio: 1;
+    position: relative;
     &::before {
+      position: absolute;
       top: 50%;
       transform: translateY(-50%);
       aspect-ratio: 1;
@@ -613,10 +607,10 @@ onMounted(() => {
 @global-side-nav-expanded-width: 20rem;
 #main-wrapper {
   position: relative;
-  @media (min-width: 576px) {
+  @media (min-width: 639px) {
     padding-left: @global-side-nav-collapsed-width;
   }
-  max-height: 100vh;
+  max-height: 100svh;
   &.has-git-info-bar {
     max-height: calc(100vh - 24px);
   }
@@ -653,7 +647,7 @@ onMounted(() => {
 }
 #global-side-nav {
   transform: translateX(-@global-side-nav-expanded-width);
-  @media (min-width: 576px) {
+  @media (min-width: 639px) {
     transform: unset;
   }
 
@@ -761,7 +755,7 @@ onMounted(() => {
     }
   }
 
-  @media screen and (min-width: 576px) {
+  @media screen and (min-width: 639px) {
     &:hover,
     &.pinned {
       transform: translateX(0);
@@ -796,7 +790,7 @@ main {
 }
 
 .router-view {
-  min-height: 100vh;
+  //min-height: 100svh;
 }
 
 .logged-in {

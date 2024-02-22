@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BModal } from "bootstrap-vue-3";
+import { BModal } from "bootstrap-vue-next";
 import { ref, watch } from "vue";
 import { MAX_RETRY_COUNT, networkConnectionError } from "@api/fetch";
 import { delayMs, delayMsThen } from "@/utils";

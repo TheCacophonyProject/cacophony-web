@@ -1,6 +1,6 @@
 /* b-container for both login and register */
 .sign-wrapper .form-row {
-    min-height: 100vh;
+    min-height: 100svh;
 }
 
 .container.sign-wrapper {

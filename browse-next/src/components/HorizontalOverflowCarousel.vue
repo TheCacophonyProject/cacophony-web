@@ -8,10 +8,12 @@ const innerScrollContainer = ref<HTMLDivElement | null>(null);
 //  stack items as per design?
 
 const { width } = useElementSize(container);
-const { minWidth = 360 } = defineProps<{ minWidth?: number }>();
+const props = withDefaults(defineProps<{ minWidth?: number }>(), {
+  minWidth: 360,
+});
 
 const shouldOverflow = computed<boolean>(() => {
-  return width.value > minWidth;
+  return width.value > props.minWidth;
 });
 
 const evaluateScrollOverflow = () => {

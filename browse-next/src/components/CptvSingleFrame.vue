@@ -1,14 +1,14 @@
 <template>
   <div
     class="single-frame-cptv-container d-flex align-items-center justify-content-center"
-    :style="{ width: `${width}px`, height: `${height}px` }"
+    :style="widthStyle"
   >
     <canvas
       ref="canvas"
       width="160"
       height="120"
       class="single-frame-cptv"
-      :class="{ loaded: !loading }"
+      :class="{ loaded: !loading, smoothed: smoothing }"
     ></canvas>
     <b-spinner v-if="loading" />
   </div>
@@ -16,40 +16,54 @@
 
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, inject, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
+import { computed, inject, onMounted, ref, watch } from "vue";
 import { CptvDecoder } from "@/components/cptv-player/cptv-decoder/decoder";
 import type { LoggedInUserAuth } from "@models/LoggedInUser";
 import { currentUserCreds } from "@models/provides";
 import {
-  renderFrameIntoFrameBuffer,
   ColourMaps,
+  renderFrameIntoFrameBuffer,
 } from "@/components/cptv-player/cptv-decoder/frameRenderUtils";
 
 const creds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
 const defaultPalette = computed(
   () =>
-    ColourMaps.find(([name, val]) => name === palette) as [string, Uint32Array]
+    ColourMaps.find(([name, _val]) => name === props.palette) as [
+      string,
+      Uint32Array
+    ]
 );
 const defaultOverlayPalette = ColourMaps.find(
-  ([name, val]) => name === "Default"
+  ([name, _val]) => name === "Default"
 ) as [string, Uint32Array];
 const canvas = ref<HTMLCanvasElement>();
-const {
-  recording,
-  width = 320,
-  height = 240,
-  overlay,
-  overlayOpacity = "1.0",
-  palette = "Viridis",
-} = defineProps<{
-  recording: ApiRecordingResponse | null;
-  width?: number | string;
-  height?: number | string;
-  overlay?: Uint8ClampedArray;
-  overlayOpacity?: string;
-  palette?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    recording: ApiRecordingResponse | null;
+    overlay?: Uint8ClampedArray;
+    width?: string;
+    apronPixels?: number;
+    overlayOpacity?: string;
+    palette?: string;
+    smoothing?: boolean;
+  }>(),
+  {
+    recording: null,
+    overlayOpacity: "1.0",
+    palette: "Viridis",
+    width: "",
+    apronPixels: 0,
+    smoothing: true,
+  }
+);
+
+const widthStyle = computed<string>(() => {
+  if (props.width) {
+    return `width: ${props.width};`;
+  }
+  return "";
+});
 
 const emit = defineEmits<{ (e: "loaded", payload: HTMLCanvasElement): void }>();
 
@@ -58,11 +72,11 @@ const loading = ref<boolean>(false);
 
 // TODO: Could 'provide' the frame at a higher level component to avoid all child components having to reload it.
 const loadRecording = async () => {
-  if (creds.value && recording) {
+  if (creds.value && props.recording) {
     loading.value = true;
     const cptvDecoder = new CptvDecoder();
     const result = await cptvDecoder.initWithRecordingIdAndKnownSize(
-      recording.id,
+      props.recording.id,
       0,
       creds.value.apiToken
     );
@@ -86,8 +100,7 @@ const loadRecording = async () => {
           min,
           max
         );
-        const imageData = new ImageData(buffer, 160, 120);
-        frameData.value = imageData;
+        frameData.value = new ImageData(buffer, 160, 120);
         renderFrame();
       }
     }
@@ -103,7 +116,7 @@ onMounted(async () => {
   }
 });
 
-watch(() => recording, loadRecording);
+watch(() => props.recording, loadRecording);
 
 const renderFrame = () => {
   if (frameData.value) {
@@ -111,18 +124,27 @@ const renderFrame = () => {
     if (ctx) {
       ctx.globalCompositeOperation = "source-over";
       ctx.globalAlpha = 1;
-      ctx.putImageData(frameData.value, 0, 0);
-      if (overlay) {
-        const buffer = new Uint8ClampedArray(160 * 120 * 4);
-        const source = overlay;
+      if (props.apronPixels) {
+        createImageBitmap(frameData.value).then((image) => {
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(
+            image,
+            props.apronPixels,
+            props.apronPixels,
+            160 - props.apronPixels * 2,
+            120 - props.apronPixels * 2
+          );
+        });
+      } else {
+        ctx.putImageData(frameData.value, 0, 0);
+      }
+      if (props.overlay) {
+        const source = props.overlay;
         const imageData = new ImageData(160, 120);
         const frameBufferView = new Uint32Array(imageData.data.buffer);
         for (let i = 0; i < frameBufferView.length; i++) {
           frameBufferView[i] = defaultOverlayPalette[1][source[i]];
         }
-
-        //renderFrameIntoFrameBuffer(buffer, overlay.data, viridis[1], 0, 255);
-
         const tmp = document.createElement("canvas");
         tmp.width = 160;
         tmp.height = 120;
@@ -131,7 +153,7 @@ const renderFrame = () => {
           tmpCtx.putImageData(imageData, 0, 0);
         }
         ctx.globalCompositeOperation = "lighten";
-        ctx.globalAlpha = parseFloat(overlayOpacity);
+        ctx.globalAlpha = parseFloat(props.overlayOpacity);
         ctx.drawImage(tmp, 0, 0);
       }
     }
@@ -139,21 +161,38 @@ const renderFrame = () => {
 };
 
 watch(
-  () => overlay,
-  (overlayData) => {
+  () => props.overlay,
+  (_overlayData) => {
     renderFrame();
   }
 );
 
 watch(
-  () => overlayOpacity,
-  (overlayData) => {
+  () => props.overlayOpacity,
+  (_overlayData) => {
     renderFrame();
   }
 );
 </script>
 
 <style scoped lang="less">
+@media screen and (min-width: 640px) {
+  .single-frame-cptv-container {
+    width: 100%;
+    height: auto;
+    min-width: 640px;
+    aspect-ratio: auto 4/3;
+  }
+}
+
+@media screen and (max-width: 639px) {
+  .single-frame-cptv-container {
+    width: 100svw;
+    height: auto;
+    aspect-ratio: auto 4/3;
+  }
+}
+
 .single-frame-cptv-container {
   position: relative;
   background: #4c4c4c;
@@ -162,6 +201,11 @@ watch(
   overflow: hidden;
 }
 .single-frame-cptv {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  &.smoothed {
+    image-rendering: auto;
+  }
   position: absolute;
   left: 0;
   top: 0;
@@ -172,5 +216,8 @@ watch(
   &.loaded {
     opacity: 1;
   }
+}
+.smoothed {
+
 }
 </style>

@@ -201,7 +201,7 @@ interface TagItem {
   displayName: string;
 }
 
-const { recordingsByDay, canonicalLocation, currentlySelectedRecordingId } =
+const props = withDefaults(
   defineProps<{
     recordingsByDay: {
       dateTime: DateTime;
@@ -209,7 +209,9 @@ const { recordingsByDay, canonicalLocation, currentlySelectedRecordingId } =
     }[];
     canonicalLocation: LatLng;
     currentlySelectedRecordingId: RecordingId | null;
-  }>();
+  }>(),
+  { currentlySelectedRecordingId: null }
+);
 
 const emit = defineEmits<{
   (e: "selected-recording", id: RecordingId): void;

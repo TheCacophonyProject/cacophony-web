@@ -98,16 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  computed,
-  isProxy,
-  onBeforeMount,
-  onBeforeUnmount,
-  onMounted,
-  reactive,
-  ref,
-  toRaw,
-} from "vue";
+import { computed, isProxy, onBeforeMount, reactive, ref, toRaw } from "vue";
 import type {
   CardTableRow,
   CardTableRows,
@@ -116,21 +107,23 @@ import type {
 import { useElementSize } from "@vueuse/core";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const {
-  items = [],
-  compact = false,
-  sortDimensions = {},
-  maxCardWidth = 575,
-  defaultSort,
-  highlightedItem = null,
-} = defineProps<{
-  maxCardWidth?: number;
-  items: CardTableRows<any>;
-  sortDimensions?: Record<string, (<T>(a: T, b: T) => number) | boolean>;
-  defaultSort?: string;
-  highlightedItem?: CardTableRow<any> | null;
-  compact?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    maxCardWidth?: number;
+    items: CardTableRows<any>;
+    sortDimensions?: Record<string, (<T>(a: T, b: T) => number) | boolean>;
+    defaultSort?: string;
+    highlightedItem?: CardTableRow<any> | null;
+    compact?: boolean;
+  }>(),
+  {
+    maxCardWidth: 575,
+    highlightedItem: null,
+    sortDimensions: () => ({}),
+    compact: false,
+    items: () => [],
+  }
+);
 
 const eq = (a: GenericCardTableValue<any>, b: GenericCardTableValue<any>) => {
   const aa = isProxy(a) ? toRaw(a) : a;
@@ -147,12 +140,12 @@ const emit = defineEmits<{
 const cardTableContainer = ref<HTMLDivElement>();
 
 const { width } = useElementSize(cardTableContainer);
-const shouldRenderAsRows = computed(() => width.value >= maxCardWidth);
+const shouldRenderAsRows = computed(() => width.value >= props.maxCardWidth);
 
-const hasItems = computed(() => items.length !== 0);
+const hasItems = computed(() => props.items.length !== 0);
 const headings = computed<string[]>(() => {
-  if (items.length) {
-    return Object.keys(items[0]);
+  if (props.items.length) {
+    return Object.keys(props.items[0]);
   }
   return [];
 });
@@ -214,14 +207,16 @@ enum SortDirection {
 
 onBeforeMount(() => {
   // Setup sorts
-  for (const [columnName, sortDimension] of Object.entries(sortDimensions)) {
+  for (const [columnName, sortDimension] of Object.entries(
+    props.sortDimensions
+  )) {
     sorts[splitCamelCase(columnName)] = {
       fn:
         sortDimension === true
           ? (a: any, b: any) => defaultLexicalSort(a[columnName], b[columnName])
           : (sortDimension as SortFn),
       direction:
-        defaultSort && columnName === defaultSort
+        props.defaultSort && columnName === props.defaultSort
           ? SortDirection.Down
           : SortDirection.None,
     };
@@ -238,7 +233,7 @@ const toggleSorting = (dimensionName: string) => {
     } else if (dimension.direction === SortDirection.Up) {
       dimension.direction = SortDirection.Down;
     }
-    // Reset other columns, we don't support multi-dimensional sort at this time.
+    // Reset other columns, we don't support multidimensional sort at this time.
     for (const [name, dimension] of Object.entries(sorts)) {
       if (name !== dimensionName) {
         dimension.direction = SortDirection.None;
@@ -252,7 +247,7 @@ const sortedItems = computed<CardTableRows<any>>(() => {
     (sort) => sort.direction !== SortDirection.None
   );
 
-  const itemsCopied = [...items];
+  const itemsCopied = [...props.items];
   if (activeSort) {
     if (activeSort && activeSort.direction !== SortDirection.None) {
       itemsCopied.sort(activeSort.fn);

@@ -13,7 +13,7 @@ import { getLocationsForProject } from "@api/Project";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import { BSpinner } from "bootstrap-vue-3";
+import { BSpinner } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";

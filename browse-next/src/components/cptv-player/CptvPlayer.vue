@@ -55,31 +55,29 @@ import {
 } from "@api/Device.ts";
 
 const { pixelRatio } = useDevicePixelRatio();
-const {
-  recording,
-  recordingId,
-  cptvSize = null,
-  currentTrack,
-  userSelectedTrack,
-  canSelectTracks = true,
-  exportRequested,
-  hasNext = false,
-  hasPrev = false,
-  hasReferencePhoto = false,
-  displayHeaderInfo = false,
-} = defineProps<{
-  recording: ApiRecordingResponse | null;
-  recordingId: RecordingId;
-  cptvSize?: number | null;
-  currentTrack?: ApiTrackResponse;
-  userSelectedTrack?: ApiTrackResponse;
-  canSelectTracks?: boolean;
-  hasNext?: boolean;
-  hasPrev?: boolean;
-  hasReferencePhoto?: boolean;
-  displayHeaderInfo?: boolean;
-  exportRequested?: boolean | "advanced";
-}>();
+const props = withDefaults(
+  defineProps<{
+    recording: ApiRecordingResponse | null;
+    recordingId: RecordingId;
+    cptvSize?: number | null;
+    currentTrack?: ApiTrackResponse;
+    userSelectedTrack?: ApiTrackResponse;
+    canSelectTracks?: boolean;
+    hasNext?: boolean;
+    hasPrev?: boolean;
+    hasReferencePhoto?: boolean;
+    displayHeaderInfo?: boolean;
+    exportRequested?: boolean | "advanced";
+  }>(),
+  {
+    cptvSize: null,
+    canSelectTracks: true,
+    hasNext: false,
+    hasPrev: false,
+    hasReferencePhoto: false,
+    displayHeaderInfo: false,
+  }
+);
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
 let frames: CptvFrame[] = [];
@@ -111,7 +109,7 @@ const exportProgress = computed<number>(
   () => exportProgressZeroOne.value * 100
 );
 watch(
-  () => exportRequested,
+  () => props.exportRequested,
   async (nextVal) => {
     if (nextVal) {
       if (nextVal === true) {
@@ -128,14 +126,14 @@ const playbackTimeChanged = (offset: number) => {
 };
 
 const recordingDateTime = computed<DateTime | null>(() => {
-  if (recording) {
-    if (recording.location) {
-      const zone = timezoneForLatLng(recording.location);
-      return DateTime.fromISO(recording.recordingDateTime, {
+  if (props.recording) {
+    if (props.recording.location) {
+      const zone = timezoneForLatLng(props.recording.location);
+      return DateTime.fromISO(props.recording.recordingDateTime, {
         zone,
       });
     }
-    return DateTime.fromISO(recording.recordingDateTime);
+    return DateTime.fromISO(props.recording.recordingDateTime);
   }
   return null;
 });
@@ -178,7 +176,7 @@ watch(canvasWidth, () => {
 });
 
 watch(
-  () => userSelectedTrack,
+  () => props.userSelectedTrack,
   async (nextTrack, prevTrack) => {
     if (nextTrack) {
       if (
@@ -195,7 +193,7 @@ watch(
 );
 
 watch(
-  () => currentTrack,
+  () => props.currentTrack,
   () => {
     if (!playing.value) {
       updateOverlayCanvas(frameNum.value);
@@ -231,7 +229,7 @@ const animationFrame = ref<number>(0);
 
 const motionPaths = computed<MotionPath[]>(() => {
   return (
-    (recording?.tracks
+    (props.recording?.tracks
       .map((track) => motionPathForTrack(track, scale.value))
       .filter((m) => m !== null) as MotionPath[]) || []
   );
@@ -384,7 +382,7 @@ const selectTrack = async (
   shouldPlay = false,
   userSelected = false
 ) => {
-  if ((!playing.value || force) && recording?.tracks.length) {
+  if ((!playing.value || force) && props.recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
     animationTick.value = 0;
     if (userSelected) {
@@ -404,7 +402,7 @@ const requestHeaderInfoDisplay = () => {
 };
 
 const requestPrevRecording = () => {
-  if (hasPrev) {
+  if (props.hasPrev) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -415,7 +413,7 @@ const requestPrevRecording = () => {
 };
 
 const requestNextRecording = () => {
-  if (hasNext) {
+  if (props.hasNext) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -426,7 +424,7 @@ const requestNextRecording = () => {
 };
 
 const requestNextVisit = () => {
-  if (hasNext) {
+  if (props.hasNext) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -437,7 +435,7 @@ const requestNextVisit = () => {
 };
 
 const requestPrevVisit = () => {
-  if (hasPrev) {
+  if (props.hasPrev) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -557,12 +555,12 @@ const renderFrame = (
     let min;
     let max;
     const thisHeader = header.value as CptvHeader;
-    const numTracks = recording?.tracks.length || 0;
+    const numTracks = props.recording?.tracks.length || 0;
     if (trackHighlightMode.value) {
       if (
-        currentTrack &&
+        props.currentTrack &&
         numTracks > 1 &&
-        framesByTrack.value[currentTrack.id] &&
+        framesByTrack.value[props.currentTrack.id] &&
         tracksByFrame.value[frameNumToRender]
       ) {
         // const trackBox = framesByTrack.value[currentTrack.id][frameNumToRender];
@@ -571,14 +569,16 @@ const renderFrame = (
         //   ({ positions }) => positions
         // );
 
-        const trackBoxes = Object.values(framesByTrack.value[currentTrack.id]);
+        const trackBoxes = Object.values(
+          framesByTrack.value[props.currentTrack.id]
+        );
         [min, max] = minMaxForTrack(
           trackBoxes,
-          loadedFramesForTrack(currentTrack.id)
+          loadedFramesForTrack(props.currentTrack.id)
         );
       } else if (numTracks === 1) {
         // There's only one track, so highlight it all the time.
-        const trackId = recording!.tracks[0].id;
+        const trackId = props.recording!.tracks[0].id;
         if (
           framesByTrack.value[trackId] &&
           tracksByFrame.value[frameNumToRender]
@@ -757,9 +757,9 @@ const totalPlayableFrames = computed<number>(() => {
         : 0;
       return Math.round(
         Math.max(
-          (((recording || {}) as any).duration || 0) * fps.value -
+          (((props.recording || {}) as any).duration || 0) * fps.value -
             backgroundAdjust,
-          ...(recording || { tracks: [] }).tracks.map(
+          ...(props.recording || { tracks: [] }).tracks.map(
             ({ end }) => end * fps.value - backgroundAdjust
           )
         )
@@ -841,7 +841,7 @@ const getPositions = (
 
 const tracksIntermediate = computed<IntermediateTrack[]>(() => {
   return (
-    recording?.tracks.map(({ positions, tags, id }) => ({
+    props.recording?.tracks.map(({ positions, tags, id }) => ({
       what: (tags && getAuthoritativeTagForTrack(tags)) || null,
       positions: getPositions(
         positions as ApiTrackPosition[],
@@ -952,7 +952,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     const encoder = new Mp4Encoder();
     await encoder.init(targetWidth, targetHeight, 9);
 
-    if (!exportRequested) {
+    if (!props.exportRequested) {
       // Could have been canceled.
       encoder.close();
       isExporting.value = false;
@@ -990,7 +990,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       return;
     }
 
-    if (!exportRequested) {
+    if (!props.exportRequested) {
       // Could have been canceled.
       encoder.close();
       isExporting.value = false;
@@ -1009,7 +1009,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       onePastLastFrame = 0;
       for (const { includeInExportTime, trackId } of trackExportOptions.value) {
         if (includeInExportTime) {
-          const track = (recording as ApiRecordingResponse).tracks.find(
+          const track = (props.recording as ApiRecordingResponse).tracks.find(
             (track) => track.id === trackId
           );
           if (track) {
@@ -1071,9 +1071,9 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         timeSinceLastFFCSeconds,
         true,
         frameNum,
-        recording?.tracks || [],
-        canSelectTracks,
-        currentTrack,
+        props.recording?.tracks || [],
+        props.canSelectTracks,
+        props.currentTrack,
         motionPathMode.value ? motionPaths.value : [],
         1,
         tracksByFrame.value,
@@ -1084,7 +1084,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       await encoder.encodeFrame(
         renderContext.getImageData(0, 0, targetWidth, targetHeight).data
       );
-      if (!exportRequested) {
+      if (!props.exportRequested) {
         encoder.close();
         // Check for cancellation
         isExporting.value = false;
@@ -1096,12 +1096,12 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     }
     const uint8Array = await encoder.finish();
     encoder.close();
-    if (!exportRequested) {
+    if (!props.exportRequested) {
       // Check for cancellation
       isExporting.value = false;
       return;
     }
-    const recordingIdSuffix = `recording_${recordingId}__`;
+    const recordingIdSuffix = `recording_${props.recordingId}__`;
     trackExportOptions.value = exportOptions.value;
     download(
       URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
@@ -1157,9 +1157,9 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
         secondsSinceLastFFC.value,
         false,
         frameNumToRender,
-        recording?.tracks || [],
-        canSelectTracks,
-        currentTrack,
+        props.recording?.tracks || [],
+        props.canSelectTracks,
+        props.currentTrack,
         motionPathMode.value ? motionPaths.value : [],
         pixelRatio.value,
         tracksByFrame.value,
@@ -1234,10 +1234,10 @@ watch(frameNum, () => {
   // If there's only one possible track for this frame, set it to selected.
   const frameTracks =
     tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][]);
-  if (currentTrack && canSelectTracks && frameTracks.length === 1) {
+  if (props.currentTrack && props.canSelectTracks && frameTracks.length === 1) {
     const trackId = frameTracks[0][0];
     // If the track is the only track at this time offset, make it the selected track.
-    if (currentTrack.id !== trackId) {
+    if (props.currentTrack.id !== trackId) {
       emit("track-selected", { trackId, automatically: true });
     }
   }
@@ -1266,7 +1266,7 @@ const showingReferencePhoto = ref<boolean>(false);
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
   if (showingReferencePhoto.value) {
-    const rec = recording as ApiRecordingResponse;
+    const rec = props.recording as ApiRecordingResponse;
     // Load the reference photo.
     const referenceImageResponse = await getReferenceImageForDeviceAtTime(
       rec.deviceId,
@@ -1431,7 +1431,7 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
   const trackId = (
     tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][])
   )
-    .filter(([trackId]) => trackId !== currentTrack?.id)
+    .filter(([trackId]) => trackId !== props.currentTrack?.id)
     .find(
       ([
         _,
@@ -1586,12 +1586,12 @@ onMounted(async () => {
   }
 
   buffering.value = true;
-  if (canSelectTracks) {
+  if (props.canSelectTracks) {
     overlayCanvas.value?.addEventListener("click", clickOverlayCanvas);
     overlayCanvas.value?.addEventListener("mousemove", moveOverOverlayCanvas);
   }
 
-  await loadNextRecording(recordingId);
+  await loadNextRecording(props.recordingId);
   pollFrameTimes();
 });
 onBeforeUnmount(() => {
@@ -1599,9 +1599,9 @@ onBeforeUnmount(() => {
 });
 
 const loadedNextRecordingData = async () => {
-  if (currentTrack) {
+  if (props.currentTrack && framesByTrack.value[props.currentTrack.id]) {
     const firstFrameForTrack = Number(
-      Object.keys(framesByTrack.value[currentTrack.id])[0]
+      Object.keys(framesByTrack.value[props.currentTrack.id])[0]
     );
     targetFrameNum.value = firstFrameForTrack;
     await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
@@ -1610,7 +1610,7 @@ const loadedNextRecordingData = async () => {
 };
 
 watch(
-  () => recording,
+  () => props.recording,
   async (nextRecording: ApiRecordingResponse | null) => {
     if (nextRecording) {
       trackExportOptions.value = exportOptions.value;
@@ -1637,7 +1637,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   frames = [];
   cancelAnimationFrame(animationFrame.value);
 
-  if ((recording?.tracks || []).length > 1) {
+  if ((props.recording?.tracks || []).length > 1) {
     console.warn(
       "Can merge",
       Object.values(framesByTrack.value).length,
@@ -1649,7 +1649,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   if (CurrentUserCreds.value) {
     loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
       nextRecordingId,
-      cptvSize || 0,
+      props.cptvSize || 0,
       (CurrentUserCreds.value as LoggedInUserAuth).apiToken
     );
   }
@@ -1677,12 +1677,12 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       }
     }
 
-    while (!recording) {
+    while (!props.recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
       await delayMs(10);
     }
-    if (recording && recording.id === recordingId) {
+    if (props.recording && props.recording.id === props.recordingId) {
       await loadedNextRecordingData();
       emit("ready-to-play", thisHeader);
       playing.value = true;
@@ -1703,8 +1703,8 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
           const dy = (canvasHeight / pixelRatio.value - dh) / 2;
           const dw = canvasWidth / pixelRatio.value;
           ctx.drawImage(imageBitmap, 0, dy, dw, dh);
-          if (recording && recording.tracks) {
-            for (const track of recording.tracks) {
+          if (props.recording && props.recording.tracks) {
+            for (const track of props.recording.tracks) {
               if (track.positions && track.positions.length) {
                 const pos = { ...track.positions[0] };
                 // convert from bottom left, to top left origin
@@ -1728,12 +1728,12 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     resetRecordingNormalisation();
     buffering.value = false;
 
-    while (!recording) {
+    while (!props.recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
       await delayMs(10);
     }
-    if (recording && recording.id === recordingId) {
+    if (props.recording && props.recording.id === props.recordingId) {
       await loadedNextRecordingData();
       emit("ready-to-play", header.value as unknown as CptvHeader);
       playing.value = true;
@@ -1750,7 +1750,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
 };
 
 watch(
-  () => recordingId,
+  () => props.recordingId,
   async (nextRecordingId: RecordingId | undefined, prevRecordingId) => {
     clearCanvases();
     if (nextRecordingId && prevRecordingId !== nextRecordingId) {
@@ -1771,7 +1771,7 @@ const clearCanvases = () => {
 
 const exportOptions = computed<TrackExportOption[]>(() => {
   return (
-    recording?.tracks.map(({ id }) => ({
+    props.recording?.tracks.map(({ id }) => ({
       includeInExportTime: true,
       displayInExport: true,
       trackId: id,
@@ -1925,7 +1925,7 @@ const moveRevealHandle = (event: PointerEvent) => {
   }
 };
 watch(
-  () => hasReferencePhoto,
+  () => props.hasReferencePhoto,
   (hasRef) => {
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
@@ -2006,6 +2006,7 @@ watch(
         <div
           class="reveal-handle d-flex align-items-center justify-content-center"
           ref="revealHandle"
+          @touchstart="(e) => e.preventDefault()"
           @pointerdown="grabRevealHandle"
           @pointerup="releaseRevealHandle"
           @pointermove="moveRevealHandle"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RouteParamsRaw } from "vue-router";
+import type {RouteParams, RouteParamsRaw} from "vue-router";
 import { useRoute } from "vue-router";
 import type { ComputedRef, Ref } from "vue";
 import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
@@ -321,18 +321,18 @@ const gotoPreviousRecordingOrVisit = () => {
 };
 
 const gotoRecording = async (recordingId: RecordingId) => {
-  const params = {
+  const params: RouteParams = {
     ...route.params,
-    currentRecordingId: recordingId,
+    currentRecordingId: recordingId.toString(),
   };
   if (recordingIds.value.length) {
-    (params as any).recordingIds = recordingIds.value.join(",");
+    params.recordingIds = recordingIds.value.join(",");
   }
   if (visitLabel.value) {
-    (params as any).visitLabel = visitLabel.value;
+    params.visitLabel = visitLabel.value;
   }
-  delete (params as RouteParamsRaw).trackId;
-  delete (params as RouteParamsRaw).detail;
+  delete params.trackId;
+  delete params.detail;
   await router.push({
     name: route.name as string,
     params,
@@ -347,14 +347,16 @@ const gotoVisit = async (visit: ApiVisitResponse, startOfVisit: boolean) => {
     recId = visit.recordings[0].recId;
   }
   const recordingIds = visit.recordings.map(({ recId }) => recId).join(",");
-  const params = {
+  const params: RouteParams = {
     ...route.params,
-    visitLabel: visit.classification,
     currentRecordingId: recId.toString(),
     recordingIds,
   };
-  delete (params as RouteParamsRaw).trackId;
-  delete (params as RouteParamsRaw).detail;
+  if (visit.classification) {
+    params.visitLabel = visit.classification;
+  }
+  delete params.trackId;
+  delete params.detail;
   await router.push({
     name: route.name as string,
     params,

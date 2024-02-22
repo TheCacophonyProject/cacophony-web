@@ -6,13 +6,12 @@ import { computed, inject, onBeforeMount, ref } from "vue";
 import { projectDevicesLoaded, userProjectsLoaded } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
-import DeviceName from "@/components/DeviceName.vue";
 import { DeviceType } from "@typedefs/api/consts.ts";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
 
-const groupDevices = inject(selectedProjectDevices) as Ref<
+const projectDevices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
 
@@ -21,8 +20,8 @@ const device = ref<ApiDeviceResponse | null>(null);
 const loadDevice = async (deviceId: DeviceId) => {
   deviceLoading.value = true;
   await Promise.all([userProjectsLoaded(), projectDevicesLoaded()]);
-  if (groupDevices.value) {
-    const targetDevice = (groupDevices.value as ApiDeviceResponse[]).find(
+  if (projectDevices.value) {
+    const targetDevice = (projectDevices.value as ApiDeviceResponse[]).find(
       ({ id }) => id === deviceId
     );
     if (targetDevice) {
@@ -42,12 +41,12 @@ const loadDevice = async (deviceId: DeviceId) => {
 onBeforeMount(async () => {
   await loadDevice(Number(route.params.deviceId) as DeviceId);
 });
-const activeTabName = computed(() => {
-  return route.name;
+const activeTabPath = computed(() => {
+  return route.matched.map((item) => item.name);
 });
 const navLinkClasses = ["nav-item", "nav-link", "border-0"];
 
-const deviceType = computed<string>(() => {
+const _deviceType = computed<string>(() => {
   if (device.value) {
     switch ((device.value as ApiDeviceResponse).type) {
       case DeviceType.Thermal:
@@ -65,99 +64,81 @@ const deviceType = computed<string>(() => {
 </script>
 <template>
   <div class="device-view d-flex flex-column">
-    <header
-      class="device-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
+    <!--    <div>-->
+    <!--      <span class="device-header-type text-uppercase fw-bold">{{-->
+    <!--        deviceType-->
+    <!--      }}</span>-->
+    <!--    </div>-->
+
+    <ul
+      class="nav nav-tabs justify-content-md-center justify-content-evenly"
+      v-if="!deviceLoading"
     >
-      <div>
-        <span class="device-header-type text-uppercase fw-bold">{{
-          deviceType
-        }}</span>
-        <div class="device-header-details mb-1 mb-sm-0" v-if="!deviceLoading">
-          <device-name
-            :name="(device as ApiDeviceResponse).deviceName"
-            :type="(device as ApiDeviceResponse).type"
-          />
-        </div>
-      </div>
-      <button
-        type="button"
-        class="btn btn-square btn-hi"
-        @click.stop.prevent="() => emit('close')"
+      <router-link
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabPath.includes('device-diagnostics') },
+        ]"
+        title="Diagnostics"
+        :to="{
+          name: 'device-diagnostics',
+        }"
+        >Diagnostics</router-link
       >
-        <font-awesome-icon icon="xmark" />
-      </button>
-    </header>
-    <div>
-      <ul
-        class="nav nav-tabs justify-content-md-center justify-content-evenly"
-        v-if="!deviceLoading"
+      <router-link
+        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabPath.includes('device-insights') },
+        ]"
+        title="Insights"
+        :to="{
+          name: 'device-insights',
+        }"
+        >Insights</router-link
       >
-        <router-link
-          :class="[
-            ...navLinkClasses,
-            { active: activeTabName === 'device-diagnostics' },
-          ]"
-          title="Diagnostics"
-          :to="{
-            name: 'device-diagnostics',
-          }"
-          >Diagnostics</router-link
-        >
-        <router-link
-          v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
-          :class="[
-            ...navLinkClasses,
-            { active: activeTabName === 'device-insights' },
-          ]"
-          title="Insights"
-          :to="{
-            name: 'device-insights',
-          }"
-          >Insights</router-link
-        >
-        <router-link
-          v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
-          :class="[
-            ...navLinkClasses,
-            { active: activeTabName === 'device-setup' },
-          ]"
-          title="Setup"
-          :to="{
-            name: 'device-setup',
-          }"
-          >Setup</router-link
-        >
+      <router-link
+        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabPath.includes('device-setup') },
+        ]"
+        title="Setup"
+        :to="{
+          name: 'device-setup',
+        }"
+        >Setup</router-link
+      >
 
-        <router-link
-          v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
-          :class="[
-            ...navLinkClasses,
-            { active: activeTabName === 'device-schedules' },
-          ]"
-          title="Schedules"
-          :to="{
-            name: 'device-schedules',
-          }"
-          >Schedules</router-link
-        >
+      <router-link
+        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabPath.includes('device-schedules') },
+        ]"
+        title="Schedules"
+        :to="{
+          name: 'device-schedules',
+        }"
+        >Schedules</router-link
+      >
 
-        <router-link
-          :class="[
-            ...navLinkClasses,
-            { active: activeTabName === 'device-uploads' },
-          ]"
-          title="Manual uploads"
-          :to="{
-            name: 'device-uploads',
-          }"
-          >Manual Uploads</router-link
-        >
-      </ul>
-      <router-view
-        @start-blocking-work="() => emit('start-blocking-work')"
-        @end-blocking-work="() => emit('end-blocking-work')"
-      />
-    </div>
+      <router-link
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabPath.includes('device-uploads') },
+        ]"
+        title="Manual uploads"
+        :to="{
+          name: 'device-uploads',
+        }"
+        >Manual Uploads</router-link
+      >
+    </ul>
+    <router-view
+      @start-blocking-work="() => emit('start-blocking-work')"
+      @end-blocking-work="() => emit('end-blocking-work')"
+    />
   </div>
 </template>
 
@@ -180,16 +161,6 @@ const deviceType = computed<string>(() => {
     .device-header-details {
       line-height: unset;
     }
-  }
-}
-.device-view {
-  @media screen and (max-width: 1040px) {
-    background: white;
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
   }
 }
 .nav-item.active {

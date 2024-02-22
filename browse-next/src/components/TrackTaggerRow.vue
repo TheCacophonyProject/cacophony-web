@@ -35,7 +35,7 @@ import {
   currentUser,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
-const { track, index, color, selected } = defineProps<{
+const props = defineProps<{
   track: ApiTrackResponse;
   index: number;
   color: { foreground: string; background: string };
@@ -112,7 +112,7 @@ const route = useRoute();
 const mounting = ref<boolean>(true);
 const expanded = computed<boolean>(() => {
   return (
-    Number(route.params.trackId) === track.id &&
+    Number(route.params.trackId) === props.track.id &&
     route.params.detail !== "" &&
     typeof route.params.detail !== "undefined"
   );
@@ -157,16 +157,16 @@ watch(showClassificationSearch, resizeDetails);
 
 const selectAndMaybeToggleExpanded = () => {
   expandedInternal.value = !expandedInternal.value;
-  emit("expanded-changed", track.id, expandedInternal.value);
+  emit("expanded-changed", props.track.id, expandedInternal.value);
 };
 
 const hasUserTag = computed<boolean>(() => {
-  return track.tags.some((tag) => !tag.automatic);
+  return props.track.tags.some((tag) => !tag.automatic);
 });
 
 const uniqueUserTags = computed<string[]>(() => {
   return Object.keys(
-    track.tags
+    props.track.tags
       .filter((tag) => !tag.automatic)
       .reduce((acc: Record<string, boolean>, item: ApiTrackTagResponse) => {
         const mappedWhat =
@@ -187,7 +187,7 @@ const consensusUserTag = computed<string | null>(() => {
 });
 
 const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
-  const tag = track.tags.find(
+  const tag = props.track.tags.find(
     (tag) =>
       tag.automatic && tag.data && (tag.data as TrackTagData).name === "Master"
   );
@@ -206,7 +206,7 @@ const hasAiTag = computed<boolean>(() => {
 });
 
 const humanTags = computed<ApiHumanTrackTagResponse[]>(() => {
-  return track.tags
+  return props.track.tags
     .filter((tag) => !tag.automatic)
     .map((tag) => ({
       ...tag,
@@ -238,7 +238,7 @@ const selectedUserTagLabel = computed<string[]>({
   set: (val: string[]) => {
     if (val.length) {
       emit("add-or-remove-user-tag", {
-        trackId: track.id,
+        trackId: props.track.id,
         tag: val[0],
       });
     }
@@ -335,7 +335,7 @@ const toggleTag = (tag: string) => {
     ) {
       showClassificationSearch.value = !defaultTags.value.includes(tag);
     }
-    emit("add-or-remove-user-tag", { trackId: track.id, tag });
+    emit("add-or-remove-user-tag", { trackId: props.track.id, tag });
     if (showTaggerDetails.value) {
       resizeDetails();
     }
@@ -345,7 +345,7 @@ const toggleTag = (tag: string) => {
 const confirmAiSuggestedTag = () => {
   if (masterTag.value) {
     emit("add-or-remove-user-tag", {
-      trackId: track.id,
+      trackId: props.track.id,
       tag: (masterTag.value as ApiAutomaticTrackTagResponse).what,
     });
   }
@@ -353,7 +353,7 @@ const confirmAiSuggestedTag = () => {
 
 const rejectAiSuggestedTag = () => {
   expandedInternal.value = true;
-  emit("expanded-changed", track.id, expandedInternal.value);
+  emit("expanded-changed", props.track.id, expandedInternal.value);
 };
 
 const pinCustomTag = async (classification: Classification) => {

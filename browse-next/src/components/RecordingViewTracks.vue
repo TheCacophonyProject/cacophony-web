@@ -19,9 +19,12 @@ import { RecordingType } from "@typedefs/api/consts.ts";
 
 const route = useRoute();
 const router = useRouter();
-const { recording } = defineProps<{
-  recording?: ApiRecordingResponse | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    recording?: ApiRecordingResponse | null;
+  }>(),
+  { recording: null }
+);
 
 // eslint-disable-next-line no-undef
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
@@ -40,7 +43,7 @@ const emit = defineEmits<{
 }>();
 
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
-  return recording?.tracks.find(({ id }) => id == trackId) || null;
+  return props.recording?.tracks.find(({ id }) => id == trackId) || null;
 };
 
 const currentTrackId = computed(() => Number(route.params.trackId));
@@ -65,7 +68,7 @@ const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
 };
 
 watch(
-  () => recording,
+  () => props.recording,
   (nextRecording) => {
     cloneLocalTracks(nextRecording?.tracks || []);
     if (route.params.trackId) {
@@ -80,7 +83,7 @@ watch(
 );
 
 onMounted(() => {
-  cloneLocalTracks(recording?.tracks || []);
+  cloneLocalTracks(props.recording?.tracks || []);
   if (route.params.trackId) {
     currentTrack.value = getTrackById(currentTrackId.value);
   }
@@ -123,7 +126,7 @@ const addOrRemoveUserTag = async ({
   tag: string;
   trackId: TrackId;
 }) => {
-  if (recording && currentUser.value && !updatingTags.value) {
+  if (props.recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal
     const track = recordingTracksLocal.value.find(
@@ -137,7 +140,7 @@ const addOrRemoveUserTag = async ({
       if (thisUserTag && thisUserTag.what === tag) {
         // We are removing the current tag.
         const removeTagResponse = await removeTrackTag(
-          recording.id,
+          props.recording.id,
           trackId,
           thisUserTag.id
         );
@@ -181,7 +184,7 @@ const addOrRemoveUserTag = async ({
             what: tag,
             confidence: 0.85,
           },
-          recording.id,
+          props.recording.id,
           trackId
         );
         if (newTagResponse.success && newTagResponse.result.trackTagId) {
@@ -195,7 +198,7 @@ const addOrRemoveUserTag = async ({
         }
       }
     }
-    cloneLocalTracks(recording.tracks);
+    cloneLocalTracks(props.recording.tracks);
     updatingTags.value = false;
   }
 };
@@ -207,7 +210,7 @@ const removeTag = async ({
   trackTagId: TrackTagId;
   trackId: TrackId;
 }) => {
-  if (recording && currentUser.value && !updatingTags.value) {
+  if (props.recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal
     const track = recordingTracksLocal.value.find(
@@ -219,7 +222,7 @@ const removeTag = async ({
         track.tags = track.tags.filter((tag) => tag !== targetTag);
         // We are removing the current tag.
         const removeTagResponse = await removeTrackTag(
-          recording.id,
+          props.recording.id,
           trackId,
           targetTag.id
         );

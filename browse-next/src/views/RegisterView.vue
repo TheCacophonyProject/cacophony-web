@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { BAlert } from "bootstrap-vue-3";
+import { BAlert } from "bootstrap-vue-next";
 import {
   setLoggedInUserCreds,
   setLoggedInUserData,

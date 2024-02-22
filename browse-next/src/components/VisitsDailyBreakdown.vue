@@ -26,13 +26,7 @@ const currentlySelectedVisit = inject(
 ) as Ref<ApiVisitResponse | null>;
 
 const now = new Date();
-const {
-  visits,
-  startTime,
-  isNocturnal,
-  location,
-  currentlyHighlightedLocation,
-} = defineProps<{
+const props = defineProps<{
   visits: ApiVisitResponse[];
   startTime: DateTime;
   isNocturnal: boolean;
@@ -45,16 +39,16 @@ const emit = defineEmits<{
   (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
-const endTime = computed<DateTime>(() => startTime.plus({ day: 1 }));
+const endTime = computed<DateTime>(() => props.startTime.plus({ day: 1 }));
 const visitCountBySpecies = computed<[string, string, number][]>(() =>
-  visitsCountBySpeciesCalc(visits)
+  visitsCountBySpeciesCalc(props.visits)
 );
 
 const periodInProgress = computed<boolean>(() => {
   const { sunrise } = sunCalc.getTimes(
     endTime.value.toJSDate(),
-    location.lat,
-    location.lng
+    props.location.lat,
+    props.location.lng
   );
   return endTime.value.toJSDate() > now && sunrise > now;
 });
@@ -79,13 +73,13 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
 
-  for (const visit of visits) {
+  for (const visit of props.visits) {
     if (!visit.classification) {
       debugger;
     }
   }
 
-  const events: (VisitEventItem | SunEventItem)[] = visits.map(
+  const events: (VisitEventItem | SunEventItem)[] = props.visits.map(
     (visit) =>
       ({
         type: "visit",
@@ -103,8 +97,8 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
     // If the startTime is *after* its own sunrise, then use the sunset from it.
     const { sunrise, sunset } = sunCalc.getTimes(
       startTime,
-      location.lat,
-      location.lng
+      props.location.lat,
+      props.location.lng
     );
     if (startTime > sunrise) {
       events.push({
@@ -117,7 +111,11 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       // startTime is after midnight, so use the sunset from the previous day.
       const prevDay = new Date(startTime);
       prevDay.setDate(prevDay.getDate() - 1);
-      const { sunset } = sunCalc.getTimes(prevDay, location.lat, location.lng);
+      const { sunset } = sunCalc.getTimes(
+        prevDay,
+        props.location.lat,
+        props.location.lng
+      );
       events.push({
         type: "sun",
         name: `Sunset`,
@@ -183,10 +181,10 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
 const nightOfRange = computed<string>(() => {
   // TODO: In the future we may want to make this hard-coded sunrise/sunset offset value reflect the camera recording window preferences for cameras in this group.
   let range = "";
-  if (startTime.monthLong === endTime.value.monthLong) {
-    range = `Night of ${startTime.day}&ndash;${endTime.value.day} ${startTime.monthLong} ${startTime.year}`;
-  } else if (startTime.year === endTime.value.year) {
-    range = `Night of ${startTime.day} ${startTime.monthLong}&ndash;${endTime.value.day} ${endTime.value.monthLong} ${startTime.year}`;
+  if (props.startTime.monthLong === endTime.value.monthLong) {
+    range = `Night of ${props.startTime.day}&ndash;${endTime.value.day} ${props.startTime.monthLong} ${props.startTime.year}`;
+  } else if (props.startTime.year === endTime.value.year) {
+    range = `Night of ${props.startTime.day} ${props.startTime.monthLong}&ndash;${endTime.value.day} ${endTime.value.monthLong} ${props.startTime.year}`;
   }
   if (periodInProgress.value) {
     return `${range} (in progress)`;
@@ -223,7 +221,7 @@ const hasVisits = computed<boolean>(() => {
 });
 
 const visitTime = (timeIsoString: string) =>
-  timeAtLocation(timeIsoString, location);
+  timeAtLocation(timeIsoString, props.location);
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   if (visit.recordings.length) {
@@ -246,7 +244,7 @@ const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
 const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (
     visit.type === "visit" &&
-    currentlyHighlightedLocation === visit.data.stationId
+    props.currentlyHighlightedLocation === visit.data.stationId
   ) {
     emit("change-highlighted-location", null);
   }

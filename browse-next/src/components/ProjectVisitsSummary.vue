@@ -14,7 +14,7 @@ const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation"
 ) as Ref<LocationId | null>;
 
-const { locations, visits, activeLocations, startDate, loading } = defineProps<{
+const props = defineProps<{
   visits: ApiVisitResponse[];
   locations: ApiLocationResponse[];
   activeLocations: ApiLocationResponse[];
@@ -24,16 +24,16 @@ const { locations, visits, activeLocations, startDate, loading } = defineProps<{
 const highlightedPointInternal = ref<NamedPoint | null>(null);
 const highlightedPoint = computed<NamedPoint | null>(() => {
   if (
-    locations &&
+    props.locations &&
     (currentlyHighlightedLocation.value || highlightedPointInternal.value)
   ) {
     let location: ApiLocationResponse | undefined;
     if (currentlyHighlightedLocation.value) {
-      location = locations.find(
+      location = props.locations.find(
         ({ id }) => id === currentlyHighlightedLocation.value
       );
     } else {
-      location = locations.find(({ location }) =>
+      location = props.locations.find(({ location }) =>
         locationsAreEqual(
           location,
           highlightedPointInternal.value?.location as LatLng
@@ -55,7 +55,7 @@ const highlightPoint = (p: NamedPoint | null) => {
   highlightedPointInternal.value = p;
 };
 const locationsForMap = computed<NamedPoint[]>(() => {
-  return locations
+  return props.locations
     .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
     .map(({ name, groupName, location }) => ({
       name,
@@ -64,14 +64,14 @@ const locationsForMap = computed<NamedPoint[]>(() => {
     }));
 });
 const activeLocationsForMap = computed<NamedPoint[]>(() => {
-  return activeLocations.map(({ name, groupName, location }) => ({
+  return props.activeLocations.map(({ name, groupName, location }) => ({
     name,
     project: groupName,
     location: location as LatLng,
   }));
 });
 const hasVisits = computed<boolean>(() => {
-  return !loading && visits.length !== 0;
+  return !props.loading && props.visits.length !== 0;
 });
 </script>
 <template>

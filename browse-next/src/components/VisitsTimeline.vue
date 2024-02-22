@@ -26,7 +26,7 @@ const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation"
 ) as Ref<LocationId | null>;
 
-const { visits, locations, startDate } = defineProps<{
+const props = defineProps<{
   visits: ApiVisitResponse[];
   locations: NamedPoint[];
   startDate: Date;
@@ -86,8 +86,8 @@ onBeforeUnmount(() => {
 });
 
 const timezoneForActiveStations = computed<string>(() => {
-  if (locations.length) {
-    const location = locations[0];
+  if (props.locations.length) {
+    const location = props.locations[0];
     return timezoneForLatLng(location.location);
   }
   return "Auckland/Pacific";
@@ -96,7 +96,7 @@ const timezoneForActiveStations = computed<string>(() => {
 const dates = computed<DateTime[]>(() => {
   const now = DateTime.now().setZone(timezoneForActiveStations.value);
   const d = [
-    DateTime.fromISO(startDate.toISOString(), {
+    DateTime.fromISO(props.startDate.toISOString(), {
       zone: timezoneForActiveStations.value,
     }),
   ];
@@ -118,7 +118,7 @@ const dateLabels = computed<DateTime[]>(() => {
 watch(dateLabels, () => nextTick(evaluateLabelClipping));
 
 const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() =>
-  visitsBySpeciesCalc(visits).sort((a, b) => {
+  visitsBySpeciesCalc(props.visits).sort((a, b) => {
     // Sort by count and break ties by name alphabetically
     const order = b[1].length - a[1].length;
     if (order === 0) {

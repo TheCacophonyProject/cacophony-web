@@ -50,7 +50,7 @@ const deviceConfig = ref<LoadedResource<DeviceConfigDetail>>(null);
 const currentLocationForDevice = ref<LoadedResource<ApiLocationResponse>>(null);
 const lastPowerOffTime = ref<LoadedResource<Date>>(null);
 const lastPowerOnTime = ref<LoadedResource<Date>>(null);
-const isLoading = (val: Ref<LoadedResource<any>>) =>
+const isLoading = (val: Ref<LoadedResource<unknown>>) =>
   computed<boolean>(() => val.value === null);
 const configInfoLoading = isLoading(deviceConfig);
 const versionInfoLoading = isLoading(versionInfo);
@@ -330,12 +330,11 @@ onMounted(async () => {
     const [config, version, poweredOn, poweredOff, station] = (
       await Promise.allSettled(infoRequests)
     ).map((result) => (result.status === "fulfilled" ? result.value : false));
-    deviceConfig.value = config;
-    versionInfo.value = version;
-    currentLocationForDevice.value = station;
-    lastPowerOffTime.value = poweredOff;
-    lastPowerOnTime.value = poweredOn;
-
+    deviceConfig.value = config as DeviceConfigDetail | false;
+    versionInfo.value = version as Record<string, string> | false;
+    currentLocationForDevice.value = station as ApiLocationResponse | false;
+    lastPowerOffTime.value = poweredOff as Date | false;
+    lastPowerOnTime.value = poweredOn as Date | false;
     //Now we can work out if the device is currently on?
 
     if (thisDevice.type === "thermal") {
@@ -386,7 +385,7 @@ onMounted(async () => {
   }
 });
 
-const versionInfoTable = computed<CardTableRows<any>>(() =>
+const versionInfoTable = computed<CardTableRows<string>>(() =>
   Object.entries(versionInfo.value || []).map(([software, version]) => ({
     package: software,
     version,
@@ -436,12 +435,12 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
           <span v-if="deviceStopped">
             Camera has stopped, otherwise
             <span v-if="poweredOn247">would be powered on now</span
-            ><span v-else
+            ><span v-else-if="scheduledPowerOnTime"
               >would power on
               {{ DateTime.fromJSDate(scheduledPowerOnTime).toRelative() }}</span
             ></span
           >
-          <span v-else
+          <span v-else-if="scheduledPowerOnTime"
             >Powers on in
             {{ DateTime.fromJSDate(scheduledPowerOnTime).toRelative() }}</span
           >
@@ -456,14 +455,14 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
           <span v-if="deviceStopped">
             Camera has stopped, otherwise
             <span v-if="records247">would be ready to recording now</span
-            ><span v-else
+            ><span v-else-if="scheduledRecordStartTime"
               >would be ready to record
               {{
                 DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
               }}</span
             ></span
           >
-          <span v-else
+          <span v-else-if="scheduledRecordStartTime"
             >Ready to record
             {{
               DateTime.fromJSDate(scheduledRecordStartTime).toRelative()

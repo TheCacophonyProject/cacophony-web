@@ -24,27 +24,26 @@ const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;
 }>();
 
-const {
-  modes,
-  modelValue,
-  spread = false,
-} = defineProps<{
-  modelValue: string;
-  modes: [string, string];
-  spread?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: string;
+    modes: [string, string];
+    spread?: boolean;
+  }>(),
+  { spread: false }
+);
 
 const mode = ref<boolean>(false);
 watch(mode, (nextMode: boolean) => {
   if (nextMode) {
-    emit("update:modelValue", modes[1]);
+    emit("update:modelValue", props.modes[1]);
   } else {
-    emit("update:modelValue", modes[0]);
+    emit("update:modelValue", props.modes[0]);
   }
 });
 
 onMounted(() => {
-  mode.value = (modes && modes.indexOf(modelValue) === 1) || false;
+  mode.value = (props.modes && props.modes.indexOf(props.modelValue) === 1) || false;
 });
 </script>
 <style lang="less" scoped>

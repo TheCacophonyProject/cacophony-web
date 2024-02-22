@@ -6,7 +6,6 @@ import {
   nonPendingUserProjects,
   refreshUserProjects,
   urlNormalisedCurrentProjectName,
-  userIsLoggedIn,
 } from "@models/LoggedInUser";
 import type { ErrorResult, JwtAcceptInviteTokenPayload } from "@api/types";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

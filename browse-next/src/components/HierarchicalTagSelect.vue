@@ -19,27 +19,30 @@ import LayeredDropdown from "./LayeredDropdown.vue";
 import { onMounted, ref } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 
-const {
-  disabled = false,
-  exclude = [],
-  placeholder = "Search Tags...",
-  multiselect = false,
-  canBePinned = false,
-  pinnedItems = [],
-  openOnMount = true,
-  disabledTags = [],
-  modelValue = [],
-} = defineProps<{
-  disabled?: boolean;
-  exclude?: string[];
-  placeholder?: string;
-  multiselect?: boolean;
-  canBePinned?: boolean;
-  pinnedItems?: string[];
-  openOnMount?: boolean;
-  disabledTags?: string[];
-  modelValue?: string[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    exclude?: string[];
+    placeholder?: string;
+    multiselect?: boolean;
+    canBePinned?: boolean;
+    pinnedItems?: string[];
+    openOnMount?: boolean;
+    disabledTags?: string[];
+    modelValue?: string[];
+  }>(),
+  {
+    disabled: false,
+    exclude: () => [],
+    placeholder: "Search Tags...",
+    multiselect: false,
+    canBePinned: false,
+    pinnedItems: () => [],
+    openOnMount: true,
+    disabledTags: () => [],
+    modelValue: () => [],
+  }
+);
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string[]): void;
@@ -58,7 +61,7 @@ const options = ref<Classification>({ label: "", children: [] });
 const setClassifications = (classifications: Classification) => {
   // classifications is a tree, we want to filter out excluded nodes
   const filter = (node: Classification) => {
-    if (exclude.includes(node.label)) {
+    if (props.exclude.includes(node.label)) {
       return false;
     }
     if (node.children) {
@@ -81,7 +84,8 @@ onMounted(async () => {
 
 defineExpose({
   open: () => {
-    layeredDropdown.value && (layeredDropdown.value as LayeredDropdown).open();
+    layeredDropdown.value &&
+      (layeredDropdown.value as typeof LayeredDropdown).open();
   },
 });
 </script>

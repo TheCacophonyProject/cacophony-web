@@ -3,7 +3,7 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, ref } from "vue";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { CardTableRows } from "@/components/CardTableTypes";
-import { BModal } from "bootstrap-vue-3";
+import { BModal } from "bootstrap-vue-next";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
 import { CurrentUser } from "@models/LoggedInUser";
 import type { TagId } from "@typedefs/api/common";
@@ -11,9 +11,12 @@ import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
 import { RecordingLabels } from "@/consts";
 
-const { recording } = defineProps<{
-  recording?: ApiRecordingResponse | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    recording?: ApiRecordingResponse | null;
+  }>(),
+  { recording: null }
+);
 
 const emit = defineEmits<{
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
@@ -22,16 +25,19 @@ const emit = defineEmits<{
 
 const tableItems = computed<CardTableRows<ApiRecordingTagResponse | string>>(
   () => {
-    return (recording?.tags || []).map((tag: ApiRecordingTagResponse) => ({
-      label:
-        labels.find((label) => label.value === tag.detail)?.text || tag.detail,
-      by: tag.taggerName || (tag.automatic ? "Cacophony AI" : "-"),
-      when: DateTime.fromJSDate(new Date(tag.createdAt)).toRelative({
-        style: "short",
-      }) as string,
-      _deleteAction: { value: tag, cellClasses: ["text-end"] },
-      __sort: { value: new Date(tag.createdAt).getTime().toString() },
-    }));
+    return (props.recording?.tags || []).map(
+      (tag: ApiRecordingTagResponse) => ({
+        label:
+          labels.find((label) => label.value === tag.detail)?.text ||
+          tag.detail,
+        by: tag.taggerName || (tag.automatic ? "Cacophony AI" : "-"),
+        when: DateTime.fromJSDate(new Date(tag.createdAt)).toRelative({
+          style: "short",
+        }) as string,
+        _deleteAction: { value: tag, cellClasses: ["text-end"] },
+        __sort: { value: new Date(tag.createdAt).getTime().toString() },
+      })
+    );
   }
 );
 
@@ -51,7 +57,7 @@ const labels: Label[] = RecordingLabels.map(({ text, description, value }) => ({
 const unusedLabels = computed(() => {
   // Filter out labels that have already been added
   return labels.filter(
-    (label) => !recording?.tags.some((tag) => tag.detail === label.value)
+    (label) => !props.recording?.tags.some((tag) => tag.detail === label.value)
   );
 });
 
@@ -71,9 +77,12 @@ const addLabel = () => {
 };
 
 const removeLabel = async (id: TagId) => {
-  if (recording) {
+  if (props.recording) {
     removingLabelInProgress.value = true;
-    const removeLabelResponse = await removeRecordingLabel(recording.id, id);
+    const removeLabelResponse = await removeRecordingLabel(
+      props.recording.id,
+      id
+    );
     if (removeLabelResponse.success) {
       emit("removed-recording-label", id);
     }
@@ -82,10 +91,10 @@ const removeLabel = async (id: TagId) => {
 };
 
 const doAddLabel = async () => {
-  if (recording && selectedLabel.value) {
+  if (props.recording && selectedLabel.value) {
     addingLabelInProgress.value = true;
     const addLabelResponse = await addRecordingLabel(
-      recording.id,
+      props.recording.id,
       selectedLabel.value
     );
     if (addLabelResponse.success) {

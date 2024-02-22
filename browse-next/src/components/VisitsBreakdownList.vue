@@ -14,28 +14,31 @@ import {
 import type { LatLng } from "@typedefs/api/common";
 import type { DateTime } from "luxon";
 
-const { visits, location } = defineProps<{
-  visits: ApiVisitResponse[];
-  location: LatLng;
-  highlightedLocation: LocationId | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    visits: ApiVisitResponse[];
+    location: LatLng;
+    highlightedLocation: LocationId | null;
+  }>(),
+  { highlightedLocation: null }
+);
 const emit = defineEmits<{
   (e: "selected-visit", payload: ApiVisitResponse): void;
   (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
 const isNocturnal = computed<boolean>(() =>
-  visitsAreNocturnalOnlyAtLocation(visits, location)
+  visitsAreNocturnalOnlyAtLocation(props.visits, props.location)
 );
 
 const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
   if (isNocturnal.value) {
-    return visitsByNightAtLocation(visits, location); //.reverse();
+    return visitsByNightAtLocation(props.visits, props.location); //.reverse();
   } else {
-    return visitsByDayAtLocation(visits, location); //.reverse();
+    return visitsByDayAtLocation(props.visits, props.location); //.reverse();
   }
 });
-const hasVisits = computed<boolean>(() => visits.length !== 0);
+const hasVisits = computed<boolean>(() => props.visits.length !== 0);
 </script>
 <template>
   <div :class="[{ 'ps-md-3': hasVisits }]" class="visits-breakdown-list">
@@ -47,9 +50,9 @@ const hasVisits = computed<boolean>(() => visits.length !== 0);
       :is-nocturnal="isNocturnal"
       :location="location"
       :currently-highlighed-location="highlightedLocation"
-      @selected-visit="(visit) => emit('selected-visit', visit)"
+      @selected-visit="(visit: ApiVisitResponse) => emit('selected-visit', visit)"
       @change-highlighted-location="
-        (loc) => emit('change-highlighted-location', loc)
+        (loc: LocationId | null) => emit('change-highlighted-location', loc)
       "
     />
   </div>
