@@ -74,7 +74,9 @@ const addLabel = async (label: string) => {
 
 const removeLabel = async (label: string) => {
   if (props.recording) {
-    const labelToRemove = props.recording.tags.find((tag) => tag.detail === label);
+    const labelToRemove = props.recording.tags.find(
+      (tag) => tag.detail === label
+    );
     if (labelToRemove) {
       removingLabelInProgress.value = true;
       const removeLabelResponse = await removeRecordingLabel(

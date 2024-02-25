@@ -34,7 +34,9 @@ export interface DeviceConfigDetail {
     id: DeviceId;
     name: string;
     group: string;
-    server: "https://api.cacophony.org.nz" | "https://api-test.cacophony.org.nz";
+    server:
+      | "https://api.cacophony.org.nz"
+      | "https://api-test.cacophony.org.nz";
     updated: IsoFormattedString;
   };
   gpio: null;

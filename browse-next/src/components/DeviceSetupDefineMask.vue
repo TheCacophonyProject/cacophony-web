@@ -78,7 +78,7 @@ const getExistingMaskRegions = async () => {
     if (existingMaskRegions.success) {
       regions.value = {
         ...existingMaskRegions.result.maskRegions,
-      };
+      } as Record<string, { regionData: Region; alertOnEnter: boolean }>;
     }
   }
 };

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type {RouteParams, RouteParamsRaw} from "vue-router";
+import type { RouteParams, RouteParamsRaw } from "vue-router";
 import { useRoute } from "vue-router";
 import type { ComputedRef, Ref } from "vue";
 import { computed, inject, nextTick, onMounted, ref, watch } from "vue";

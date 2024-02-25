@@ -1,7 +1,9 @@
 /// <reference path="../../../support/index.d.ts" />
-import { makeAuthorizedRequest, v1ApiPath } from "@commands/server";
+import { makeAuthorizedRequest, saveIdOnly, v1ApiPath } from "@commands/server";
 import { TestGetLocation } from "@commands/api/station";
 import { ApiMaskRegionsData } from "@typedefs/api/device";
+import { uploadFile } from "@commands/fileUpload";
+import { RecordingId } from "@typedefs/api/common";
 
 describe("Device mask regions", () => {
   const user1 = "Josie";
@@ -52,20 +54,22 @@ describe("Device mask regions", () => {
 
   const testRegions2: ApiMaskRegionsData = {
     maskRegions: {
-      "alt region": [
-        {
-          x: 0.7757669124963148,
-          y: 0.7012075748083727,
-        },
-        {
-          x: 0.80561655872273,
-          y: 0.9377936597140331,
-        },
-        {
-          x: 0.13897445966612618,
-          y: 0.7211073389593161,
-        },
-      ],
+      "alt region": {
+        regionData: [
+          {
+            x: 0.7757669124963148,
+            y: 0.7012075748083727,
+          },
+          {
+            x: 0.80561655872273,
+            y: 0.9377936597140331,
+          },
+          {
+            x: 0.13897445966612618,
+            y: 0.7211073389593161,
+          },
+        ],
+      },
     },
   };
 
@@ -187,47 +191,57 @@ describe("Device mask regions", () => {
         ...location,
         time: new Date(),
         noTracks: true,
-      });
+      }).then(() => {
+        let params = new URLSearchParams();
+        params.append("at-time", new Date().toISOString());
+        params.append("type", "pov");
+        let queryString = params.toString();
+        const apiUrl = v1ApiPath(`devices/${id}/reference-image`);
 
-      const params = new URLSearchParams();
-      params.append("at-time", new Date().toISOString());
-      const queryString = params.toString();
-      // FIXME Does this even work without providing an actual reference image?
-      const apiUrl = v1ApiPath(`devices/${id}/reference-image`);
-      makeAuthorizedRequest(
-        {
-          method: "POST",
-          url: `${apiUrl}?${queryString}`,
-        },
-        user3
-      );
-      makeAuthorizedRequest(
-        {
-          method: "POST",
-          url: v1ApiPath(`devices/${id}/mask-regions`),
-          body: testRegions1,
-        },
-        user3
-      );
-      const deviceSettingsApiUrl = v1ApiPath(`devices/${id}/settings`);
-      makeAuthorizedRequest(
-        {
-          method: "GET",
-          url: `${deviceSettingsApiUrl}?${queryString}`,
-        },
-        user3
-      ).then((response) => {
-        const settings = response.body.settings;
-        expect(settings).to.exist;
-        const maskRegionsExist = settings.hasOwnProperty("maskRegions");
-        const referenceImagePOVExist =
-          settings.hasOwnProperty("referenceImagePOV");
-        const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-          "referenceImagePOVFileSize"
+        // Add a reference image.
+        uploadFile(
+          `${apiUrl}?${queryString}`,
+          user3,
+          "trailcam-image.jpeg",
+          "image/jpeg",
+          {},
+          "",
+          200
         );
-        expect(maskRegionsExist).to.be.true;
-        expect(referenceImagePOVExist).to.be.true;
-        expect(referenceImagePOVFileSizeExist).to.be.true;
+
+        makeAuthorizedRequest(
+          {
+            method: "POST",
+            url: v1ApiPath(`devices/${id}/mask-regions`),
+            body: testRegions1,
+          },
+          user3
+        );
+        const deviceSettingsApiUrl = v1ApiPath(`devices/${id}/settings`);
+
+        params = new URLSearchParams();
+        params.append("at-time", new Date().toISOString());
+        queryString = params.toString();
+
+        makeAuthorizedRequest(
+          {
+            method: "GET",
+            url: `${deviceSettingsApiUrl}?${queryString}`,
+          },
+          user3
+        ).then((response) => {
+          const settings = response.body.settings;
+          expect(settings).to.exist;
+          const maskRegionsExist = settings.hasOwnProperty("maskRegions");
+          const referenceImagePOVExist =
+            settings.hasOwnProperty("referenceImagePOV");
+          const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
+            "referenceImagePOVFileSize"
+          );
+          expect(maskRegionsExist).to.be.true;
+          expect(referenceImagePOVExist).to.be.true;
+          expect(referenceImagePOVFileSizeExist).to.be.true;
+        });
       });
     });
   });

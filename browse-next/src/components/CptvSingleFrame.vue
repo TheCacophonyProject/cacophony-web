@@ -218,6 +218,5 @@ watch(
   }
 }
 .smoothed {
-
 }
 </style>

@@ -247,10 +247,14 @@ const mapBounds = computed<LatLngBounds | null>(() => {
     if (props.focusedPoint) {
       // Give the bounds 300m around the focused location.
       // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
-      return latLng(props.focusedPoint.location).toBounds(boundsPaddingInMeters);
+      return latLng(props.focusedPoint.location).toBounds(
+        boundsPaddingInMeters
+      );
     } else if (props.activePoints && props.activePoints.length === 1) {
       // Give the bounds 300m around the location.
-      return latLng(props.activePoints[0].location).toBounds(boundsPaddingInMeters);
+      return latLng(props.activePoints[0].location).toBounds(
+        boundsPaddingInMeters
+      );
     } else if (props.activePoints && props.activePoints.length > 1) {
       return latLngBounds(
         props.activePoints.flatMap(({ location }) => {
@@ -356,7 +360,8 @@ const addPoints = () => {
       const colour: CircleMarkerOptions = {};
       const thisPointKey = pointKey(point);
       const isAnActivePoint =
-        props.activePoints && props.activePoints.find((p) => pointKey(p) === thisPointKey);
+        props.activePoints &&
+        props.activePoints.find((p) => pointKey(p) === thisPointKey);
       const isFocusedPoint =
         props.focusedPoint && pointKey(props.focusedPoint) === thisPointKey;
       if (!point.color && !isAnActivePoint) {

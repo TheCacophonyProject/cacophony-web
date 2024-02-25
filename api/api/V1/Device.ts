@@ -57,10 +57,10 @@ import type {
   MaskRegion,
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
-import MaskRegionSchema from "@schemas/api/device/MaskRegion.schema.json" assert { type: "json" };
+import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
-import { jsonSchemaOf, arrayOf } from "@api/schema-validation.js";
+import { jsonSchemaOf } from "@api/schema-validation.js";
 import Sequelize, { Op } from "sequelize";
 import type { DeviceHistory } from "@models/DeviceHistory.js";
 import {
@@ -1104,7 +1104,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      body("maskRegions").custom(jsonSchemaOf(arrayOf(MaskRegionSchema))),
+      body("maskRegions").custom(jsonSchemaOf(MaskRegionsSchema)),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {

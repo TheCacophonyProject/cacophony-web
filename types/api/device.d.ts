@@ -33,9 +33,14 @@ export interface ApiDeviceResponse {
   location?: LatLng;
   scheduleId?: ScheduleId;
   users?: ApiGroupUserResponse[];
+
+}
+export interface MaskRegion {
+  regionData: { x: number; y: number }[];
+  alertOnEnter?: boolean;
 }
 
-export interface MaskRegion { regionData: { x: number; y: number }[], alertOnEnter?: boolean }
+export type MaskRegions = Record<string, MaskRegion>;
 
 export interface ApiMaskRegionsData {
   maskRegions: Record<string, MaskRegion>;

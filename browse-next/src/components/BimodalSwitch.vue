@@ -43,7 +43,8 @@ watch(mode, (nextMode: boolean) => {
 });
 
 onMounted(() => {
-  mode.value = (props.modes && props.modes.indexOf(props.modelValue) === 1) || false;
+  mode.value =
+    (props.modes && props.modes.indexOf(props.modelValue) === 1) || false;
 });
 </script>
 <style lang="less" scoped>
