@@ -33,7 +33,6 @@ export interface ApiDeviceResponse {
   location?: LatLng;
   scheduleId?: ScheduleId;
   users?: ApiGroupUserResponse[];
-
 }
 export interface MaskRegion {
   regionData: { x: number; y: number }[];
