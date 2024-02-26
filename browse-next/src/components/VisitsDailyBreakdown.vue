@@ -72,7 +72,6 @@ interface SunEventItem extends EventItem {
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
-
   for (const visit of props.visits) {
     if (!visit.classification) {
       debugger;
@@ -91,8 +90,8 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   );
 
   const now = new Date();
-  const startTime = events[0].date;
-  const endTime = events[events.length - 1].date;
+  const endTime = events[0].date;
+  const startTime = events[events.length - 1].date;
   {
     // If the startTime is *after* its own sunrise, then use the sunset from it.
     const { sunrise, sunset } = sunCalc.getTimes(
@@ -127,8 +126,8 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   {
     const { sunrise, sunset } = sunCalc.getTimes(
       endTime,
-      location.lat,
-      location.lng
+      props.location.lat,
+      props.location.lng
     );
     if (now < sunrise) {
       // If we're before sunrise, then use the "Now" placeholder
@@ -152,8 +151,8 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       endTimePlusOneDay.setDate(endTimePlusOneDay.getDate() + 1);
       const { sunrise } = sunCalc.getTimes(
         endTimePlusOneDay,
-        location.lat,
-        location.lng
+        props.location.lat,
+        props.location.lng
       );
       if (sunrise < now) {
         events.push({
@@ -382,7 +381,7 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
                 class="visit-species-tag px-1 mb-1 text-capitalize"
                 :class="[
                   visit.name,
-                  ...(getClassificationForLabel(visit.name)?.path || '').split(
+                  ...(getClassificationForLabel(visit.name)?.path as string || '').split(
                     '.'
                   ),
                 ]"
@@ -407,7 +406,7 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
                 icon="map-marker-alt"
                 size="xs"
                 class="station-icon pe-1 text"
-              />{{ visit.data.stationName }}</span
+              />{{ (visit as VisitEventItem).data.stationName }}</span
             >
           </div>
         </div>

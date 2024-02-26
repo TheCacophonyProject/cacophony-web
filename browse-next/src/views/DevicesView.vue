@@ -154,19 +154,6 @@ onMounted(async () => {
 
 // Maybe just popup modals?  Upload modal.  Info modal
 
-interface DeviceTableItem {
-  deviceName: string;
-  __type: DeviceType;
-  lastSeen: string;
-  __active: boolean;
-  status: string | boolean;
-
-  __id: string;
-
-  _deleteAction: CardTableItem<ApiDeviceResponse>;
-
-  __lastConnectionTime: Date | null;
-}
 type DeviceStatus = "online" | "standby" | "stopped" | "-";
 const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
@@ -194,6 +181,22 @@ const colorForStatus = (status: DeviceStatus): string => {
       return "#6dbd4b";
   }
 };
+
+interface DeviceTableItem {
+  deviceName: string;
+  __type: DeviceType;
+  lastSeen: string;
+  __active: boolean;
+  status: string | boolean;
+
+  __id: string;
+
+  _deleteAction: CardTableItem<ApiDeviceResponse>;
+
+  __lastConnectionTime: Date | null;
+}
+
+//type DeviceTableItem = CardTableRow<string | boolean | (Date | null) | ApiDeviceResponse>;
 
 const tableItems = computed<
   CardTableRows<string | boolean | (Date | null) | ApiDeviceResponse>
@@ -534,10 +537,61 @@ const isDevicesRoot = computed(() => {
             </div>
             <span v-else></span>
           </template>
-          <template #card="{ card }">
-            <h6>{{ card.deviceName }}</h6>
-            <div>{{ card.type }}</div>
-            <div>Last seen <span v-html="card.lastSeen"></span> at</div>
+          <template #card="{ card }: { card: DeviceTableItem }">
+            <div class="d-flex flex-row">
+              <div class="flex-grow-1">
+                <device-name
+                  :name="card.deviceName"
+                  :type="card.__type"
+                /><b-badge class="ms-2" v-if="!card.__active">inactive</b-badge>
+                <div>Last seen <span v-html="card.lastSeen"></span></div>
+
+                <div class="d-flex align-items-center">
+                  <span
+                    class="d-flex power-status-icon align-items-center justify-content-center"
+                    :class="[card.status]"
+                  >
+                    <font-awesome-icon
+                      icon="power-off"
+                      v-if="card.status !== '-'"
+                    />
+                  </span>
+                  <span class="ms-2" v-if="card.status !== '-'">{{
+                    card.status
+                  }}</span>
+                </div>
+              </div>
+              <div class="d-flex align-items-end justify-content-end">
+                <div v-if="!card._deleteAction.value.lastRecordingTime">
+                  No recordings
+                </div>
+                <two-step-action-button
+                  v-if="card.__active"
+                  class="text-end"
+                  variant="outline-secondary"
+                  :action="
+                    () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                  "
+                  :icon="
+                    card._deleteAction.value.lastConnectionTime &&
+                    card._deleteAction.value.lastRecordingTime
+                      ? 'circle-minus'
+                      : 'trash-can'
+                  "
+                  :confirmation-label="
+                    deleteConfirmationLabelForDevice(card._deleteAction.value)
+                  "
+                  :classes="[
+                    'd-flex',
+                    'align-items-center',
+                    'fs-7',
+                    'text-nowrap',
+                    'ms-2',
+                  ]"
+                  alignment="right"
+                />
+              </div>
+            </div>
           </template>
         </card-table>
       </div>
@@ -570,15 +624,6 @@ const isDevicesRoot = computed(() => {
     />
   </div>
   <router-view v-else></router-view>
-
-  <!--  <inline-view-modal-->
-  <!--    @close="selectedDevice = null"-->
-  <!--    :fade-in="loadedRouteName === 'device'"-->
-  <!--    no-close-on-backdrop-->
-  <!--    :parent-route-name="'devices'"-->
-  <!--    :show-inactive="showInactiveDevicesInternal"-->
-  <!--    @shown="() => (loadedRouteName = 'device')"-->
-  <!--  />-->
 </template>
 <style lang="less" scoped>
 .device-map {
@@ -615,7 +660,7 @@ const isDevicesRoot = computed(() => {
   50% {
     background-color: #4ada10;
   }
-  100 {
+  100% {
     background-color: #6dbd4b;
   }
 }

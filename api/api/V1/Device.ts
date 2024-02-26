@@ -1167,16 +1167,18 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccessExample {JSON} device:
    * {
    *   "maskRegions": {
-   *     "trap": [
-   *         { "x": 0.99, "y": 0.66 },
-   *         { "x": 0.80, "y": 0.83 },
-   *         { "x": 0.58, "y": 0.18 }
-   *      ],
-   *      "sky": [
-   *         { "x": 0.3, "y": 0.1 },
-   *         { "x": 0.5, "y": 0.7 },
-   *         { "x": 0.8, "y": 0.4 }
-   *       ]
+   *     "trap": {
+   *        "regionData": [
+   *          { "x": 0.99, "y": 0.66 },
+   *          { "x": 0.80, "y": 0.83 },
+   *          { "x": 0.58, "y": 0.18 }
+   *      ]},
+   *      "sky": {
+   *        "regionData": [
+   *          { "x": 0.3, "y": 0.1 },
+   *          { "x": 0.5, "y": 0.7 },
+   *          { "x": 0.8, "y": 0.4 }
+   *       ]}
    *     }
    * }
    *
