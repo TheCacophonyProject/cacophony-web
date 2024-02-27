@@ -4,12 +4,14 @@ import { ref, onMounted, computed, inject, watch } from "vue";
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
 import {
   getLatestStatusRecordingForDevice,
-  getReferenceImageForDeviceAtCurrentLocation,
-  getMaskRegionsForDevice,
   updateMaskRegionsForDevice,
 } from "@api/Device";
 import { useRoute } from "vue-router";
-import type { ApiDeviceResponse, MaskRegion } from "@typedefs/api/device";
+import type {
+  ApiDeviceResponse,
+  ApiMaskRegionsData,
+  MaskRegion,
+} from "@typedefs/api/device";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
@@ -17,7 +19,6 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import { formFieldInputText, type FormInputValidationState } from "@/utils.ts";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import CardTable from "@/components/CardTable.vue";
-
 interface Point {
   x: number;
   y: number;
@@ -31,17 +32,26 @@ const editMode = ref(false);
 const helpInfo = ref(true);
 const canvas = ref<HTMLCanvasElement>();
 const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
+const regionsProvided = inject(
+  "latestMaskRegions",
+  ref<ApiMaskRegionsData | (() => ApiMaskRegionsData)>(
+    () => ({} as unknown as ApiMaskRegionsData)
+  ),
+  true
+);
 const regions = ref<
-  Record<string, { regionData: Region; alertOnEnter: boolean }>
+  Record<string, { regionData: Region; alertOnEnter?: boolean }>
 >({});
 const points = reactive<Point[]>([]);
 const { pixelRatio: devicePixelRatio } = useDevicePixelRatio();
-const contentLoading = ref<boolean>(true);
-const latestStatusRecording = ref<ApiRecordingResponse | false>(false);
+const latestStatusRecording: Ref<ApiRecordingResponse> = inject(
+  "latestStatusRecording"
+); //ref<ApiRecordingResponse | false>(false);
 const route = useRoute();
 const deviceId = Number(route.params.deviceId) as DeviceId;
 const submittingNewRegionRequest = ref<boolean>(false);
 const newRegionName = formFieldInputText();
+const newRegionHasAlerts = ref<boolean>(false);
 const selfIntersectingError = ref<boolean>(false);
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
@@ -52,44 +62,34 @@ const device = computed<ApiDeviceResponse | null>(() => {
     null
   );
 });
+const emit = defineEmits<{
+  (e: "updated-regions", payload: ApiMaskRegionsData): void;
+}>();
 
 const regionsTable = computed(() => {
-  return Object.keys(regions.value).map((name) => ({
+  return Object.entries(regions.value).map(([name, { alertOnEnter }]) => ({
     maskRegion: name,
+    alertOnEnter,
     _deleteAction: { value: name },
   }));
 });
 
 const { width: canvasWidth, height: canvasHeight } =
   useElementSize(canvasContainer);
-
-const getExistingMaskRegions = async () => {
-  const mostRecentTime = new Date();
-  if (device.value) {
-    const existingMaskRegions = {
-      success: true,
-      result: { maskRegions: {} as Record<string, MaskRegion> },
-    };
-    // await getMaskRegionsForDevice(
-    //   device.value.id,
-    //   mostRecentTime
-    // );
-
-    if (existingMaskRegions.success) {
-      regions.value = {
-        ...existingMaskRegions.result.maskRegions,
-      } as Record<string, { regionData: Region; alertOnEnter: boolean }>;
-    }
-  }
-};
-
-// TODO: Call from create region/delete region.
 const updateExistingMaskRegions = async () => {
   if (device.value) {
-    const maskRegions = { ...regions.value };
-    await updateMaskRegionsForDevice(device.value.id, {
-      maskRegions,
-    });
+    const maskRegions: Record<string, MaskRegion> = {};
+    for (const [region, data] of Object.entries(regions.value)) {
+      maskRegions[region] = {
+        regionData: data.regionData.map(({ x, y }) => ({ x, y })),
+      };
+      if (data.hasOwnProperty("alertOnEnter")) {
+        maskRegions[region].alertOnEnter = data.alertOnEnter;
+      }
+    }
+    const regionsPayload: ApiMaskRegionsData = { maskRegions };
+    emit("updated-regions", regionsPayload);
+    await updateMaskRegionsForDevice(device.value.id, regionsPayload);
   }
 };
 
@@ -97,17 +97,18 @@ const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
 
-onMounted(async () => {
-  if (device.value && device.value.type === "thermal") {
-    const [regions, latestRecordingForDevice] = await Promise.allSettled([
-      getExistingMaskRegions(),
-      getLatestStatusRecordingForDevice(device.value.id, device.value.groupId),
-    ]);
-    if (latestRecordingForDevice.status === "fulfilled") {
-      latestStatusRecording.value = latestRecordingForDevice.value;
-    }
-    contentLoading.value = false;
+const copyRegionsFromProvider = () => {
+  if ((regionsProvided.value as ApiMaskRegionsData).maskRegions) {
+    regions.value = JSON.parse(
+      JSON.stringify((regionsProvided.value as ApiMaskRegionsData).maskRegions)
+    );
   }
+};
+
+watch(regionsProvided, copyRegionsFromProvider);
+
+onMounted(async () => {
+  copyRegionsFromProvider();
 });
 type GenericArray<T> = T[];
 const last = (arr: GenericArray<Point>) => {
@@ -253,9 +254,12 @@ const speculativePoint = (event: PointerEvent) => {
 const drawPolygon = () => {
   const ctx = (canvas.value as HTMLCanvasElement).getContext("2d");
   if (ctx) {
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    drawRegions();
+    ctx.restore();
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
-    ctx.clearRect(0, 0, width, height);
     if (points.length) {
       ctx.save();
       ctx.lineWidth = 4 * devicePixelRatio.value;
@@ -357,6 +361,7 @@ const drawRegions = () => {
   if (ctx) {
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     for (const region of Object.values(regions.value)) {
       const pts = region.regionData.map((p) => ({
         ...p,
@@ -370,7 +375,6 @@ const drawRegions = () => {
           ctx.lineTo(pts[i].x, pts[i].y);
         }
         ctx.closePath();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
         ctx.fill();
       }
     }
@@ -396,6 +400,7 @@ const drawRegions = () => {
 };
 const deleteRegion = (regionLabel: string) => {
   delete regions.value[regionLabel];
+  const _ = updateExistingMaskRegions();
 };
 
 const isValidRegionName = computed<boolean>(() => {
@@ -436,18 +441,23 @@ const lineSegmentsIntersect = (
 const addCurrentRegion = () => {
   const label = newRegionName.value;
   editMode.value = false;
-  regions.value[label] = { regionData: [...points], alertOnEnter: false };
+  regions.value[label] = { regionData: [...points] };
+  if (newRegionHasAlerts.value) {
+    regions.value[label].alertOnEnter = newRegionHasAlerts.value;
+  }
   while (points.length) {
     points.pop();
   }
+  const _ = updateExistingMaskRegions();
 };
 const resetModal = () => {
   newRegionName.value = "";
   newRegionName.touched = false;
+  newRegionHasAlerts.value = false;
   removePoint();
 };
 
-// Watch data and do side-effects for rendering
+// Watch data and do side effects for rendering
 watch(points, () => drawPolygon());
 watch(canvasWidth, () => {
   requestAnimationFrame(() => {
@@ -513,6 +523,11 @@ watch(
           Region name must be unique
         </span>
       </b-form-invalid-feedback>
+      <div class="mt-3">
+        <b-form-checkbox v-model="newRegionHasAlerts">
+          <span>Alert project members when an animal enters this region.</span>
+        </b-form-checkbox>
+      </div>
     </b-form>
     <template #footer>
       <button
@@ -534,9 +549,6 @@ watch(
   </b-modal>
 
   <div class="d-flex flex-column justify-content-center region-creator">
-    <div class="justify-content-center" v-if="contentLoading">
-      <b-spinner></b-spinner>
-    </div>
     <b-alert dismissible v-model="helpInfo"
       ><p>
         <strong
@@ -552,9 +564,9 @@ watch(
       </p>
       <p class="mb-0">
         Optionally, you can receive an alert notification when an animal is
-        detected entering a masked off region.<br />This is useful if you'd like
-        to know when an animal enters a trap, but you don't want subsequent
-        recordings to be made while the animal is caught.
+        detected <strong><em>entering</em></strong> a masked off region.<br />This
+        is useful if you'd like to know when an animal enters a trap, but you
+        don't want subsequent recordings to be made while the animal is caught.
       </p></b-alert
     >
     <div class="d-flex justify-content-between flex-column flex-md-row">
@@ -588,6 +600,10 @@ watch(
     </div>
 
     <card-table :items="regionsTable" compact :break-point="0">
+      <template #alertOnEnter="{ cell }">
+        <font-awesome-icon v-if="cell" icon="check-circle" />
+        <span v-else>-</span>
+      </template>
       <template #_deleteAction="{ cell }">
         <div class="d-flex align-items-center justify-content-end">
           <two-step-action-button
@@ -623,7 +639,7 @@ watch(
     <div class="d-flex flex-column flex-md-row mt-2 justify-content-between">
       <b-button
         v-if="!editMode"
-        variant="primary"
+        variant="secondary"
         @click="editMode = true"
         class="mb-2 mb-md-0"
       >
@@ -652,8 +668,6 @@ watch(
   bottom: 0;
 }
 .region-creator {
-  margin-left: auto;
-  margin-right: auto;
   max-width: 640px;
 }
 </style>

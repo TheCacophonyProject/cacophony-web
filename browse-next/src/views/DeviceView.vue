@@ -64,17 +64,12 @@ const _deviceType = computed<string>(() => {
 </script>
 <template>
   <div class="device-view d-flex flex-column">
-    <!--    <div>-->
-    <!--      <span class="device-header-type text-uppercase fw-bold">{{-->
-    <!--        deviceType-->
-    <!--      }}</span>-->
-    <!--    </div>-->
-
     <ul
-      class="nav nav-tabs justify-content-md-center justify-content-evenly"
+      class="nav nav-tabs justify-content-center justify-content-evenly scroll-tabs"
       v-if="!deviceLoading"
     >
       <router-link
+        v-if="[DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-diagnostics') },
@@ -111,7 +106,7 @@ const _deviceType = computed<string>(() => {
       >
 
       <router-link
-        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
+        v-if="(device as ApiDeviceResponse).type !== DeviceType.Thermal"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-schedules') },
@@ -166,5 +161,14 @@ const _deviceType = computed<string>(() => {
 .nav-item.active {
   background: unset;
   border-bottom: 3px solid #6dbd4b !important;
+}
+@media screen and (max-width: 639px) {
+  .scroll-tabs {
+    position: relative;
+    //width: 1000px;
+    //> a {
+    //  max-width: 50svh;
+    //}
+  }
 }
 </style>

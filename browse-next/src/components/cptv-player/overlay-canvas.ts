@@ -17,6 +17,7 @@ export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
   overlayContext.font = "13px sans-serif";
   overlayContext.lineWidth = 4;
   overlayContext.strokeStyle = "rgba(0, 0, 0, 0.5)";
+  overlayContext.lineJoin = "round";
   overlayContext.fillStyle = "white";
 };
 

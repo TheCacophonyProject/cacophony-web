@@ -65,6 +65,6 @@ export interface ApiDeviceHistorySettings {
     bottomLeft: [number, number];
     bottomRight: [number, number];
   };
-  maskRegions?: ApiMaskRegionsData;
+  maskRegions?: MaskRegions;
   ratThresh?: any;
 }

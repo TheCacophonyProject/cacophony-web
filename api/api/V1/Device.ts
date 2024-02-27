@@ -1128,13 +1128,16 @@ export default function (app: Application, baseUrl: string) {
             )
           );
         }
+        const newSettings: ApiDeviceHistorySettings = {
+          ...deviceHistoryEntry.settings,
+        };
+        if (Object.keys(maskRegions).length) {
+          newSettings.maskRegions = maskRegions;
+        }
 
         await models.DeviceHistory.update(
           {
-            settings: {
-              ...deviceHistoryEntry.settings,
-              maskRegions,
-            },
+            settings: newSettings,
           },
           {
             where: {
@@ -1144,7 +1147,6 @@ export default function (app: Application, baseUrl: string) {
             },
           }
         );
-
         return successResponse(response, "Mask regions added successfully");
       } catch (e) {
         return next(

@@ -379,9 +379,9 @@ export const getReferenceImageForDeviceAtCurrentLocation = (
   ) as Promise<FetchResult<Blob>>;
 };
 
-export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime: Date) => {
+export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime?: Date) => {
   const params = new URLSearchParams();
-  params.append("at-time", atTime.toISOString().toString());
+  params.append("at-time", (atTime || new Date()).toISOString());
   const queryString = params.toString();
 
   return CacophonyApi.get(
@@ -389,9 +389,9 @@ export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime: Date) => {
   ) as Promise<FetchResult<ApiMaskRegionsData>>;
 };
 
-export const getSettingsForDevice = (deviceId: DeviceId, atTime: Date) => {
+export const getSettingsForDevice = (deviceId: DeviceId, atTime?: Date) => {
   const params = new URLSearchParams();
-  params.append("at-time", atTime.toISOString().toString());
+  params.append("at-time", (atTime || new Date()).toISOString());
   const queryString = params.toString();
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/settings?${queryString}`

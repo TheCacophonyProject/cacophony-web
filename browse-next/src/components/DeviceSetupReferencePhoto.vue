@@ -1,9 +1,7 @@
 <script lang="ts" setup>
 import type { Ref } from "vue";
 import { computed, inject, onMounted, ref, watch } from "vue";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
-  getLatestStatusRecordingForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
   updateReferenceImageForDeviceAtCurrentLocation,
 } from "@api/Device";
@@ -15,9 +13,12 @@ import type { DeviceId } from "@typedefs/api/common";
 import { drawSkewedImage } from "@/components/skew-image";
 import { useElementSize } from "@vueuse/core";
 import { encode } from "@jsquash/webp";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
 
+const skewContainer = ref<HTMLDivElement>();
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
+const loading = ref<boolean>(true);
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
@@ -36,36 +37,22 @@ const latestReferenceImageURL = ref<string | null>(null);
 const referenceImage = ref<ImageBitmap | null>(null);
 const referenceImageSkew = ref<HTMLCanvasElement>();
 const singleFrameCanvas = ref<HTMLDivElement>();
-const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
+const latestStatusRecording: Ref<ApiRecordingResponse> = inject(
+  "latestStatusRecording"
+);
 const { width: singleFrameCanvasWidth } = useElementSize(singleFrameCanvas);
 onMounted(async () => {
   if (device.value && device.value.type === "thermal") {
-    const [latestReferenceImage, _] = await Promise.allSettled([
-      getReferenceImageForDeviceAtCurrentLocation(device.value.id),
-      loadLatestStatusFrame(),
-    ]);
-    if (
-      latestReferenceImage.status === "fulfilled" &&
-      latestReferenceImage.value.success
-    ) {
+    const latestReferenceImage =
+      await getReferenceImageForDeviceAtCurrentLocation(device.value.id);
+    if (latestReferenceImage.success) {
       latestReferenceImageURL.value = URL.createObjectURL(
-        latestReferenceImage.value.result
+        latestReferenceImage.result
       );
     }
+    loading.value = false;
   }
 });
-
-const loadLatestStatusFrame = async () => {
-  if (device.value && device.value.type === "thermal") {
-    const latestStatus = await getLatestStatusRecordingForDevice(
-      device.value.id,
-      device.value.groupId
-    );
-    if (latestStatus) {
-      latestStatusRecording.value = latestStatus;
-    }
-  }
-};
 const replaceExistingReferenceImage = async () => {
   latestReferenceImageURL.value = null;
 };
@@ -266,7 +253,7 @@ const renderSkewedImage = () => {
 watch(overlayOpacity, renderSkewedImage);
 watch(singleFrameCanvasWidth, () => {
   // When the cptv single frame is scaled small, and the handle constraints are close around it,
-  // if we scale it large again we need to re-evaluate the handle contraints.
+  // if we scale it large again we need to re-evaluate the handle constraints.
   if (singleFrame.value && handle0.value) {
     const singleFrameBounds = singleFrame.value.getBoundingClientRect();
     const singleFrameParentBounds = (
@@ -311,6 +298,29 @@ watch(singleFrameCanvasWidth, () => {
   renderSkewedImage();
 });
 watch(cptvFrameScale, renderSkewedImage);
+
+const referenceImageIsLandscape = computed<boolean>(() => {
+  if (referenceImage.value) {
+    return referenceImage.value?.width >= referenceImage.value?.height;
+  }
+  return true;
+});
+
+const { width: frameWidth } = useElementSize(skewContainer);
+
+const cptvFrameWidth = computed<number>(() => {
+  if (referenceImageIsLandscape.value) {
+    return (frameWidth.value / (4 / 3)) * parseFloat(cptvFrameScale.value);
+  }
+  return frameWidth.value * 0.5 * parseFloat(cptvFrameScale.value);
+});
+
+const cptvFrameHeight = computed<number>(() => {
+  if (referenceImageIsLandscape.value) {
+    return (frameWidth.value / (3 / 4)) * parseFloat(cptvFrameScale.value);
+  }
+  return frameWidth.value * 0.75 * 0.5 * parseFloat(cptvFrameScale.value);
+});
 
 const grabHandle = (event: PointerEvent) => {
   // NOTE: Maintain the offset of the cursor on the pointer when it's selected.
@@ -424,24 +434,44 @@ const saveReferenceImage = async () => {
 };
 const revealSlider = ref<HTMLDivElement>();
 const revealHandle = ref<HTMLDivElement>();
+const helpInfo = ref(true);
 </script>
 <template>
-  <div class="d-flex flex-row justify-content-between p-3">
+  <div class="d-flex flex-row justify-content-between">
     <div class="w-100">
       <div
-        class="d-flex justify-content-center align-items-center flex-column"
-        v-if="!latestReferenceImageURL"
+        v-if="loading"
+        class="d-flex justify-content-center align-items-center"
+        style="min-width: 640px; min-height: 400px"
       >
-        <p>
-          Choose a reference photo, then adjust it to make it match what the
-          thermal camera sees as closely as possible.
-        </p>
+        <b-spinner />
+      </div>
+      <div
+        class="d-flex justify-content-center align-items-center flex-column"
+        v-else-if="!latestReferenceImageURL"
+      >
+        <b-alert dismissible v-model="helpInfo"
+          ><p>
+            Sometimes it can be difficult to figure out what's going on in a
+            thermal camera recording scene.
+          </p>
+          <p>
+            Choose a <strong>'reference photo'</strong>, then adjust it to make
+            it match what the thermal camera sees as closely as possible.
+            <br /><br />This can help you to remember where those bushes or
+            trees were when an animal magically emerges from them!
+          </p></b-alert
+        >
+
         <div
           class="d-flex justify-content-center align-items-center position-relative skew-container mt-3"
+          ref="skewContainer"
         >
           <cptv-single-frame
             :recording="latestStatusRecording"
             v-if="latestStatusRecording"
+            :width="cptvFrameWidth"
+            :height="cptvFrameHeight"
             ref="singleFrameCanvas"
             @loaded="(el) => (singleFrame = el)"
           />
@@ -462,6 +492,7 @@ const revealHandle = ref<HTMLDivElement>();
             <div
               class="handle"
               ref="handle0"
+              @touchstart="(e) => e.preventDefault()"
               @pointerdown="grabHandle"
               @pointerup="releaseHandle"
               @pointermove="moveHandle"
@@ -469,6 +500,7 @@ const revealHandle = ref<HTMLDivElement>();
             <div
               class="handle"
               ref="handle1"
+              @touchstart="(e) => e.preventDefault()"
               @pointerdown="grabHandle"
               @pointerup="releaseHandle"
               @pointermove="moveHandle"
@@ -476,6 +508,7 @@ const revealHandle = ref<HTMLDivElement>();
             <div
               class="handle"
               ref="handle2"
+              @touchstart="(e) => e.preventDefault()"
               @pointerdown="grabHandle"
               @pointerup="releaseHandle"
               @pointermove="moveHandle"
@@ -483,6 +516,7 @@ const revealHandle = ref<HTMLDivElement>();
             <div
               class="handle"
               ref="handle3"
+              @touchstart="(e) => e.preventDefault()"
               @pointerdown="grabHandle"
               @pointerup="releaseHandle"
               @pointermove="moveHandle"
@@ -539,7 +573,7 @@ const revealHandle = ref<HTMLDivElement>();
       </div>
       <div
         v-else
-        class="d-flex justify-content-center align-items-center flex-column"
+        class="d-flex justify-content-center align-items-center flex-column mt-2 mt-lg-0"
       >
         <div class="position-relative">
           <div class="existing-reference-image position-relative">
@@ -566,9 +600,14 @@ const revealHandle = ref<HTMLDivElement>();
             <font-awesome-icon icon="left-right" />
           </div>
         </div>
+      </div>
+      <div
+        class="d-flex flex-column align-items-md-center mt-3"
+        v-if="latestReferenceImageURL"
+      >
         <button
           type="button"
-          class="btn btn-secondary mt-3"
+          class="btn btn-secondary"
           @click="replaceExistingReferenceImage"
         >
           Choose a new reference image
@@ -603,11 +642,12 @@ const revealHandle = ref<HTMLDivElement>();
 
 .skew-container {
   width: 640px;
-  height: 480px;
+  aspect-ratio: auto 4/3;
   //border: 3px dashed #cecece;
   background: #333;
   border-radius: 10px;
 }
+
 .skew-canvas {
   position: absolute;
   left: 0;
@@ -615,8 +655,14 @@ const revealHandle = ref<HTMLDivElement>();
   bottom: 0;
   right: 0;
   width: 640px;
-  height: 480px;
+  aspect-ratio: auto 4/3;
   border-radius: 10px;
+}
+@media screen and (max-width: 639px) {
+  .skew-container,
+  .skew-canvas {
+    width: 100svw;
+  }
 }
 .handle {
   border-radius: 12px;

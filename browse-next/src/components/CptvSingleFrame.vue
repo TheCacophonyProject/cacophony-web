@@ -42,7 +42,7 @@ const props = withDefaults(
   defineProps<{
     recording: ApiRecordingResponse | null;
     overlay?: Uint8ClampedArray;
-    width?: string;
+    width?: string | number;
     apronPixels?: number;
     overlayOpacity?: string;
     palette?: string;
@@ -60,7 +60,11 @@ const props = withDefaults(
 
 const widthStyle = computed<string>(() => {
   if (props.width) {
-    return `width: ${props.width};`;
+    if (typeof props.width === "string" && props.width.endsWith("%")) {
+      return `width: ${props.width}`;
+    } else {
+      return `width: ${props.width}px;min-width: unset;`;
+    }
   }
   return "";
 });
