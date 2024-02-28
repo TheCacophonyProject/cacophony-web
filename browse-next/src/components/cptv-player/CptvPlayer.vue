@@ -48,11 +48,7 @@ import { delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
-import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
-import {
-  getReferenceImageForDeviceAtCurrentLocation,
-  getReferenceImageForDeviceAtTime,
-} from "@api/Device.ts";
+import { getReferenceImageForDeviceAtTime } from "@api/Device.ts";
 
 const { pixelRatio } = useDevicePixelRatio();
 const props = withDefaults(
@@ -757,7 +753,7 @@ const totalPlayableFrames = computed<number>(() => {
         : 0;
       return Math.round(
         Math.max(
-          (((props.recording || {}) as any).duration || 0) * fps.value -
+          (props.recording || { duration: 0 }).duration * fps.value -
             backgroundAdjust,
           ...(props.recording || { tracks: [] }).tracks.map(
             ({ end }) => end * fps.value - backgroundAdjust
@@ -1121,7 +1117,7 @@ const download = (url: string, filename: string) => {
   anchor.click();
 };
 
-const ambientTemperature = computed<string | null>(() => {
+const _ambientTemperature = computed<string | null>(() => {
   if (frameHeader.value && (frameHeader.value as CptvFrameHeader).frameTempC) {
     return `About ${Math.round(
       (frameHeader.value as CptvFrameHeader).frameTempC || 0
@@ -2679,6 +2675,7 @@ watch(
   z-index: 1;
   user-select: none;
 }
+
 .reveal-slider {
   height: 100%;
   width: 50%;
@@ -2687,12 +2684,13 @@ watch(
   > img {
     user-select: none;
     pointer-events: none;
-    //position: absolute;
-    //top: 0;
-    //left: 0;
-    //right: 0;
-    //bottom: 0;
-    //height: auto;
+    max-width: 640px;
+    aspect-ratio: auto 4/3;
+  }
+}
+@media screen and (max-width: 639px) {
+  .reveal-slider > img {
+    max-width: 100svw;
   }
 }
 .reveal-handle {

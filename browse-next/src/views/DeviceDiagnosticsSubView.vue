@@ -23,10 +23,6 @@ import type { NamedPoint } from "@models/mapUtils";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import sunCalc from "suncalc";
 import { DateTime } from "luxon";
-import {
-  deviceScheduledPowerOffTime,
-  deviceScheduledPowerOnTime,
-} from "@/components/DeviceUtils";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 
@@ -98,20 +94,6 @@ const absoluteTime = (timeStr: string, relativeTo: Date): Date => {
   return rel;
 };
 
-const scheduledPowerOnTime = computed<Date | null>(() => {
-  if (device.value && deviceConfig.value) {
-    return deviceScheduledPowerOnTime(device.value, deviceConfig.value);
-  }
-  return null;
-});
-
-const scheduledPowerOffTime = computed<Date | null>(() => {
-  if (device.value && deviceConfig.value) {
-    return deviceScheduledPowerOffTime(device.value, deviceConfig.value);
-  }
-  return null;
-});
-
 const scheduledRecordStartTime = computed<Date | null>(() => {
   if (deviceConfig.value && device.value) {
     const windows = (deviceConfig.value as DeviceConfigDetail).windows;
@@ -141,7 +123,10 @@ const scheduledRecordEndTime = computed<Date | null>(() => {
         thisDevice.location.lng
       );
       const off = absoluteTime(end, sunrise);
-      if (scheduledPowerOnTime.value && off > scheduledPowerOnTime.value) {
+      if (
+        scheduledRecordStartTime.value &&
+        off > scheduledRecordStartTime.value
+      ) {
         return off;
       } else {
         const tomorrow = new Date();
@@ -158,16 +143,6 @@ const scheduledRecordEndTime = computed<Date | null>(() => {
   return null;
 });
 
-const shouldBePoweredOnNow = computed<boolean>(() => {
-  const now = new Date();
-  const on = scheduledPowerOnTime.value;
-  const off = scheduledPowerOffTime.value;
-  if (on && off) {
-    return on < now && off > now;
-  }
-  return false;
-});
-
 const shouldBeRecordingNow = computed<boolean>(() => {
   const now = new Date();
   const on = scheduledRecordStartTime.value;
@@ -182,9 +157,17 @@ const nextHeartbeat = computed<string>(() => {
   return "";
 });
 
+const lastConnected = computed<Date | null>(() => {
+  const d = device.value?.lastConnectionTime;
+  if (d) {
+    return new Date(d);
+  }
+  return null;
+});
+
 const deviceStopped = computed<boolean>(() => {
   if (device.value) {
-    return !device.value?.isHealthy;
+    return !device.value?.isHealthy && lastConnected.value === null;
   }
   return false;
 });
@@ -219,36 +202,6 @@ const recordingWindow = computed<string | null>(() => {
   return null;
 });
 
-const poweredOnWindow = computed<string | null>(() => {
-  if (poweredOn247.value) {
-    return "Set to be powered on 24/7";
-  } else if (deviceConfig.value) {
-    const windows = (deviceConfig.value as DeviceConfigDetail).windows;
-    const start = (windows && windows["power-on"]) || "-30m";
-    const end = (windows && windows["power-off"]) || "+30m";
-    let startTime = "";
-    let endTime = "";
-    if (start.startsWith("+") || start.startsWith("-")) {
-      // Relative start time to sunset
-      const beforeAfter = start.startsWith("-") ? "before" : "after";
-      startTime = `${start.slice(1)}ins ${beforeAfter} sunset`;
-    } else {
-      // Absolute start time
-      startTime = start; // Do am/pm?
-    }
-    if (end.startsWith("+") || end.startsWith("-")) {
-      // Relative end time to sunrise
-      const beforeAfter = end.startsWith("-") ? "before" : "after";
-      endTime = `${end.slice(1)}ins ${beforeAfter} sunrise`;
-    } else {
-      // Absolute end time
-      endTime = end;
-    }
-    return `Powered on from ${startTime} until ${endTime}`;
-  }
-  return null;
-});
-
 const currentRecordingWindowLengthMins = computed<number>(() => {
   if (records247.value) {
     return -1;
@@ -257,19 +210,6 @@ const currentRecordingWindowLengthMins = computed<number>(() => {
     const ms =
       scheduledRecordEndTime.value?.getTime() -
       scheduledRecordStartTime.value?.getTime();
-    return Math.round(ms / 1000 / 60);
-  }
-  return 0;
-});
-
-const currentPowerWindowLengthMins = computed<number>(() => {
-  if (poweredOn247.value) {
-    return -1;
-  }
-  if (scheduledPowerOnTime.value && scheduledPowerOffTime.value) {
-    const ms =
-      scheduledPowerOffTime.value?.getTime() -
-      scheduledPowerOnTime.value?.getTime();
     return Math.round(ms / 1000 / 60);
   }
   return 0;
@@ -327,6 +267,8 @@ onMounted(async () => {
       infoRequests.push(nullRequest());
     }
 
+    // FIXME: Should we block for everything to load here, or pop content in
+    //  as individual pieces load in.
     const [config, version, poweredOn, poweredOff, station] = (
       await Promise.allSettled(infoRequests)
     ).map((result) => (result.status === "fulfilled" ? result.value : false));
@@ -340,7 +282,8 @@ onMounted(async () => {
     if (thisDevice.type === "thermal") {
       const latestStatus = await getLatestStatusRecordingForDevice(
         thisDevice.id,
-        thisDevice.groupId
+        thisDevice.groupId,
+        false
       );
       if (latestStatus) {
         latestStatusRecording.value = latestStatus;
@@ -416,42 +359,26 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
 });
 </script>
 <template>
-  <div v-if="device" class="p-3">
-    <div class="d-flex justify-content-between">
-      <div class="flex-grow-1" v-if="device.type === 'thermal'">
-        <div v-if="versionInfoLoading">Loading version info</div>
-        <card-table
-          v-else-if="versionInfo"
-          compact
-          :items="versionInfoTable"
-          :sort-dimensions="{ package: true }"
-          default-sort="package"
+  <div v-if="device" class="mt-3">
+    <div class="d-flex justify-content-between flex-md-row flex-column">
+      <div v-if="device.type === 'thermal'">
+        <h6 v-if="latestStatusRecording">
+          Camera view from
+          {{
+            DateTime.fromJSDate(
+              new Date(latestStatusRecording.recordingDateTime)
+            ).toRelative()
+          }}:
+        </h6>
+        <cptv-single-frame
+          :recording="latestStatusRecording"
+          v-if="latestStatusRecording"
+          :width="320"
+          :height="240"
         />
-        <div v-else>Version info not available.</div>
-      </div>
-      <div class="flex-grow-1" v-if="device.type === 'thermal'">
-        <h6>Power status:</h6>
-        <div v-if="!shouldBePoweredOnNow">
-          <span v-if="deviceStopped">
-            Camera has stopped, otherwise
-            <span v-if="poweredOn247">would be powered on now</span
-            ><span v-else-if="scheduledPowerOnTime"
-              >would power on
-              {{ DateTime.fromJSDate(scheduledPowerOnTime).toRelative() }}</span
-            ></span
-          >
-          <span v-else-if="scheduledPowerOnTime"
-            >Powers on in
-            {{ DateTime.fromJSDate(scheduledPowerOnTime).toRelative() }}</span
-          >
-          <span>
-            for {{ minsHoursFromMins(currentPowerWindowLengthMins) }}</span
-          >
-        </div>
-        <div v-else>Powered on now</div>
 
-        <h6>Recording status:</h6>
-        <div v-if="!shouldBeRecordingNow">
+        <h6 class="mt-3">Recording status:</h6>
+        <div v-if="!shouldBeRecordingNow && recordingWindow">
           <span v-if="deviceStopped">
             Camera has stopped, otherwise
             <span v-if="records247">would be ready to recording now</span
@@ -472,36 +399,23 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
             for {{ minsHoursFromMins(currentRecordingWindowLengthMins) }}</span
           >
         </div>
-        <div v-else>Ready to record</div>
+        <div v-else-if="recordingWindow">Ready to record</div>
 
-        <div v-if="configInfoLoading">Loading recording window</div>
+        <div v-if="configInfoLoading">
+          <b-spinner small />
+          Loading recording window
+        </div>
         <div v-else-if="recordingWindow">{{ recordingWindow }}</div>
         <div v-else>Recording window unavailable</div>
-
-        <div v-if="configInfoLoading">Loading powered-on window</div>
-        <div v-else-if="poweredOnWindow">{{ poweredOnWindow }}</div>
-        <div v-else>Power window unavailable</div>
-
-        <h6 v-if="latestStatusRecording">
-          Camera view from
-          {{
-            DateTime.fromJSDate(
-              new Date(latestStatusRecording.recordingDateTime)
-            ).toRelative()
-          }}
-        </h6>
-        <cptv-single-frame
-          :recording="latestStatusRecording"
-          v-if="latestStatusRecording"
-          :width="320"
-          :height="240"
-        />
       </div>
-      <div>
+      <div class="mt-md-0 mt-4">
         <h6>Current location:</h6>
         <!-- Show the device "inside" its station if possible -->
         <div v-if="device.location">
-          <div v-if="locationInfoLoading">Loading location info</div>
+          <div v-if="locationInfoLoading">
+            <b-spinner small />
+            Loading location info
+          </div>
           <div v-else-if="currentLocationForDevice">
             <map-with-points
               :points="deviceLocationPoints"
@@ -520,8 +434,28 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
         <div v-else>Device does not currently have a known location</div>
       </div>
     </div>
+    <div class="mt-4" v-if="device.type === 'thermal'">
+      <h6>Software package versions:</h6>
+      <div v-if="versionInfoLoading">
+        <b-spinner small />
+        Loading version info
+      </div>
+      <card-table
+        v-else-if="versionInfo"
+        compact
+        :items="versionInfoTable"
+        :sort-dimensions="{ package: true }"
+        default-sort="package"
+      />
+      <div v-else>Version info not available.</div>
+    </div>
   </div>
   <div v-else class="p-3">Device not found in group.</div>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+.map {
+  width: 320px;
+  height: 240px;
+}
+</style>

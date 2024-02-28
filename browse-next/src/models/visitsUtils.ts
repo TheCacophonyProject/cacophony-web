@@ -1,12 +1,10 @@
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
+import type { LatLng } from "@typedefs/api/common";
 import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
-import { onBeforeMount } from "vue";
 import {
-  classifications,
   flatClassifications,
   getClassifications,
   getPathForLabel,

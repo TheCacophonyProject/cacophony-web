@@ -67,11 +67,6 @@ export const getAllVisitsForProject = async (
   const fromDate = new Date(
     new Date(now).setDate(new Date(now).getDate() - numDays)
   );
-  console.log(
-    "Get all visits",
-    fromDate.toISOString(),
-    untilDate.toISOString()
-  );
 
   let numPagesEstimate = 0;
   while (morePagesExist && requestNumber < 100) {

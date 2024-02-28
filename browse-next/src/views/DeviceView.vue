@@ -7,6 +7,7 @@ import { projectDevicesLoaded, userProjectsLoaded } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
+import OverflowingTabList from "@/components/OverflowingTabList.vue";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
@@ -64,10 +65,7 @@ const _deviceType = computed<string>(() => {
 </script>
 <template>
   <div class="device-view d-flex flex-column">
-    <ul
-      class="nav nav-tabs justify-content-center justify-content-evenly scroll-tabs"
-      v-if="!deviceLoading"
-    >
+    <overflowing-tab-list v-if="!deviceLoading">
       <router-link
         v-if="[DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
         :class="[
@@ -104,7 +102,6 @@ const _deviceType = computed<string>(() => {
         }"
         >Setup</router-link
       >
-
       <router-link
         v-if="(device as ApiDeviceResponse).type !== DeviceType.Thermal"
         :class="[
@@ -117,7 +114,6 @@ const _deviceType = computed<string>(() => {
         }"
         >Schedules</router-link
       >
-
       <router-link
         :class="[
           ...navLinkClasses,
@@ -129,7 +125,7 @@ const _deviceType = computed<string>(() => {
         }"
         >Manual Uploads</router-link
       >
-    </ul>
+    </overflowing-tab-list>
     <router-view
       @start-blocking-work="() => emit('start-blocking-work')"
       @end-blocking-work="() => emit('end-blocking-work')"
@@ -158,17 +154,11 @@ const _deviceType = computed<string>(() => {
     }
   }
 }
+.nav-item {
+  text-align: center;
+}
 .nav-item.active {
   background: unset;
   border-bottom: 3px solid #6dbd4b !important;
-}
-@media screen and (max-width: 639px) {
-  .scroll-tabs {
-    position: relative;
-    //width: 1000px;
-    //> a {
-    //  max-width: 50svh;
-    //}
-  }
 }
 </style>

@@ -31,13 +31,13 @@ const isMobileView = useMediaQuery("(max-width: 639px)");
 </script>
 
 <template>
-  <div class="d-flex flex-md-row flex-column-reverse mt-3 align-items-md-start">
+  <div class="d-flex flex-lg-row flex-column-reverse mt-3 align-items-lg-start">
     <b-button-group
       :vertical="!isMobileView"
       class="me-md-3 wizard-step-list-menu"
     >
       <b-button
-        variant="outline-secondary"
+        variant="outline-primary"
         v-for="(item, index) in stepNames"
         :key="index"
         @click="selectedStep = index"

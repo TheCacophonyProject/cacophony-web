@@ -1,4 +1,4 @@
-import CacophonyApi, { unwrapLoadedResource } from "./api";
+import CacophonyApi from "./api";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import type {
   GroupId as ProjectId,

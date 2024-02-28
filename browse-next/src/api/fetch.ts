@@ -4,7 +4,6 @@ import {
   CurrentUserCreds,
   forgetUserOnCurrentDevice,
   refreshLocallyStoredUser,
-  refreshLocallyStoredUserActivation,
   setLoggedInUserCreds,
   tryLoggingInRememberedUser,
   userIsLoggedIn,
@@ -211,7 +210,10 @@ export async function fetch<T>(
   ) {
     {
       const isJSON = (
-        Array.from((response.headers as any).entries()) as [string, string][]
+        Array.from((response.headers as Record<string, string>).entries()) as [
+          string,
+          string
+        ][]
       ).find(
         ([key, val]: [string, string]) =>
           key.toLowerCase() === "content-type" &&
@@ -235,7 +237,10 @@ export async function fetch<T>(
     };
   }
   const isJSON = (
-    Array.from((response.headers as any).entries()) as [string, string][]
+    Array.from((response.headers as Record<string, string>).entries()) as [
+      string,
+      string
+    ][]
   ).find(
     ([key, val]: [string, string]) =>
       key.toLowerCase() === "content-type" &&

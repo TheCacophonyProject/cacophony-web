@@ -90,7 +90,6 @@ const currentUserName = computed<string>(() => {
 const route = useRoute();
 
 onBeforeMount(() => {
-  console.log("Before mount app");
   // Override bootstrap CSS variables.
   // This has to appear after the original bootstrap CSS variable declarations in the DOM to take effect.
   const styleOverrides = document.createElement("style");
@@ -151,7 +150,6 @@ watch(pinSideNav, (next) => {
   }
 });
 onMounted(() => {
-  console.log("Mounted app");
   // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
   setTimeout(pollFrameTimes, 1000);
   window.addEventListener("click", (e: MouseEvent) => {

@@ -607,7 +607,7 @@ const helpInfo = ref(true);
       >
         <button
           type="button"
-          class="btn btn-secondary"
+          class="btn btn-primary"
           @click="replaceExistingReferenceImage"
         >
           Choose a new reference image

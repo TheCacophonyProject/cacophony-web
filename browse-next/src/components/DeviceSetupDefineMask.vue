@@ -2,10 +2,7 @@
 import { reactive, type Ref } from "vue";
 import { ref, onMounted, computed, inject, watch } from "vue";
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
-import {
-  getLatestStatusRecordingForDevice,
-  updateMaskRegionsForDevice,
-} from "@api/Device";
+import { updateMaskRegionsForDevice } from "@api/Device";
 import { useRoute } from "vue-router";
 import type {
   ApiDeviceResponse,
@@ -46,7 +43,7 @@ const points = reactive<Point[]>([]);
 const { pixelRatio: devicePixelRatio } = useDevicePixelRatio();
 const latestStatusRecording: Ref<ApiRecordingResponse> = inject(
   "latestStatusRecording"
-); //ref<ApiRecordingResponse | false>(false);
+);
 const route = useRoute();
 const deviceId = Number(route.params.deviceId) as DeviceId;
 const submittingNewRegionRequest = ref<boolean>(false);
@@ -639,7 +636,7 @@ watch(
     <div class="d-flex flex-column flex-md-row mt-2 justify-content-between">
       <b-button
         v-if="!editMode"
-        variant="secondary"
+        variant="primary"
         @click="editMode = true"
         class="mb-2 mb-md-0"
       >

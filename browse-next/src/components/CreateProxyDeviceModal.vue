@@ -40,7 +40,6 @@ const resetFormValues = () => {
   newDeviceName.touched = false;
 };
 
-const router = useRouter();
 const createNewDeviceError = ref<ErrorResult | null>(null);
 const createNewProxyDevice = async () => {
   submittingCreateRequest.value = true;

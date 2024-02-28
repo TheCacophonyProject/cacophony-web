@@ -1,10 +1,6 @@
 import { fetch } from "./fetch";
 import { API_ROOT } from "@api/root";
-import type {
-  FetchResult,
-  LoadedResource,
-  WrappedFetchResult,
-} from "@api/types";
+import type { LoadedResource, WrappedFetchResult } from "@api/types";
 
 // TODO - Handle getting all the revision information like the current version of browse does.
 

@@ -15,8 +15,8 @@ import * as webpEncoder from "@jsquash/webp/codec/enc/webp_enc";
 
 import { defaultOptions } from "@jsquash/webp/meta";
 import { initEmscriptenModule } from "@jsquash/webp/utils";
-let emscriptenModule: any;
-async function initWebpEncode(module: any) {
+let emscriptenModule: never;
+async function initWebpEncode(module: never) {
   if (supportsFastBuild()) {
     emscriptenModule = initEmscriptenModule(webpEncoderFast.default, module);
     return emscriptenModule;

@@ -201,7 +201,7 @@ interface TagItem {
   displayName: string;
 }
 
-const props = withDefaults(
+const _props = withDefaults(
   defineProps<{
     recordingsByDay: {
       dateTime: DateTime;

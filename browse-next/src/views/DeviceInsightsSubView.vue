@@ -154,6 +154,7 @@ const getTracksForTag = async () => {
     computingHeatmap.value = false;
   }
 };
+const helpInfo = ref<boolean>(true);
 </script>
 <template>
   <div class="d-flex flex-lg-row flex-column pt-3">
@@ -168,25 +169,34 @@ const getTracksForTag = async () => {
           }}.</strong
         >
       </p>
-      <p>Use this tool to:</p>
-      <ol>
-        <li>Select from species seen during this period.</li>
-        <li>Visualise the where in the scene this species moves.</li>
-        <li>Inform decisions about where to position traps.</li>
-      </ol>
-      <div class="b-toast-warning pt-3 pb-1 pe-3 mb-3 m-LG-0">
-        <ul>
-          <li>
-            This works best when the camera has been in the same place for a
-            while.
-          </li>
-          <li>
-            This data may be invalid if the camera viewpoint has
-            <strong>shifted</strong> but the
-            <em><strong>gps location</strong></em> has not been updated.
-          </li>
-        </ul>
-      </div>
+      <b-alert dismissible v-model="helpInfo">
+        <p>Use this tool to:</p>
+        <ol>
+          <li>Select from species seen during this period.</li>
+          <li>Visualise the where in the scene this species moves.</li>
+          <li>Inform decisions about where to position traps.</li>
+        </ol>
+        <div>
+          <ul>
+            <li>
+              This works best when the camera has been in the same place for a
+              while.
+            </li>
+            <li>
+              This data may be invalid if the camera viewpoint has
+              <strong>shifted</strong> but the
+              <em><strong>gps location</strong></em> has not been updated.
+            </li>
+          </ul>
+        </div>
+      </b-alert>
+      <b-button
+        v-if="!helpInfo"
+        variant="link"
+        @click="helpInfo = true"
+        class="px-0"
+        >What's this for?</b-button
+      >
     </div>
     <div class="d-flex flex-column align-items-center pb-4">
       <div class="position-relative text-white">
