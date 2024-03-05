@@ -386,7 +386,7 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
 });
 const addCustomTag = () => {
   showClassificationSearch.value = true;
-  tagSelect.value && (tagSelect.value as HierarchicalTagSelect).open();
+  tagSelect.value && (tagSelect.value as typeof HierarchicalTagSelect).open();
 };
 
 onMounted(async () => {

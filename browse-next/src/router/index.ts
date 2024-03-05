@@ -1,4 +1,8 @@
-import { createRouter, createWebHistory } from "vue-router";
+import {
+  createRouter,
+  createWebHistory,
+  type RouteLocationRaw,
+} from "vue-router";
 import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
   currentEUAVersion,
@@ -24,6 +28,7 @@ import { getDevicesForProject, getProjects } from "@api/Project";
 import { nextTick, reactive } from "vue";
 import { decodeJWT, urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
+import { DeviceType } from "@typedefs/api/consts.ts";
 
 // Allows us to abort all pending fetch requests when switching between major views.
 export const CurrentViewAbortController = {
@@ -169,9 +174,30 @@ const router = createRouter({
         {
           // DeviceView will be rendered inside DevicesViews' <router-view>
           // when /:groupName/devices/:deviceName is matched
-          path: ":deviceId/:deviceName",
+          path: ":deviceId/:deviceName/:type?",
           name: "device",
-          redirect: { name: "device-diagnostics" }, // Make diagnostics the default tab
+          redirect: (to): RouteLocationRaw => {
+            // Redirect depends on deviceType:
+            if (to.params.type === DeviceType.TrailCam) {
+              return {
+                name: "device-uploads",
+                params: {
+                  ...to.params,
+                  // Remove type from destination route
+                  type: null,
+                },
+              };
+            } else {
+              return {
+                name: "device-diagnostics",
+                params: {
+                  ...to.params,
+                  // Remove type from destination route
+                  type: null,
+                },
+              };
+            }
+          }, // Make diagnostics the default tab
           meta: { title: "Manage device :deviceName" },
           component: () => import("@/views/DeviceView.vue"),
           children: [

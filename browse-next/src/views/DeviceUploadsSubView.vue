@@ -270,7 +270,7 @@ const beginUploadJob = async () => {
   if (existingOrNewLocation.value === "new-location") {
     // NOTE: If we need to create a new location, do that first.
     location = selectedLatLng.value.location;
-    const locationResponse = await createNewLocation(selectedLatLng.value);
+    const _locationResponse = await createNewLocation(selectedLatLng.value);
     //console.log("Created new location");
   } else {
     location = (selectedLocation.value as ApiLocationResponse).location;
@@ -304,7 +304,7 @@ const beginUploadJob = async () => {
     });
     worker.onmessage = async (message: MessageEvent<MessageData>) => {
       const { type, data, threadIndex } = message.data;
-      // console.log(type, data, threadIndex);
+      console.log(type, data, threadIndex);
       // Type is only ever "finish"
       if (type === "finish") {
         if (data.success) {

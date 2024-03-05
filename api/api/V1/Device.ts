@@ -61,7 +61,7 @@ import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" asse
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import Sequelize, { Op } from "sequelize";
+import Sequelize, { Op, QueryTypes } from "sequelize";
 import type { DeviceHistory } from "@models/DeviceHistory.js";
 import {
   DeviceType,
@@ -77,6 +77,7 @@ import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
+import sequelize from "sequelize";
 
 const models = await modelsInit();
 
@@ -582,79 +583,208 @@ export default function (app: Application, baseUrl: string) {
           order: [["fromDateTime", "DESC"]],
         });
 
-      const kind = request.query.type || "pov";
-      let referenceImage;
-      let referenceImageFileSize;
-      if (kind === "pov") {
-        referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
-        referenceImageFileSize =
-          deviceHistoryEntry?.settings?.referenceImagePOVFileSize;
-      } else {
-        referenceImage = deviceHistoryEntry?.settings?.referenceImageInSitu;
-        referenceImageFileSize =
-          deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
-      }
-      const fromTime = deviceHistoryEntry?.fromDateTime;
-      if (referenceImage && fromTime && referenceImageFileSize) {
-        if (checkIfExists) {
-          // We want to return the earliest time after creation that this reference image is valid for too, so that the client only
-          // needs to query this API occasionally.
-          const laterDeviceHistoryEntry: DeviceHistory =
-            await models.DeviceHistory.findOne({
-              where: [
-                {
-                  DeviceId: device.id,
-                  GroupId: device.GroupId,
-                  fromDateTime: { [Op.gt]: fromTime },
-                },
-                models.sequelize.where(
-                  Sequelize.fn("ST_X", Sequelize.col("location")),
-                  { [Op.ne]: deviceHistoryEntry.location.lng }
-                ),
-                models.sequelize.where(
-                  Sequelize.fn("ST_Y", Sequelize.col("location")),
-                  { [Op.ne]: deviceHistoryEntry.location.lat }
-                ),
-              ] as any,
-              order: [["fromDateTime", "ASC"]],
-            });
-          const payload: { fromDateTime: Date; untilDateTime?: Date } = {
-            fromDateTime: fromTime,
-          };
-          if (laterDeviceHistoryEntry) {
-            payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
-          }
-          return successResponse(
-            response,
-            "Reference image exists at supplied time",
-            payload
-          );
-        } else {
-          // Get reference image for device at time if any, and return it
-          const mimeType = "image/webp"; // Or something better
-          const time = fromTime
-            ?.toISOString()
-            .replace(/:/g, "_")
-            .replace(".", "_");
-          const filename = `device-${device.id}-reference-image@${time}.webp`;
-          // Get reference image for device at time if any.
-          return streamS3Object(
-            request,
-            response,
-            referenceImage,
-            filename,
-            mimeType,
-            response.locals.requestUser.id,
-            device.GroupId,
-            referenceImageFileSize
+      if (device.kind === DeviceType.TrailCam) {
+        // NOTE: If the device is a trailcam, try and use the daytime image that closest matches the requested time, if any.
+
+        //  The trailcam has been in this location since this time.
+        const fromTime = deviceHistoryEntry?.fromDateTime;
+        if (!fromTime) {
+          return next(
+            new UnprocessableError(
+              "No reference image available for device at time"
+            )
           );
         }
+        let recording: any;
+        // See if this device has a later location
+        const laterDeviceHistoryEntry: DeviceHistory =
+          await models.DeviceHistory.findOne({
+            where: [
+              {
+                DeviceId: device.id,
+                GroupId: device.GroupId,
+                fromDateTime: { [Op.gt]: fromTime },
+              },
+              models.sequelize.where(
+                Sequelize.fn("ST_X", Sequelize.col("location")),
+                { [Op.ne]: deviceHistoryEntry.location.lng }
+              ),
+              models.sequelize.where(
+                Sequelize.fn("ST_Y", Sequelize.col("location")),
+                { [Op.ne]: deviceHistoryEntry.location.lat }
+              ),
+            ] as any,
+            order: [["fromDateTime", "ASC"]],
+          });
+        const payload: { fromDateTime: Date; untilDateTime?: Date } = {
+          fromDateTime: fromTime,
+        };
+        if (laterDeviceHistoryEntry) {
+          payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
+          // Now check if there's a daytime image in that timespan
+          recording = await models.sequelize.query(
+            `
+          select * from "Recordings" 
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and "recordingDateTime <= :untilTime
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          limit 1
+          `,
+            {
+              type: QueryTypes.SELECT,
+              replacements: {
+                groupId: device.GroupId,
+                deviceId: device.id,
+                atTime: fromTime,
+                untilTime: laterDeviceHistoryEntry.fromDateTime,
+              },
+            }
+          );
+        } else {
+          recording = await models.sequelize.query(
+            `
+          select * from "Recordings" 
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          limit 1
+      `,
+            {
+              type: QueryTypes.SELECT,
+              replacements: {
+                groupId: device.GroupId,
+                deviceId: device.id,
+                atTime: fromTime,
+              },
+            }
+          );
+        }
+        if (recording.length) {
+          if (checkIfExists) {
+            return successResponse(
+              response,
+              "Reference image exists at supplied time",
+              payload
+            );
+          } else {
+            // Actually return the image.
+            const mimeType = "image/webp"; // Or something better
+            const time = fromTime
+              ?.toISOString()
+              .replace(/:/g, "_")
+              .replace(".", "_");
+            const filename = `device-${device.id}-reference-image@${time}.webp`;
+            // Get reference image for device at time if any.
+            return streamS3Object(
+              request,
+              response,
+              recording[0].fileKey,
+              filename,
+              mimeType,
+              response.locals.requestUser.id,
+              device.GroupId,
+              recording[0].fileSize
+            );
+          }
+        } else {
+          return next(
+            new UnprocessableError(
+              "No reference image available for device at time"
+            )
+          );
+        }
+      } else if (
+        [DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)
+      ) {
+        const kind = request.query.type || "pov";
+        let referenceImage;
+        let referenceImageFileSize;
+        if (kind === "pov") {
+          referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
+          referenceImageFileSize =
+            deviceHistoryEntry?.settings?.referenceImagePOVFileSize;
+        } else {
+          referenceImage = deviceHistoryEntry?.settings?.referenceImageInSitu;
+          referenceImageFileSize =
+            deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
+        }
+        const fromTime = deviceHistoryEntry?.fromDateTime;
+        if (referenceImage && fromTime && referenceImageFileSize) {
+          if (checkIfExists) {
+            // We want to return the earliest time after creation that this reference image is valid for too, so that the client only
+            // needs to query this API occasionally.
+            const laterDeviceHistoryEntry: DeviceHistory =
+              await models.DeviceHistory.findOne({
+                where: [
+                  {
+                    DeviceId: device.id,
+                    GroupId: device.GroupId,
+                    fromDateTime: { [Op.gt]: fromTime },
+                  },
+                  models.sequelize.where(
+                    Sequelize.fn("ST_X", Sequelize.col("location")),
+                    { [Op.ne]: deviceHistoryEntry.location.lng }
+                  ),
+                  models.sequelize.where(
+                    Sequelize.fn("ST_Y", Sequelize.col("location")),
+                    { [Op.ne]: deviceHistoryEntry.location.lat }
+                  ),
+                ] as any,
+                order: [["fromDateTime", "ASC"]],
+              });
+            const payload: { fromDateTime: Date; untilDateTime?: Date } = {
+              fromDateTime: fromTime,
+            };
+            if (laterDeviceHistoryEntry) {
+              payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
+            }
+            return successResponse(
+              response,
+              "Reference image exists at supplied time",
+              payload
+            );
+          } else {
+            // Get reference image for device at time if any, and return it
+            const mimeType = "image/webp"; // Or something better
+            const time = fromTime
+              ?.toISOString()
+              .replace(/:/g, "_")
+              .replace(".", "_");
+            const filename = `device-${device.id}-reference-image@${time}.webp`;
+            // Get reference image for device at time if any.
+            return streamS3Object(
+              request,
+              response,
+              referenceImage,
+              filename,
+              mimeType,
+              response.locals.requestUser.id,
+              device.GroupId,
+              referenceImageFileSize
+            );
+          }
+        }
+        return next(
+          new UnprocessableError(
+            "No reference image available for device at time"
+          )
+        );
+      } else {
+        return next(
+          new UnprocessableError(
+            `Reference images not supported for ${device.kind} devices.`
+          )
+        );
       }
-      return next(
-        new UnprocessableError(
-          "No reference image available for device at time"
-        )
-      );
     }
   );
 

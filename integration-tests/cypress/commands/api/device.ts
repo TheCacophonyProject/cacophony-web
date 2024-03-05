@@ -10,6 +10,7 @@ import {
   sortArrayOn,
   checkTreeStructuresAreEqualExcept,
   checkMessages,
+  makeAuthorizedRequest,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { ApiDevicesDevice, DeviceHistoryEntry, TestNameAndId } from "../types";
@@ -18,6 +19,7 @@ import { LatLng } from "@typedefs/api/common";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
 import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+import { ApiMaskRegionsData } from "@typedefs/api/device";
 
 Cypress.Commands.add(
   "apiDeviceAdd",
@@ -646,6 +648,78 @@ Cypress.Commands.add(
     });
 
     cy.wrap(expectedHistory);
+  }
+);
+
+Cypress.Commands.add(
+  "apiDeviceAddMaskRegions",
+  (
+    userName: string,
+    deviceName: string,
+    maskRegions: ApiMaskRegionsData,
+    statusCode?: number,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(
+      `Add ${
+        Object.keys(maskRegions.maskRegions).length
+      } mask regions for camera '${deviceName}'}`,
+      {
+        camera: deviceName,
+      }
+    );
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`devices/${getCreds(deviceName).id}/mask-regions`),
+        body: maskRegions,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        checkMessages(response, additionalChecks["messages"]);
+      }
+      cy.wrap(response);
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiDeviceGetMaskRegions",
+  (
+    userName: string,
+    deviceName: string,
+    atTime?: Date,
+    statusCode?: number,
+    additionalChecks: any = {}
+  ) => {
+    const fromTime = atTime || new Date();
+    logTestDescription(
+      `Get mask regions for camera '${deviceName}' at time ${fromTime.toISOString()}`,
+      {
+        camera: deviceName,
+        fromTime,
+      }
+    );
+
+    const params = new URLSearchParams();
+    params.append("at-time", fromTime.toISOString());
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: v1ApiPath(`devices/${getCreds(deviceName).id}/mask-regions`, {
+          "at-time": fromTime.toISOString(),
+        }),
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (additionalChecks["message"] !== undefined) {
+        checkMessages(response, additionalChecks["messages"]);
+      }
+      cy.wrap(response);
+    });
   }
 );
 

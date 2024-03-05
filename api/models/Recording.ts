@@ -206,6 +206,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getRawFileExt: () => string;
   getFileExt: () => string;
   getDevice: () => Promise<Device>;
+  getGroup: () => Promise<Group>;
 
   getActiveTracksTagsAndTagger: () => Promise<any>;
 
@@ -218,9 +219,13 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   createTrack: ({
     data,
     AlgorithmId,
+    filtered,
+    archivedAt,
   }: {
     data: any;
     AlgorithmId: DetailSnapshotId;
+    filtered?: boolean;
+    archivedAt?: Date;
   }) => Promise<Track>;
   setStation: (station: Station) => Promise<void>;
 

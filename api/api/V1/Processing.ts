@@ -9,7 +9,6 @@ import { body, param, query, oneOf } from "express-validator";
 import modelsInit from "@models/index.js";
 import _ from "lodash";
 import {
-  addTag,
   finishedProcessingRecording,
   saveThumbnailInfo,
   sendAlerts,
@@ -20,6 +19,7 @@ import type { Application, NextFunction, Request, Response } from "express";
 import type { Recording } from "@models/Recording.js";
 
 import type { ClassifierRawResult } from "@typedefs/api/fileProcessing.js";
+import { trackIsMasked } from "@api/V1/trackMasking.js";
 import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json" assert { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
@@ -38,11 +38,13 @@ import {
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
   fetchAuthorizedRequiredDeviceById,
+  extractValFromRequest,
 } from "@api/extract-middleware.js";
 import type { Track } from "@/models/Track.js";
 import type { DeviceHistory } from "@models/DeviceHistory.js";
 import Sequelize, { Op } from "sequelize";
-
+import type { TrackId } from "@typedefs/api/common.js";
+const NULL_TRACK_ID = 1;
 const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/processing`;
@@ -134,7 +136,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     util.multipartUpload(
       "file",
-      async (uploader, uploadingDevice, uploadingUser, data, keys) => {
+      async (_uploader, _uploadingDevice, _uploadingUser, _data, keys) => {
         // Expect only one file to be uploaded at a time
         console.assert(
           keys.length === 1,
@@ -333,8 +335,7 @@ export default function (app: Application, baseUrl: string) {
           }
 
           if (complete && recording.type === RecordingType.Audio) {
-            const device = await recording.getDevice();
-            const group = await device.getGroup();
+            const group = await recording.getGroup();
             const shouldFilter = group.settings?.filterHuman ?? true;
             if (shouldFilter) {
               const tracks: Track[] = await recording.getTracks();
@@ -442,7 +443,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([idOf(body("id")), body("metadata").isJSON()]),
     fetchUnauthorizedRequiredRecordingById(body("id")),
     parseJSONField(body("metadata")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await updateMetadata(response.locals.recording, response.locals.metadata);
     }
   );
@@ -455,7 +456,7 @@ export default function (app: Application, baseUrl: string) {
    * Requires super-admin user credentials
    *
    * @apiParam {JSON} data Data which defines the track (type specific).
-   * @apiParam {Number} AlgorithmId Database Id of the Tracking algorithm details retrieved from
+   * @apiParam {Number} AlgorithmId Database ID of the Tracking algorithm details retrieved from
    * (#FileProcessing:Algorithm) request
    *
    * @apiUse V1ResponseSuccess
@@ -478,13 +479,26 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
     parseJSONField(body("data")),
     async (request: Request, response) => {
-      const track = await response.locals.recording.createTrack({
-        data: response.locals.data,
-        AlgorithmId: request.body.algorithmId,
-      });
-      await track.updateIsFiltered();
+      console.log(JSON.stringify(response.locals.recording));
+      const deviceId = response.locals.recording.DeviceId;
+      const groupId = response.locals.recording.GroupId;
+      const atTime = response.locals.recording.recordingDateTime;
+      const positions = response.locals.recording.data.positions;
+      let trackId: TrackId = 1;
+      if (
+        !(await trackIsMasked(models, deviceId, groupId, atTime, positions))
+      ) {
+        const track = await response.locals.recording.createTrack({
+          data: response.locals.data,
+          AlgorithmId: request.body.algorithmId,
+          filtered: false,
+        });
+        trackId = track.id;
+      }
+      // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
+      // trackTags to tag id 1.
       return successResponse(response, "Track added.", {
-        trackId: track.id,
+        trackId,
       });
     }
   );
@@ -504,9 +518,9 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
-      const tracks = await response.locals.recording.getTracks();
-      tracks.forEach((track) => track.destroy());
+    async (_request: Request, response: Response) => {
+      const tracks = (await response.locals.recording.getTracks()) as Track[];
+      await Promise.all(tracks.map((track) => track.destroy()));
       return successResponse(response, "Tracks cleared.");
     }
   );
@@ -538,17 +552,32 @@ export default function (app: Application, baseUrl: string) {
       body("data").isJSON().optional(),
     ]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
-    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    (request, response, next) => {
+      const trackId = param("trackId");
+      const id = Number(extractValFromRequest(request, trackId));
+      if (id !== NULL_TRACK_ID) {
+        fetchUnauthorizedRequiredTrackById(trackId)(request, response, next);
+      } else {
+        response.locals.skip = true;
+        next();
+      }
+    },
     parseJSONField(body("data")),
     async (request: Request, response: Response) => {
-      const tag = await response.locals.track.addTag(
-        request.body.what,
-        request.body.confidence,
-        true,
-        response.locals.data
-      );
+      if (!response.locals.skip) {
+        const tag = await response.locals.track.addTag(
+          request.body.what,
+          request.body.confidence,
+          true,
+          response.locals.data
+        );
+        return successResponse(response, "Track tag added.", {
+          trackTagId: tag.id,
+        });
+      }
+      // Returns without creating track if this is a masked out track.
       return successResponse(response, "Track tag added.", {
-        trackTagId: tag.id,
+        trackTagId: 1,
       });
     }
   );
@@ -562,7 +591,7 @@ export default function (app: Application, baseUrl: string) {
    * Requires super-admin user credentials
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {int} algorithmId Id of the matching algorithm tag.
+   * @apiSuccess {int} algorithmId ID of the matching algorithm tag.
    *
    * @apiUse V1ResponseError
    */
@@ -571,7 +600,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     validateFields([body("algorithm").isJSON()]),
     parseJSONField(body("algorithm")),
-    async (request, response) => {
+    async (_request, response) => {
       const algorithm = await models.DetailSnapshot.getOrCreateMatching(
         "algorithm",
         response.locals.algorithm
@@ -597,9 +626,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
     fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
-    async (request: Request, response) => {
+    async (_request: Request, response) => {
       await response.locals.track.update({ archivedAt: Date.now() });
-
       return successResponse(response, "Track archived");
     }
   );
@@ -626,12 +654,14 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
-    async (request: Request, response) => {
+    async (_request: Request, response) => {
       // make a copy of the original track
+      const { data, filtered, AlgorithmId } = response.locals.track;
       await response.locals.recording.createTrack({
-        data: response.locals.track.data,
-        AlgorithmId: response.locals.track.AlgorithmId,
-        archivedAt: Date.now(),
+        data,
+        AlgorithmId,
+        filtered,
+        archivedAt: new Date(),
       });
       await response.locals.track.update({ data: response.locals.data });
       return successResponse(response, "Track updated");
@@ -642,8 +672,8 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/fileProcessing/ratThresh/:deviceId Get rat threshold values for a device
    * @apiName RatThreshold
    * @apiGroup Processing
-   * @apiParam {Integer} deviceId Id of the device
-   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the rat rheshold should be current.
+   * @apiParam {Integer} deviceId ID of the device
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the rat threshold should be current.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -659,7 +689,7 @@ export default function (app: Application, baseUrl: string) {
       query("at-time").isISO8601().toDate().optional(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, _next: NextFunction) => {
       const atTime =
         (request.query["at-time"] &&
           (request.query["at-time"] as unknown as Date)) ||

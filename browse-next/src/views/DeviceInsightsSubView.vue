@@ -72,7 +72,7 @@ const trackTagOptions = computed<{ value: string | null; text: string }[]>(
     return [{ value: null, text: "Loading...", disabled: true }];
   }
 );
-const locationStartTime = ref<Date>(new Date());
+const locationStartTime = ref<Date | null>(null);
 const tracksForSelectedTag = ref<LoadedResource<ApiTrackResponse[]>>(null);
 
 const trackHeatmap = ref<Uint32Array>(new Uint32Array());
@@ -118,9 +118,8 @@ onMounted(async () => {
   }
 });
 
-const getTracksForTag = async () => {
-  if (device.value && selectedTag.value) {
-    const tag = selectedTag.value;
+const getTracksForTag = async (tag: string | null) => {
+  if (device.value && tag && locationStartTime.value) {
     computingHeatmap.value = true;
     // Maybe restrict to one month ago max?
     tracksForSelectedTag.value = await getTracksWithTagForDeviceInProject(
@@ -154,21 +153,26 @@ const getTracksForTag = async () => {
     computingHeatmap.value = false;
   }
 };
+
+watch(selectedTag, (newTag) => {
+  const _ = getTracksForTag(newTag);
+});
 const helpInfo = ref<boolean>(true);
 </script>
 <template>
   <div class="d-flex flex-lg-row flex-column pt-3">
     <div class="px-0 px-lg-3">
-      <p>
+      <p v-if="locationStartTime">
         This camera has been at its current location for
         <strong
           >{{
-            DateTime.fromJSDate(locationStartTime)
+            DateTime.fromJSDate(locationStartTime as Date)
               .toRelative()!
               .replace(" ago", "")
           }}.</strong
         >
       </p>
+      <p v-else><b-spinner small /></p>
       <b-alert dismissible v-model="helpInfo">
         <p>Use this tool to:</p>
         <ol>
@@ -215,7 +219,6 @@ const helpInfo = ref<boolean>(true);
           class="w-auto"
           :options="trackTagOptions"
           v-model="selectedTag"
-          @change="getTracksForTag"
         />
         <div class="w-auto mt-lg-0 mt-3">
           <label for="opacity">Heatmap opacity</label>

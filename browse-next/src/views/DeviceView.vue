@@ -103,7 +103,7 @@ const _deviceType = computed<string>(() => {
         >Setup</router-link
       >
       <router-link
-        v-if="(device as ApiDeviceResponse).type !== DeviceType.Thermal"
+        v-if="[DeviceType.Audio, DeviceType.Hybrid].includes((device as ApiDeviceResponse).type)"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-schedules') },
@@ -115,6 +115,7 @@ const _deviceType = computed<string>(() => {
         >Schedules</router-link
       >
       <router-link
+        v-if="(device as ApiDeviceResponse).type === DeviceType.TrailCam"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-uploads') },

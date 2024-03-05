@@ -27,19 +27,26 @@ const handleImageError = (e: ErrorEvent) => {
   loading.value = false;
   (e.target as HTMLImageElement).classList.remove("image-loading");
   (e.target as HTMLImageElement).classList.add("image-not-found");
+  (e.target as HTMLImageElement).classList.remove("uncached");
   emit("image-not-found");
 };
 
 const handleImageLoaded = (e: Event) => {
   loading.value = false;
   (e.target as HTMLImageElement).classList.remove("image-loading");
+  (e.target as HTMLImageElement).classList.remove("uncached");
 };
 
 const image = ref<HTMLImageElement>();
 onMounted(() => {
   if (image.value) {
-    image.value.classList.add("image-loading");
-    image.value.classList.remove("image-not-found");
+    setTimeout(() => {
+      if (loading.value && image.value) {
+        image.value.classList.add("image-loading");
+        image.value.classList.add("uncached");
+      }
+    }, 100);
+    image.value?.classList.remove("image-not-found");
     image.value?.addEventListener("load", handleImageLoaded);
     image.value?.addEventListener("error", handleImageError);
   }
@@ -68,8 +75,10 @@ onMounted(() => {
 img {
   background: transparent;
   position: relative;
-  transition: opacity ease-in 0.3s;
   color: unset;
+  &.uncached {
+    transition: opacity ease-in 0.3s;
+  }
   &.selected {
     filter: invert(1) drop-shadow(0 0.5px 2px rgba(0, 0, 0, 0.7));
   }

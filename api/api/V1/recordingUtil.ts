@@ -38,7 +38,7 @@ import type {
   DeviceHistory,
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
-import type { Tag, TagStatic } from "@models/Tag.js";
+import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
 import type {
   DeviceId,
@@ -1431,7 +1431,6 @@ export const tracksFromMeta = async (
       );
     }
     await Promise.all(promises);
-    const tracks = await recording.getTracks();
   } catch (err) {
     log.error(
       "Error creating recording tracks from metadata: %s",

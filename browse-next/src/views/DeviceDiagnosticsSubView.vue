@@ -98,14 +98,14 @@ const scheduledRecordStartTime = computed<Date | null>(() => {
   if (deviceConfig.value && device.value) {
     const windows = (deviceConfig.value as DeviceConfigDetail).windows;
     const thisDevice = device.value as ApiDeviceResponse;
-    const end = (windows && windows["start-recording"]) || "-30m";
+    const start = (windows && windows["start-recording"]) || "-30m";
     if (thisDevice.location) {
       const { sunset } = sunCalc.getTimes(
         new Date(),
         thisDevice.location.lat,
         thisDevice.location.lng
       );
-      return absoluteTime(end, sunset);
+      return absoluteTime(start, sunset);
     }
   }
   return null;
@@ -165,9 +165,28 @@ const lastConnected = computed<Date | null>(() => {
   return null;
 });
 
+const haveHeardDirectlyFromDeviceInItsCurrentLocation = computed<boolean>(
+  () => {
+    if (
+      currentLocationForDevice.value &&
+      device.value &&
+      device.value.lastConnectionTime
+    ) {
+      return (
+        currentLocationForDevice.value.createdAt <
+        device.value.lastConnectionTime
+      );
+    }
+    return false;
+  }
+);
+
 const deviceStopped = computed<boolean>(() => {
   if (device.value) {
-    return !device.value?.isHealthy && lastConnected.value === null;
+    return (
+      !haveHeardDirectlyFromDeviceInItsCurrentLocation.value &&
+      !device.value.isHealthy
+    );
   }
   return false;
 });
@@ -197,7 +216,7 @@ const recordingWindow = computed<string | null>(() => {
       // Absolute end time
       endTime = end;
     }
-    return `Ready to record from ${startTime} until ${endTime}`;
+    return `record from ${startTime} until ${endTime}`;
   }
   return null;
 });
@@ -275,6 +294,7 @@ onMounted(async () => {
     deviceConfig.value = config as DeviceConfigDetail | false;
     versionInfo.value = version as Record<string, string> | false;
     currentLocationForDevice.value = station as ApiLocationResponse | false;
+
     lastPowerOffTime.value = poweredOff as Date | false;
     lastPowerOnTime.value = poweredOn as Date | false;
     //Now we can work out if the device is currently on?
@@ -380,32 +400,31 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
         <h6 class="mt-3">Recording status:</h6>
         <div v-if="!shouldBeRecordingNow && recordingWindow">
           <span v-if="deviceStopped">
-            Camera has stopped, otherwise
+            Camera has stopped<span v-if="device.location">, otherwise</span>
             <span v-if="records247">would be ready to recording now</span
             ><span v-else-if="scheduledRecordStartTime"
               >would be ready to record
               {{
                 DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
               }}</span
-            ></span
-          >
+            >.
+          </span>
           <span v-else-if="scheduledRecordStartTime"
             >Ready to record
             {{
               DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
             }}</span
           >
-          <span>
+          <span v-if="device.location">
             for {{ minsHoursFromMins(currentRecordingWindowLengthMins) }}</span
           >
         </div>
-        <div v-else-if="recordingWindow">Ready to record</div>
 
         <div v-if="configInfoLoading">
-          <b-spinner small />
+          <b-spinner small class="me-2" />
           Loading recording window
         </div>
-        <div v-else-if="recordingWindow">{{ recordingWindow }}</div>
+        <div v-else-if="recordingWindow">Would {{ recordingWindow }}.</div>
         <div v-else>Recording window unavailable</div>
       </div>
       <div class="mt-md-0 mt-4">
@@ -413,7 +432,7 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
         <!-- Show the device "inside" its station if possible -->
         <div v-if="device.location">
           <div v-if="locationInfoLoading">
-            <b-spinner small />
+            <b-spinner small class="me-2" />
             Loading location info
           </div>
           <div v-else-if="currentLocationForDevice">
@@ -437,7 +456,7 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
     <div class="mt-4" v-if="device.type === 'thermal'">
       <h6>Software package versions:</h6>
       <div v-if="versionInfoLoading">
-        <b-spinner small />
+        <b-spinner small class="me-2" />
         Loading version info
       </div>
       <card-table

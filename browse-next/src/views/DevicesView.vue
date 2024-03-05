@@ -409,6 +409,7 @@ const openSelectedDevice = async (device: ApiDeviceResponse) => {
     params: {
       deviceName: urlNormaliseName(device.deviceName),
       deviceId: device.id,
+      type: device.type,
     },
   });
 };

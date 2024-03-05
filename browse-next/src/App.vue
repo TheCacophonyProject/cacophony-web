@@ -383,26 +383,27 @@ onMounted(() => {
             <span>Devices</span>
           </router-link>
         </li>
-        <li class="nav-item">
-          <router-link
-            :to="{
-              name: 'report',
-              params: {
-                projectName: urlNormalisedCurrentProjectName,
-              },
-            }"
-            class="nav-link py-3 d-flex flex-row"
-            title=""
-            data-bs-toggle="tooltip"
-            data-bs-placement="right"
-            data-bs-original-title="Report"
-          >
-            <span class="nav-icon-wrapper">
-              <font-awesome-icon icon="chart-pie" />
-            </span>
-            <span>Report</span>
-          </router-link>
-        </li>
+        <!--        NOTE: remove Report until we know what to do with it. -->
+        <!--        <li class="nav-item">-->
+        <!--          <router-link-->
+        <!--            :to="{-->
+        <!--              name: 'report',-->
+        <!--              params: {-->
+        <!--                projectName: urlNormalisedCurrentProjectName,-->
+        <!--              },-->
+        <!--            }"-->
+        <!--            class="nav-link py-3 d-flex flex-row"-->
+        <!--            title=""-->
+        <!--            data-bs-toggle="tooltip"-->
+        <!--            data-bs-placement="right"-->
+        <!--            data-bs-original-title="Report"-->
+        <!--          >-->
+        <!--            <span class="nav-icon-wrapper">-->
+        <!--              <font-awesome-icon icon="chart-pie" />-->
+        <!--            </span>-->
+        <!--            <span>Report</span>-->
+        <!--          </router-link>-->
+        <!--        </li>-->
         <li class="nav-item">
           <router-link
             :to="{

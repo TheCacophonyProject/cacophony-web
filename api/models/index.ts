@@ -71,6 +71,12 @@ const IS_DEBUG = config.server.loggerLevel === "debug";
       );
       if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
         log.warning("Slow query: %s [%d]ms", msg, timeMs);
+      } else {
+        log.info(
+          "query: %s [%d]ms",
+          msg.replace(/\n/g, "").replace(/\t/, " ").replace(/\s+/g, " "),
+          timeMs
+        );
       }
     }
   : false;

@@ -11,8 +11,6 @@ import {
 import type { ErrorResult, FetchResult } from "@api/types";
 import { reactive, ref } from "vue";
 import { decodeJWT, delayMs, delayMsThen } from "@/utils";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import { API_ROOT } from "@api/root";
 
@@ -210,17 +208,14 @@ export async function fetch<T>(
   ) {
     {
       const isJSON = (
-        Array.from((response.headers as Record<string, string>).entries()) as [
-          string,
-          string
-        ][]
+        Array.from(response.headers.entries()) as [string, string][]
       ).find(
         ([key, val]: [string, string]) =>
           key.toLowerCase() === "content-type" &&
           val.toLowerCase().includes("application/json")
       );
       if (isJSON) {
-        const result = await response.json();
+        const _result = await response.json();
         debugger;
       }
     }
@@ -237,10 +232,7 @@ export async function fetch<T>(
     };
   }
   const isJSON = (
-    Array.from((response.headers as Record<string, string>).entries()) as [
-      string,
-      string
-    ][]
+    Array.from(response.headers.entries()) as [string, string][]
   ).find(
     ([key, val]: [string, string]) =>
       key.toLowerCase() === "content-type" &&

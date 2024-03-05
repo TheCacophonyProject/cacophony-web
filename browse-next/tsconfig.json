@@ -6,10 +6,9 @@
       "src/**/*.vue",
       "src/**/*.ts",
       "src/**/*.d.ts",
-      "node_modules/typescript/lib/lib.dom.d.ts"
   ],
   "compilerOptions": {
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "lib": ["ESNext", "dom", "dom.iterable"],
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],

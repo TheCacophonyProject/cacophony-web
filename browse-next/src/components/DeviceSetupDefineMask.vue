@@ -41,8 +41,9 @@ const regions = ref<
 >({});
 const points = reactive<Point[]>([]);
 const { pixelRatio: devicePixelRatio } = useDevicePixelRatio();
-const latestStatusRecording: Ref<ApiRecordingResponse> = inject(
-  "latestStatusRecording"
+const latestStatusRecording: Ref<ApiRecordingResponse | null> = inject(
+  "latestStatusRecording",
+  ref(null)
 );
 const route = useRoute();
 const deviceId = Number(route.params.deviceId) as DeviceId;
@@ -576,7 +577,7 @@ watch(
       >
         <cptv-single-frame
           :width="'100%'"
-          :recording="latestStatusRecording || null"
+          :recording="latestStatusRecording"
           apron-pixels="8"
           ref="singleFrameCanvas"
           :smoothing="false"
@@ -633,7 +634,7 @@ watch(
         </div>
       </template>
     </card-table>
-    <div class="d-flex flex-column flex-md-row mt-2 justify-content-between">
+    <div class="d-flex flex-column flex-md-row my-2 justify-content-between">
       <b-button
         v-if="!editMode"
         variant="primary"

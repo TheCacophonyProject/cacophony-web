@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   CptvFrame,
   CptvFrameHeader,
   CptvHeader,
 } from "./cptv-decoder/decoder";
+import { CptvDecoder } from "./cptv-decoder/decoder";
 import {
   ColourMaps,
   formatHeaderInfo,
@@ -16,7 +17,6 @@ import {
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
-import { CptvDecoder } from "./cptv-decoder/decoder";
 import type { RecordingId, TrackId } from "@typedefs/api/common";
 import { Mp4Encoder } from "@/components/cptv-player/mp4-export";
 import type {
@@ -36,13 +36,14 @@ import {
   clearOverlay,
   drawBottomLeftOverlayLabel,
   drawBottomRightOverlayLabel,
+  drawRectWithText,
   renderOverlay,
 } from "@/components/cptv-player/overlay-canvas";
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
-import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
-import { CurrentUserCreds } from "@models/LoggedInUser";
+import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { LoggedInUserAuth } from "@models/LoggedInUser";
+import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
@@ -91,6 +92,7 @@ let cptvDecoder: CptvDecoder;
 watch(pixelRatio, () => {
   animationTick.value = 0;
   setOverlayCanvasDimensions();
+  updateOverlayCanvas(targetFrameNum.value);
 
   // If the pixel ratio changed, we might also be on a monitor with a different refresh rate now.
   polledFps.value = false;
@@ -166,6 +168,16 @@ const emit = defineEmits<{
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { width: canvasWidth, height: canvasHeight } = useElementSize(canvas);
 
+// Trailcam image ratio
+const imageBitmap = ref<ImageBitmap | null>(null);
+const imageRatio = computed<number>(() => {
+  if (imageBitmap.value) {
+    return imageBitmap.value.width / imageBitmap.value.height;
+  } else {
+    return 1;
+  }
+});
+
 watch(canvasWidth, () => {
   animationTick.value = 0;
   setOverlayCanvasDimensions();
@@ -194,6 +206,9 @@ watch(
     if (!playing.value) {
       updateOverlayCanvas(frameNum.value);
     }
+  },
+  {
+    deep: true, // If tags change, we'd like to know about it
   }
 );
 
@@ -1143,10 +1158,57 @@ const currentAbsoluteTime = computed<string | null>(() => {
   return null;
 });
 
+const drawTrailcamImageAndOverlay = () => {
+  if (overlayContext.value && imageBitmap.value) {
+    clearCanvases();
+    const ctx = overlayContext.value;
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+    const restrictedHeight = Math.floor(canvasWidth / imageRatio.value);
+    const offsetY = (canvasHeight - restrictedHeight) * 0.5;
+    console.log("drawImage", canvasWidth, restrictedHeight);
+    console.log("Pixel ratio", pixelRatio.value);
+    overlayContext.value.drawImage(
+      imageBitmap.value,
+      0,
+      offsetY / pixelRatio.value,
+      canvasWidth / pixelRatio.value,
+      restrictedHeight / pixelRatio.value
+    );
+    if (props.recording && props.recording.tracks) {
+      for (const track of props.recording.tracks) {
+        if (track.positions && track.positions.length) {
+          const pos = { ...track.positions[0] };
+          //const pos = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
+          pos.x = pos.x * canvasWidth;
+          pos.height = pos.height * restrictedHeight;
+          pos.y = pos.y * restrictedHeight;
+          pos.width = pos.width * canvasWidth;
+          const what = getAuthoritativeTagForTrack(track.tags);
+          if (what) {
+            drawRectWithText(
+              ctx,
+              track.id,
+              [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height],
+              displayLabelForClassificationLabel(what),
+              false,
+              props.recording.tracks,
+              track,
+              pixelRatio.value,
+              1,
+              restrictedHeight
+            );
+          }
+        }
+      }
+    }
+  }
+};
+
 const updateOverlayCanvas = (frameNumToRender: number) => {
-  if (currentRecordingType.value === "cptv") {
-    // FIXME - Move this somewhere else, like when the frame advances
-    if (overlayContext.value) {
+  if (overlayContext.value) {
+    if (currentRecordingType.value === "cptv") {
+      // FIXME - Move this somewhere else, like when the frame advances
       renderOverlay(
         overlayContext.value,
         scale.value,
@@ -1180,6 +1242,8 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
           pixelRatio.value
         );
       }
+    } else {
+      drawTrailcamImageAndOverlay();
     }
   }
 };
@@ -1685,36 +1749,9 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     }
   } else if (loadedStream.value instanceof Blob) {
     currentRecordingType.value = "image";
-    clearCanvases();
-    let imageBitmap;
     try {
-      imageBitmap = await createImageBitmap(loadedStream.value);
-      {
-        const ctx = overlayCanvas.value?.getContext("2d");
-        if (ctx) {
-          const imageRatio = imageBitmap.width / imageBitmap.height;
-          const canvasWidth = ctx.canvas.width;
-          const canvasHeight = ctx.canvas.height;
-          const dh = canvasWidth / pixelRatio.value / imageRatio;
-          const dy = (canvasHeight / pixelRatio.value - dh) / 2;
-          const dw = canvasWidth / pixelRatio.value;
-          ctx.drawImage(imageBitmap, 0, dy, dw, dh);
-          if (props.recording && props.recording.tracks) {
-            for (const track of props.recording.tracks) {
-              if (track.positions && track.positions.length) {
-                const pos = { ...track.positions[0] };
-                // convert from bottom left, to top left origin
-                pos.y = (1 - (pos.y + pos.height)) * dh + dy;
-                pos.x = pos.x * dw;
-                pos.height = pos.height * dh;
-                pos.width = pos.width * dw;
-                ctx.strokeStyle = "green";
-                ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
-              }
-            }
-          }
-        }
-      }
+      imageBitmap.value = await createImageBitmap(loadedStream.value);
+      drawTrailcamImageAndOverlay();
     } catch (e) {
       console.log("Image Error", e);
     }
@@ -1935,7 +1972,7 @@ watch(
       key="container"
       class="video-container"
       ref="container"
-      :class="[currentRecordingType]"
+      :class="[currentRecordingType, { 'no-reference': !hasReferencePhoto }]"
     >
       <canvas
         key="base"
@@ -1991,7 +2028,10 @@ watch(
         ref="referenceImageContainer"
         v-if="showingReferencePhoto && hasReferencePhoto"
       >
-        <div class="reveal-slider position-absolute" ref="revealSlider">
+        <div
+          class="reveal-slider position-absolute d-flex align-items-center"
+          ref="revealSlider"
+        >
           <img
             v-if="referenceImageURL"
             ref="referenceImage"
@@ -2140,7 +2180,18 @@ watch(
         </button>
       </div>
     </div>
-    <div v-else class="black-spacer"></div>
+    <div v-else-if="hasReferencePhoto" class="playback-nav justify-content-end">
+      <button
+        :class="{ selected: showingReferencePhoto }"
+        @click="toggleReferencePhotoComparison"
+        ref="toggleReferencePhoto"
+        class="reference-photo-btn"
+        data-tooltip="Reference photo"
+      >
+        <font-awesome-icon icon="panorama" />
+      </button>
+    </div>
+    <div v-else class="black-spacer" />
     <div
       key="debug-nav"
       :class="['debug-tools', { open: showDebugTools }]"
@@ -2354,7 +2405,7 @@ watch(
     padding: 0;
     background: black;
     overflow: hidden;
-    &.image {
+    &.image.no-reference {
       @media screen and (min-width: 1041px) {
         margin-top: 30px;
       }
