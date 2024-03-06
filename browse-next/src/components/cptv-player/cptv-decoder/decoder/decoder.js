@@ -263,7 +263,9 @@ export class CptvPlayerContext {
 
   free() {
     const ptr = this.__destroy_into_raw();
-    wasm.__wbg_cptvplayercontext_free(ptr);
+    if (ptr) {
+      wasm.__wbg_cptvplayercontext_free(ptr);
+    }
   }
   /**
    * @param {ReadableStreamDefaultReader} stream
@@ -361,8 +363,12 @@ export class CptvPlayerContext {
    * @returns {any}
    */
   getHeader() {
-    const ret = wasm.cptvplayercontext_getHeader(this.__wbg_ptr);
-    return takeObject(ret);
+    if (this.__wbg_ptr) {
+      const ret = wasm.cptvplayercontext_getHeader(this.__wbg_ptr);
+      if (ret) {
+        return takeObject(ret);
+      }
+    }
   }
 }
 

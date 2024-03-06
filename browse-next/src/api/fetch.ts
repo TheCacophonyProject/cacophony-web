@@ -89,7 +89,7 @@ export const maybeRefreshStaleCredentials = async () => {
             forgetUserOnCurrentDevice();
           }
         } else {
-          await delayMs(10);
+          await delayMs(10).promise;
           await maybeRefreshStaleCredentials();
         }
       }

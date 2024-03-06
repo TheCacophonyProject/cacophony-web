@@ -45,7 +45,7 @@ import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { LoggedInUserAuth } from "@models/LoggedInUser";
 import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
-import { delayMs } from "@/utils";
+import {type CancelableDelay, delayMs} from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
@@ -1191,7 +1191,7 @@ const drawTrailcamImageAndOverlay = () => {
           pos.y = pos.y * restrictedHeight;
           pos.width = pos.width * canvasWidth;
           const authTag = getAuthoritativeTagForTrack(track.tags);
-          let what: string;
+          let what = "";
           let aiTag = false;
           if (authTag) {
             what = authTag[0];
@@ -1692,6 +1692,7 @@ watch(
 );
 
 const currentRecordingType = ref<"cptv" | "image">("cptv");
+let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
   streamLoadError.value = null;
@@ -1707,6 +1708,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   resetRecordingNormalisation();
   trackExportOptions.value = [];
   frames = [];
+  loadTimeout && loadTimeout.cancel();
   cancelAnimationFrame(animationFrame.value);
 
   if ((props.recording?.tracks || []).length > 1) {
@@ -1718,6 +1720,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   }
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
+  loadTimeout && loadTimeout.cancel();
   if (CurrentUserCreds.value) {
     loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
       nextRecordingId,
@@ -1727,9 +1730,14 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   }
 
   if (loadedStream.value === true) {
+    loadTimeout && loadTimeout.cancel();
     currentRecordingType.value = "cptv";
     header.value = Object.freeze(await cptvDecoder.getHeader());
-    const thisHeader = header.value as CptvHeader;
+    loadTimeout && loadTimeout.cancel();
+    const thisHeader = (header.value as CptvHeader) || {
+      width: 160,
+      height: 120,
+    };
     // TODO - Init all the header related info (min/max values etc)
     setDebugFrameInfo(0);
     scale.value = canvasWidth.value / thisHeader.width;
@@ -1748,19 +1756,21 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         thisCanvas.height = thisHeader.height;
       }
     }
-
-    while (!props.recording) {
+    while (!props.recording || props.recording.id !== props.recordingId) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
-      await delayMs(10);
+      loadTimeout = delayMs(10);
+      await loadTimeout.promise;
     }
     if (props.recording && props.recording.id === props.recordingId) {
       await loadedNextRecordingData();
+      loadTimeout && loadTimeout.cancel();
       emit("ready-to-play", thisHeader);
       playing.value = true;
     }
   } else if (loadedStream.value instanceof Blob) {
     currentRecordingType.value = "image";
+    loadTimeout && loadTimeout.cancel();
     try {
       imageBitmap.value = await createImageBitmap(loadedStream.value);
       drawTrailcamImageAndOverlay();
@@ -1776,10 +1786,12 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     while (!props.recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
-      await delayMs(10);
+      loadTimeout = delayMs(10);
+      await loadTimeout.promise;
     }
     if (props.recording && props.recording.id === props.recordingId) {
       await loadedNextRecordingData();
+      loadTimeout && loadTimeout.cancel();
       emit("ready-to-play", header.value as unknown as CptvHeader);
       playing.value = true;
     }

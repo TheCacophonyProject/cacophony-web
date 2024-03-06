@@ -777,8 +777,11 @@ const loadRecording = async () => {
         }
       }
     } else {
+      console.log("Recording load failed");
       // TODO Handle failure to get recording
     }
+  } else {
+    console.log("No recording id??");
   }
 };
 

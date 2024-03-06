@@ -35,7 +35,7 @@ watch(
   ],
   async ([count, cancel]) => {
     if (cancel) {
-      await delayMs(1500);
+      await delayMs(1500).promise;
     }
     clearInterval(countDownInterval.value);
     if (networkConnectionError.retryCount === MAX_RETRY_COUNT) {
