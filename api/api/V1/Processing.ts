@@ -479,20 +479,29 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
     parseJSONField(body("data")),
     async (request: Request, response) => {
-      console.log(JSON.stringify(response.locals.recording));
       const deviceId = response.locals.recording.DeviceId;
       const groupId = response.locals.recording.GroupId;
       const atTime = response.locals.recording.recordingDateTime;
-      const positions = response.locals.recording.data.positions;
+      const positions =
+        response.locals.recording.data &&
+        response.locals.recording.data.positions;
       let trackId: TrackId = 1;
-      if (
-        !(await trackIsMasked(models, deviceId, groupId, atTime, positions))
-      ) {
+      let discardMaskedTrack = false;
+      if (positions) {
+        discardMaskedTrack = await trackIsMasked(
+          models,
+          deviceId,
+          groupId,
+          atTime,
+          positions
+        );
+      }
+      if (!discardMaskedTrack) {
         const track = await response.locals.recording.createTrack({
           data: response.locals.data,
           AlgorithmId: request.body.algorithmId,
-          filtered: false,
         });
+        await track.updateIsFiltered();
         trackId = track.id;
       }
       // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add

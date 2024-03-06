@@ -1734,7 +1734,7 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
     fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const algorithm = response.locals.algorithm
         ? response.locals.algorithm
         : "{'status': 'User added.'}";
@@ -1753,18 +1753,27 @@ export default (app: Application, baseUrl: string) => {
       const groupId = response.locals.recording.GroupId;
       const atTime = response.locals.recording.recordingDateTime;
       const positions = data.positions;
-      if (
-        !(await trackIsMasked(models, deviceId, groupId, atTime, positions))
-      ) {
+      let discardMaskedTrack = false;
+      if (positions) {
+        discardMaskedTrack = await trackIsMasked(
+          models,
+          deviceId,
+          groupId,
+          atTime,
+          positions
+        );
+      }
+      if (!discardMaskedTrack) {
         const track = await response.locals.recording.createTrack({
           data,
           AlgorithmId: algorithmDetail.id,
-          filtered: false,
         });
+        await track.updateIsFiltered();
         trackId = track.id;
         algorithmId = track.AlgorithmId;
       }
-
+      // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
+      // trackTags to tag id 1.
       return successResponse(response, "Track added.", {
         trackId,
         algorithmId,
