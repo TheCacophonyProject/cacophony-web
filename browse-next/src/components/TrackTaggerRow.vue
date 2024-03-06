@@ -7,14 +7,15 @@ import type {
   Classification,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
+import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
 import { persistUserGroupSettings } from "@models/LoggedInUser";
-import type { SelectedProject, LoggedInUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   classifications,
+  displayLabelForClassificationLabel,
   flatClassifications,
   getClassificationForLabel,
   getClassifications,
@@ -25,7 +26,6 @@ import type {
 } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
 import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
@@ -35,11 +35,14 @@ import {
   currentUser,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
+import { RecordingProcessingState } from "@typedefs/api/consts.ts";
+
 const props = defineProps<{
   track: ApiTrackResponse;
   index: number;
   color: { foreground: string; background: string };
   selected: boolean;
+  processingState: RecordingProcessingState;
 }>();
 
 const emit = defineEmits<{
@@ -392,6 +395,10 @@ const addCustomTag = () => {
   tagSelect.value && (tagSelect.value as typeof HierarchicalTagSelect).open();
 };
 
+const processingIsAnalysing = computed<boolean>(
+  () => props.processingState === RecordingProcessingState.Analyse
+);
+
 onMounted(async () => {
   if (!classifications.value) {
     await getClassifications();
@@ -483,8 +490,15 @@ onMounted(async () => {
       </span>
       <!-- No tag, maybe this is a dummy track?   -->
       <div v-else class="d-flex flex-column classification">
-        <span class="text-uppercase fs-9 fw-bold">Unclassified</span>
-        <span>&mdash;</span>
+        <span class="text-uppercase fs-9 fw-bold">
+          <span v-if="processingIsAnalysing" class="d-flex align-items-center"
+            ><b-spinner variant="secondary" small class="me-2" /><span
+              >AI classifying</span
+            ></span
+          >
+          <span v-else>Unclassified</span>
+        </span>
+        <span v-if="!processingIsAnalysing">&mdash;</span>
       </div>
     </div>
     <div v-if="!hasUserTag && hasAiTag && !expanded">

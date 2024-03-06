@@ -47,7 +47,10 @@ import {
   latLngForActiveLocations,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
-import { RecordingType } from "@typedefs/api/consts.ts";
+import {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.ts";
 import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
 
@@ -129,6 +132,20 @@ const deviceNameSpan = ref<HTMLSpanElement>();
 const stationNameSpan = ref<HTMLSpanElement>();
 const stationNameIsTruncated = ref<boolean>(false);
 const deviceNameIsTruncated = ref<boolean>(false);
+
+const recordingIsProcessing = computed<boolean>(() => {
+  if (recording.value) {
+    return ![
+      RecordingProcessingState.ReTrackFailed,
+      RecordingProcessingState.TrackingFailed,
+      RecordingProcessingState.AnalyseThermalFailed,
+      RecordingProcessingState.AnalyseFailed,
+      RecordingProcessingState.ReprocessFailed,
+      RecordingProcessingState.Finished,
+    ].includes(recording.value.processingState);
+  }
+  return false;
+});
 
 watch(
   () => route.params.currentRecordingId,
@@ -721,6 +738,11 @@ const loadRecording = async () => {
     recording.value = await getRecordingById(currentRecordingId.value);
     if (recording.value) {
       const rec = recording.value as ApiRecordingResponse;
+
+      if (recordingIsProcessing.value) {
+        setTimeout(loadRecording, 30000);
+      }
+
       if (
         [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
           rec.type
@@ -1303,6 +1325,7 @@ const inlineModal = ref<boolean>(false);
             class="recording-tracks"
             @track-tag-changed="trackTagChanged"
             @track-selected="selectedTrackWrap"
+            @added-recording-label="addedRecordingLabel"
           />
           <div
             class="recording-info-mobile p-3 flex-grow-1"

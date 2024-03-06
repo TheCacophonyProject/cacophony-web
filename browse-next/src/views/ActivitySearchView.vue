@@ -58,7 +58,6 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { getAllVisitsForProjectBetweenTimes } from "@api/Monitoring";
-import { titleCase } from "bootstrap-vue-next/dist/src/utils";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
