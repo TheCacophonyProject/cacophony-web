@@ -472,7 +472,7 @@ onMounted(async () => {
         >
         <!-- No AI tag, maybe this is a track for a trailcam image? -->
         <span
-          class="classification text-capitalize d-inline-block fw-bold"
+          class="text-capitalize d-inline-block fw-bold"
           v-else-if="consensusUserTag && !hasAiTag"
           >{{
             uniqueUserTags
@@ -482,10 +482,10 @@ onMounted(async () => {
         >
       </span>
       <!-- No tag, maybe this is a dummy track?   -->
-      <span v-else class="d-flex flex-column">
-        <span class="text-uppercase fs-9 fw-bold">No track found</span>
-        <span>Unclassified</span>
-      </span>
+      <div v-else class="d-flex flex-column classification">
+        <span class="text-uppercase fs-9 fw-bold">Unclassified</span>
+        <span>&mdash;</span>
+      </div>
     </div>
     <div v-if="!hasUserTag && hasAiTag && !expanded">
       <button

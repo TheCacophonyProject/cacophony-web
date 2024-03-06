@@ -334,7 +334,11 @@ const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
       @selected-track="selectedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"
       @remove-tag="removeTag"
-      :selected="(currentTrack && currentTrack.id === track.id) || false"
+      :selected="
+        (currentTrack && currentTrack.id === track.id) ||
+        track.id === -1 ||
+        false
+      "
       :color="TagColours[index % TagColours.length]"
       :track="track"
     />
