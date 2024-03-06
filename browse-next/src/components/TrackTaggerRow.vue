@@ -314,6 +314,9 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
         display: `${tag}_not_found`,
       }
   )) {
+    if (tag.label === "human") {
+      tag.display = "human";
+    }
     tags[tag.label] = tag;
   }
   return Object.values(tags);
@@ -467,7 +470,7 @@ onMounted(async () => {
               .join(", ")
           }}</span
         >
-        <!-- No AI tag, maybe this is a dummy track for a trailcam image? -->
+        <!-- No AI tag, maybe this is a track for a trailcam image? -->
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-else-if="consensusUserTag && !hasAiTag"
@@ -477,6 +480,11 @@ onMounted(async () => {
               .join(", ")
           }}</span
         >
+      </span>
+      <!-- No tag, maybe this is a dummy track?   -->
+      <span v-else class="d-flex flex-column">
+        <span class="text-uppercase fs-9 fw-bold">No track found</span>
+        <span>Unclassified</span>
       </span>
     </div>
     <div v-if="!hasUserTag && hasAiTag && !expanded">

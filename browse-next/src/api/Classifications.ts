@@ -102,7 +102,8 @@ export const getClassifications = async (
 
 export const displayLabelForClassificationLabel = (
   label: string,
-  aiTag = false
+  aiTag = false,
+  isAudioContext = false
 ) => {
   if (!label) {
     debugger;
@@ -112,6 +113,9 @@ export const displayLabelForClassificationLabel = (
     return "Unidentified";
   }
   const classifications = flatClassifications.value || {};
+  if (label === "human" && !isAudioContext) {
+    return "human";
+  }
   return (classifications[label] && classifications[label].display) || label;
 };
 

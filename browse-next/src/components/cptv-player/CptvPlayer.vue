@@ -806,23 +806,22 @@ const headerInfo = computed(() => formatHeaderInfo(header.value));
 
 const getAuthoritativeTagForTrack = (
   trackTags: ApiTrackTagResponse[]
-): string | null => {
+): [string, boolean] | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
     // FIXME - There can be more than one conflicting user tag...
 
     // TODO: Add an option to also include the AI guess, plus the confidence at each frame.
-    return userTags[0].what;
+    return [userTags[0].what, false];
   } else {
-    return (
-      trackTags.find(
-        (tag) =>
-          (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
-          (typeof tag.data === "object" &&
-            tag.data.name &&
-            tag.data.name === "Master")
-      )?.what || null
-    );
+    const tag = trackTags.find(
+      (tag) =>
+        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
+        (typeof tag.data === "object" &&
+          tag.data.name &&
+          tag.data.name === "Master")
+    )?.what;
+    return (tag && [tag, true]) || null;
   }
 };
 
@@ -852,15 +851,24 @@ const getPositions = (
 
 const tracksIntermediate = computed<IntermediateTrack[]>(() => {
   return (
-    props.recording?.tracks.map(({ positions, tags, id }) => ({
-      what: (tags && getAuthoritativeTagForTrack(tags)) || null,
-      positions: getPositions(
-        positions as ApiTrackPosition[],
-        timeAdjustmentForBackgroundFrame.value,
-        frameTimeSeconds.value
-      ),
-      id,
-    })) || []
+    props.recording?.tracks.map(({ positions, tags, id }) => {
+      let what = null;
+      if (tags) {
+        const authTag = getAuthoritativeTagForTrack(tags);
+        if (authTag) {
+          what = authTag[0];
+        }
+      }
+      return {
+        what,
+        positions: getPositions(
+          positions as ApiTrackPosition[],
+          timeAdjustmentForBackgroundFrame.value,
+          frameTimeSeconds.value
+        ),
+        id,
+      };
+    }) || []
   );
 });
 
@@ -1166,8 +1174,6 @@ const drawTrailcamImageAndOverlay = () => {
     const canvasHeight = ctx.canvas.height;
     const restrictedHeight = Math.floor(canvasWidth / imageRatio.value);
     const offsetY = (canvasHeight - restrictedHeight) * 0.5;
-    console.log("drawImage", canvasWidth, restrictedHeight);
-    console.log("Pixel ratio", pixelRatio.value);
     overlayContext.value.drawImage(
       imageBitmap.value,
       0,
@@ -1184,13 +1190,19 @@ const drawTrailcamImageAndOverlay = () => {
           pos.height = pos.height * restrictedHeight;
           pos.y = pos.y * restrictedHeight;
           pos.width = pos.width * canvasWidth;
-          const what = getAuthoritativeTagForTrack(track.tags);
+          const authTag = getAuthoritativeTagForTrack(track.tags);
+          let what: string;
+          let aiTag = false;
+          if (authTag) {
+            what = authTag[0];
+            aiTag = authTag[1];
+          }
           if (what) {
             drawRectWithText(
               ctx,
               track.id,
               [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height],
-              displayLabelForClassificationLabel(what),
+              displayLabelForClassificationLabel(what, aiTag),
               false,
               props.recording.tracks,
               track,

@@ -58,6 +58,7 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { getAllVisitsForProjectBetweenTimes } from "@api/Monitoring";
+import { titleCase } from "bootstrap-vue-next/dist/src/utils";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -557,6 +558,10 @@ const commonDateRanges = computed<
 });
 
 const displayMode = ref<"visits" | "recordings">("visits");
+watch(displayMode, () => {
+  // Redo search when display mode changes
+  doSearch();
+});
 
 const taggedBy = ref<("AI" | "human")[]>([]);
 const taggedByOptions = [
@@ -1052,10 +1057,12 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
 const searching = ref<boolean>(false);
 const doSearch = async () => {
-  searching.value = true;
-  await getClassifications();
-  await getRecordingsOrVisitsForCurrentQuery();
-  searching.value = false;
+  if (searchIsValid.value) {
+    searching.value = true;
+    await getClassifications();
+    await getRecordingsOrVisitsForCurrentQuery();
+    searching.value = false;
+  }
 };
 
 const exporting = ref<boolean>(false);
@@ -1227,6 +1234,20 @@ const selectedRecording = async (recordingId: RecordingId) => {
 const selectedVisit = (visit: ApiVisitResponse) => {
   currentlySelectedVisit.value = visit;
 };
+
+const upperFirst = (str: string): string => {
+  const trim = str.trim();
+  return trim.charAt(0).toUpperCase() + trim.slice(1);
+};
+const searchParameters = computed<string>(() => {
+  let locations = "";
+  console.log(selectedLocations.value);
+  if (selectedLocations.value[0] === "any") {
+    locations = "all locations";
+  }
+  // At any time.  Since this project was created.  Since the beginning of this project.
+  return `${upperFirst(displayMode.value)} across ${locations}`;
+});
 
 watch(
   currentlySelectedVisit,
@@ -1521,8 +1542,8 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
     </div>
     <div class="search-results flex-grow-1 d-flex justify-content-center pb-3">
       <div class="search-results-inner">
-        <div class="search-description">
-          &lt;&lt; Blurb describing the search parameters. &gt;&gt;
+        <div class="search-description mx-3 mb-3 p-2 sticky-top">
+          {{ searchParameters }}
         </div>
 
         <div v-if="currentQueryCount === undefined">
@@ -1601,8 +1622,11 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
   />
 </template>
 <style lang="less" scoped>
+.search-description {
+  background-color: rgba(255, 255, 255, 0.8);
+}
 .centered-overlay {
-  height: calc(100vh - 90px);
+  height: calc(100svh - 90px);
 }
 .search-results-inner {
   max-width: 700px;
@@ -1625,7 +1649,7 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
     position: absolute !important;
     right: 0;
     top: 0;
-    height: 100vh !important;
+    height: 100svh !important;
     width: 500px !important;
   }
 }

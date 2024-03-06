@@ -5,9 +5,16 @@ import { TagColours } from "@/consts";
 import type { Ref } from "vue";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { ApiTrackResponse } from "@typedefs/api/track";
+import type {
+  ApiTrackDataRequest,
+  ApiTrackResponse,
+} from "@typedefs/api/track";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
-import { removeTrackTag, replaceTrackTag } from "@api/Recording";
+import {
+  createDummyTrack,
+  removeTrackTag,
+  replaceTrackTag,
+} from "@api/Recording";
 import type { LoggedInUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import {
@@ -56,15 +63,41 @@ watch(
 );
 
 const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
-  // Local mutable copy of tracks + tags for when we update things.
-  recordingTracksLocal.value = tracks.map((track) => ({
-    id: track.id,
-    end: track.end,
-    start: track.start,
-    automatic: track.automatic,
-    tags: JSON.parse(JSON.stringify(track.tags)),
-    filtered: track.filtered,
-  }));
+  // NOTE: If there's no tracks on a recording, we can create a dummy one, which can be added
+  //  via the API as soon as there is a user tag present.
+  if (tracks.length === 0) {
+    recordingTracksLocal.value = [
+      {
+        id: -1,
+        start: 0,
+        end: props.recording?.duration,
+        positions: [
+          {
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+          },
+        ],
+        frame_start: 1,
+        frame_end: 1,
+        num_frames: 1,
+        automatic: false,
+        tags: [],
+        filtered: false,
+      },
+    ];
+  } else {
+    // Local mutable copy of tracks + tags for when we update things.
+    recordingTracksLocal.value = tracks.map((track) => ({
+      id: track.id,
+      end: track.end,
+      start: track.start,
+      automatic: track.automatic,
+      tags: JSON.parse(JSON.stringify(track.tags)),
+      filtered: track.filtered,
+    }));
+  }
 };
 
 watch(
@@ -75,9 +108,12 @@ watch(
       currentTrack.value = getTrackById(currentTrackId.value);
     }
     if (nextRecording?.type === RecordingType.TrailCamImage) {
-      // Select the only dummy track
-      //currentTrack.value = getTrackById()
-      expandedItemChanged(nextRecording.tracks[0].id, true);
+      if (nextRecording.tracks.length) {
+        // Select the only dummy track
+        expandedItemChanged(nextRecording.tracks[0].id, true);
+      } else {
+        expandedItemChanged(-1, true);
+      }
     }
   }
 );
@@ -119,6 +155,23 @@ const selectedTrack = (trackId: TrackId) => {
 };
 
 const updatingTags = ref<boolean>(false);
+
+const mapTrack = (track: ApiTrackResponse): ApiTrackDataRequest => {
+  const mappedTrack: ApiTrackDataRequest = {
+    ...track,
+    end_s: track.end,
+    start_s: track.start,
+  };
+  delete mappedTrack.start;
+  delete mappedTrack.end;
+  delete mappedTrack.tags;
+  delete mappedTrack.frame_start;
+  delete mappedTrack.frame_end;
+  delete mappedTrack.num_frames;
+  delete mappedTrack.filtered;
+  delete mappedTrack.id;
+  return mappedTrack;
+};
 const addOrRemoveUserTag = async ({
   tag,
   trackId,
@@ -132,7 +185,23 @@ const addOrRemoveUserTag = async ({
     const track = recordingTracksLocal.value.find(
       (track) => track.id === trackId
     );
+    let trackWasCreated = false;
     if (track) {
+      if (track.id === -1) {
+        // This is a dummy track and needs to be created via the API before we can actually tag it.
+        const createdTrack = await createDummyTrack(
+          props.recording,
+          mapTrack(track)
+        );
+        if (createdTrack.success) {
+          track.id = createdTrack.result.trackId;
+          trackId = track.id;
+          trackWasCreated = true;
+        } else {
+          console.error("Failed creating dummy track");
+        }
+      }
+
       const thisUserTag = track.tags.find(
         (tag) => tag.userId === currentUser.value?.id
       );
@@ -199,6 +268,9 @@ const addOrRemoveUserTag = async ({
       }
     }
     cloneLocalTracks(props.recording.tracks);
+    if (trackWasCreated) {
+      emit("track-selected", { trackId, automatically: false });
+    }
     updatingTags.value = false;
   }
 };

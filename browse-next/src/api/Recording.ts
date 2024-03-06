@@ -16,6 +16,10 @@ import type {
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackTagRequest } from "@typedefs/api/trackTag";
 import { RecordingType, TagMode } from "@typedefs/api/consts.ts";
+import type {
+  ApiTrackDataRequest,
+  ApiTrackResponse,
+} from "@typedefs/api/track";
 
 export const getRecordingById = (
   id: RecordingId,
@@ -60,6 +64,14 @@ export const removeTrackTag = (
   CacophonyApi.delete(
     `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`
   ) as Promise<FetchResult<void>>;
+
+export const createDummyTrack = (
+  recording: ApiRecordingResponse,
+  track: ApiTrackDataRequest
+) =>
+  CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
+    data: track,
+  }) as Promise<FetchResult<{ trackId: TrackId }>>;
 
 export const addRecordingLabel = (id: RecordingId, label: string) =>
   CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {

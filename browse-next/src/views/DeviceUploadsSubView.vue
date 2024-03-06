@@ -319,27 +319,6 @@ const beginUploadJob = async () => {
             location,
             type: "trailcam-image",
             duration: 3, // It's important that we lie and say the duration is > 2.5s, because we filter short recordings out.
-            metadata: {
-              // Dummy track
-              algorithm: "empty-trailcam",
-              tracks: [
-                {
-                  start_s: 0,
-                  end_s: 1,
-                  positions: [
-                    {
-                      x: 0,
-                      y: 0,
-                      width: 1,
-                      height: 1,
-                    },
-                  ],
-                  frame_start: 1,
-                  frame_end: 1,
-                  num_frames: 1,
-                },
-              ],
-            },
             additionalMetadata: data.additionalMetadata,
             // FIXME The recordingDateTime should be in the local time, so convert based on location.
             recordingDateTime: DateTime.fromJSDate(data.recordingDateTime, {

@@ -629,7 +629,7 @@ export default function (app: Application, baseUrl: string) {
           and "GroupId" = :groupId
           and location is not null
           and "recordingDateTime" >= :atTime
-          and "recordingDateTime <= :untilTime
+          and "recordingDateTime" < :untilTime
           and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
           BETWEEN TIME '9:00' AND TIME '16:00'
           order by "recordingDateTime" desc

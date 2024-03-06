@@ -556,9 +556,17 @@ const trackTagChanged = async ({
   action: "add" | "remove";
 }) => {
   if (recording.value) {
-    const trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
+    let trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
       ({ id }) => id === track.id
     );
+    if (
+      !trackToPatch &&
+      (recording.value as ApiRecordingResponse).tracks.length === 0
+    ) {
+      // This track was probably just created, so add it.
+      (recording.value as ApiRecordingResponse).tracks.push(track);
+      trackToPatch = track;
+    }
     if (trackToPatch) {
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
