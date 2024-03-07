@@ -1343,7 +1343,11 @@ export default function (app: Application, baseUrl: string) {
           order: [["fromDateTime", "DESC"]],
         });
 
-      if (deviceSettings.settings.maskRegions) {
+      if (
+        deviceSettings &&
+        deviceSettings.settings &&
+        deviceSettings.settings.maskRegions
+      ) {
         return successResponse(
           response,
           "Device mask-regions retrieved successfully",
@@ -1393,7 +1397,7 @@ export default function (app: Application, baseUrl: string) {
             order: [["fromDateTime", "DESC"]],
           });
 
-        if (deviceSettings) {
+        if (deviceSettings && deviceSettings.settings) {
           return successResponse(
             response,
             "Device settings retrieved successfully",
