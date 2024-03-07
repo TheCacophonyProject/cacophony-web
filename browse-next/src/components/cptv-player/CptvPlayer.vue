@@ -45,7 +45,7 @@ import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { LoggedInUserAuth } from "@models/LoggedInUser";
 import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
-import {type CancelableDelay, delayMs} from "@/utils";
+import { type CancelableDelay, delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";

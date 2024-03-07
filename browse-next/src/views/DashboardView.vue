@@ -461,14 +461,14 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       :visits="maybeFilteredDashboardVisitsContext"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
-      @selected-visit="(visit) => (selectedVisit = visit)"
+      @selected-visit="(visit: ApiVisitResponse) => (selectedVisit = visit)"
       @change-highlighted-location="
-        (loc) => (currentlyHighlightedLocation = loc)
+        (loc: LocationId) => (currentlyHighlightedLocation = loc)
       "
     />
   </div>
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Stations summary {{ loadedRouteName }}
+    Locations summary
   </h2>
   <horizontal-overflow-carousel class="mb-5">
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
