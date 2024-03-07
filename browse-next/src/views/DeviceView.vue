@@ -79,7 +79,7 @@ const _deviceType = computed<string>(() => {
         >Diagnostics</router-link
       >
       <router-link
-        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
+        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal && (device as ApiDeviceResponse).location"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-insights') },
