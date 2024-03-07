@@ -70,7 +70,11 @@ export const createDummyTrack = (
   track: ApiTrackDataRequest
 ) =>
   CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
-    data: track,
+    data: {
+      ...track,
+      tracker_version: "dummy-track",
+    },
+    algorithm: { algorithm: "dummy-track" },
   }) as Promise<FetchResult<{ trackId: TrackId }>>;
 
 export const addRecordingLabel = (id: RecordingId, label: string) =>

@@ -1105,7 +1105,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {post} /api/v1/devices/:deviceId/reference-image Set the reference image for a device
-   * @apiName GetDeviceReferenceImageAtTime
+   * @apiName SetDeviceReferenceImageAtTime
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
    * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
