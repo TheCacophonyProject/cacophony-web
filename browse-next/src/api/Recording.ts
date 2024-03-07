@@ -74,7 +74,6 @@ export const createDummyTrack = (
       ...track,
       tracker_version: "dummy-track",
     },
-    algorithm: { algorithm: "dummy-track" },
   }) as Promise<FetchResult<{ trackId: TrackId }>>;
 
 export const addRecordingLabel = (id: RecordingId, label: string) =>
