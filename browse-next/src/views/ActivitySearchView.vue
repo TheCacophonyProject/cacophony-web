@@ -1260,7 +1260,9 @@ watch(
         visitLabel: visit.classification || "",
         currentRecordingId: recordingIds[0].recId.toString(),
         trackId:
-          recordingIds[0].tracks && recordingIds[0].tracks[0].id.toString(),
+          recordingIds[0].tracks &&
+          recordingIds[0].tracks.length &&
+          recordingIds[0].tracks[0].id.toString(),
       };
 
       if (recordingIds.length) {
