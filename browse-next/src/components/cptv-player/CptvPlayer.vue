@@ -756,7 +756,8 @@ const totalPlayableFrames = computed<number>(() => {
     const backgroundAdjust = (header.value as CptvHeader).hasBackgroundFrame
       ? 1
       : 0;
-    return ((header.value as CptvHeader).totalFrames || 0) - backgroundAdjust;
+    const totalFrames = (header.value as CptvHeader).totalFrames;
+    return (totalFrames || 0) - backgroundAdjust;
   } else {
     if (totalFrames.value !== null) {
       const backgroundAdjust = header.value?.hasBackgroundFrame ? 1 : 0;

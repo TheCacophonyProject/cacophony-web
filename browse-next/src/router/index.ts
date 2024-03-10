@@ -67,7 +67,9 @@ const recordingModalChildren = (parent: string) => [
     // when /:projectName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
     path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
     name: `${parent}-visit`,
-    redirect: { name: `${parent}-visit-tracks` }, // Make tracks the default tab
+    redirect: {
+      name: `${parent}-visit-tracks`,
+    },
     meta: {
       title: ":visitLabel visit, #:currentRecordingId",
       context: `${parent}-visit`,
@@ -82,8 +84,15 @@ const recordingModalChildren = (parent: string) => [
     meta: {
       title: "Recording #:currentRecordingId",
       context: `${parent}-recording`,
+    }, // Make tracks the default tab
+    redirect: (to: RouteLocationNormalized): RouteLocationRaw => {
+      return {
+        name: `${parent}-recording-tracks`,
+        params: {
+          ...to.params,
+        },
+      };
     },
-    redirect: { name: `${parent}-recording-tracks` }, // Make tracks the default tab
     name: `${parent}-recording`,
     component: () => import("@/views/RecordingView.vue"),
     children: recordingModalTabChildren(parent, "recording"),

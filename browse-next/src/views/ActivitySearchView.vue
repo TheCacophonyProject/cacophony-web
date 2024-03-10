@@ -1240,7 +1240,6 @@ const upperFirst = (str: string): string => {
 };
 const searchParameters = computed<string>(() => {
   let locations = "";
-  console.log(selectedLocations.value);
   if (selectedLocations.value[0] === "any") {
     locations = "all locations";
   }
@@ -1253,14 +1252,19 @@ watch(
   (visit: ApiVisitResponse | null, prevVisit: ApiVisitResponse | null) => {
     if (visit && route.name === "activity") {
       // Set route so that modal shows up
-      const recordingIds = visit.recordings.map(({ recId }) => recId);
-      const params = {
-        visitLabel: visit.classification,
-        currentRecordingId: recordingIds[0].toString(),
+      const recordingIds = visit.recordings.map(({ recId, tracks }) => ({
+        recId,
+        tracks,
+      }));
+      const params: Record<string, string> = {
+        visitLabel: visit.classification || "",
+        currentRecordingId: recordingIds[0].recId.toString(),
+        trackId:
+          recordingIds[0].tracks && recordingIds[0].tracks[0].id.toString(),
       };
-      if (recordingIds.length > 1) {
-        (params as Record<string, string>).recordingIds =
-          recordingIds.join(",");
+
+      if (recordingIds.length) {
+        params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
       }
       router.push({
         name: "activity-visit",
@@ -1557,7 +1561,7 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
             v-if="displayMode === 'recordings'"
             :recordings-by-day="chunkedRecordings"
             @change-highlighted-location="
-              (loc) => (currentlyHighlightedLocation = loc)
+              (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
             "
             @selected-recording="selectedRecording"
             :currently-selected-recording-id="currentlySelectedRecording"
@@ -1570,7 +1574,7 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
             :highlighted-location="currentlyHighlightedLocation"
             @selected-visit="selectedVisit"
             @change-highlighted-location="
-              (loc) => (currentlyHighlightedLocation = loc)
+              (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
             "
           />
         </div>

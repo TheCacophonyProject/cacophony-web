@@ -109,13 +109,14 @@ watch(
       currentTrack.value = getTrackById(currentTrackId.value);
     }
     if (nextRecording) {
-      if (
-        nextRecording.tracks.length === 1 &&
-        nextRecording.tracks[0].tags.filter((tag) => !tag.automatic).length ===
-          0
-      ) {
-        // Select the only track if there is only one track, and it is untagged by users.
-        expandedItemChanged(nextRecording.tracks[0].id, true);
+      if (nextRecording.tracks.length === 1) {
+        if (
+          nextRecording.tracks[0].tags.filter((tag) => !tag.automatic)
+            .length === 0
+        ) {
+          // Select the only track if there is only one track, and it is untagged by users.
+          expandedItemChanged(nextRecording.tracks[0].id, true);
+        }
       } else {
         expandedItemChanged(-1, true);
       }

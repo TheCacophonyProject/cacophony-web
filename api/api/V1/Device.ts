@@ -1113,7 +1113,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiBody {Binary} Binary image file for reference image.
    *
    * @apiDescription Sets a reference image for a device at a given point in time, or now,
-   * if no date time is specified.  Not that the content-typ
+   * if no date time is specified.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1149,44 +1149,67 @@ export default function (app: Application, baseUrl: string) {
           },
           order: [["fromDateTime", "DESC"]],
         });
-      if (previousDeviceHistoryEntry) {
-        // If there was a previous reference image for this location entry, delete it.
-        const previousSettings: ApiDeviceHistorySettings =
-          previousDeviceHistoryEntry.settings || {};
-        if (previousSettings) {
-          if (referenceType === "pov" && previousSettings.referenceImagePOV) {
-            try {
-              await deleteFile(previousSettings.referenceImagePOV);
-              delete previousSettings.referenceImagePOV;
-              delete previousSettings.referenceImagePOVFileSize;
-            } catch (e) {
-              // ...
-            }
-          } else if (
-            referenceType === "in-situ" &&
-            previousSettings.referenceImageInSitu
-          ) {
-            try {
-              await deleteFile(previousSettings.referenceImageInSitu);
-              delete previousSettings.referenceImageInSitu;
-              delete previousSettings.referenceImageInSituFileSize;
-            } catch (e) {
-              // ...
-            }
+      if (!previousDeviceHistoryEntry) {
+        // We can't add an image, because we don't have a device location.
+        return successResponse(
+          response,
+          "No location for device to tag with reference"
+        );
+      }
+
+      // If there was a previous reference image for this location entry, delete it.
+      const previousSettings: ApiDeviceHistorySettings =
+        previousDeviceHistoryEntry.settings || {};
+      const hadPreviousReferenceImage =
+        !!previousSettings.referenceImagePOV ||
+        !!previousSettings.referenceImageInSitu;
+      if (previousSettings) {
+        if (referenceType === "pov" && previousSettings.referenceImagePOV) {
+          try {
+            await deleteFile(previousSettings.referenceImagePOV);
+            delete previousSettings.referenceImagePOV;
+            delete previousSettings.referenceImagePOVFileSize;
+          } catch (e) {
+            // ...
+          }
+        } else if (
+          referenceType === "in-situ" &&
+          previousSettings.referenceImageInSitu
+        ) {
+          try {
+            await deleteFile(previousSettings.referenceImageInSitu);
+            delete previousSettings.referenceImageInSitu;
+            delete previousSettings.referenceImageInSituFileSize;
+          } catch (e) {
+            // ...
           }
         }
+      }
 
-        const { key, size } = await uploadFileStream(request as any, "ref");
-        const newSettings =
-          referenceType === "pov"
-            ? {
-                referenceImagePOVFileSize: size,
-                referenceImagePOV: key,
-              }
-            : {
-                referenceImageInSituFileSize: size,
-                referenceImageInSitu: key,
-              };
+      const { key, size } = await uploadFileStream(request as any, "ref");
+      const newSettings =
+        referenceType === "pov"
+          ? {
+              referenceImagePOVFileSize: size,
+              referenceImagePOV: key,
+            }
+          : {
+              referenceImageInSituFileSize: size,
+              referenceImageInSitu: key,
+            };
+
+      if (hadPreviousReferenceImage) {
+        // Create a new entry at `at-time` for the new reference image, leaving the old
+        // reference image intact in the previous device history entry.
+        await models.DeviceHistory.create({
+          ...previousDeviceHistoryEntry.dataValues(),
+          fromDateTime: atTime,
+          settings: {
+            ...previousSettings,
+            ...newSettings,
+          },
+        });
+      } else {
         await previousDeviceHistoryEntry.update(
           {
             settings: {
@@ -1202,15 +1225,8 @@ export default function (app: Application, baseUrl: string) {
             },
           }
         );
-
-        return successResponse(response, { key, size });
-      } else {
-        // We can't add an image, because we don't have a device location.
-        return successResponse(
-          response,
-          "No location for device to tag with reference"
-        );
       }
+      return successResponse(response, { key, size });
     }
   );
 
@@ -1261,22 +1277,36 @@ export default function (app: Application, baseUrl: string) {
         const newSettings: ApiDeviceHistorySettings = {
           ...deviceHistoryEntry.settings,
         };
+        const hadMaskRegion =
+          !!newSettings.maskRegions &&
+          Object.keys(newSettings.maskRegions).length !== 0;
         if (Object.keys(maskRegions).length) {
           newSettings.maskRegions = maskRegions;
         }
-
-        await models.DeviceHistory.update(
-          {
+        if (hadMaskRegion) {
+          // Create a new copy of the current DeviceHistory entry, so that previous mask regions at this location
+          // are preserved.
+          await models.DeviceHistory.create({
+            ...deviceHistoryEntry.dataValues(),
+            fromDateTime: new Date(),
             settings: newSettings,
-          },
-          {
-            where: {
-              fromDateTime: deviceHistoryEntry.fromDateTime,
-              DeviceId: device.id,
-              GroupId: device.GroupId,
+          });
+        } else {
+          // Update the existing DeviceHistory entry without mask regions in place.  The mask region will apply from
+          // when this location was created.
+          await models.DeviceHistory.update(
+            {
+              settings: newSettings,
             },
-          }
-        );
+            {
+              where: {
+                fromDateTime: deviceHistoryEntry.fromDateTime,
+                DeviceId: device.id,
+                GroupId: device.GroupId,
+              },
+            }
+          );
+        }
         return successResponse(response, "Mask regions added successfully");
       } catch (e) {
         return next(
@@ -1326,7 +1356,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      query("at-time").isISO8601().toDate().optional(),
+      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -1379,7 +1409,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      query("at-time").isISO8601().toDate().optional(),
+      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response) => {

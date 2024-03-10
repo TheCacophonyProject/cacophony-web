@@ -121,6 +121,14 @@ onMounted(() => {
 });
 
 watch(
+  () => props.totalFrames,
+  () => {
+    initTrackDimensions(props.tracks);
+    updatePlayhead(props.playbackTime, scrubberWidth.value, pixelRatio.value);
+  }
+);
+
+watch(
   () => props.tracks,
   (nextTracks: IntermediateTrack[]) => {
     initTrackDimensions(nextTracks);
@@ -219,7 +227,8 @@ const setPlaybackTime = (offset: number) => {
 const currentTrackIndex = computed<number>(() => {
   if (props.currentTrack) {
     return (
-      props.tracks.findIndex((track) => track.id === props.currentTrack.id) || 0
+      props.tracks.findIndex((track) => track.id === props.currentTrack?.id) ||
+      0
     );
   }
   return 0;
