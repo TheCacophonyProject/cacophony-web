@@ -113,12 +113,16 @@ interface QueryRecordingsOptions {
   countAll?: boolean;
 }
 
+export interface BulkRecordingsResponse {
+  rows: ApiRecordingResponse[];
+  limit: number;
+  count: number;
+}
+
 export const queryRecordingsInProject = (
   projectId: ProjectId,
   options: QueryRecordingsOptions
-): Promise<
-  FetchResult<{ rows: ApiRecordingResponse[]; limit: number; count: number }>
-> => {
+): Promise<FetchResult<BulkRecordingsResponse>> => {
   // FIXME: Implement guard on types
 
   const params = new URLSearchParams();

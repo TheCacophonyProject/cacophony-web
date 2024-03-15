@@ -1,43 +1,41 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import type { ComputedRef, Ref } from "vue";
 import {
   computed,
+  type ComputedRef,
   inject,
   nextTick,
-  onMounted,
+  onBeforeMount,
+  onBeforeUnmount,
   onUpdated,
   provide,
   ref,
   watch,
+  type WatchStopHandle,
 } from "vue";
 import type { NamedPoint } from "@models/mapUtils";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import Multiselect from "@vueform/multiselect";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import type { PublicMethods as DatePickerMethods } from "@vuepic/vue-datepicker";
-import Datepicker from "@vuepic/vue-datepicker";
-import { getLocationsForProject } from "@api/Project";
 import {
   activeLocations,
   currentSelectedProject as currentActiveProject,
   latLngForActiveLocations,
-  userProjects,
 } from "@models/provides";
 import type { SelectedProject } from "@models/LoggedInUser";
-import type { LoadedResource, SuccessFetchResult } from "@api/types";
-import { RecordingLabels } from "@/consts";
-import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { queryRecordingsInProject } from "@api/Recording";
-import type { RecordingType } from "@typedefs/api/consts.ts";
-import {
-  RecordingType as ConcreteRecordingType,
-  TagMode,
-} from "@typedefs/api/consts.ts";
-
-import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import type {
+  FetchResult,
+  LoadedResource,
+  SuccessFetchResult,
+} from "@api/types";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import {
+  type BulkRecordingsResponse,
+  queryRecordingsInProject,
+} from "@api/Recording";
+import type { RecordingType } from "@typedefs/api/consts.ts";
+import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts.ts";
+import type {
+  DeviceId,
   RecordingId,
   StationId as LocationId,
 } from "@typedefs/api/common";
@@ -52,94 +50,224 @@ import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import * as sunCalc from "suncalc";
-import { getClassifications } from "@api/Classifications";
-import { useRoute, useRouter } from "vue-router";
+import {
+  type LocationQuery,
+  type LocationQueryValue,
+  useRoute,
+  useRouter,
+} from "vue-router";
 import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import { getAllVisitsForProjectBetweenTimes } from "@api/Monitoring";
+import {
+  type BulkVisitsResponse,
+  getAllVisitsForProjectBetweenTimes,
+} from "@api/Monitoring";
+import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
+import { getLocationsForProject } from "@api/Project.ts";
+import {
+  ActivitySearchDisplayMode,
+  ActivitySearchRecordingMode,
+  type DateRange,
+  dateSuffix,
+  fullMonthName,
+  getLatestDateForLocationInRecordingMode,
+  isSameDay,
+  queryValueIsDate,
+  validateLocations,
+} from "@/components/activitySearchUtils.ts";
+import { getClassifications } from "@api/Classifications.ts";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
+const searchControls = ref<HTMLDivElement>();
+const searchResults = ref<HTMLDivElement>();
+const { left: searchContainerLeft, right: searchContainerRight } = useElementBounding(searchContainer);
+const { height: windowHeight, width: windowWidth } = useWindowSize();
 
-const { right: searchContainerRight, top: searchContainerTop } =
-  useElementBounding(searchContainer);
-const { height: windowHeight } = useWindowSize();
-const setMapBufferWidth = (parentElRight: number) => {
-  if (mapBuffer.value) {
-    const right = window.innerWidth - parentElRight;
-    (mapBuffer.value as HTMLDivElement).style.width = `${Math.max(
-      0,
-      500 - right
-    )}px`;
-  }
-};
-const setSearchContainerHeight = (winHeight: number) => {
-  if (searchContainer.value) {
-    //searchContainer.value.style.height = `${windowHeight.value - searchContainerTop.value}px`;
-  }
-};
-watch(searchContainerRight, setMapBufferWidth);
-watch(windowHeight, setSearchContainerHeight);
+const mapBufferWidth = computed<number>(() => {
+  const right = windowWidth.value - searchContainerRight.value;
+  return Math.max(0, mapWidthPx.value - right);
+});
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
-const availableProjects = inject(userProjects) as Ref<
-  LoadedResource<ApiProjectResponse[]>
->;
-const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
-  if (currentProject.value && availableProjects.value) {
-    const project = (availableProjects.value as ApiProjectResponse[]).find(
-      ({ id }) => id === (currentProject.value as SelectedProject).id
-    );
-    return project || null;
-  }
-  return null;
-});
 
-const projectHasAudio = computed<boolean>(() => {
-  return (
-    !!currentSelectedProject.value &&
-    "lastAudioRecordingTime" in currentSelectedProject.value
-  );
-});
-
-const projectHasCameras = computed<boolean>(() => {
-  return (
-    !!currentSelectedProject.value &&
-    "lastThermalRecordingTime" in currentSelectedProject.value
-  );
-});
-
-const projectHasAudioAndThermal = computed<boolean>(() => {
-  return projectHasAudio.value && projectHasCameras.value;
-});
+export interface ActivitySearchParams {
+  // relativeDateRange: [Date, Date] | null;
+  // absoluteDateRange: [Date, Date] | null;
+  from: string | Date | undefined;
+  until: string | Date | undefined;
+  locations: "any" | LocationId[];
+  taggedBy: "human" | "ai" | "both" | "none";
+  taggedWith: "any" | string[];
+  duration: "any" | [number, number] | ["any", number] | [number, "any"];
+  includeFalsePositives: boolean;
+  includeFiltered: boolean;
+  includeNones: boolean;
+  offset: Date; // Cursor
+  labelledWith: string[] | null;
+  devices: "all" | DeviceId[];
+  recordingMode: ActivitySearchRecordingMode;
+  displayMode: ActivitySearchDisplayMode;
+}
 
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
-const availableLabels = computed(() => {
-  const labels = RecordingLabels.slice(2).map(({ text, value }) => ({
-    label: text,
-    value: (value || text).toLowerCase(),
-  }));
-  if (selectedCoolLabel.value) {
-    const label = RecordingLabels[0];
-    labels.push({
-      label: label.text,
-      value: (label.value || label.text).toLowerCase(),
-    });
+const upperFirst = (str: string): string => {
+  const trim = str.trim();
+  return trim.charAt(0).toUpperCase() + trim.slice(1);
+};
+const searchDescription = computed<string>(() => {
+  if (selectedLocations.value.length) {
+    let locations;
+    if (selectedLocations.value[0] === "any") {
+      if (locationsInSelectedTimespan.value.length === 1) {
+        locations = `at '${locationsInSelectedTimespan.value[0].name}'`;
+      } else {
+        locations = "across all locations";
+      }
+    } else {
+      if (selectedLocations.value.length === 1) {
+        locations = `at '${selectedLocations.value[0].name}'`;
+      } else if (selectedLocations.value.length === 2) {
+        locations = `across '${selectedLocations.value
+          .map(({ name }) => name)
+          .join("' and '")}'`;
+      } else {
+        locations = `across '${selectedLocations.value
+          .slice(0, selectedLocations.value.length - 1)
+          .map(({ name }) => name)
+          .join("', '")}' and '${
+          selectedLocations.value[selectedLocations.value.length - 1].name
+        }'`;
+      }
+    }
+    let timespan = "";
+    if (
+      queryValueIsDate(searchParams.value.from) &&
+      queryValueIsDate(searchParams.value.until)
+    ) {
+      const from = new Date(searchParams.value.from);
+      const until = new Date(searchParams.value.until);
+      let fromString = "";
+      let untilString = "";
+      if (
+        from.getFullYear() === until.getFullYear() &&
+        from.getFullYear() === new Date().getFullYear()
+      ) {
+        // If both dates are this year, omit the year.
+        if (from.getMonth() === until.getMonth()) {
+          fromString = `the ${dateSuffix(from.getDate())}`;
+          untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
+            until.getMonth()
+          )}`;
+        } else {
+          fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
+            from.getDate()
+          )}`;
+          untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
+            until.getDate()
+          )}`;
+        }
+      } else {
+        if (
+          from.getMonth() === until.getMonth() &&
+          from.getFullYear() === until.getFullYear()
+        ) {
+          fromString = `the ${dateSuffix(from.getDate())}`;
+          untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
+            until.getMonth()
+          )} ${until.getFullYear()}`;
+        } else {
+          fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
+            from.getDate()
+          )} ${from.getFullYear()}`;
+          untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
+            until.getDate()
+          )} ${until.getFullYear()}`;
+        }
+      }
+      if (isSameDay(from, until)) {
+        timespan = `on the ${dateSuffix(from.getDate())} of ${fullMonthName(
+          from.getMonth()
+        )}`;
+        if (from.getFullYear() !== new Date().getFullYear()) {
+          timespan += ` ${from.getFullYear()}`;
+        }
+      } else {
+        timespan = `between ${fromString} and ${untilString}`;
+      }
+    } else {
+      timespan = `${
+        availableDateRanges.value.find(
+          ({ from }) => from === searchParams.value.from
+        )?.label
+      }`;
+    }
+    // At any time.  Since this project was created.  Since the beginning of this project.
+    return `${upperFirst(
+      searchParams.value.displayMode
+    )} ${locations} ${timespan}.`;
   }
-  if (selectedFlaggedLabel.value) {
-    const label = RecordingLabels[1];
-    labels.push({
-      label: label.text,
-      value: (label.value || label.text).toLowerCase(),
-    });
-  }
-  return labels;
+  return "";
 });
+const arraysAreEqual = (
+  a: LocationQueryValue[],
+  b: LocationQueryValue[]
+): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (const item of a) {
+    if (!b.includes(item)) {
+      return false;
+    }
+  }
+  return true;
+};
+const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
+  const diff: Record<string, LocationQueryValue | LocationQueryValue[]> = {};
+  const allKeys = {
+    ...next,
+    ...prev,
+  };
+  next = next as LocationQuery;
+  prev = prev as LocationQuery;
+  for (const key of Object.keys(allKeys)) {
+    if (
+      Array.isArray(next[key]) &&
+      Array.isArray(prev[key]) &&
+      !arraysAreEqual(
+        next[key] as LocationQueryValue[],
+        prev[key] as LocationQueryValue[]
+      )
+    ) {
+      diff[key] = next[key];
+    } else if (next[key] !== prev[key]) {
+      if (next[key]) {
+        diff[key] = next[key];
+      } else {
+        diff[key] = prev[key];
+      }
+    }
+  }
+  return diff;
+};
 
-const selectedLabels = ref<string[]>([]);
+const DefaultSearchParams = {
+  "display-mode": ActivitySearchDisplayMode.Visits,
+  "recording-mode": ActivitySearchRecordingMode.Cameras,
+  locations: "any",
+  from: "24-hours-ago",
+};
+
+const searchParams = ref<ActivitySearchParams>({
+  displayMode: ActivitySearchDisplayMode.Visits,
+  recordingMode: ActivitySearchRecordingMode.Cameras,
+  locations: "any",
+  from: "24-hours-ago",
+});
 
 const now = new Date();
 const oneDayAgo = new Date(new Date().setDate(now.getDate() - 1));
@@ -152,70 +280,267 @@ const threeMonthsAgo = new Date(new Date().setMonth(now.getMonth() - 3));
 const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1));
 const lastTwentyFourHours: [Date, Date] = [oneDayAgo, now];
 
-const searchIsValid = computed<boolean>(() => {
-  const hasValidDateRange =
-    Array.isArray(selectedDateRange.value) ||
-    Array.isArray(customDateRange.value);
-  const hasAdvancedSettingsSelected = showAdvanced.value;
-  if (!hasAdvancedSettingsSelected) {
-    return hasValidDateRange && selectedLocations.value.length !== 0;
-  }
-
-  // Make sure we have a valid state
-  return false;
-});
-
-const dateRangePicker = ref<typeof Datepicker>();
-const selectedDateRange = ref<[Date, Date] | "custom">(lastTwentyFourHours);
-const customDateRange = ref<[Date, Date] | null>(null);
-const combinedDateRange = computed<[Date, Date]>(() => {
-  if (selectedDateRange.value === "custom") {
-    if (customDateRange.value !== null) {
-      // Make custom range be from beginning of start date til end of end date.
-      // const start = DateTime.fromJSDate(new Date(customDateRange.value[0]), {
-      //   zone: timezoneForProject.value,
-      // })
-      //   .set({
-      //     hour: 0,
-      //     minute: 0,
-      //     second: 0,
-      //     millisecond: 0,
-      //   })
-      //   .toJSDate();
-      // const end = DateTime.fromJSDate(new Date(customDateRange.value[1]), {
-      //   zone: timezoneForProject.value,
-      // })
-      //   .set({
-      //     hour: 23,
-      //     minute: 59,
-      //     second: 59,
-      //     millisecond: 999,
-      //   })
-      //   .toJSDate();
-      const start = new Date(customDateRange.value[0]);
-      const end = new Date(customDateRange.value[1]);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return [start, end];
-    }
-    return [new Date(), new Date()];
-  } else {
-    return selectedDateRange.value as [Date, Date];
-  }
-});
-
-let customAutomaticallySet = false;
-const maybeSelectDatePicker = (value: [Date, Date] | string) => {
-  if (value === "custom" && !customAutomaticallySet) {
-    nextTick(() => {
-      if (dateRangePicker.value) {
-        (dateRangePicker.value as DatePickerMethods).openMenu();
+const maxDateForProject = computed<Date>(() => {
+  // Latest active location
+  let latest = new Date();
+  latest.setFullYear(2010);
+  if (locations.value) {
+    for (const location of locations.value) {
+      const latestDateForLocation = getLatestDateForLocationInRecordingMode(
+        location,
+        searchParams.value.recordingMode
+      );
+      if (latestDateForLocation && latestDateForLocation > latest) {
+        latest = latestDateForLocation;
       }
+    }
+  }
+  return latest;
+});
+
+const availableDateRanges = computed<
+  { range: [Date, Date]; from: string; label: string }[]
+>(() => {
+  const earliest = minDateForProject.value;
+  const latest = maxDateForProject.value;
+  const ranges = [];
+  if (earliest < oneDayAgo && latest > oneDayAgo) {
+    ranges.push({
+      range: lastTwentyFourHours,
+      from: "24-hours-ago",
+      label: "in the last 24 hours",
     });
-  } else if (customAutomaticallySet) {
-    customAutomaticallySet = false;
+  }
+  if (earliest < threeDaysAgo && latest > threeDaysAgo) {
+    ranges.push({
+      range: [threeDaysAgo, now],
+      from: "3-days-ago",
+      label: "in the last 3 days",
+    });
+  }
+  if (earliest < oneWeekAgo && latest > oneWeekAgo) {
+    ranges.push({
+      range: [oneWeekAgo, now],
+      from: "1-week-ago",
+      label: "in the last week",
+    });
+  }
+  if (earliest < oneMonthAgo && latest > oneMonthAgo) {
+    ranges.push({
+      range: [oneMonthAgo, now],
+      from: "1-month-ago",
+      label: "in the last month",
+    });
+  }
+  if (earliest < threeMonthsAgo && latest > threeMonthsAgo) {
+    ranges.push({
+      range: [threeMonthsAgo, now],
+      from: "3-months-ago",
+      label: "in the last 3 months",
+    });
+  }
+  if (earliest < oneYearAgo && latest > oneYearAgo) {
+    ranges.push({
+      range: [oneYearAgo, now],
+      from: "1-year-ago",
+      label: "in the last year",
+    });
+  }
+  ranges.push({ range: [earliest, now], from: "any", label: "at any time" });
+  return ranges;
+});
+
+const deserialiseAndValidateRouteValue = (
+  key: string,
+  value: LocationQueryValue | LocationQueryValue[]
+): { replacement: string | null | false } => {
+  if (Array.isArray(value)) {
+    value = value.join(",");
+  }
+  if (value === null) {
+    return { replacement: null };
+  } else if (["display-mode", "recording-mode"].includes(key)) {
+    // const parts = key.split("-");
+    // const first = parts.shift() as string;
+    // const camelKey: string = first + parts.map(upperFirst);
+    switch (key) {
+      case "display-mode":
+        if (
+          Object.values(ActivitySearchDisplayMode).includes(
+            value as ActivitySearchDisplayMode
+          )
+        ) {
+          searchParams.value.displayMode = value as ActivitySearchDisplayMode;
+        } else {
+          // Replace with default value
+          return {
+            replacement: ActivitySearchDisplayMode.Visits,
+          };
+        }
+        break;
+      case "recording-mode":
+        if (
+          Object.values(ActivitySearchRecordingMode).includes(
+            value as ActivitySearchRecordingMode
+          )
+        ) {
+          searchParams.value.recordingMode =
+            value as ActivitySearchRecordingMode;
+        } else {
+          // Replace with default value
+          return {
+            replacement: ActivitySearchRecordingMode.Cameras,
+          };
+        }
+        break;
+    }
+  } else if (key === "from") {
+    const knownLabels = availableDateRanges.value.reduce(
+      (arr: Record<string, DateRange>, { from, range }) => {
+        arr[from] = range;
+        return arr;
+      },
+      {}
+    );
+    if (value in knownLabels) {
+      dateRange.value[0] = knownLabels[value][0];
+      dateRange.value[1] = knownLabels[value][1];
+      searchParams.value.from = value;
+    } else {
+      const date = new Date(value);
+      if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
+        return { replacement: availableDateRanges.value[0].from };
+      }
+      dateRange.value[0] = date;
+      searchParams.value.from = date;
+    }
+  } else if (key === "until") {
+    const date = new Date(value);
+    if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
+      return { replacement: null };
+    }
+    dateRange.value[1] = date;
+    searchParams.value.until = date;
+  } else if (key === "locations") {
+    // Check that the location ids are valid.
+    let ids: number[];
+    if (Array.isArray(value)) {
+      ids = value.map(Number);
+    } else {
+      ids = value.toString().split(",").map(Number);
+    }
+    // Also need to make sure locations is computed after the timespan
+    // that lets us know which locations are valid for that timespan.
+    // Maybe need to do this in two passes.
+    if (locationsInSelectedTimespan.value.length) {
+      const availableLocations = locationsInSelectedTimespan.value.map(
+        ({ id }) => id
+      );
+      const validIds = ids.filter((id) => availableLocations.includes(id));
+      if (validIds.length === ids.length) {
+        searchParams.value.locations = ids;
+      } else {
+        if (validIds.length !== 0) {
+          return { replacement: validIds.join(",") };
+        } else {
+          // No locations were valid, default to any location
+          return { replacement: "any" };
+        }
+      }
+    } else {
+      console.error("Invalid timespan?");
+    }
+  } else {
+    return { replacement: null };
+  }
+  return { replacement: false };
+};
+const syncSearchQuery = async (
+  next: LocationQuery,
+  prev: LocationQuery | undefined
+) => {
+  if (prev === undefined) {
+    prev = DefaultSearchParams as LocationQuery;
+  }
+  // IMPORTANT: We need to make sure the dateRange is set correctly first.
+  // But to get the dateRange, we need to have validated that any locations passed in
+  // are valid for the dateRange.
+
+  // So: get the internal dateRange from `next`, then do a second pass to validate it?
+  // So if we pass in location A, and the last-24-hours, we want to expand that to be whatever
+  // minimum date range makes sense for location A.
+
+  // If we pass in location `any`, and the last 24 hours, we select the minimum valid date range for any locations.
+  // using minDateForProject.
+  // First we filter out any invalid locations in location, and if all locations are selected, we replace with `any`.
+  const diff = diffChanges(next, prev);
+  const replacements: Record<string, string | null> = {};
+  if (diff.locations) {
+    diff.locations = validateLocations(diff.locations, locations.value || []);
+  }
+  if (next.from) {
+    // Set the lower time bound first
+    deserialiseAndValidateRouteValue("from", next.from);
+  }
+
+  for (const [key, val] of Object.entries(diff)) {
+    const replacement = deserialiseAndValidateRouteValue(key, val);
+    if (replacement.replacement !== false) {
+      replacements[key] = replacement.replacement;
+    }
+  }
+  const isDateRange =
+    queryValueIsDate(next.from) && queryValueIsDate(next.until);
+  if (Object.entries(replacements).length) {
+    const query: Record<string, any> = {
+      ...DefaultSearchParams,
+      ...route.query,
+      ...replacements,
+    };
+    for (const [key, val] of Object.entries(query)) {
+      if (val === null) {
+        delete query[key];
+      }
+    }
+    if (!isDateRange && "until" in query) {
+      delete query.until;
+      delete searchParams.value.until;
+    }
+    await router.replace({
+      query,
+    });
   }
 };
+const router = useRouter();
+const route = useRoute();
+const watchQuery = ref<WatchStopHandle | null>(null);
+
+const loading = ref<boolean>(false);
+onBeforeMount(async () => {
+  loading.value = true;
+  if (currentProject.value) {
+    // TODO: This could be provided for group at a higher level.
+    locations.value = await getLocationsForProject(
+      (currentProject.value as SelectedProject).id.toString(),
+      true
+    );
+    // Validate the current query on load.
+    watchQuery.value = watch(() => route.query, syncSearchQuery, {
+      deep: true,
+      immediate: true,
+    });
+  }
+  loading.value = false;
+});
+onBeforeUnmount(() => {
+  //watchParams();
+  watchQuery.value && watchQuery.value();
+});
+
+const dateRange = ref<[Date, Date]>([new Date(), new Date()]);
+// const dateRange = computed<DateRange>(() => {
+//   return [new Date(), new Date()];
+// });
 
 const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
   return {
@@ -227,29 +552,10 @@ const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
   };
 };
 
-const getLatestDateForLocation = (
-  location: ApiLocationResponse
-): Date | null => {
-  if (recordingMode.value === "cameras") {
-    return (
-      (location.lastThermalRecordingTime &&
-        new Date(location.lastThermalRecordingTime)) ||
-      null
-    );
-  } else if (recordingMode.value === "audio") {
-    return (
-      (location.lastAudioRecordingTime &&
-        new Date(location.lastAudioRecordingTime)) ||
-      null
-    );
-  }
-  return null;
-};
-
 const locationHasRecordings = (location: ApiLocationResponse) => {
-  if (recordingMode.value === "audio") {
+  if (searchParams.value.recordingMode === "audio") {
     return !!location.lastAudioRecordingTime;
-  } else if (recordingMode.value === "cameras") {
+  } else if (searchParams.value.recordingMode === "cameras") {
     return !!location.lastThermalRecordingTime;
   }
   return !!(
@@ -278,20 +584,16 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
   );
 });
 
-const recordingMode = ref<"cameras" | "audio">("cameras");
-
-watch(recordingMode, () => {
-  // If the selected date range no longer applies to the current mode, reset it.
-  if (
-    combinedDateRange.value[0] < minDateForProject.value ||
-    combinedDateRange.value[1] > maxDateForProject.value
-  ) {
-    console.warn("Should adjust range");
-    selectedDateRange.value = commonDateRanges.value[0].value;
-    customDateRange.value = null;
+const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
+  if (searchParams.value.locations === "any") {
+    return ["any"];
   }
+  return searchParams.value.locations
+    .map((locId) =>
+      locationsInSelectedTimespan.value.find(({ id }) => id === locId)
+    )
+    .filter((item) => !!item);
 });
-const selectedLocations = ref<(ApiLocationResponse | "any")[]>(["any"]);
 
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
   if (locations.value) {
@@ -299,36 +601,19 @@ const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
       if (location.location.lat === 0 && location.location.lng === 0) {
         return false;
       }
-      const latestDateForLocation = getLatestDateForLocation(location);
+      const latestDateForLocation = getLatestDateForLocationInRecordingMode(
+        location,
+        searchParams.value.recordingMode
+      );
       return (
         latestDateForLocation &&
-        latestDateForLocation >= combinedDateRange.value[0] &&
-        new Date(location.activeAt) <= combinedDateRange.value[1]
+        latestDateForLocation >= dateRange.value[0] &&
+        new Date(location.activeAt) <= dateRange.value[1]
       );
     });
   }
   return [];
 });
-const onChangeLocationsSelect = (
-  value: (ApiLocationResponse | "any")[],
-  _select: MultiSelectEl
-) => {
-  if (!optionsRemapping.value) {
-    if (value.length > 1) {
-      nextTick(() => {
-        const hasAny = selectedLocations.value.indexOf("any");
-        if (hasAny >= 0) {
-          selectedLocations.value.splice(hasAny, 1);
-          remapLocationOptions(locationsInSelectedTimespanOptions.value);
-        }
-      });
-    } else if (value.length === 0) {
-      nextTick(() => {
-        selectedLocations.value = ["any"];
-      });
-    }
-  }
-};
 
 const locationsInSelectedTimespanForMap = computed<NamedPoint[]>(() => {
   return locationsInSelectedTimespan.value
@@ -338,80 +623,12 @@ const locationsInSelectedTimespanForMap = computed<NamedPoint[]>(() => {
         if (selectedLocations.value.includes("any")) {
           return true;
         } else {
-          return !!selectedLocations.value.find(
-            (selectedLocation: ApiLocationResponse | "any") => {
-              return (
-                (selectedLocation as ApiLocationResponse).id === location.id
-              );
-            }
-          );
+          return !!selectedLocations.value.find(({ id }) => id === location.id);
         }
       }
     })
     .map(mapLocationForMap);
 });
-
-const locationsInSelectedTimespanOptions = computed<
-  { value: ApiLocationResponse | "any"; label: string }[]
->(() => {
-  return [
-    { value: "any", label: "Any location", disabled: true },
-    ...locationsInSelectedTimespan.value.map((location) => ({
-      value: location,
-      label: location.name,
-    })),
-  ];
-});
-
-interface LocationOption {
-  value: "any" | ApiLocationResponse;
-  label: string;
-  disabled?: boolean;
-}
-interface MultiSelectEl extends Multiselect {
-  clear: () => void;
-  select: (option: LocationOption) => void;
-}
-
-const selectedLocationsSelect = ref<MultiSelectEl>();
-const optionsInited = ref<boolean>(false);
-const optionsRemapping = ref<boolean>(false);
-
-const remapLocationOptions = (nextOptions: LocationOption[]) => {
-  // If this changed, we need to remap the selected locations to the existing
-  // locations.
-  const selected = [...selectedLocations.value];
-  nextTick(() => {
-    if (optionsInited.value) {
-      optionsRemapping.value = true;
-      if (selectedLocationsSelect.value) {
-        const multiselectEl = selectedLocationsSelect.value as MultiSelectEl;
-        multiselectEl.clear();
-        for (const item of selected) {
-          if (item === "any") {
-            multiselectEl.select(nextOptions[0]);
-          } else {
-            const match = nextOptions.find(
-              (option) =>
-                (option.value as ApiLocationResponse).id &&
-                (option.value as ApiLocationResponse).id === item.id
-            );
-            if (match) {
-              multiselectEl.select(match);
-            }
-          }
-        }
-        if (selectedLocations.value.length === 0) {
-          multiselectEl.select(nextOptions[0]);
-        }
-      }
-      optionsRemapping.value = false;
-    } else {
-      optionsInited.value = true;
-    }
-  });
-};
-watch(locationsInSelectedTimespanOptions, remapLocationOptions);
 
 const minDateForProject = computed<Date>(() => {
   // Earliest active location
@@ -443,53 +660,6 @@ const minDateForSelectedLocations = computed<Date>(() => {
   }
   return earliest;
 });
-
-const maxDateForProject = computed<Date>(() => {
-  // Latest active location
-  let latest = new Date();
-  latest.setFullYear(2010);
-  if (locations.value) {
-    for (const location of locations.value) {
-      const latestDateForLocation = getLatestDateForLocation(location);
-      if (latestDateForLocation && latestDateForLocation > latest) {
-        latest = latestDateForLocation;
-      }
-    }
-  }
-  return latest;
-});
-
-const maxDateForSelectedLocations = computed<Date>(() => {
-  if (selectedLocations.value.includes("any")) {
-    return maxDateForProject.value;
-  }
-  // Latest active location
-  let latest = new Date();
-  latest.setFullYear(2010);
-  if (selectedLocations.value) {
-    for (const location of selectedLocations.value) {
-      const latestDateForLocation = getLatestDateForLocation(
-        location as ApiLocationResponse
-      );
-      if (latestDateForLocation && latestDateForLocation > latest) {
-        latest = latestDateForLocation;
-      }
-    }
-  }
-  return latest;
-});
-
-const maxDateForProjectMinusTwoWeeks = computed<Date>(() => {
-  const max = new Date(maxDateForProject.value);
-  max.setDate(max.getDate() - 14);
-  return new Date(max);
-});
-
-const maxDateForSelectedLocationsMinusTwoWeeks = computed<Date>(() => {
-  const max = new Date(maxDateForSelectedLocations.value);
-  max.setDate(max.getDate() - 14);
-  return new Date(max);
-});
 const highlightPoint = (_point: NamedPoint) => {
   // TODO: Could highlight all visible list items that correspond to the highlighted map location?
 };
@@ -497,108 +667,11 @@ const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
   locationsInSelectedTimespan
 );
 
-const timezoneForProject = computed<string>(() => {
-  return timezoneForLatLng(canonicalLatLngForActiveLocations.value);
-});
-
-const commonDateRanges = computed<
-  { value: [Date, Date] | "custom"; label: string }[]
->(() => {
-  const earliest = minDateForProject.value;
-  const latest = maxDateForProject.value;
-  const ranges = [];
-  if (earliest < oneDayAgo && latest > oneDayAgo) {
-    ranges.push({
-      label: "Last 24 hours",
-      value: lastTwentyFourHours,
-    });
-  }
-  if (earliest < threeDaysAgo && latest > threeDaysAgo) {
-    ranges.push({
-      label: "Last 3 days",
-      value: [threeDaysAgo, now],
-    });
-  }
-  if (earliest < oneWeekAgo && latest > oneWeekAgo) {
-    ranges.push({
-      label: "Last week",
-      value: [oneWeekAgo, now],
-    });
-  }
-  if (earliest < oneMonthAgo && latest > oneMonthAgo) {
-    ranges.push({
-      label: "Last month",
-      value: [oneMonthAgo, now],
-    });
-  }
-  if (earliest < threeMonthsAgo && latest > threeMonthsAgo) {
-    ranges.push({
-      label: "Last 3 months",
-      value: [threeMonthsAgo, now],
-    });
-  }
-  if (earliest < oneYearAgo && latest > oneYearAgo) {
-    ranges.push({
-      label: "Last year",
-      value: [oneYearAgo, now],
-    });
-  }
-  ranges.push(
-    {
-      label: "Any time",
-      value: [earliest, now],
-    },
-    {
-      label: "Custom date range",
-      value: "custom",
-    }
-  );
-  return ranges as { value: [Date, Date] | "custom"; label: string }[];
-});
-
-const displayMode = ref<"visits" | "recordings">("visits");
-watch(displayMode, () => {
-  // Redo search when display mode changes
-  doSearch();
-});
-
-const taggedBy = ref<("AI" | "human")[]>([]);
-const taggedByOptions = [
-  {
-    text: "Human",
-    value: TagMode.HumanTagged,
-  },
-  {
-    text: "A.I.",
-    value: TagMode.AutomaticallyTagged,
-  },
-];
-
-const exclusiveTagOptions = [
-  {
-    text: "Only A.I.",
-    value: TagMode.AutomaticOnly,
-  },
-  {
-    text: "Untagged", // Are there any actual untagged tracks?
-    value: TagMode.UnTagged,
-  },
-  {
-    text: "Only Human", // Are there any with only human tags?
-    value: TagMode.HumanOnly,
-  },
-  {
-    text: "Untagged by Humans",
-    value: TagMode.NoHuman, // Untagged or ai tagged
-  },
-  {
-    text: "Tagged by both",
-    value: TagMode.AutomaticHuman,
-  },
-];
-
-const includeSubSpeciesTags = ref<boolean>(true);
-const selectedTags = ref<string[]>([]);
+// const displayMode = ref<"visits" | "recordings">("visits");
+// watch(displayMode, () => {
+//   // Redo search when display mode changes
+//   doSearch();
+// });
 
 const loadedRecordings = ref<ApiRecordingResponse[]>([]);
 const loadedRecordingIds = ref<RecordingId[]>([]);
@@ -647,37 +720,6 @@ const chunkedRecordings = ref<
     items: (RecordingItem | SunItem)[];
   }[]
 >([]);
-
-const format = (dates: Date[]) => {
-  return dates
-    .map((date) => {
-      const day = date.getDate().toString().padStart(2, "0");
-      const month = (date.getMonth() + 1).toString().padStart(2, "0");
-      const year = date.getFullYear();
-
-      return `${day}/${month}/${year}`;
-    })
-    .join(" - ");
-};
-
-const loading = ref<boolean>(false);
-const showAdvanced = ref<boolean>(false);
-
-onMounted(async () => {
-  setSearchContainerHeight(windowHeight.value);
-  loading.value = true;
-  if (currentProject.value) {
-    // TODO: This could be provided for group at a higher level.
-    locations.value = await getLocationsForProject(
-      (currentProject.value as SelectedProject).id.toString(),
-      true
-    );
-    selectedDateRange.value = commonDateRanges.value[0].value;
-
-    await doSearch();
-  }
-  loading.value = false;
-});
 
 interface RecordingQueryCursor {
   fromDateTime: Date;
@@ -769,8 +811,8 @@ onUpdated(() => {
 
 const getCurrentQueryHash = (): string => {
   // Keep track of the recordingState/cursor using a hash of the query,
-  const fromDateTime = combinedDateRange.value[0];
-  const untilDateTime = combinedDateRange.value[1];
+  const fromDateTime = dateRange.value[0];
+  const untilDateTime = dateRange.value[1];
   return JSON.stringify({
     ...getCurrentQuery(),
     displayMode: displayMode.value,
@@ -791,7 +833,7 @@ interface RecordingQueryBase {
 const getCurrentQuery = (): RecordingQueryBase => {
   const query: RecordingQueryBase = {
     types:
-      recordingMode.value === "cameras"
+      searchParams.value.recordingMode === "cameras"
         ? [
             ConcreteRecordingType.ThermalRaw,
             ConcreteRecordingType.TrailCamVideo,
@@ -908,12 +950,12 @@ const resetQuery = (
     untilDateTime,
   };
 };
-
+const displayMode = ref<"visits" | "recordings">("visits");
 // NOTE: We try to load at most one month at a time.
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   if (currentProject.value) {
-    const fromDateTime = combinedDateRange.value[0];
-    const untilDateTime = combinedDateRange.value[1];
+    const fromDateTime = dateRange.value[0];
+    const untilDateTime = dateRange.value[1];
     const query = getCurrentQuery();
     const queryHash = getCurrentQueryHash();
     const isNewQuery = queryHash !== currentQueryHash.value;
@@ -948,7 +990,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       // First time through, we want to count all for a given timespan query.
       const itemHeight = displayMode.value === "recordings" ? 80 : 160;
       const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
-      let response;
+      let response: FetchResult<BulkRecordingsResponse> | BulkVisitsResponse;
       if (displayMode.value === "recordings") {
         response = await queryRecordingsInProject(project.id, {
           ...query,
@@ -956,7 +998,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           fromDateTime: currentQueryCursor.value.fromDateTime,
           untilDateTime: currentQueryCursor.value.untilDateTime,
         });
-      } else if (displayMode.value === "visits") {
+      } else {
+        // Else visits
         console.log(
           "Requesting",
           DateTime.fromJSDate(
@@ -979,11 +1022,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
         if (displayMode.value === "recordings") {
-          const recordingsResponse = response as SuccessFetchResult<{
-            rows: ApiRecordingResponse[];
-            limit: number;
-            count: number;
-          }>;
+          const recordingsResponse =
+            response as SuccessFetchResult<BulkRecordingsResponse>;
           loadedFewerItemsThanRequested =
             recordingsResponse.result.count < recordingsResponse.result.limit;
           const recordings = recordingsResponse.result.rows;
@@ -998,8 +1038,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             console.log("Got until date", gotUntilDate);
           }
         } else if (displayMode.value === "visits") {
-          const visits = response.visits as ApiVisitResponse[];
-          loadedFewerItemsThanRequested = !response.all;
+          const visitsResponse = response as BulkVisitsResponse;
+          const visits = visitsResponse.visits as ApiVisitResponse[];
+          loadedFewerItemsThanRequested = !visitsResponse.all;
 
           if (visits.length !== 0) {
             // Set current time to 8.02am Fri 31st March for incomplete visits
@@ -1056,90 +1097,23 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
 const searching = ref<boolean>(false);
 const doSearch = async () => {
-  if (searchIsValid.value) {
-    searching.value = true;
-    await getClassifications();
-    await getRecordingsOrVisitsForCurrentQuery();
-    searching.value = false;
-  }
-};
-
-const exporting = ref<boolean>(false);
-const doExport = async () => {
-  exporting.value = true;
-  // TODO
-  // if (displayMode.value === "visits") {
-  //   await getVisitsForCurrentQuery();
-  // } else if (displayMode.value === "recordings") {
-  //   await getRecordingsForCurrentQuery();
+  // FIXME
+  // if (searchIsValid.value) {
+  searching.value = true;
+  await getClassifications();
+  await getRecordingsOrVisitsForCurrentQuery();
+  searching.value = false;
   // }
-  exporting.value = false;
 };
 
-const showFilteredRecordings = ref<boolean>(false);
-
-const FLAG = "requires review";
-const COOL = "cool";
-const selectedLabelGetterSetter = (label: string) => ({
-  get: () => {
-    return selectedLabels.value.includes(label);
-  },
-  set: (val: boolean) => {
-    if (val && !selectedLabels.value.includes(label)) {
-      selectedLabels.value.push(label);
-    } else {
-      selectedLabels.value.splice(selectedLabels.value.indexOf(label), 1);
-    }
-  },
-});
-
-const selectedFlaggedLabel = computed<boolean>(selectedLabelGetterSetter(FLAG));
-const selectedCoolLabel = computed<boolean>(selectedLabelGetterSetter(COOL));
-
-const selectedOtherLabels = ref<boolean>(false);
-const allPredatorLabels = ["mustelid", "possum", "cat", "rodent", "hedgehog"];
-const allPredators = computed<boolean>({
-  get: () => {
-    for (const label of allPredatorLabels) {
-      if (!selectedTags.value.includes(label)) {
-        return false;
-      }
-    }
-    return true;
-  },
-  set: (val: boolean) => {
-    if (val) {
-      const newTags = [];
-      for (const label of allPredatorLabels) {
-        if (!selectedTags.value.includes(label)) {
-          newTags.push(label);
-        }
-      }
-      if (newTags.length) {
-        selectedTags.value = [...selectedTags.value, ...newTags];
-      }
-    } else {
-      selectedTags.value = selectedTags.value.filter(
-        (label) => !allPredatorLabels.includes(label)
-      );
-    }
-  },
-});
-const somePredatorsSelected = computed<boolean>(() => {
-  const onlyPredators = selectedTags.value.filter((label) =>
-    allPredatorLabels.includes(label)
-  );
-  return (
-    onlyPredators.length !== 0 &&
-    onlyPredators.length !== allPredatorLabels.length
-  );
-});
-const maybeUnselectedOtherLabels = (val: boolean) => {
-  if (!val) {
-    selectedLabels.value = selectedLabels.value.filter(
-      (item) => item === COOL || item === FLAG
-    );
-  }
+const doExport = async () => {
+  // FIXME
+  // if (searchIsValid.value) {
+  //   searching.value = true;
+  //   await getClassifications();
+  //   await getRecordingsOrVisitsForCurrentQuery();
+  //   searching.value = false;
+  // }
 };
 
 const fromDateMinusIncrement = computed<Date>(() => {
@@ -1147,7 +1121,7 @@ const fromDateMinusIncrement = computed<Date>(() => {
   // Use that initial increment to expand search backwards in time by that amount.
   //const currentInc =
 
-  const fromDateTime = new Date(combinedDateRange.value[0]);
+  const fromDateTime = new Date(dateRange.value[0]);
   const setBackFourWeeks = fromDateTime.setDate(fromDateTime.getDate() - 28);
   const from = Math.max(
     minDateForSelectedLocations.value.getTime(),
@@ -1169,7 +1143,6 @@ const relativeTimeIncrementInPast = computed<string>(() => {
   }) as string;
 });
 
-const route = useRoute();
 const currentlySelectedRecording = computed<RecordingId | null>(
   () =>
     (route.params.currentRecordingId &&
@@ -1180,33 +1153,39 @@ const currentlySelectedRecording = computed<RecordingId | null>(
 // TODO: Load offset date from url params, and have the ability to also scroll upwards and load more,
 //  as well as expand the search forwards in time.
 
+const isCustomDateRange = computed<boolean>(
+  () =>
+    queryValueIsDate(searchParams.value.from) &&
+    queryValueIsDate(searchParams.value.until)
+);
+const customAutomaticallySet = ref<boolean>(false);
+
 const adjustTimespanBackwards = async () => {
   // FIXME - when we adjust the timespan backwards, we need to make sure we keep the existing
   //  locations selection.
-  if (selectedDateRange.value === "custom") {
-    if (customDateRange.value) {
-      customDateRange.value[0] = fromDateMinusIncrement.value;
-    } else {
-      // Error
-    }
+  if (isCustomDateRange.value) {
+    searchParams.value.from = fromDateMinusIncrement.value;
   } else {
-    const initialSelectedDateRangeUntil = new Date(selectedDateRange.value[1]);
-    customAutomaticallySet = true;
-    selectedDateRange.value = "custom";
-    if (customDateRange.value) {
-      customDateRange.value[0] = fromDateMinusIncrement.value;
-    } else {
-      customDateRange.value = [
-        fromDateMinusIncrement.value,
-        initialSelectedDateRangeUntil,
-      ];
-      // NOTE: We need to wait a tick for computed items to resolve.
-      await nextTick();
-      customDateRange.value = [
-        fromDateMinusIncrement.value,
-        initialSelectedDateRangeUntil,
-      ];
-    }
+    searchParams.value.from = fromDateMinusIncrement.value;
+    searchParams.value.until = dateRange.value[1];
+    //
+    // const initialSelectedDateRangeUntil = new Date(selectedDateRange.value[1]);
+    customAutomaticallySet.value = true;
+    // selectedDateRange.value = "custom";
+    // if (customDateRange.value) {
+    //   customDateRange.value[0] = fromDateMinusIncrement.value;
+    // } else {
+    //   customDateRange.value = [
+    //     fromDateMinusIncrement.value,
+    //     initialSelectedDateRangeUntil,
+    //   ];
+    //   // NOTE: We need to wait a tick for computed items to resolve.
+    //   await nextTick();
+    //   customDateRange.value = [
+    //     fromDateMinusIncrement.value,
+    //     initialSelectedDateRangeUntil,
+    //   ];
+    // }
   }
   // console.log("Cursor was", JSON.stringify(currentQueryCursor.value, null, '\t'));
   currentQueryCursor.value.fromDateTime = fromDateMinusIncrement.value;
@@ -1218,7 +1197,6 @@ const adjustTimespanBackwards = async () => {
   // can update the total.
   await doSearch();
 };
-const router = useRouter();
 
 const selectedRecording = async (recordingId: RecordingId) => {
   console.log("Selected recording", recordingId);
@@ -1234,22 +1212,9 @@ const selectedVisit = (visit: ApiVisitResponse) => {
   currentlySelectedVisit.value = visit;
 };
 
-const upperFirst = (str: string): string => {
-  const trim = str.trim();
-  return trim.charAt(0).toUpperCase() + trim.slice(1);
-};
-const searchParameters = computed<string>(() => {
-  let locations = "";
-  if (selectedLocations.value[0] === "any") {
-    locations = "all locations";
-  }
-  // At any time.  Since this project was created.  Since the beginning of this project.
-  return `${upperFirst(displayMode.value)} across ${locations}`;
-});
-
 watch(
   currentlySelectedVisit,
-  (visit: ApiVisitResponse | null, prevVisit: ApiVisitResponse | null) => {
+  (visit: ApiVisitResponse | null, _prevVisit: ApiVisitResponse | null) => {
     if (visit && route.name === "activity") {
       // Set route so that modal shows up
       const recordingIds = visit.recordings.map(({ recId, tracks }) => ({
@@ -1259,12 +1224,10 @@ watch(
       const params: Record<string, string> = {
         visitLabel: visit.classification || "",
         currentRecordingId: recordingIds[0].recId.toString(),
-        trackId:
-          recordingIds[0].tracks &&
+        trackId: (recordingIds[0].tracks &&
           recordingIds[0].tracks.length &&
-          recordingIds[0].tracks[0].id.toString(),
+          recordingIds[0].tracks[0].id.toString()) as string,
       };
-
       if (recordingIds.length) {
         params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
       }
@@ -1277,7 +1240,6 @@ watch(
 );
 
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
-
 const loadedRouteName = ref<string>("");
 
 const closedModal = () => {
@@ -1300,6 +1262,27 @@ provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
 const projectHasLocationsWithRecordings = computed<boolean>(() => {
   return locationsForMap.value.length !== 0;
 });
+
+const mapWidthPx = computed<number>(() => {
+  if (windowWidth.value >= 1200) {
+    return Math.min(
+      500,
+      windowWidth.value - (searchContainerLeft.value + 810 + 24)
+    );
+  } else if (windowWidth.value >= 992) {
+    return 250;
+  } else {
+    return 0;
+  }
+});
+
+const showOffcanvasSearch = ref<boolean>(false);
+const toggleOffcanvasSearch = () => {
+  showOffcanvasSearch.value = !showOffcanvasSearch.value;
+};
+const shouldShowSearchControlsInline = computed<boolean>(
+  () => windowWidth.value >= 768
+);
 </script>
 <template>
   <section-header>Activity</section-header>
@@ -1325,230 +1308,52 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
     class="d-flex flex-md-row flex-column-reverse flex-fill search-container"
     ref="searchContainer"
   >
-    <div class="search-controls-outer">
-      <div class="search-controls">
-        <div>
-          <div
-            class="btn-group d-flex mb-2"
-            role="group"
-            aria-label="Toggle between camera and bird monitor results"
-            v-if="projectHasAudioAndThermal"
-          >
-            <input
-              type="radio"
-              class="btn-check"
-              name="recording-mode"
-              id="recording-mode-cameras"
-              autocomplete="off"
-              v-model="recordingMode"
-              value="cameras"
-            />
-            <label
-              class="btn btn-outline-secondary w-50"
-              for="recording-mode-cameras"
-              >Cameras</label
-            >
-            <input
-              type="radio"
-              class="btn-check"
-              name="recording-mode"
-              id="recording-mode-audio"
-              autocomplete="off"
-              v-model="recordingMode"
-              value="audio"
-            />
-            <label
-              class="btn btn-outline-secondary w-50"
-              for="recording-mode-audio"
-              >Bird Monitors</label
-            >
-          </div>
-          <div
-            class="btn-group d-flex"
-            role="group"
-            aria-label="Toggle between results groups as visits or as recordings"
-          >
-            <input
-              type="radio"
-              class="btn-check"
-              name="display-mode"
-              id="display-mode-visits"
-              autocomplete="off"
-              v-model="displayMode"
-              :value="'visits'"
-            />
-            <label
-              class="btn btn-outline-secondary w-50"
-              for="display-mode-visits"
-              >Visits</label
-            >
-            <input
-              type="radio"
-              class="btn-check"
-              name="display-mode"
-              id="display-mode-recordings"
-              autocomplete="off"
-              v-model="displayMode"
-              :value="'recordings'"
-            />
-            <label
-              class="btn btn-outline-secondary w-50"
-              for="display-mode-recordings"
-              >Recordings</label
-            >
-          </div>
-        </div>
-        <div class="mt-2">
-          <label class="fs-7">Date range</label>
-          <multiselect
-            v-model="selectedDateRange"
-            :options="commonDateRanges"
-            value-prop="value"
-            label="label"
-            :searchable="false"
-            :can-clear="false"
-            :can-deselect="false"
-            class="ms-bootstrap"
-            @change="maybeSelectDatePicker"
-          />
-          <!--  TODO: Should this be using min/maxDateForSelectedLocations?    -->
-          <datepicker
-            v-if="selectedDateRange === 'custom'"
-            ref="dateRangePicker"
-            class="mt-2"
-            range
-            :timezone="timezoneForProject"
-            v-model="customDateRange"
-            :min-date="minDateForProject"
-            :max-date="maxDateForProject"
-            :start-date="maxDateForProjectMinusTwoWeeks"
-            :year-range="[
-              minDateForProject.getFullYear(),
-              maxDateForProject.getFullYear(),
-            ]"
-            :text-input-options="{ format }"
-            :preview-format="format"
-            :enable-time-picker="false"
-            :format="format"
-            prevent-min-max-navigation
-            auto-apply
-          />
-        </div>
-        <div class="mt-2">
-          <label class="fs-7">Locations</label>
-          <multiselect
-            mode="tags"
-            ref="selectedLocationsSelect"
-            v-model="selectedLocations"
-            :options="locationsInSelectedTimespanOptions"
-            :can-clear="false"
-            class="ms-bootstrap"
-            @change="onChangeLocationsSelect"
-            searchable
-          />
-        </div>
-
-        <button
-          type="button"
-          class="btn mt-2 fs-7 px-0 advanced-filtering-btn d-flex align-items-center w-100"
-          @click="showAdvanced = !showAdvanced"
-        >
-          Advanced filtering
-          <font-awesome-icon
-            icon="chevron-right"
-            :rotation="!showAdvanced ? 90 : 270"
-            size="sm"
-            class="ms-2"
-          />
-        </button>
-        <div class="advanced-search" v-if="showAdvanced">
-          <div class="mt-2">
-            <label class="fs-7">Tagged by</label>
-            <div>
-              <b-form-checkbox-group
-                v-model="taggedBy"
-                :options="taggedByOptions"
-              />
-            </div>
-            <div v-if="taggedBy.length !== 0">
-              <label class="fs-7">Tagged as</label>
-
-              <hierarchical-tag-select
-                class="flex-grow-1"
-                ref="tagSelect"
-                :open-on-mount="false"
-                v-model="selectedTags"
-                multiselect
-              />
-            </div>
-            <div v-if="taggedBy.length !== 0" class="mt-2">
-              <b-form-checkbox
-                v-model="allPredators"
-                :indeterminate="somePredatorsSelected"
-                >All predators</b-form-checkbox
-              >
-              <b-form-checkbox v-model="includeSubSpeciesTags"
-                >Include sub-species tags</b-form-checkbox
-              >
-            </div>
-          </div>
-
-          <div class="mt-2">
-            <label class="fs-7">Filtering</label>
-            <b-form-checkbox v-model="showFilteredRecordings"
-              >Include recordings that have no tracks or only false
-              positives.</b-form-checkbox
-            >
-          </div>
-
-          <div class="mt-2">
-            <label class="fs-7">Labeled with</label>
-            <b-form-checkbox-group>
-              <b-form-checkbox v-model="selectedCoolLabel"
-                >Cool</b-form-checkbox
-              >
-              <b-form-checkbox v-model="selectedFlaggedLabel"
-                >Flagged</b-form-checkbox
-              >
-              <b-form-checkbox
-                v-model="selectedOtherLabels"
-                @change="maybeUnselectedOtherLabels"
-                >Other</b-form-checkbox
-              >
-            </b-form-checkbox-group>
-            <multiselect
-              v-if="selectedOtherLabels"
-              v-model="selectedLabels"
-              :options="availableLabels"
-              mode="tags"
-              :can-clear="false"
-              class="ms-bootstrap"
-              searchable
-            />
-          </div>
-        </div>
-        <button
-          type="button"
-          class="btn btn-primary w-100 mt-2"
-          :disabled="!searchIsValid"
-          @click="doSearch"
-        >
-          Search
-        </button>
-        <button
-          type="button"
-          class="btn btn-outline-secondary w-100 mt-2"
-          :disabled="!searchIsValid"
-          @click="doExport"
-        >
-          Export search results
-        </button>
+    <nav
+      class="navbar navbar-expand-md search-controls-outer me-md-3 d-flex py-md-0 align-items-md-start"
+      ref="searchControls"
+    >
+      <div class="search-results-toggle position-fixed d-md-none d-block">
+        <b-button @click="toggleOffcanvasSearch">
+          <font-awesome-icon icon="sliders" />
+        </b-button>
       </div>
-    </div>
-    <div class="search-results flex-grow-1 d-flex justify-content-center pb-3">
-      <div class="search-results-inner">
-        <div class="search-description mx-3 mb-3 p-2 sticky-top">
-          {{ searchParameters }}
+      <b-offcanvas
+        v-if="!shouldShowSearchControlsInline"
+        v-model="showOffcanvasSearch"
+        :placement="'end'"
+        :no-header="true"
+        :teleport-disabled="true"
+        :body-class="'search-offcanvas'"
+      >
+        <activity-search-parameters
+          :params="searchParams"
+          :locations="ref(locations)"
+          :searching="searching"
+          :custom-set="customAutomaticallySet"
+          @accepted-custom-set="customAutomaticallySet = false"
+          @search-requested="doSearch"
+          @export-requested="doExport"
+        />
+      </b-offcanvas>
+      <div class="search-controls" v-if="shouldShowSearchControlsInline">
+        <activity-search-parameters
+          :params="searchParams"
+          :locations="ref(locations)"
+          :searching="searching"
+          :custom-set="customAutomaticallySet"
+          @accepted-custom-set="customAutomaticallySet = false"
+          @search-requested="doSearch"
+          @export-requested="doExport"
+        />
+      </div>
+    </nav>
+    <div
+      class="search-results flex-grow-1 d-flex justify-content-center pb-3 me-lg-3"
+      ref="searchResults"
+    >
+      <div class="search-results-inner d-flex flex-grow-1 flex-column">
+        <div class="search-description mb-3" style="max-width: 250px">
+          {{ searchDescription }}
         </div>
 
         <div v-if="currentQueryCount === undefined">
@@ -1588,8 +1393,7 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
         </div>
         <div
           v-else-if="completedCurrentQuery && canExpandSearchBackFurther"
-          class="d-flex justify-content-center flex-column ms-3"
-          style="max-width: 524px"
+          class="d-flex justify-content-center flex-column"
         >
           <span class="text-center mb-2"
             >No more results for the selected time range.</span
@@ -1608,13 +1412,18 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
         </div>
       </div>
     </div>
-    <div class="map-buffer" ref="mapBuffer"></div>
+    <div
+      class="map-buffer"
+      ref="mapBuffer"
+      :style="{ width: `${mapBufferWidth}px` }"
+    ></div>
   </div>
   <map-with-points
-    v-if="projectHasLocationsWithRecordings"
+    v-if="projectHasLocationsWithRecordings && mapWidthPx !== 0"
     :points="locationsForMap"
     :active-points="locationsInSelectedTimespanForMap"
     :highlighted-point="highlightedPoint"
+    :width="mapWidthPx"
     @hover-point="highlightPoint"
     @leave-point="highlightPoint"
     :radius="30"
@@ -1627,27 +1436,30 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
   />
 </template>
 <style lang="less" scoped>
+.search-results-toggle {
+  top: 143px;
+  right: 0;
+  z-index: 1021;
+  > .btn {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
 .search-description {
-  background-color: rgba(255, 255, 255, 0.8);
+  //background-color: rgba(255, 255, 255, 0.8);
 }
 .centered-overlay {
   height: calc(100svh - 90px);
 }
 .search-results-inner {
   max-width: 700px;
-  min-width: 550px;
-}
-.search-controls {
-  width: 250px;
-  position: sticky;
-  top: 15px;
+  //min-width: 550px;
 }
 .box {
   background: #ccc;
   min-height: 100px;
 }
 .map {
-  //width: 100vh;
   height: 400px !important;
   position: unset;
   @media screen and (min-width: 768px) {
@@ -1655,45 +1467,18 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
     right: 0;
     top: 0;
     height: 100svh !important;
-    width: 500px !important;
   }
-}
-
-.advanced-filtering-btn,
-.advanced-filtering-btn:hover {
-  color: #007086;
-}
-.advanced-filtering-btn:focus {
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-  border-radius: 0.375rem;
-}
-
-.ms-bootstrap {
-  // Match focus colours to bootstrap?
-  --ms-ring-width: 0.25rem;
-  --ms-ring-color: rgb(13 110 253 / 25%);
-  --ms-border-color-active: #86b7fe;
-}
-.dp__theme_light {
-  --dp-border-color-hover: #86b7fe;
-  --dp-border-radius: 0.375rem;
-  //&:focus {
-  //  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-  //}
-  border-radius: 0.375rem;
-}
-//.dp__input {
-//  border-radius: 0.375rem;
-//}
-.dp__input_focus {
-  //border-radius: 0.375rem;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
 </style>
 <style lang="less">
-.multiselect-tag {
-  white-space: unset !important;
+.search-controls {
+  width: 250px !important;
+  position: sticky;
+  top: 15px;
+}
+.search-controls-outer {
+  .b-overlay-wrap .b-overlay {
+    z-index: 1040 !important;
+  }
 }
 </style>
-<style src="@vueform/multiselect/themes/default.css"></style>
-<style src="@vuepic/vue-datepicker/dist/main.css"></style>

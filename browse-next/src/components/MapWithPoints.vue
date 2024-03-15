@@ -53,6 +53,7 @@ const props = withDefaults(
     markersAreInteractive?: boolean;
     hasAttribution?: boolean;
     showCrossHairs?: boolean;
+    width?: number;
   }>(),
   {
     isInteractive: true,
@@ -68,29 +69,10 @@ const props = withDefaults(
     zoom: true,
     showStationRadius: true,
     radius: 0,
+    width: 0,
     points: () => [] as NamedPoint[],
   }
 );
-
-// const {
-//   points = [],
-//   radius = 0,
-//   navigateToPoint,
-//   zoom,
-//   zoomLevel,
-//   center,
-//   minZoom,
-//   highlightedPoint,
-//   canChangeBaseMap,
-//   isInteractive,
-//   markersAreInteractive,
-//   hasAttribution,
-//   showStationRadius,
-//   showOnlyActivePoints,
-//   activePoints,
-//   focusedPoint,
-//   showCrossHairs,
-// } = props;
 
 interface LeafletInternalRawMarker {
   _radius: number;
@@ -610,6 +592,7 @@ const leavePoint = () => {
     :class="['map', { loading }]"
     :style="{
       pointerEvents: isInteractive ? 'auto' : 'none',
+      width: width !== 0 ? `${width}px` : 'auto',
     }"
     ref="mapEl"
   >

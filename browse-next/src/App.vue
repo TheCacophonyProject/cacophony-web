@@ -660,7 +660,7 @@ onMounted(() => {
   user-select: none;
   transition: width 0.2s, transform 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-  z-index: 1002;
+  z-index: 1021;
 
   .nav-icon-wrapper {
     // Keep the icons vertically aligned relative to one-another.

@@ -450,7 +450,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <div class="d-md-flex flex-md-row">
     <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-5 flex-md-fill"
+      class="mb-5 flex-md-fill me-md-3"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
       :visits="maybeFilteredDashboardVisitsContext"

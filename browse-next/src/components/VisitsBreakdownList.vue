@@ -39,9 +39,10 @@ const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
   }
 });
 const hasVisits = computed<boolean>(() => props.visits.length !== 0);
+// :class="[{ 'ps-md-3': hasVisits }]"
 </script>
 <template>
-  <div :class="[{ 'ps-md-3': hasVisits }]" class="visits-breakdown-list">
+  <div class="visits-breakdown-list">
     <visits-daily-breakdown
       v-for="([startTime, visits], index) in visitsByChunk"
       :key="index"
@@ -60,8 +61,11 @@ const hasVisits = computed<boolean>(() => props.visits.length !== 0);
 
 <style scoped lang="less">
 .visits-breakdown-list {
-  @media screen and (min-width: 1200px) {
-    width: 540px;
-  }
+  //@media screen and (min-width: 1200px) {
+  //  width: 540px;
+  //}
+  //@media screen and (min-width: 992px) {
+  //  width: 430px;
+  //}
 }
 </style>

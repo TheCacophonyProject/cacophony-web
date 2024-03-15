@@ -125,6 +125,12 @@ export const getAllVisitsForProject = async (
   };
 };
 
+export interface BulkVisitsResponse {
+  visits: ApiVisitResponse[];
+  all: boolean;
+  success: boolean;
+}
+
 export const getAllVisitsForProjectBetweenTimes = async (
   projectId: ProjectId,
   fromDate: Date,
@@ -137,11 +143,7 @@ export const getAllVisitsForProjectBetweenTimes = async (
     | RecordingType.Audio
   )[],
   progressUpdaterFn?: ProgressUpdater // progress updates caller with how far through the request it is [0, 1]
-): Promise<{
-  success: boolean;
-  visits: ApiVisitResponse[];
-  all: boolean;
-}> => {
+): Promise<BulkVisitsResponse> => {
   const returnVisits: ApiVisitResponse[] = [];
   let morePagesExist = true;
   let requestNumber = 0;
