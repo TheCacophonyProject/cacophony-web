@@ -1426,7 +1426,7 @@ const inlineModal = ref<boolean>(false);
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-sm-none flex-row-reverse align-items-center btn-hi position-relative"
+            class="btn d-flex d-md-none flex-row-reverse align-items-center btn-hi position-relative"
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
             @click.prevent="gotoPreviousRecordingOrVisit"
           >
@@ -1452,15 +1452,15 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through visits -->
           <button
             type="button"
-            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
             :disabled="!hasPreviousVisit"
             @click.prevent="gotoPreviousVisit"
             v-if="isInGreaterVisitContext"
             title="alt+shift &larr;"
           >
-            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
+            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
               <span class="fs-8 fw-bold" v-if="hasPreviousVisit"
-                >Previous visit</span
+                >Prev<span class="d-sm-none d-cs-inline">ious</span> visit</span
               >
               <span class="fs-8" v-else v-html="'&nbsp;'"></span>
               <span class="fs-9" v-if="previousVisit">
@@ -1470,8 +1470,10 @@ const inlineModal = ref<boolean>(false);
                   )
                 }}</span
                 >,&nbsp;<span
-                  >{{ previousVisit.recordings.length }} recording<span
-                    v-if="previousVisit.recordings.length > 1"
+                  >{{ previousVisit.recordings.length }} rec<span
+                    class="d-sm-none d-cs-inline"
+                    >ording</span
+                  ><span v-if="previousVisit.recordings.length > 1"
                     >s</span
                   ></span
                 >
@@ -1495,13 +1497,18 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
-            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
             v-if="hasPreviousRecording"
             @click.prevent="gotoPreviousRecording"
             title="alt &larr;"
           >
-            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold">Previous recording</span>
+            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
+              <span class="fs-8 fw-bold"
+                >Prev<span class="d-sm-none d-cs-inline">ious</span> rec<span
+                  class="d-sm-none d-cs-inline"
+                  >ording</span
+                ></span
+              >
               <span class="fs-9"
                 >{{ (previousRecordingIndex as number) + 1 }}/
                 {{ currentRecordingCount || allRecordingIds.length }}</span
@@ -1532,13 +1539,15 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
-            class="btn d-none d-sm-flex align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
             v-if="hasNextRecording"
             @click.prevent="gotoNextRecording"
             title="alt &rarr;"
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold">Next recording</span>
+              <span class="fs-8 fw-bold"
+                >Next rec<span class="d-sm-none d-cs-inline">ording</span></span
+              >
               <span class="fs-9"
                 >{{ (nextRecordingIndex as number) + 1 }}/{{
                   currentRecordingCount || allRecordingIds.length
@@ -1557,7 +1566,7 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through visits -->
           <button
             type="button"
-            class="btn d-none d-sm-flex align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
             :disabled="!hasNextVisit"
             @click.prevent="gotoNextVisit"
             v-if="isInGreaterVisitContext"
@@ -1573,10 +1582,10 @@ const inlineModal = ref<boolean>(false);
                   )
                 }}</span
                 >,&nbsp;<span
-                  >{{ nextVisit.recordings.length }} recording<span
-                    v-if="nextVisit.recordings.length > 1"
-                    >s</span
-                  ></span
+                  >{{ nextVisit.recordings.length }} rec<span
+                    class="d-sm-none d-cs-inline"
+                    >ording</span
+                  ><span v-if="nextVisit.recordings.length > 1">s</span></span
                 >
               </span>
               <span class="fs-9" v-else v-html="'&nbsp;'"></span>
@@ -1598,7 +1607,7 @@ const inlineModal = ref<boolean>(false);
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-sm-none align-items-center btn-hi"
+            class="btn d-flex d-md-none align-items-center btn-hi"
             :disabled="!hasNextRecording && !hasNextVisit"
             @click.prevent="gotoNextRecordingOrVisit"
           >
@@ -1742,6 +1751,11 @@ const inlineModal = ref<boolean>(false);
   width: 120px;
   height: 120px;
   min-width: 120px;
+}
+@media screen and (min-width: 880px) {
+  .d-cs-inline {
+    display: inline !important;
+  }
 }
 .nav-item.active {
   background: unset;

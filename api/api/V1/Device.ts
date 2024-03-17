@@ -1202,7 +1202,7 @@ export default function (app: Application, baseUrl: string) {
         // Create a new entry at `at-time` for the new reference image, leaving the old
         // reference image intact in the previous device history entry.
         await models.DeviceHistory.create({
-          ...previousDeviceHistoryEntry.dataValues(),
+          ...previousDeviceHistoryEntry.get({ plain: true }),
           fromDateTime: atTime,
           settings: {
             ...previousSettings,
@@ -1287,7 +1287,7 @@ export default function (app: Application, baseUrl: string) {
           // Create a new copy of the current DeviceHistory entry, so that previous mask regions at this location
           // are preserved.
           await models.DeviceHistory.create({
-            ...deviceHistoryEntry.dataValues(),
+            ...deviceHistoryEntry.get({ plain: true }),
             fromDateTime: new Date(),
             settings: newSettings,
           });

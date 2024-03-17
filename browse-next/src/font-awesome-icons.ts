@@ -76,7 +76,7 @@ import {
   faStream,
   faUserCog,
   faPanorama,
-  faSliders
+  faSliders,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {

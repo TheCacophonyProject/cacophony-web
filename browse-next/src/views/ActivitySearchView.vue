@@ -82,7 +82,8 @@ const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
 const searchControls = ref<HTMLDivElement>();
 const searchResults = ref<HTMLDivElement>();
-const { left: searchContainerLeft, right: searchContainerRight } = useElementBounding(searchContainer);
+const { left: searchContainerLeft, right: searchContainerRight } =
+  useElementBounding(searchContainer);
 const { height: windowHeight, width: windowWidth } = useWindowSize();
 
 const mapBufferWidth = computed<number>(() => {
@@ -1317,11 +1318,11 @@ const shouldShowSearchControlsInline = computed<boolean>(
           <font-awesome-icon icon="sliders" />
         </b-button>
       </div>
+      <!--   TODO: Close button should be < inline and custom.   -->
       <b-offcanvas
         v-if="!shouldShowSearchControlsInline"
         v-model="showOffcanvasSearch"
         :placement="'end'"
-        :no-header="true"
         :teleport-disabled="true"
         :body-class="'search-offcanvas'"
       >
@@ -1352,7 +1353,7 @@ const shouldShowSearchControlsInline = computed<boolean>(
       ref="searchResults"
     >
       <div class="search-results-inner d-flex flex-grow-1 flex-column">
-        <div class="search-description mb-3" style="max-width: 250px">
+        <div class="search-description mb-3">
           {{ searchDescription }}
         </div>
 
@@ -1445,15 +1446,18 @@ const shouldShowSearchControlsInline = computed<boolean>(
     border-bottom-right-radius: 0;
   }
 }
-.search-description {
-  //background-color: rgba(255, 255, 255, 0.8);
-}
 .centered-overlay {
   height: calc(100svh - 90px);
 }
 .search-results-inner {
-  max-width: 700px;
-  //min-width: 550px;
+  @media screen and (min-width: 992px) {
+    max-width: 430px;
+    width: 430px;
+  }
+  @media screen and (min-width: 1200px) {
+    max-width: 540px;
+    width: 540px;
+  }
 }
 .box {
   background: #ccc;
