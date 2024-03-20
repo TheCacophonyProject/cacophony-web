@@ -35,7 +35,9 @@ export const getVisitsForProject = async (
   params.append("from", fromDate.toISOString());
   params.append("until", untilDate.toISOString());
   if (locations && locations.length) {
-    params.append("stations", locations.toString());
+    for (const location of locations) {
+      params.append("stations", location.toString());
+    }
   }
   if (types && types.length) {
     params.append("types", types.toString());

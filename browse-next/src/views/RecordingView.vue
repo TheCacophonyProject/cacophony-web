@@ -1504,8 +1504,18 @@ const inlineModal = ref<boolean>(false);
           >
             <span class="d-none d-md-flex ps-2 flex-column align-items-start">
               <span class="fs-8 fw-bold"
-                >Prev<span class="d-sm-none d-cs-inline">ious</span> rec<span
-                  class="d-sm-none d-cs-inline"
+                >Prev<span
+                  :class="{
+                    'd-sm-none': hasPreviousVisit,
+                    'd-cs-inline': hasPreviousVisit,
+                  }"
+                  >ious</span
+                >
+                rec<span
+                  :class="{
+                    'd-sm-none': hasPreviousVisit,
+                    'd-cs-inline': hasPreviousVisit,
+                  }"
                   >ording</span
                 ></span
               >
@@ -1546,7 +1556,13 @@ const inlineModal = ref<boolean>(false);
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
               <span class="fs-8 fw-bold"
-                >Next rec<span class="d-sm-none d-cs-inline">ording</span></span
+                >Next rec<span
+                  :class="{
+                    'd-sm-none': hasNextVisit,
+                    'd-cs-inline': hasNextVisit,
+                  }"
+                  >ording</span
+                ></span
               >
               <span class="fs-9"
                 >{{ (nextRecordingIndex as number) + 1 }}/{{

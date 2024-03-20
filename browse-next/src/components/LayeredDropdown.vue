@@ -102,7 +102,7 @@ watch(
       );
       nextSelections.push(canonicalClassification);
     }
-    selections.value = nextSelections;
+    selections.value = nextSelections.filter((x) => !!x);
   }
 );
 
@@ -114,7 +114,7 @@ onMounted(() => {
     );
     nextSelections.push(canonicalClassification);
   }
-  selections.value = nextSelections;
+  selections.value = nextSelections.filter((x) => !!x);
 });
 
 watch(
@@ -443,6 +443,9 @@ defineExpose({
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
+  &:has(input:disabled) {
+    opacity: 0.4;
+  }
   > input {
     width: 100%;
     border: none;
@@ -461,7 +464,7 @@ defineExpose({
   > .selected-option-badge {
     user-select: none;
     align-items: center;
-    background: #10b981;
+    background: var(--ms-tag-bg);
     border-radius: 4px;
     display: flex;
     font-size: 14px;

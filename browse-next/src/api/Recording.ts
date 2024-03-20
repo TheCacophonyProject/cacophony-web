@@ -91,14 +91,16 @@ export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
 export const deleteRecording = (id: RecordingId) =>
   CacophonyApi.delete(`/api/v1/recordings/${id}`) as Promise<FetchResult<void>>;
 
-interface QueryRecordingsOptions {
+export interface QueryRecordingsOptions {
   devices?: DeviceId[];
   locations?: LocationId[];
-  tags?: string[];
+  taggedWith?: string[];
   fromDateTime?: Date;
   untilDateTime?: Date;
   limit?: number;
   tagMode?: TagMode;
+  includeFilteredFalsePositivesAndNones: boolean;
+  subClassTags?: boolean;
 
   durationMinSecs?: number;
   durationMaxSecs?: number;
@@ -129,8 +131,8 @@ export const queryRecordingsInProject = (
   if (options.limit) {
     params.append("limit", options.limit.toString());
   }
-  if (options.tags) {
-    params.append("tags", JSON.stringify(options.tags));
+  if (options.taggedWith) {
+    params.append("tags", JSON.stringify(options.taggedWith));
   }
   const where: any = {
     GroupId: projectId,
@@ -172,6 +174,10 @@ export const queryRecordingsInProject = (
     params.append("filterModel", "Master");
   }
   params.append("limit", (options.limit && options.limit.toString()) || "30");
+  params.append(
+    "hideFiltered",
+    (!options.includeFilteredFalsePositivesAndNones).toString()
+  );
 
   // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
   //  or we need to hold onto the pagination value.
@@ -219,6 +225,7 @@ export const getRecordingsForLocationsAndDevicesInProject = (
 ): Promise<LoadedResource<ApiRecordingResponse[]>> => {
   const options: QueryRecordingsOptions = {
     limit: 100,
+    includeFilteredFalsePositivesAndNones: true,
   };
   if (locationIds) {
     options.locations = Array.isArray(locationIds)
@@ -230,7 +237,7 @@ export const getRecordingsForLocationsAndDevicesInProject = (
   }
   if (tags) {
     options.tagMode = TagMode.Tagged;
-    options.tags = tags;
+    options.taggedWith = tags;
   }
   return unwrapLoadedResource(
     queryRecordingsInProject(projectId, options) as Promise<

@@ -41,7 +41,10 @@ const flattenNodes = (
 
 // TODO: Move to provide/inject at App level
 export const flatClassifications = computed<
-  Record<string, { label: string; display: string; path: string }>
+  Record<
+    string,
+    { label: string; display: string; path: string; node: Classification }
+  >
 >(() => {
   if (classifications.value) {
     const nodes = flattenNodes({}, classifications.value);
@@ -57,6 +60,29 @@ const getFreshClassifications = async (): Promise<Classification> => {
   const res = await apiGetClassifications();
   if (res.success) {
     const { label, version, children } = res.result;
+
+    // Hack in a general "animal" class.
+    const mammals = children.find((item) => item.label === "mammal");
+    const birds = children.find((item) => item.label === "bird");
+    const other = children.find((item) => item.label === "other");
+    const otherChildLabels: string[] = [
+      "frog",
+      "insect",
+      "lizard",
+      "part",
+      "pest",
+    ];
+    const otherChildren = other?.children?.filter((item) =>
+      otherChildLabels.includes(item.label)
+    ) as Classification[];
+    const animalChildren = [mammals, birds].filter(
+      (item) => !!item
+    ) as Classification[];
+    children.push({
+      label: "animal",
+      children: [...animalChildren, ...otherChildren],
+    });
+
     localStorage.setItem(
       "classifications",
       JSON.stringify({

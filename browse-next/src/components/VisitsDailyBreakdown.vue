@@ -72,6 +72,7 @@ interface SunEventItem extends EventItem {
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
+  console.log(props.visits);
   for (const visit of props.visits) {
     if (!visit.classification) {
       debugger;

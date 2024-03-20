@@ -9,7 +9,6 @@ import {
   nextTick,
   onBeforeMount,
   onBeforeUnmount,
-  onMounted,
   ref,
   type Ref,
   watch,
@@ -35,6 +34,7 @@ import {
 } from "@/components/activitySearchUtils.ts";
 import type { ActivitySearchParams } from "@views/ActivitySearchView.vue";
 import { type LocationQuery, useRoute, useRouter } from "vue-router";
+import { useElementBounding } from "@vueuse/core";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -49,8 +49,12 @@ const emit = defineEmits([
   "accepted-custom-set",
 ]);
 
-const selectedLocations = ref<(ApiLocationResponse | "any")[]>(["any"]);
+const tagInfoParent = ref<HTMLSpanElement>();
+const falsePositiveInfoParent = ref<HTMLSpanElement>();
+const toggleSubspeciesHelp = ref<boolean>(false);
+const toggleFalsePositiveFilterHelp = ref<boolean>(false);
 
+const selectedLocations = ref<(ApiLocationResponse | "any")[]>(["any"]);
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
@@ -123,6 +127,7 @@ const customDateRange = ref<[Date, Date] | null>(null);
 const combinedDateRange = computed<[Date, Date]>(() => {
   if (selectedDateRange.value === "custom") {
     if (customDateRange.value !== null) {
+      // FIXME: Timezones for project when you're viewing from outside the projects timezone
       // Make custom range be from beginning of start date til end of end date.
       // const start = DateTime.fromJSDate(new Date(customDateRange.value[0]), {
       //   zone: timezoneForProject.value,
@@ -170,17 +175,38 @@ const minDateForProject = computed<Date>(() => {
   return earliest;
 });
 
+const minDateForSelectedLocations = computed<Date>(() => {
+  // Earliest active location
+  if (selectedLocations.value.includes("any")) {
+    return minDateForProject.value;
+  }
+  let earliest = new Date();
+  if (selectedLocations.value) {
+    for (const location of selectedLocations.value as ApiLocationResponse[]) {
+      const activeAt = new Date(location.activeAt);
+      if (activeAt < earliest) {
+        earliest = activeAt;
+      }
+    }
+  }
+  return earliest;
+});
+
 const searchIsValid = computed<boolean>(() => {
   const hasValidDateRange =
     Array.isArray(selectedDateRange.value) ||
     Array.isArray(customDateRange.value);
-  const hasAdvancedSettingsSelected = showAdvanced.value;
+  const hasAdvancedSettingsSelected =
+    showAdvanced.value &&
+    props.params.displayMode === ActivitySearchDisplayMode.Recordings;
   if (!hasAdvancedSettingsSelected) {
     return hasValidDateRange && selectedLocations.value.length !== 0;
+  } else {
+    if (tagMode.value === TagMode.Tagged) {
+      return selectedTags.value.length !== 0;
+    }
+    return true;
   }
-
-  // Make sure we have a valid state
-  return false;
 });
 
 interface DatePickerMethods {
@@ -188,6 +214,10 @@ interface DatePickerMethods {
 }
 
 const showAdvanced = ref<boolean>(false);
+
+onBeforeMount(() => {
+  showAdvanced.value = hasAdvancedFiltersSet.value;
+});
 
 const maxDateForProject = computed<Date>(() => {
   // Latest active location
@@ -206,6 +236,28 @@ const maxDateForProject = computed<Date>(() => {
   }
   return latest;
 });
+
+const maxDateForSelectedLocations = computed<Date>(() => {
+  if (selectedLocations.value.includes("any")) {
+    return maxDateForProject.value;
+  }
+  // Latest active location
+  let latest = new Date();
+  latest.setFullYear(2010);
+  if (selectedLocations.value) {
+    for (const location of selectedLocations.value as ApiLocationResponse[]) {
+      const latestDateForLocation = getLatestDateForLocationInRecordingMode(
+        location,
+        props.params.recordingMode
+      );
+      if (latestDateForLocation && latestDateForLocation > latest) {
+        latest = latestDateForLocation;
+      }
+    }
+  }
+  return latest;
+});
+
 const maybeSelectDatePicker = (value: [Date, Date] | string) => {
   if (value === "custom" && !props.customSet) {
     nextTick(() => {
@@ -329,42 +381,6 @@ const commonDateRanges = computed<
     urlLabel: string;
   }[];
 });
-
-const taggedBy = ref<("AI" | "human")[]>([]);
-const taggedByOptions = [
-  {
-    text: "Human",
-    value: TagMode.HumanTagged,
-  },
-  {
-    text: "A.I.",
-    value: TagMode.AutomaticallyTagged,
-  },
-];
-
-const exclusiveTagOptions = [
-  {
-    text: "Only A.I.",
-    value: TagMode.AutomaticOnly,
-  },
-  {
-    text: "Untagged", // Are there any actual untagged tracks?
-    value: TagMode.UnTagged,
-  },
-  {
-    text: "Only Human", // Are there any with only human tags?
-    value: TagMode.HumanOnly,
-  },
-  {
-    text: "Untagged by Humans",
-    value: TagMode.NoHuman, // Untagged or ai tagged
-  },
-  {
-    text: "Tagged by both",
-    value: TagMode.AutomaticHuman,
-  },
-];
-
 const format = (dates: Date[]) => {
   return dates
     .map((date) => {
@@ -379,62 +395,12 @@ const format = (dates: Date[]) => {
 const includeSubSpeciesTags = ref<boolean>(true);
 const selectedTags = ref<string[]>([]);
 const selectedLabels = ref<string[]>([]);
-watch(
-  () => props.params.displayMode,
-  () => {
-    // Redo search when display mode changes
-    //doSearch();
-  }
-);
-const allPredatorLabels = ["mustelid", "possum", "cat", "rodent", "hedgehog"];
-const allPredators = computed<boolean>({
-  get: () => {
-    for (const label of allPredatorLabels) {
-      if (!selectedTags.value.includes(label)) {
-        return false;
-      }
-    }
-    return true;
-  },
-  set: (val: boolean) => {
-    if (val) {
-      const newTags = [];
-      for (const label of allPredatorLabels) {
-        if (!selectedTags.value.includes(label)) {
-          newTags.push(label);
-        }
-      }
-      if (newTags.length) {
-        selectedTags.value = [...selectedTags.value, ...newTags];
-      }
-    } else {
-      selectedTags.value = selectedTags.value.filter(
-        (label) => !allPredatorLabels.includes(label)
-      );
-    }
-  },
-});
-
-const showFilteredRecordings = ref<boolean>(false);
+const starredLabel = ref<boolean>(false);
+const flaggedLabel = ref<boolean>(false);
+const showFilteredFalsePositivesAndNones = ref<boolean>(false);
+const showUntaggedOnly = ref<boolean>(false);
 const FLAG = "requires review";
 const COOL = "cool";
-
-const somePredatorsSelected = computed<boolean>(() => {
-  const onlyPredators = selectedTags.value.filter((label) =>
-    allPredatorLabels.includes(label)
-  );
-  return (
-    onlyPredators.length !== 0 &&
-    onlyPredators.length !== allPredatorLabels.length
-  );
-});
-const maybeUnselectedOtherLabels = (val: boolean) => {
-  if (!val) {
-    selectedLabels.value = selectedLabels.value.filter(
-      (item) => item === COOL || item === FLAG
-    );
-  }
-};
 const selectedLabelGetterSetter = (label: string) => ({
   get: () => {
     return selectedLabels.value.includes(label);
@@ -449,8 +415,6 @@ const selectedLabelGetterSetter = (label: string) => ({
 });
 const selectedFlaggedLabel = computed<boolean>(selectedLabelGetterSetter(FLAG));
 const selectedCoolLabel = computed<boolean>(selectedLabelGetterSetter(COOL));
-
-const selectedOtherLabels = ref<boolean>(false);
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
   if (props.locations.value) {
     return (props.locations.value as ApiLocationResponse[]).filter(
@@ -477,7 +441,7 @@ const locationsInSelectedTimespanOptions = computed<
   { value: ApiLocationResponse | "any"; label: string }[]
 >(() => {
   return [
-    { value: "any", label: "Any location", disabled: true },
+    { value: "any", label: "All locations", disabled: true },
     ...locationsInSelectedTimespan.value.map((location) => ({
       value: location,
       label: location.name,
@@ -543,35 +507,90 @@ const recordingMode = ref<ActivitySearchRecordingMode>(
 const displayMode = ref<ActivitySearchDisplayMode>(
   ActivitySearchDisplayMode.Visits
 );
+
+const computedDisplayMode = computed<ActivitySearchDisplayMode>({
+  get: () => {
+    if (recordingMode.value === ActivitySearchRecordingMode.Cameras) {
+      return displayMode.value;
+    } else {
+      return ActivitySearchDisplayMode.Recordings;
+    }
+  },
+  set: (val: ActivitySearchDisplayMode) => {
+    if (recordingMode.value === ActivitySearchRecordingMode.Cameras) {
+      displayMode.value = val;
+    } else {
+      // Don't set
+    }
+  },
+});
+const tagMode = ref<TagMode>(TagMode.Any);
 const router = useRouter();
 const route = useRoute();
-const updateRoute = async (
-  next: string | [Date, Date] | ApiLocationResponse[],
-  prev: string | [Date, Date] | ApiLocationResponse[] | undefined
+const getCurrentQuery = (): LocationQuery => {
+  const locationsHasAny =
+    selectedLocations.value.indexOf("any") !== -1 &&
+    selectedLocations.value.length === 1;
+  const selectedLocationsValue = locationsHasAny
+    ? "any"
+    : (
+        selectedLocations.value.filter(
+          (item) => item !== "any"
+        ) as ApiLocationResponse[]
+      )
+        .map(({ id }) => id)
+        .join(",");
+  const query: LocationQuery = {
+    ...route.query,
+    "display-mode": displayMode.value,
+    "recording-mode": recordingMode.value,
+    locations: selectedLocationsValue,
+    "tag-mode": tagMode.value,
+    "include-descendant-tags": includeSubSpeciesTags.value.toString(),
+    "no-false-positives":
+      (!showFilteredFalsePositivesAndNones.value).toString(),
+  };
+  if (tagMode.value === TagMode.Tagged && !selectedTags.value.includes("any")) {
+    query["tagged-with"] = selectedTags.value.join(",");
+  } else {
+    if (tagMode.value === TagMode.Tagged) {
+      tagMode.value = TagMode.Any;
+      query["tag-mode"] = tagMode.value;
+    }
+    delete query["tagged-with"];
+  }
+  if (selectedLabels.value.length || starredLabel.value || flaggedLabel.value) {
+    const labels = [...selectedLabels.value];
+    if (starredLabel.value) {
+      labels.push(COOL);
+    }
+    if (flaggedLabel.value) {
+      labels.push(FLAG);
+    }
+    query["labelled-with"] = labels.join(",");
+  } else {
+    delete query["labelled-with"];
+  }
+  return query;
+};
+const updateDateRouteComponent = async (
+  next: [Date, Date],
+  prev: [Date, Date] | undefined
 ) => {
   const isDates =
     Array.isArray(next) &&
     Array.isArray(prev) &&
-    next.length !== 0 &&
-    next.every((item) => item instanceof Date);
+    (next as unknown[]).length !== 0 &&
+    (next as unknown[]).every((item: unknown) => item instanceof Date);
   const fromChanged =
-    isDates && next[0].toISOString() !== prev[0].toISOString();
+    isDates &&
+    (next[0] as Date).toISOString() !== (prev[0] as Date).toISOString();
   const untilChanged =
-    isDates && next[1].toISOString() !== prev[1].toISOString();
+    isDates &&
+    (next[1] as Date).toISOString() !== (prev[1] as Date).toISOString();
   const datesChanged = isDates && (fromChanged || untilChanged);
-  if ((!isDates && prev !== next) || datesChanged) {
-    const hasAny = selectedLocations.value.indexOf("any") !== -1;
-    const selectedLocationsValue = hasAny
-      ? "any"
-      : (selectedLocations.value as ApiLocationResponse[])
-          .map(({ id }) => id)
-          .join(",");
-    const query: LocationQuery = {
-      ...route.query,
-      "display-mode": displayMode.value,
-      "recording-mode": recordingMode.value,
-      locations: selectedLocationsValue,
-    };
+  if (datesChanged) {
+    const query = getCurrentQuery();
     const commonDateRange = commonDateRanges.value.find(
       ({ value }) =>
         value[0] === combinedDateRange.value[0] &&
@@ -591,19 +610,116 @@ const updateRoute = async (
     });
   }
 };
+
+const updateRoute = async (
+  next: string | boolean,
+  prev: string | boolean | undefined
+) => {
+  if (prev !== next) {
+    console.log(next, prev);
+    // TODO: Emit event to clear current search results (or really, just handle the route change in the parent)
+    const query = getCurrentQuery();
+    console.log("Replacing with", query);
+    await router.replace({
+      query,
+    });
+  }
+};
+
+const arrayContentsAreTheSame = (
+  a: (number | string)[],
+  b: (number | string)[]
+): boolean => {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (const aItem of a) {
+    if (!b.includes(aItem)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const updateTagsRoute = async (next: string[], prev: string[] | undefined) => {
+  if (!arrayContentsAreTheSame(prev || [], next)) {
+    const query = getCurrentQuery();
+    await router.replace({
+      query,
+    });
+  }
+};
+
+const updateLabelsRoute = async (
+  next: string[],
+  prev: string[] | undefined
+) => {
+  console.log("update labels", next, prev);
+  if (!arrayContentsAreTheSame(prev || [], next)) {
+    const query = getCurrentQuery();
+    console.log("replacing query", query);
+    await router.replace({
+      query,
+    });
+  }
+};
+
+const updateLocationsRoute = async (
+  next: (ApiLocationResponse | "any")[],
+  prev: (ApiLocationResponse | "any")[] | undefined
+) => {
+  const flattenLocations = (
+    a: (ApiLocationResponse | "any")[]
+  ): (number | string)[] => {
+    return a.map((item: ApiLocationResponse | "any") => {
+      if (item === "any") {
+        return item;
+      }
+      return item.id;
+    });
+  };
+  const locationArrayContentsAreTheSame = (
+    a: (ApiLocationResponse | "any")[],
+    b: (ApiLocationResponse | "any")[]
+  ): boolean =>
+    arrayContentsAreTheSame(flattenLocations(a), flattenLocations(b));
+  if (!locationArrayContentsAreTheSame(prev || [], next)) {
+    const query = getCurrentQuery();
+    await router.replace({
+      query,
+    });
+  }
+};
 const syncParams = (
   next: ActivitySearchParams,
-  prev: ActivitySearchParams | undefined
+  _prev: ActivitySearchParams | undefined
 ) => {
+  // Set our local state variables from the state change from our parent
   displayMode.value = next.displayMode;
   recordingMode.value = next.recordingMode;
+  tagMode.value = next.tagMode;
+  if (tagMode.value === TagMode.Tagged) {
+    selectedTags.value = next.taggedWith;
+  } else {
+    selectedTags.value = [];
+  }
+  if (next.labelledWith && next.labelledWith.length) {
+    starredLabel.value = next.labelledWith.includes(COOL);
+    flaggedLabel.value = next.labelledWith.includes(FLAG);
+    selectedLabels.value = next.labelledWith.filter(
+      (label) => label !== COOL && label !== FLAG
+    );
+  }
+  showFilteredFalsePositivesAndNones.value = next.includeFalsePositives;
   if (Array.isArray(next.locations) && next.locations.length) {
     if (next.locations[0] === "any") {
       selectedLocations.value = ["any"];
     } else {
       selectedLocations.value = next.locations
-        .map((id) => props.locations.value.find((item) => item.id === id))
-        .filter((x) => x !== undefined);
+        .map((id) =>
+          (props.locations.value || []).find((item) => item.id === id)
+        )
+        .filter((x) => x !== undefined) as ApiLocationResponse[];
     }
   }
   let foundRange;
@@ -617,7 +733,7 @@ const syncParams = (
   } else if (next.from && !next.until) {
     // Try to match to the common date ranges and pick an option.
     selectedDateRange.value = commonDateRanges.value[0].value;
-    updateRoute(combinedDateRange.value, [now, now]);
+    updateDateRouteComponent(combinedDateRange.value, [now, now]);
   } else if (next.from && next.until) {
     selectedDateRange.value = "custom";
     // Validate the custom range being passed, constrain it to the min/max
@@ -641,7 +757,7 @@ const syncParams = (
         customDateRange.value[1] = untilDate;
       }
       if (constrainedRange) {
-        updateRoute(combinedDateRange.value, [now, now]);
+        updateDateRouteComponent(combinedDateRange.value, [now, now]);
       }
     } else {
       selectedDateRange.value = commonDateRanges.value[0].value;
@@ -653,7 +769,25 @@ const watchRecordingMode = ref<WatchStopHandle | null>(null);
 const watchDisplayMode = ref<WatchStopHandle | null>(null);
 const watchCombinedDateRange = ref<WatchStopHandle | null>(null);
 const watchSelectedLocations = ref<WatchStopHandle | null>(null);
+const watchTagMode = ref<WatchStopHandle | null>(null);
 const watchProps = ref<WatchStopHandle | null>(null);
+const watchUntaggedOnly = ref<WatchStopHandle | null>(null);
+const watchSelectedTags = ref<WatchStopHandle | null>(null);
+const watchFilterFalsePositivesAndNones = ref<WatchStopHandle | null>(null);
+const watchStarred = ref<WatchStopHandle | null>(null);
+const watchFlagged = ref<WatchStopHandle | null>(null);
+const watchSelectedLabels = ref<WatchStopHandle | null>(null);
+const watchSubClassToggle = ref<WatchStopHandle | null>(null);
+
+const hasAdvancedFiltersSet = computed<boolean>(() => {
+  return (
+    tagMode.value !== TagMode.Any ||
+    selectedLabels.value.length !== 0 ||
+    starredLabel.value ||
+    flaggedLabel.value
+  );
+});
+
 onBeforeMount(() => {
   watchProps.value = watch(props.params, syncParams, {
     deep: true,
@@ -661,8 +795,51 @@ onBeforeMount(() => {
   });
   watchRecordingMode.value = watch(recordingMode, updateRoute);
   watchDisplayMode.value = watch(displayMode, updateRoute);
-  watchCombinedDateRange.value = watch(combinedDateRange, updateRoute);
-  watchSelectedLocations.value = watch(selectedLocations, updateRoute);
+  watchCombinedDateRange.value = watch(
+    combinedDateRange,
+    updateDateRouteComponent
+  );
+  watchSelectedLocations.value = watch(selectedLocations, updateLocationsRoute);
+  watchUntaggedOnly.value = watch(showUntaggedOnly, (next: boolean) => {
+    if (next) {
+      selectedTags.value = [];
+    } else {
+      if (selectedTags.value.length) {
+        tagMode.value = TagMode.Tagged;
+      } else {
+        tagMode.value = TagMode.Any;
+      }
+    }
+  });
+  watchSelectedTags.value = watch(
+    selectedTags,
+    (next: string[], prev: string[]) => {
+      if (!next.length) {
+        if (showUntaggedOnly.value) {
+          tagMode.value = TagMode.UnTagged;
+        } else {
+          tagMode.value = TagMode.Any;
+        }
+      } else {
+        if (showUntaggedOnly.value) {
+          tagMode.value = TagMode.UnTagged;
+        } else {
+          tagMode.value = TagMode.Tagged;
+        }
+      }
+      updateTagsRoute(next, prev);
+    }
+  );
+  watchSubClassToggle.value = watch(includeSubSpeciesTags, updateRoute);
+  watchTagMode.value = watch(tagMode, updateRoute);
+  watchFilterFalsePositivesAndNones.value = watch(
+    showFilteredFalsePositivesAndNones,
+    updateRoute
+  );
+  watchStarred.value = watch(starredLabel, updateRoute);
+  watchFlagged.value = watch(flaggedLabel, updateRoute);
+  watchSelectedLabels.value = watch(selectedLabels, updateLabelsRoute);
+  showAdvanced.value = hasAdvancedFiltersSet.value;
   emit("search-requested");
 });
 onBeforeUnmount(() => {
@@ -671,13 +848,30 @@ onBeforeUnmount(() => {
   watchRecordingMode.value && watchRecordingMode.value();
   watchCombinedDateRange.value && watchCombinedDateRange.value();
   watchSelectedLocations.value && watchSelectedLocations.value();
+  watchUntaggedOnly.value && watchUntaggedOnly.value();
+  watchSelectedTags.value && watchSelectedTags.value();
+  watchTagMode.value && watchTagMode.value();
+  watchFilterFalsePositivesAndNones.value &&
+    watchFilterFalsePositivesAndNones.value();
+  watchStarred.value && watchStarred.value();
+  watchFlagged.value && watchFlagged.value();
+  watchSelectedLabels.value && watchSelectedLabels.value();
+  watchSubClassToggle.value && watchSubClassToggle.value();
+});
+
+const searchParamsContainer = ref<HTMLDivElement>();
+const { top: searchParamsOffsetTop } = useElementBounding(
+  searchParamsContainer
+);
+const scrolledToStickyPosition = computed<boolean>(() => {
+  return searchParamsOffsetTop.value === 15;
 });
 </script>
 
 <template>
-  <div>
+  <div ref="searchParamsContainer">
     <div
-      class="btn-group d-flex mb-2"
+      class="btn-group btn-group-sm d-flex mb-2"
       role="group"
       aria-label="Toggle between camera and bird monitor results"
       v-if="projectHasAudioAndThermal"
@@ -709,8 +903,10 @@ onBeforeUnmount(() => {
     </div>
     <div
       class="btn-group d-flex"
+      :class="{ 'btn-group-sm': scrolledToStickyPosition }"
       role="group"
       aria-label="Toggle between results groups as visits or as recordings"
+      v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
     >
       <input
         type="radio"
@@ -718,7 +914,7 @@ onBeforeUnmount(() => {
         name="display-mode"
         id="display-mode-visits"
         autocomplete="off"
-        v-model="displayMode"
+        v-model="computedDisplayMode"
         :value="'visits'"
       />
       <label class="btn btn-outline-secondary w-50" for="display-mode-visits"
@@ -730,7 +926,7 @@ onBeforeUnmount(() => {
         name="display-mode"
         id="display-mode-recordings"
         autocomplete="off"
-        v-model="displayMode"
+        v-model="computedDisplayMode"
         :value="'recordings'"
       />
       <label
@@ -789,13 +985,40 @@ onBeforeUnmount(() => {
       searchable
     />
   </div>
-
+  <div class="mt-3" v-if="displayMode === ActivitySearchDisplayMode.Recordings">
+    <!--    <label class="fs-7">Filtering</label>-->
+    <div class="d-flex justify-content-between">
+      <b-form-checkbox
+        v-model="showFilteredFalsePositivesAndNones"
+        switch
+        :disabled="showUntaggedOnly"
+        >Show false positives</b-form-checkbox
+      >
+      <span class="help-toggle" ref="falsePositiveInfoParent"
+        ><font-awesome-icon icon="question"
+      /></span>
+    </div>
+    <b-popover
+      click
+      variant="secondary"
+      v-model="toggleFalsePositiveFilterHelp"
+      tooltip
+      custom-class="tag-info-popover"
+      placement="right-start"
+      container="body"
+      :target="falsePositiveInfoParent"
+    >
+      Filter out recordings that are only tagged as false positive, or which
+      have no tracks to tag.
+    </b-popover>
+  </div>
   <button
     type="button"
+    v-if="params.displayMode === ActivitySearchDisplayMode.Recordings"
     class="btn mt-2 fs-7 px-0 advanced-filtering-btn d-flex align-items-center w-100"
     @click="showAdvanced = !showAdvanced"
   >
-    Advanced filtering
+    Advanced search
     <font-awesome-icon
       icon="chevron-right"
       :rotation="!showAdvanced ? 90 : 270"
@@ -803,16 +1026,21 @@ onBeforeUnmount(() => {
       class="ms-2"
     />
   </button>
-  <div class="advanced-search" v-if="showAdvanced">
-    <div class="mt-2">
-      <label class="fs-7">Tagged by</label>
-      <div>
-        <b-form-checkbox-group v-model="taggedBy" :options="taggedByOptions" />
-      </div>
-      <div v-if="taggedBy.length !== 0">
-        <label class="fs-7">Tagged as</label>
 
+  <div
+    class="advanced-search"
+    v-if="
+      showAdvanced &&
+      params.displayMode === ActivitySearchDisplayMode.Recordings
+    "
+  >
+    <div class="mt-2">
+      <b-form-checkbox v-model="showUntaggedOnly" switch
+        >Untagged recordings only</b-form-checkbox
+      >
+      <div class="mt-2">
         <hierarchical-tag-select
+          :disabled="showUntaggedOnly"
           class="flex-grow-1"
           ref="tagSelect"
           :open-on-mount="false"
@@ -820,41 +1048,62 @@ onBeforeUnmount(() => {
           multiselect
         />
       </div>
-      <div v-if="taggedBy.length !== 0" class="mt-2">
-        <b-form-checkbox
-          v-model="allPredators"
-          :indeterminate="somePredatorsSelected"
-          >All predators</b-form-checkbox
+      <div class="mt-2">
+        <div class="d-flex justify-content-between">
+          <b-form-checkbox
+            switch
+            v-model="includeSubSpeciesTags"
+            :disabled="selectedTags.length === 0 || showUntaggedOnly"
+            >Include sub-species tags
+          </b-form-checkbox>
+          <span ref="tagInfoParent" class="help-toggle"
+            ><font-awesome-icon icon="question"
+          /></span>
+        </div>
+        <b-popover
+          click
+          container="body"
+          variant="secondary"
+          v-model="toggleSubspeciesHelp"
+          tooltip
+          custom-class="tag-info-popover"
+          placement="right-start"
+          :target="tagInfoParent"
         >
-        <b-form-checkbox v-model="includeSubSpeciesTags"
-          >Include sub-species tags</b-form-checkbox
-        >
+          If you select the tag 'mammal', having this option selected means
+          we'll search for all tags with 'mammal' as an ancestor. Having the
+          option disabled means we'll only search for recordings with the
+          explicit 'mammal' tag.
+        </b-popover>
       </div>
     </div>
-
     <div class="mt-2">
-      <label class="fs-7">Filtering</label>
-      <b-form-checkbox v-model="showFilteredRecordings"
-        >Include recordings that have no tracks or only false
-        positives.</b-form-checkbox
-      >
-    </div>
-
-    <div class="mt-2">
-      <label class="fs-7">Labeled with</label>
-      <b-form-checkbox-group>
-        <b-form-checkbox v-model="selectedCoolLabel">Cool</b-form-checkbox>
-        <b-form-checkbox v-model="selectedFlaggedLabel"
-          >Flagged</b-form-checkbox
+      <div class="d-flex justify-content-between">
+        <b-button
+          @click.prevent="starredLabel = !starredLabel"
+          variant="light"
+          size="sm"
         >
-        <b-form-checkbox
-          v-model="selectedOtherLabels"
-          @change="maybeUnselectedOtherLabels"
-          >Other</b-form-checkbox
+          <font-awesome-icon
+            :icon="starredLabel ? ['fas', 'star'] : ['far', 'star']"
+            :color="starredLabel ? 'goldenrod' : '#666'"
+          />
+          <span class="ms-2">Starred</span>
+        </b-button>
+        <b-button
+          @click.prevent="flaggedLabel = !flaggedLabel"
+          variant="light"
+          size="sm"
         >
-      </b-form-checkbox-group>
+          <font-awesome-icon
+            :icon="flaggedLabel ? ['fas', 'flag'] : ['far', 'flag']"
+            :color="flaggedLabel ? '#ad0707' : '#666'"
+          />
+          <span class="ms-2">Flagged</span>
+        </b-button>
+      </div>
+      <label class="fs-7">Labelled with</label>
       <multiselect
-        v-if="selectedOtherLabels"
         v-model="selectedLabels"
         :options="availableLabels"
         mode="tags"
@@ -864,23 +1113,25 @@ onBeforeUnmount(() => {
       />
     </div>
   </div>
-  <button
-    type="button"
-    class="btn btn-primary w-100 mt-2"
+  <b-button
+    variant="secondary"
+    class="w-100 mt-3"
+    :size="scrolledToStickyPosition ? 'sm' : 'md'"
     :disabled="!searchIsValid || searching"
     @click="emit('search-requested')"
   >
     <b-spinner v-if="searching" small />
     Search
-  </button>
-  <button
-    type="button"
-    class="btn btn-outline-secondary w-100 mt-2"
+  </b-button>
+  <b-button
+    variant="link"
+    :size="scrolledToStickyPosition ? 'sm' : 'md'"
+    class="w-100 mt-2 grey-link"
     :disabled="!searchIsValid"
     @click="emit('export-requested')"
   >
     Export search results
-  </button>
+  </b-button>
 </template>
 
 <style lang="less" scoped>
@@ -888,11 +1139,20 @@ onBeforeUnmount(() => {
 .advanced-filtering-btn:hover {
   color: #007086;
 }
-.advanced-filtering-btn:focus {
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-  border-radius: 0.375rem;
+.grey-link {
+  color: #666;
 }
-
+.help-toggle {
+  background: var(--bs-light-bg-subtle);
+  color: var(--bs-secondary);
+  border: 1px solid var(--bs-secondary-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+}
 .ms-bootstrap {
   // Match focus colours to bootstrap?
   --ms-ring-width: 0.25rem;
@@ -918,6 +1178,14 @@ onBeforeUnmount(() => {
 <style lang="less">
 .multiselect-tag {
   white-space: unset !important;
+}
+
+.tag-info-popover {
+  z-index: 200001;
+}
+.form-check-input:checked {
+  background-color: var(--bs-secondary);
+  border-color: var(--bs-secondary);
 }
 </style>
 <style src="@vueform/multiselect/themes/default.css"></style>

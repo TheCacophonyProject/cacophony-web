@@ -31,9 +31,13 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
   type BulkRecordingsResponse,
   queryRecordingsInProject,
+  type QueryRecordingsOptions,
 } from "@api/Recording";
-import type { RecordingType } from "@typedefs/api/consts.ts";
-import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts.ts";
+import {
+  type RecordingType,
+  RecordingType as ConcreteRecordingType,
+  TagMode,
+} from "@typedefs/api/consts.ts";
 import type {
   DeviceId,
   RecordingId,
@@ -69,14 +73,15 @@ import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
   type DateRange,
-  dateSuffix,
-  fullMonthName,
   getLatestDateForLocationInRecordingMode,
-  isSameDay,
   queryValueIsDate,
   validateLocations,
 } from "@/components/activitySearchUtils.ts";
-import { getClassifications } from "@api/Classifications.ts";
+import {
+  flatClassifications,
+  getClassifications,
+} from "@api/Classifications.ts";
+import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -100,13 +105,12 @@ export interface ActivitySearchParams {
   // absoluteDateRange: [Date, Date] | null;
   from: string | Date | undefined;
   until: string | Date | undefined;
-  locations: "any" | LocationId[];
-  taggedBy: "human" | "ai" | "both" | "none";
-  taggedWith: "any" | string[];
+  locations: ("any" | LocationId)[];
+  tagMode: TagMode;
+  taggedWith: ("any" | string)[];
+  subClassTags: boolean;
   duration: "any" | [number, number] | ["any", number] | [number, "any"];
   includeFalsePositives: boolean;
-  includeFiltered: boolean;
-  includeNones: boolean;
   offset: Date; // Cursor
   labelledWith: string[] | null;
   devices: "all" | DeviceId[];
@@ -115,105 +119,8 @@ export interface ActivitySearchParams {
 }
 
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
-const upperFirst = (str: string): string => {
-  const trim = str.trim();
-  return trim.charAt(0).toUpperCase() + trim.slice(1);
-};
-const searchDescription = computed<string>(() => {
-  if (selectedLocations.value.length) {
-    let locations;
-    if (selectedLocations.value[0] === "any") {
-      if (locationsInSelectedTimespan.value.length === 1) {
-        locations = `at '${locationsInSelectedTimespan.value[0].name}'`;
-      } else {
-        locations = "across all locations";
-      }
-    } else {
-      if (selectedLocations.value.length === 1) {
-        locations = `at '${selectedLocations.value[0].name}'`;
-      } else if (selectedLocations.value.length === 2) {
-        locations = `across '${selectedLocations.value
-          .map(({ name }) => name)
-          .join("' and '")}'`;
-      } else {
-        locations = `across '${selectedLocations.value
-          .slice(0, selectedLocations.value.length - 1)
-          .map(({ name }) => name)
-          .join("', '")}' and '${
-          selectedLocations.value[selectedLocations.value.length - 1].name
-        }'`;
-      }
-    }
-    let timespan = "";
-    if (
-      queryValueIsDate(searchParams.value.from) &&
-      queryValueIsDate(searchParams.value.until)
-    ) {
-      const from = new Date(searchParams.value.from);
-      const until = new Date(searchParams.value.until);
-      let fromString = "";
-      let untilString = "";
-      if (
-        from.getFullYear() === until.getFullYear() &&
-        from.getFullYear() === new Date().getFullYear()
-      ) {
-        // If both dates are this year, omit the year.
-        if (from.getMonth() === until.getMonth()) {
-          fromString = `the ${dateSuffix(from.getDate())}`;
-          untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
-            until.getMonth()
-          )}`;
-        } else {
-          fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
-            from.getDate()
-          )}`;
-          untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
-            until.getDate()
-          )}`;
-        }
-      } else {
-        if (
-          from.getMonth() === until.getMonth() &&
-          from.getFullYear() === until.getFullYear()
-        ) {
-          fromString = `the ${dateSuffix(from.getDate())}`;
-          untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
-            until.getMonth()
-          )} ${until.getFullYear()}`;
-        } else {
-          fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
-            from.getDate()
-          )} ${from.getFullYear()}`;
-          untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
-            until.getDate()
-          )} ${until.getFullYear()}`;
-        }
-      }
-      if (isSameDay(from, until)) {
-        timespan = `on the ${dateSuffix(from.getDate())} of ${fullMonthName(
-          from.getMonth()
-        )}`;
-        if (from.getFullYear() !== new Date().getFullYear()) {
-          timespan += ` ${from.getFullYear()}`;
-        }
-      } else {
-        timespan = `between ${fromString} and ${untilString}`;
-      }
-    } else {
-      timespan = `${
-        availableDateRanges.value.find(
-          ({ from }) => from === searchParams.value.from
-        )?.label
-      }`;
-    }
-    // At any time.  Since this project was created.  Since the beginning of this project.
-    return `${upperFirst(
-      searchParams.value.displayMode
-    )} ${locations} ${timespan}.`;
-  }
-  return "";
-});
-const arraysAreEqual = (
+
+const arrayContentsAreTheSame = (
   a: LocationQueryValue[],
   b: LocationQueryValue[]
 ): boolean => {
@@ -239,7 +146,7 @@ const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
     if (
       Array.isArray(next[key]) &&
       Array.isArray(prev[key]) &&
-      !arraysAreEqual(
+      !arrayContentsAreTheSame(
         next[key] as LocationQueryValue[],
         prev[key] as LocationQueryValue[]
       )
@@ -249,7 +156,7 @@ const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
       if (next[key]) {
         diff[key] = next[key];
       } else {
-        diff[key] = prev[key];
+        diff[key] = null;
       }
     }
   }
@@ -264,9 +171,18 @@ const DefaultSearchParams = {
 };
 
 const searchParams = ref<ActivitySearchParams>({
+  devices: "all",
+  duration: "any",
+  includeFalsePositives: false,
+  labelledWith: null,
+  offset: new Date(),
+  tagMode: TagMode.Any,
+  taggedWith: ["any"],
+  subClassTags: true,
+  until: undefined,
   displayMode: ActivitySearchDisplayMode.Visits,
   recordingMode: ActivitySearchRecordingMode.Cameras,
-  locations: "any",
+  locations: ["any"],
   from: "24-hours-ago",
 });
 
@@ -304,7 +220,7 @@ const availableDateRanges = computed<
 >(() => {
   const earliest = minDateForProject.value;
   const latest = maxDateForProject.value;
-  const ranges = [];
+  const ranges = [] as { range: [Date, Date]; from: string; label: string }[];
   if (earliest < oneDayAgo && latest > oneDayAgo) {
     ranges.push({
       range: lastTwentyFourHours,
@@ -358,9 +274,10 @@ const deserialiseAndValidateRouteValue = (
   if (Array.isArray(value)) {
     value = value.join(",");
   }
-  if (value === null) {
-    return { replacement: null };
-  } else if (["display-mode", "recording-mode"].includes(key)) {
+  // if (value === null) {
+  //   return { replacement: null };
+  // } else
+  if (["display-mode", "recording-mode"].includes(key)) {
     // const parts = key.split("-");
     // const first = parts.shift() as string;
     // const camelKey: string = first + parts.map(upperFirst);
@@ -396,6 +313,7 @@ const deserialiseAndValidateRouteValue = (
         break;
     }
   } else if (key === "from") {
+    value = value || "";
     const knownLabels = availableDateRanges.value.reduce(
       (arr: Record<string, DateRange>, { from, range }) => {
         arr[from] = range;
@@ -416,6 +334,7 @@ const deserialiseAndValidateRouteValue = (
       searchParams.value.from = date;
     }
   } else if (key === "until") {
+    value = value || "";
     const date = new Date(value);
     if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
       return { replacement: null };
@@ -423,6 +342,7 @@ const deserialiseAndValidateRouteValue = (
     dateRange.value[1] = date;
     searchParams.value.until = date;
   } else if (key === "locations") {
+    value = value || [];
     // Check that the location ids are valid.
     let ids: number[];
     if (Array.isArray(value)) {
@@ -445,11 +365,47 @@ const deserialiseAndValidateRouteValue = (
           return { replacement: validIds.join(",") };
         } else {
           // No locations were valid, default to any location
+          searchParams.value.locations = ["any"];
           return { replacement: "any" };
         }
       }
     } else {
-      console.error("Invalid timespan?");
+      console.error("Invalid timespan?", value);
+    }
+  } else if (key === "tag-mode") {
+    // Map the tagged by into searchParams.
+    const taggedBy = (value || "").trim() as TagMode;
+    const tagModeIsValid = Object.values(TagMode).includes(taggedBy);
+    if (tagModeIsValid) {
+      searchParams.value.tagMode = taggedBy;
+    } else {
+      return { replacement: "any" };
+    }
+  } else if (key === "no-false-positives") {
+    searchParams.value.includeFalsePositives = value === "false";
+  } else if (key === "include-descendant-tags") {
+    searchParams.value.subClassTags = value !== "false";
+  } else if (key === "tagged-with") {
+    value = value || "";
+    const allTags = value.split(",").map((tag) => tag.trim().toLowerCase());
+    const validTags = allTags.filter((tag) => tag in flatClassifications.value);
+    if (validTags.length === allTags.length) {
+      searchParams.value.taggedWith = value.split(",").map((x) => x.trim());
+    } else {
+      if (validTags.length) {
+        return { replacement: validTags.join(",") };
+      } else {
+        return { replacement: null };
+      }
+    }
+  } else if (key === "labelled-with") {
+    const allLabels = (value || "")
+      .split(",")
+      .map((tag) => tag.trim().toLowerCase())
+      .filter((tag) => tag.length !== 0);
+    searchParams.value.labelledWith = allLabels;
+    if (!allLabels.length) {
+      return { replacement: null };
     }
   } else {
     return { replacement: null };
@@ -490,10 +446,13 @@ const syncSearchQuery = async (
       replacements[key] = replacement.replacement;
     }
   }
+  if (replacements["tagged-with"]) {
+    replacements["tag-mode"] = TagMode.Tagged;
+  }
   const isDateRange =
     queryValueIsDate(next.from) && queryValueIsDate(next.until);
   if (Object.entries(replacements).length) {
-    const query: Record<string, any> = {
+    const query: LocationQuery = {
       ...DefaultSearchParams,
       ...route.query,
       ...replacements,
@@ -586,14 +545,14 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 });
 
 const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
-  if (searchParams.value.locations === "any") {
+  if (searchParams.value.locations.includes("any")) {
     return ["any"];
   }
   return searchParams.value.locations
     .map((locId) =>
       locationsInSelectedTimespan.value.find(({ id }) => id === locId)
     )
-    .filter((item) => !!item);
+    .filter((item) => !!item) as ApiLocationResponse[];
 });
 
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
@@ -624,7 +583,9 @@ const locationsInSelectedTimespanForMap = computed<NamedPoint[]>(() => {
         if (selectedLocations.value.includes("any")) {
           return true;
         } else {
-          return !!selectedLocations.value.find(({ id }) => id === location.id);
+          return !!(selectedLocations.value as ApiLocationResponse[]).find(
+            ({ id }) => id === location.id
+          );
         }
       }
     })
@@ -667,12 +628,6 @@ const highlightPoint = (_point: NamedPoint) => {
 const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
   locationsInSelectedTimespan
 );
-
-// const displayMode = ref<"visits" | "recordings">("visits");
-// watch(displayMode, () => {
-//   // Redo search when display mode changes
-//   doSearch();
-// });
 
 const loadedRecordings = ref<ApiRecordingResponse[]>([]);
 const loadedRecordingIds = ref<RecordingId[]>([]);
@@ -749,7 +704,7 @@ let currentObserver: { stop: () => void } | null;
 onUpdated(() => {
   if (needsObserverUpdate) {
     let nearLast;
-    if (displayMode.value === "recordings") {
+    if (inRecordingsMode.value) {
       nearLast = document.querySelector(
         ".day-container:last-child > .list-item:nth-last-child(3)"
       );
@@ -763,7 +718,7 @@ onUpdated(() => {
           ".day-container:last-child > .list-item:last-child"
         );
       }
-    } else if (displayMode.value === "visits") {
+    } else if (inVisitsMode.value) {
       nearLast = document.querySelector(
         ".visits-daily-breakdown:nth-last-child(3)"
       );
@@ -830,9 +785,14 @@ interface RecordingQueryBase {
     | RecordingType.TrailCamImage
   )[];
   locations?: LocationId[];
+  tagMode?: TagMode;
+  tags?: string[];
+  subClassTags?: boolean;
+  includeFilteredFalsePositivesAndNones: boolean;
 }
-const getCurrentQuery = (): RecordingQueryBase => {
-  const query: RecordingQueryBase = {
+const getCurrentQuery = (): QueryRecordingsOptions => {
+  console.log("Search params", searchParams.value);
+  const query: QueryRecordingsOptions = {
     types:
       searchParams.value.recordingMode === "cameras"
         ? [
@@ -841,13 +801,57 @@ const getCurrentQuery = (): RecordingQueryBase => {
             ConcreteRecordingType.TrailCamImage,
           ]
         : [ConcreteRecordingType.Audio],
+    includeFilteredFalsePositivesAndNones:
+      searchParams.value.includeFalsePositives ||
+      searchParams.value.tagMode === TagMode.UnTagged,
   };
-  const isAnyLocation = selectedLocations.value[0] === "any";
+  const isAnyLocation = selectedLocations.value.includes("any");
   if (!isAnyLocation) {
     query.locations = selectedLocations.value.map(
       (loc) => (loc as ApiLocationResponse).id
     );
   }
+  const taggedWithAny = searchParams.value.taggedWith.includes("any");
+  if (!taggedWithAny) {
+    query.taggedWith = [
+      // The backend conflates tags and labels.
+      ...searchParams.value.taggedWith,
+      ...(searchParams.value.labelledWith || []),
+    ];
+  }
+  const tagModeAny = searchParams.value.tagMode === TagMode.Any;
+  if (!tagModeAny) {
+    if (searchParams.value.labelledWith?.length) {
+      query.tagMode = TagMode.Tagged;
+    } else {
+      query.tagMode = searchParams.value.tagMode;
+    }
+    if (!taggedWithAny) {
+      console.log(searchParams.value.subClassTags);
+      query.subClassTags = searchParams.value.subClassTags;
+    }
+  } else if (searchParams.value.labelledWith?.length) {
+    query.tagMode = TagMode.Tagged;
+    query.taggedWith = [...searchParams.value.labelledWith];
+  }
+
+  // Hack in support for Megadetector "animal" into our heirarchy:
+  if (query.taggedWith?.includes("animal") && query.subClassTags) {
+    const animalChildren = [
+      "mammal",
+      "bird",
+      "frog",
+      "insect",
+      "lizard",
+      "part",
+      "pest",
+    ];
+    query.taggedWith = query.taggedWith.filter(
+      (tag) => !animalChildren.includes(tag)
+    );
+    query.taggedWith = [...query.taggedWith, ...animalChildren];
+  }
+
   return query;
 };
 
@@ -951,9 +955,18 @@ const resetQuery = (
     untilDateTime,
   };
 };
-const displayMode = ref<"visits" | "recordings">("visits");
-// NOTE: We try to load at most one month at a time.
+
+const displayMode = computed<ActivitySearchDisplayMode>(
+  () => searchParams.value.displayMode
+);
+const inRecordingsMode = computed<boolean>(
+  () => displayMode.value === ActivitySearchDisplayMode.Recordings
+);
+const inVisitsMode = computed<boolean>(
+  () => displayMode.value === ActivitySearchDisplayMode.Visits
+);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
+  // NOTE: We try to load at most one month at a time.
   if (currentProject.value) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
@@ -961,11 +974,14 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     const queryHash = getCurrentQueryHash();
     const isNewQuery = queryHash !== currentQueryHash.value;
     const project = currentProject.value as SelectedProject;
+
+    console.log(isNewQuery ? "Using new query" : "Using existing query", query);
+
     if (isNewQuery) {
       resetQuery(queryHash, fromDateTime, untilDateTime);
-      if (displayMode.value === "recordings") {
+      if (inRecordingsMode.value) {
         // Load total recording count for query lazily, so we
-        // don't block the main rendering query.
+        // don't lock the main rendering query.
         queryRecordingsInProject(project.id, {
           ...query,
           limit: 1,
@@ -989,10 +1005,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
-      const itemHeight = displayMode.value === "recordings" ? 80 : 160;
+      const itemHeight = inRecordingsMode.value ? 80 : 160;
       const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
       let response: FetchResult<BulkRecordingsResponse> | BulkVisitsResponse;
-      if (displayMode.value === "recordings") {
+      if (inRecordingsMode.value) {
         response = await queryRecordingsInProject(project.id, {
           ...query,
           limit: twoPagesWorth,
@@ -1022,7 +1038,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (response && response.success) {
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
-        if (displayMode.value === "recordings") {
+        if (inRecordingsMode.value) {
           const recordingsResponse =
             response as SuccessFetchResult<BulkRecordingsResponse>;
           loadedFewerItemsThanRequested =
@@ -1038,7 +1054,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             );
             console.log("Got until date", gotUntilDate);
           }
-        } else if (displayMode.value === "visits") {
+        } else if (inVisitsMode.value) {
           const visitsResponse = response as BulkVisitsResponse;
           const visits = visitsResponse.visits as ApiVisitResponse[];
           loadedFewerItemsThanRequested = !visitsResponse.all;
@@ -1098,23 +1114,19 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
 const searching = ref<boolean>(false);
 const doSearch = async () => {
-  // FIXME
-  // if (searchIsValid.value) {
+  showOffcanvasSearch.value = false;
   searching.value = true;
   await getClassifications();
   await getRecordingsOrVisitsForCurrentQuery();
   searching.value = false;
-  // }
 };
 
 const doExport = async () => {
   // FIXME
-  // if (searchIsValid.value) {
   //   searching.value = true;
   //   await getClassifications();
   //   await getRecordingsOrVisitsForCurrentQuery();
   //   searching.value = false;
-  // }
 };
 
 const fromDateMinusIncrement = computed<Date>(() => {
@@ -1324,6 +1336,7 @@ const shouldShowSearchControlsInline = computed<boolean>(
         v-model="showOffcanvasSearch"
         :placement="'end'"
         :teleport-disabled="true"
+        title="Activity search"
         :body-class="'search-offcanvas'"
       >
         <activity-search-parameters
@@ -1353,10 +1366,12 @@ const shouldShowSearchControlsInline = computed<boolean>(
       ref="searchResults"
     >
       <div class="search-results-inner d-flex flex-grow-1 flex-column">
-        <div class="search-description mb-3">
-          {{ searchDescription }}
-        </div>
-
+        <activity-search-description
+          :locations-in-selected-timespan="locationsInSelectedTimespan"
+          :selected-locations="selectedLocations"
+          :available-date-ranges="availableDateRanges"
+          :search-params="searchParams"
+        />
         <div v-if="currentQueryCount === undefined">
           Loading totals...
           <b-spinner />
@@ -1366,7 +1381,7 @@ const shouldShowSearchControlsInline = computed<boolean>(
         </div>
         <div class="search-items-container">
           <recordings-list
-            v-if="displayMode === 'recordings'"
+            v-if="inRecordingsMode"
             :recordings-by-day="chunkedRecordings"
             @change-highlighted-location="
               (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
@@ -1376,7 +1391,7 @@ const shouldShowSearchControlsInline = computed<boolean>(
             :canonical-location="canonicalLatLngForActiveLocations"
           />
           <visits-breakdown-list
-            v-else-if="displayMode === 'visits'"
+            v-else-if="inVisitsMode"
             :visits="chunkedVisits"
             :location="canonicalLatLngForActiveLocations"
             :highlighted-location="currentlyHighlightedLocation"

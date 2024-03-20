@@ -1282,6 +1282,8 @@ export default function (app: Application, baseUrl: string) {
           Object.keys(newSettings.maskRegions).length !== 0;
         if (Object.keys(maskRegions).length) {
           newSettings.maskRegions = maskRegions;
+        } else {
+          delete newSettings.maskRegions;
         }
         if (hadMaskRegion) {
           // Create a new copy of the current DeviceHistory entry, so that previous mask regions at this location

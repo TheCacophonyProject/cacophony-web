@@ -1097,7 +1097,7 @@ from (
     exclusive: boolean
   ) => {
     let sql =
-      'SELECT 1 FROM "Tags" WHERE  "Tags"."RecordingId" = "Recording".id';
+      'SELECT 1 FROM "Tags" WHERE "Tags"."RecordingId" = "Recording".id';
     if (tags) {
       sql += ` AND (${Recording.queryBuilder.selectByTag(
         tags,

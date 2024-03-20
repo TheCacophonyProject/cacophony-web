@@ -543,6 +543,9 @@ onMounted(() => {
   --bs-btn-disabled-border-color: transparent;
   --bs-btn-focus-border-color: transparent;
   --bs-btn-active-border-color: transparent;
+  // Multiselect tag colour
+  --ms-tag-bg: var(--bs-secondary);
+  --ms-option-bg-selected: var(--bs-secondary);
 }
 #unimplemented-modal {
   z-index: 20000;

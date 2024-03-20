@@ -4,7 +4,7 @@
     v-for="day in recordingsByDay"
     :key="day.dateTime.day"
   >
-    <div class="day-header fw-bold px-2 pb-2">
+    <div class="day-header fw-bold px-2 pb-2 fs-7">
       {{ day.dateTime.toLocaleString(DateTime.DATE_FULL) }}
     </div>
 
@@ -89,7 +89,7 @@
       </div>
       <div
         v-else
-        class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden recording-detail my-1 me-1"
+        class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
       >
         <div class="visit-thumb">
           <image-loader
@@ -102,31 +102,37 @@
         <div class="ps-3 d-flex flex-column text-truncate flex-wrap">
           <div class="tags-container d-flex flex-wrap">
             <span
+              class="d-flex align-items-center mb-2"
+              v-if="processingInProgress.includes((item.data as ApiRecordingResponse).processingState)"
+              ><b-spinner small /><span class="ms-1"
+                >Queued for AI classification processing</span
+              ></span
+            >
+            <span
+              v-else
               class="visit-species-tag px-1 mb-1 text-capitalize me-1"
               :class="tag.path.split('.')"
               :key="tag.what"
               v-for="tag in tagsForRecording(item.data)"
-              >{{
+              ><span class="me-1">{{
                 displayLabelForClassificationLabel(
                   tag.what,
                   tag.automatic && !tag.human
                 )
-              }}
-              <font-awesome-icon
+              }}</span
+              ><font-awesome-icon
                 icon="check"
                 size="xs"
                 v-if="tag.human && tag.automatic"
                 class="mx-1 align-middle"
                 style="padding-bottom: 2px"
-              />
-              <font-awesome-icon
+              /><font-awesome-icon
                 icon="user"
                 size="xs"
                 v-else-if="tag.human"
                 class="mx-1 align-middle"
                 style="padding-bottom: 2px"
-              />
-              <font-awesome-icon
+              /><font-awesome-icon
                 icon="cog"
                 size="xs"
                 v-else-if="tag.automatic"
@@ -142,6 +148,7 @@
               >{{ label.what }}
             </span>
           </div>
+
           <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
             ><font-awesome-icon
               icon="map-marker-alt"
@@ -149,26 +156,29 @@
               class="station-icon pe-1 text"
             />{{ (item as RecordingItem).data.stationName }}</span
           >
-          <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-            ><font-awesome-icon
-              icon="video"
-              size="xs"
-              class="station-icon pe-1 text"
-            />{{ (item as RecordingItem).data.deviceName }}</span
-          >
-          <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-            ><font-awesome-icon
-              icon="stream"
-              size="xs"
-              class="station-icon pe-1 text"
-            /><span v-if="(item as RecordingItem).data.tracks.length === 0"
-              >No tracks</span
-            ><span v-else-if="(item as RecordingItem).data.tracks.length === 1"
-              >1 track</span
-            ><span v-else
-              >{{ (item as RecordingItem).data.tracks.length }} tracks</span
-            ></span
-          >
+          <div class="d-flex">
+            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
+              ><font-awesome-icon
+                icon="video"
+                size="xs"
+                class="station-icon pe-1 text"
+              />{{ (item as RecordingItem).data.deviceName }}</span
+            >
+            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
+              ><font-awesome-icon
+                icon="stream"
+                size="xs"
+                class="station-icon pe-1 text"
+              /><span v-if="(item as RecordingItem).data.tracks.length === 0"
+                >No tracks</span
+              ><span
+                v-else-if="(item as RecordingItem).data.tracks.length === 1"
+                >1 track</span
+              ><span v-else
+                >{{ (item as RecordingItem).data.tracks.length }} tracks</span
+              ></span
+            >
+          </div>
         </div>
       </div>
     </div>
@@ -188,10 +198,18 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { API_ROOT } from "@api/root";
 import { ref } from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
-import { RecordingType } from "@typedefs/api/consts.ts";
+import {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.ts";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
+
+const processingInProgress = [
+  RecordingProcessingState.Analyse,
+  RecordingProcessingState.Tracking,
+];
 
 interface TagItem {
   human?: boolean;
@@ -313,6 +331,9 @@ const unhighlightedLocation = (item: RecordingItem | SunItem) => {
 </script>
 
 <style scoped lang="less">
+.visit-station-name {
+  max-width: calc(100% - 1rem);
+}
 .visits-daily-breakdown {
   background: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);

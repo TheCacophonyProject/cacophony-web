@@ -555,8 +555,6 @@ const frameHeight = computed<number>(() => {
   }
   return 120;
 });
-// FIXME - Refactor to separate frame data drawing from overlay drawing.
-
 const renderFrame = (
   frameData: CptvFrame,
   frameNumToRender: number,
@@ -1186,7 +1184,8 @@ const drawTrailcamImageAndOverlay = () => {
       for (const track of props.recording.tracks) {
         if (track.positions && track.positions.length) {
           const pos = { ...track.positions[0] };
-          //const pos = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
+          pos.y = 1 - pos.y - pos.height;
+          console.log(pos);
           pos.x = pos.x * canvasWidth;
           pos.height = pos.height * restrictedHeight;
           pos.y = pos.y * restrictedHeight;
@@ -1221,7 +1220,6 @@ const drawTrailcamImageAndOverlay = () => {
 const updateOverlayCanvas = (frameNumToRender: number) => {
   if (overlayContext.value) {
     if (currentRecordingType.value === "cptv") {
-      // FIXME - Move this somewhere else, like when the frame advances
       renderOverlay(
         overlayContext.value,
         scale.value,
