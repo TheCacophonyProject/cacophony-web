@@ -827,7 +827,6 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
       query.tagMode = searchParams.value.tagMode;
     }
     if (!taggedWithAny) {
-      console.log(searchParams.value.subClassTags);
       query.subClassTags = searchParams.value.subClassTags;
     }
   } else if (searchParams.value.labelledWith?.length) {

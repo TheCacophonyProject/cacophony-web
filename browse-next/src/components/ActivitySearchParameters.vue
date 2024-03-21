@@ -616,10 +616,8 @@ const updateRoute = async (
   prev: string | boolean | undefined
 ) => {
   if (prev !== next) {
-    console.log(next, prev);
     // TODO: Emit event to clear current search results (or really, just handle the route change in the parent)
     const query = getCurrentQuery();
-    console.log("Replacing with", query);
     await router.replace({
       query,
     });
@@ -992,7 +990,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="showFilteredFalsePositivesAndNones"
         switch
         :disabled="showUntaggedOnly"
-        >Show false positives</b-form-checkbox
+        >Include false positives</b-form-checkbox
       >
       <span class="help-toggle" ref="falsePositiveInfoParent"
         ><font-awesome-icon icon="question"
@@ -1008,8 +1006,8 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       container="body"
       :target="falsePositiveInfoParent"
     >
-      Filter out recordings that are only tagged as false positive, or which
-      have no tracks to tag.
+      Include recordings that are only tagged as false positive, or which have
+      no tracks to tag.
     </b-popover>
   </div>
   <button

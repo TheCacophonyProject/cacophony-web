@@ -1185,11 +1185,10 @@ const drawTrailcamImageAndOverlay = () => {
         if (track.positions && track.positions.length) {
           const pos = { ...track.positions[0] };
           pos.y = 1 - pos.y - pos.height;
-          console.log(pos);
-          pos.x = pos.x * canvasWidth;
-          pos.height = pos.height * restrictedHeight;
-          pos.y = pos.y * restrictedHeight;
-          pos.width = pos.width * canvasWidth;
+          pos.x = (pos.x * canvasWidth) / pixelRatio.value;
+          pos.height = (pos.height * restrictedHeight) / pixelRatio.value;
+          pos.y = (pos.y * restrictedHeight) / pixelRatio.value;
+          pos.width = (pos.width * canvasWidth) / pixelRatio.value;
           const authTag = getAuthoritativeTagForTrack(track.tags);
           let what = "";
           let aiTag = false;

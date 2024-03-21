@@ -102,10 +102,10 @@
         <div class="ps-3 d-flex flex-column text-truncate flex-wrap">
           <div class="tags-container d-flex flex-wrap">
             <span
-              class="d-flex align-items-center mb-2"
+              class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
               v-if="processingInProgress.includes((item.data as ApiRecordingResponse).processingState)"
-              ><b-spinner small /><span class="ms-1"
-                >Queued for AI classification processing</span
+              ><b-spinner small variant="secondary" /><span class="ms-1"
+                >AI Queued</span
               ></span
             >
             <span
@@ -331,6 +331,11 @@ const unhighlightedLocation = (item: RecordingItem | SunItem) => {
 </script>
 
 <style scoped lang="less">
+.spinner-border-sm {
+  --bs-spinner-width: 0.65rem;
+  --bs-spinner-height: 0.65rem;
+  --bs-spinner-border-width: 0.2em;
+}
 .visit-station-name {
   max-width: calc(100% - 1rem);
 }

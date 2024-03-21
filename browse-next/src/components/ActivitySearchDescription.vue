@@ -123,18 +123,18 @@ const otherLabels = computed<string[]>(
     <span v-if="selectedLocations.includes('any')">
       <span v-if="locationsInSelectedTimespan.length === 1">
         at
-        <strong class="fw-semibold"
-          >'{{ locationsInSelectedTimespan[0].name }}'</strong
-        >
+        <strong class="fw-semibold">{{
+          locationsInSelectedTimespan[0].name
+        }}</strong>
       </span>
       <span v-else> across all locations</span>
     </span>
     <span v-else>
       <span v-if="selectedLocations.length === 1">
         at
-        <strong class="fw-semibold"
-          >'{{ (selectedLocations as ApiLocationResponse[])[0].name }}'</strong
-        >
+        <strong class="fw-semibold">{{
+          (selectedLocations as ApiLocationResponse[])[0].name
+        }}</strong>
       </span>
       <span v-else>
         across
@@ -142,7 +142,7 @@ const otherLabels = computed<string[]>(
           :key="index"
           v-for="(loc, index) in (selectedLocations as ApiLocationResponse[])"
         >
-          <strong class="fw-semibold">'{{ loc.name }}'</strong
+          <strong class="fw-semibold">{{ loc.name }}</strong
           ><span v-if="index === selectedLocations.length - 2"> and </span
           ><span v-else-if="index < selectedLocations.length - 1"
             >,
@@ -169,7 +169,8 @@ const otherLabels = computed<string[]>(
           or inheriting from
         </span>
         <span :key="index" v-for="(tag, index) in searchParams.taggedWith">
-          <strong class="fw-semibold">'{{ tag }}'</strong
+          <strong class="fw-semibold"
+            ><span class="text-capitalize">{{ tag }}</span></strong
           ><span v-if="index === searchParams.taggedWith.length - 2"> or </span
           ><span
             v-else-if="
@@ -186,12 +187,13 @@ const otherLabels = computed<string[]>(
           searchParams.tagMode == TagMode.Any
         "
         >, excluding those with no tracks, or that are only tagged as
-        <strong class="fw-semibold">'false positive'</strong>
+        <strong class="fw-semibold text-capitalize">false positive</strong>
       </span>
       <span v-if="otherLabels.length"
         >, labelled with
         <span :key="index" v-for="(label, index) in otherLabels">
-          <strong class="fw-semibold">'{{ label }}'</strong
+          <strong class="fw-semibold"
+            ><span class="text-capitalize">{{ label }}</span></strong
           ><span v-if="index === otherLabels.length - 2"> or </span
           ><span
             v-else-if="index < otherLabels.length - 1 && otherLabels.length > 1"

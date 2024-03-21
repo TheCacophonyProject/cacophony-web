@@ -17,6 +17,7 @@ import {
   getClassificationForLabel,
 } from "@api/Classifications";
 import ImageLoader from "@/components/ImageLoader.vue";
+import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
@@ -72,7 +73,6 @@ interface SunEventItem extends EventItem {
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
-  console.log(props.visits);
   for (const visit of props.visits) {
     if (!visit.classification) {
       debugger;
@@ -249,6 +249,26 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
     emit("change-highlighted-location", null);
   }
 };
+const processingStates = [
+  RecordingProcessingState.Tracking,
+  RecordingProcessingState.Analyse,
+];
+const isStillProcessing = computed<boolean>(() => {
+  // TODO: Poll to see if processing has finished
+  return visitEvents.value.some(
+    (visit) =>
+      visit.type === "visit" &&
+      visit.data.recordings.some((rec) =>
+        processingStates.includes(rec.processingState)
+      )
+  );
+});
+const someRecordingStillProcessing = (visit: ApiVisitResponse): boolean => {
+  // TODO: Poll to see if processing has finished
+  return visit.data?.recordings.some((rec) =>
+    processingStates.includes(rec.processingState)
+  );
+};
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
@@ -266,13 +286,22 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
           ><font-awesome-icon icon="moon"
         /></span>
       </div>
-      <font-awesome-icon
-        v-if="hasVisits"
-        class="px-2"
-        size="sm"
-        icon="chevron-right"
-        :rotation="showVisitsDetail ? 270 : 90"
-      />
+      <div>
+        <span
+          v-if="isStillProcessing"
+          class="d-inline-flex align-items-center bg-light px-1 rounded-1"
+        >
+          <b-spinner small variant="secondary" />
+          <span class="ms-2 me-1 fs-8" style="color: #7d7d7d">AI Queued</span>
+        </span>
+        <font-awesome-icon
+          v-if="hasVisits"
+          class="px-2"
+          size="sm"
+          icon="chevron-right"
+          :rotation="showVisitsDetail ? 270 : 90"
+        />
+      </div>
     </div>
     <div v-if="!showVisitsDetail" class="visits-summary">
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
@@ -379,14 +408,19 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
           <div class="ps-3 d-flex flex-column text-truncate">
             <div>
               <span
-                class="visit-species-tag px-1 mb-1 text-capitalize"
+                class="visit-species-tag px-1 mb-1 text-capitalize d-inline-flex align-items-center"
                 :class="[
                   visit.name,
                   ...(getClassificationForLabel(visit.name)?.path as string || '').split(
                     '.'
                   ),
                 ]"
-                >{{ displayLabelForClassificationLabel(visit.name) }}
+                ><b-spinner
+                  small
+                  class="me-1"
+                  variant="light"
+                  v-if="someRecordingStillProcessing(visit.data)"
+                />{{ displayLabelForClassificationLabel(visit.name) }}
                 <font-awesome-icon
                   icon="check"
                   v-if="visit.data.classFromUserTag"
@@ -416,6 +450,12 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   </div>
 </template>
 <style scoped lang="less">
+.spinner-border-sm {
+  --bs-spinner-width: 0.65rem;
+  --bs-spinner-height: 0.65rem;
+  --bs-spinner-border-width: 0.2em;
+}
+
 .visits-daily-breakdown {
   background: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);

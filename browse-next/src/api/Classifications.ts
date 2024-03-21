@@ -139,7 +139,7 @@ export const displayLabelForClassificationLabel = (
     return "Unidentified";
   }
   const classifications = flatClassifications.value || {};
-  if (label === "human" && !isAudioContext) {
+  if ((label === "human" || label === "person") && !isAudioContext) {
     return "human";
   }
   return (classifications[label] && classifications[label].display) || label;
