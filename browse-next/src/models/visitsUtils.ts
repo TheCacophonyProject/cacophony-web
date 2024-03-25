@@ -275,3 +275,19 @@ export const timeAtLocation = (
     })
     .replace(/ /g, "");
 };
+
+export const dayAndTimeAtLocation = (
+  timeIsoString: string,
+  location: LatLng
+): string => {
+  const zone = timezoneForLatLng(location);
+  const localTime = DateTime.fromISO(timeIsoString, { zone });
+  return localTime.toLocaleString({
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hourCycle: "h12",
+  });
+};

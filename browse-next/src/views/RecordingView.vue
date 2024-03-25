@@ -354,6 +354,7 @@ const gotoRecording = async (recordingId: RecordingId) => {
   await router.push({
     name: route.name as string,
     params,
+    query: route.query,
   });
 };
 
@@ -378,6 +379,7 @@ const gotoVisit = async (visit: ApiVisitResponse, startOfVisit: boolean) => {
   await router.push({
     name: route.name as string,
     params,
+    query: route.query,
   });
 };
 
@@ -546,6 +548,7 @@ const recalculateCurrentVisit = async (
         await router.replace({
           name: route.name as string,
           params,
+          query: route.query,
         });
         console.warn(
           "recalculate visit",
@@ -814,6 +817,7 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   await router.replace({
     name: route.name as string,
     params,
+    query: route.query,
   });
 };
 const selectedTrackWrapped = ({

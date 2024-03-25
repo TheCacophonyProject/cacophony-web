@@ -30,6 +30,7 @@ import type {
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
   type BulkRecordingsResponse,
+  getAllRecordingsForProjectBetweenTimes,
   queryRecordingsInProject,
   type QueryRecordingsOptions,
 } from "@api/Recording";
@@ -51,7 +52,13 @@ import {
   useWindowSize,
 } from "@vueuse/core";
 import { DateTime } from "luxon";
-import { timezoneForLatLng } from "@models/visitsUtils";
+import {
+  dayAndTimeAtLocation,
+  formatDuration,
+  timeAtLocation,
+  timezoneForLatLng,
+  visitDuration,
+} from "@models/visitsUtils";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import * as sunCalc from "suncalc";
 import {
@@ -78,10 +85,13 @@ import {
   validateLocations,
 } from "@/components/activitySearchUtils.ts";
 import {
+  displayLabelForClassificationLabel,
   flatClassifications,
   getClassifications,
 } from "@api/Classifications.ts";
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
+import { delayMs } from "@/utils.ts";
+import { tagsForRecording } from "@models/recordingUtils.ts";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -1112,6 +1122,11 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 };
 
 const searching = ref<boolean>(false);
+const exporting = ref<boolean>(false);
+const exportProgress = ref<number>(0);
+const exportProgressZeroOneHundred = computed<number>(
+  () => exportProgress.value * 100
+);
 const doSearch = async () => {
   showOffcanvasSearch.value = false;
   searching.value = true;
@@ -1120,12 +1135,174 @@ const doSearch = async () => {
   searching.value = false;
 };
 
+const download = (url: string, filename: string) => {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename || "download";
+  anchor.click();
+};
+
+const arrayToCsv = (data: string[][]) => {
+  return data
+    .map(
+      (row) =>
+        row
+          .map(String) // convert every value to String
+          .map((v) => v.replaceAll('"', '""')) // escape double quotes
+          .map((v) => `"${v}"`) // quote it
+          .join(",") // comma-separated
+    )
+    .join("\r\n"); // rows starting on new lines
+};
+const upperFirst = (str: string): string => {
+  const trim = str.trim();
+  return trim.charAt(0).toUpperCase() + trim.slice(1);
+};
+const createVisitsCsv = (data: ApiVisitResponse[]): string => {
+  const csv = [
+    [
+      "Location",
+      "Start time",
+      "End time",
+      "Local start time",
+      "Local end time",
+      "Duration",
+      "Visit classification",
+      "Classified by",
+      "# Recordings",
+    ],
+  ];
+  for (const visit of data) {
+    const classificationAgreesWithAi =
+      visit.classificationAi === visit.classification && visit.classFromUserTag;
+    const classificationType = visit.classFromUserTag
+      ? classificationAgreesWithAi
+        ? "User & AI"
+        : "User"
+      : visit.classificationAi
+      ? "AI"
+      : "unknown";
+    const location = (locations.value || []).find(
+      ({ id }) => id === visit.stationId
+    );
+    if (location) {
+      csv.push([
+        visit.stationName,
+        visit.timeStart,
+        visit.timeEnd,
+        dayAndTimeAtLocation(visit.timeStart, location.location),
+        dayAndTimeAtLocation(visit.timeEnd, location.location),
+        visitDuration(visit).replace("&nbsp;", " "),
+        upperFirst(
+          (visit.classification &&
+            displayLabelForClassificationLabel(
+              visit.classification,
+              !visit.classFromUserTag
+            )) ||
+            "none"
+        ),
+        classificationType,
+        (visit.recordings?.length || 0).toString(),
+      ]);
+    }
+  }
+  return arrayToCsv(csv);
+};
+
+const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
+  // TODO: More columns as needed
+  const csv = [
+    [
+      "Location",
+      "Latitude/Longitude",
+      "Device name",
+      "Time",
+      "Local time",
+      "Duration",
+      "Classification",
+    ],
+  ];
+  for (const recording of data) {
+    const location = (locations.value || []).find(
+      ({ id }) => id === recording.stationId
+    );
+    if (location) {
+      const tags = tagsForRecording(recording);
+      const displays = [];
+      for (const tag of tags) {
+        const display = displayLabelForClassificationLabel(
+          tag.what,
+          tag.automatic && !tag.human
+        );
+        displays.push(upperFirst(display));
+      }
+
+      csv.push([
+        recording.stationName || "",
+        `${recording.location?.lat}, ${recording.location?.lng}`,
+        recording.deviceName,
+        recording.recordingDateTime,
+        dayAndTimeAtLocation(recording.recordingDateTime, location.location),
+        formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
+        displays.join(", "),
+      ]);
+    }
+  }
+  return arrayToCsv(csv);
+};
+
 const doExport = async () => {
-  // FIXME
-  //   searching.value = true;
-  //   await getClassifications();
-  //   await getRecordingsOrVisitsForCurrentQuery();
-  //   searching.value = false;
+  exportProgress.value = 0;
+  exporting.value = true;
+  await getClassifications();
+  if (currentProject.value) {
+    const fromDateTime = dateRange.value[0];
+    const untilDateTime = dateRange.value[1];
+    const query = getCurrentQuery();
+    const project = currentProject.value as SelectedProject;
+    exportProgress.value = 0;
+    if (inVisitsMode.value) {
+      // Get all the responses
+      const visitsResponse = await getAllVisitsForProjectBetweenTimes(
+        project.id,
+        fromDateTime,
+        untilDateTime,
+        query.locations,
+        query.types,
+        (progress) => {
+          exportProgress.value = progress;
+        }
+      );
+      const csvFileData = createVisitsCsv(
+        visitsResponse.visits as ApiVisitResponse[]
+      );
+      download(
+        URL.createObjectURL(
+          new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
+        ),
+        `visits-export.csv`
+      );
+    } else if (inRecordingsMode.value) {
+      query.fromDateTime = fromDateTime;
+      query.untilDateTime = untilDateTime;
+      const recordings = await getAllRecordingsForProjectBetweenTimes(
+        project.id,
+        query,
+        (progress) => {
+          exportProgress.value = progress;
+        }
+      );
+      const csvFileData = createRecordingsCsv(recordings);
+      download(
+        URL.createObjectURL(
+          new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
+        ),
+        `recordings-export.csv`
+      );
+    }
+  }
+  await delayMs(1000).promise;
+  exporting.value = false;
 };
 
 const fromDateMinusIncrement = computed<Date>(() => {
@@ -1210,6 +1387,7 @@ const adjustTimespanBackwards = async () => {
   await doSearch();
 };
 
+// FIXME: Handle recording closing etc, restoring route.
 const selectedRecording = async (recordingId: RecordingId) => {
   console.log("Selected recording", recordingId);
   await router.push({
@@ -1217,6 +1395,7 @@ const selectedRecording = async (recordingId: RecordingId) => {
     params: {
       currentRecordingId: recordingId,
     },
+    query: route.query,
   });
 };
 
@@ -1246,6 +1425,7 @@ watch(
       router.push({
         name: "activity-visit",
         params,
+        query: route.query,
       });
     }
   }
@@ -1375,9 +1555,9 @@ const shouldShowSearchControlsInline = computed<boolean>(
           Loading totals...
           <b-spinner />
         </div>
-        <div v-else-if="currentQueryCount || currentQueryCount === 0">
-          Loaded {{ currentQueryLoaded }} / Total {{ currentQueryCount }}
-        </div>
+        <!--        <div v-else-if="currentQueryCount || currentQueryCount === 0">-->
+        <!--          Loaded {{ currentQueryLoaded }} / Total {{ currentQueryCount }}-->
+        <!--        </div>-->
         <div class="search-items-container">
           <recordings-list
             v-if="inRecordingsMode"
@@ -1402,7 +1582,7 @@ const shouldShowSearchControlsInline = computed<boolean>(
         </div>
         <div
           v-if="searching"
-          class="d-flex justify-content-center flex-columns"
+          class="d-flex justify-content-center flex-columns align-items-center"
         >
           <b-spinner />
         </div>
@@ -1449,6 +1629,24 @@ const shouldShowSearchControlsInline = computed<boolean>(
     @shown="() => (loadedRouteName = 'activity')"
     @close="closedModal"
   />
+  <b-modal
+    v-model="exporting"
+    centered
+    no-close-on-esc
+    title="Exporting data"
+    @hidden="() => (exportProgress = 0)"
+    no-close-on-backdrop
+    hide-footer
+    hide-header-close
+  >
+    <activity-search-description
+      :locations-in-selected-timespan="locationsInSelectedTimespan"
+      :selected-locations="selectedLocations"
+      :available-date-ranges="availableDateRanges"
+      :search-params="searchParams"
+    />
+    <b-progress :value="exportProgressZeroOneHundred" />
+  </b-modal>
 </template>
 <style lang="less" scoped>
 .search-results-toggle {

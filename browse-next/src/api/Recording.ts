@@ -247,6 +247,42 @@ export const getRecordingsForLocationsAndDevicesInProject = (
   );
 };
 
+export const getAllRecordingsForProjectBetweenTimes = async (
+  projectId: ProjectId,
+  query: QueryRecordingsOptions,
+  progressUpdater: (progress: number) => void
+): Promise<ApiRecordingResponse[]> => {
+  query.limit = 100;
+  const recordings = [];
+  let moreRecordingsToLoad = true;
+
+  const countResponse = await queryRecordingsInProject(projectId, {
+    ...query,
+    limit: 1,
+    countAll: true,
+  });
+  if (countResponse.success) {
+    const countEstimate = countResponse.result.count;
+    while (moreRecordingsToLoad) {
+      const response = await queryRecordingsInProject(projectId, query);
+      if (response.success) {
+        const result = response.result;
+        moreRecordingsToLoad = result.count === result.limit;
+        recordings.push(...result.rows);
+        if (recordings.length) {
+          //debugger;
+          query.untilDateTime = new Date(
+            recordings[recordings.length - 1].recordingDateTime
+          );
+          query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
+        }
+        progressUpdater(recordings.length / countEstimate);
+      }
+    }
+  }
+  return recordings;
+};
+
 export const longRunningQuery = (seconds?: number, succeed?: boolean) => {
   const abortable = true;
   const params = new URLSearchParams();

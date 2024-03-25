@@ -33,6 +33,7 @@ const closedModal = () => {
   router.push({
     name: props.parentRouteName,
     params,
+    query: route.query,
   });
   emit("close");
 };

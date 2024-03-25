@@ -202,6 +202,7 @@ import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.ts";
+import { type TagItem, tagsForRecording } from "@models/recordingUtils.ts";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -210,14 +211,6 @@ const processingInProgress = [
   RecordingProcessingState.Analyse,
   RecordingProcessingState.Tracking,
 ];
-
-interface TagItem {
-  human?: boolean;
-  automatic?: boolean;
-  what: string;
-  path: string;
-  displayName: string;
-}
 
 const _props = withDefaults(
   defineProps<{
@@ -235,39 +228,6 @@ const emit = defineEmits<{
   (e: "selected-recording", id: RecordingId): void;
   (e: "change-highlighted-location", id: LocationId | null): void;
 }>();
-
-const tagsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
-  // Get unique tags for recording, and compile the taggers.
-  const uniqueTags: Record<string, TagItem> = {};
-  for (const track of recording.tracks) {
-    const uniqueTrackTags: Record<string, TagItem> = {};
-    let isHumanTagged = false;
-    for (const tag of track.tags) {
-      uniqueTrackTags[tag.what] = uniqueTrackTags[tag.what] || {
-        human: false,
-        automatic: false,
-        what: tag.what,
-        path: tag.path,
-        displayName: tag.what,
-      };
-      const existingTag = uniqueTrackTags[tag.what];
-      if (!existingTag.human && !tag.automatic) {
-        isHumanTagged = true;
-        existingTag.human = !tag.automatic;
-      }
-      if (!existingTag.automatic && tag.automatic) {
-        existingTag.automatic = tag.automatic;
-      }
-    }
-    for (const tag of Object.values(uniqueTrackTags)) {
-      if ((isHumanTagged && tag.human) || (!isHumanTagged && tag.automatic)) {
-        uniqueTags[tag.what] = uniqueTags[tag.what] || tag;
-      }
-    }
-    // Just take the human tags for the track, fall back to automatic.
-  }
-  return Object.values(uniqueTags);
-};
 
 const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
   // Get unique tags for recording, and compile the taggers.
