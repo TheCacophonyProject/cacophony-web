@@ -1163,28 +1163,6 @@ export default function (app: Application, baseUrl: string) {
       const hadPreviousReferenceImage =
         !!previousSettings.referenceImagePOV ||
         !!previousSettings.referenceImageInSitu;
-      if (previousSettings) {
-        if (referenceType === "pov" && previousSettings.referenceImagePOV) {
-          try {
-            await deleteFile(previousSettings.referenceImagePOV);
-            delete previousSettings.referenceImagePOV;
-            delete previousSettings.referenceImagePOVFileSize;
-          } catch (e) {
-            // ...
-          }
-        } else if (
-          referenceType === "in-situ" &&
-          previousSettings.referenceImageInSitu
-        ) {
-          try {
-            await deleteFile(previousSettings.referenceImageInSitu);
-            delete previousSettings.referenceImageInSitu;
-            delete previousSettings.referenceImageInSituFileSize;
-          } catch (e) {
-            // ...
-          }
-        }
-      }
 
       const { key, size } = await uploadFileStream(request as any, "ref");
       const newSettings =
