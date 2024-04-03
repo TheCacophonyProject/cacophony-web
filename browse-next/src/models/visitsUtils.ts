@@ -10,6 +10,7 @@ import {
   getPathForLabel,
 } from "@api/Classifications";
 import type { Classification } from "@typedefs/api/trackTag";
+import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -71,6 +72,18 @@ export const sortTagPrecedence = (a: string, b: string): number => {
   }
   return aPriority - bPriority;
 };
+export const VisitProcessingStates = [
+  RecordingProcessingState.Tracking,
+  RecordingProcessingState.Analyse,
+];
+export const someRecordingStillProcessing = (
+  visit: ApiVisitResponse
+): boolean => {
+  // TODO: Poll to see if processing has finished
+  return visit.recordings.some((rec) =>
+    VisitProcessingStates.includes(rec.processingState)
+  );
+};
 export const visitsBySpecies = (
   visits: ApiVisitResponse[]
 ): [string, ApiVisitResponse[]][] => {
@@ -79,7 +92,10 @@ export const visitsBySpecies = (
       acc: Record<string, ApiVisitResponse[]>,
       currentValue: ApiVisitResponse
     ) => {
-      if (currentValue.classification) {
+      if (someRecordingStillProcessing(currentValue)) {
+        acc["unclassified"] = acc["unclassified"] || [];
+        acc["unclassified"].push(currentValue);
+      } else if (currentValue.classification) {
         acc[currentValue.classification] =
           acc[currentValue.classification] || [];
         acc[currentValue.classification].push(currentValue);

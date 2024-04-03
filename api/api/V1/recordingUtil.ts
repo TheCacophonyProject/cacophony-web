@@ -1347,6 +1347,8 @@ export const addTag = async (
   (tagInstance as any).RecordingId = recording.id;
   if (user) {
     tagInstance.taggerId = user.id;
+    // `used` is an internal field.
+    (tagInstance as any).used = true;
   }
   await tagInstance.save();
   return tagInstance;

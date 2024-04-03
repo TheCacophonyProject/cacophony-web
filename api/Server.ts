@@ -101,7 +101,7 @@ const checkS3Connection = async (): Promise<void> => {
       "requestId",
       uuidv4()
     );
-    log.info("UA: %s", request.headers["user-agent"]);
+    // log.info("UA: %s", request.headers["user-agent"]);
     next();
   });
   app.use(
@@ -110,19 +110,16 @@ const checkS3Connection = async (): Promise<void> => {
       meta: false,
       metaField: null,
       msg: (req: Request, res: Response): string => {
-        const dbQueryCount = (
-          asyncLocalStorage.getStore() as Map<string, any>
-        )?.get("queryCount");
-
-        const dbQueryTime = (
-          asyncLocalStorage.getStore() as Map<string, any>
-        )?.get("queryTime");
-
-        return `${req.method} ${req.url} => Status(${res.statusCode}) ${
+        const store = asyncLocalStorage.getStore() as Map<string, any>;
+        const dbQueryCount = store?.get("queryCount");
+        const dbQueryTime = store?.get("queryTime");
+        return `${req.method} ${req.url}\n\t\t Status(${
+          res.statusCode
+        })\n\t\t ${
           dbQueryCount
-            ? `(${dbQueryCount} DB queries over ${dbQueryTime}ms) `
+            ? `${dbQueryCount} DB queries taking ${dbQueryTime}ms `
             : ""
-        }[${(res as any).responseTime}ms]`;
+        }[${(res as any).responseTime}ms total response time]`;
       },
     })
   );

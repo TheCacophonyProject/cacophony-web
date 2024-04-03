@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import type { FindOptions } from "sequelize";
 import Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { TrackTag, TrackTagId } from "./TrackTag.js";
+import {AI_MASTER, TrackTag, TrackTagId} from "./TrackTag.js";
 import { additionalTags, filteredTags } from "./TrackTag.js";
 import type { Recording } from "./Recording.js";
 import type { RecordingId, TrackId } from "@typedefs/api/common.js";
@@ -150,12 +150,14 @@ export default function (
     data,
     userId = null
   ): Promise<TrackTag> {
+    const used = userId !== null || data !== "" && data.name === AI_MASTER;
     const tag = (await this.createTrackTag({
       what,
       confidence,
       automatic,
       data,
       UserId: userId,
+      used
     })) as TrackTag;
     await this.updateIsFiltered();
     return tag;

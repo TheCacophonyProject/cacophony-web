@@ -113,7 +113,7 @@ const otherLabels = computed<string[]>(
 <template>
   <div class="mb-3 search-description fs-6">
     <em v-if="hasStarred"> Starred</em
-    ><span v-if="hasStarred && hasFlagged"> and </span
+    ><span v-if="hasStarred && hasFlagged"> or </span
     ><em v-if="hasFlagged">{{ hasStarred ? "flagged" : "Flagged" }}</em>
     <strong class="fw-semibold">{{
       !hasFlagged && !hasStarred

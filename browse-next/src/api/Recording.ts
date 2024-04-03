@@ -51,7 +51,7 @@ export const replaceTrackTag = (
     automatic,
   };
   return CacophonyApi.post(
-    `/api/v1/recordings/${recordingId}/tracks/${trackId}/replaceTag`, // TODO - change to replace-tag
+    `/api/v1/recordings/${recordingId}/tracks/${trackId}/replace-tag`,
     body
   ) as Promise<FetchResult<{ trackTagId?: number }>>;
 };
@@ -95,6 +95,7 @@ export interface QueryRecordingsOptions {
   devices?: DeviceId[];
   locations?: LocationId[];
   taggedWith?: string[];
+  labelledWith?: string[];
   fromDateTime?: Date;
   untilDateTime?: Date;
   limit?: number;
@@ -189,6 +190,65 @@ export const queryRecordingsInProject = (
   return CacophonyApi.get(`/api/v1/recordings?${params}`) as Promise<
     FetchResult<{ rows: ApiRecordingResponse[]; limit: number; count: number }>
   >;
+  //"rows"
+  //);
+};
+
+export const queryRecordingsInProjectNew = (
+  projectId: ProjectId,
+  options: QueryRecordingsOptions
+): Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>> => {
+  const params = new URLSearchParams();
+  if (options.taggedWith) {
+    for (const tag of options.taggedWith) {
+      params.append("tagged-with", tag);
+    }
+  }
+  if (options.labelledWith) {
+    for (const label of options.labelledWith) {
+      params.append("labelled-with", label);
+    }
+  }
+  if (options.devices) {
+    for (const deviceId of options.devices) {
+      params.append("devices", deviceId.toString());
+    }
+  }
+  if (options.locations) {
+    for (const locationId of options.locations) {
+      params.append("locations", locationId.toString());
+    }
+  }
+  if (options.fromDateTime) {
+    params.append("from", options.fromDateTime.toISOString());
+  }
+  if (options.untilDateTime) {
+    params.append("until", options.untilDateTime.toISOString());
+  }
+  // Do we want this, or do we want to show processing recordings?
+  // params.append("processingState", RecordingProcessingState.Finished);
+
+  // TODO: We might want to count-all the first time.
+  //params.append("countAll", (options.countAll || false).toString());
+  params.append("tag-mode", options.tagMode || TagMode.Any);
+  // if (options.tagMode && options.tagMode !== TagMode.Any) {
+  //   params.append("filterModel", "Master");
+  // }
+  //params.append("limit", (options.limit && options.limit.toString()) || "30");
+  if (options.includeFilteredFalsePositivesAndNones) {
+    params.append("include-false-positives", true.toString());
+  }
+  if (!options.subClassTags) {
+    params.append("sub-class-tags", false.toString());
+  }
+  console.log("API params", params.toString());
+
+  // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
+  //  or we need to hold onto the pagination value.
+  //return unwrapLoadedResource(
+  return CacophonyApi.get(
+    `/api/v1/recordings/for-project/${projectId}?${params}`
+  ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
   //"rows"
   //);
 };

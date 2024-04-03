@@ -475,7 +475,7 @@ export const validateFields = (
       // TODO: At this point *if* we have errors, we may want to lookup the userName or deviceName?
 
       log.info(
-        "%s (%s: %s%s)",
+        "\n\t\t NEW REQUEST\n\t\t %s\n\t\t %s: %s%s",
         logMessage,
         requester || "unauthenticated",
         requestId,

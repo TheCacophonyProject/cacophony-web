@@ -1188,7 +1188,7 @@ export default function (app: Application, baseUrl: string) {
           },
         });
       } else {
-        await previousDeviceHistoryEntry.update(
+        await models.DeviceHistory.update(
           {
             settings: {
               ...previousSettings,

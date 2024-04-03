@@ -99,54 +99,75 @@
             height="45"
           />
         </div>
-        <div class="ps-3 d-flex flex-column text-truncate flex-wrap">
-          <div class="tags-container d-flex flex-wrap">
-            <span
-              class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
-              v-if="processingInProgress.includes((item.data as ApiRecordingResponse).processingState)"
-              ><b-spinner small variant="secondary" /><span class="ms-1"
-                >AI Queued</span
-              ></span
-            >
-            <span
-              v-else
-              class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-              :class="tag.path.split('.')"
-              :key="tag.what"
-              v-for="tag in tagsForRecording(item.data)"
-              ><span class="me-1">{{
-                displayLabelForClassificationLabel(
-                  tag.what,
-                  tag.automatic && !tag.human
-                )
-              }}</span
-              ><font-awesome-icon
-                icon="check"
-                size="xs"
-                v-if="tag.human && tag.automatic"
-                class="mx-1 align-middle"
-                style="padding-bottom: 2px"
-              /><font-awesome-icon
-                icon="user"
-                size="xs"
-                v-else-if="tag.human"
-                class="mx-1 align-middle"
-                style="padding-bottom: 2px"
-              /><font-awesome-icon
-                icon="cog"
-                size="xs"
-                v-else-if="tag.automatic"
-                class="mx-1 align-middle"
-                style="padding-bottom: 2px"
-              />
-            </span>
-            <span
-              class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-              :class="[label.what]"
-              :key="label.what"
-              v-for="label in labelsForRecording((item as RecordingItem).data)"
-              >{{ label.what }}
-            </span>
+        <div
+          class="ps-3 d-flex flex-column text-truncate flex-wrap flex-grow-1"
+        >
+          <div
+            class="tags-container d-flex justify-content-between flex-grow-1"
+          >
+            <div class="d-flex flex-wrap">
+              <span
+                class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
+                v-if="processingInProgress.includes((item.data as ApiRecordingResponse).processingState)"
+                ><b-spinner small variant="secondary" /><span class="ms-1"
+                  >AI Queued</span
+                ></span
+              >
+              <span
+                v-else
+                class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                :class="tag.path.split('.')"
+                :key="tag.what"
+                v-for="tag in tagsForRecording(item.data)"
+                ><span class="me-1">{{
+                  displayLabelForClassificationLabel(
+                    tag.what,
+                    tag.automatic && !tag.human
+                  )
+                }}</span
+                ><font-awesome-icon
+                  icon="check"
+                  size="xs"
+                  v-if="tag.human && tag.automatic"
+                  class="mx-1 align-middle"
+                  style="padding-bottom: 2px"
+                /><font-awesome-icon
+                  icon="user"
+                  size="xs"
+                  v-else-if="tag.human"
+                  class="mx-1 align-middle"
+                  style="padding-bottom: 2px"
+                /><font-awesome-icon
+                  icon="cog"
+                  size="xs"
+                  v-else-if="tag.automatic"
+                  class="mx-1 align-middle"
+                  style="padding-bottom: 2px"
+                />
+              </span>
+              <span
+                class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                :class="[label.what]"
+                :key="label.what"
+                v-for="label in regularLabelsForRecording((item as RecordingItem).data)"
+                >{{ label.what }}
+              </span>
+            </div>
+            <div>
+              <span
+                class="px-1 mb-1 me-1"
+                :class="[label.what]"
+                :key="label.what"
+                v-for="label in specialLabelsForRecording((item as RecordingItem).data)"
+              >
+                <font-awesome-icon
+                  :icon="
+                    label.what === 'cool' ? ['fas', 'star'] : ['fas', 'flag']
+                  "
+                  :color="label.what === 'cool' ? 'goldenrod' : '#ad0707'"
+                />
+              </span>
+            </div>
           </div>
 
           <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
@@ -258,6 +279,22 @@ const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
     // Just take the human tags for the track, fall back to automatic.
   }
   return Object.values(uniqueLabels);
+};
+
+const specialLabels = ["cool", "requires review"];
+const regularLabelsForRecording = (
+  recording: ApiRecordingResponse
+): TagItem[] => {
+  return labelsForRecording(recording).filter(
+    (label) => !specialLabels.includes(label.what)
+  );
+};
+const specialLabelsForRecording = (
+  recording: ApiRecordingResponse
+): TagItem[] => {
+  return labelsForRecording(recording).filter((label) =>
+    specialLabels.includes(label.what)
+  );
 };
 
 const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {

@@ -135,6 +135,9 @@ export const displayLabelForClassificationLabel = (
     debugger;
   }
   label = label.toLowerCase();
+  if (label === "unclassified") {
+    return "AI Queued";
+  }
   if (label === "unidentified" && aiTag) {
     return "Unidentified";
   }

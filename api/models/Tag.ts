@@ -62,6 +62,12 @@ export default function (sequelize, DataTypes): TagStatic {
       allowNull: false,
       defaultValue: false,
     },
+    used: {
+      // This tag is used in visit calculations/canonical tag search.
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     comment: {
       type: DataTypes.TEXT,
       allowNull: true,
