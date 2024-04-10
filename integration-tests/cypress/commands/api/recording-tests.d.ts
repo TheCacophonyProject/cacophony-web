@@ -68,11 +68,24 @@ declare namespace Cypress {
       tag: string
     ): any;
 
+    /**
+     * Replaces an existing track tag for a recording.
+     */
     testUserTagRecording(
       recordingId: number,
       trackIndex: number,
       tagger: string,
       tag: string
+    ): any;
+
+    /**
+     * Adds a new user track tag to a recording.
+     */
+    testUserAddTagRecording(
+        recordingId: number,
+        trackIndex: number,
+        tagger: string,
+        tag: string
     ): any;
 
     testAddRecordingsAtTimes(

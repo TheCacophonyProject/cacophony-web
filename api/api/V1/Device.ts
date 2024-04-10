@@ -933,7 +933,7 @@ export default function (app: Application, baseUrl: string) {
         (track) => track["TrackTags.what"] === tag
       );
       return successResponse(response, "Got tracks with tag", {
-        tracks: filteredTracks.map(mapTrack),
+        tracks: filteredTracks.map(x => mapTrack(x)),
       });
     }
   );

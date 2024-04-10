@@ -185,7 +185,7 @@ Cypress.Commands.add(
         {
           method: "POST",
           url: v1ApiPath(
-            `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replaceTag`
+            `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replace-tag`
           ),
           body: { what: tag, confidence: 0.7, automatic: false },
         },
@@ -193,6 +193,37 @@ Cypress.Commands.add(
       );
     });
   }
+);
+
+Cypress.Commands.add(
+    "testUserAddTagRecording",
+    (recordingId: number, trackIndex: number, tagger: string, tag: string) => {
+      logTestDescription(`User '${tagger}' tags recording as '${tag}'`, {
+        recordingId,
+        trackIndex,
+        tagger,
+        tag,
+      });
+
+      makeAuthorizedRequest(
+          {
+            method: "GET",
+            url: v1ApiPath(`recordings/${recordingId}/tracks`),
+          },
+          tagger
+      ).then((response) => {
+        makeAuthorizedRequest(
+            {
+              method: "POST",
+              url: v1ApiPath(
+                  `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`
+              ),
+              body: { what: tag, confidence: 0.7, automatic: false },
+            },
+            tagger
+        );
+      });
+    }
 );
 
 Cypress.Commands.add(
@@ -520,7 +551,8 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   groupName: string,
   stationName: string,
   inputRecording: any,
-  includePositions: boolean = true
+  includePositions: boolean = true,
+  minimal: boolean = false
 ): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
@@ -549,10 +581,12 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   expected.groupId = group.id;
   expected.groupName = group.groupName;
   expected.type = inputRecording.type;
-  if (inputRecording.type == "thermalRaw") {
-    expected.rawMimeType = "application/x-cptv";
-  } else {
-    expected.rawMimeType = "audio/mp4";
+  if (!minimal) {
+    if (inputRecording.type == "thermalRaw") {
+      expected.rawMimeType = "application/x-cptv";
+    } else {
+      expected.rawMimeType = "audio/mp4";
+    }
   }
   if (inputRecording.duration !== undefined) {
     expected.duration = inputRecording.duration;
@@ -563,7 +597,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputRecording.version !== undefined) {
     expected.version = inputRecording.version;
   }
-  if (inputRecording.comment !== undefined) {
+  if (!minimal && inputRecording.comment !== undefined) {
     expected.comment = inputRecording.comment;
   }
   if (inputRecording.batteryLevel !== undefined) {
@@ -584,7 +618,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   if (inputRecording.fileMimeType !== undefined) {
     expected.fileMimeType = inputRecording.fileMimeType;
   }
-  if (inputRecording.additionalMetadata !== undefined) {
+  if (!minimal && inputRecording.additionalMetadata !== undefined) {
     expected.additionalMetadata = JSON.parse(
       JSON.stringify(inputRecording.additionalMetadata)
     );
@@ -599,10 +633,12 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   //expected.Station = station;
 
   //filtered unless we get a valid tag
-
+  const tracks = expected.tracks;
   expected.tags = [] as ApiRecordingTagResponse[];
   expected.tracks = [] as ApiTrackResponse[];
-  if (inputTrackData) {
+  if (minimal) {
+    expected.tracks = tracks;
+  } else if (inputTrackData) {
     expected.tracks = trackResponseFromSet(
       inputTrackData.tracks,
       inputTrackData.models,

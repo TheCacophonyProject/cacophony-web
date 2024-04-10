@@ -331,3 +331,8 @@ export function TestGetLocation(identifier = 0, offsetDegrees = 0) {
     lng: 172 + identifier / 10 + offsetDegrees,
   };
 }
+
+export function TestGetLocationArray(identifier = 0, offsetDegrees = 0) {
+  const loc = TestGetLocation(identifier, offsetDegrees);
+  return [loc.lat, loc.lng];
+}

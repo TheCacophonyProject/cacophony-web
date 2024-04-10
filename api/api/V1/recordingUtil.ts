@@ -39,7 +39,7 @@ import type {
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
-import type { Track } from "@models/Track.js";
+import track, { Track } from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
@@ -1347,8 +1347,6 @@ export const addTag = async (
   (tagInstance as any).RecordingId = recording.id;
   if (user) {
     tagInstance.taggerId = user.id;
-    // `used` is an internal field.
-    (tagInstance as any).used = true;
   }
   await tagInstance.save();
   return tagInstance;
@@ -1368,6 +1366,7 @@ export const tracksFromMeta = async (
     );
 
     const promises = [];
+    const tracks = [];
     for (const trackMeta of metadata["tracks"]) {
       promises.push(
         new Promise((resolve, _reject) => {
@@ -1377,12 +1376,14 @@ export const tracksFromMeta = async (
               AlgorithmId: algorithmDetail.id,
             })
             .then((track) => {
+
               if (
                 !("predictions" in trackMeta) ||
                 trackMeta["predictions"].length === 0
               ) {
                 track.updateIsFiltered().then(resolve);
               } else {
+                tracks.push(track);
                 const trackPromises = [];
                 for (const prediction of trackMeta["predictions"]) {
                   let modelName = "unknown";
@@ -1425,14 +1426,19 @@ export const tracksFromMeta = async (
                   trackPromises.push(
                     track.addTag(tag, prediction["confidence"], true, tag_data)
                   );
+
                 }
-                Promise.all(trackPromises).then(resolve);
+                Promise.all(trackPromises)
+                    .then(resolve);
               }
             });
         })
       );
     }
     await Promise.all(promises);
+    if (tracks.length) {
+      await Promise.all(tracks.map(track => track.updateIsFiltered()));
+    }
   } catch (err) {
     log.error(
       "Error creating recording tracks from metadata: %s",
