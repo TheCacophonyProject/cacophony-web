@@ -1,7 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { ExtractJwt } from "passport-jwt";
 import jwt from "jsonwebtoken";
-import { DecodedJWTToken, getVerifiedJWTFromBody } from "./auth.js";
+import type { DecodedJWTToken } from "./auth.js";
+import { getVerifiedJWTFromBody } from "./auth.js";
 import {
   checkAccess,
   getDecodedToken,
