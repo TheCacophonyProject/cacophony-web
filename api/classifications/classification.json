@@ -86,7 +86,7 @@
       "children": [
         {
           "label": "false-positive",
-          "display": "false positive"
+          "display": "false trigger"
         },
         {
           "label": "frog"
