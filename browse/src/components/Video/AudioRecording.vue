@@ -112,14 +112,7 @@
               :toggle-pin-tag="togglePinTag"
             />
             <b-row
-              class="
-                d-flex
-                mt-2
-                mb-4
-                flex-wrap
-                justify-content-center
-                button-selectors
-              "
+              class="d-flex mt-2 mb-4 flex-wrap justify-content-center button-selectors"
             >
               <h3 class="w-100 ml-4">Attributes</h3>
               <b-button-group class="mr-2">
@@ -640,6 +633,7 @@ export default defineComponent({
             userId: userId,
             automatic: false,
           },
+          classify: true,
         };
         const response = await api.recording.addTrack(
           trackRequest,

@@ -32,6 +32,8 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
   data: any;
   automatic: boolean;
   filtered: boolean;
+  classify: boolean;
+
   // NOTE: Implicitly created by sequelize associations.
   getRecording: () => Promise<Recording>;
   updateIsFiltered: () => any;
@@ -60,6 +62,7 @@ export default function (
     data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
     filtered: DataTypes.BOOLEAN,
+    classify: DataTypes.BOOLEAN,
   }) as unknown as TrackStatic;
 
   //---------------

@@ -26,17 +26,18 @@ export interface ApiTrackResponse {
   filtered: boolean;
   minFreq?: number;
   maxFreq?: number;
+  classify?: boolean;
 }
 
 export interface ApiTrackRequest {
   data: ApiTrackDataRequest;
   algorithm?: Object | Array<number>;
+  classify?: boolean;
 }
 
 export interface ApiTrackDataRequest {
   start_s: Seconds;
   end_s: Seconds;
-
   // FIXME - Make more of these fields mandatory once we know who calls this with what.
   minFreq?: number;
   maxFreq?: number;

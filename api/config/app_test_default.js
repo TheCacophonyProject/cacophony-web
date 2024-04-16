@@ -43,7 +43,7 @@ export const smtpDetails = {
   port: 7777, //default for service is 25. 7777 used for smtp-tester
   tls: false, //default is true.  False used for smtp-tester
   fromName: "Cacophony Reporting",
-  platformUsageEmail: "usage@example.com"
+  platformUsageEmail: "usage@example.com",
 
   //   service: "gmail",
   //   auth: {
@@ -51,7 +51,6 @@ export const smtpDetails = {
   //     pass: "thesecretpassword"
   //   }
 };
-
 
 // List of devices to ignore when making the service error report.
 export const deviceErrorIgnoreList = [];
@@ -71,5 +70,5 @@ export default {
   development: database,
   deviceErrorIgnoreList,
   cacophonyUserIds,
-  cacophonyGroupIds
+  cacophonyGroupIds,
 };

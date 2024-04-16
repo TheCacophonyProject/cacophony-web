@@ -171,6 +171,7 @@ export const mapTrack = (track: Track): ApiTrackResponse => {
     ...(track.data.minFreq && { minFreq: track.data.minFreq }),
     ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
     filtered: track.filtered,
+    classify: track.classify,
   };
   if (track.data.positions && track.data.positions.length) {
     t.positions = track.data.positions.map(mapPosition);
@@ -1728,6 +1729,7 @@ export default (app: Application, baseUrl: string) => {
         body("algorithm").isJSON().optional(),
         body("algorithm").isArray().optional()
       ),
+      body("classify").default(false).isBoolean().toBoolean(),
     ]),
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
@@ -1748,6 +1750,7 @@ export default (app: Application, baseUrl: string) => {
       const track = await response.locals.recording.createTrack({
         data,
         AlgorithmId: algorithmDetail.id,
+        classify: request.body.classify,
       });
       await track.updateIsFiltered();
 

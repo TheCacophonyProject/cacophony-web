@@ -45,7 +45,7 @@ export const smtpDetails = {
   port: 7777, //default for service is 25. 7777 used for smtp-tester
   tls: false, //default is true.  False used for smtp-tester
   fromName: "Cacophony Reporting",
-  platformUsageEmail: "usage@example.com"
+  platformUsageEmail: "usage@example.com",
   //
   // service: "gmail",
   // auth: {
@@ -80,5 +80,5 @@ export default {
   influx,
   deviceErrorIgnoreList,
   cacophonyUserIds,
-  cacophonyGroupIds
+  cacophonyGroupIds,
 };

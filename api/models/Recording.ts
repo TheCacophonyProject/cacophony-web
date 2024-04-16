@@ -378,6 +378,17 @@ export default function (
    * arguments given.
    */
   Recording.getOneForProcessing = async function (type, state) {
+    let includeQ = [];
+    if (state == RecordingProcessingState.Finished) {
+      includeQ = [
+        {
+          model: models.Track,
+          where: {
+            classify: true,
+          },
+        },
+      ];
+    }
     return sequelize
       .transaction(async (transaction) => {
         const recording = await Recording.findOne({
@@ -400,6 +411,7 @@ export default function (
               },
             ],
           },
+          include: includeQ,
           attributes: [
             ...(models.Recording as RecordingStatic).processingAttributes,
             [
@@ -1344,6 +1356,7 @@ from (
     "location",
     "processing",
     "processingFailedCount",
+    "uploader",
   ];
 
   return Recording;
