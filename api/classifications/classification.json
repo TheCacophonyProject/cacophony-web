@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "adb82422-89ec-42ff-bc36-d7b79915a5ef",
+  "version": "adbe2423-89ec-42ff-bc36-d7b79915a5ef",
   "children": [
     {
       "label": "mammal",
@@ -25,6 +25,7 @@
         },
         {
           "label": "human",
+          "aliases": ["person"],
           "display": "human speech"
         },
         {

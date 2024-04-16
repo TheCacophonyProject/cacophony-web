@@ -8,8 +8,48 @@ import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/st
 
 export const isEmpty = (str: string): boolean => str.trim().length === 0;
 
-export const delayMs = async (delayMs: number) =>
-  new Promise((resolve) => setTimeout(resolve, delayMs));
+interface CancelToken {
+  token: Promise<void>;
+  canceller: { cancel: () => void };
+}
+const createToken = () => {
+  let canceller = {
+    cancel: () => {
+      return;
+    },
+  };
+  const token: CancelToken = {
+    token: new Promise((resolve) => {
+      canceller = {
+        cancel: () => {
+          // the reason property can be checked
+          // synchronously to see if you're cancelled
+          resolve();
+        },
+      };
+    }),
+    canceller,
+  };
+  token.canceller = canceller;
+  return { token, canceller };
+};
+
+export interface CancelableDelay {
+  promise: Promise<void>;
+  cancel: () => void;
+}
+// create a token and a function to use later.
+
+export const delayMs = (ms: number): CancelableDelay => {
+  const { token, canceller } = createToken();
+  return {
+    promise: new Promise((resolve) => {
+      const id = setTimeout(resolve, ms);
+      token.token.then(() => clearTimeout(id));
+    }),
+    cancel: () => canceller.cancel(),
+  };
+};
 
 export const capitalize = (str: string): string =>
   str

@@ -260,6 +260,7 @@ const permissionsOptions = computed(() => [
           class="text-end"
           :action="() => acceptPendingUser(card.user.value)"
           icon="check"
+          variant="outline-secondary"
           :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
           label="Approve request"
           classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
@@ -301,11 +302,12 @@ const permissionsOptions = computed(() => [
       <div class="d-flex justify-content-end mt-2">
         <two-step-action-button
           class="text-end"
-          classes="btn-outline-secondary fs-7"
+          :classes="['fs-7', 'text-nowrap', 'ms-2']"
           :action="() => removeUser(card._deleteAction.value)"
           icon="trash-can"
           :disabled="isLastAdminUser(card._deleteAction.value)"
           label="Remove user"
+          variant="outline-secondary"
           :confirmation-label="
             userIsCurrentUser(card._deleteAction.value)
               ? 'Leave group'
@@ -347,9 +349,10 @@ const permissionsOptions = computed(() => [
           class="text-end"
           :action="() => acceptPendingUser(cell.value)"
           icon="check"
+          variant="outline-secondary"
           :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into project`"
           label="Approve request"
-          classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-2"
+          :classes="['fs-7', 'text-nowrap', 'ms-2']"
           alignment="centered"
         />
       </div>
@@ -383,7 +386,8 @@ const permissionsOptions = computed(() => [
     <template #_deleteAction="{ cell }">
       <two-step-action-button
         class="text-end"
-        classes="btn-outline-secondary fs-7"
+        :classes="['fs-7', 'text-nowrap', 'ms-2']"
+        variant="outline-secondary"
         :action="() => removeUser(cell.value)"
         icon="trash-can"
         :disabled="isLastAdminUser(cell.value)"

@@ -7,14 +7,15 @@ import type {
   Classification,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
+import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
 import { persistUserGroupSettings } from "@models/LoggedInUser";
-import type { SelectedProject, LoggedInUser } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   classifications,
+  displayLabelForClassificationLabel,
   flatClassifications,
   getClassificationForLabel,
   getClassifications,
@@ -25,7 +26,6 @@ import type {
 } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings } from "@typedefs/api/group";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
 import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
@@ -35,11 +35,14 @@ import {
   currentUser,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
-const { track, index, color, selected } = defineProps<{
+import { RecordingProcessingState } from "@typedefs/api/consts.ts";
+
+const props = defineProps<{
   track: ApiTrackResponse;
   index: number;
   color: { foreground: string; background: string };
   selected: boolean;
+  processingState: RecordingProcessingState;
 }>();
 
 const emit = defineEmits<{
@@ -112,7 +115,7 @@ const route = useRoute();
 const mounting = ref<boolean>(true);
 const expanded = computed<boolean>(() => {
   return (
-    Number(route.params.trackId) === track.id &&
+    Number(route.params.trackId) === props.track.id &&
     route.params.detail !== "" &&
     typeof route.params.detail !== "undefined"
   );
@@ -157,16 +160,16 @@ watch(showClassificationSearch, resizeDetails);
 
 const selectAndMaybeToggleExpanded = () => {
   expandedInternal.value = !expandedInternal.value;
-  emit("expanded-changed", track.id, expandedInternal.value);
+  emit("expanded-changed", props.track.id, expandedInternal.value);
 };
 
 const hasUserTag = computed<boolean>(() => {
-  return track.tags.some((tag) => !tag.automatic);
+  return props.track.tags.some((tag) => !tag.automatic);
 });
 
 const uniqueUserTags = computed<string[]>(() => {
   return Object.keys(
-    track.tags
+    props.track.tags
       .filter((tag) => !tag.automatic)
       .reduce((acc: Record<string, boolean>, item: ApiTrackTagResponse) => {
         const mappedWhat =
@@ -187,7 +190,7 @@ const consensusUserTag = computed<string | null>(() => {
 });
 
 const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
-  const tag = track.tags.find(
+  const tag = props.track.tags.find(
     (tag) =>
       tag.automatic && tag.data && (tag.data as TrackTagData).name === "Master"
   );
@@ -206,7 +209,7 @@ const hasAiTag = computed<boolean>(() => {
 });
 
 const humanTags = computed<ApiHumanTrackTagResponse[]>(() => {
-  return track.tags
+  return props.track.tags
     .filter((tag) => !tag.automatic)
     .map((tag) => ({
       ...tag,
@@ -238,7 +241,7 @@ const selectedUserTagLabel = computed<string[]>({
   set: (val: string[]) => {
     if (val.length) {
       emit("add-or-remove-user-tag", {
-        trackId: track.id,
+        trackId: props.track.id,
         tag: val[0],
       });
     }
@@ -314,6 +317,9 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
         display: `${tag}_not_found`,
       }
   )) {
+    if (tag.label === "human") {
+      tag.display = "human";
+    }
     tags[tag.label] = tag;
   }
   return Object.values(tags);
@@ -335,7 +341,7 @@ const toggleTag = (tag: string) => {
     ) {
       showClassificationSearch.value = !defaultTags.value.includes(tag);
     }
-    emit("add-or-remove-user-tag", { trackId: track.id, tag });
+    emit("add-or-remove-user-tag", { trackId: props.track.id, tag });
     if (showTaggerDetails.value) {
       resizeDetails();
     }
@@ -345,7 +351,7 @@ const toggleTag = (tag: string) => {
 const confirmAiSuggestedTag = () => {
   if (masterTag.value) {
     emit("add-or-remove-user-tag", {
-      trackId: track.id,
+      trackId: props.track.id,
       tag: (masterTag.value as ApiAutomaticTrackTagResponse).what,
     });
   }
@@ -353,7 +359,7 @@ const confirmAiSuggestedTag = () => {
 
 const rejectAiSuggestedTag = () => {
   expandedInternal.value = true;
-  emit("expanded-changed", track.id, expandedInternal.value);
+  emit("expanded-changed", props.track.id, expandedInternal.value);
 };
 
 const pinCustomTag = async (classification: Classification) => {
@@ -386,8 +392,12 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
 });
 const addCustomTag = () => {
   showClassificationSearch.value = true;
-  tagSelect.value && (tagSelect.value as HierarchicalTagSelect).open();
+  tagSelect.value && (tagSelect.value as typeof HierarchicalTagSelect).open();
 };
+
+const processingIsAnalysing = computed<boolean>(
+  () => props.processingState === RecordingProcessingState.Analyse
+);
 
 onMounted(async () => {
   if (!classifications.value) {
@@ -467,9 +477,9 @@ onMounted(async () => {
               .join(", ")
           }}</span
         >
-        <!-- No AI tag, maybe this is a dummy track for a trailcam image? -->
+        <!-- No AI tag, maybe this is a track for a trailcam image? -->
         <span
-          class="classification text-capitalize d-inline-block fw-bold"
+          class="text-capitalize d-inline-block fw-bold"
           v-else-if="consensusUserTag && !hasAiTag"
           >{{
             uniqueUserTags
@@ -478,6 +488,18 @@ onMounted(async () => {
           }}</span
         >
       </span>
+      <!-- No tag, maybe this is a dummy track?   -->
+      <div v-else class="d-flex flex-column classification">
+        <span class="text-uppercase fs-9 fw-bold">
+          <span v-if="processingIsAnalysing" class="d-flex align-items-center"
+            ><b-spinner variant="secondary" small class="me-2" /><span
+              >AI classifying</span
+            ></span
+          >
+          <span v-else>Unclassified</span>
+        </span>
+        <span v-if="!processingIsAnalysing">&mdash;</span>
+      </div>
     </div>
     <div v-if="!hasUserTag && hasAiTag && !expanded">
       <button

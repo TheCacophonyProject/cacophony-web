@@ -1,31 +1,28 @@
+<!--
+boundary="window"
+    :offset="offset"-->
 <template>
   <b-dropdown
     no-flip
     dropup
     auto-close
-    boundary="window"
-    :offset="offset"
     no-caret
-    variant="link"
+    :offset="offset"
+    :variant="variant"
+    :end="alignment === 'right'"
+    :center="alignment === 'centered'"
     :menu-class="['dropdown-indicator', alignment]"
-    toggle-class="p-0"
+    :toggle-class="[...classes]"
     :disabled="disabled"
   >
     <template #button-content>
-      <button
-        type="button"
-        class="btn btn-square"
-        ref="iconButton"
-        :class="classes"
-      >
-        <font-awesome-icon
-          :icon="icon"
-          v-if="icon"
-          :color="color || 'inherit'"
-          :rotation="rotate || null"
-        />
-        <span v-if="computedLabel" class="ps-2" v-html="computedLabel" />
-      </button>
+      <font-awesome-icon
+        :icon="icon"
+        v-if="icon"
+        :color="color || 'inherit'"
+        :rotation="rotate || null"
+      />
+      <span v-if="computedLabel" class="ps-2" v-html="computedLabel" />
     </template>
 
     <b-dropdown-group class="px-2" header-class="d-none">
@@ -42,55 +39,61 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-const {
-  action,
-  label = "",
-  confirmationLabel = "",
-  disabled = false,
-  alignment = "centered",
-  classes = [],
-  icon = "trash-can",
-  color = "inherit",
-  rotate = null,
-} = defineProps<{
-  action: () => void;
-  label?: string | (() => string);
-  confirmationLabel?: string | (() => string);
-  disabled?: boolean;
-  classes?: string[] | string;
-  icon?: string;
-  color?: string;
-  alignment?: "right" | "centered" | "left";
-  rotate?: 90 | 180 | 270 | null;
-}>();
-
+const props = withDefaults(
+  defineProps<{
+    action: () => void;
+    label?: string | (() => string);
+    confirmationLabel?: string | (() => string);
+    disabled?: boolean;
+    classes?: string[];
+    icon?: string;
+    color?: string;
+    alignment?: "right" | "centered" | "left";
+    rotate?: 90 | 180 | 270 | null;
+    variant?: string;
+  }>(),
+  {
+    label: "",
+    confirmationLabel: "",
+    disabled: false,
+    alignment: "centered",
+    classes: () => [],
+    icon: "trash-can",
+    color: "inherit",
+    rotate: null,
+    variant: "link",
+  }
+);
 // Ideally we want to center the button and the triangle, but if we're too close to the edge of the viewport,
 // we want to move it to one side.
-const offset = computed<string>(() => {
-  if (alignment === "right") {
-    return "-5, 7";
-  } else if (alignment === "centered") {
-    return "-75, 7";
+const offset = computed<
+  string | { alignmentAxis: number; crossAxis: number; mainAxis: number }
+>(() => {
+  if (props.alignment === "right") {
+    return { alignmentAxis: -5, crossAxis: 0, mainAxis: 7 };
+  } else if (props.alignment === "centered") {
+    return { alignmentAxis: -5, crossAxis: 0, mainAxis: 0 };
   }
-  return "-5, 7";
+  return { alignmentAxis: 50, crossAxis: 60, mainAxis: 7 };
 });
 
 const computedLabel = computed<string>(() => {
-  if (typeof label === "string") {
-    return label;
+  if (typeof props.label === "string") {
+    return props.label;
   }
-  return label();
+  return props.label();
 });
 
 const computedConfirmationLabel = computed<string>(() => {
-  if (typeof confirmationLabel === "string") {
-    return confirmationLabel;
+  if (typeof props.confirmationLabel === "string") {
+    return props.confirmationLabel;
   }
-  return confirmationLabel();
+  return props.confirmationLabel();
 });
 </script>
 <style lang="less">
 .dropdown-indicator {
+  overflow: visible !important;
   position: relative;
   &::after {
     content: "";

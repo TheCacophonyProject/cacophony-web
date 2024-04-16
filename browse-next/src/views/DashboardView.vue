@@ -13,7 +13,7 @@ import { getLocationsForProject } from "@api/Project";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import { BSpinner } from "bootstrap-vue-3";
+import { BSpinner } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
@@ -450,7 +450,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <div class="d-md-flex flex-md-row">
     <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-5 flex-md-fill"
+      class="mb-5 flex-md-fill me-md-3"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
       :visits="maybeFilteredDashboardVisitsContext"
@@ -461,14 +461,14 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       :visits="maybeFilteredDashboardVisitsContext"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
-      @selected-visit="(visit) => (selectedVisit = visit)"
+      @selected-visit="(visit: ApiVisitResponse) => (selectedVisit = visit)"
       @change-highlighted-location="
-        (loc) => (currentlyHighlightedLocation = loc)
+        (loc: LocationId) => (currentlyHighlightedLocation = loc)
       "
     />
   </div>
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Stations summary {{ loadedRouteName }}
+    Locations summary
   </h2>
   <horizontal-overflow-carousel class="mb-5">
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->

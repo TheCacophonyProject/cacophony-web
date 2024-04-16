@@ -16,6 +16,10 @@ import type {
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackTagRequest } from "@typedefs/api/trackTag";
 import { RecordingType, TagMode } from "@typedefs/api/consts.ts";
+import type {
+  ApiTrackDataRequest,
+  ApiTrackResponse,
+} from "@typedefs/api/track";
 
 export const getRecordingById = (
   id: RecordingId,
@@ -61,6 +65,17 @@ export const removeTrackTag = (
     `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`
   ) as Promise<FetchResult<void>>;
 
+export const createDummyTrack = (
+  recording: ApiRecordingResponse,
+  track: ApiTrackDataRequest
+) =>
+  CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
+    data: {
+      ...track,
+      tracker_version: "dummy-track",
+    },
+  }) as Promise<FetchResult<{ trackId: TrackId }>>;
+
 export const addRecordingLabel = (id: RecordingId, label: string) =>
   CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
     tag: {
@@ -76,14 +91,16 @@ export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
 export const deleteRecording = (id: RecordingId) =>
   CacophonyApi.delete(`/api/v1/recordings/${id}`) as Promise<FetchResult<void>>;
 
-interface QueryRecordingsOptions {
+export interface QueryRecordingsOptions {
   devices?: DeviceId[];
   locations?: LocationId[];
-  tags?: string[];
+  taggedWith?: string[];
   fromDateTime?: Date;
   untilDateTime?: Date;
   limit?: number;
   tagMode?: TagMode;
+  includeFilteredFalsePositivesAndNones: boolean;
+  subClassTags?: boolean;
 
   durationMinSecs?: number;
   durationMaxSecs?: number;
@@ -98,20 +115,24 @@ interface QueryRecordingsOptions {
   countAll?: boolean;
 }
 
+export interface BulkRecordingsResponse {
+  rows: ApiRecordingResponse[];
+  limit: number;
+  count: number;
+}
+
 export const queryRecordingsInProject = (
   projectId: ProjectId,
   options: QueryRecordingsOptions
-): Promise<
-  FetchResult<{ rows: ApiRecordingResponse[]; limit: number; count: number }>
-> => {
+): Promise<FetchResult<BulkRecordingsResponse>> => {
   // FIXME: Implement guard on types
 
   const params = new URLSearchParams();
   if (options.limit) {
     params.append("limit", options.limit.toString());
   }
-  if (options.tags) {
-    params.append("tags", JSON.stringify(options.tags));
+  if (options.taggedWith) {
+    params.append("tags", JSON.stringify(options.taggedWith));
   }
   const where: any = {
     GroupId: projectId,
@@ -153,6 +174,10 @@ export const queryRecordingsInProject = (
     params.append("filterModel", "Master");
   }
   params.append("limit", (options.limit && options.limit.toString()) || "30");
+  params.append(
+    "hideFiltered",
+    (!options.includeFilteredFalsePositivesAndNones).toString()
+  );
 
   // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
   //  or we need to hold onto the pagination value.
@@ -200,6 +225,7 @@ export const getRecordingsForLocationsAndDevicesInProject = (
 ): Promise<LoadedResource<ApiRecordingResponse[]>> => {
   const options: QueryRecordingsOptions = {
     limit: 100,
+    includeFilteredFalsePositivesAndNones: true,
   };
   if (locationIds) {
     options.locations = Array.isArray(locationIds)
@@ -211,7 +237,7 @@ export const getRecordingsForLocationsAndDevicesInProject = (
   }
   if (tags) {
     options.tagMode = TagMode.Tagged;
-    options.tags = tags;
+    options.taggedWith = tags;
   }
   return unwrapLoadedResource(
     queryRecordingsInProject(projectId, options) as Promise<
@@ -219,6 +245,42 @@ export const getRecordingsForLocationsAndDevicesInProject = (
     >,
     "rows"
   );
+};
+
+export const getAllRecordingsForProjectBetweenTimes = async (
+  projectId: ProjectId,
+  query: QueryRecordingsOptions,
+  progressUpdater: (progress: number) => void
+): Promise<ApiRecordingResponse[]> => {
+  query.limit = 100;
+  const recordings = [];
+  let moreRecordingsToLoad = true;
+
+  const countResponse = await queryRecordingsInProject(projectId, {
+    ...query,
+    limit: 1,
+    countAll: true,
+  });
+  if (countResponse.success) {
+    const countEstimate = countResponse.result.count;
+    while (moreRecordingsToLoad) {
+      const response = await queryRecordingsInProject(projectId, query);
+      if (response.success) {
+        const result = response.result;
+        moreRecordingsToLoad = result.count === result.limit;
+        recordings.push(...result.rows);
+        if (recordings.length) {
+          //debugger;
+          query.untilDateTime = new Date(
+            recordings[recordings.length - 1].recordingDateTime
+          );
+          query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
+        }
+        progressUpdater(recordings.length / countEstimate);
+      }
+    }
+  }
+  return recordings;
 };
 
 export const longRunningQuery = (seconds?: number, succeed?: boolean) => {

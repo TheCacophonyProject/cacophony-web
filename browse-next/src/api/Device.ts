@@ -2,18 +2,17 @@ import CacophonyApi, {
   optionalQueryString,
   unwrapLoadedResource,
 } from "@api/api";
-import type {
-  FetchResult,
-  LoadedResource,
-  WrappedFetchResult,
-} from "@api/types";
+import type { FetchResult, LoadedResource } from "@api/types";
 import type {
   DeviceId,
   GroupId as ProjectId,
   IsoFormattedDateString,
-  LatLng,
 } from "@typedefs/api/common";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type {
+  ApiDeviceHistorySettings,
+  ApiDeviceResponse,
+  ApiMaskRegionsData,
+} from "@typedefs/api/device";
 import type { ScheduleId } from "@typedefs/api/common";
 import type {
   DeviceConfigDetail,
@@ -196,7 +195,7 @@ export const getLatestStatusRecordingForDevice = (
       DeviceId: deviceId,
     };
     params.append("where", JSON.stringify(where));
-    const response = (
+    (
       CacophonyApi.get(`/api/v1/recordings?${params}`) as Promise<
         FetchResult<{ rows: ApiRecordingResponse[] }>
       >
@@ -252,7 +251,7 @@ export const getDeviceLastPoweredOff = (deviceId: DeviceId) => {
         })
       )
     ).then(([r1, r2]) => resolve(latestEventDateFromResponse(r1, r2)));
-  }) as Promise<any | false>;
+  }) as Promise<Date | false>;
 };
 
 export const getDeviceLastPoweredOn = (deviceId: DeviceId) => {
@@ -265,7 +264,7 @@ export const getDeviceLastPoweredOn = (deviceId: DeviceId) => {
         })
       )
     ).then(([r1, r2]) => resolve(latestEventDateFromResponse(r1, r2)));
-  }) as Promise<any | false>;
+  }) as Promise<Date | false>;
 };
 
 export const assignScheduleToDevice = (
@@ -320,7 +319,7 @@ export const getUniqueTrackTagsForDeviceInProject = (
   if (untilDateTime) {
     params.append("until-time", untilDateTime.toISOString());
   }
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     (
       CacophonyApi.get(
         `/api/v1/devices/${deviceId}/unique-track-tags?${params}`
@@ -378,6 +377,35 @@ export const getReferenceImageForDeviceAtCurrentLocation = (
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/reference-image`
   ) as Promise<FetchResult<Blob>>;
+};
+
+export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime?: Date) => {
+  const params = new URLSearchParams();
+  params.append("at-time", (atTime || new Date()).toISOString());
+  const queryString = params.toString();
+
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/mask-regions?${queryString}`
+  ) as Promise<FetchResult<ApiMaskRegionsData>>;
+};
+
+export const getSettingsForDevice = (deviceId: DeviceId, atTime?: Date) => {
+  const params = new URLSearchParams();
+  params.append("at-time", (atTime || new Date()).toISOString());
+  const queryString = params.toString();
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/settings?${queryString}`
+  ) as Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>>;
+};
+
+export const updateMaskRegionsForDevice = (
+  deviceId: DeviceId,
+  maskRegionsData: ApiMaskRegionsData
+) => {
+  return CacophonyApi.post(
+    `/api/v1/devices/${deviceId}/mask-regions`,
+    maskRegionsData
+  ) as Promise<FetchResult<void>>;
 };
 
 export const getReferenceImageForDeviceAtTime = (

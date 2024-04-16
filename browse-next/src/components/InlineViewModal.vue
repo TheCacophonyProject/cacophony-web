@@ -3,7 +3,7 @@ import { inject, ref, watch } from "vue";
 import type { ComputedRef } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteRecordName } from "vue-router";
-import { BModal } from "bootstrap-vue-3";
+import { BModal } from "bootstrap-vue-next";
 import { urlNormalisedCurrentSelectedProjectName } from "@models/provides";
 const route = useRoute();
 const router = useRouter();
@@ -12,26 +12,28 @@ const emit = defineEmits(["close", "shown"]);
 const urlNormalisedGroupName = inject(
   urlNormalisedCurrentSelectedProjectName
 ) as ComputedRef<string>;
-const {
-  fadeIn,
-  parentRouteName,
-  showInactive = false,
-  noCloseOnBackdrop = false,
-} = defineProps<{
-  fadeIn: boolean;
-  parentRouteName: string;
-  showInactive?: boolean;
-  noCloseOnBackdrop?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    fadeIn: boolean;
+    parentRouteName: string;
+    showInactive?: boolean;
+    noCloseOnBackdrop?: boolean;
+  }>(),
+  {
+    showInactive: false,
+    noCloseOnBackdrop: false,
+  }
+);
 
 const closedModal = () => {
   const params = { projectName: urlNormalisedGroupName.value };
-  if (parentRouteName === "devices" && showInactive) {
-    (params as any).all = "all";
+  if (props.parentRouteName === "devices" && props.showInactive) {
+    (params as Record<string, string>).all = "all";
   }
   router.push({
-    name: parentRouteName,
+    name: props.parentRouteName,
     params,
+    query: route.query,
   });
   emit("close");
 };
@@ -47,7 +49,7 @@ const isModalRouteName = (name: RouteRecordName) => {
   // return ["dashboard-visit", "dashboard-recording"].some((str) =>
   //   (name as string).startsWith(str)
   // );
-  return name !== parentRouteName;
+  return name !== props.parentRouteName;
 };
 const show = ref(isModalRouteName(route.name as string));
 
@@ -55,7 +57,7 @@ watch(route, (next) => {
   show.value = !!(next && next.name && isModalRouteName(next.name));
 });
 
-const noFadeInternal = ref<boolean>(!fadeIn);
+const noFadeInternal = ref<boolean>(!props.fadeIn);
 const onShown = () => {
   noFadeInternal.value = false;
   emit("shown");

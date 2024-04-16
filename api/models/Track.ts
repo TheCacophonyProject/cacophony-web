@@ -36,7 +36,7 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
 
   // NOTE: Implicitly created by sequelize associations.
   getRecording: () => Promise<Recording>;
-  updateIsFiltered: () => any;
+  updateIsFiltered: () => Promise<void>;
   // Track Tags
   TrackTags?: TrackTag[];
   getTrackTag: (trackTagId: TrackTagId) => Promise<TrackTag>;
@@ -185,33 +185,14 @@ export default function (
         lock: (t as any).LOCK.UPDATE,
         transaction: t,
       });
-      const tags = await models.TrackTag.findAll({
+      const tags = (await models.TrackTag.findAll({
         where: {
           TrackId: trackId,
           archivedAt: null,
         },
         lock: (t as any).LOCK.UPDATE,
         transaction: t,
-      });
-      await track.update({ filtered: isFiltered(tags) }, { transaction: t });
-    });
-  };
-
-  Track.prototype.updateIsFiltered = async function () {
-    const trackId = this.id;
-    return sequelize.transaction(async function (t) {
-      const track = await models.Track.findByPk(trackId, {
-        lock: (t as any).LOCK.UPDATE,
-        transaction: t,
-      });
-      const tags = await models.TrackTag.findAll({
-        where: {
-          TrackId: trackId,
-          archivedAt: null,
-        },
-        lock: (t as any).LOCK.UPDATE,
-        transaction: t,
-      });
+      })) as TrackTag[];
       await track.update({ filtered: isFiltered(tags) }, { transaction: t });
     });
   };
@@ -282,7 +263,7 @@ export default function (
   return Track;
 }
 
-function isFiltered(tags): boolean {
+const isFiltered = (tags: TrackTag[]): boolean => {
   // any human tag that isn't filtered 2
   //  or any ai master tag that isn't filtered
 
@@ -290,25 +271,19 @@ function isFiltered(tags): boolean {
   // any human tag that is filtered
   // no animal human tags
   const userTags = tags.filter((tag) => !tag.automatic);
-
   if (userTags.length > 0) {
     // any animal non filtered user tag, means not filtered
     if (
       userTags.some(
         (tag) =>
-          !additionalTags.includes(tag.what) &&
-          !filteredTags.some((filteredTag) => filteredTag == tag.what)
+          !additionalTags.includes(tag.what) && !filteredTags.includes(tag.what)
       )
     ) {
       return false;
     }
 
     //any user filtered tag means filtered
-    if (
-      userTags.some((tag) =>
-        filteredTags.some((filteredTag) => filteredTag == tag.what)
-      )
-    ) {
+    if (userTags.some((tag) => filteredTags.includes(tag.what))) {
       return true;
     }
   }
@@ -316,11 +291,11 @@ function isFiltered(tags): boolean {
   const masterTag = tags.find(
     (tag) =>
       tag.automatic &&
-      ((tag.data?.name && tag.data.name == "Master") ||
-        (tag.data && tag.data == "Master"))
+      ((typeof tag.data === "object" && tag.data.name === "Master") ||
+        (tag.data && tag.data === "Master"))
   );
   if (masterTag) {
-    return filteredTags.some((filteredTag) => filteredTag == masterTag.what);
+    return filteredTags.some((filteredTag) => filteredTag === masterTag.what);
   }
   return true;
-}
+};

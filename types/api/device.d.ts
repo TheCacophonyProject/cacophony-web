@@ -34,14 +34,15 @@ export interface ApiDeviceResponse {
   scheduleId?: ScheduleId;
   users?: ApiGroupUserResponse[];
 }
-
 export interface MaskRegion {
-  regionLabel: string;
   regionData: { x: number; y: number }[];
+  alertOnEnter?: boolean;
 }
 
+export type MaskRegions = Record<string, MaskRegion>;
+
 export interface ApiMaskRegionsData {
-  maskRegions: MaskRegion[];
+  maskRegions: Record<string, MaskRegion>;
 }
 
 export interface ApiDeviceLocationFixup {
@@ -64,6 +65,6 @@ export interface ApiDeviceHistorySettings {
     bottomLeft: [number, number];
     bottomRight: [number, number];
   };
-  maskRegions?: MaskRegion[];
+  maskRegions?: MaskRegions;
   ratThresh?: any;
 }

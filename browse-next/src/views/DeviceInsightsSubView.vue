@@ -72,7 +72,7 @@ const trackTagOptions = computed<{ value: string | null; text: string }[]>(
     return [{ value: null, text: "Loading...", disabled: true }];
   }
 );
-const locationStartTime = ref<Date>(new Date());
+const locationStartTime = ref<Date | null>(null);
 const tracksForSelectedTag = ref<LoadedResource<ApiTrackResponse[]>>(null);
 
 const trackHeatmap = ref<Uint32Array>(new Uint32Array());
@@ -118,8 +118,8 @@ onMounted(async () => {
   }
 });
 
-const getTracksForTag = async (tag: string) => {
-  if (device.value) {
+const getTracksForTag = async (tag: string | null) => {
+  if (device.value && tag && locationStartTime.value) {
     computingHeatmap.value = true;
     // Maybe restrict to one month ago max?
     tracksForSelectedTag.value = await getTracksWithTagForDeviceInProject(
@@ -153,84 +153,98 @@ const getTracksForTag = async (tag: string) => {
     computingHeatmap.value = false;
   }
 };
+
+watch(selectedTag, (newTag) => {
+  const _ = getTracksForTag(newTag);
+});
+const helpInfo = ref<boolean>(true);
 </script>
 <template>
-  <div class="d-flex justify-content-center flex-column align-items-center p-3">
-    <div>
-      <p>
+  <div class="d-flex flex-lg-row flex-column pt-3">
+    <div class="px-0 px-lg-3">
+      <p v-if="locationStartTime">
         This camera has been at its current location for
-        {{
-          DateTime.fromJSDate(locationStartTime)
-            .toRelative()
-            .replace(" ago", "")
-        }}.
+        <strong
+          >{{
+            DateTime.fromJSDate(locationStartTime as Date)
+              .toRelative()!
+              .replace(" ago", "")
+          }}.</strong
+        >
       </p>
-      <ol>
-        <li>Select from species seen during this period.</li>
-        <li>Visualise the where in the scene this species moves.</li>
-        <li>
-          Use this information to inform decisions about where to position
-          traps.
-        </li>
-      </ol>
-      <h6>Note:</h6>
-      <ul>
-        <li>
-          This works best when the camera has been in the same place for a
-          while.
-        </li>
-        <li>
-          This data may be invalid if the camera viewpoint has shifted but the
-          location has not been updated.
-        </li>
-      </ul>
+      <p v-else><b-spinner small /></p>
+      <b-alert dismissible v-model="helpInfo">
+        <p>Use this tool to:</p>
+        <ol>
+          <li>Select from species seen during this period.</li>
+          <li>Visualise the where in the scene this species moves.</li>
+          <li>Inform decisions about where to position traps.</li>
+        </ol>
+        <div>
+          <ul>
+            <li>
+              This works best when the camera has been in the same place for a
+              while.
+            </li>
+            <li>
+              This data may be invalid if the camera viewpoint has
+              <strong>shifted</strong> but the
+              <em><strong>gps location</strong></em> has not been updated.
+            </li>
+          </ul>
+        </div>
+      </b-alert>
+      <b-button
+        v-if="!helpInfo"
+        variant="link"
+        @click="helpInfo = true"
+        class="px-0"
+        >What's this for?</b-button
+      >
     </div>
-    <div class="position-relative text-white">
-      <cptv-single-frame
-        :recording="latestStatusRecording"
-        :width="640"
-        :height="480"
-        :overlay="overlayData"
-        :overlay-opacity="overlayOpacity"
-        palette="Greyscale"
-      />
-      <b-spinner v-if="computingHeatmap" class="loading-heatmap" />
-    </div>
-    <div class="d-flex controls justify-content-between mt-3">
-      <b-form-select
-        :options="trackTagOptions"
-        v-model="selectedTag"
-        @change="getTracksForTag"
-      />
-      <div class="w-50 mx-3">
-        <label for="opacity">Heatmap opacity</label>
-        <b-form-input
-          id="opacity"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          v-model="overlayOpacity"
+    <div class="d-flex flex-column align-items-center pb-4">
+      <div class="position-relative text-white">
+        <cptv-single-frame
+          :recording="latestStatusRecording"
+          :overlay="overlayData"
+          :overlay-opacity="overlayOpacity"
+          palette="Greyscale"
         />
+        <b-spinner v-if="computingHeatmap" class="loading-heatmap" />
+      </div>
+      <div
+        class="d-flex controls px-3 px-lg-0 justify-content-between mt-3 flex-column flex-lg-row"
+      >
+        <b-form-select
+          class="w-auto"
+          :options="trackTagOptions"
+          v-model="selectedTag"
+        />
+        <div class="w-auto mt-lg-0 mt-3">
+          <label for="opacity">Heatmap opacity</label>
+          <b-form-input
+            :disabled="!selectedTag"
+            id="opacity"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            v-model="overlayOpacity"
+          />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="less">
-.heatmap {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 640px;
-  height: 480px;
-}
 .loading-heatmap {
   position: absolute;
   left: calc(50% - 10px);
   top: calc(50% - 10px);
 }
 .controls {
+  max-width: 100svw;
   width: 640px;
 }
 </style>

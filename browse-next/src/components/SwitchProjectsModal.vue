@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { BModal } from "bootstrap-vue-3";
+import { BModal } from "bootstrap-vue-next";
 import {
   UserProjects,
   currentSelectedProject,

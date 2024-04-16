@@ -36,10 +36,13 @@ const activeBetween = (station: ApiLocationResponse): string => {
   ).toRelative()} &ndash; ${lastSeenAt(station)}`;
 };
 
-const { locations, highlightedItem } = defineProps<{
-  locations: ApiLocationResponse[];
-  highlightedItem: ApiLocationResponse | null;
-}>();
+const _props = withDefaults(
+  defineProps<{
+    locations: ApiLocationResponse[];
+    highlightedItem: ApiLocationResponse | null;
+  }>(),
+  { highlightedItem: null }
+);
 
 const emit = defineEmits<{
   (e: "entered-item", payload: ApiLocationResponse): void;

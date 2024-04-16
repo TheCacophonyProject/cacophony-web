@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RouteParamsRaw } from "vue-router";
+import type { RouteParams } from "vue-router";
 import { useRoute } from "vue-router";
 import type { ComputedRef, Ref } from "vue";
 import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
@@ -47,8 +47,12 @@ import {
   latLngForActiveLocations,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
-import { RecordingType } from "@typedefs/api/consts.ts";
-import { hasReferenceImageForDeviceAtCurrentLocation } from "@api/Device.ts";
+import {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.ts";
+import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
+import sunCalc from "suncalc";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -128,6 +132,20 @@ const deviceNameSpan = ref<HTMLSpanElement>();
 const stationNameSpan = ref<HTMLSpanElement>();
 const stationNameIsTruncated = ref<boolean>(false);
 const deviceNameIsTruncated = ref<boolean>(false);
+
+const recordingIsProcessing = computed<boolean>(() => {
+  if (recording.value) {
+    return ![
+      RecordingProcessingState.ReTrackFailed,
+      RecordingProcessingState.TrackingFailed,
+      RecordingProcessingState.AnalyseThermalFailed,
+      RecordingProcessingState.AnalyseFailed,
+      RecordingProcessingState.ReprocessFailed,
+      RecordingProcessingState.Finished,
+    ].includes(recording.value.processingState);
+  }
+  return false;
+});
 
 watch(
   () => route.params.currentRecordingId,
@@ -321,21 +339,22 @@ const gotoPreviousRecordingOrVisit = () => {
 };
 
 const gotoRecording = async (recordingId: RecordingId) => {
-  const params = {
+  const params: RouteParams = {
     ...route.params,
-    currentRecordingId: recordingId,
+    currentRecordingId: recordingId.toString(),
   };
   if (recordingIds.value.length) {
-    (params as any).recordingIds = recordingIds.value.join(",");
+    params.recordingIds = recordingIds.value.join(",");
   }
   if (visitLabel.value) {
-    (params as any).visitLabel = visitLabel.value;
+    params.visitLabel = visitLabel.value;
   }
-  delete (params as RouteParamsRaw).trackId;
-  delete (params as RouteParamsRaw).detail;
+  delete params.trackId;
+  delete params.detail;
   await router.push({
     name: route.name as string,
     params,
+    query: route.query,
   });
 };
 
@@ -347,17 +366,20 @@ const gotoVisit = async (visit: ApiVisitResponse, startOfVisit: boolean) => {
     recId = visit.recordings[0].recId;
   }
   const recordingIds = visit.recordings.map(({ recId }) => recId).join(",");
-  const params = {
+  const params: RouteParams = {
     ...route.params,
-    visitLabel: visit.classification,
     currentRecordingId: recId.toString(),
     recordingIds,
   };
-  delete (params as RouteParamsRaw).trackId;
-  delete (params as RouteParamsRaw).detail;
+  if (visit.classification) {
+    params.visitLabel = visit.classification;
+  }
+  delete params.trackId;
+  delete params.detail;
   await router.push({
     name: route.name as string,
     params,
+    query: route.query,
   });
 };
 
@@ -526,6 +548,7 @@ const recalculateCurrentVisit = async (
         await router.replace({
           name: route.name as string,
           params,
+          query: route.query,
         });
         console.warn(
           "recalculate visit",
@@ -553,9 +576,17 @@ const trackTagChanged = async ({
   action: "add" | "remove";
 }) => {
   if (recording.value) {
-    const trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
+    let trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
       ({ id }) => id === track.id
     );
+    if (
+      !trackToPatch &&
+      (recording.value as ApiRecordingResponse).tracks.length === 0
+    ) {
+      // This track was probably just created, so add it.
+      (recording.value as ApiRecordingResponse).tracks.push(track);
+      trackToPatch = track;
+    }
     if (trackToPatch) {
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
@@ -659,8 +690,10 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     }
   }
 
-  const hasReferenceResponse =
-    await hasReferenceImageForDeviceAtCurrentLocation(deviceId, atTime);
+  const hasReferenceResponse = await hasReferenceImageForDeviceAtTime(
+    deviceId,
+    atTime
+  );
   if (
     // We know the earliest time for the reference image, and the location.
     // We could infer that later recordings for this device at the exact same location
@@ -686,6 +719,20 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
   }
 };
 
+const isNightTime = (date: Date, location: LatLng): boolean => {
+  const { sunrise, sunset } = sunCalc.getTimes(
+    date,
+    location.lat,
+    location.lng
+  );
+
+  const hourMin = date.getHours() * 60 + date.getMinutes();
+  const sunriseHourMin = sunrise.getHours() * 60 + sunrise.getMinutes();
+  const sunsetHourMin = sunset.getHours() * 60 + sunset.getMinutes();
+
+  return hourMin < sunriseHourMin || hourMin > sunsetHourMin;
+};
+
 const loadRecording = async () => {
   recording.value = null;
   if (currentRecordingId.value) {
@@ -694,10 +741,19 @@ const loadRecording = async () => {
     recording.value = await getRecordingById(currentRecordingId.value);
     if (recording.value) {
       const rec = recording.value as ApiRecordingResponse;
-      if (rec.type === RecordingType.ThermalRaw) {
+
+      if (recordingIsProcessing.value) {
+        setTimeout(loadRecording, 30000);
+      }
+
+      if (
+        [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
+          rec.type
+        )
+      ) {
         // If not already known, check if there is a reference image for the recording device at the time
         // the recording was made.
-        checkReferencePhotoAtTime(
+        const _ = checkReferencePhotoAtTime(
           rec.deviceId,
           new Date(rec.recordingDateTime)
         );
@@ -724,11 +780,18 @@ const loadRecording = async () => {
         }
       }
     } else {
+      console.log("Recording load failed");
       // TODO Handle failure to get recording
     }
+  } else {
+    console.log("No recording id??");
   }
 };
 
+const selectedTrackWrap = (payload: {
+  trackId: TrackId;
+  automatically: boolean;
+}) => selectedTrack(payload.trackId, payload.automatically);
 const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   const params = {
     ...route.params,
@@ -754,6 +817,7 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   await router.replace({
     name: route.name as string,
     params,
+    query: route.query,
   });
 };
 const selectedTrackWrapped = ({
@@ -990,7 +1054,7 @@ const requestedDownload = async () => {
     );
     const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
     const mimeType = downloadedFileResponse.headers.has("content-type")
-      ? downloadedFileResponse.headers.get("content-type")
+      ? (downloadedFileResponse.headers.get("content-type") as string)
       : "application/octet-stream";
     download(
       URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
@@ -1122,10 +1186,7 @@ const inlineModal = ref<boolean>(false);
             @request-prev-visit="gotoPreviousVisit"
             @request-header-info-display="requestedHeaderInfoDisplay"
             @dismiss-header-info="dismissHeaderInfo"
-            @track-selected="
-              ({ trackId, automatically }) =>
-                selectedTrack(trackId, automatically)
-            "
+            @track-selected="selectedTrackWrap"
           />
         </div>
         <div class="recording-info d-flex flex-column" ref="recordingInfo">
@@ -1270,10 +1331,8 @@ const inlineModal = ref<boolean>(false);
             :recording="recording"
             class="recording-tracks"
             @track-tag-changed="trackTagChanged"
-            @track-selected="
-              ({ trackId, automatically }) =>
-                selectedTrack(trackId, automatically)
-            "
+            @track-selected="selectedTrackWrap"
+            @added-recording-label="addedRecordingLabel"
           />
           <div
             class="recording-info-mobile p-3 flex-grow-1"
@@ -1371,7 +1430,7 @@ const inlineModal = ref<boolean>(false);
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-sm-none flex-row-reverse align-items-center btn-hi"
+            class="btn d-flex d-md-none flex-row-reverse align-items-center btn-hi position-relative"
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
             @click.prevent="gotoPreviousRecordingOrVisit"
           >
@@ -1397,26 +1456,28 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through visits -->
           <button
             type="button"
-            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
+            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
             :disabled="!hasPreviousVisit"
             @click.prevent="gotoPreviousVisit"
             v-if="isInGreaterVisitContext"
             title="alt+shift &larr;"
           >
-            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
+            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
               <span class="fs-8 fw-bold" v-if="hasPreviousVisit"
-                >Previous visit</span
+                >Prev<span class="d-sm-none d-cs-inline">ious</span> visit</span
               >
               <span class="fs-8" v-else v-html="'&nbsp;'"></span>
               <span class="fs-9" v-if="previousVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
-                    previousVisit.classification
+                    previousVisit.classification as string
                   )
                 }}</span
                 >,&nbsp;<span
-                  >{{ previousVisit.recordings.length }} recording<span
-                    v-if="previousVisit.recordings.length > 1"
+                  >{{ previousVisit.recordings.length }} rec<span
+                    class="d-sm-none d-cs-inline"
+                    >ording</span
+                  ><span v-if="previousVisit.recordings.length > 1"
                     >s</span
                   ></span
                 >
@@ -1440,15 +1501,30 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
-            class="btn d-none d-sm-flex flex-row-reverse align-items-center btn-hi"
+            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
             v-if="hasPreviousRecording"
             @click.prevent="gotoPreviousRecording"
             title="alt &larr;"
           >
-            <span class="d-none d-sm-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold">Previous recording</span>
+            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
+              <span class="fs-8 fw-bold"
+                >Prev<span
+                  :class="{
+                    'd-sm-none': hasPreviousVisit,
+                    'd-cs-inline': hasPreviousVisit,
+                  }"
+                  >ious</span
+                >
+                rec<span
+                  :class="{
+                    'd-sm-none': hasPreviousVisit,
+                    'd-cs-inline': hasPreviousVisit,
+                  }"
+                  >ording</span
+                ></span
+              >
               <span class="fs-9"
-                >{{ previousRecordingIndex + 1 }}/
+                >{{ (previousRecordingIndex as number) + 1 }}/
                 {{ currentRecordingCount || allRecordingIds.length }}</span
               >
             </span>
@@ -1477,15 +1553,23 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
-            class="btn d-none d-sm-flex align-items-center btn-hi"
+            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
             v-if="hasNextRecording"
             @click.prevent="gotoNextRecording"
             title="alt &rarr;"
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold">Next recording</span>
+              <span class="fs-8 fw-bold"
+                >Next rec<span
+                  :class="{
+                    'd-sm-none': hasNextVisit,
+                    'd-cs-inline': hasNextVisit,
+                  }"
+                  >ording</span
+                ></span
+              >
               <span class="fs-9"
-                >{{ nextRecordingIndex + 1 }}/{{
+                >{{ (nextRecordingIndex as number) + 1 }}/{{
                   currentRecordingCount || allRecordingIds.length
                 }}</span
               >
@@ -1502,7 +1586,7 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through visits -->
           <button
             type="button"
-            class="btn d-none d-sm-flex align-items-center btn-hi"
+            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
             :disabled="!hasNextVisit"
             @click.prevent="gotoNextVisit"
             v-if="isInGreaterVisitContext"
@@ -1513,13 +1597,15 @@ const inlineModal = ref<boolean>(false);
               <span class="fs-8" v-else v-html="'&nbsp;'"></span>
               <span class="fs-9" v-if="nextVisit">
                 <span class="text-capitalize fw-bold">{{
-                  displayLabelForClassificationLabel(nextVisit.classification)
+                  displayLabelForClassificationLabel(
+                    nextVisit.classification as string
+                  )
                 }}</span
                 >,&nbsp;<span
-                  >{{ nextVisit.recordings.length }} recording<span
-                    v-if="nextVisit.recordings.length > 1"
-                    >s</span
-                  ></span
+                  >{{ nextVisit.recordings.length }} rec<span
+                    class="d-sm-none d-cs-inline"
+                    >ording</span
+                  ><span v-if="nextVisit.recordings.length > 1">s</span></span
                 >
               </span>
               <span class="fs-9" v-else v-html="'&nbsp;'"></span>
@@ -1541,7 +1627,7 @@ const inlineModal = ref<boolean>(false);
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-sm-none align-items-center btn-hi"
+            class="btn d-flex d-md-none align-items-center btn-hi"
             :disabled="!hasNextRecording && !hasNextVisit"
             @click.prevent="gotoNextRecordingOrVisit"
           >
@@ -1671,8 +1757,6 @@ const inlineModal = ref<boolean>(false);
 .recording-info {
   width: 100%;
 }
-.recording-info-mobile {
-}
 .recording-station-info {
   .standard-shadow();
 }
@@ -1687,6 +1771,11 @@ const inlineModal = ref<boolean>(false);
   width: 120px;
   height: 120px;
   min-width: 120px;
+}
+@media screen and (min-width: 880px) {
+  .d-cs-inline {
+    display: inline !important;
+  }
 }
 .nav-item.active {
   background: unset;
@@ -1773,12 +1862,6 @@ const inlineModal = ref<boolean>(false);
     bottom: 0;
     left: 0;
     right: 0;
-    .recording-view-footer {
-      //position: absolute;
-      //bottom: 0;
-      //left: 0;
-      //right: 0;
-    }
   }
 }
 

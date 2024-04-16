@@ -11,6 +11,7 @@ import { ClientError } from "../customErrors.js";
 import type { StationId, TrackId, UserId } from "@typedefs/api/common.js";
 import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
 import { Op } from "sequelize";
+import type { RecordingProcessingState } from "@typedefs/api/consts.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import type { Station } from "@models/Station.js";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag.js";
@@ -173,6 +174,7 @@ class Visit {
     const newVisitRecording: VisitRecording = {
       recId: recording.id,
       start: recording.recordingDateTime,
+      processingState: recording.processingState,
       tracks: [],
     };
     for (const track of (recording as any).Tracks) {
@@ -326,6 +328,7 @@ interface VisitRecording {
   recId: number;
   start: string;
   tracks: VisitTrack[];
+  processingState: RecordingProcessingState;
 }
 
 interface VisitTrack {

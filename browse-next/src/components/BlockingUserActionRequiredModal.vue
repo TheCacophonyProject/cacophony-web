@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BModal } from "bootstrap-vue-3";
+import { BModal } from "bootstrap-vue-next";
 import { onMounted, ref } from "vue";
 import {
   hasAcceptedSomeEUA,

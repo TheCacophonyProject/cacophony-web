@@ -35,7 +35,9 @@ export const getVisitsForProject = async (
   params.append("from", fromDate.toISOString());
   params.append("until", untilDate.toISOString());
   if (locations && locations.length) {
-    params.append("stations", locations.toString());
+    for (const location of locations) {
+      params.append("stations", location.toString());
+    }
   }
   if (types && types.length) {
     params.append("types", types.toString());
@@ -66,11 +68,6 @@ export const getAllVisitsForProject = async (
   let untilDate = new Date(now);
   const fromDate = new Date(
     new Date(now).setDate(new Date(now).getDate() - numDays)
-  );
-  console.log(
-    "Get all visits",
-    fromDate.toISOString(),
-    untilDate.toISOString()
   );
 
   let numPagesEstimate = 0;
@@ -130,6 +127,12 @@ export const getAllVisitsForProject = async (
   };
 };
 
+export interface BulkVisitsResponse {
+  visits: ApiVisitResponse[];
+  all: boolean;
+  success: boolean;
+}
+
 export const getAllVisitsForProjectBetweenTimes = async (
   projectId: ProjectId,
   fromDate: Date,
@@ -142,11 +145,7 @@ export const getAllVisitsForProjectBetweenTimes = async (
     | RecordingType.Audio
   )[],
   progressUpdaterFn?: ProgressUpdater // progress updates caller with how far through the request it is [0, 1]
-): Promise<{
-  success: boolean;
-  visits: ApiVisitResponse[];
-  all: boolean;
-}> => {
+): Promise<BulkVisitsResponse> => {
   const returnVisits: ApiVisitResponse[] = [];
   let morePagesExist = true;
   let requestNumber = 0;

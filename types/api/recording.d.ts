@@ -48,6 +48,21 @@ export interface ApiThermalRecordingMetadataResponse {
   };
 }
 
+export interface ApiTrailCamImageMetadataResponse {
+  width: number;
+  height: number;
+  ISO?: number;
+  make?: string;
+  model?: string;
+  deviceName?: string;
+  aperture?: number;
+  shutterSpeed?: number;
+  softwareVersion?: number;
+  exposureTime?: number;
+  fStop?: number;
+  inHg?: number;
+  dateTime?: string;
+}
 export interface ApiAudioRecordingMetadataResponse {
   analysis?: {
     speech_detection?: boolean;
@@ -69,13 +84,16 @@ export interface ApiAudioRecordingMetadataResponse {
   "App has root access": boolean;
 }
 
+export interface ApiTrailCamImageResponse extends ApiRecordingResponse {
+  additionalMetadata?: ApiTrailCamImageMetadataResponse;
+  type: RecordingType.TrailCamImage;
+}
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   additionalMetadata?: ApiThermalRecordingMetadataResponse;
   type:
     | RecordingType.ThermalRaw
     | RecordingType.InfraredVideo
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage;
+    | RecordingType.TrailCamVideo;
 }
 
 export interface CacophonyIndex {
