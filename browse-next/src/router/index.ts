@@ -1,4 +1,8 @@
-import { createRouter, createWebHistory } from "vue-router";
+import {
+  createRouter,
+  createWebHistory,
+  type RouteLocationRaw,
+} from "vue-router";
 import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
   currentEUAVersion,
@@ -24,6 +28,7 @@ import { getDevicesForProject, getProjects } from "@api/Project";
 import { nextTick, reactive } from "vue";
 import { decodeJWT, urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
+import { DeviceType } from "@typedefs/api/consts.ts";
 
 // Allows us to abort all pending fetch requests when switching between major views.
 export const CurrentViewAbortController = {
@@ -62,7 +67,9 @@ const recordingModalChildren = (parent: string) => [
     // when /:projectName/visit/:visitLabel/:currentRecordingId/:recordingIds is matched
     path: "visit/:visitLabel/:currentRecordingId/:recordingIds?",
     name: `${parent}-visit`,
-    redirect: { name: `${parent}-visit-tracks` }, // Make tracks the default tab
+    redirect: {
+      name: `${parent}-visit-tracks`,
+    },
     meta: {
       title: ":visitLabel visit, #:currentRecordingId",
       context: `${parent}-visit`,
@@ -77,8 +84,15 @@ const recordingModalChildren = (parent: string) => [
     meta: {
       title: "Recording #:currentRecordingId",
       context: `${parent}-recording`,
+    }, // Make tracks the default tab
+    redirect: (to: RouteLocationNormalized): RouteLocationRaw => {
+      return {
+        name: `${parent}-recording-tracks`,
+        params: {
+          ...to.params,
+        },
+      };
     },
-    redirect: { name: `${parent}-recording-tracks` }, // Make tracks the default tab
     name: `${parent}-recording`,
     component: () => import("@/views/RecordingView.vue"),
     children: recordingModalTabChildren(parent, "recording"),
@@ -169,9 +183,30 @@ const router = createRouter({
         {
           // DeviceView will be rendered inside DevicesViews' <router-view>
           // when /:groupName/devices/:deviceName is matched
-          path: ":deviceId/:deviceName",
+          path: ":deviceId/:deviceName/:type?",
           name: "device",
-          redirect: { name: "device-diagnostics" }, // Make diagnostics the default tab
+          redirect: (to): RouteLocationRaw => {
+            // Redirect depends on deviceType:
+            if (to.params.type === DeviceType.TrailCam) {
+              return {
+                name: "device-uploads",
+                params: {
+                  ...to.params,
+                  // Remove type from destination route
+                  type: null,
+                },
+              };
+            } else {
+              return {
+                name: "device-diagnostics",
+                params: {
+                  ...to.params,
+                  // Remove type from destination route
+                  type: null,
+                },
+              };
+            }
+          }, // Make diagnostics the default tab
           meta: { title: "Manage device :deviceName" },
           component: () => import("@/views/DeviceView.vue"),
           children: [
@@ -183,7 +218,22 @@ const router = createRouter({
             {
               path: "setup",
               name: "device-setup",
+              redirect: { name: "reference-photo" }, // Open the first list item on load
               component: () => import("@/views/DeviceSetupSubView.vue"),
+              children: [
+                {
+                  path: "reference",
+                  name: "reference-photo",
+                  component: () =>
+                    import("@/components/DeviceSetupReferencePhoto.vue"),
+                },
+                {
+                  path: "mask",
+                  name: "define-masking",
+                  component: () =>
+                    import("@/components/DeviceSetupDefineMask.vue"),
+                },
+              ],
             },
             {
               path: "schedules",

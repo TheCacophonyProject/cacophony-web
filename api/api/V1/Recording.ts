@@ -111,6 +111,8 @@ import {
   uploadGenericRecordingFromDevice,
   uploadGenericRecordingOnBehalfOfDevice,
 } from "@api/fileUploaders/uploadGenericRecording.js";
+import { trackIsMasked } from "@api/V1/trackMasking.js";
+import type { TrackId } from "@typedefs/api/common.js";
 
 const models = await modelsInit();
 
@@ -1732,7 +1734,7 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
     fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const algorithm = response.locals.algorithm
         ? response.locals.algorithm
         : "{'status': 'User added.'}";
@@ -1744,16 +1746,37 @@ export default (app: Application, baseUrl: string) => {
         userId: response.locals.requestUser.id,
         ...response.locals.data,
       };
+      let trackId: TrackId = 1;
+      let algorithmId: number = 1;
 
-      const track = await response.locals.recording.createTrack({
-        data,
-        AlgorithmId: algorithmDetail.id,
-      });
-      await track.updateIsFiltered();
-
+      const deviceId = response.locals.recording.DeviceId;
+      const groupId = response.locals.recording.GroupId;
+      const atTime = response.locals.recording.recordingDateTime;
+      const positions = data.positions;
+      let discardMaskedTrack = false;
+      if (positions) {
+        discardMaskedTrack = await trackIsMasked(
+          models,
+          deviceId,
+          groupId,
+          atTime,
+          positions
+        );
+      }
+      if (!discardMaskedTrack) {
+        const track = await response.locals.recording.createTrack({
+          data,
+          AlgorithmId: algorithmDetail.id,
+        });
+        await track.updateIsFiltered();
+        trackId = track.id;
+        algorithmId = track.AlgorithmId;
+      }
+      // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
+      // trackTags to tag id 1.
       return successResponse(response, "Track added.", {
-        trackId: track.id,
-        algorithmId: track.AlgorithmId,
+        trackId,
+        algorithmId,
       });
     }
   );
@@ -2144,6 +2167,15 @@ export default (app: Application, baseUrl: string) => {
     },
     async (request: Request, response: Response, next: NextFunction) => {
       let track;
+
+      if (Number(request.params.trackId) === 1 && request.body.automatic) {
+        // NOTE: Dummy track that was masked out by mask regions.
+        // Just succeed here so that processing doesn't break when trying to add tags.
+        return successResponse(response, "Track tag added.", {
+          trackTagId: 1,
+        });
+      }
+
       if (request.body.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users'
         // recording update permissions.

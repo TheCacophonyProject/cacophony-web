@@ -76,6 +76,7 @@ import {
   faStream,
   faUserCog,
   faPanorama,
+  faSliders,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -176,7 +177,8 @@ library.add(
   faStream,
   faUserCog,
   faMapLocationDot,
-  faPanorama
+  faPanorama,
+  faSliders
 );
 
 export default FontAwesomeIcon;

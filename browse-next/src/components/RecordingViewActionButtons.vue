@@ -14,13 +14,16 @@ import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
-const { recording } = defineProps<{
-  recording?: ApiRecordingResponse | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    recording?: ApiRecordingResponse | null;
+  }>(),
+  { recording: null }
+);
 const currentRecordingType = ref<"cptv" | "image">("cptv");
 
 watch(
-  () => recording,
+  () => props.recording,
   (nextRecording) => {
     if (nextRecording) {
       switch (nextRecording.type) {
@@ -49,9 +52,9 @@ const addingLabelInProgress = ref<boolean>(false);
 const removingLabelInProgress = ref<boolean>(false);
 
 const addLabel = async (label: string) => {
-  if (recording) {
+  if (props.recording) {
     addingLabelInProgress.value = true;
-    const addLabelResponse = await addRecordingLabel(recording.id, label);
+    const addLabelResponse = await addRecordingLabel(props.recording.id, label);
     if (addLabelResponse.success) {
       // Emit tag change event, patch upstream recording.
       if (CurrentUser.value) {
@@ -70,12 +73,14 @@ const addLabel = async (label: string) => {
 };
 
 const removeLabel = async (label: string) => {
-  if (recording) {
-    const labelToRemove = recording.tags.find((tag) => tag.detail === label);
+  if (props.recording) {
+    const labelToRemove = props.recording.tags.find(
+      (tag) => tag.detail === label
+    );
     if (labelToRemove) {
       removingLabelInProgress.value = true;
       const removeLabelResponse = await removeRecordingLabel(
-        recording.id,
+        props.recording.id,
         labelToRemove.id
       );
       if (removeLabelResponse.success) {
@@ -105,19 +110,19 @@ const starRecording = async () => {
 };
 
 const recordingReady = computed<boolean>(() => {
-  return recording !== null;
+  return props.recording !== null;
 });
 
 const recordingIsStarred = computed<boolean>(() => {
-  if (recording) {
-    return !!recording.tags.find((tag) => tag.detail === STAR);
+  if (props.recording) {
+    return !!props.recording.tags.find((tag) => tag.detail === STAR);
   }
   return false;
 });
 
 const recordingIsFlagged = computed<boolean>(() => {
-  if (recording) {
-    return !!recording.tags.find((tag) => tag.detail === FLAG);
+  if (props.recording) {
+    return !!props.recording.tags.find((tag) => tag.detail === FLAG);
   }
   return false;
 });
@@ -161,9 +166,11 @@ const notImplemented = () => {
       no-flip
       dropup
       auto-close
-      offset="-92, 7"
+      no-caret
+      center="true"
+      offset="7"
       variant="link"
-      toggle-class="dropdown-btn"
+      toggle-class="dropdown-btn btn-square btn-hi"
       menu-class="dropdown-indicator"
       v-if="currentRecordingType === 'cptv'"
     >
@@ -197,7 +204,9 @@ const notImplemented = () => {
     <two-step-action-button
       :action="() => emit('delete-recording')"
       icon="trash-can"
+      :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
       confirmation-label="Delete Recording"
+      color="#666"
       v-if="userIsGroupAdmin"
     >
       <template #button-content>

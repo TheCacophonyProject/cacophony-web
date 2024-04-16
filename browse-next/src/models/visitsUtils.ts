@@ -1,12 +1,10 @@
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
+import type { LatLng } from "@typedefs/api/common";
 import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import * as sunCalc from "suncalc";
-import { onBeforeMount } from "vue";
 import {
-  classifications,
   flatClassifications,
   getClassifications,
   getPathForLabel,
@@ -276,4 +274,20 @@ export const timeAtLocation = (
       hourCycle: "h12",
     })
     .replace(/ /g, "");
+};
+
+export const dayAndTimeAtLocation = (
+  timeIsoString: string,
+  location: LatLng
+): string => {
+  const zone = timezoneForLatLng(location);
+  const localTime = DateTime.fromISO(timeIsoString, { zone });
+  return localTime.toLocaleString({
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hourCycle: "h12",
+  });
 };

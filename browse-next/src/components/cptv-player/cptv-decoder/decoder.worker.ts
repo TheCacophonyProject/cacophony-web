@@ -17,7 +17,12 @@ class Unlocker {
 const FakeReader = (
   bytes: Uint8Array,
   maxChunkSize = 0
-): ReadableStreamDefaultReader => {
+): {
+  cancel(): Promise<void>;
+  read(): Promise<{ value: Uint8Array; done: boolean }>;
+  releaseLock(): void;
+  closed: Promise<Awaited<undefined>>;
+} => {
   let state: { offsets: number[]; offset: number; bytes?: Uint8Array } = {
     offsets: [],
     offset: 0,
@@ -35,6 +40,10 @@ const FakeReader = (
   }
   state.offsets.push(length);
   return {
+    closed: Promise.resolve(undefined),
+    releaseLock(): void {
+      return;
+    },
     read(): Promise<{ value: Uint8Array; done: boolean }> {
       return new Promise((resolve) => {
         state.offset += 1;
@@ -75,14 +84,14 @@ class CptvDecoderInterface {
   private currentContentType = "application/x-cptv";
   streamError: string | null = null;
 
-  free() {
+  async free(): Promise<void> {
     this.framesRead = 0;
     this.locked = false;
     this.consumed = false;
     this.inited = false;
     this.prevFrameHeader = null;
     this.playerContext && this.playerContext.free();
-    this.reader && this.reader.cancel();
+    this.reader && (await this.reader.cancel());
     this.streamError = null;
     this.reader = null;
     this.playerContext = null;
@@ -98,7 +107,7 @@ class CptvDecoderInterface {
     apiRoot: string,
     size?: number
   ): Promise<string | boolean | Blob> {
-    this.free();
+    await this.free();
     const unlocker = new Unlocker();
     await this.lockIsUncontended(unlocker);
     this.locked = true;
@@ -163,7 +172,7 @@ class CptvDecoderInterface {
     url: string,
     size?: number
   ): Promise<boolean | string> {
-    this.free();
+    await this.free();
     const unlocker = new Unlocker();
     await this.lockIsUncontended(unlocker);
     this.locked = true;
@@ -209,14 +218,17 @@ class CptvDecoderInterface {
     }
   }
   async initWithFileBytes(fileBytes: Uint8Array) {
-    this.free();
+    await this.free();
     this.framesRead = 0;
     this.streamError = null;
     const unlocker = new Unlocker();
     await this.lockIsUncontended(unlocker);
     this.locked = true;
 
-    this.reader = FakeReader(fileBytes, 100000);
+    this.reader = FakeReader(
+      fileBytes,
+      100000
+    ) as ReadableStreamDefaultReader<Uint8Array>;
     this.expectedSize = fileBytes.length;
     let result;
     try {
@@ -358,10 +370,20 @@ class CptvDecoderInterface {
       const unlocker = new Unlocker();
       await this.lockIsUncontended(unlocker);
       this.locked = true;
-      await (this.playerContext as PlayerContext).fetchHeader();
-      const header = (this.playerContext as PlayerContext).getHeader();
-      if (header === "Unable to parse header") {
-        this.streamError = header;
+      let header;
+      if (this.playerContext) {
+        await (this.playerContext as PlayerContext).fetchHeader();
+      }
+      if (this.playerContext) {
+        header = (this.playerContext as PlayerContext).getHeader();
+        if (!header) {
+          this.streamError = "Failed getting file header";
+          console.warn(this.streamError);
+        }
+        if (header === "Unable to parse header") {
+          this.streamError = header;
+          console.warn(this.streamError);
+        }
       }
       unlocker.unlock();
       this.locked = false;

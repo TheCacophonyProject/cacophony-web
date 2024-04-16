@@ -1,6 +1,6 @@
 <template>
   <div @click="$emit('click', $event)" class="classification-container">
-    <LayeredDropdown
+    <layered-dropdown
       :options="options"
       @input="$emit('input', $event)"
       v-bind:value="value"

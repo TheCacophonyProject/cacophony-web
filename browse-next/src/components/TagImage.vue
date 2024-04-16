@@ -17,7 +17,7 @@ import {
   getClassifications,
 } from "@api/Classifications";
 
-const { tag, width, height } = defineProps<{
+const props = defineProps<{
   width: number | string;
   height: number | string;
   tag: string;
@@ -39,7 +39,7 @@ const pathForTag = (tag: string): string => {
 
 onBeforeMount(async () => {
   await getClassifications();
-  suppliedTag.value = pathForTag(tag);
+  suppliedTag.value = pathForTag(props.tag);
 });
 
 const src = computed<string>(() => {

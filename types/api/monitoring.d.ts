@@ -1,5 +1,5 @@
 import { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common";
-import { RecordingType } from "./consts.js";
+import { RecordingProcessingState, RecordingType } from "./consts.js";
 
 export interface MonitoringRequest {
   perPage?: number;
@@ -54,5 +54,10 @@ export interface ApiVisitResponse {
   timeStart: string; // date for start of visit
   timeEnd: string; // date for start of visit
   incomplete: boolean; // is it possible that this visit still has more recordings that should be attached?
-  recordings: { recId: number; start: string; tracks: VisitRecordingTag[] }[];
+  recordings: {
+    recId: number;
+    start: string;
+    tracks: VisitRecordingTag[];
+    processingState: RecordingProcessingState;
+  }[];
 }

@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   CptvFrame,
   CptvFrameHeader,
   CptvHeader,
 } from "./cptv-decoder/decoder";
+import { CptvDecoder } from "./cptv-decoder/decoder";
 import {
   ColourMaps,
   formatHeaderInfo,
@@ -16,7 +17,6 @@ import {
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
-import { CptvDecoder } from "./cptv-decoder/decoder";
 import type { RecordingId, TrackId } from "@typedefs/api/common";
 import { Mp4Encoder } from "@/components/cptv-player/mp4-export";
 import type {
@@ -36,50 +36,45 @@ import {
   clearOverlay,
   drawBottomLeftOverlayLabel,
   drawBottomRightOverlayLabel,
+  drawRectWithText,
   renderOverlay,
 } from "@/components/cptv-player/overlay-canvas";
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
-import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
-import { CurrentUserCreds } from "@models/LoggedInUser";
+import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { LoggedInUserAuth } from "@models/LoggedInUser";
+import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
-import { delayMs } from "@/utils";
+import { type CancelableDelay, delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
-import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
-import {
-  getReferenceImageForDeviceAtCurrentLocation,
-  getReferenceImageForDeviceAtTime,
-} from "@api/Device.ts";
+import { getReferenceImageForDeviceAtTime } from "@api/Device.ts";
 
 const { pixelRatio } = useDevicePixelRatio();
-const {
-  recording,
-  recordingId,
-  cptvSize = null,
-  currentTrack,
-  userSelectedTrack,
-  canSelectTracks = true,
-  exportRequested,
-  hasNext = false,
-  hasPrev = false,
-  hasReferencePhoto = false,
-  displayHeaderInfo = false,
-} = defineProps<{
-  recording: ApiRecordingResponse | null;
-  recordingId: RecordingId;
-  cptvSize?: number | null;
-  currentTrack?: ApiTrackResponse;
-  userSelectedTrack?: ApiTrackResponse;
-  canSelectTracks?: boolean;
-  hasNext?: boolean;
-  hasPrev?: boolean;
-  hasReferencePhoto?: boolean;
-  displayHeaderInfo?: boolean;
-  exportRequested?: boolean | "advanced";
-}>();
+const props = withDefaults(
+  defineProps<{
+    recording: ApiRecordingResponse | null;
+    recordingId: RecordingId;
+    cptvSize?: number | null;
+    currentTrack?: ApiTrackResponse;
+    userSelectedTrack?: ApiTrackResponse;
+    canSelectTracks?: boolean;
+    hasNext?: boolean;
+    hasPrev?: boolean;
+    hasReferencePhoto?: boolean;
+    displayHeaderInfo?: boolean;
+    exportRequested?: boolean | "advanced";
+  }>(),
+  {
+    cptvSize: null,
+    canSelectTracks: true,
+    hasNext: false,
+    hasPrev: false,
+    hasReferencePhoto: false,
+    displayHeaderInfo: false,
+  }
+);
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
 let frames: CptvFrame[] = [];
@@ -97,6 +92,7 @@ let cptvDecoder: CptvDecoder;
 watch(pixelRatio, () => {
   animationTick.value = 0;
   setOverlayCanvasDimensions();
+  updateOverlayCanvas(targetFrameNum.value);
 
   // If the pixel ratio changed, we might also be on a monitor with a different refresh rate now.
   polledFps.value = false;
@@ -111,7 +107,7 @@ const exportProgress = computed<number>(
   () => exportProgressZeroOne.value * 100
 );
 watch(
-  () => exportRequested,
+  () => props.exportRequested,
   async (nextVal) => {
     if (nextVal) {
       if (nextVal === true) {
@@ -128,14 +124,14 @@ const playbackTimeChanged = (offset: number) => {
 };
 
 const recordingDateTime = computed<DateTime | null>(() => {
-  if (recording) {
-    if (recording.location) {
-      const zone = timezoneForLatLng(recording.location);
-      return DateTime.fromISO(recording.recordingDateTime, {
+  if (props.recording) {
+    if (props.recording.location) {
+      const zone = timezoneForLatLng(props.recording.location);
+      return DateTime.fromISO(props.recording.recordingDateTime, {
         zone,
       });
     }
-    return DateTime.fromISO(recording.recordingDateTime);
+    return DateTime.fromISO(props.recording.recordingDateTime);
   }
   return null;
 });
@@ -172,13 +168,23 @@ const emit = defineEmits<{
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { width: canvasWidth, height: canvasHeight } = useElementSize(canvas);
 
+// Trailcam image ratio
+const imageBitmap = ref<ImageBitmap | null>(null);
+const imageRatio = computed<number>(() => {
+  if (imageBitmap.value) {
+    return imageBitmap.value.width / imageBitmap.value.height;
+  } else {
+    return 1;
+  }
+});
+
 watch(canvasWidth, () => {
   animationTick.value = 0;
   setOverlayCanvasDimensions();
 });
 
 watch(
-  () => userSelectedTrack,
+  () => props.userSelectedTrack,
   async (nextTrack, prevTrack) => {
     if (nextTrack) {
       if (
@@ -195,11 +201,14 @@ watch(
 );
 
 watch(
-  () => currentTrack,
+  () => props.currentTrack,
   () => {
     if (!playing.value) {
       updateOverlayCanvas(frameNum.value);
     }
+  },
+  {
+    deep: true, // If tags change, we'd like to know about it
   }
 );
 
@@ -231,7 +240,7 @@ const animationFrame = ref<number>(0);
 
 const motionPaths = computed<MotionPath[]>(() => {
   return (
-    (recording?.tracks
+    (props.recording?.tracks
       .map((track) => motionPathForTrack(track, scale.value))
       .filter((m) => m !== null) as MotionPath[]) || []
   );
@@ -384,7 +393,7 @@ const selectTrack = async (
   shouldPlay = false,
   userSelected = false
 ) => {
-  if ((!playing.value || force) && recording?.tracks.length) {
+  if ((!playing.value || force) && props.recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
     animationTick.value = 0;
     if (userSelected) {
@@ -404,7 +413,7 @@ const requestHeaderInfoDisplay = () => {
 };
 
 const requestPrevRecording = () => {
-  if (hasPrev) {
+  if (props.hasPrev) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -415,7 +424,7 @@ const requestPrevRecording = () => {
 };
 
 const requestNextRecording = () => {
-  if (hasNext) {
+  if (props.hasNext) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -426,7 +435,7 @@ const requestNextRecording = () => {
 };
 
 const requestNextVisit = () => {
-  if (hasNext) {
+  if (props.hasNext) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -437,7 +446,7 @@ const requestNextVisit = () => {
 };
 
 const requestPrevVisit = () => {
-  if (hasPrev) {
+  if (props.hasPrev) {
     frameNum.value = 0;
     targetFrameNum.value = 0;
     buffering.value = true;
@@ -546,8 +555,6 @@ const frameHeight = computed<number>(() => {
   }
   return 120;
 });
-// FIXME - Refactor to separate frame data drawing from overlay drawing.
-
 const renderFrame = (
   frameData: CptvFrame,
   frameNumToRender: number,
@@ -557,12 +564,12 @@ const renderFrame = (
     let min;
     let max;
     const thisHeader = header.value as CptvHeader;
-    const numTracks = recording?.tracks.length || 0;
+    const numTracks = props.recording?.tracks.length || 0;
     if (trackHighlightMode.value) {
       if (
-        currentTrack &&
+        props.currentTrack &&
         numTracks > 1 &&
-        framesByTrack.value[currentTrack.id] &&
+        framesByTrack.value[props.currentTrack.id] &&
         tracksByFrame.value[frameNumToRender]
       ) {
         // const trackBox = framesByTrack.value[currentTrack.id][frameNumToRender];
@@ -571,14 +578,16 @@ const renderFrame = (
         //   ({ positions }) => positions
         // );
 
-        const trackBoxes = Object.values(framesByTrack.value[currentTrack.id]);
+        const trackBoxes = Object.values(
+          framesByTrack.value[props.currentTrack.id]
+        );
         [min, max] = minMaxForTrack(
           trackBoxes,
-          loadedFramesForTrack(currentTrack.id)
+          loadedFramesForTrack(props.currentTrack.id)
         );
       } else if (numTracks === 1) {
         // There's only one track, so highlight it all the time.
-        const trackId = recording!.tracks[0].id;
+        const trackId = props.recording!.tracks[0].id;
         if (
           framesByTrack.value[trackId] &&
           tracksByFrame.value[frameNumToRender]
@@ -745,7 +754,8 @@ const totalPlayableFrames = computed<number>(() => {
     const backgroundAdjust = (header.value as CptvHeader).hasBackgroundFrame
       ? 1
       : 0;
-    return ((header.value as CptvHeader).totalFrames || 0) - backgroundAdjust;
+    const totalFrames = (header.value as CptvHeader).totalFrames;
+    return (totalFrames || 0) - backgroundAdjust;
   } else {
     if (totalFrames.value !== null) {
       const backgroundAdjust = header.value?.hasBackgroundFrame ? 1 : 0;
@@ -757,9 +767,9 @@ const totalPlayableFrames = computed<number>(() => {
         : 0;
       return Math.round(
         Math.max(
-          (((recording || {}) as any).duration || 0) * fps.value -
+          (props.recording || { duration: 0 }).duration * fps.value -
             backgroundAdjust,
-          ...(recording || { tracks: [] }).tracks.map(
+          ...(props.recording || { tracks: [] }).tracks.map(
             ({ end }) => end * fps.value - backgroundAdjust
           )
         )
@@ -795,23 +805,22 @@ const headerInfo = computed(() => formatHeaderInfo(header.value));
 
 const getAuthoritativeTagForTrack = (
   trackTags: ApiTrackTagResponse[]
-): string | null => {
+): [string, boolean] | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
     // FIXME - There can be more than one conflicting user tag...
 
     // TODO: Add an option to also include the AI guess, plus the confidence at each frame.
-    return userTags[0].what;
+    return [userTags[0].what, false];
   } else {
-    return (
-      trackTags.find(
-        (tag) =>
-          (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
-          (typeof tag.data === "object" &&
-            tag.data.name &&
-            tag.data.name === "Master")
-      )?.what || null
-    );
+    const tag = trackTags.find(
+      (tag) =>
+        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
+        (typeof tag.data === "object" &&
+          tag.data.name &&
+          tag.data.name === "Master")
+    )?.what;
+    return (tag && [tag, true]) || null;
   }
 };
 
@@ -841,15 +850,24 @@ const getPositions = (
 
 const tracksIntermediate = computed<IntermediateTrack[]>(() => {
   return (
-    recording?.tracks.map(({ positions, tags, id }) => ({
-      what: (tags && getAuthoritativeTagForTrack(tags)) || null,
-      positions: getPositions(
-        positions as ApiTrackPosition[],
-        timeAdjustmentForBackgroundFrame.value,
-        frameTimeSeconds.value
-      ),
-      id,
-    })) || []
+    props.recording?.tracks.map(({ positions, tags, id }) => {
+      let what = null;
+      if (tags) {
+        const authTag = getAuthoritativeTagForTrack(tags);
+        if (authTag) {
+          what = authTag[0];
+        }
+      }
+      return {
+        what,
+        positions: getPositions(
+          positions as ApiTrackPosition[],
+          timeAdjustmentForBackgroundFrame.value,
+          frameTimeSeconds.value
+        ),
+        id,
+      };
+    }) || []
   );
 });
 
@@ -952,7 +970,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     const encoder = new Mp4Encoder();
     await encoder.init(targetWidth, targetHeight, 9);
 
-    if (!exportRequested) {
+    if (!props.exportRequested) {
       // Could have been canceled.
       encoder.close();
       isExporting.value = false;
@@ -990,7 +1008,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       return;
     }
 
-    if (!exportRequested) {
+    if (!props.exportRequested) {
       // Could have been canceled.
       encoder.close();
       isExporting.value = false;
@@ -1009,7 +1027,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       onePastLastFrame = 0;
       for (const { includeInExportTime, trackId } of trackExportOptions.value) {
         if (includeInExportTime) {
-          const track = (recording as ApiRecordingResponse).tracks.find(
+          const track = (props.recording as ApiRecordingResponse).tracks.find(
             (track) => track.id === trackId
           );
           if (track) {
@@ -1071,9 +1089,9 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         timeSinceLastFFCSeconds,
         true,
         frameNum,
-        recording?.tracks || [],
-        canSelectTracks,
-        currentTrack,
+        props.recording?.tracks || [],
+        props.canSelectTracks,
+        props.currentTrack,
         motionPathMode.value ? motionPaths.value : [],
         1,
         tracksByFrame.value,
@@ -1084,7 +1102,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       await encoder.encodeFrame(
         renderContext.getImageData(0, 0, targetWidth, targetHeight).data
       );
-      if (!exportRequested) {
+      if (!props.exportRequested) {
         encoder.close();
         // Check for cancellation
         isExporting.value = false;
@@ -1096,12 +1114,12 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     }
     const uint8Array = await encoder.finish();
     encoder.close();
-    if (!exportRequested) {
+    if (!props.exportRequested) {
       // Check for cancellation
       isExporting.value = false;
       return;
     }
-    const recordingIdSuffix = `recording_${recordingId}__`;
+    const recordingIdSuffix = `recording_${props.recordingId}__`;
     trackExportOptions.value = exportOptions.value;
     download(
       URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
@@ -1121,7 +1139,7 @@ const download = (url: string, filename: string) => {
   anchor.click();
 };
 
-const ambientTemperature = computed<string | null>(() => {
+const _ambientTemperature = computed<string | null>(() => {
   if (frameHeader.value && (frameHeader.value as CptvFrameHeader).frameTempC) {
     return `About ${Math.round(
       (frameHeader.value as CptvFrameHeader).frameTempC || 0
@@ -1147,19 +1165,69 @@ const currentAbsoluteTime = computed<string | null>(() => {
   return null;
 });
 
+const drawTrailcamImageAndOverlay = () => {
+  if (overlayContext.value && imageBitmap.value) {
+    clearCanvases();
+    const ctx = overlayContext.value;
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+    const restrictedHeight = Math.floor(canvasWidth / imageRatio.value);
+    const offsetY = (canvasHeight - restrictedHeight) * 0.5;
+    overlayContext.value.drawImage(
+      imageBitmap.value,
+      0,
+      offsetY / pixelRatio.value,
+      canvasWidth / pixelRatio.value,
+      restrictedHeight / pixelRatio.value
+    );
+    if (props.recording && props.recording.tracks) {
+      for (const track of props.recording.tracks) {
+        if (track.positions && track.positions.length) {
+          const pos = { ...track.positions[0] };
+          pos.y = 1 - pos.y - pos.height;
+          pos.x = (pos.x * canvasWidth) / pixelRatio.value;
+          pos.height = (pos.height * restrictedHeight) / pixelRatio.value;
+          pos.y = (pos.y * restrictedHeight) / pixelRatio.value;
+          pos.width = (pos.width * canvasWidth) / pixelRatio.value;
+          const authTag = getAuthoritativeTagForTrack(track.tags);
+          let what = "";
+          let aiTag = false;
+          if (authTag) {
+            what = authTag[0];
+            aiTag = authTag[1];
+          }
+          if (what) {
+            drawRectWithText(
+              ctx,
+              track.id,
+              [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height],
+              displayLabelForClassificationLabel(what, aiTag),
+              false,
+              props.recording.tracks,
+              track,
+              pixelRatio.value,
+              1,
+              restrictedHeight
+            );
+          }
+        }
+      }
+    }
+  }
+};
+
 const updateOverlayCanvas = (frameNumToRender: number) => {
-  if (currentRecordingType.value === "cptv") {
-    // FIXME - Move this somewhere else, like when the frame advances
-    if (overlayContext.value) {
+  if (overlayContext.value) {
+    if (currentRecordingType.value === "cptv") {
       renderOverlay(
         overlayContext.value,
         scale.value,
         secondsSinceLastFFC.value,
         false,
         frameNumToRender,
-        recording?.tracks || [],
-        canSelectTracks,
-        currentTrack,
+        props.recording?.tracks || [],
+        props.canSelectTracks,
+        props.currentTrack,
         motionPathMode.value ? motionPaths.value : [],
         pixelRatio.value,
         tracksByFrame.value,
@@ -1184,6 +1252,8 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
           pixelRatio.value
         );
       }
+    } else {
+      drawTrailcamImageAndOverlay();
     }
   }
 };
@@ -1234,10 +1304,10 @@ watch(frameNum, () => {
   // If there's only one possible track for this frame, set it to selected.
   const frameTracks =
     tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][]);
-  if (currentTrack && canSelectTracks && frameTracks.length === 1) {
+  if (props.currentTrack && props.canSelectTracks && frameTracks.length === 1) {
     const trackId = frameTracks[0][0];
     // If the track is the only track at this time offset, make it the selected track.
-    if (currentTrack.id !== trackId) {
+    if (props.currentTrack.id !== trackId) {
       emit("track-selected", { trackId, automatically: true });
     }
   }
@@ -1266,7 +1336,7 @@ const showingReferencePhoto = ref<boolean>(false);
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
   if (showingReferencePhoto.value) {
-    const rec = recording as ApiRecordingResponse;
+    const rec = props.recording as ApiRecordingResponse;
     // Load the reference photo.
     const referenceImageResponse = await getReferenceImageForDeviceAtTime(
       rec.deviceId,
@@ -1431,7 +1501,7 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
   const trackId = (
     tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][])
   )
-    .filter(([trackId]) => trackId !== currentTrack?.id)
+    .filter(([trackId]) => trackId !== props.currentTrack?.id)
     .find(
       ([
         _,
@@ -1586,12 +1656,12 @@ onMounted(async () => {
   }
 
   buffering.value = true;
-  if (canSelectTracks) {
+  if (props.canSelectTracks) {
     overlayCanvas.value?.addEventListener("click", clickOverlayCanvas);
     overlayCanvas.value?.addEventListener("mousemove", moveOverOverlayCanvas);
   }
 
-  await loadNextRecording(recordingId);
+  await loadNextRecording(props.recordingId);
   pollFrameTimes();
 });
 onBeforeUnmount(() => {
@@ -1599,9 +1669,9 @@ onBeforeUnmount(() => {
 });
 
 const loadedNextRecordingData = async () => {
-  if (currentTrack) {
+  if (props.currentTrack && framesByTrack.value[props.currentTrack.id]) {
     const firstFrameForTrack = Number(
-      Object.keys(framesByTrack.value[currentTrack.id])[0]
+      Object.keys(framesByTrack.value[props.currentTrack.id])[0]
     );
     targetFrameNum.value = firstFrameForTrack;
     await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
@@ -1610,7 +1680,7 @@ const loadedNextRecordingData = async () => {
 };
 
 watch(
-  () => recording,
+  () => props.recording,
   async (nextRecording: ApiRecordingResponse | null) => {
     if (nextRecording) {
       trackExportOptions.value = exportOptions.value;
@@ -1620,6 +1690,7 @@ watch(
 );
 
 const currentRecordingType = ref<"cptv" | "image">("cptv");
+let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
   streamLoadError.value = null;
@@ -1635,9 +1706,10 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   resetRecordingNormalisation();
   trackExportOptions.value = [];
   frames = [];
+  loadTimeout && loadTimeout.cancel();
   cancelAnimationFrame(animationFrame.value);
 
-  if ((recording?.tracks || []).length > 1) {
+  if ((props.recording?.tracks || []).length > 1) {
     console.warn(
       "Can merge",
       Object.values(framesByTrack.value).length,
@@ -1646,18 +1718,24 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   }
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
+  loadTimeout && loadTimeout.cancel();
   if (CurrentUserCreds.value) {
     loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
       nextRecordingId,
-      cptvSize || 0,
+      props.cptvSize || 0,
       (CurrentUserCreds.value as LoggedInUserAuth).apiToken
     );
   }
 
   if (loadedStream.value === true) {
+    loadTimeout && loadTimeout.cancel();
     currentRecordingType.value = "cptv";
     header.value = Object.freeze(await cptvDecoder.getHeader());
-    const thisHeader = header.value as CptvHeader;
+    loadTimeout && loadTimeout.cancel();
+    const thisHeader = (header.value as CptvHeader) || {
+      width: 160,
+      height: 120,
+    };
     // TODO - Init all the header related info (min/max values etc)
     setDebugFrameInfo(0);
     scale.value = canvasWidth.value / thisHeader.width;
@@ -1676,49 +1754,24 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         thisCanvas.height = thisHeader.height;
       }
     }
-
-    while (!recording) {
+    while (!props.recording || props.recording.id !== props.recordingId) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
-      await delayMs(10);
+      loadTimeout = delayMs(10);
+      await loadTimeout.promise;
     }
-    if (recording && recording.id === recordingId) {
+    if (props.recording && props.recording.id === props.recordingId) {
       await loadedNextRecordingData();
+      loadTimeout && loadTimeout.cancel();
       emit("ready-to-play", thisHeader);
       playing.value = true;
     }
   } else if (loadedStream.value instanceof Blob) {
     currentRecordingType.value = "image";
-    clearCanvases();
-    let imageBitmap;
+    loadTimeout && loadTimeout.cancel();
     try {
-      imageBitmap = await createImageBitmap(loadedStream.value);
-      {
-        const ctx = overlayCanvas.value?.getContext("2d");
-        if (ctx) {
-          const imageRatio = imageBitmap.width / imageBitmap.height;
-          const canvasWidth = ctx.canvas.width;
-          const canvasHeight = ctx.canvas.height;
-          const dh = canvasWidth / pixelRatio.value / imageRatio;
-          const dy = (canvasHeight / pixelRatio.value - dh) / 2;
-          const dw = canvasWidth / pixelRatio.value;
-          ctx.drawImage(imageBitmap, 0, dy, dw, dh);
-          if (recording && recording.tracks) {
-            for (const track of recording.tracks) {
-              if (track.positions && track.positions.length) {
-                const pos = { ...track.positions[0] };
-                // convert from bottom left, to top left origin
-                pos.y = (1 - (pos.y + pos.height)) * dh + dy;
-                pos.x = pos.x * dw;
-                pos.height = pos.height * dh;
-                pos.width = pos.width * dw;
-                ctx.strokeStyle = "green";
-                ctx.strokeRect(pos.x, pos.y, pos.width, pos.height);
-              }
-            }
-          }
-        }
-      }
+      imageBitmap.value = await createImageBitmap(loadedStream.value);
+      drawTrailcamImageAndOverlay();
     } catch (e) {
       console.log("Image Error", e);
     }
@@ -1728,13 +1781,15 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     resetRecordingNormalisation();
     buffering.value = false;
 
-    while (!recording) {
+    while (!props.recording) {
       // Wait for the recording data to be loaded if it's not,
       // so that we can seek to the beginning of any track.
-      await delayMs(10);
+      loadTimeout = delayMs(10);
+      await loadTimeout.promise;
     }
-    if (recording && recording.id === recordingId) {
+    if (props.recording && props.recording.id === props.recordingId) {
       await loadedNextRecordingData();
+      loadTimeout && loadTimeout.cancel();
       emit("ready-to-play", header.value as unknown as CptvHeader);
       playing.value = true;
     }
@@ -1750,7 +1805,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
 };
 
 watch(
-  () => recordingId,
+  () => props.recordingId,
   async (nextRecordingId: RecordingId | undefined, prevRecordingId) => {
     clearCanvases();
     if (nextRecordingId && prevRecordingId !== nextRecordingId) {
@@ -1771,7 +1826,7 @@ const clearCanvases = () => {
 
 const exportOptions = computed<TrackExportOption[]>(() => {
   return (
-    recording?.tracks.map(({ id }) => ({
+    props.recording?.tracks.map(({ id }) => ({
       includeInExportTime: true,
       displayInExport: true,
       trackId: id,
@@ -1925,7 +1980,7 @@ const moveRevealHandle = (event: PointerEvent) => {
   }
 };
 watch(
-  () => hasReferencePhoto,
+  () => props.hasReferencePhoto,
   (hasRef) => {
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
@@ -1939,7 +1994,7 @@ watch(
       key="container"
       class="video-container"
       ref="container"
-      :class="[currentRecordingType]"
+      :class="[currentRecordingType, { 'no-reference': !hasReferencePhoto }]"
     >
       <canvas
         key="base"
@@ -1995,7 +2050,10 @@ watch(
         ref="referenceImageContainer"
         v-if="showingReferencePhoto && hasReferencePhoto"
       >
-        <div class="reveal-slider position-absolute" ref="revealSlider">
+        <div
+          class="reveal-slider position-absolute d-flex align-items-center"
+          ref="revealSlider"
+        >
           <img
             v-if="referenceImageURL"
             ref="referenceImage"
@@ -2006,6 +2064,7 @@ watch(
         <div
           class="reveal-handle d-flex align-items-center justify-content-center"
           ref="revealHandle"
+          @touchstart="(e) => e.preventDefault()"
           @pointerdown="grabRevealHandle"
           @pointerup="releaseRevealHandle"
           @pointermove="moveRevealHandle"
@@ -2143,7 +2202,18 @@ watch(
         </button>
       </div>
     </div>
-    <div v-else class="black-spacer"></div>
+    <div v-else-if="hasReferencePhoto" class="playback-nav justify-content-end">
+      <button
+        :class="{ selected: showingReferencePhoto }"
+        @click="toggleReferencePhotoComparison"
+        ref="toggleReferencePhoto"
+        class="reference-photo-btn"
+        data-tooltip="Reference photo"
+      >
+        <font-awesome-icon icon="panorama" />
+      </button>
+    </div>
+    <div v-else class="black-spacer" />
     <div
       key="debug-nav"
       :class="['debug-tools', { open: showDebugTools }]"
@@ -2357,7 +2427,7 @@ watch(
     padding: 0;
     background: black;
     overflow: hidden;
-    &.image {
+    &.image.no-reference {
       @media screen and (min-width: 1041px) {
         margin-top: 30px;
       }
@@ -2678,6 +2748,7 @@ watch(
   z-index: 1;
   user-select: none;
 }
+
 .reveal-slider {
   height: 100%;
   width: 50%;
@@ -2686,12 +2757,13 @@ watch(
   > img {
     user-select: none;
     pointer-events: none;
-    //position: absolute;
-    //top: 0;
-    //left: 0;
-    //right: 0;
-    //bottom: 0;
-    //height: auto;
+    max-width: 640px;
+    aspect-ratio: auto 4/3;
+  }
+}
+@media screen and (max-width: 639px) {
+  .reveal-slider > img {
+    max-width: 100svw;
   }
 }
 .reveal-handle {

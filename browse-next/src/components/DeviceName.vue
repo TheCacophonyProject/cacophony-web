@@ -16,13 +16,13 @@ import { DeviceType as ConcreteDeviceType } from "@typedefs/api/consts.ts";
 //   Unknown = "unknown",
 // }
 
-const { name, type } = defineProps<{
+const props = defineProps<{
   name: string;
   type: DeviceType;
 }>();
 
 const deviceTypeIcon = computed<string>(() => {
-  switch (type) {
+  switch (props.type) {
     case ConcreteDeviceType.Audio:
       return "music";
     case ConcreteDeviceType.Thermal:

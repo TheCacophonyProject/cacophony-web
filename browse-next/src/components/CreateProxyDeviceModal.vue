@@ -2,7 +2,7 @@
 import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
 import type { ErrorResult } from "@api/types";
-import { BModal } from "bootstrap-vue-3";
+import { BModal } from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
@@ -40,7 +40,6 @@ const resetFormValues = () => {
   newDeviceName.touched = false;
 };
 
-const router = useRouter();
 const createNewDeviceError = ref<ErrorResult | null>(null);
 const createNewProxyDevice = async () => {
   submittingCreateRequest.value = true;

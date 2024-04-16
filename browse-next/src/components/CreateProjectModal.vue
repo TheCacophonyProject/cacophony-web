@@ -8,7 +8,7 @@ import {
 } from "@models/LoggedInUser";
 import { computed, onMounted, ref } from "vue";
 import type { ErrorResult } from "@api/types";
-import { BModal } from "bootstrap-vue-3";
+import { BModal } from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";

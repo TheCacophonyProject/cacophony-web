@@ -31,8 +31,10 @@ import { uploadRecording } from "@api/Recording.ts";
 import { DateTime } from "luxon";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
-import { BProgressBar } from "bootstrap-vue-3";
+import { BProgressBar } from "bootstrap-vue-next";
 import { delayMs } from "@/utils.ts";
+import WizardStepList from "@/components/WizardStepList.vue";
+import WizardStep from "@/components/WizardStep.vue";
 
 // TODO: Keep track of which items have been uploaded in localstorage using sha1 hashes
 // When upload completes, clear it.
@@ -66,7 +68,11 @@ const device = computed<ApiDeviceResponse | null>(() => {
   );
 });
 
-const emit = defineEmits(["start-blocking-work", "end-blocking-work"]);
+const emit = defineEmits([
+  "start-blocking-work",
+  "end-blocking-work",
+  "validation-state-change",
+]);
 
 const dropFiles = ref<HTMLDivElement>();
 
@@ -136,7 +142,7 @@ const filePromise = async (file: FileSystemFileEntry): Promise<Blob> => {
 };
 
 const uploadWorkers: Worker[] = [];
-const onAddFiles = (e: Event, closerFn: () => void) => {
+const onAddFiles = (e: Event) => {
   const files = (e.target as HTMLInputElement).files;
   const sortedFiles = [];
   if (files) {
@@ -156,7 +162,6 @@ const onAddFiles = (e: Event, closerFn: () => void) => {
   }
   if (uploadQueue.value.length) {
     fileSelectButton.value?.click();
-    closerFn();
   }
 };
 
@@ -265,7 +270,7 @@ const beginUploadJob = async () => {
   if (existingOrNewLocation.value === "new-location") {
     // NOTE: If we need to create a new location, do that first.
     location = selectedLatLng.value.location;
-    const locationResponse = await createNewLocation(selectedLatLng.value);
+    const _locationResponse = await createNewLocation(selectedLatLng.value);
     //console.log("Created new location");
   } else {
     location = (selectedLocation.value as ApiLocationResponse).location;
@@ -299,7 +304,7 @@ const beginUploadJob = async () => {
     });
     worker.onmessage = async (message: MessageEvent<MessageData>) => {
       const { type, data, threadIndex } = message.data;
-      // console.log(type, data, threadIndex);
+      console.log(type, data, threadIndex);
       // Type is only ever "finish"
       if (type === "finish") {
         if (data.success) {
@@ -314,27 +319,6 @@ const beginUploadJob = async () => {
             location,
             type: "trailcam-image",
             duration: 3, // It's important that we lie and say the duration is > 2.5s, because we filter short recordings out.
-            metadata: {
-              // Dummy track
-              algorithm: "empty-trailcam",
-              tracks: [
-                {
-                  start_s: 0,
-                  end_s: 1,
-                  positions: [
-                    {
-                      x: 0,
-                      y: 0,
-                      width: 1,
-                      height: 1,
-                    },
-                  ],
-                  frame_start: 1,
-                  frame_end: 1,
-                  num_frames: 1,
-                },
-              ],
-            },
             additionalMetadata: data.additionalMetadata,
             // FIXME The recordingDateTime should be in the local time, so convert based on location.
             recordingDateTime: DateTime.fromJSDate(data.recordingDateTime, {
@@ -446,7 +430,7 @@ const beginUploadJob = async () => {
   emit("end-blocking-work");
 };
 
-const onDropFiles = async (e: DragEvent, closerFn: () => void) => {
+const onDropFiles = async (e: DragEvent) => {
   onEndDrag(e);
   if (e.dataTransfer) {
     const list = e.dataTransfer.items;
@@ -474,9 +458,6 @@ const onDropFiles = async (e: DragEvent, closerFn: () => void) => {
     // Okay, so now we get thousands of files.
     // We probably want to make sure they're sorted by name, since older ones will come first, and we can get the start
     // date from there.  We may want some way of keeping track of uploaded files.
-    if (uploadQueue.value.length) {
-      closerFn();
-    }
   }
 };
 
@@ -611,29 +592,9 @@ const clearUploadQueue = () => {
 };
 </script>
 <template>
-  <div v-if="device">
-    <div v-if="!beganUpload" id="accordion" class="accordion" role="tablist">
-      <button
-        role="tab"
-        type="button"
-        v-b-toggle.accordion-1
-        class="px-3 btn w-100 d-flex justify-content-between align-items-center accordion-button"
-      >
-        <span>
-          <font-awesome-icon
-            :icon="hasLocation ? ['far', 'circle-check'] : ['far', 'circle']"
-          />
-          <strong class="ms-2">Step 1:</strong> Choose a location for these
-          uploads
-        </span>
-      </button>
-      <b-collapse
-        id="accordion-1"
-        accordion="accordion"
-        role="tabpanel"
-        class="px-3 py-2"
-        visible
-      >
+  <wizard-step-list v-if="device">
+    <wizard-step title="Set a location">
+      <template #default="{ emitValidChange }">
         <div class="d-flex justify-content-center mb-2">
           <div
             v-if="previousLocations && previousLocations.length !== 0"
@@ -669,7 +630,6 @@ const clearUploadQueue = () => {
             >
           </div>
         </div>
-
         <div
           v-if="
             existingOrNewLocation === 'new-location' ||
@@ -679,96 +639,76 @@ const clearUploadQueue = () => {
         >
           <location-picker
             v-model="selectedLatLng"
+            @change="() => emitValidChange(newLocationIsValid)"
             :existing-locations="existingNamedLocations"
           />
         </div>
-        <div class="mb-3 d-flex" v-else>
-          <div class="w-50 me-3">
+        <div
+          class="mb-3 d-flex flex-column flex-md-row justify-content-between"
+          v-else
+        >
+          <div class="me-md-3 flex-grow-1">
             <label class="fs-7" for="existing-locations-list">Location</label>
             <multiselect
               ref="selectedLocationsSelect"
               v-model="selectedLocation"
+              @input="() => emitValidChange(!selectedLocation)"
               :options="previousLocationsOptions"
               :can-clear="true"
-              class="ms-bootstrap"
+              class="ms-bootstrap on-top"
               placeholder="Choose an existing location"
               searchable
               id="existing-locations-list"
             />
           </div>
           <map-with-points
-            :highlighted-point="null"
+            :highlighted-point="selectedNamedLocation"
             :focused-point="selectedNamedLocation"
             :points="existingNamedLocations"
             :active-points="existingNamedLocations"
-            class="map w-50"
+            class="map mt-3 mt-md-0"
           />
         </div>
-      </b-collapse>
-      <button
-        role="tab"
-        type="button"
-        ref="fileSelectButton"
-        v-b-toggle.accordion-2
-        class="px-3 btn w-100 d-flex justify-content-between align-items-center accordion-button"
+      </template>
+    </wizard-step>
+    <wizard-step title="Upload files">
+      <div
+        class="file-list d-flex align-items-center justify-content-center flex-column my-3"
+        ref="dropFiles"
+        @drop="(e) => onDropFiles(e)"
+        @dragover="onDrag"
+        @dragenter="onDrag"
+        @dragend="onEndDrag"
+        @dragleave="onEndDrag"
       >
-        <span
-          ><font-awesome-icon
-            :icon="
-              uploadQueue.length !== 0
-                ? ['far', 'circle-check']
-                : ['far', 'circle']
-            "
-          />
-          <strong class="ms-2">Step 2:</strong> Select files to upload
-        </span>
-      </button>
-      <b-collapse
-        id="accordion-2"
-        accordion="accordion"
-        role="tabpanel"
-        class="px-3"
-      >
-        <template #default="{ close }">
-          <div
-            class="file-list d-flex align-items-center justify-content-center flex-column my-3"
-            ref="dropFiles"
-            @drop="(e) => onDropFiles(e, close)"
-            @dragover="onDrag"
-            @dragenter="onDrag"
-            @dragend="onEndDrag"
-            @dragleave="onEndDrag"
+        <div v-if="uploadQueue.length === 0">
+          <span>Drop files or folders here</span>
+        </div>
+        <div v-if="uploadQueue.length === 0">or</div>
+        <div v-else>{{ uploadQueue.length }} files selected.</div>
+        <div>
+          <form ref="uploadFileInputForm">
+            <input
+              type="file"
+              class="form-control"
+              :class="{ 'visually-hidden': uploadQueue.length !== 0 }"
+              multiple
+              @change="(e) => onAddFiles(e)"
+            />
+          </form>
+        </div>
+        <div v-if="uploadQueue.length">
+          <button
+            type="button"
+            class="btn btn-outline-secondary mt-2"
+            @click.prevent="clearUploadQueue"
           >
-            <div v-if="uploadQueue.length === 0">
-              <span>Drop files or folders here</span>
-            </div>
-            <div v-if="uploadQueue.length === 0">or</div>
-            <div v-else>{{ uploadQueue.length }} files selected.</div>
-            <div>
-              <form ref="uploadFileInputForm">
-                <input
-                  type="file"
-                  class="form-control"
-                  :class="{ 'visually-hidden': uploadQueue.length !== 0 }"
-                  multiple
-                  @change="(e) => onAddFiles(e, close)"
-                />
-              </form>
-            </div>
-            <div v-if="uploadQueue.length">
-              <button
-                type="button"
-                class="btn btn-outline-secondary mt-2"
-                @click.prevent="clearUploadQueue"
-              >
-                Clear upload queue
-              </button>
-            </div>
-          </div>
-        </template>
-      </b-collapse>
-    </div>
-  </div>
+            Clear upload queue
+          </button>
+        </div>
+      </div>
+    </wizard-step>
+  </wizard-step-list>
   <div
     v-if="
       (beganUpload && uploadInProgress) ||
@@ -848,6 +788,11 @@ const clearUploadQueue = () => {
 }
 .map {
   height: 400px;
+  min-width: 400px;
+}
+.on-top {
+  // Select list appears on top of map
+  z-index: 1001;
 }
 </style>
 <style lang="less">

@@ -27,51 +27,52 @@ import {
 } from "leaflet";
 import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
-import { BSpinner } from "bootstrap-vue-3";
+import { BSpinner } from "bootstrap-vue-next";
 import type { LatLng } from "@typedefs/api/common";
 
 const attribution = control.attribution;
 
 // FIXME - if there are only inactive points, and the points are very spread apart, the points are grey and small
 //  and hard to see.  Maybe make them a minimum size, or give them an outline colour?
-
-const {
-  points = [],
-  radius = 0,
-  navigateToPoint,
-  zoom = true,
-  zoomLevel,
-  center,
-  minZoom = 5,
-  highlightedPoint = null,
-  canChangeBaseMap = true,
-  isInteractive = true,
-  markersAreInteractive = true,
-  hasAttribution = true,
-  showStationRadius = true,
-  showOnlyActivePoints = true,
-  activePoints = [],
-  focusedPoint,
-  showCrossHairs = false,
-} = defineProps<{
-  navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
-  points?: NamedPoint[];
-  highlightedPoint?: NamedPoint | null;
-  activePoints?: NamedPoint[];
-  focusedPoint?: NamedPoint | null;
-  radius?: number;
-  showStationRadius?: boolean;
-  showOnlyActivePoints?: boolean;
-  zoom?: boolean;
-  zoomLevel?: number;
-  minZoom?: number;
-  center?: LatLng;
-  canChangeBaseMap?: boolean;
-  isInteractive?: boolean;
-  markersAreInteractive?: boolean;
-  hasAttribution?: boolean;
-  showCrossHairs?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
+    points?: NamedPoint[];
+    highlightedPoint?: NamedPoint | null;
+    activePoints?: NamedPoint[];
+    focusedPoint?: NamedPoint | null;
+    radius?: number;
+    showStationRadius?: boolean;
+    showOnlyActivePoints?: boolean;
+    zoom?: boolean;
+    zoomLevel?: number;
+    minZoom?: number;
+    center?: LatLng;
+    canChangeBaseMap?: boolean;
+    isInteractive?: boolean;
+    markersAreInteractive?: boolean;
+    hasAttribution?: boolean;
+    showCrossHairs?: boolean;
+    width?: number;
+  }>(),
+  {
+    isInteractive: true,
+    minZoom: 5,
+    showOnlyActivePoints: true,
+    markersAreInteractive: true,
+    activePoints: () => [] as NamedPoint[],
+    showCrossHairs: false,
+    hasAttribution: true,
+    canChangeBaseMap: true,
+    highlightedPoint: null,
+    focusedPoint: null,
+    zoom: true,
+    showStationRadius: true,
+    radius: 0,
+    width: 0,
+    points: () => [] as NamedPoint[],
+  }
+);
 
 interface LeafletInternalRawMarker {
   _radius: number;
@@ -176,7 +177,7 @@ const unHighlightMarker = (marker: CircleMarkerGroup, key: string) => {
 };
 
 watch(
-  () => highlightedPoint,
+  () => props.highlightedPoint,
   (newP: NamedPoint | null) => {
     const key = (newP && pointKey(newP)) || "";
     for (const [markerKey, pointMarker] of Object.entries(markers)) {
@@ -220,21 +221,25 @@ const mapBounds = computed<LatLngBounds | null>(() => {
   const boundsPaddingInMeters = 300;
   if (
     !(
-      !activePoints ||
-      (activePoints && activePoints.length === 0) ||
-      !showOnlyActivePoints
+      !props.activePoints ||
+      (props.activePoints && props.activePoints.length === 0) ||
+      !props.showOnlyActivePoints
     )
   ) {
-    if (focusedPoint) {
+    if (props.focusedPoint) {
       // Give the bounds 300m around the focused location.
       // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
-      return latLng(focusedPoint.location).toBounds(boundsPaddingInMeters);
-    } else if (activePoints && activePoints.length === 1) {
+      return latLng(props.focusedPoint.location).toBounds(
+        boundsPaddingInMeters
+      );
+    } else if (props.activePoints && props.activePoints.length === 1) {
       // Give the bounds 300m around the location.
-      return latLng(activePoints[0].location).toBounds(boundsPaddingInMeters);
-    } else if (activePoints && activePoints.length > 1) {
+      return latLng(props.activePoints[0].location).toBounds(
+        boundsPaddingInMeters
+      );
+    } else if (props.activePoints && props.activePoints.length > 1) {
       return latLngBounds(
-        activePoints.flatMap(({ location }) => {
+        props.activePoints.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
         })
@@ -243,10 +248,10 @@ const mapBounds = computed<LatLngBounds | null>(() => {
   }
   // Calculate the initial map bounds and zoom level from the set of lat/lng points
   return (
-    (points &&
-      points.length &&
+    (props.points &&
+      props.points.length &&
       latLngBounds(
-        points.flatMap(({ location }) => {
+        props.points.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
         })
@@ -256,22 +261,22 @@ const mapBounds = computed<LatLngBounds | null>(() => {
 });
 
 const _mapLocationsForRadius = computed<NamedPoint[]>(() => {
-  if (radius !== 0) {
-    return points;
+  if (props.radius !== 0) {
+    return props.points;
   }
   return [];
 });
 
 const _hasPoints = computed<boolean>(() => {
-  return points && points.length !== 0;
+  return props.points && props.points.length !== 0;
 });
 
 const computedLoading = computed<boolean>(() => loading.value);
 
 const _navigateToLocation = (point: NamedPoint) => {
-  if (navigateToPoint) {
+  if (props.navigateToPoint) {
     const router = useRouter();
-    router.push(navigateToPoint(point));
+    router.push(props.navigateToPoint(point));
   }
 };
 
@@ -333,13 +338,14 @@ const addPoints = () => {
     //  that point - all the other points should be grey.
 
     // Add the points as markers.
-    for (const point of points) {
+    for (const point of props.points) {
       const colour: CircleMarkerOptions = {};
       const thisPointKey = pointKey(point);
       const isAnActivePoint =
-        activePoints && activePoints.find((p) => pointKey(p) === thisPointKey);
+        props.activePoints &&
+        props.activePoints.find((p) => pointKey(p) === thisPointKey);
       const isFocusedPoint =
-        focusedPoint && pointKey(focusedPoint) === thisPointKey;
+        props.focusedPoint && pointKey(props.focusedPoint) === thisPointKey;
       if (!point.color && !isAnActivePoint) {
         colour.fillColor = "#666";
       } else if (point.color) {
@@ -351,7 +357,7 @@ const addPoints = () => {
         pointScaleMultiplier = 1;
         fillOpacityMultiplier = 0.85;
       }
-      if (isAnActivePoint && focusedPoint && !isFocusedPoint) {
+      if (isAnActivePoint && props.focusedPoint && !isFocusedPoint) {
         fillOpacityMultiplier = 0.5;
       }
       if (isFocusedPoint) {
@@ -363,7 +369,7 @@ const addPoints = () => {
           radius: 5 * pointScaleMultiplier,
           stroke: false,
           fillOpacity: fillOpacityMultiplier,
-          interactive: isAnActivePoint && markersAreInteractive,
+          interactive: isAnActivePoint && props.markersAreInteractive,
           ...colour,
         }),
       };
@@ -380,7 +386,7 @@ const addPoints = () => {
       }
       markers[pointKey(point)] = marker;
 
-      if (markersAreInteractive && isAnActivePoint) {
+      if (props.markersAreInteractive && isAnActivePoint) {
         const tooltipText = `${point.name}`;
         marker.foregroundMarker
           .bindTooltip(tooltipText, {
@@ -390,16 +396,16 @@ const addPoints = () => {
           .openTooltip();
 
         marker.foregroundMarker.on("mouseover", (e) => {
-          const namedPoint = points.find(
-            (p) =>
+          const namedPoint = props.points.find(
+            (p: NamedPoint) =>
               p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
           );
           namedPoint && hoverPoint(namedPoint);
         });
         marker.foregroundMarker.on("mouseout", () => leavePoint());
         marker.foregroundMarker.on("click", (e) => {
-          const namedPoint = points.find(
-            (p) =>
+          const namedPoint = props.points.find(
+            (p: NamedPoint) =>
               p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
           );
           namedPoint && selectPoint(namedPoint);
@@ -411,8 +417,8 @@ const addPoints = () => {
       map.addLayer(marker.foregroundMarker);
     }
     // Bring active markers to foreground:
-    if (activePoints) {
-      for (const point of activePoints) {
+    if (props.activePoints) {
+      for (const point of props.activePoints) {
         const marker = markers[pointKey(point)];
         if (marker && marker.foregroundMarker.getElement()?.parentNode) {
           if (marker.backgroundRadius) {
@@ -429,8 +435,8 @@ const addPoints = () => {
         }
       });
     }
-    if (focusedPoint) {
-      const marker = markers[pointKey(focusedPoint)];
+    if (props.focusedPoint) {
+      const marker = markers[pointKey(props.focusedPoint)];
       if (marker && marker.foregroundMarker.getElement()?.parentNode) {
         if (marker.backgroundRadius) {
           marker.backgroundRadius.bringToFront();
@@ -442,9 +448,9 @@ const addPoints = () => {
   }
 };
 
-watch(() => activePoints, addPoints);
-watch(() => points, addPoints);
-watch(() => focusedPoint, addPoints);
+watch(() => props.activePoints, addPoints);
+watch(() => props.points, addPoints);
+watch(() => props.focusedPoint, addPoints);
 
 const fitMapBounds = () => {
   if (map && mapBounds.value) {
@@ -469,7 +475,7 @@ onMounted(() => {
       detectRetina: true,
     });
     if (layer.visible) {
-      tileLayers[layer.name].on("load", (e) => {
+      tileLayers[layer.name].on("load", (_e) => {
         if (loading.value) {
           (tileLayers[layer.name] as TileLayer).setOpacity(0.25);
           loading.value = false;
@@ -480,40 +486,39 @@ onMounted(() => {
   }
   // TODO: Add a "Fit to bounds" button.
   map = mapConstructor(mapElement as HTMLElement, {
-    zoomControl: zoom,
-    dragging: isInteractive,
-    scrollWheelZoom: isInteractive,
-    keyboard: isInteractive,
-    tap: isInteractive,
+    zoomControl: props.zoom,
+    dragging: props.isInteractive,
+    scrollWheelZoom: props.isInteractive,
+    keyboard: props.isInteractive,
+    tap: props.isInteractive,
     maxZoom: 16,
-    minZoom,
+    minZoom: props.minZoom,
     attributionControl: false,
-    center: center || mapBounds.value?.getCenter(),
-    zoom: zoomLevel || 14,
+    center: props.center || mapBounds.value?.getCenter(),
+    zoom: props.zoomLevel || 14,
     layers: [tileLayers[currentLayer]], // The default layer
   });
-
   map.on("move", (event) => {
     if ("originalEvent" in event) {
-      emit("move-map", map?.getCenter());
+      emit("move-map", (map as LeafletMap).getCenter());
     }
   });
   map.on("load", () => {
     emit("init-map");
   });
-  if (center) {
+  if (props.center) {
     // map load event won't fire if we manually set center on init.
     emit("init-map");
   }
   map.invalidateSize();
-  if (canChangeBaseMap && mapLayers.length > 1) {
+  if (props.canChangeBaseMap && mapLayers.length > 1) {
     map.addControl(control.layers(tileLayers));
     map.on("baselayerchange", (e) => {
       currentLayer = e.name;
       maybeShowAttributionForCurrentLayer();
     });
   }
-  if (hasAttribution) {
+  if (props.hasAttribution) {
     const attributionToggle = new Control({
       position: "bottomleft",
     });
@@ -539,7 +544,7 @@ onMounted(() => {
     };
     map.addControl(attributionToggle);
   }
-  if (!center) {
+  if (!props.center) {
     map.invalidateSize();
     fitMapBounds();
   }
@@ -547,11 +552,11 @@ onMounted(() => {
 });
 
 watch(
-  () => center,
+  () => props.center,
   () => {
-    if (center && map) {
+    if (props.center && map) {
       map.invalidateSize();
-      map.setView(center, zoomLevel);
+      map.setView(props.center, props.zoomLevel);
     }
   }
 );
@@ -587,6 +592,7 @@ const leavePoint = () => {
     :class="['map', { loading }]"
     :style="{
       pointerEvents: isInteractive ? 'auto' : 'none',
+      width: width !== 0 ? `${width}px` : 'auto',
     }"
     ref="mapEl"
   >

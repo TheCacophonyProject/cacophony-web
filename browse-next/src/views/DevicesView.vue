@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onMounted, provide, ref, watch } from "vue";
+import { computed, inject, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForProject } from "@api/Project";
@@ -20,7 +20,6 @@ import DeviceName from "@/components/DeviceName.vue";
 import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { deleteDevice, getDeviceConfig } from "@api/Device";
-import InlineViewModal from "@/components/InlineViewModal.vue";
 import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
@@ -155,19 +154,6 @@ onMounted(async () => {
 
 // Maybe just popup modals?  Upload modal.  Info modal
 
-interface DeviceTableItem {
-  deviceName: string;
-  __type: DeviceType;
-  lastSeen: string;
-  __active: boolean;
-  status: string | boolean;
-
-  __id: string;
-
-  _deleteAction: CardTableItem<ApiDeviceResponse>;
-
-  __lastConnectionTime: Date | null;
-}
 type DeviceStatus = "online" | "standby" | "stopped" | "-";
 const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
@@ -195,6 +181,22 @@ const colorForStatus = (status: DeviceStatus): string => {
       return "#6dbd4b";
   }
 };
+
+interface DeviceTableItem {
+  deviceName: string;
+  __type: DeviceType;
+  lastSeen: string;
+  __active: boolean;
+  status: string | boolean;
+
+  __id: string;
+
+  _deleteAction: CardTableItem<ApiDeviceResponse>;
+
+  __lastConnectionTime: Date | null;
+}
+
+//type DeviceTableItem = CardTableRow<string | boolean | (Date | null) | ApiDeviceResponse>;
 
 const tableItems = computed<
   CardTableRows<string | boolean | (Date | null) | ApiDeviceResponse>
@@ -288,15 +290,13 @@ const highlightedDeviceInternal = ref<DeviceTableItem | null>(null);
 
 const highlightedPointInternal = ref<NamedPoint | null>(null);
 const highlightPoint = (p: NamedPoint | null) => {
-  console.log(p);
   highlightedPointInternal.value = p;
 };
 
 const selectPoint = (p: NamedPoint) => {
   const device = devices.value.find((device) => device.id === p.id);
   if (device) {
-    selectedDevice.value = device;
-    openSelectedDevice();
+    openSelectedDevice(device);
   }
 };
 
@@ -386,31 +386,47 @@ const deleteConfirmationLabelForDevice = (
     return `Delete <strong><em>${device.deviceName}</em></strong>`;
   }
 };
-const loadedRouteName = ref<string>("");
-const selectedDevice = ref<ApiDeviceResponse | null>(null);
+const selectedDevice = computed<ApiDeviceResponse | null>(() => {
+  if (route.params.deviceId) {
+    return (
+      devices.value.find(({ id }) => id === Number(route.params.deviceId)) ||
+      null
+    );
+  }
+  return null;
+});
 
 const selectTableDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
-  selectedDevice.value =
-    devices.value.find(({ id }) => id === Number(deviceId)) || null;
-  await openSelectedDevice();
-};
-
-const openSelectedDevice = async () => {
-  if (selectedDevice.value) {
-    await router.push({
-      name: "device",
-      params: {
-        deviceName: urlNormaliseName(
-          (selectedDevice.value as ApiDeviceResponse).deviceName
-        ),
-        deviceId: (selectedDevice.value as ApiDeviceResponse).id,
-      },
-    });
+  const device = devices.value.find(({ id }) => id === Number(deviceId));
+  if (device) {
+    await openSelectedDevice(device);
   }
 };
+
+const openSelectedDevice = async (device: ApiDeviceResponse) => {
+  await router.push({
+    name: "device",
+    params: {
+      deviceName: urlNormaliseName(device.deviceName),
+      deviceId: device.id,
+      type: device.type,
+    },
+  });
+};
+
+const isDevicesRoot = computed(() => {
+  return route.name === "devices";
+});
 </script>
 <template>
-  <section-header>Devices</section-header>
+  <section-header>
+    <device-name
+      v-if="selectedDevice"
+      :name="(selectedDevice as ApiDeviceResponse).deviceName"
+      :type="(selectedDevice as ApiDeviceResponse).type"
+    />
+    <span v-else>Devices</span>
+  </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->
   <!--  <ul>-->
   <!--    <li>Device events in an easy to understand format</li>-->
@@ -422,137 +438,193 @@ const openSelectedDevice = async () => {
   <!--    <li>Per device, could show include/exclude polygon</li>-->
   <!--    <li>Per device, could show current reference photo image</li>-->
   <!--  </ul>-->
-  <b-spinner v-if="!projectDevices" />
-  <div v-else>
-    <div v-if="devices.length">
-      <!-- active-points was devicesSeenInThePast24Hours -->
-      <map-with-points
-        v-if="someDevicesHaveKnownLocations"
-        class="device-map"
-        :points="deviceLocations"
-        :highlighted-point="highlightedPoint"
-        :active-points="deviceLocations"
-        :show-station-radius="false"
-        :show-only-active-points="false"
-        :markers-are-interactive="true"
-        :radius="30"
-        :is-interactive="true"
-        :zoom="false"
-        @hover-point="highlightPoint"
-        @leave-point="highlightPoint"
-        @select-point="selectPoint"
-        :can-change-base-map="false"
-      />
-      <div class="d-flex align-items-center justify-content-between my-2">
+
+  <div v-if="isDevicesRoot">
+    <b-spinner v-if="!projectDevices" />
+    <div v-else>
+      <div v-if="devices.length">
+        <!-- active-points was devicesSeenInThePast24Hours -->
+        <map-with-points
+          v-if="someDevicesHaveKnownLocations"
+          class="device-map"
+          :points="deviceLocations"
+          :highlighted-point="highlightedPoint"
+          :active-points="deviceLocations"
+          :show-station-radius="false"
+          :show-only-active-points="false"
+          :markers-are-interactive="true"
+          :radius="30"
+          :is-interactive="true"
+          :zoom="false"
+          @hover-point="highlightPoint"
+          @leave-point="highlightPoint"
+          @select-point="selectPoint"
+          :can-change-base-map="false"
+        />
+        <div class="d-flex align-items-center justify-content-between my-2">
+          <button
+            type="button"
+            class="btn btn-outline-secondary"
+            @click="showCreateProxyDevicePrompt = true"
+          >
+            Register a trailcam
+          </button>
+          <b-form-checkbox
+            v-model="showInactiveDevicesInternalCheck"
+            switch
+            @change="toggleActiveAndInactive"
+            >Show inactive devices</b-form-checkbox
+          >
+        </div>
+        <card-table
+          :items="tableItems"
+          @entered-item="enteredTableItem"
+          @left-item="leftTableItem"
+          @select-item="selectTableDevice"
+          :highlighted-item="highlightedDevice"
+          :sort-dimensions="sortDimensions"
+          :default-sort="'lastSeen'"
+          compact
+          :break-point="0"
+        >
+          <template #deviceName="{ cell, row }">
+            <div class="d-flex align-items-center">
+              <device-name :name="cell" :type="row['__type']" /><b-badge
+                class="ms-2"
+                v-if="!row['__active']"
+                >inactive</b-badge
+              >
+            </div>
+          </template>
+          <template #status="{ cell, row }">
+            <div class="d-flex align-items-center">
+              <span
+                class="d-flex power-status-icon align-items-center justify-content-center"
+                :class="[cell]"
+              >
+                <font-awesome-icon icon="power-off" v-if="cell !== '-'" />
+              </span>
+              <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
+            </div>
+          </template>
+          <template #_deleteAction="{ cell }">
+            <div
+              v-if="isProjectAdmin && cell.value.active"
+              class="d-flex align-items-center"
+            >
+              <div v-if="!cell.value.lastRecordingTime">No recordings</div>
+              <two-step-action-button
+                v-if="cell.value.active"
+                class="text-end"
+                variant="outline-secondary"
+                :action="() => deleteOrArchiveDevice(cell.value.id)"
+                :icon="
+                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
+                    ? 'circle-minus'
+                    : 'trash-can'
+                "
+                :confirmation-label="
+                  deleteConfirmationLabelForDevice(cell.value)
+                "
+                :classes="[
+                  'd-flex',
+                  'align-items-center',
+                  'fs-7',
+                  'text-nowrap',
+                  'ms-2',
+                ]"
+                alignment="right"
+              />
+            </div>
+            <span v-else></span>
+          </template>
+          <template #card="{ card }: { card: DeviceTableItem }">
+            <div class="d-flex flex-row">
+              <div class="flex-grow-1">
+                <device-name
+                  :name="card.deviceName"
+                  :type="card.__type"
+                /><b-badge class="ms-2" v-if="!card.__active">inactive</b-badge>
+                <div>Last seen <span v-html="card.lastSeen"></span></div>
+
+                <div class="d-flex align-items-center">
+                  <span
+                    class="d-flex power-status-icon align-items-center justify-content-center"
+                    :class="[card.status]"
+                  >
+                    <font-awesome-icon
+                      icon="power-off"
+                      v-if="card.status !== '-'"
+                    />
+                  </span>
+                  <span class="ms-2" v-if="card.status !== '-'">{{
+                    card.status
+                  }}</span>
+                </div>
+              </div>
+              <div class="d-flex align-items-end justify-content-end">
+                <div v-if="!card._deleteAction.value.lastRecordingTime">
+                  No recordings
+                </div>
+                <two-step-action-button
+                  v-if="card.__active"
+                  class="text-end"
+                  variant="outline-secondary"
+                  :action="
+                    () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                  "
+                  :icon="
+                    card._deleteAction.value.lastConnectionTime &&
+                    card._deleteAction.value.lastRecordingTime
+                      ? 'circle-minus'
+                      : 'trash-can'
+                  "
+                  :confirmation-label="
+                    deleteConfirmationLabelForDevice(card._deleteAction.value)
+                  "
+                  :classes="[
+                    'd-flex',
+                    'align-items-center',
+                    'fs-7',
+                    'text-nowrap',
+                    'ms-2',
+                  ]"
+                  alignment="right"
+                />
+              </div>
+            </div>
+          </template>
+        </card-table>
+      </div>
+      <p v-else>
+        There are currently no active thermal cameras or bird monitors
+        registered with this project.<br /><br />
+        Thermal cameras or bird monitors can be either directly connected to the
+        Cacophony platform via internet connection, or may be offline or out of
+        coverage, and managed via the sidekick companion app.
+        <a href="#TODO"
+          >Find out how to register a thermal camera or a bird monitor.</a
+        >
+        <br /><br />
+        You can also register a trailcam. This represents a third-party trailcam
+        device that you plan to manually upload data for via this web
+        interface.<br />
         <button
           type="button"
-          class="btn btn-outline-secondary"
+          class="mt-3 btn btn-outline-secondary"
           @click="showCreateProxyDevicePrompt = true"
         >
           Register a trailcam
         </button>
-        <b-form-checkbox
-          v-model="showInactiveDevicesInternalCheck"
-          switch
-          @change="toggleActiveAndInactive"
-          >Show inactive devices</b-form-checkbox
-        >
-      </div>
-      <card-table
-        :items="tableItems"
-        @entered-item="enteredTableItem"
-        @left-item="leftTableItem"
-        @select-item="selectTableDevice"
-        :highlighted-item="highlightedDevice"
-        :sort-dimensions="sortDimensions"
-        :default-sort="'lastSeen'"
-        compact
-        :break-point="0"
-      >
-        <template #deviceName="{ cell, row }">
-          <div class="d-flex align-items-center">
-            <device-name :name="cell" :type="row['__type']" /><b-badge
-              class="ms-2"
-              v-if="!row['__active']"
-              >inactive</b-badge
-            >
-          </div>
-        </template>
-        <template #status="{ cell, row }">
-          <div class="d-flex align-items-center">
-            <span
-              class="d-flex power-status-icon align-items-center justify-content-center"
-              :class="[cell]"
-            >
-              <font-awesome-icon icon="power-off" v-if="cell !== '-'" />
-            </span>
-            <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
-          </div>
-        </template>
-        <template #_deleteAction="{ cell }">
-          <div
-            v-if="isProjectAdmin && cell.value.active"
-            class="d-flex align-items-center"
-          >
-            <div v-if="!cell.value.lastRecordingTime">No recordings</div>
-            <two-step-action-button
-              v-if="cell.value.active"
-              class="text-end"
-              :action="() => deleteOrArchiveDevice(cell.value.id)"
-              :icon="
-                cell.value.lastConnectionTime && cell.value.lastRecordingTime
-                  ? 'circle-minus'
-                  : 'trash-can'
-              "
-              :confirmation-label="deleteConfirmationLabelForDevice(cell.value)"
-              classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-2"
-              alignment="right"
-            />
-          </div>
-          <span v-else></span>
-        </template>
-        <template #card="{ card }">
-          <h6>{{ card.deviceName }}</h6>
-          <div>{{ card.type }}</div>
-          <div>Last seen <span v-html="card.lastSeen"></span> at</div>
-        </template>
-      </card-table>
+      </p>
     </div>
-    <p v-else>
-      There are currently no active thermal cameras or bird monitors registered
-      with this project.<br /><br />
-      Thermal cameras or bird monitors can be either directly connected to the
-      Cacophony platform via internet connection, or may be offline or out of
-      coverage, and managed via the sidekick companion app.
-      <a href="#TODO"
-        >Find out how to register a thermal camera or a bird monitor.</a
-      >
-      <br /><br />
-      You can also register a trailcam. This represents a third-party trailcam
-      device that you plan to manually upload data for via this web
-      interface.<br />
-      <button
-        type="button"
-        class="mt-3 btn btn-outline-secondary"
-        @click="showCreateProxyDevicePrompt = true"
-      >
-        Register a trailcam
-      </button>
-    </p>
+    <create-proxy-device-modal
+      v-model="showCreateProxyDevicePrompt"
+      id="create-proxy-device-modal"
+      @proxy-device-created="loadDevices"
+    />
   </div>
-  <create-proxy-device-modal
-    v-model="showCreateProxyDevicePrompt"
-    id="create-proxy-device-modal"
-    @proxy-device-created="loadDevices"
-  />
-  <inline-view-modal
-    @close="selectedDevice = null"
-    :fade-in="loadedRouteName === 'device'"
-    no-close-on-backdrop
-    :parent-route-name="'devices'"
-    :show-inactive="showInactiveDevicesInternal"
-    @shown="() => (loadedRouteName = 'device')"
-  />
+  <router-view v-else></router-view>
 </template>
 <style lang="less" scoped>
 .device-map {
@@ -589,7 +661,7 @@ const openSelectedDevice = async () => {
   50% {
     background-color: #4ada10;
   }
-  100 {
+  100% {
     background-color: #6dbd4b;
   }
 }

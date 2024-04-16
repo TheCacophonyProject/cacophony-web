@@ -14,15 +14,18 @@ const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation"
 ) as Ref<LocationId | null>;
 
-const { location, locations, visits, activeLocations } = defineProps<{
-  location: ApiLocationResponse;
-  locations: ApiLocationResponse[] | null;
-  activeLocations: ApiLocationResponse[];
-  visits: ApiVisitResponse[];
-}>();
+const props = withDefaults(
+  defineProps<{
+    location: ApiLocationResponse;
+    locations: ApiLocationResponse[] | null;
+    activeLocations: ApiLocationResponse[];
+    visits: ApiVisitResponse[];
+  }>(),
+  { locations: null }
+);
 
 const visitsForLocation = computed<ApiVisitResponse[]>(() => {
-  return visits.filter((visit) => visit.stationId === location.id);
+  return props.visits.filter((visit) => visit.stationId === props.location.id);
 });
 
 const visitCount = computed<number>(() => visitsForLocation.value.length);
@@ -30,7 +33,7 @@ const visitCount = computed<number>(() => visitsForLocation.value.length);
 const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
   // The summary bars get scaled by this amount.
   let max = 0;
-  for (const stationVisits of Object.values(visitsByStation(visits))) {
+  for (const stationVisits of Object.values(visitsByStation(props.visits))) {
     const visitsCount = visitsCountBySpecies(stationVisits);
     max = Math.max(...visitsCount.map(([_label, _path, count]) => count), max);
   }
@@ -40,8 +43,8 @@ const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
 // TODO - We show the point of the station in the center at a specific zoom level, and then
 // any other stations that might be close enough to be included within those bounds.
 const locationsForMap = computed<NamedPoint[]>(() => {
-  if (locations) {
-    return locations.map(({ name, groupName, location }) => ({
+  if (props.locations) {
+    return props.locations.map(({ name, groupName, location }) => ({
       name,
       project: groupName,
       location: location as LatLng,
@@ -50,8 +53,8 @@ const locationsForMap = computed<NamedPoint[]>(() => {
   return [];
 });
 const activeLocationsForMap = computed<NamedPoint[]>(() => {
-  if (activeLocations) {
-    return activeLocations.map(({ name, groupName, location }) => ({
+  if (props.activeLocations) {
+    return props.activeLocations.map(({ name, groupName, location }) => ({
       name,
       project: groupName,
       location: location as LatLng,
@@ -60,9 +63,9 @@ const activeLocationsForMap = computed<NamedPoint[]>(() => {
   return [];
 });
 const thisLocationPoint: NamedPoint = {
-  name: location.name,
-  project: location.groupName,
-  location: location.location as LatLng,
+  name: props.location.name,
+  project: props.location.groupName,
+  location: props.location.location as LatLng,
 };
 
 const speciesSummary = computed<[string, string, number][]>(() =>
@@ -70,8 +73,8 @@ const speciesSummary = computed<[string, string, number][]>(() =>
 );
 
 const highlightedPoint = computed<NamedPoint | null>(() => {
-  if (locations && currentlyHighlightedLocation.value) {
-    const location = locations.find(
+  if (props.locations && currentlyHighlightedLocation.value) {
+    const location = props.locations.find(
       ({ id }) => id === currentlyHighlightedLocation.value
     );
     if (location) {
@@ -113,7 +116,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
     <div class="visit-species-breakdown d-flex justify-content-between">
       <div class="names my-2">
         <div
-          v-for="([species, path, count], index) in speciesSummary"
+          v-for="([species, _path, count], index) in speciesSummary"
           :class="['species-count', 'ps-1']"
           :key="index"
         >

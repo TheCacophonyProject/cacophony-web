@@ -6,19 +6,16 @@ import { useDevicePixelRatio } from "@vueuse/core";
 import type { IntermediateTrack } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 const { pixelRatio } = useDevicePixelRatio();
-const {
-  tracks = [],
-  totalFrames,
-  currentTrack,
-  sidePadding = 1,
-  playbackTime = 0,
-} = defineProps<{
-  tracks: IntermediateTrack[];
-  totalFrames: number;
-  currentTrack?: ApiTrackResponse;
-  sidePadding?: number;
-  playbackTime: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    tracks: IntermediateTrack[];
+    totalFrames: number;
+    currentTrack?: ApiTrackResponse;
+    sidePadding?: number;
+    playbackTime: number;
+  }>(),
+  { tracks: () => [], sidePadding: 1, playbackTime: 0 }
+);
 
 interface TrackDimensions {
   top: number;
@@ -41,12 +38,12 @@ const minScrubberHeight = 44;
 const scrubberWidth = ref(0);
 
 const heightForTracks = computed((): number => {
-  if (tracks.length === 0) {
+  if (props.tracks.length === 0) {
     return minScrubberHeight;
   }
   const paddingY = 10;
   const heightForTracks =
-    trackHeight * numUniqueYSlots.value + tracks.length - 1;
+    trackHeight * numUniqueYSlots.value + props.tracks.length - 1;
   return Math.max(44, heightForTracks + paddingY * 2);
 });
 
@@ -96,9 +93,10 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
   numUniqueYSlots.value = 0;
   const uniqueYSlots: Record<number, boolean> = {};
   for (let i = 0; i < tracks.length; i++) {
-    const thisLeft = tracks[i].positions[0][0] / totalFrames;
+    const thisLeft = tracks[i].positions[0][0] / props.totalFrames;
     const thisRight =
-      tracks[i].positions[tracks[i].positions.length - 1][0] / totalFrames;
+      tracks[i].positions[tracks[i].positions.length - 1][0] /
+      props.totalFrames;
     const yOffset = getOffsetYForTrack(
       i,
       tracks,
@@ -118,16 +116,24 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
 };
 
 onMounted(() => {
-  initTrackDimensions(tracks);
-  updatePlayhead(playbackTime, scrubberWidth.value, pixelRatio.value);
+  initTrackDimensions(props.tracks);
+  updatePlayhead(props.playbackTime, scrubberWidth.value, pixelRatio.value);
 });
 
 watch(
-  () => tracks,
+  () => props.totalFrames,
+  () => {
+    initTrackDimensions(props.tracks);
+    updatePlayhead(props.playbackTime, scrubberWidth.value, pixelRatio.value);
+  }
+);
+
+watch(
+  () => props.tracks,
   (nextTracks: IntermediateTrack[]) => {
     initTrackDimensions(nextTracks);
     updatePlayhead(
-      playbackTime,
+      props.playbackTime,
       scrubberWidthMinusPaddingPx.value,
       pixelRatio.value
     );
@@ -135,7 +141,7 @@ watch(
 );
 
 watch(
-  () => playbackTime,
+  () => props.playbackTime,
   (newPlaybackTime) => {
     updatePlayhead(
       newPlaybackTime,
@@ -147,7 +153,7 @@ watch(
 
 watch(pixelRatio, (newPixelRatio: number) => {
   updatePlayhead(
-    playbackTime,
+    props.playbackTime,
     scrubberWidthMinusPaddingPx.value,
     newPixelRatio
   );
@@ -156,7 +162,7 @@ watch(pixelRatio, (newPixelRatio: number) => {
 const onChangeWidth = (width: number) => {
   scrubberWidth.value = width;
   updatePlayhead(
-    playbackTime,
+    props.playbackTime,
     scrubberWidthMinusPaddingPx.value,
     pixelRatio.value
   );
@@ -167,7 +173,7 @@ const fullWidthMinusPadding = computed<number>(() => {
 });
 
 const scrubberWidthMinusPaddingPx = computed<number>(() => {
-  return scrubberWidth.value - sidePadding * 2;
+  return scrubberWidth.value - props.sidePadding * 2;
 });
 
 const updatePlayhead = (
@@ -193,10 +199,12 @@ const updatePlayhead = (
           playhead.value.height
         );
         const playheadX = Math.max(
-          sidePadding,
+          props.sidePadding,
           Math.min(
-            playhead.value.width - playheadLineWidth + sidePadding,
-            offset * playhead.value.width - playheadLineWidth / 2 + sidePadding
+            playhead.value.width - playheadLineWidth + props.sidePadding,
+            offset * playhead.value.width -
+              playheadLineWidth / 2 +
+              props.sidePadding
           )
         );
 
@@ -217,8 +225,11 @@ const setPlaybackTime = (offset: number) => {
 };
 
 const currentTrackIndex = computed<number>(() => {
-  if (currentTrack) {
-    return tracks.findIndex((track) => track.id === currentTrack.id) || 0;
+  if (props.currentTrack) {
+    return (
+      props.tracks.findIndex((track) => track.id === props.currentTrack?.id) ||
+      0
+    );
   }
   return 0;
 });

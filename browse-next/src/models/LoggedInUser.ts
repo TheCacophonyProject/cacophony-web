@@ -114,6 +114,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
   if (prevUserData) {
     try {
       prevUserData = JSON.parse(JSON.stringify(prevUserData)) as LoggedInUser;
+      // TODO: Make this check more permissive
       if (prevUserData.settings && user.settings) {
         if (
           prevUserData.settings.currentSelectedGroup?.id !==
@@ -132,7 +133,6 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
       console.error("Shouldn't get malformed json errors here.", e);
     }
   }
-  console.log("Setting logged in user data", user);
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
 };

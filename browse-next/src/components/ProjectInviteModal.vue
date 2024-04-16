@@ -4,7 +4,7 @@ import type { SelectedProject } from "@models/LoggedInUser";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, ref } from "vue";
-import { BFormCheckboxGroup } from "bootstrap-vue-3";
+import { BFormCheckboxGroup } from "bootstrap-vue-next";
 import { inviteSomeoneToProject } from "@api/Project";
 
 const emit = defineEmits<{

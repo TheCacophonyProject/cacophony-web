@@ -2,6 +2,7 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed } from "vue";
 import { useRoute } from "vue-router";
+import OverflowingTabList from "@/components/OverflowingTabList.vue";
 
 const route = useRoute();
 const activeTabName = computed(() => {
@@ -24,7 +25,7 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
     </p>
     <p>TODO: Would be nice to have the option of renaming the project here?</p>
   </div>
-  <ul class="nav nav-tabs justify-content-md-center justify-content-evenly">
+  <overflowing-tab-list>
     <router-link
       :class="[
         ...navLinkClasses,
@@ -47,18 +48,18 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       }"
       >Tag settings</router-link
     >
-    <router-link
-      :class="[
-        ...navLinkClasses,
-        { active: activeTabName === 'fix-project-locations' },
-      ]"
-      title="Fix locations"
-      :to="{
-        name: 'fix-project-locations',
-      }"
-      >Fix locations</router-link
-    >
-  </ul>
+    <!--    <router-link-->
+    <!--      :class="[-->
+    <!--        ...navLinkClasses,-->
+    <!--        { active: activeTabName === 'fix-project-locations' },-->
+    <!--      ]"-->
+    <!--      title="Fix locations"-->
+    <!--      :to="{-->
+    <!--        name: 'fix-project-locations',-->
+    <!--      }"-->
+    <!--      >Fix locations</router-link-->
+    <!--    >-->
+  </overflowing-tab-list>
   <div class="py-3">
     <router-view />
   </div>

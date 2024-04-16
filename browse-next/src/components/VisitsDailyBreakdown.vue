@@ -17,6 +17,7 @@ import {
   getClassificationForLabel,
 } from "@api/Classifications";
 import ImageLoader from "@/components/ImageLoader.vue";
+import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
@@ -26,13 +27,7 @@ const currentlySelectedVisit = inject(
 ) as Ref<ApiVisitResponse | null>;
 
 const now = new Date();
-const {
-  visits,
-  startTime,
-  isNocturnal,
-  location,
-  currentlyHighlightedLocation,
-} = defineProps<{
+const props = defineProps<{
   visits: ApiVisitResponse[];
   startTime: DateTime;
   isNocturnal: boolean;
@@ -45,16 +40,16 @@ const emit = defineEmits<{
   (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
-const endTime = computed<DateTime>(() => startTime.plus({ day: 1 }));
+const endTime = computed<DateTime>(() => props.startTime.plus({ day: 1 }));
 const visitCountBySpecies = computed<[string, string, number][]>(() =>
-  visitsCountBySpeciesCalc(visits)
+  visitsCountBySpeciesCalc(props.visits)
 );
 
 const periodInProgress = computed<boolean>(() => {
   const { sunrise } = sunCalc.getTimes(
     endTime.value.toJSDate(),
-    location.lat,
-    location.lng
+    props.location.lat,
+    props.location.lng
   );
   return endTime.value.toJSDate() > now && sunrise > now;
 });
@@ -78,14 +73,13 @@ interface SunEventItem extends EventItem {
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
-
-  for (const visit of visits) {
+  for (const visit of props.visits) {
     if (!visit.classification) {
       debugger;
     }
   }
 
-  const events: (VisitEventItem | SunEventItem)[] = visits.map(
+  const events: (VisitEventItem | SunEventItem)[] = props.visits.map(
     (visit) =>
       ({
         type: "visit",
@@ -97,14 +91,14 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   );
 
   const now = new Date();
-  const startTime = events[0].date;
-  const endTime = events[events.length - 1].date;
+  const endTime = events[0].date;
+  const startTime = events[events.length - 1].date;
   {
     // If the startTime is *after* its own sunrise, then use the sunset from it.
     const { sunrise, sunset } = sunCalc.getTimes(
       startTime,
-      location.lat,
-      location.lng
+      props.location.lat,
+      props.location.lng
     );
     if (startTime > sunrise) {
       events.push({
@@ -117,7 +111,11 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       // startTime is after midnight, so use the sunset from the previous day.
       const prevDay = new Date(startTime);
       prevDay.setDate(prevDay.getDate() - 1);
-      const { sunset } = sunCalc.getTimes(prevDay, location.lat, location.lng);
+      const { sunset } = sunCalc.getTimes(
+        prevDay,
+        props.location.lat,
+        props.location.lng
+      );
       events.push({
         type: "sun",
         name: `Sunset`,
@@ -129,8 +127,8 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   {
     const { sunrise, sunset } = sunCalc.getTimes(
       endTime,
-      location.lat,
-      location.lng
+      props.location.lat,
+      props.location.lng
     );
     if (now < sunrise) {
       // If we're before sunrise, then use the "Now" placeholder
@@ -154,8 +152,8 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       endTimePlusOneDay.setDate(endTimePlusOneDay.getDate() + 1);
       const { sunrise } = sunCalc.getTimes(
         endTimePlusOneDay,
-        location.lat,
-        location.lng
+        props.location.lat,
+        props.location.lng
       );
       if (sunrise < now) {
         events.push({
@@ -183,10 +181,10 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
 const nightOfRange = computed<string>(() => {
   // TODO: In the future we may want to make this hard-coded sunrise/sunset offset value reflect the camera recording window preferences for cameras in this group.
   let range = "";
-  if (startTime.monthLong === endTime.value.monthLong) {
-    range = `Night of ${startTime.day}&ndash;${endTime.value.day} ${startTime.monthLong} ${startTime.year}`;
-  } else if (startTime.year === endTime.value.year) {
-    range = `Night of ${startTime.day} ${startTime.monthLong}&ndash;${endTime.value.day} ${endTime.value.monthLong} ${startTime.year}`;
+  if (props.startTime.monthLong === endTime.value.monthLong) {
+    range = `Night of ${props.startTime.day}&ndash;${endTime.value.day} ${props.startTime.monthLong} ${props.startTime.year}`;
+  } else if (props.startTime.year === endTime.value.year) {
+    range = `Night of ${props.startTime.day} ${props.startTime.monthLong}&ndash;${endTime.value.day} ${endTime.value.monthLong} ${props.startTime.year}`;
   }
   if (periodInProgress.value) {
     return `${range} (in progress)`;
@@ -223,7 +221,7 @@ const hasVisits = computed<boolean>(() => {
 });
 
 const visitTime = (timeIsoString: string) =>
-  timeAtLocation(timeIsoString, location);
+  timeAtLocation(timeIsoString, props.location);
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   if (visit.recordings.length) {
@@ -246,10 +244,30 @@ const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
 const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (
     visit.type === "visit" &&
-    currentlyHighlightedLocation === visit.data.stationId
+    props.currentlyHighlightedLocation === visit.data.stationId
   ) {
     emit("change-highlighted-location", null);
   }
+};
+const processingStates = [
+  RecordingProcessingState.Tracking,
+  RecordingProcessingState.Analyse,
+];
+const isStillProcessing = computed<boolean>(() => {
+  // TODO: Poll to see if processing has finished
+  return visitEvents.value.some(
+    (visit) =>
+      visit.type === "visit" &&
+      visit.data.recordings.some((rec) =>
+        processingStates.includes(rec.processingState)
+      )
+  );
+});
+const someRecordingStillProcessing = (visit: ApiVisitResponse): boolean => {
+  // TODO: Poll to see if processing has finished
+  return visit.data?.recordings.some((rec) =>
+    processingStates.includes(rec.processingState)
+  );
 };
 </script>
 <template>
@@ -268,13 +286,22 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
           ><font-awesome-icon icon="moon"
         /></span>
       </div>
-      <font-awesome-icon
-        v-if="hasVisits"
-        class="px-2"
-        size="sm"
-        icon="chevron-right"
-        :rotation="showVisitsDetail ? 270 : 90"
-      />
+      <div>
+        <span
+          v-if="isStillProcessing"
+          class="d-inline-flex align-items-center bg-light px-1 rounded-1"
+        >
+          <b-spinner small variant="secondary" />
+          <span class="ms-2 me-1 fs-8" style="color: #7d7d7d">AI Queued</span>
+        </span>
+        <font-awesome-icon
+          v-if="hasVisits"
+          class="px-2"
+          size="sm"
+          icon="chevron-right"
+          :rotation="showVisitsDetail ? 270 : 90"
+        />
+      </div>
     </div>
     <div v-if="!showVisitsDetail" class="visits-summary">
       <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
@@ -381,14 +408,19 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
           <div class="ps-3 d-flex flex-column text-truncate">
             <div>
               <span
-                class="visit-species-tag px-1 mb-1 text-capitalize"
+                class="visit-species-tag px-1 mb-1 text-capitalize d-inline-flex align-items-center"
                 :class="[
                   visit.name,
-                  ...(getClassificationForLabel(visit.name)?.path || '').split(
+                  ...(getClassificationForLabel(visit.name)?.path as string || '').split(
                     '.'
                   ),
                 ]"
-                >{{ displayLabelForClassificationLabel(visit.name) }}
+                ><b-spinner
+                  small
+                  class="me-1"
+                  variant="light"
+                  v-if="someRecordingStillProcessing(visit.data)"
+                />{{ displayLabelForClassificationLabel(visit.name) }}
                 <font-awesome-icon
                   icon="check"
                   v-if="visit.data.classFromUserTag"
@@ -409,7 +441,7 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
                 icon="map-marker-alt"
                 size="xs"
                 class="station-icon pe-1 text"
-              />{{ visit.data.stationName }}</span
+              />{{ (visit as VisitEventItem).data.stationName }}</span
             >
           </div>
         </div>
@@ -418,6 +450,12 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   </div>
 </template>
 <style scoped lang="less">
+.spinner-border-sm {
+  --bs-spinner-width: 0.65rem;
+  --bs-spinner-height: 0.65rem;
+  --bs-spinner-border-width: 0.2em;
+}
+
 .visits-daily-breakdown {
   background: white;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);

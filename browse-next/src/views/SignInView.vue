@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref } from "vue";
-import { BAlert } from "bootstrap-vue-3";
 import { login } from "@models/LoggedInUser";
 import type { PendingRequest } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";

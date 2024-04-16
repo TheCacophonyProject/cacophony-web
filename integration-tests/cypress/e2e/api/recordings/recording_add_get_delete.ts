@@ -586,6 +586,11 @@ describe("Recordings (thermal): add, get, delete", () => {
         RecordingType.ThermalRaw,
         undefined
       );
+      cy.testDeleteRecordingsInState(
+        superuser,
+        RecordingType.TrailCamImage,
+        undefined
+      );
     }
 
     let stationId;

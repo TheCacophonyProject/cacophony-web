@@ -17,6 +17,7 @@ export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
   overlayContext.font = "13px sans-serif";
   overlayContext.lineWidth = 4;
   overlayContext.strokeStyle = "rgba(0, 0, 0, 0.5)";
+  overlayContext.lineJoin = "round";
   overlayContext.fillStyle = "white";
 };
 
@@ -82,7 +83,7 @@ export const clearOverlay = (
   return false;
 };
 
-const drawRectWithText = (
+export const drawRectWithText = (
   context: CanvasRenderingContext2D,
   trackId: number,
   dims: Rectangle,
@@ -91,7 +92,8 @@ const drawRectWithText = (
   tracks: ApiTrackResponse[] = [],
   currentTrack: ApiTrackResponse | undefined,
   pixelRatio: number,
-  scale: number
+  scale: number,
+  restrictedHeight?: number
 ) => {
   context.save();
   const selected = currentTrack?.id === trackId || isExporting;
@@ -103,19 +105,29 @@ const drawRectWithText = (
   const [left, top, right, bottom] = dims.map((x) => x * scale * pixelRatio);
   const rectWidth = right - left;
   const rectHeight = bottom - top;
-
+  const contextHeight = restrictedHeight || context.canvas.height;
+  const yOffset = restrictedHeight
+    ? (context.canvas.height - restrictedHeight) * 0.5
+    : 0;
   const x =
     Math.max(halfOutlineWidth, Math.round(left) - halfOutlineWidth) /
     deviceRatio;
   const y =
-    Math.max(halfOutlineWidth, Math.round(top) - halfOutlineWidth) /
-    deviceRatio;
+    Math.max(
+      halfOutlineWidth,
+      Math.round(top + yOffset) - halfOutlineWidth,
+      yOffset + halfOutlineWidth
+    ) / deviceRatio;
   const width =
-    Math.round(Math.min(context.canvas.width - left, Math.round(rectWidth))) /
-    deviceRatio;
+    Math.min(
+      context.canvas.width - (x + halfOutlineWidth),
+      Math.round(Math.min(context.canvas.width - left, Math.round(rectWidth)))
+    ) / deviceRatio;
   const height =
-    Math.round(Math.min(context.canvas.height - top, Math.round(rectHeight))) /
-    deviceRatio;
+    Math.min(
+      contextHeight - (y - yOffset + halfOutlineWidth),
+      Math.round(Math.min(contextHeight - top, Math.round(rectHeight)))
+    ) / deviceRatio;
   context.lineJoin = "round";
   context.lineWidth = outlineWidth;
   context.strokeStyle = `rgba(0, 0, 0, ${selected ? 0.4 : 0.5})`;
@@ -134,10 +146,11 @@ const drawRectWithText = (
       const marginX = 2 * deviceRatio;
       const marginTop = 2 * deviceRatio;
       let textX = Math.min(context.canvas.width, right) - (textWidth + marginX);
-      let textY = bottom + textHeight + marginTop;
+      let textY = yOffset + bottom + textHeight + marginTop;
+      //debugger;
       // Make sure the text doesn't get clipped off if the box is near the frame edges
-      if (textY + textHeight > context.canvas.height) {
-        textY = top - textHeight;
+      if (textY + textHeight > contextHeight + yOffset) {
+        textY = yOffset + top - textHeight;
       }
       if (textX < 0) {
         textX = left + marginX;

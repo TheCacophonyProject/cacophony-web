@@ -64,7 +64,7 @@ export default {
 #app {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100svh;
   --navbar-height: 65px;
   &.viewing-as-admin {
     --navbar-height: 99px;

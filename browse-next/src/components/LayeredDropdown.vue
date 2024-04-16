@@ -4,27 +4,29 @@ import type { Classification } from "@typedefs/api/trackTag";
 import { onClickOutside } from "@vueuse/core";
 import { getClassificationForLabel } from "@api/Classifications";
 
-const {
-  options,
-  disabled = false,
-  multiselect = false,
-  canBePinned = false,
-  pinnedItems = [],
-  placeholder = "Search",
-  selectedItems = [],
-  openOnMount = true,
-  disabledTags = [],
-} = defineProps<{
-  options: Classification;
-  disabled: boolean;
-  disabledTags?: string[];
-  multiselect: boolean;
-  placeholder: string;
-  canBePinned: boolean;
-  pinnedItems: string[];
-  selectedItems: string[];
-  openOnMount?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    options: Classification;
+    disabled: boolean;
+    disabledTags?: string[];
+    multiselect: boolean;
+    placeholder: string;
+    canBePinned: boolean;
+    pinnedItems: string[];
+    selectedItems: string[];
+    openOnMount?: boolean;
+  }>(),
+  {
+    disabled: false,
+    multiselect: false,
+    canBePinned: false,
+    pinnedItems: () => [],
+    placeholder: "Search",
+    selectedItems: () => [],
+    openOnMount: true,
+    disabledTags: () => [],
+  }
+);
 
 // Elements
 const optionsList = ref<HTMLDivElement>();
@@ -88,9 +90,9 @@ const maybeCloseSelect = () => {
 };
 
 watch(
-  () => selectedItems,
+  () => props.selectedItems,
   (nextSelected: string[]) => {
-    if (!multiselect) {
+    if (!props.multiselect) {
       console.assert(nextSelected.length <= 1);
     }
     const nextSelections = [];
@@ -100,31 +102,34 @@ watch(
       );
       nextSelections.push(canonicalClassification);
     }
-    selections.value = nextSelections;
+    selections.value = nextSelections.filter((x) => !!x);
   }
 );
 
 onMounted(() => {
   const nextSelections = [];
-  for (const label of selectedItems) {
+  for (const label of props.selectedItems) {
     const canonicalClassification = getClassificationForLabel(
       label.toLowerCase()
     );
     nextSelections.push(canonicalClassification);
   }
-  selections.value = nextSelections;
+  selections.value = nextSelections.filter((x) => !!x);
 });
 
 watch(
-  () => options,
+  () => props.options,
   () => {
-    if (selectedItems.length === 1 && pinnedItems.includes(selectedItems[0])) {
+    if (
+      props.selectedItems.length === 1 &&
+      props.pinnedItems.includes(props.selectedItems[0])
+    ) {
       showOptions.value = false;
-      searchTerm.value = selectedItems[0];
+      searchTerm.value = props.selectedItems[0];
       addSearchTermOnSubmit();
       currPath.value =
-        optionsMap.value.get(selectedItems[0].toLowerCase())?.path || [];
-    } else if (openOnMount) {
+        optionsMap.value.get(props.selectedItems[0].toLowerCase())?.path || [];
+    } else if (props.openOnMount) {
       openSelect();
     }
   }
@@ -168,7 +173,7 @@ const optionsMap = computed<Map<string, PathOption>>(
         });
       }
     };
-    navigate(options, []);
+    navigate(props.options, []);
     return map;
   }
 );
@@ -183,7 +188,7 @@ const addSelectedOption = (option: Classification) => {
   }
   const canonicalOption = getClassificationForLabel(option.label.toLowerCase());
 
-  if (!multiselect && selections.value[0] !== canonicalOption) {
+  if (!props.multiselect && selections.value[0] !== canonicalOption) {
     emit("change", [canonicalOption]);
     closeSelect();
   } else if (!selections.value.includes(canonicalOption)) {
@@ -226,7 +231,7 @@ const removeSelectedOption = (option: Classification) => {
 const singleSelectionIsPinned = computed<boolean>(
   () =>
     selections.value.length === 1 &&
-    pinnedItems.includes(selections.value[0].label)
+    props.pinnedItems.includes(selections.value[0].label)
 );
 
 const setToPath = (label: string) => {
@@ -238,14 +243,16 @@ const setToPath = (label: string) => {
 const displayedOptions = computed<Classification[]>(() => {
   if (searchTerm.value && searchTerm.value.trim()) {
     // Get all the options that relate to the search term.
-    const searchResults = searchOptions(options.children as Classification[]);
+    const searchResults = searchOptions(
+      props.options.children as Classification[]
+    );
     if (searchResults.length !== 0) {
       return searchResults;
     } else {
       return [{ label: "No results" }];
     }
   } else {
-    let node = options;
+    let node = props.options;
     for (const pathComponent of currPath.value.slice(1)) {
       const foundNode = node.children?.find(
         ({ label }) => label === pathComponent
@@ -436,6 +443,9 @@ defineExpose({
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
   }
+  &:has(input:disabled) {
+    opacity: 0.4;
+  }
   > input {
     width: 100%;
     border: none;
@@ -454,7 +464,7 @@ defineExpose({
   > .selected-option-badge {
     user-select: none;
     align-items: center;
-    background: #10b981;
+    background: var(--ms-tag-bg);
     border-radius: 4px;
     display: flex;
     font-size: 14px;

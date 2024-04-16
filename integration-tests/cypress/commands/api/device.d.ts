@@ -9,6 +9,7 @@ declare namespace Cypress {
   type DeviceType = import("@typedefs/api/consts").DeviceType;
   type DeviceHistoryEntry = import("@commands/types").DeviceHistoryEntry;
   type DeviceId = import("@typedefs/api/common").DeviceId;
+  type ApiMaskRegionsData = import("@typedefs/api/device").ApiMaskRegionsData;
 
   interface Chainable {
     /**
@@ -151,6 +152,22 @@ declare namespace Cypress {
     apiDeviceHeartbeat(
       deviceName: string,
       nextHeartbeat: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    apiDeviceAddMaskRegions(
+      useName: string,
+      deviceName: string,
+      maskRegions: ApiMaskRegionsData,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    apiDeviceGetMaskRegions(
+      useName: string,
+      deviceName: string,
+      atTime?: Date,
       statusCode?: number,
       additionalChecks?: any
     ): any;

@@ -1,13 +1,24 @@
 <script setup lang="ts">
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type {
+  ApiRecordingResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
 import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
 import { TagColours } from "@/consts";
 import type { Ref } from "vue";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { ApiTrackResponse } from "@typedefs/api/track";
-import type { TrackId, TrackTagId } from "@typedefs/api/common";
-import { removeTrackTag, replaceTrackTag } from "@api/Recording";
+import type {
+  ApiTrackDataRequest,
+  ApiTrackResponse,
+} from "@typedefs/api/track";
+import { type TrackId, type TrackTagId } from "@typedefs/api/common";
+import {
+  addRecordingLabel,
+  createDummyTrack,
+  removeTrackTag,
+  replaceTrackTag,
+} from "@api/Recording";
 import type { LoggedInUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import {
@@ -15,13 +26,20 @@ import {
   getPathForLabel,
 } from "@api/Classifications";
 import { currentUser as currentUserInfo } from "@models/provides";
-import { RecordingType } from "@typedefs/api/consts.ts";
+import {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.ts";
+import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 
 const route = useRoute();
 const router = useRouter();
-const { recording } = defineProps<{
-  recording?: ApiRecordingResponse | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    recording?: ApiRecordingResponse | null;
+  }>(),
+  { recording: null }
+);
 
 // eslint-disable-next-line no-undef
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
@@ -37,10 +55,11 @@ const emit = defineEmits<{
     e: "track-selected",
     track: { trackId: TrackId; automatically: boolean }
   ): void;
+  (e: "added-recording-label", label: ApiRecordingTagResponse): void;
 }>();
 
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
-  return recording?.tracks.find(({ id }) => id == trackId) || null;
+  return props.recording?.tracks.find(({ id }) => id == trackId) || null;
 };
 
 const currentTrackId = computed(() => Number(route.params.trackId));
@@ -53,36 +72,67 @@ watch(
 );
 
 const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
-  // Local mutable copy of tracks + tags for when we update things.
-  recordingTracksLocal.value = tracks.map((track) => ({
-    id: track.id,
-    end: track.end,
-    start: track.start,
-    automatic: track.automatic,
-    tags: JSON.parse(JSON.stringify(track.tags)),
-    filtered: track.filtered,
-  }));
+  // NOTE: If there's no tracks on a recording, we can create a dummy one, which can be added
+  //  via the API as soon as there is a user tag present.
+  if (
+    tracks.length === 0 &&
+    props.recording?.processingState !== RecordingProcessingState.Tracking
+  ) {
+    recordingTracksLocal.value = [
+      {
+        id: -1,
+        start: 0,
+        end: props.recording?.duration || 0,
+        automatic: false,
+        tags: [],
+        filtered: false,
+      },
+    ];
+  } else {
+    // Local mutable copy of tracks + tags for when we update things.
+    recordingTracksLocal.value = tracks.map((track) => ({
+      id: track.id,
+      end: track.end,
+      start: track.start,
+      automatic: track.automatic,
+      tags: JSON.parse(JSON.stringify(track.tags)),
+      filtered: track.filtered,
+    }));
+  }
 };
 
 watch(
-  () => recording,
+  () => props.recording,
   (nextRecording) => {
     cloneLocalTracks(nextRecording?.tracks || []);
     if (route.params.trackId) {
       currentTrack.value = getTrackById(currentTrackId.value);
     }
-    if (nextRecording?.type === RecordingType.TrailCamImage) {
-      // Select the only dummy track
-      //currentTrack.value = getTrackById()
-      expandedItemChanged(nextRecording.tracks[0].id, true);
+    if (nextRecording) {
+      if (nextRecording.tracks.length === 1) {
+        if (
+          nextRecording.tracks[0].tags.filter((tag) => !tag.automatic)
+            .length === 0
+        ) {
+          // Select the only track if there is only one track, and it is untagged by users.
+          expandedItemChanged(nextRecording.tracks[0].id, true);
+        }
+      } else {
+        expandedItemChanged(-1, true);
+      }
     }
   }
 );
 
 onMounted(() => {
-  cloneLocalTracks(recording?.tracks || []);
+  cloneLocalTracks(props.recording?.tracks || []);
   if (route.params.trackId) {
     currentTrack.value = getTrackById(currentTrackId.value);
+  } else if (recordingTracksLocal.value.length === 1) {
+    emit("track-selected", {
+      trackId: recordingTracksLocal.value[0].id,
+      automatically: false,
+    });
   }
 });
 
@@ -116,6 +166,16 @@ const selectedTrack = (trackId: TrackId) => {
 };
 
 const updatingTags = ref<boolean>(false);
+
+const mapTrack = (track: ApiTrackResponse): ApiTrackDataRequest => {
+  const mappedTrack: ApiTrackDataRequest = {
+    end_s: track.end,
+    start_s: track.start,
+    positions: track.positions,
+    automatic: false,
+  };
+  return mappedTrack as ApiTrackDataRequest;
+};
 const addOrRemoveUserTag = async ({
   tag,
   trackId,
@@ -123,13 +183,71 @@ const addOrRemoveUserTag = async ({
   tag: string;
   trackId: TrackId;
 }) => {
-  if (recording && currentUser.value && !updatingTags.value) {
+  if (props.recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal
     const track = recordingTracksLocal.value.find(
       (track) => track.id === trackId
     );
+    let trackWasCreated = false;
     if (track) {
+      if (track.id === -1) {
+        // This is a dummy track and needs to be created via the API before we can actually tag it.
+        const dummyTrack = mapTrack(track);
+        const positions = [];
+        if (props.recording.type === RecordingType.TrailCamImage) {
+          positions.push({
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+            order: 0,
+          });
+        } else if (props.recording.type === RecordingType.ThermalRaw) {
+          const recording = props.recording as ApiThermalRecordingResponse;
+          if (!recording.tags.some((tag) => tag.detail === "missed track")) {
+            // If we're adding a dummy track to a thermal recording, also add the "missed track" tag.
+            addRecordingLabel(recording.id, "missed track").then(
+              (labelResponse) => {
+                if (labelResponse.success) {
+                  emit("added-recording-label", {
+                    id: labelResponse.result.tagId,
+                    detail: "Missed track",
+                    createdAt: new Date().toISOString(),
+                    confidence: 0.9,
+                  });
+                }
+              }
+            );
+          }
+          const numFrames = Math.floor(
+            recording.additionalMetadata?.totalFrames || recording.duration * 9
+          );
+          for (let i = 0; i < numFrames; i++) {
+            positions.push({
+              x: 0,
+              y: 0,
+              width: 160,
+              height: 120,
+              order: i,
+            });
+          }
+        }
+        dummyTrack.positions = positions;
+        track.positions = positions;
+        const createdTrack = await createDummyTrack(
+          props.recording,
+          dummyTrack
+        );
+        if (createdTrack.success) {
+          track.id = createdTrack.result.trackId;
+          trackId = track.id;
+          trackWasCreated = true;
+        } else {
+          console.error("Failed creating dummy track");
+        }
+      }
+
       const thisUserTag = track.tags.find(
         (tag) => tag.userId === currentUser.value?.id
       );
@@ -137,7 +255,7 @@ const addOrRemoveUserTag = async ({
       if (thisUserTag && thisUserTag.what === tag) {
         // We are removing the current tag.
         const removeTagResponse = await removeTrackTag(
-          recording.id,
+          props.recording.id,
           trackId,
           thisUserTag.id
         );
@@ -181,7 +299,7 @@ const addOrRemoveUserTag = async ({
             what: tag,
             confidence: 0.85,
           },
-          recording.id,
+          props.recording.id,
           trackId
         );
         if (newTagResponse.success && newTagResponse.result.trackTagId) {
@@ -195,7 +313,10 @@ const addOrRemoveUserTag = async ({
         }
       }
     }
-    cloneLocalTracks(recording.tracks);
+    cloneLocalTracks(props.recording.tracks);
+    if (trackWasCreated) {
+      emit("track-selected", { trackId, automatically: false });
+    }
     updatingTags.value = false;
   }
 };
@@ -207,7 +328,7 @@ const removeTag = async ({
   trackTagId: TrackTagId;
   trackId: TrackId;
 }) => {
-  if (recording && currentUser.value && !updatingTags.value) {
+  if (props.recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal
     const track = recordingTracksLocal.value.find(
@@ -219,7 +340,7 @@ const removeTag = async ({
         track.tags = track.tags.filter((tag) => tag !== targetTag);
         // We are removing the current tag.
         const removeTagResponse = await removeTrackTag(
-          recording.id,
+          props.recording.id,
           trackId,
           targetTag.id
         );
@@ -250,16 +371,39 @@ const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
 // FIXME - replace with b-accordion component.
 </script>
 <template>
-  <div v-if="recording" class="accordion">
+  <div
+    v-if="
+      recording &&
+      recording.processingState === RecordingProcessingState.Tracking
+    "
+    class="d-flex justify-content-center align-items-center mt-3"
+  >
+    <div>
+      <b-spinner variant="secondary" small class="me-2" />Track creation in
+      progress.
+    </div>
+  </div>
+  <div
+    v-else-if="
+      recording &&
+      recording.processingState !== RecordingProcessingState.Tracking
+    "
+    class="accordion"
+  >
     <track-tagger-row
       v-for="(track, index) in recordingTracksLocal"
       :key="index"
       :index="index"
+      :processing-state="recording.processingState"
       @expanded-changed="expandedItemChanged"
       @selected-track="selectedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"
       @remove-tag="removeTag"
-      :selected="(currentTrack && currentTrack.id === track.id) || false"
+      :selected="
+        (currentTrack && currentTrack.id === track.id) ||
+        track.id === -1 ||
+        false
+      "
       :color="TagColours[index % TagColours.length]"
       :track="track"
     />
