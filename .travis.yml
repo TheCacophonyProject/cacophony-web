@@ -49,6 +49,7 @@ script:
   - npm install --loglevel=error
   - npm run release
   - cd ../api
+  - docker ps; docker-compose logs;
   # Generate api docs
   - npm update --loglevel=error apidoc-plugin-ts
   - npm run apidoc || travis_terminate 1;
