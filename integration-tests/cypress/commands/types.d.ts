@@ -490,6 +490,7 @@ export interface ApiTrackSet {
   }[];
   all_class_confidences?: any;
   automatic?: boolean;
+  classify?: boolean;
 }
 
 //from api/v1/recordings (get)

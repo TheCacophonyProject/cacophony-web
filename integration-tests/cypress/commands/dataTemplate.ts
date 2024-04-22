@@ -224,6 +224,7 @@ export const TEMPLATE_TRACK: ApiTrackSet = {
       model_id: 1,
     },
   ],
+  classify: false,
 };
 
 export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {

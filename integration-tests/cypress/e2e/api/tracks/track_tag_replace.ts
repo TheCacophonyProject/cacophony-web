@@ -55,6 +55,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     tags: [],
     filtered: true,
     automatic: true,
+    classify: false,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -88,6 +89,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     //    positions: [],
     //    TODO: enable after merge
     tags: [],
+    classify: false,
   };
 
   const tag1: ApiTrackTagRequest = {
