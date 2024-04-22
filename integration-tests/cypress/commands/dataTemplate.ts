@@ -254,6 +254,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
       path: "all",
     },
   ],
+  classify:false,
 };
 
 export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =

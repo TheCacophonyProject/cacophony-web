@@ -72,6 +72,7 @@ describe("Track Tags: add, check, delete", () => {
     tags: [],
     filtered: true,
     automatic: true,
+    classify: false,
   };
 
   const track1: ApiTrackDataRequest = {
