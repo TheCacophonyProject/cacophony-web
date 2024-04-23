@@ -393,7 +393,6 @@ export default function (
             createdAt: {
               [Op.gt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
             },
-            // Sequelize.where(Sequelize.col(`Track.tracktag`), Op.is, null)
           },
           include: {
             model: models.TrackTag,
