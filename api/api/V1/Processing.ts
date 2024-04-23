@@ -643,27 +643,6 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {patch} /api/fileProcessing/:id/tracks/:trackId/classified Set classified
-   * @apiName UpdateClassified
-   * @apiGroup Processing
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiuse V1ResponseError
-   *
-   */
-  app.post(
-    `${apiUrl}/:id/tracks/:trackId/classified`,
-    extractJwtAuthorisedSuperAdminUser,
-    validateFields([idOf(param("id")), idOf(param("trackId"))]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
-    fetchUnauthorizedRequiredTrackById(param("trackId")),
-    async (request: Request, response) => {
-      await response.locals.track.update({ classify: false });
-      return successResponse(response, "Track updated");
-    }
-  );
-
-  /**
    * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track data for recording and archives the old track data.
    * @apiName UpdateTrackData
    * @apiGroup Processing

@@ -640,7 +640,6 @@ export default defineComponent({
             userId: userId,
             automatic: false,
           },
-          classify: true,
         };
         const response = await api.recording.addTrack(
           trackRequest,
