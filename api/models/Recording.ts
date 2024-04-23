@@ -389,7 +389,17 @@ export default function (
         {
           model: models.Track,
           where: {
-            classify: true,
+            archivedAt: null,
+            createdAt: {
+              [Op.gt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
+            },
+            // Sequelize.where(Sequelize.col(`Track.tracktag`), Op.is, null)
+          },
+          include: {
+            model: models.TrackTag,
+            where: {
+              automatic: false,
+            },
           },
         },
       ];
@@ -397,6 +407,7 @@ export default function (
     return sequelize
       .transaction(async (transaction) => {
         const recording = await Recording.findOne({
+          subQuery: false,
           where: {
             type: type,
             deletedAt: { [Op.eq]: null },
