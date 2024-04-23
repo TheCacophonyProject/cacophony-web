@@ -218,6 +218,31 @@ export const getVerifiedJWT = (
   }
 };
 
+export const getVerifiedJWTFromBody = (
+  field: string,
+  request: Request
+): string | object | DecodedJWTToken => {
+  let token = ExtractJwt.fromBodyField(field)(request);
+  if (token && token.startsWith("JWT ")) {
+    token = token.slice(4);
+  }
+  console.log("token found from body", token);
+  if (!token) {
+    // allow taking the jwt from the query params.
+    token = request.query.jwt as string;
+  }
+  if (!token) {
+    throw new AuthenticationError("Could not find JWT token.");
+  }
+  try {
+    return jwt.verify(token, config.server.passportSecret);
+  } catch (e) {
+    throw new AuthenticationError(
+      `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`
+    );
+  }
+};
+
 /**
  * check requested auth access exists in jwt access object
  */

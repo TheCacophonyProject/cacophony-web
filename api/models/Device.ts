@@ -60,7 +60,8 @@ export interface Device extends Sequelize.Model, ModelCommon<Device> {
     models: ModelsDictionary,
     deviceName: string,
     group: Group,
-    newPassword: string
+    newPassword: string,
+    reassign?: boolean
   ) => Promise<Device | false>;
   Group: Group;
   GroupId: number;
@@ -187,7 +188,9 @@ export default function (
 
   const options = {
     hooks: {
-      afterValidate: afterValidate,
+      beforeCreate: beforeModify,
+      beforeUpdate: beforeModify,
+      beforeUpsert: beforeModify,
     },
   };
 
@@ -620,7 +623,8 @@ order by hour;
     models: ModelsDictionary,
     newName: string,
     newGroup: Group,
-    newPassword: string
+    newPassword: string,
+    reassign = false
   ): Promise<Device | false> {
     let newDevice: Device;
     const now = new Date();
@@ -642,36 +646,49 @@ order by hour;
             Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
         async (t) => {
-          const conflictingDevice = await models.Device.findOne({
-            where: {
-              deviceName: newName,
-              GroupId: newGroup.id,
-            },
-            transaction: t,
-          });
-
-          if (conflictingDevice !== null) {
-            logger.warning("Got conflicting device %s", conflictingDevice);
-            throw new Error();
-          }
-          await this.update({ active: false }, { transaction: t });
-          // We need to either find an existing station for this DeviceHistory entry, or create a new one:
-          // NOTE: When a device is re-registered it keeps the last known location.
-          newDevice = (await models.Device.create(
-            {
-              deviceName: newName,
-              GroupId: newGroup.id,
-              password: newPassword,
-              saltId: this.saltId,
-              uuid: this.uuid,
-              lastConnectionTime: now,
-              location: this.location,
-              kind: this.kind,
-            },
-            {
+          if (reassign) {
+            await this.update(
+              {
+                deviceName: newName,
+                GroupId: newGroup.id,
+                password: newPassword,
+                lastConnectionTime: now,
+                active: true,
+              },
+              { transaction: t }
+            );
+            newDevice = this;
+          } else {
+            const conflictingDevice = await models.Device.findOne({
+              where: {
+                deviceName: newName,
+                GroupId: newGroup.id,
+              },
               transaction: t,
+            });
+            if (conflictingDevice !== null) {
+              logger.warning("Got conflicting device %s", conflictingDevice);
+              throw new Error();
             }
-          )) as Device;
+            await this.update({ active: false }, { transaction: t });
+            // We need to either find an existing station for this DeviceHistory entry, or create a new one:
+            // NOTE: When a device is re-registered it keeps the last known location.
+            newDevice = (await models.Device.create(
+              {
+                deviceName: newName,
+                GroupId: newGroup.id,
+                password: newPassword,
+                saltId: this.saltId,
+                uuid: this.uuid,
+                lastConnectionTime: now,
+                location: this.location,
+                kind: this.kind,
+              },
+              {
+                transaction: t,
+              }
+            )) as Device;
+          }
 
           const newDeviceHistoryEntry = {
             GroupId: newGroup.id,
@@ -758,19 +775,8 @@ function parseExactInt(value) {
 /* Validation methods */
 /********************/
 
-function afterValidate(device: Device): Promise<void> | undefined {
-  if (device.password !== undefined) {
-    // TODO Make the password be hashed when the device password is set not in the validation.
-    // TODO or make a custom validation for the password.
-    return new Promise(function (resolve, reject) {
-      bcrypt.hash(device.password, 10, function (err, hash) {
-        if (err) {
-          reject(err);
-        } else {
-          device.password = hash;
-          resolve();
-        }
-      });
-    });
+async function beforeModify(device: Device): Promise<void> | undefined {
+  if (device.changed("password")) {
+    device.password = await bcrypt.hash(device.password, 10);
   }
 }

@@ -23,10 +23,15 @@ import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
 import { ClientError, UnprocessableError } from "../customErrors.js";
 import {
+  extractJWTInfo,
   extractJwtAuthorisedDevice,
+  extractJwtAuthorizedActivatedUser,
   extractJwtAuthorizedUser,
+  extractJwtAuthorizedUserFromBody,
+  extractJwtAuthorizedUserOrDevice,
   fetchAdminAuthorizedRequiredDeviceById,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
+  fetchAuthorizedOptionalDeviceByNameOrId,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
@@ -35,6 +40,7 @@ import {
   fetchAuthorizedRequiredStationById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredScheduleById,
+  fetchUnauthorizedRequiredUserById,
   parseJSONField,
 } from "../extract-middleware.js";
 import {
@@ -78,6 +84,7 @@ import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
 import sequelize from "sequelize";
+import { fetchAuthorizedOptionalDeviceById } from "../extract-middleware.js";
 
 const models = await modelsInit();
 
@@ -2004,6 +2011,61 @@ export default function (app: Application, baseUrl: string) {
         request.query["window-size"] as unknown as number
       );
       return successResponse(response, { cacophonyIndex });
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/devices/reregister-authorized Authorized reregister the device.
+   * @apiName Reregister
+   * @apiGroup Device
+   * @apiDescription This call is to reregister authorized a device to change the name and/or group
+   *
+   * @apiUse V1DeviceAuthorizationHeader
+   *
+   * @apiBody {String} deviceId id of the device.
+   * @apiBody {String} newName new name of the device.
+   * @apiBody {String} newGroup name of the group you want to move the device to.
+   * @apiBody {String} newPassword password for the device
+   *
+   * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {int} id id of device re-registered
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/reregister-authorized`,
+    validateFields([
+      nameOf(body("newGroup")),
+      validNameOf(body("newName")),
+      validPasswordOf(body("newPassword")),
+      body("authorizedToken").exists(),
+    ]),
+    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedUserFromBody("authorizedToken"),
+    fetchAuthorizedRequiredGroupByNameOrId(body("newGroup")),
+    async function (request: Request, response: Response, next: NextFunction) {
+      const requestDevice: Device = await models.Device.findByPk(
+        response.locals.requestDevice.id
+      );
+      const newDevice = await requestDevice.reRegister(
+        models,
+        request.body.newName,
+        response.locals.group,
+        request.body.newPassword,
+        true
+      );
+      if (newDevice === false) {
+        return next(
+          new ClientError(
+            `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`
+          )
+        );
+      }
+      const token = `JWT ${createEntityJWT(newDevice)}`;
+      return successResponse(response, "Registered the device again.", {
+        id: newDevice.id,
+        token,
+      });
     }
   );
 
