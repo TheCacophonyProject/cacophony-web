@@ -23,7 +23,11 @@ export const trackIsMasked = async (
     },
     order: [["fromDateTime", "DESC"]],
   });
-  if (deviceHistoryEntry && deviceHistoryEntry.settings && deviceHistoryEntry.settings.maskRegions) {
+  if (
+    deviceHistoryEntry &&
+    deviceHistoryEntry.settings &&
+    deviceHistoryEntry.settings.maskRegions
+  ) {
     const sign = (
       p1: [number, number],
       p2: [number, number],

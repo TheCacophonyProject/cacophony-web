@@ -384,7 +384,7 @@ export default function (
    */
   Recording.getOneForProcessing = async function (type, state) {
     let includeQ = [];
-    let where =  {
+    const where = {
       type: type,
       deletedAt: { [Op.eq]: null },
       processingState: state,
@@ -402,9 +402,12 @@ export default function (
           },
         },
       ],
-    }
+    };
     if (state == RecordingProcessingState.Finished) {
-      where[Op.and] =Sequelize.literal(`	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`);
+      //check if any tracks have been made in the last day by users that haven't had AI run against it
+      where[Op.and] = Sequelize.literal(
+        `	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`
+      );
       includeQ = [
         {
           model: models.Track,
@@ -414,15 +417,15 @@ export default function (
               [Op.gt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
             },
           },
-          attributes:[]
-        }
+          attributes: [],
+        },
       ];
     }
     return sequelize
       .transaction(async (transaction) => {
         const recording = await Recording.findOne({
           subQuery: false,
-          where:where,
+          where: where,
           include: includeQ,
           attributes: [
             ...(models.Recording as RecordingStatic).processingAttributes,
