@@ -1371,7 +1371,6 @@ from (
     "location",
     "processing",
     "processingFailedCount",
-    "uploader",
   ];
 
   return Recording;
