@@ -383,28 +383,50 @@ export default function (
    * arguments given.
    */
   Recording.getOneForProcessing = async function (type, state) {
+    let includeQ = [];
+    const where = {
+      type: type,
+      deletedAt: { [Op.eq]: null },
+      processingState: state,
+      [Op.or]: [
+        {
+          processing: { [Op.or]: [null, false] },
+        },
+        {
+          [Op.and]: {
+            processing: true,
+            currentStateStartTime: {
+              [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
+            },
+            processingFailedCount: { [Op.lt]: MaxProcessingRetries },
+          },
+        },
+      ],
+    };
+    if (state == RecordingProcessingState.Finished) {
+      //check if any tracks have been made in the last day by users that haven't had AI run against it
+      where[Op.and] = Sequelize.literal(
+        `	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`
+      );
+      includeQ = [
+        {
+          model: models.Track,
+          where: {
+            archivedAt: null,
+            createdAt: {
+              [Op.gt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
+            },
+          },
+          attributes: [],
+        },
+      ];
+    }
     return sequelize
       .transaction(async (transaction) => {
         const recording = await Recording.findOne({
-          where: {
-            type: type,
-            deletedAt: { [Op.eq]: null },
-            processingState: state,
-            [Op.or]: [
-              {
-                processing: { [Op.or]: [null, false] },
-              },
-              {
-                [Op.and]: {
-                  processing: true,
-                  currentStateStartTime: {
-                    [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
-                  },
-                  processingFailedCount: { [Op.lt]: MaxProcessingRetries },
-                },
-              },
-            ],
-          },
+          subQuery: false,
+          where: where,
+          include: includeQ,
           attributes: [
             ...(models.Recording as RecordingStatic).processingAttributes,
             [

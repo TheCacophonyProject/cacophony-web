@@ -72,6 +72,7 @@ export default function (app: Application, baseUrl: string) {
           query("state").isIn([
             RecordingProcessingState.Reprocess,
             RecordingProcessingState.Analyse,
+            RecordingProcessingState.Finished,
           ]),
         ],
         [
