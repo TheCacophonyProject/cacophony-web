@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "adbe2423-89ec-42ff-bc36-d7b79915a5ef",
+  "version": "adbe5f23-89ec-42ff-bc36-d7b79915a5ef",
   "children": [
     {
       "label": "mammal",
@@ -87,7 +87,7 @@
       "children": [
         {
           "label": "false-positive",
-          "display": "false positive"
+          "display": "false trigger"
         },
         {
           "label": "frog"
