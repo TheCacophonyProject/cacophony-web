@@ -58,6 +58,7 @@ export function createEntityJWT<T>(
 export interface DecodedJWTToken {
   access?: Record<string, any>;
   _type: string;
+  activated?: boolean;
   id: number;
 }
 

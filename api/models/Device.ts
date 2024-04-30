@@ -26,6 +26,7 @@ import type { User } from "./User.js";
 import type { Group } from "./Group.js";
 import type { Event } from "./Event.js";
 import logger from "../logging.js";
+import log from "@log";
 import { DeviceType } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
@@ -667,7 +668,7 @@ order by hour;
               transaction: t,
             });
             if (conflictingDevice !== null) {
-              logger.warning("Got conflicting device %s", conflictingDevice);
+              logger.warn("Got conflicting device %s", conflictingDevice);
               throw new Error();
             }
             await this.update({ active: false }, { transaction: t });
@@ -725,6 +726,7 @@ order by hour;
         }
       );
     } catch (e) {
+      logger.error("Failed to re-register device %s: %s", this.deviceName, e);
       return false;
     }
     return newDevice;
