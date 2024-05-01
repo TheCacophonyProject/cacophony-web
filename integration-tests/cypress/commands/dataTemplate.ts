@@ -95,7 +95,7 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
     lng: 172.64745,
   },
   rawMimeType: "",
-  //processing: false,
+  processing: false,
   processingState: RecordingProcessingState.Finished,
   recordingDateTime: "2021-08-24T01:35:00.000Z",
   relativeToDusk: -17219,
@@ -273,7 +273,7 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     stationId: NOT_NULL,
     stationName: NOT_NULL_STRING,
     comment: "This is a comment",
-    //processing: false,
+    processing: false,
     tags: [],
     tracks: [TEMPLATE_EXPECTED_TRACK],
   };

@@ -101,7 +101,7 @@ const checkS3Connection = async (): Promise<void> => {
       "requestId",
       uuidv4()
     );
-    // log.info("UA: %s", request.headers["user-agent"]);
+    log.info("UA: %s", request.headers["user-agent"]);
     next();
   });
   app.use(

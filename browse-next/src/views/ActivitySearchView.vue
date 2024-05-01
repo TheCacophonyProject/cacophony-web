@@ -1051,7 +1051,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           //   recordingsResponse.result.recordings.length < 100;
           const recordings = recordingsResponse.result.recordings;
           loadedRecordings.value.push(...recordings);
-          loadedFewerItemsThanRequested = loadedRecordings.value.length < recordingsResponse.result.count;
+          loadedFewerItemsThanRequested =
+            loadedRecordings.value.length < recordingsResponse.result.count;
           loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
           appendRecordingsChunkedByDay(recordings);
           currentQueryLoaded.value += recordings.length;

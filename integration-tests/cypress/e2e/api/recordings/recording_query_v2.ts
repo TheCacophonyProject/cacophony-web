@@ -340,9 +340,8 @@ describe("Recordings query using improved query API", () => {
       // Add 8 recordings.  3 Should be filtered out as false-positives.
 
       // Recording with no tracks, but a label of 'cool'
-      cy.apiRecordingAddWithTracks(
-          group2Device1,
-      ).then((id) => cy.apiRecordingTagAdd(
+      cy.apiRecordingAddWithTracks(group2Device1).then((id) =>
+        cy.apiRecordingTagAdd(
           group2Admin,
           id.toString(),
           "coolLabel1a",
@@ -352,50 +351,38 @@ describe("Recordings query using improved query API", () => {
           },
           200,
           { useRawRecordingId: true }
-      ));
+        )
+      );
       // Recording with 1 track but no tags
-      cy.apiRecordingAddWithTracks(
-          group2Device1,
-          []
-      );
+      cy.apiRecordingAddWithTracks(group2Device1, []);
       // Recording with 1 false-positive
-      cy.apiRecordingAddWithTracks(
-          group2Device1,
-          [["false-positive"]]
-      );
+      cy.apiRecordingAddWithTracks(group2Device1, [["false-positive"]]);
       // Recording with *only* false-positives
-      cy.apiRecordingAddWithTracks(
-        group2Device1,
-        [["false-positive"], ["false-positive"]]
-      );
+      cy.apiRecordingAddWithTracks(group2Device1, [
+        ["false-positive"],
+        ["false-positive"],
+      ]);
       // Recording with a mixture of false-positive and actual tagged tracks
       // 1 track should be filtered out, or only if the entire recordings' tracks are filtered out?
-      cy.apiRecordingAddWithTracks(
-          group2Device1,
-          [["cat"], ["false-positive"]]
-      );
+      cy.apiRecordingAddWithTracks(group2Device1, [
+        ["cat"],
+        ["false-positive"],
+      ]);
 
       // Recording with only a non-false-positive track
-      cy.apiRecordingAddWithTracks(
-          group2Device1,
-          [["cat"]]
-      );
+      cy.apiRecordingAddWithTracks(group2Device1, [["cat"]]);
 
       // Recording with 1 track but no tags, then tagged by user
-      cy.apiRecordingAddWithTracks(
-          group2Device1,
-          []
-      ).then((id) => {
+      cy.apiRecordingAddWithTracks(group2Device1, []).then((id) => {
         cy.testUserAddTagRecording(id, 0, group2Admin, "mustelid");
       });
 
       // Recording with 1 track tagged as false-positive, then tagged by user
-      cy.apiRecordingAddWithTracks(
-          group2Device1,
-          [["false-positive"]]
-      ).then((id) => {
-        cy.testUserAddTagRecording(id, 0, group2Admin, "possum");
-      });
+      cy.apiRecordingAddWithTracks(group2Device1, [["false-positive"]]).then(
+        (id) => {
+          cy.testUserAddTagRecording(id, 0, group2Admin, "possum");
+        }
+      );
     });
   });
 
@@ -1094,36 +1081,36 @@ describe("Recordings query using improved query API", () => {
   });
   it("Group member can view only untagged recordings that have a certain label", () => {
     cy.apiRecordingsQueryV2Check(
-        group2Admin,
-        getCreds(group2).id,
-        new URLSearchParams({
-          "with-total-count": true.toString(),
-          "tag-mode": TagMode.UnTagged,
-          "labelled-with": "cool"
-        }),
-        undefined,
-        EXCLUDE_PARAMS,
-        200,
-        {
-          count: 1,
-        }
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "with-total-count": true.toString(),
+        "tag-mode": TagMode.UnTagged,
+        "labelled-with": "cool",
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        count: 1,
+      }
     );
   });
 
   it("Group member can view recordings tagged-with false-positive", () => {
     cy.apiRecordingsQueryV2Check(
-        group2Admin,
-        getCreds(group2).id,
-        new URLSearchParams({
-          "with-total-count": true.toString(),
-          "tagged-with": "false-positive"
-        }),
-        undefined,
-        EXCLUDE_PARAMS,
-        200,
-        {
-          count: 1,
-        }
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "with-total-count": true.toString(),
+        "tagged-with": "false-positive",
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        count: 1,
+      }
     );
   });
 

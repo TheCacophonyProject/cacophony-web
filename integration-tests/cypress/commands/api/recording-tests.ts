@@ -196,34 +196,34 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
-    "testUserAddTagRecording",
-    (recordingId: number, trackIndex: number, tagger: string, tag: string) => {
-      logTestDescription(`User '${tagger}' tags recording as '${tag}'`, {
-        recordingId,
-        trackIndex,
-        tagger,
-        tag,
-      });
+  "testUserAddTagRecording",
+  (recordingId: number, trackIndex: number, tagger: string, tag: string) => {
+    logTestDescription(`User '${tagger}' tags recording as '${tag}'`, {
+      recordingId,
+      trackIndex,
+      tagger,
+      tag,
+    });
 
+    makeAuthorizedRequest(
+      {
+        method: "GET",
+        url: v1ApiPath(`recordings/${recordingId}/tracks`),
+      },
+      tagger
+    ).then((response) => {
       makeAuthorizedRequest(
-          {
-            method: "GET",
-            url: v1ApiPath(`recordings/${recordingId}/tracks`),
-          },
-          tagger
-      ).then((response) => {
-        makeAuthorizedRequest(
-            {
-              method: "POST",
-              url: v1ApiPath(
-                  `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`
-              ),
-              body: { what: tag, confidence: 0.7, automatic: false },
-            },
-            tagger
-        );
-      });
-    }
+        {
+          method: "POST",
+          url: v1ApiPath(
+            `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`
+          ),
+          body: { what: tag, confidence: 0.7, automatic: false },
+        },
+        tagger
+      );
+    });
+  }
 );
 
 Cypress.Commands.add(

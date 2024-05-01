@@ -39,7 +39,8 @@ import type {
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
-import track, { Track } from "@models/Track.js";
+import type { Track } from "@models/Track.js";
+import track from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
@@ -1376,7 +1377,6 @@ export const tracksFromMeta = async (
               AlgorithmId: algorithmDetail.id,
             })
             .then((track) => {
-
               if (
                 !("predictions" in trackMeta) ||
                 trackMeta["predictions"].length === 0
@@ -1426,10 +1426,8 @@ export const tracksFromMeta = async (
                   trackPromises.push(
                     track.addTag(tag, prediction["confidence"], true, tag_data)
                   );
-
                 }
-                Promise.all(trackPromises)
-                    .then(resolve);
+                Promise.all(trackPromises).then(resolve);
               }
             });
         })
@@ -1437,7 +1435,7 @@ export const tracksFromMeta = async (
     }
     await Promise.all(promises);
     if (tracks.length) {
-      await Promise.all(tracks.map(track => track.updateIsFiltered()));
+      await Promise.all(tracks.map((track) => track.updateIsFiltered()));
     }
   } catch (err) {
     log.error(

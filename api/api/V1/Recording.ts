@@ -16,23 +16,27 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import {jsonSchemaOf} from "@api/schema-validation.js";
+import { jsonSchemaOf } from "@api/schema-validation.js";
 import util from "@api/V1/util.js";
 import config from "@config";
 import log from "@log";
-import {format as sqlFormat} from "sql-formatter";
+import { format as sqlFormat } from "sql-formatter";
 import modelsInit from "@models/index.js";
-import type {Recording} from "@models/Recording.js";
-import {mapPosition} from "@models/Recording.js";
-import type {Tag} from "@models/Tag.js";
-import type {Track} from "@models/Track.js";
-import type {TrackTag} from "@models/TrackTag.js";
-import ApiRecordingUpdateRequestSchema
-  from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert {type: "json"};
-import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert {type: "json"};
-import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json" assert {type: "json"};
-import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" assert {type: "json"};
-import {HttpStatusCode, RecordingProcessingState, RecordingType, TagMode} from "@typedefs/api/consts.js";
+import type { Recording } from "@models/Recording.js";
+import { mapPosition } from "@models/Recording.js";
+import type { Tag } from "@models/Tag.js";
+import type { Track } from "@models/Track.js";
+import type { TrackTag } from "@models/TrackTag.js";
+import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert { type: "json" };
+import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
+import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json" assert { type: "json" };
+import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" assert { type: "json" };
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+} from "@typedefs/api/consts.js";
 import type {
   ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
@@ -41,29 +45,38 @@ import type {
   ApiRecordingUpdateRequest,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording.js";
-import type {ApiRecordingTagRequest, ApiRecordingTagResponse,} from "@typedefs/api/tag.js";
-import type {ApiTrackResponse} from "@typedefs/api/track.js";
+import type {
+  ApiRecordingTagRequest,
+  ApiRecordingTagResponse,
+} from "@typedefs/api/tag.js";
+import type { ApiTrackResponse } from "@typedefs/api/track.js";
 import type {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag.js";
-import type {Application, NextFunction, Request, Response} from "express";
-import {body, param, query} from "express-validator";
+import type { Application, NextFunction, Request, Response } from "express";
+import { body, param, query } from "express-validator";
 // @ts-ignore
 import * as csv from "fast-csv";
-import type {JwtPayload} from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
-import sequelize, {Op} from "sequelize";
-import LabelPaths from "../../classifications/label_paths.json" assert {type: "json"};
+import sequelize, { Op } from "sequelize";
+import LabelPaths from "../../classifications/label_paths.json" assert { type: "json" };
 
-import {AuthorizationError, BadRequestError, ClientError, FatalError,} from "../customErrors.js";
+import {
+  AuthorizationError,
+  BadRequestError,
+  ClientError,
+  FatalError,
+} from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
+  fetchAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredRecordingById,
@@ -71,8 +84,15 @@ import {
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
 } from "../extract-middleware.js";
-import {expectedTypeOf, isIntArray, validateFields} from "../middleware.js";
-import {anyOf, booleanOf, idOf, integerOf, stringOf, validNameOf,} from "../validation-middleware.js";
+import { expectedTypeOf, isIntArray, validateFields } from "../middleware.js";
+import {
+  anyOf,
+  booleanOf,
+  idOf,
+  integerOf,
+  stringOf,
+  validNameOf,
+} from "../validation-middleware.js";
 
 import {
   addTag,
@@ -86,17 +106,17 @@ import {
   reportVisits,
   signedToken,
 } from "./recordingUtil.js";
-import {serverErrorResponse, successResponse} from "./responseUtil.js";
-import {streamS3Object} from "@api/V1/signedUrl.js";
+import { serverErrorResponse, successResponse } from "./responseUtil.js";
+import { streamS3Object } from "@api/V1/signedUrl.js";
 import fs from "fs/promises";
 import {
   uploadGenericRecordingFromDevice,
   uploadGenericRecordingOnBehalfOfDevice,
 } from "@api/fileUploaders/uploadGenericRecording.js";
-import {trackIsMasked} from "@api/V1/trackMasking.js";
-import type {TrackId} from "@typedefs/api/common.js";
-import {format} from "util";
-import {asyncLocalStorage} from "@/Globals.js";
+import { trackIsMasked } from "@api/V1/trackMasking.js";
+import type { RecordingId, TrackId } from "@typedefs/api/common.js";
+import { format } from "util";
+import { asyncLocalStorage } from "@/Globals.js";
 
 const models = await modelsInit();
 
@@ -147,7 +167,10 @@ const mapTrackTags = (
   return t;
 };
 
-export const mapTrack = (track: Track, minimal: boolean = false): ApiTrackResponse => {
+export const mapTrack = (
+  track: Track,
+  minimal: boolean = false
+): ApiTrackResponse => {
   const t: ApiTrackResponse = {
     id: track.id,
     start: track.data.start_s,
@@ -166,8 +189,11 @@ export const mapTrack = (track: Track, minimal: boolean = false): ApiTrackRespon
   return t;
 };
 
-export const mapTracks = (tracks: Track[], minimal: boolean = false): ApiTrackResponse[] => {
-  const t = tracks.map(x => mapTrack(x, minimal));
+export const mapTracks = (
+  tracks: Track[],
+  minimal: boolean = false
+): ApiTrackResponse[] => {
+  const t = tracks.map((x) => mapTrack(x, minimal));
   // Sort tracks by start time
   t.sort((a, b) => a.start - b.start);
   return t;
@@ -227,6 +253,7 @@ const mapRecordingResponse = (
       deviceName: recording.Device?.deviceName,
       groupId: recording.GroupId,
       groupName: recording.Group?.groupName,
+      processing: recording.processing || false,
       processingState: recording.processingState,
       recordingDateTime: recording.recordingDateTime?.toISOString(),
       stationName: recording.Station?.name,
@@ -237,7 +264,6 @@ const mapRecordingResponse = (
     const comment = ifNotNull(recording.comment);
     const stationId = ifNotNull(recording.StationId);
     const redacted = ifNotNull(recording.redacted);
-    const processing = ifNotNull(recording.processing);
     const fileHash = ifNotNull(recording.rawFileHash);
     const mimeType = ifNotNull(recording.rawMimeType);
     if (comment) {
@@ -251,9 +277,6 @@ const mapRecordingResponse = (
     }
     if (mimeType) {
       commonRecording.rawMimeType = mimeType;
-    }
-    if (processing !== undefined) {
-      commonRecording.processing = processing;
     }
 
     if (cameraTypes.includes(recording.type)) {
@@ -470,7 +493,7 @@ export default (app: Application, baseUrl: string) => {
    * call will return an error.
    *
    * @apiParam {Integer} deviceId ID of the device to upload on behalf of. If
-   * you don't have access to the ID the deviceName can be used instead in it's
+   * you don't have access to the ID the deviceName can be used instead in its
    * place.
    * @apiQuery {Boolean} [only-active=false] operate only on active devices
    * @apiUse V1UserAuthorizationHeader
@@ -711,7 +734,7 @@ export default (app: Application, baseUrl: string) => {
         limit: request.query.limit,
         offset: request.query.offset,
         count: result.count,
-        rows: result.rows.map(x => mapRecordingResponse(x)),
+        rows: result.rows.map((x) => mapRecordingResponse(x)),
       });
     }
   );
@@ -1648,7 +1671,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1UserAuthorizationHeader
 
    * @apiParam {Integer} id Id of the recording to update.
-   * @apiBody {JSON} [updates] Data containg attributes for tag.
+   * @apiBody {JSON} [updates] Data containing attributes for tag.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -2050,7 +2073,7 @@ export default (app: Application, baseUrl: string) => {
    * Updates a Track Tag with new request body
    * @apiDescription Adds or Replaces track tag based off:
    * if tag already exists for this user, ignore request
-   * Add tag if it is an additional tag e.g. :Part"
+   * Add tag if it is an additional tag e.g. "Part"
    * Add tag if this user hasn't already tagged this track
    * Replace existing tag, if user has an existing animal tag
    * @apiName PatchTrackTag
@@ -2382,7 +2405,7 @@ export default (app: Application, baseUrl: string) => {
 
   app.get(
     `${apiUrl}/for-project/:projectId`,
-    //extractJwtAuthorizedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       idOf(param("projectId")),
       query("view-mode").optional().equals("user"),
@@ -2415,7 +2438,12 @@ export default (app: Application, baseUrl: string) => {
             TagMode.Any,
             TagMode.UnTagged,
             TagMode.Tagged,
-            TagMode.HumanOnly
+            TagMode.HumanOnly,
+            TagMode.NoHuman,
+            TagMode.HumanTagged,
+            TagMode.AutomaticallyTagged,
+            TagMode.AutomaticOnly,
+            TagMode.AutomaticHumanUrlSafe,
           ];
           const invalidTagMode = !allowedTagModes.includes(value as TagMode);
           if (invalidTagMode) {
@@ -2451,17 +2479,20 @@ export default (app: Application, baseUrl: string) => {
           return true;
         }),
     ]),
-    //fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
-    fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
+    fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
+    //fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const query = request.query;
         const hasTimeBound = query.from || query.until;
-        const tagMode = query['tag-mode'] as TagMode;
-        const taggedWith = tagMode === TagMode.UnTagged ? [] : (query["tagged-with"] as string[]) || [];
+        const tagMode = query["tag-mode"] as TagMode;
+        const taggedWith =
+          tagMode === TagMode.UnTagged
+            ? []
+            : (query["tagged-with"] as string[]) || [];
         const labelledWith = (query["labelled-with"] as string[]) || [];
 
-        const types = (query["types"] as string[] || []).map(x => {
+        const types = ((query["types"] as string[]) || []).map((x) => {
           if (x === "thermal") {
             return "thermalRaw";
           }
@@ -2479,18 +2510,19 @@ export default (app: Application, baseUrl: string) => {
           recordingsWhere.type = { [Op.in]: types };
         }
         if (query.devices && query.devices.length) {
-          recordingsWhere.DeviceId = { [Op.in]: (query.devices as string[]).map(Number) };
+          recordingsWhere.DeviceId = {
+            [Op.in]: (query.devices as string[]).map(Number),
+          };
         }
         if (query.locations && query.locations.length) {
-          recordingsWhere.StationId = { [Op.in]: (query.locations as string[]).map(Number) };
+          recordingsWhere.StationId = {
+            [Op.in]: (query.locations as string[]).map(Number),
+          };
         }
         if (hasTimeBound) {
           if (query.from && query.until) {
             recordingsWhere.recordingDateTime = {
-              [Op.and]: [
-                { [Op.gte]: query.from },
-                { [Op.lt]: query.until },
-              ],
+              [Op.and]: [{ [Op.gte]: query.from }, { [Op.lt]: query.until }],
             };
           } else if (query.from) {
             recordingsWhere.recordingDateTime = { [Op.gte]: query.from };
@@ -2512,7 +2544,6 @@ export default (app: Application, baseUrl: string) => {
             ],
           });
         } else if (taggedWith.length !== 0) {
-          // TODO: Should we include other tag modes for completeness vs old API?
           // TagMode any or Tagged.
           recordingsWhere[Op.and].push({
             [Op.or]: [
@@ -2524,51 +2555,12 @@ export default (app: Application, baseUrl: string) => {
                     sequelize.where(
                       sequelize.col('"Tracks->TrackTags".path'),
                       "~",
-                      `*.${tag.replace(/-/g, '_')}.*`
+                      `*.${tag.replace(/-/g, "_")}.*`
                     )
                   )
                 : []),
             ],
           });
-
-          if (tagMode === TagMode.AutomaticallyTagged) {
-            recordingsWhere[Op.and].push(
-              sequelize.where(sequelize.col('"Tracks->TrackTags".automatic'), {
-                [Op.eq]: true,
-              })
-            );
-          } else if (tagMode === TagMode.AutomaticOnly) {
-            recordingsWhere[Op.and].push(
-                sequelize.where(sequelize.col('"Tracks->TrackTags".automatic'), {
-                  [Op.eq]: true,
-                })
-            );
-          } else if (tagMode === TagMode.HumanOnly) {
-            recordingsWhere[Op.and].push(
-                sequelize.where(sequelize.col('"Tracks->TrackTags".automatic'), {
-                  [Op.eq]: true,
-                })
-            );
-          } else if (tagMode === TagMode.HumanTagged) {
-            recordingsWhere[Op.and].push(
-                sequelize.where(sequelize.col('"Tracks->TrackTags".automatic'), {
-                  [Op.eq]: true,
-                })
-            );
-          } else if (tagMode === TagMode.NoHuman) {
-            recordingsWhere[Op.and].push(
-                sequelize.where(sequelize.col('"Tracks->TrackTags".automatic'), {
-                  [Op.eq]: true,
-                })
-            );
-          } else if (tagMode === TagMode.AutomaticHuman) {
-            recordingsWhere[Op.and].push(
-                sequelize.where(sequelize.col('"Tracks->TrackTags".automatic'), {
-                  [Op.eq]: true,
-                })
-            );
-          }
-
         }
         if (labelled) {
           recordingsWhere[Op.and].push(
@@ -2578,14 +2570,17 @@ export default (app: Application, baseUrl: string) => {
           );
         }
         let includeFilteredTracks = false;
-        if ((tagMode === TagMode.Any && query["include-false-positives"]) || tagMode === TagMode.UnTagged) {
+        if (
+          (tagMode === TagMode.Any && query["include-false-positives"]) ||
+          tagMode === TagMode.UnTagged
+        ) {
           includeFilteredTracks = true;
         }
         if (!includeFilteredTracks) {
           recordingsWhere[Op.and].push(
-              sequelize.where(sequelize.col('"Tracks".filtered'), {
-                [Op.eq]: false,
-              })
+            sequelize.where(sequelize.col('"Tracks".filtered'), {
+              [Op.eq]: false,
+            })
           );
         }
 
@@ -2628,7 +2623,14 @@ export default (app: Application, baseUrl: string) => {
                 {
                   model: models.TrackTag,
                   attributes: getAttributes
-                    ? ["what", "path", "UserId", "id", "automatic", "confidence"]
+                    ? [
+                        "what",
+                        "path",
+                        "UserId",
+                        "id",
+                        "automatic",
+                        "confidence",
+                      ]
                     : [],
                   subQuery: false,
                   required: tagged,
@@ -2668,21 +2670,34 @@ export default (app: Application, baseUrl: string) => {
         const sqlTimings: number[] = [];
         const now = performance.now();
 
-        // TODO: Finicky tagMode where we do select from [recId, automatic] with various criteria to get a recording count
+        // NOTE: Finicky (advanced) tagMode where we do select from [recId, automatic] with various criteria to get a recording count
         //  Basically in this mode we need to do our own recording count if requested
-        const finnikyTagMode = true;
+        const advancedTagMode = [
+          TagMode.HumanTagged,
+          TagMode.HumanOnly,
+          TagMode.AutomaticallyTagged,
+          TagMode.AutomaticOnly,
+          TagMode.AutomaticHumanUrlSafe,
+        ].includes(tagMode);
+
+        const noHumanTagMode = tagMode === TagMode.NoHuman;
+
         // TODO: If the limit is important, it seems like we could just query again here with adjusted date range
         //  until we get the number of records we're looking for?
-        const withTotalCount = query['with-total-count'];
+        const withTotalCount = query["with-total-count"];
+        const toInclude = getInclude(false);
         let firstPassAttributes: any[] = ["id"];
-        if (finnikyTagMode) {
-          firstPassAttributes = ["id", sequelize.col('"Tracks->TrackTags".automatic')];
+        if (advancedTagMode || noHumanTagMode) {
+          firstPassAttributes = [
+            "id",
+            sequelize.col('"Tracks->TrackTags".automatic'),
+          ];
         }
 
         const firstPass = {
           where: recordingsWhere,
           limit: 200,
-          include: getInclude(false),
+          include: toInclude,
           // NOTE: Turning off sub-queries here and forcing an inner join is important, as it makes queries > 10X faster.
           // Also note that this means we won't get back our `limit` recordings but it's better to do lots of smaller
           // fast incremental date range queries on the front-end rather than blocking on longer queries.
@@ -2695,46 +2710,176 @@ export default (app: Application, baseUrl: string) => {
             const dbQueryTime = store?.get("queryTime");
             store?.set("queryCount", dbQueryCount + 1);
             store?.set("queryTime", dbQueryTime + time);
-            sqlPasses.push(sqlFormat(
-                message.replace("Executed (default): ", ""),
-                {
-                  language: "postgresql",
-                }
-            ));
+            sqlPasses.push(
+              sqlFormat(message.replace("Executed (default): ", ""), {
+                language: "postgresql",
+              })
+            );
             sqlTimings.push(time);
           },
         } as any;
         if (withTotalCount) {
           firstPass.group = '"Recording".id';
         }
-        if (finnikyTagMode) {
-          firstPass.group = ['"Recording".id', '"Tracks->TrackTags".automatic'];
-        }
-
-
-        console.log("!!! FIRST PASS", firstPass.group, withTotalCount);
-        const result =
-          await models.Recording[withTotalCount && !finnikyTagMode ? "findAndCountAll" : "findAll"](firstPass);
-        let recordings;
+        const getRawSql = (inOptions: any, isAutomatic: boolean) => {
+          const options = sequelize.Utils.cloneDeep(inOptions);
+          options.include[1].include[0].where.automatic = isAutomatic;
+          delete options.limit;
+          delete options.order;
+          delete options.group;
+          const tableName: string =
+            models.Recording.getTableName() as unknown as string;
+          (models.Recording as any)._validateIncludedElements(options, {
+            [tableName]: true,
+          });
+          return (models.Recording as any).queryGenerator
+            .selectQuery(
+              models.Recording.getTableName(),
+              options,
+              models.Recording
+            )
+            .replace(";", "");
+        };
+        const getSelfJoinForTagMode = (
+          options,
+          tagMode: TagMode,
+          count: boolean = false
+        ) => {
+          const aSql = getRawSql(options, true);
+          const bSql = getRawSql(options, false);
+          let where = "";
+          switch (tagMode) {
+            case TagMode.HumanTagged:
+              where = "b.automatic = false";
+              break;
+            case TagMode.HumanOnly:
+              where = "a.automatic is null";
+              break;
+            case TagMode.AutomaticallyTagged:
+              where = "a.automatic = true";
+              break;
+            case TagMode.AutomaticOnly:
+            case TagMode.NoHuman:
+              where = "b.automatic is null";
+              break;
+            case TagMode.AutomaticHumanUrlSafe:
+              where = "a.automatic = true and b.automatic = false";
+              break;
+          }
+          if (count) {
+            return `
+              select count(distinct a.id) 
+              from 
+              (${aSql}) as a 
+              left join 
+              (${bSql}) as b 
+              on a.id = b.id 
+              where ${where}            
+            `;
+          } else {
+            return `
+              select distinct a.id 
+              from 
+              (${aSql}) as a 
+              left join 
+              (${bSql}) as b 
+              on a.id = b.id 
+              where ${where} 
+              limit 200
+            `;
+          }
+        };
+        let recordings: { id: RecordingId }[];
         let count = 0;
-        if (withTotalCount && !finnikyTagMode) {
-          const res = (result as unknown as { rows: Recording[]; count: { count: number }[] });
-          recordings = res.rows;
-          count = res.count.length;
+        if (noHumanTagMode) {
+          // No-Human aggregate mode: basically automatic-only + untagged
+          if (withTotalCount) {
+            const [countResult, recordingIds] = await Promise.all([
+              models.sequelize.query(
+                getSelfJoinForTagMode(firstPass, tagMode, true)
+              ),
+              models.sequelize.query(
+                getSelfJoinForTagMode(firstPass, tagMode, false)
+              ),
+            ]);
+            count = Number((countResult[0][0] as any).count);
+            recordings = recordingIds[0] as { id: number }[];
+          } else {
+            const recordingIds = await models.sequelize.query(
+              getSelfJoinForTagMode(firstPass, tagMode, false)
+            );
+            recordings = recordingIds[0] as { id: number }[];
+          }
+
+          // Get firstPass with tagMode: Untagged.
+          delete firstPass.include[1].where.filtered;
+          firstPass.attributes = ["id"];
+          firstPass.where[Op.and].pop();
+          firstPass.where[Op.and].push({
+            [Op.or]: [
+              sequelize.where(sequelize.col('"Tracks".id'), Op.eq, null),
+              sequelize.where(
+                sequelize.col('"Tracks->TrackTags".id'),
+                Op.eq,
+                null
+              ),
+            ],
+          });
+          {
+            const result = await models.Recording[
+              withTotalCount && !advancedTagMode ? "findAndCountAll" : "findAll"
+            ](firstPass);
+            if (withTotalCount) {
+              const res = result as unknown as {
+                rows: { id: RecordingId }[];
+                count: { count: number }[];
+              };
+              recordings = res.rows;
+              count += res.count.length;
+            } else {
+              recordings = recordings.concat(result as { id: RecordingId }[]);
+            }
+          }
+        } else if (!advancedTagMode) {
+          const result = await models.Recording[
+            withTotalCount && !advancedTagMode ? "findAndCountAll" : "findAll"
+          ](firstPass);
+          if (withTotalCount) {
+            const res = result as unknown as {
+              rows: { id: RecordingId }[];
+              count: { count: number }[];
+            };
+            recordings = res.rows;
+            count = res.count.length;
+          } else {
+            recordings = result as { id: RecordingId }[];
+          }
         } else {
-          recordings = result;
-        }
-        if (finnikyTagMode) {
-          // Consolidate recordings based on `automatic`
-          console.log("FINNIKY", recordings);
+          if (withTotalCount) {
+            const [countResult, recordingIds] = await Promise.all([
+              models.sequelize.query(
+                getSelfJoinForTagMode(firstPass, tagMode, true)
+              ),
+              models.sequelize.query(
+                getSelfJoinForTagMode(firstPass, tagMode, false)
+              ),
+            ]);
+            count = (countResult[0][0] as any).count;
+            recordings = recordingIds[0] as { id: number }[];
+          } else {
+            const recordingIds = await models.sequelize.query(
+              getSelfJoinForTagMode(firstPass, tagMode, false)
+            );
+            recordings = recordingIds[0] as { id: number }[];
+          }
         }
         let fullRecordings = [];
         if (recordings.length) {
-          const recordingIds = recordings.map(({id}) => id);
+          const recordingIds = recordings.map(({ id }) => id);
           // Now get all the recordings in the date range
           fullRecordings = await models.Recording.findAll({
             where: {
-              id: {[Op.in]: recordingIds},
+              id: { [Op.in]: recordingIds },
             },
             include: getInclude(true),
             // NOTE: Turning off sub-queries here and forcing an inner join is important, as it makes queries > 10X faster.
@@ -2751,11 +2896,9 @@ export default (app: Application, baseUrl: string) => {
               "processingState",
               "StationId",
               "type",
-              ...(types.length === 0 || types.includes(RecordingType.Audio) ? [
-                  "batteryLevel",
-                  "cacophonyIndex",
-                  "redacted"
-              ] : [])
+              ...(types.length === 0 || types.includes(RecordingType.Audio)
+                ? ["batteryLevel", "cacophonyIndex", "redacted"]
+                : []),
             ],
             order: [["recordingDateTime", "desc"]],
             logging: (message, time) => {
@@ -2764,21 +2907,20 @@ export default (app: Application, baseUrl: string) => {
               const dbQueryTime = store?.get("queryTime");
               store?.set("queryCount", dbQueryCount + 1);
               store?.set("queryTime", dbQueryTime + time);
-              sqlPasses.push(sqlFormat(
-                  message.replace("Executed (default): ", ""),
-                  {
-                    language: "postgresql",
-                  }
-              ));
+              sqlPasses.push(
+                sqlFormat(message.replace("Executed (default): ", ""), {
+                  language: "postgresql",
+                })
+              );
               sqlTimings.push(time);
             },
           });
         }
-        const recs = fullRecordings.map(x => mapRecordingResponse(x, true));
+        const recs = fullRecordings.map((x) => mapRecordingResponse(x, true));
         const sequelizeTime = performance.now() - now;
         if (!query.debug) {
           const data = {
-            recordings: recs
+            recordings: recs,
           };
           if (withTotalCount) {
             (data as any).count = count;

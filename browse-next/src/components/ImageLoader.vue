@@ -5,7 +5,7 @@ export default {
 };
 </script>
 <script lang="ts" setup>
-import {onMounted, ref, watch, type WatchStopHandle} from "vue";
+import { onMounted, ref, watch, type WatchStopHandle } from "vue";
 import { useIntersectionObserver } from "@vueuse/core";
 
 const props = withDefaults(

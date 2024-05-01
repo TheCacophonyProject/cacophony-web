@@ -82,10 +82,10 @@ declare namespace Cypress {
      * Adds a new user track tag to a recording.
      */
     testUserAddTagRecording(
-        recordingId: number,
-        trackIndex: number,
-        tagger: string,
-        tag: string
+      recordingId: number,
+      trackIndex: number,
+      tagger: string,
+      tag: string
     ): any;
 
     testAddRecordingsAtTimes(
