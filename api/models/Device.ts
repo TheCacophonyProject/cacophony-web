@@ -26,6 +26,7 @@ import type { User } from "./User.js";
 import type { Group } from "./Group.js";
 import type { Event } from "./Event.js";
 import logger from "../logging.js";
+import log from "@log";
 import { DeviceType } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
@@ -646,7 +647,25 @@ order by hour;
             Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
         async (t) => {
+          const conflictingDevice = await models.Device.findOne({
+            where: {
+              deviceName: newName,
+              GroupId: newGroup.id,
+            },
+            transaction: t,
+          });
           if (reassign) {
+            if (
+              conflictingDevice !== null &&
+              conflictingDevice.id !== this.id &&
+              !conflictingDevice.active
+            ) {
+              // rename the conflicting device
+              await conflictingDevice.update(
+                { deviceName: `${newName}_old` },
+                { transaction: t }
+              );
+            }
             await this.update(
               {
                 deviceName: newName,
@@ -659,15 +678,8 @@ order by hour;
             );
             newDevice = this;
           } else {
-            const conflictingDevice = await models.Device.findOne({
-              where: {
-                deviceName: newName,
-                GroupId: newGroup.id,
-              },
-              transaction: t,
-            });
             if (conflictingDevice !== null) {
-              logger.warning("Got conflicting device %s", conflictingDevice);
+              logger.warn("Got conflicting device %s", conflictingDevice);
               throw new Error();
             }
             await this.update({ active: false }, { transaction: t });
@@ -725,6 +737,7 @@ order by hour;
         }
       );
     } catch (e) {
+      logger.error("Failed to re-register device %s: %s", this.deviceName, e);
       return false;
     }
     return newDevice;
