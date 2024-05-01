@@ -647,7 +647,25 @@ order by hour;
             Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
         async (t) => {
+          const conflictingDevice = await models.Device.findOne({
+            where: {
+              deviceName: newName,
+              GroupId: newGroup.id,
+            },
+            transaction: t,
+          });
           if (reassign) {
+            if (
+              conflictingDevice !== null &&
+              conflictingDevice.id !== this.id &&
+              !conflictingDevice.active
+            ) {
+              // rename the conflicting device
+              await conflictingDevice.update(
+                { deviceName: `${newName}_old` },
+                { transaction: t }
+              );
+            }
             await this.update(
               {
                 deviceName: newName,
@@ -660,13 +678,6 @@ order by hour;
             );
             newDevice = this;
           } else {
-            const conflictingDevice = await models.Device.findOne({
-              where: {
-                deviceName: newName,
-                GroupId: newGroup.id,
-              },
-              transaction: t,
-            });
             if (conflictingDevice !== null) {
               logger.warn("Got conflicting device %s", conflictingDevice);
               throw new Error();
