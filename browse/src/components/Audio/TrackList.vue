@@ -107,7 +107,7 @@
                   ['aihuman-tag']: tag.class === 'confirmed',
                   ['human-tag']: tag.class === 'human',
                 }"
-                v-b-tooltip.hover
+                v-b-tooltip.hover.top="{ customClass: 'tooltip-below' }"
                 :title="`${
                   tag.class === 'human'
                     ? 'Tagged by human'
@@ -118,21 +118,32 @@
                     : ''
                 }`"
               >
-                <font-awesome-icon
-                  v-if="['denied', 'automatic'].includes(tag.class)"
-                  icon="cog"
-                  size="xs"
-                />
-                <font-awesome-icon
-                  v-else-if="tag.class === 'human'"
-                  icon="user"
-                  size="xs"
-                />
-                <font-awesome-icon
-                  v-else-if="tag.class === 'confirmed'"
-                  icon="user-cog"
-                  size="xs"
-                />
+                <b-button
+                  v-if="track.displayTags.length > 1 && tag.automatic"
+                  @click.prevent="() => confirmTrack(track, tag)"
+                  variant="outline-light"
+                  class="p-1 no-border"
+                  size="sm"
+                >
+                  <font-awesome-icon
+                    v-if="['denied', 'automatic'].includes(tag.class)"
+                    icon=""
+                    size="xs"
+                  />
+                  <font-awesome-icon
+                    v-else-if="tag.class === 'human'"
+                    icon="user"
+                    size="xs"
+                  />
+                  <font-awesome-icon
+                    v-else-if="tag.class === 'confirmed'"
+                    icon="user-cog"
+                    size="xs"
+                  />
+
+                  <b-spinner v-if="track.confirming" variant="success" small />
+                  <font-awesome-icon v-else icon="thumbs-up" />
+                </b-button>
                 <span class="pl-1">
                   {{ tag.what }}
                 </span>
@@ -143,17 +154,23 @@
             <div class="d-flex align-items-center">
               <b-button
                 v-if="
-                  track.displayTags.some(
+                  track.displayTags.filter(
                     (tag) =>
                       tag.class === 'automatic' ||
                       (tag.class === 'confirmed' &&
                         !track.tags.some((t) => t.userName === userName))
-                  ) && !redacted
+                  ).length == 1 && !redacted
                 "
                 variant="outline-success"
                 class="p-1"
                 size="sm"
-                @click.prevent="() => confirmTrack(track)"
+                @click.stop="
+                  () =>
+                    confirmTrack(
+                      track,
+                      track.displayTags.find((tag) => tag.automatic)
+                    )
+                "
               >
                 <b-spinner v-if="track.confirming" variant="success" small />
                 <font-awesome-icon v-else icon="thumbs-up" />
@@ -343,8 +360,8 @@ export default defineComponent({
     },
   },
   setup(props) {
-    const confirmTrack = async (track: AudioTrack) => {
-      const tag = track.tags.find((t) => t.automatic);
+    const confirmTrack = async (track: AudioTrack, tag: DisplayTag) => {
+      // const tag = track.displayTags.find((t) => t.automatic);
       if (!tag) {
         return;
       }
@@ -609,5 +626,11 @@ export default defineComponent({
 .undo-button {
   display: flex;
   min-height: 90px;
+}
+.no-border {
+  border: none;
+}
+.tooltip-below {
+  top: 40px !important;
 }
 </style>

@@ -364,10 +364,13 @@ import {
 } from "@typedefs/api/trackTag";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
-import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { getClassifications } from "../ClassificationsDropdown.vue";
+import ClassificationsDropdown from "../ClassificationsDropdown.vue";
+
+import { Option } from "./LayeredDropdown.vue";
 
 export enum TagClass {
   Automatic = "automatic",
@@ -423,6 +426,8 @@ export default defineComponent({
     Help,
   },
   setup(props, context) {
+    const options = ref<Option>({ label: "", children: [] });
+
     const userName = store.state.User.userData.userName;
     const userId = store.state.User.userData.id;
     const [url, setUrl] = useState(
@@ -503,9 +508,31 @@ export default defineComponent({
 
     const isGroupAdmin = ref(false);
     const filterHuman = ref(false);
+    // const ignored_parents = ["bird","mammal"]
+
+    const flattenNodes = (
+      acc: Record<
+        string,
+        { label: string; display: string; parents: string[] }
+      >,
+      node: Option,
+      parents: string[]
+    ) => {
+      for (const child of node.children || []) {
+        acc[child.label] = {
+          label: child.label,
+          display: child.display || child.label,
+          parents: [...parents],
+        };
+        flattenNodes(acc, child, [...acc[child.label].parents, child.label]);
+      }
+      return acc;
+    };
 
     const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
-      const automaticTags = track.tags.filter(
+      const labelToParent = {};
+      const classifications = flattenNodes(labelToParent, options.value, []);
+      let automaticTags = track.tags.filter(
         (tag) => tag.automatic && tag.data.name === "Master"
       );
       const humanTags = track.tags.filter((tag) => !tag.automatic);
@@ -521,11 +548,77 @@ export default defineComponent({
                 return { ...humanTags[0], what: "Multiple" };
               }
             });
-      if (automaticTags) {
-        if (humanTags.length > 0) {
-          const confirmedTag = humanTags.find((tag) =>
-            automaticTags.find((autoTag) => autoTag.what === tag.what)
+
+      if (automaticTags && automaticTags.length > 0) {
+        if (automaticTags.length > 1 && humanTags.length == 0) {
+          // filter common ancestors and only leave more specific ai tags
+          // for(let i=0; i < automaticTags.length; i++){
+          //   console.log("Checking ",automaticTags[i].what);
+          //   for(let j=0; j < automaticTags.length; j++){
+          //     if (j== i){
+          //       continue
+          //     }
+          //     console.log("Checking parents of ",automaticTags[j].what,labelToParent[automaticTags[j].what].parents);
+          //     let moreSpecific = labelToParent[automaticTags[j].what].parents.find((parent)=> parent === automaticTags[i].what);
+          //     console.log("more specific exists",moreSpecific);
+
+          //   }
+          // }
+
+          automaticTags = automaticTags.filter(
+            (tag) =>
+              !automaticTags.find(
+                (others) =>
+                  others != tag &&
+                  others.what in labelToParent &&
+                  labelToParent[others.what].parents.find(
+                    (parent) => parent === tag.what
+                  )
+              )
           );
+        }
+        automaticTags.sort((a, b) => {
+          if (a.what === "bird") {
+            return 2;
+          } else if (b.what === "bird") {
+            return -2;
+          }
+          return a.what <= b.what ? -1 : 1;
+        });
+
+        if (humanTags.length > 0) {
+          const confirmedTags = humanTags.filter(
+            (tag) =>
+              automaticTags.filter(
+                (autoTag) =>
+                  autoTag.what === tag.what ||
+                  (tag.what !== "bird" &&
+                    tag.what in labelToParent &&
+                    automaticTags.find(
+                      (autoTag) =>
+                        autoTag.what in labelToParent &&
+                        labelToParent[autoTag.what].parents.length > 0 &&
+                        tag.what in labelToParent &&
+                        labelToParent[tag.what].parents.find(
+                          (parent) => parent === autoTag.what
+                        )
+                    ))
+              ).length > 0
+          );
+
+          const confirmedTag =
+            confirmedTags.length === 1
+              ? confirmedTags[0]
+              : confirmedTags.length === 0
+              ? null
+              : confirmedTags.reduce((acc, curr) => {
+                  if (acc.what === curr.what) {
+                    return curr;
+                  } else {
+                    return { ...confirmedTags[0], what: "Multiple" };
+                  }
+                });
+
           if (confirmedTag) {
             return [
               {
@@ -534,6 +627,13 @@ export default defineComponent({
               },
             ];
           } else {
+            // automaticTags = automaticTags.filter((autoTag) =>
+            //            humanTag.what in labelToParent &&
+            //           !labelToParent[humanTag.what].parents.find(
+            //             (parent) => parent === autoTag.what
+            //           )
+            //       );
+
             // check if all human tags are the same
             return [
               {
@@ -569,6 +669,7 @@ export default defineComponent({
       index: number
     ): AudioTrack => {
       const displayTags = getDisplayTags(track);
+
       return {
         deleted: false,
         colour: TagColours[index % TagColours.length],
@@ -1079,6 +1180,8 @@ export default defineComponent({
     };
 
     onMounted(async () => {
+      options.value = (await getClassifications()) as Option;
+
       buffer.value = await fetchAudioBuffer(url.value);
       const response = await api.groups.getGroupById(props.recording.groupId);
       if (response.success) {

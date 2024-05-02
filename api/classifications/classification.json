@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "adbe5f23-89ec-42ff-bc36-d7b79915a5ef",
+  "version": "adbe5a23-89ec-42ff-bc36-d8b79915a5ea",
   "children": [
     {
       "label": "mammal",
@@ -523,9 +523,6 @@
           ]
         },
         {
-          "label": "golden whistler"
-        },
-        {
           "label": "goldfinch",
           "children": [
             {
@@ -861,7 +858,15 @@
           "label": "norfolk gerygone"
         },
         {
-          "label": "norfolk golden whistler"
+          "label": "whistler",
+          "children":[
+            {
+              "label": "golden whistler"
+            },
+            {
+              "label": "norfolk golden whistler"
+            }
+          ]
         },
         {
           "label": "norfolk silkeye"
