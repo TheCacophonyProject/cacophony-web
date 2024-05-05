@@ -1340,7 +1340,7 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${apiUrl}/:id/mask-regions`,
-    extractJwtAuthorizedUser,
+    extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
@@ -1393,7 +1393,7 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${apiUrl}/:id/settings`,
-    extractJwtAuthorizedUser,
+    extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
