@@ -42,12 +42,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const basename = path.basename(__filename);
 const dbConfig = config.database;
-const IS_DEBUG = true; // config.server.loggerLevel === "debug";
+const IS_DEBUG = config.server.loggerLevel === "debug";
 // Have sequelize send us query execution timings
 dbConfig.benchmark = IS_DEBUG;
 
+// NOTE: Currently outputting slow queries and timings on production.
 // Send logs via winston
-(dbConfig as any).logging = IS_DEBUG
+// eslint-disable-next-line no-constant-condition
+(dbConfig as any).logging = (IS_DEBUG || true)
   ? async (msg: string, timeMs: number) => {
       // Sequelize seems to happen in its own async context?
       const store = asyncLocalStorage.getStore() as Map<string, any>;
@@ -59,7 +61,7 @@ dbConfig.benchmark = IS_DEBUG;
       store?.set("queryTime", requestQueryTime);
       if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
         log.warning("Slow query: %s [%d]ms", msg, timeMs);
-      } else {
+      } else if (IS_DEBUG) {
         log.info(
           "QUERY %dms\n\t\t %s",
           timeMs,
