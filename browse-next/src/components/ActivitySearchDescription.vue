@@ -187,7 +187,7 @@ const otherLabels = computed<string[]>(
           searchParams.tagMode == TagMode.Any
         "
         >, excluding those with no tracks, or that are only tagged as
-        <strong class="fw-semibold text-capitalize">false positive</strong>
+        <strong class="fw-semibold text-capitalize">false trigger</strong>
       </span>
       <span v-if="otherLabels.length"
         >, labelled with

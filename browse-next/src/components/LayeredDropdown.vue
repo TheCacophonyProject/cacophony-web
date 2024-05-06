@@ -368,8 +368,8 @@ defineExpose({
       >
         <div
           class="options-list-item d-flex justify-content-between"
-          :key="option.label"
-          v-for="option in displayedOptions"
+          :key="index"
+          v-for="(option, index) in displayedOptions"
         >
           <button
             class="options-list-label btn text-start text-capitalize"
