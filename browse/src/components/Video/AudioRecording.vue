@@ -587,6 +587,7 @@ export default defineComponent({
         });
 
         if (humanTags.length > 0) {
+          //tags which match or, matches an ai tag which is a parent of this tag but not a top level tag
           const confirmedTags = humanTags.filter(
             (tag) =>
               automaticTags.filter(
@@ -627,12 +628,14 @@ export default defineComponent({
               },
             ];
           } else {
-            // automaticTags = automaticTags.filter((autoTag) =>
-            //            humanTag.what in labelToParent &&
-            //           !labelToParent[humanTag.what].parents.find(
-            //             (parent) => parent === autoTag.what
-            //           )
-            //       );
+            //filter any that aren't more specific of the human tag
+            automaticTags = automaticTags.filter(
+              (autoTag) =>
+                autoTag.what in labelToParent &&
+                labelToParent[autoTag.what].parents.find(
+                  (parent) => parent === humanTag.what
+                )
+            );
 
             // check if all human tags are the same
             return [
