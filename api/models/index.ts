@@ -49,31 +49,32 @@ dbConfig.benchmark = IS_DEBUG;
 // NOTE: Currently outputting slow queries and timings on production.
 // Send logs via winston
 // eslint-disable-next-line no-constant-condition
-(dbConfig as any).logging = (IS_DEBUG || true)
-  ? async (msg: string, timeMs: number) => {
-      // Sequelize seems to happen in its own async context?
-      const store = asyncLocalStorage.getStore() as Map<string, any>;
-      let requestQueryCount = store?.get("queryCount") || 0;
-      requestQueryCount++;
-      store?.set("queryCount", requestQueryCount);
-      let requestQueryTime = store?.get("queryTime") || 0;
-      requestQueryTime += timeMs;
-      store?.set("queryTime", requestQueryTime);
-      if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
-        log.warning("Slow query: %s [%d]ms", msg, timeMs);
-      } else if (IS_DEBUG) {
-        log.info(
-          "QUERY %dms\n\t\t %s",
-          timeMs,
-          msg
-            .replace("Executed (default): ", "")
-            .replace(/\n/g, "")
-            .replace(/\t/, " ")
-            .replace(/\s+/g, " ")
-        );
+(dbConfig as any).logging =
+  IS_DEBUG || true
+    ? async (msg: string, timeMs: number) => {
+        // Sequelize seems to happen in its own async context?
+        const store = asyncLocalStorage.getStore() as Map<string, any>;
+        let requestQueryCount = store?.get("queryCount") || 0;
+        requestQueryCount++;
+        store?.set("queryCount", requestQueryCount);
+        let requestQueryTime = store?.get("queryTime") || 0;
+        requestQueryTime += timeMs;
+        store?.set("queryTime", requestQueryTime);
+        if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
+          log.warning("Slow query: %s [%d]ms", msg, timeMs);
+        } else if (IS_DEBUG) {
+          log.info(
+            "QUERY %dms\n\t\t %s",
+            timeMs,
+            msg
+              .replace("Executed (default): ", "")
+              .replace(/\n/g, "")
+              .replace(/\t/, " ")
+              .replace(/\s+/g, " ")
+          );
+        }
       }
-    }
-  : false;
+    : false;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface ModelCommon<T> extends Sequelize.Model {
