@@ -117,87 +117,16 @@ export interface QueryRecordingsOptions {
 }
 
 export interface BulkRecordingsResponse {
-  rows: ApiRecordingResponse[];
-  limit: number;
-  count: number;
+  recordings: ApiRecordingResponse[];
+  count?: number;
 }
-
-export const queryRecordingsInProject = (
-  projectId: ProjectId,
-  options: QueryRecordingsOptions
-): Promise<FetchResult<BulkRecordingsResponse>> => {
-  // FIXME: Implement guard on types
-
-  const params = new URLSearchParams();
-  if (options.limit) {
-    params.append("limit", options.limit.toString());
-  }
-  if (options.taggedWith) {
-    params.append("tags", JSON.stringify(options.taggedWith));
-  }
-  const where: any = {
-    GroupId: projectId,
-  };
-  if (options.devices) {
-    where.DeviceId = options.devices;
-  }
-  if (options.locations) {
-    where.StationId = options.locations;
-  }
-  if (options.fromDateTime) {
-    where.recordingDateTime = where.recordingDateTime || {};
-    where.recordingDateTime["$gte"] = options.fromDateTime.toISOString();
-  }
-  if (options.untilDateTime) {
-    where.recordingDateTime = where.recordingDateTime || {};
-    where.recordingDateTime["$lte"] = options.untilDateTime.toISOString();
-  }
-  if (!options.durationMinSecs) {
-    options.durationMinSecs = 2.5; // Make sure we ignore status recordings
-  }
-
-  where.duration = where.duration || {};
-  where.duration["$gte"] = options.durationMinSecs;
-  if (options.durationMaxSecs) {
-    where.duration["$lte"] = Math.max(
-      options.durationMaxSecs,
-      options.durationMinSecs
-    );
-  }
-
-  // Do we want this, or do we want to show processing recordings?
-  // params.append("processingState", RecordingProcessingState.Finished);
-
-  // TODO: We might want to count-all the first time.
-  params.append("countAll", (options.countAll || false).toString());
-  params.append("tagMode", options.tagMode || TagMode.Any);
-  if (options.tagMode && options.tagMode !== TagMode.Any) {
-    params.append("filterModel", "Master");
-  }
-  params.append("limit", (options.limit && options.limit.toString()) || "30");
-  params.append(
-    "hideFiltered",
-    (!options.includeFilteredFalsePositivesAndNones).toString()
-  );
-
-  // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
-  //  or we need to hold onto the pagination value.
-
-  if (Object.values(where).length) {
-    params.append("where", JSON.stringify(where));
-  }
-  //return unwrapLoadedResource(
-  return CacophonyApi.get(`/api/v1/recordings?${params}`) as Promise<
-    FetchResult<{ rows: ApiRecordingResponse[]; limit: number; count: number }>
-  >;
-  //"rows"
-  //);
-};
 
 export const queryRecordingsInProjectNew = (
   projectId: ProjectId,
   options: QueryRecordingsOptions
-): Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>> => {
+): Promise<
+  FetchResult<{ recordings: ApiRecordingResponse[]; count?: number }>
+> => {
   const params = new URLSearchParams();
   if (options.taggedWith) {
     for (const tag of options.taggedWith) {
@@ -224,6 +153,9 @@ export const queryRecordingsInProjectNew = (
   }
   if (options.untilDateTime) {
     params.append("until", options.untilDateTime.toISOString());
+  }
+  if (options.countAll) {
+    params.append("with-total-count", true.toString());
   }
   // Do we want this, or do we want to show processing recordings?
   // params.append("processingState", RecordingProcessingState.Finished);
@@ -300,10 +232,10 @@ export const getRecordingsForLocationsAndDevicesInProject = (
     options.taggedWith = tags;
   }
   return unwrapLoadedResource(
-    queryRecordingsInProject(projectId, options) as Promise<
+    queryRecordingsInProjectNew(projectId, options) as Promise<
       WrappedFetchResult<ApiRecordingResponse[]>
     >,
-    "rows"
+    "recordings"
   );
 };
 
@@ -316,19 +248,19 @@ export const getAllRecordingsForProjectBetweenTimes = async (
   const recordings = [];
   let moreRecordingsToLoad = true;
 
-  const countResponse = await queryRecordingsInProject(projectId, {
+  const countResponse = await queryRecordingsInProjectNew(projectId, {
     ...query,
     limit: 1,
     countAll: true,
   });
   if (countResponse.success) {
-    const countEstimate = countResponse.result.count;
+    const countEstimate = countResponse.result.count as number;
     while (moreRecordingsToLoad) {
-      const response = await queryRecordingsInProject(projectId, query);
+      const response = await queryRecordingsInProjectNew(projectId, query);
       if (response.success) {
         const result = response.result;
-        moreRecordingsToLoad = result.count === result.limit;
-        recordings.push(...result.rows);
+        moreRecordingsToLoad = result.count === query.limit;
+        recordings.push(...result.recordings);
         if (recordings.length) {
           //debugger;
           query.untilDateTime = new Date(

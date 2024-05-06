@@ -31,7 +31,6 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
   type BulkRecordingsResponse,
   getAllRecordingsForProjectBetweenTimes,
-  queryRecordingsInProject,
   queryRecordingsInProjectNew,
   type QueryRecordingsOptions,
 } from "@api/Recording";
@@ -981,26 +980,27 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
     if (isNewQuery) {
       resetQuery(queryHash, fromDateTime, untilDateTime);
-      if (inRecordingsMode.value) {
-        // Load total recording count for query lazily, so we
-        // don't lock the main rendering query.
-        queryRecordingsInProject(project.id, {
-          ...query,
-          limit: 1,
-          countAll: true,
-          fromDateTime,
-          untilDateTime,
-        }).then((response) => {
-          if (response.success) {
-            currentQueryCount.value = response.result.count;
-          } else {
-            currentQueryCount.value = null;
-          }
-        });
-      } else {
-        currentQueryCount.value = null;
-      }
+      // if (inRecordingsMode.value) {
+      //   // Load total recording count for query lazily, so we
+      //   // don't lock the main rendering query.
+      //   queryRecordingsInProjectNew(project.id, {
+      //     ...query,
+      //     limit: 1,
+      //     countAll: true,
+      //     fromDateTime,
+      //     untilDateTime,
+      //   }).then((response) => {
+      //     if (response.success) {
+      //       currentQueryCount.value = response.result.count;
+      //     } else {
+      //       currentQueryCount.value = null;
+      //     }
+      //   });
+      // } else {
+      //   currentQueryCount.value = null;
+      // }
     }
+    // TODO: Make this add the count to the first query, rather than doing two queries?
     const hasNotLoadedAllOfQueryTimeRange =
       currentQueryCursor.value.fromDateTime <
       currentQueryCursor.value.untilDateTime;
@@ -1013,10 +1013,14 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (inRecordingsMode.value) {
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
+          countAll: isNewQuery,
           limit: twoPagesWorth,
           fromDateTime: currentQueryCursor.value.fromDateTime,
           untilDateTime: currentQueryCursor.value.untilDateTime,
         });
+        if (response.success && response.result.count) {
+          currentQueryCount.value = response.result.count;
+        }
       } else {
         // Else visits
         console.log(
@@ -1550,10 +1554,10 @@ const shouldShowSearchControlsInline = computed<boolean>(
           :available-date-ranges="availableDateRanges"
           :search-params="searchParams"
         />
-        <div v-if="currentQueryCount === undefined">
-          Loading totals...
-          <b-spinner />
-        </div>
+        <!--        <div v-if="currentQueryCount === undefined">-->
+        <!--          Loading totals...-->
+        <!--          <b-spinner />-->
+        <!--        </div>-->
         <!--        <div v-else-if="currentQueryCount || currentQueryCount === 0">-->
         <!--          Loaded {{ currentQueryLoaded }} / Total {{ currentQueryCount }}-->
         <!--        </div>-->

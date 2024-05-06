@@ -289,7 +289,6 @@ export async function saveThumbnailInfo(
     log.warning(`No thumbnails to be made for ${recording.id}`);
     return;
   }
-  let thumb;
   let frames;
   if (recording.type == RecordingType.InfraredVideo) {
     frames = await getIRFrame(recording, frameNumbers);
@@ -298,7 +297,7 @@ export async function saveThumbnailInfo(
     }
   } else {
     frames = await getCPTVFrames(recording, frameNumbers);
-    log.error("GOT CPTV Frames %s", Object.values(frames).length);
+    log.info("Got %s CPTV Frame(s)", Object.values(frames).length);
     if (!frames) {
       throw new Error(`Failed to extract frames ${frameNumbers}`);
     }

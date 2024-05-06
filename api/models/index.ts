@@ -44,7 +44,7 @@ const basename = path.basename(__filename);
 const dbConfig = config.database;
 const IS_DEBUG = config.server.loggerLevel === "debug";
 // Have sequelize send us query execution timings
-dbConfig.benchmark = IS_DEBUG;
+dbConfig.benchmark = true;
 
 // NOTE: Currently outputting slow queries and timings on production.
 // Send logs via winston
