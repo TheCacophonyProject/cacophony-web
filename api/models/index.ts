@@ -48,8 +48,9 @@ dbConfig.benchmark = IS_DEBUG;
 
 // NOTE: Currently outputting slow queries and timings on production.
 // Send logs via winston
-// eslint-disable-next-line no-constant-condition
+
 (dbConfig as any).logging =
+  // eslint-disable-next-line no-constant-condition
   IS_DEBUG || true
     ? async (msg: string, timeMs: number) => {
         // Sequelize seems to happen in its own async context?
