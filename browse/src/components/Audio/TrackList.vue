@@ -168,7 +168,12 @@
                   () =>
                     confirmTrack(
                       track,
-                      track.displayTags.find((tag) => tag.automatic)
+                      track.displayTags.find(
+                        (tag) =>
+                          tag.class === 'automatic' ||
+                          (tag.class === 'confirmed' &&
+                            !track.tags.some((t) => t.userName === userName))
+                      )
                     )
                 "
               >
@@ -361,6 +366,7 @@ export default defineComponent({
   },
   setup(props) {
     const confirmTrack = async (track: AudioTrack, tag: DisplayTag) => {
+      console.log("Cofirming", track, tag);
       // const tag = track.displayTags.find((t) => t.automatic);
       if (!tag) {
         return;
