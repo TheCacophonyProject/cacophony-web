@@ -244,7 +244,9 @@ const displayedOptions = computed<Classification[]>(() => {
   if (searchTerm.value && searchTerm.value.trim()) {
     // Get all the options that relate to the search term.
     const searchResults = searchOptions(
-      props.options.children as Classification[]
+      (props.options.children as Classification[]).filter(
+        (item) => item.label !== "animal"
+      )
     );
     if (searchResults.length !== 0) {
       return searchResults;
