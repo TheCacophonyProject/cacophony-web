@@ -470,14 +470,15 @@ export const getDisplayTags = (
           })),
         ];
       } else {
+        //might want another way of showing this information
         //filter any that aren't more specific of the human tag
-        automaticTags = automaticTags.filter(
-          (autoTag) =>
-            autoTag.what in labelToParent &&
-            labelToParent[autoTag.what].parents.find((parent) =>
-              reducedHuman.find((humanTag) => parent === humanTag.what)
-            )
-        );
+        //automaticTags = automaticTags.filter(
+        // (autoTag) =>
+        //    autoTag.what in labelToParent &&
+        //    labelToParent[autoTag.what].parents.find((parent) =>
+        //      reducedHuman.find((humanTag) => parent === humanTag.what)
+        //    )
+        //);
 
         // check if all human tags are the same
         return [
@@ -485,10 +486,10 @@ export const getDisplayTags = (
             ...humanTag,
             class: TagClass.Human,
           })),
-          ...automaticTags.map((automaticTag) => ({
-            ...automaticTag,
-            class: TagClass.Denied,
-          })),
+          //...automaticTags.map((automaticTag) => ({
+          //  ...automaticTag,
+          //  class: TagClass.Denied,
+          // })),
         ];
       }
     } else {
