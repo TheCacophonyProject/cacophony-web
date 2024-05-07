@@ -371,6 +371,7 @@ import { getClassifications } from "../ClassificationsDropdown.vue";
 import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 
 import { Option } from "./LayeredDropdown.vue";
+import { reduce } from "lodash";
 
 const flattenNodes = (
   acc: Record<string, { label: string; display: string; parents: string[] }>,
@@ -395,38 +396,20 @@ export const getDisplayTags = (
   const labelToParent = {};
   const classifications = flattenNodes(labelToParent, options, []);
   let automaticTags = track.tags.filter(
-    (tag) => tag.automatic && (tag.data ==="Master" || tag.data.name === "Master")
+    (tag) =>
+      tag.automatic &&
+      ((tag.data as any) === "Master" || tag.data.name === "Master")
   );
   const humanTags = track.tags.filter((tag) => !tag.automatic);
-  const humanTag =
-    humanTags.length === 1
-      ? humanTags[0]
-      : humanTags.length === 0
-      ? null
-      : humanTags.reduce((acc, curr) => {
-          if (acc.what === curr.what) {
-            return curr;
-          } else {
-            return { ...humanTags[0], what: "Multiple" };
-          }
-        });
-      console.log("Human tag becomes ",humanTag);
+  const reducedHuman = [];
+  humanTags.forEach((humanTag) => {
+    if (!reducedHuman.find((tag) => tag.what === humanTag.what)) {
+      reducedHuman.push(humanTag);
+    }
+  });
+
   if (automaticTags && automaticTags.length > 0) {
     if (automaticTags.length > 1 && humanTags.length == 0) {
-      // filter common ancestors and only leave more specific ai tags
-      // for(let i=0; i < automaticTags.length; i++){
-      //   console.log("Checking ",automaticTags[i].what);
-      //   for(let j=0; j < automaticTags.length; j++){
-      //     if (j== i){
-      //       continue
-      //     }
-      //     console.log("Checking parents of ",automaticTags[j].what,labelToParent[automaticTags[j].what].parents);
-      //     let moreSpecific = labelToParent[automaticTags[j].what].parents.find((parent)=> parent === automaticTags[i].what);
-      //     console.log("more specific exists",moreSpecific);
-
-      //   }
-      // }
-
       automaticTags = automaticTags.filter(
         (tag) =>
           !automaticTags.find(
@@ -439,6 +422,16 @@ export const getDisplayTags = (
           )
       );
     }
+
+    reducedHuman.sort((a, b) => {
+      if (a.what === "bird") {
+        return 2;
+      } else if (b.what === "bird") {
+        return -2;
+      }
+      return a.what <= b.what ? -1 : 1;
+    });
+
     automaticTags.sort((a, b) => {
       if (a.what === "bird") {
         return 2;
@@ -450,7 +443,7 @@ export const getDisplayTags = (
 
     if (humanTags.length > 0) {
       //tags which match or, matches an ai tag which is a parent of this tag but not a top level tag
-      const confirmedTags = humanTags.filter(
+      const confirmedTags = reducedHuman.filter(
         (tag) =>
           automaticTags.filter(
             (autoTag) =>
@@ -469,42 +462,42 @@ export const getDisplayTags = (
           ).length > 0
       );
 
-      const confirmedTag =
-        confirmedTags.length === 1
-          ? confirmedTags[0]
-          : confirmedTags.length === 0
-          ? null
-          : confirmedTags.reduce((acc, curr) => {
-              if (acc.what === curr.what) {
-                return curr;
-              } else {
-                return { ...confirmedTags[0], what: "Multiple" };
-              }
-            });
+      // const confirmedTag =
+      //   confirmedTags.length === 1
+      //     ? confirmedTags[0]
+      //     : confirmedTags.length === 0
+      //     ? null
+      //     : confirmedTags.reduce((acc, curr) => {
+      //         if (acc.what === curr.what) {
+      //           return curr;
+      //         } else {
+      //           return { ...confirmedTags[0], what: "Multiple" };
+      //         }
+      //       });
 
-      if (confirmedTag) {
+      if (confirmedTags.length > 0) {
         return [
-          {
+          ...confirmedTags.map((confirmedTag) => ({
             ...confirmedTag,
             class: TagClass.Confirmed,
-          },
+          })),
         ];
       } else {
         //filter any that aren't more specific of the human tag
         automaticTags = automaticTags.filter(
           (autoTag) =>
             autoTag.what in labelToParent &&
-            labelToParent[autoTag.what].parents.find(
-              (parent) => parent === humanTag.what
+            labelToParent[autoTag.what].parents.find((parent) =>
+              reducedHuman.find((humanTag) => parent === humanTag.what)
             )
         );
 
         // check if all human tags are the same
         return [
-          {
+          ...reducedHuman.map((humanTag) => ({
             ...humanTag,
             class: TagClass.Human,
-          },
+          })),
           ...automaticTags.map((automaticTag) => ({
             ...automaticTag,
             class: TagClass.Denied,
@@ -517,12 +510,12 @@ export const getDisplayTags = (
         class: TagClass.Automatic,
       }));
     }
-  } else if (humanTags.length > 0) {
+  } else if (reducedHuman.length > 0) {
     return [
-      {
+      ...reducedHuman.map((humanTag) => ({
         ...humanTag,
         class: TagClass.Human,
-      },
+      })),
     ];
   } else {
     return [];
@@ -847,7 +840,7 @@ export default defineComponent({
           confirming: false,
           tags: newTags,
         });
-        const displayTags = getDisplayTags(taggedTrack);
+        const displayTags = getDisplayTags(options.value, taggedTrack);
         const currTrack = modifyTrack(trackId, {
           displayTags,
           confirming: false,
@@ -934,7 +927,7 @@ export default defineComponent({
         const taggedTrack = modifyTrack(trackId, {
           tags: currTags,
         });
-        const displayTags = getDisplayTags(taggedTrack);
+        const displayTags = getDisplayTags(options.value, taggedTrack);
         const currTrack = modifyTrack(trackId, {
           displayTags,
           confirming: false,

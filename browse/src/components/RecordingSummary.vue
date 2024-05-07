@@ -200,12 +200,9 @@ import { DisplayTag, IntermediateDisplayTag } from "./RecordingsList.vue";
 import { Option } from "./LayeredDropdown.vue";
 import { getClassifications } from "./ClassificationsDropdown.vue";
 
-import { getDisplayTags } from "./Video/AudioRecording.vue";
+import { getDisplayTags, TagClass } from "./Video/AudioRecording.vue";
 import { ApiTrackResponse, ApiTrackDataRequest } from "@typedefs/api/track";
 import { RecordingType } from "@typedefs/api/consts";
-
-const options ={ label: "", children: [] };
-
 
 const addToListOfTags = (
   allTags: Record<string, IntermediateDisplayTag>,
@@ -229,21 +226,35 @@ const addToListOfTags = (
   allTags[tagName] = tag;
 };
 
-const collateTags = (recType:RecordingType,options:Option,recTags: any[], tracks: ApiTrackResponse[]): DisplayTag[] => {
+const collateTags = (
+  recType: RecordingType,
+  options: Option,
+  recTags: any[],
+  tracks: ApiTrackResponse[]
+): DisplayTag[] => {
   // Build a collection of tagItems - one per animal
   const tagItems: Record<string, DisplayTag> = {};
-  console.log("Rec type is",recType);
   if (tracks) {
     for (let j = 0; j < tracks.length; j++) {
       const track = tracks[j];
-      // if (recType === RecordingType.Audio){
-      //   const displayTags = getDisplayTags(options, track);
-      //   for(let i = 0; i < displayTags.length;i++){
-      //     const tag = displayTags[i];
-      //     addToListOfTags(tagItems,tag.what,tag.automatic, tag.automatic ? null : tag.userId)
-      //   }
-      //   continue;
-      // }
+      if (recType === RecordingType.Audio) {
+        const displayTags = getDisplayTags(options, track);
+
+        for (let i = 0; i < displayTags.length; i++) {
+          const tag = displayTags[i];
+          addToListOfTags(
+            tagItems,
+            tag.what,
+            tag.automatic,
+            tag.automatic ? null : tag.userId
+          );
+          if (tag.class === TagClass.Confirmed) {
+            tagItems[tag.what].automatic = true;
+            tagItems[tag.what].human = true;
+          }
+        }
+        continue;
+      }
 
       // For track tags, pick the best one, which is the "master AI" tag.
       const aiTag = track.tags.find(
@@ -345,7 +356,7 @@ export default {
       type: Object,
     },
   },
-  mounted:  async function (){
+  mounted: async function () {
     this.options = (await getClassifications()) as Option;
   },
   data() {
@@ -366,10 +377,24 @@ export default {
     },
     filteredTags() {
       if (this.$store.state.User.userData.showFiltered) {
-        return collateTags(this.item.type,this.options,this.item.recTags, this.item.tracks) ?? [];
+        return (
+          collateTags(
+            this.item.type,
+            this.options,
+            this.item.recTags,
+            this.item.tracks
+          ) ?? []
+        );
       } else {
         const goodTracks = this.item.tracks.filter((track) => !track.filtered);
-        return collateTags(this.item.type,this.options,this.item.recTags, goodTracks) ?? [];
+        return (
+          collateTags(
+            this.item.type,
+            this.options,
+            this.item.recTags,
+            goodTracks
+          ) ?? []
+        );
       }
     },
     thumbnailSrc(): string {

@@ -264,7 +264,7 @@ import Help from "@/components/Help.vue";
 
 import { useState } from "@/utils";
 
-import { AudioTrack, AudioTracks } from "../Video/AudioRecording.vue";
+import { AudioTrack, AudioTracks, DisplayTag } from "../Video/AudioRecording.vue";
 import Dropdown from "../Dropdown.vue";
 import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 
@@ -366,8 +366,6 @@ export default defineComponent({
   },
   setup(props) {
     const confirmTrack = async (track: AudioTrack, tag: DisplayTag) => {
-      console.log("Cofirming", track, tag);
-      // const tag = track.displayTags.find((t) => t.automatic);
       if (!tag) {
         return;
       }
