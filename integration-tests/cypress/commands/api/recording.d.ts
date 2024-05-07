@@ -145,6 +145,17 @@ declare namespace Cypress {
       additionalChecks?: any
     ): Cypress.Chainable<RecordingId>;
 
+    /**
+     * Upload a single recording with trackTags using device credentials
+     * Save the provided ID against the provided recording name
+     */
+    apiRecordingAddWithTracks(
+      deviceName: string,
+      tracks?: string[][],
+      recordingDateTime?: string,
+      location?: [number, number]
+    ): Cypress.Chainable<RecordingId>;
+
     /** Get a single recording response using api/v1/recordings/{id}
      */
     apiRecordingGet(
@@ -226,6 +237,24 @@ declare namespace Cypress {
     apiRecordingsQueryCheck(
       userName: string,
       query: any,
+      expectedRecordings?: (
+        | ApiThermalRecordingResponse
+        | ApiAudioRecordingResponse
+      )[],
+      excludeCheckOn?: string[],
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
+
+    /** Query recordings in a project (/api/v1/recordings/for-project/) using query parameters
+     * Verify that the recording data matched the expectedRecordings
+     * Optionally: check for a non-200 statusCode
+     * Optionally: check returned messages for additionalChecks["message"]
+     */
+    apiRecordingsQueryV2Check(
+      userName: string,
+      projectId: number,
+      query: URLSearchParams,
       expectedRecordings?: (
         | ApiThermalRecordingResponse
         | ApiAudioRecordingResponse

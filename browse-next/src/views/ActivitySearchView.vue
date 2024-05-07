@@ -31,7 +31,7 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
   type BulkRecordingsResponse,
   getAllRecordingsForProjectBetweenTimes,
-  queryRecordingsInProject,
+  queryRecordingsInProjectNew,
   type QueryRecordingsOptions,
 } from "@api/Recording";
 import {
@@ -823,25 +823,17 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
   }
   const taggedWithAny = searchParams.value.taggedWith.includes("any");
   if (!taggedWithAny) {
-    query.taggedWith = [
-      // The backend conflates tags and labels.
-      ...searchParams.value.taggedWith,
-      ...(searchParams.value.labelledWith || []),
-    ];
+    query.taggedWith = searchParams.value.taggedWith || [];
   }
   const tagModeAny = searchParams.value.tagMode === TagMode.Any;
   if (!tagModeAny) {
-    if (searchParams.value.labelledWith?.length) {
-      query.tagMode = TagMode.Tagged;
-    } else {
-      query.tagMode = searchParams.value.tagMode;
-    }
+    query.tagMode = searchParams.value.tagMode;
     if (!taggedWithAny) {
       query.subClassTags = searchParams.value.subClassTags;
     }
-  } else if (searchParams.value.labelledWith?.length) {
-    query.tagMode = TagMode.Tagged;
-    query.taggedWith = [...searchParams.value.labelledWith];
+  }
+  if (searchParams.value.labelledWith?.length) {
+    query.labelledWith = searchParams.value.labelledWith;
   }
 
   // Hack in support for Megadetector "animal" into our heirarchy:
@@ -988,26 +980,27 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
     if (isNewQuery) {
       resetQuery(queryHash, fromDateTime, untilDateTime);
-      if (inRecordingsMode.value) {
-        // Load total recording count for query lazily, so we
-        // don't lock the main rendering query.
-        queryRecordingsInProject(project.id, {
-          ...query,
-          limit: 1,
-          countAll: true,
-          fromDateTime,
-          untilDateTime,
-        }).then((response) => {
-          if (response.success) {
-            currentQueryCount.value = response.result.count;
-          } else {
-            currentQueryCount.value = null;
-          }
-        });
-      } else {
-        currentQueryCount.value = null;
-      }
+      // if (inRecordingsMode.value) {
+      //   // Load total recording count for query lazily, so we
+      //   // don't lock the main rendering query.
+      //   queryRecordingsInProjectNew(project.id, {
+      //     ...query,
+      //     limit: 1,
+      //     countAll: true,
+      //     fromDateTime,
+      //     untilDateTime,
+      //   }).then((response) => {
+      //     if (response.success) {
+      //       currentQueryCount.value = response.result.count;
+      //     } else {
+      //       currentQueryCount.value = null;
+      //     }
+      //   });
+      // } else {
+      //   currentQueryCount.value = null;
+      // }
     }
+    // TODO: Make this add the count to the first query, rather than doing two queries?
     const hasNotLoadedAllOfQueryTimeRange =
       currentQueryCursor.value.fromDateTime <
       currentQueryCursor.value.untilDateTime;
@@ -1018,12 +1011,16 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
       let response: FetchResult<BulkRecordingsResponse> | BulkVisitsResponse;
       if (inRecordingsMode.value) {
-        response = await queryRecordingsInProject(project.id, {
+        response = await queryRecordingsInProjectNew(project.id, {
           ...query,
+          countAll: isNewQuery,
           limit: twoPagesWorth,
           fromDateTime: currentQueryCursor.value.fromDateTime,
           untilDateTime: currentQueryCursor.value.untilDateTime,
         });
+        if (response.success && response.result.count) {
+          currentQueryCount.value = response.result.count;
+        }
       } else {
         // Else visits
         console.log(
@@ -1048,12 +1045,18 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
         if (inRecordingsMode.value) {
-          const recordingsResponse =
-            response as SuccessFetchResult<BulkRecordingsResponse>;
-          loadedFewerItemsThanRequested =
-            recordingsResponse.result.count < recordingsResponse.result.limit;
-          const recordings = recordingsResponse.result.rows;
+          const recordingsResponse = response as unknown as SuccessFetchResult<{
+            recordings: ApiRecordingResponse[];
+            count: number;
+          }>;
+          console.log("Recordings", recordingsResponse);
+          // debugger;
+          // loadedFewerItemsThanRequested =
+          //   recordingsResponse.result.recordings.length < 100;
+          const recordings = recordingsResponse.result.recordings;
           loadedRecordings.value.push(...recordings);
+          loadedFewerItemsThanRequested =
+            loadedRecordings.value.length < recordingsResponse.result.count;
           loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
           appendRecordingsChunkedByDay(recordings);
           currentQueryLoaded.value += recordings.length;
@@ -1551,10 +1554,10 @@ const shouldShowSearchControlsInline = computed<boolean>(
           :available-date-ranges="availableDateRanges"
           :search-params="searchParams"
         />
-        <div v-if="currentQueryCount === undefined">
-          Loading totals...
-          <b-spinner />
-        </div>
+        <!--        <div v-if="currentQueryCount === undefined">-->
+        <!--          Loading totals...-->
+        <!--          <b-spinner />-->
+        <!--        </div>-->
         <!--        <div v-else-if="currentQueryCount || currentQueryCount === 0">-->
         <!--          Loaded {{ currentQueryLoaded }} / Total {{ currentQueryCount }}-->
         <!--        </div>-->

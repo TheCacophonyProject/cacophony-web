@@ -5,7 +5,8 @@ export default {
 };
 </script>
 <script lang="ts" setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch, type WatchStopHandle } from "vue";
+import { useIntersectionObserver } from "@vueuse/core";
 
 const props = withDefaults(
   defineProps<{
@@ -25,37 +26,81 @@ const loading = ref<boolean>(true);
 
 const handleImageError = (e: ErrorEvent) => {
   loading.value = false;
-  (e.target as HTMLImageElement).classList.remove("image-loading");
-  (e.target as HTMLImageElement).classList.add("image-not-found");
-  (e.target as HTMLImageElement).classList.remove("uncached");
+  image.value?.classList.remove("image-loading");
+  image.value?.classList.add("image-not-found");
+  image.value?.classList.remove("uncached");
+  image.value?.removeEventListener("load", handleImageLoaded);
+  image.value?.removeEventListener("error", handleImageError);
   emit("image-not-found");
 };
 
 const handleImageLoaded = (e: Event) => {
   loading.value = false;
-  (e.target as HTMLImageElement).classList.remove("image-loading");
-  (e.target as HTMLImageElement).classList.remove("uncached");
+  image.value?.classList.remove("image-loading");
+  image.value?.classList.remove("uncached");
+  image.value?.removeEventListener("load", handleImageLoaded);
+  image.value?.removeEventListener("error", handleImageError);
 };
 
 const image = ref<HTMLImageElement>();
+const elementIsVisible = ref(false);
+const initImageLoadHandlers = () => {
+  (image.value as HTMLImageElement).src = props.src;
+  setTimeout(() => {
+    if (loading.value && image.value) {
+      image.value.classList.add("image-loading");
+      image.value.classList.add("uncached");
+    }
+  }, 100);
+  image.value?.classList.remove("image-not-found");
+  image.value?.addEventListener("load", handleImageLoaded);
+  image.value?.addEventListener("error", handleImageError);
+};
+const stopper = ref<(() => void) | null>(null);
+const watcher = ref<WatchStopHandle>();
+
+const elementBecameVisible = (next: boolean) => {
+  watcher.value && watcher.value();
+  initImageLoadHandlers();
+};
 onMounted(() => {
   if (image.value) {
-    setTimeout(() => {
-      if (loading.value && image.value) {
-        image.value.classList.add("image-loading");
-        image.value.classList.add("uncached");
-      }
-    }, 100);
-    image.value?.classList.remove("image-not-found");
-    image.value?.addEventListener("load", handleImageLoaded);
-    image.value?.addEventListener("error", handleImageError);
+    const isVisible =
+      image.value?.getBoundingClientRect().top < window.innerHeight;
+    if (isVisible) {
+      initImageLoadHandlers();
+    } else {
+      const { stop } = useIntersectionObserver(
+        image,
+        (intersectionObserverEntries) => {
+          let isIntersecting = elementIsVisible.value;
+
+          // Get the latest value of isIntersecting based on the entry time
+          let latestTime = 0;
+          for (const entry of intersectionObserverEntries) {
+            if (entry.time >= latestTime) {
+              latestTime = entry.time;
+              isIntersecting = entry.isIntersecting;
+            }
+          }
+          elementIsVisible.value = isIntersecting;
+        },
+        {
+          root: null,
+          window,
+          threshold: 0,
+        }
+      );
+      watcher.value = watch(elementIsVisible, elementBecameVisible);
+      stopper.value = stop;
+    }
   }
 });
 </script>
 <template>
   <div class="position-relative">
     <img
-      :src="props.src"
+      :src="''"
       :width="props.width"
       :height="props.height"
       ref="image"
@@ -63,7 +108,8 @@ onMounted(() => {
       :class="$attrs['class']"
     />
     <div
-      class="d-flex align-items-center w-100 h-100 justify-content-center position-absolute top-0 left-0"
+      :style="{ width: `${props.width}px`, height: `${props.height}px` }"
+      class="d-flex align-items-center justify-content-center position-absolute top-0 left-0"
       :class="$attrs['class']"
       v-if="loading"
     >

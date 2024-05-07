@@ -245,9 +245,9 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
   tags: [
     {
       what: "cat",
-      data: { name: "Master" },
       automatic: true,
       confidence: 0.97,
+      data: { name: "Master" },
       trackId: NOT_NULL,
       id: NOT_NULL,
       path: "all",
@@ -276,7 +276,6 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     processing: false,
     tags: [],
     tracks: [TEMPLATE_EXPECTED_TRACK],
-    redacted: false,
   };
 
 export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {

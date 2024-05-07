@@ -23,7 +23,7 @@ export interface ApiTrackResponse {
   automatic: boolean;
   positions?: ApiTrackPosition[];
   tags: ApiTrackTag[];
-  filtered: boolean;
+  filtered?: boolean;
   minFreq?: number;
   maxFreq?: number;
 }

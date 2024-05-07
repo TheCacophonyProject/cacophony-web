@@ -143,7 +143,7 @@ export function saveCreds(
   name: string,
   id = 0
 ) {
-  console.log(response.body);
+  // console.log(response.body);
   const creds = {
     name: name,
     password: "",
@@ -325,7 +325,7 @@ export function checkTreeStructuresAreEqualExcept(
         const prettyElementName = prettyTreeSoFar + "[" + count + "]";
         const elementName = treeSoFar + "[]";
 
-        //if element is a nested object, recursively call this function again over the nested onject
+        //if element is a nested object, recursively call this function again over the nested object
         if (isArrayOrHash(containingStruct[count])) {
           checkTreeStructuresAreEqualExcept(
             containedStruct[count],
@@ -346,12 +346,6 @@ export function checkTreeStructuresAreEqualExcept(
         }
       }
     } else {
-      // NOTE: Disabled to speed up tests, seems to be redundant info
-      // expect(
-      //   typeof containingStruct,
-      //   `Expect result includes parameter ${prettyTreeSoFar} :::`
-      // ).equal(typeof containedStruct);
-
       const keyDiff = (a, b) => {
         return {
           missingKeys:
@@ -362,92 +356,96 @@ export function checkTreeStructuresAreEqualExcept(
       };
 
       if (containedStruct && containingStruct) {
-        const keys = Object.keys(containingStruct);
-        const expectedKeys = Object.keys(containedStruct);
+        let keys = Object.keys(containingStruct);
+        let expectedKeys = Object.keys(containedStruct);
+
+        const excludedElementNames = [];
+        for (let count = 0; count < keys.length; count++) {
+          const elementName = treeSoFar + "." + keys[count];
+          if (excludeKeys.includes(elementName)) {
+            excludedElementNames.push(elementName);
+          }
+        }
+        keys = keys.filter(
+          (key) => !excludedElementNames.includes(`${treeSoFar}.${key}`)
+        );
+        expectedKeys = expectedKeys.filter(
+          (key) => !excludedElementNames.includes(`${treeSoFar}.${key}`)
+        );
+        let diff = { missingKeys: [], unknownKeys: [] };
+        if (keys.length !== expectedKeys.length) {
+          diff = keyDiff(containedStruct, containingStruct);
+        }
+        let diffPrinted = "";
+        if (diff.missingKeys.length || diff.unknownKeys.length) {
+          diffPrinted = ` Diff: ${JSON.stringify(diff)}`;
+        }
         expect(
           keys.length,
-          `Check ${prettyTreeSoFar} number of elements in [${keys.toString()}]}`
+          `Check ${prettyTreeSoFar} number of elements in [${keys.toString()}]}${diffPrinted}`
         ).to.equal(expectedKeys.length);
-        if (keys.length !== expectedKeys.length) {
-          cy.log(
-            `Diff: ${JSON.stringify(
-              keyDiff(containedStruct, containingStruct)
-            )}`
-          );
-        }
 
-        //push two hashes in same order
-        const containedKeys: string[] = keys.sort();
-        const containingKeys: string[] = expectedKeys.sort();
-
+        const containedKeys: string[] = keys;
         //iterate over hash
         for (let count = 0; count < containedKeys.length; count++) {
           const elementName = treeSoFar + "." + containedKeys[count];
           const prettyElementName =
             prettyTreeSoFar + "." + containedKeys[count];
-          //check if we asked to ignore this parameter
-          if (!excludeKeys.includes(elementName)) {
-            // NOTE: Disabled to speed up tests, seems to be redundant info
-            // expect(
-            //   containingKeys,
-            //   `Expect result includes parameter ${prettyElementName} :::`
-            // ).includes(containedKeys[count]);
 
-            //if element is a nested object, recursively call this function again over the nested onject
-            if (isArrayOrHash(containingStruct[containedKeys[count]])) {
-              checkTreeStructuresAreEqualExcept(
-                containedStruct[containedKeys[count]],
+          //if element is a nested object, recursively call this function again over the nested onject
+          if (isArrayOrHash(containingStruct[containedKeys[count]])) {
+            checkTreeStructuresAreEqualExcept(
+              containedStruct[containedKeys[count]],
+              containingStruct[containedKeys[count]],
+              excludeKeys,
+              elementName,
+              prettyElementName,
+              approximateTimes
+            );
+          } else {
+            //check we were asked to validate, or validate NOT NULL
+            if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
+              expect(
                 containingStruct[containedKeys[count]],
-                excludeKeys,
-                elementName,
-                prettyElementName,
-                approximateTimes
-              );
+                `Expected ${prettyElementName} should not be NULL`
+              ).to.not.be.null;
+            } else if (approximateTimes.includes(elementName)) {
+              const comparedTime = new Date(
+                containingStruct[containedKeys[count]]
+              ).getTime();
+              const expectedTime = new Date(
+                containedStruct[containedKeys[count]]
+              ).getTime();
+              expect(
+                new Date(comparedTime),
+                `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`
+              ).to.be.within(expectedTime - 60000, expectedTime + 60000);
             } else {
-              //check we were asked to validate, or validate NOT NULL
-              if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
+              //otherwise, check the values are as expected
+              const testVal = containingStruct[containedKeys[count]];
+              if (typeof testVal === "number" && !(testVal % 1 === 0)) {
+                // This is a floating point value, and we might have some precision issues, so allow a small
+                // 'epsilon' value of fuzziness when testing equality:
+                const EPSILON = 0.000001;
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be more than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
+                expect(
+                  testVal,
+                  `Expected ${prettyElementName} should be less than ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
+              } else {
                 expect(
                   containingStruct[containedKeys[count]],
-                  `Expected ${prettyElementName} should not be NULL`
-                ).to.not.be.null;
-              } else if (approximateTimes.includes(elementName)) {
-                const comparedTime = new Date(
-                  containingStruct[containedKeys[count]]
-                ).getTime();
-                const expectedTime = new Date(
-                  containedStruct[containedKeys[count]]
-                ).getTime();
-                expect(
-                  new Date(comparedTime),
-                  `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`
-                ).to.be.within(expectedTime - 60000, expectedTime + 60000);
-              } else {
-                //otherwise, check the values are as expected
-                const testVal = containingStruct[containedKeys[count]];
-                if (typeof testVal === "number" && !(testVal % 1 === 0)) {
-                  // This is a floating point value, and we might have some precision issues, so allow a small
-                  // 'epsilon' value of fuzziness when testing equality:
-                  const EPSILON = 0.000001;
-                  expect(
-                    testVal,
-                    `Expected ${prettyElementName} should be more than ${JSON.stringify(
-                      containedStruct[containedKeys[count]]
-                    )}`
-                  ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
-                  expect(
-                    testVal,
-                    `Expected ${prettyElementName} should be less than ${JSON.stringify(
-                      containedStruct[containedKeys[count]]
-                    )}`
-                  ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
-                } else {
-                  expect(
-                    containingStruct[containedKeys[count]],
-                    `Expected ${prettyElementName} should equal ${JSON.stringify(
-                      containedStruct[containedKeys[count]]
-                    )}`
-                  ).to.equal(containedStruct[containedKeys[count]]);
-                }
+                  `Expected ${prettyElementName} should equal ${JSON.stringify(
+                    containedStruct[containedKeys[count]]
+                  )}`
+                ).to.equal(containedStruct[containedKeys[count]]);
               }
             }
           }

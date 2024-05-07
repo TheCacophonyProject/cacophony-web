@@ -990,7 +990,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="showFilteredFalsePositivesAndNones"
         switch
         :disabled="showUntaggedOnly"
-        >Include false positives</b-form-checkbox
+        >Include false triggers</b-form-checkbox
       >
       <span class="help-toggle" ref="falsePositiveInfoParent"
         ><font-awesome-icon icon="question"
@@ -1006,8 +1006,8 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       container="body"
       :target="falsePositiveInfoParent"
     >
-      Include recordings that are only tagged as false positive, or which have
-      no tracks to tag.
+      Include recordings that are only tagged as false trigger, or which have no
+      tracks to tag.
     </b-popover>
   </div>
   <button

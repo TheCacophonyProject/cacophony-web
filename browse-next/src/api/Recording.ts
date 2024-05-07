@@ -51,7 +51,7 @@ export const replaceTrackTag = (
     automatic,
   };
   return CacophonyApi.post(
-    `/api/v1/recordings/${recordingId}/tracks/${trackId}/replaceTag`, // TODO - change to replace-tag
+    `/api/v1/recordings/${recordingId}/tracks/${trackId}/replace-tag`,
     body
   ) as Promise<FetchResult<{ trackTagId?: number }>>;
 };
@@ -95,6 +95,7 @@ export interface QueryRecordingsOptions {
   devices?: DeviceId[];
   locations?: LocationId[];
   taggedWith?: string[];
+  labelledWith?: string[];
   fromDateTime?: Date;
   untilDateTime?: Date;
   limit?: number;
@@ -116,79 +117,70 @@ export interface QueryRecordingsOptions {
 }
 
 export interface BulkRecordingsResponse {
-  rows: ApiRecordingResponse[];
-  limit: number;
-  count: number;
+  recordings: ApiRecordingResponse[];
+  count?: number;
 }
 
-export const queryRecordingsInProject = (
+export const queryRecordingsInProjectNew = (
   projectId: ProjectId,
   options: QueryRecordingsOptions
-): Promise<FetchResult<BulkRecordingsResponse>> => {
-  // FIXME: Implement guard on types
-
+): Promise<
+  FetchResult<{ recordings: ApiRecordingResponse[]; count?: number }>
+> => {
   const params = new URLSearchParams();
-  if (options.limit) {
-    params.append("limit", options.limit.toString());
-  }
   if (options.taggedWith) {
-    params.append("tags", JSON.stringify(options.taggedWith));
+    for (const tag of options.taggedWith) {
+      params.append("tagged-with", tag);
+    }
   }
-  const where: any = {
-    GroupId: projectId,
-  };
+  if (options.labelledWith) {
+    for (const label of options.labelledWith) {
+      params.append("labelled-with", label);
+    }
+  }
   if (options.devices) {
-    where.DeviceId = options.devices;
+    for (const deviceId of options.devices) {
+      params.append("devices", deviceId.toString());
+    }
   }
   if (options.locations) {
-    where.StationId = options.locations;
+    for (const locationId of options.locations) {
+      params.append("locations", locationId.toString());
+    }
   }
   if (options.fromDateTime) {
-    where.recordingDateTime = where.recordingDateTime || {};
-    where.recordingDateTime["$gte"] = options.fromDateTime.toISOString();
+    params.append("from", options.fromDateTime.toISOString());
   }
   if (options.untilDateTime) {
-    where.recordingDateTime = where.recordingDateTime || {};
-    where.recordingDateTime["$lte"] = options.untilDateTime.toISOString();
+    params.append("until", options.untilDateTime.toISOString());
   }
-  if (!options.durationMinSecs) {
-    options.durationMinSecs = 2.5; // Make sure we ignore status recordings
+  if (options.countAll) {
+    params.append("with-total-count", true.toString());
   }
-
-  where.duration = where.duration || {};
-  where.duration["$gte"] = options.durationMinSecs;
-  if (options.durationMaxSecs) {
-    where.duration["$lte"] = Math.max(
-      options.durationMaxSecs,
-      options.durationMinSecs
-    );
-  }
-
   // Do we want this, or do we want to show processing recordings?
   // params.append("processingState", RecordingProcessingState.Finished);
 
   // TODO: We might want to count-all the first time.
-  params.append("countAll", (options.countAll || false).toString());
-  params.append("tagMode", options.tagMode || TagMode.Any);
-  if (options.tagMode && options.tagMode !== TagMode.Any) {
-    params.append("filterModel", "Master");
+  //params.append("countAll", (options.countAll || false).toString());
+  params.append("tag-mode", options.tagMode || TagMode.Any);
+  // if (options.tagMode && options.tagMode !== TagMode.Any) {
+  //   params.append("filterModel", "Master");
+  // }
+  //params.append("limit", (options.limit && options.limit.toString()) || "30");
+  if (options.includeFilteredFalsePositivesAndNones) {
+    params.append("include-false-positives", true.toString());
   }
-  params.append("limit", (options.limit && options.limit.toString()) || "30");
-  params.append(
-    "hideFiltered",
-    (!options.includeFilteredFalsePositivesAndNones).toString()
-  );
+  if (!options.subClassTags) {
+    params.append("sub-class-tags", false.toString());
+  }
+  console.log("API params", params.toString());
 
   // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
   //  or we need to hold onto the pagination value.
-
-  if (Object.values(where).length) {
-    params.append("where", JSON.stringify(where));
-  }
   //return unwrapLoadedResource(
-  return CacophonyApi.get(`/api/v1/recordings?${params}`) as Promise<
-    FetchResult<{ rows: ApiRecordingResponse[]; limit: number; count: number }>
-  >;
+  return CacophonyApi.get(
+    `/api/v1/recordings/for-project/${projectId}?${params}`
+  ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
   //"rows"
   //);
 };
@@ -240,10 +232,10 @@ export const getRecordingsForLocationsAndDevicesInProject = (
     options.taggedWith = tags;
   }
   return unwrapLoadedResource(
-    queryRecordingsInProject(projectId, options) as Promise<
+    queryRecordingsInProjectNew(projectId, options) as Promise<
       WrappedFetchResult<ApiRecordingResponse[]>
     >,
-    "rows"
+    "recordings"
   );
 };
 
@@ -256,19 +248,19 @@ export const getAllRecordingsForProjectBetweenTimes = async (
   const recordings = [];
   let moreRecordingsToLoad = true;
 
-  const countResponse = await queryRecordingsInProject(projectId, {
+  const countResponse = await queryRecordingsInProjectNew(projectId, {
     ...query,
     limit: 1,
     countAll: true,
   });
   if (countResponse.success) {
-    const countEstimate = countResponse.result.count;
+    const countEstimate = countResponse.result.count as number;
     while (moreRecordingsToLoad) {
-      const response = await queryRecordingsInProject(projectId, query);
+      const response = await queryRecordingsInProjectNew(projectId, query);
       if (response.success) {
         const result = response.result;
-        moreRecordingsToLoad = result.count === result.limit;
-        recordings.push(...result.rows);
+        moreRecordingsToLoad = result.count === query.limit;
+        recordings.push(...result.recordings);
         if (recordings.length) {
           //debugger;
           query.untilDateTime = new Date(
