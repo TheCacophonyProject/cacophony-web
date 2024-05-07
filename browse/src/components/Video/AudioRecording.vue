@@ -372,6 +372,163 @@ import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 
 import { Option } from "./LayeredDropdown.vue";
 
+const flattenNodes = (
+  acc: Record<string, { label: string; display: string; parents: string[] }>,
+  node: Option,
+  parents: string[]
+) => {
+  for (const child of node.children || []) {
+    acc[child.label] = {
+      label: child.label,
+      display: child.display || child.label,
+      parents: [...parents],
+    };
+    flattenNodes(acc, child, [...acc[child.label].parents, child.label]);
+  }
+  return acc;
+};
+
+export const getDisplayTags = (
+  options: Option,
+  track: ApiTrackResponse
+): DisplayTag[] => {
+  const labelToParent = {};
+  const classifications = flattenNodes(labelToParent, options, []);
+  let automaticTags = track.tags.filter(
+    (tag) => tag.automatic && (tag.data ==="Master" || tag.data.name === "Master")
+  );
+  const humanTags = track.tags.filter((tag) => !tag.automatic);
+  const humanTag =
+    humanTags.length === 1
+      ? humanTags[0]
+      : humanTags.length === 0
+      ? null
+      : humanTags.reduce((acc, curr) => {
+          if (acc.what === curr.what) {
+            return curr;
+          } else {
+            return { ...humanTags[0], what: "Multiple" };
+          }
+        });
+      console.log("Human tag becomes ",humanTag);
+  if (automaticTags && automaticTags.length > 0) {
+    if (automaticTags.length > 1 && humanTags.length == 0) {
+      // filter common ancestors and only leave more specific ai tags
+      // for(let i=0; i < automaticTags.length; i++){
+      //   console.log("Checking ",automaticTags[i].what);
+      //   for(let j=0; j < automaticTags.length; j++){
+      //     if (j== i){
+      //       continue
+      //     }
+      //     console.log("Checking parents of ",automaticTags[j].what,labelToParent[automaticTags[j].what].parents);
+      //     let moreSpecific = labelToParent[automaticTags[j].what].parents.find((parent)=> parent === automaticTags[i].what);
+      //     console.log("more specific exists",moreSpecific);
+
+      //   }
+      // }
+
+      automaticTags = automaticTags.filter(
+        (tag) =>
+          !automaticTags.find(
+            (others) =>
+              others != tag &&
+              others.what in labelToParent &&
+              labelToParent[others.what].parents.find(
+                (parent) => parent === tag.what
+              )
+          )
+      );
+    }
+    automaticTags.sort((a, b) => {
+      if (a.what === "bird") {
+        return 2;
+      } else if (b.what === "bird") {
+        return -2;
+      }
+      return a.what <= b.what ? -1 : 1;
+    });
+
+    if (humanTags.length > 0) {
+      //tags which match or, matches an ai tag which is a parent of this tag but not a top level tag
+      const confirmedTags = humanTags.filter(
+        (tag) =>
+          automaticTags.filter(
+            (autoTag) =>
+              autoTag.what === tag.what ||
+              (tag.what !== "bird" &&
+                tag.what in labelToParent &&
+                automaticTags.find(
+                  (autoTag) =>
+                    autoTag.what in labelToParent &&
+                    labelToParent[autoTag.what].parents.length > 0 &&
+                    tag.what in labelToParent &&
+                    labelToParent[tag.what].parents.find(
+                      (parent) => parent === autoTag.what
+                    )
+                ))
+          ).length > 0
+      );
+
+      const confirmedTag =
+        confirmedTags.length === 1
+          ? confirmedTags[0]
+          : confirmedTags.length === 0
+          ? null
+          : confirmedTags.reduce((acc, curr) => {
+              if (acc.what === curr.what) {
+                return curr;
+              } else {
+                return { ...confirmedTags[0], what: "Multiple" };
+              }
+            });
+
+      if (confirmedTag) {
+        return [
+          {
+            ...confirmedTag,
+            class: TagClass.Confirmed,
+          },
+        ];
+      } else {
+        //filter any that aren't more specific of the human tag
+        automaticTags = automaticTags.filter(
+          (autoTag) =>
+            autoTag.what in labelToParent &&
+            labelToParent[autoTag.what].parents.find(
+              (parent) => parent === humanTag.what
+            )
+        );
+
+        // check if all human tags are the same
+        return [
+          {
+            ...humanTag,
+            class: TagClass.Human,
+          },
+          ...automaticTags.map((automaticTag) => ({
+            ...automaticTag,
+            class: TagClass.Denied,
+          })),
+        ];
+      }
+    } else {
+      return automaticTags.map((automaticTag) => ({
+        ...automaticTag,
+        class: TagClass.Automatic,
+      }));
+    }
+  } else if (humanTags.length > 0) {
+    return [
+      {
+        ...humanTag,
+        class: TagClass.Human,
+      },
+    ];
+  } else {
+    return [];
+  }
+};
+
 export enum TagClass {
   Automatic = "automatic",
   Human = "human",
@@ -510,168 +667,11 @@ export default defineComponent({
     const filterHuman = ref(false);
     // const ignored_parents = ["bird","mammal"]
 
-    const flattenNodes = (
-      acc: Record<
-        string,
-        { label: string; display: string; parents: string[] }
-      >,
-      node: Option,
-      parents: string[]
-    ) => {
-      for (const child of node.children || []) {
-        acc[child.label] = {
-          label: child.label,
-          display: child.display || child.label,
-          parents: [...parents],
-        };
-        flattenNodes(acc, child, [...acc[child.label].parents, child.label]);
-      }
-      return acc;
-    };
-
-    const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
-      const labelToParent = {};
-      const classifications = flattenNodes(labelToParent, options.value, []);
-      let automaticTags = track.tags.filter(
-        (tag) => tag.automatic && tag.data.name === "Master"
-      );
-      const humanTags = track.tags.filter((tag) => !tag.automatic);
-      const humanTag =
-        humanTags.length === 1
-          ? humanTags[0]
-          : humanTags.length === 0
-          ? null
-          : humanTags.reduce((acc, curr) => {
-              if (acc.what === curr.what) {
-                return curr;
-              } else {
-                return { ...humanTags[0], what: "Multiple" };
-              }
-            });
-
-      if (automaticTags && automaticTags.length > 0) {
-        if (automaticTags.length > 1 && humanTags.length == 0) {
-          // filter common ancestors and only leave more specific ai tags
-          // for(let i=0; i < automaticTags.length; i++){
-          //   console.log("Checking ",automaticTags[i].what);
-          //   for(let j=0; j < automaticTags.length; j++){
-          //     if (j== i){
-          //       continue
-          //     }
-          //     console.log("Checking parents of ",automaticTags[j].what,labelToParent[automaticTags[j].what].parents);
-          //     let moreSpecific = labelToParent[automaticTags[j].what].parents.find((parent)=> parent === automaticTags[i].what);
-          //     console.log("more specific exists",moreSpecific);
-
-          //   }
-          // }
-
-          automaticTags = automaticTags.filter(
-            (tag) =>
-              !automaticTags.find(
-                (others) =>
-                  others != tag &&
-                  others.what in labelToParent &&
-                  labelToParent[others.what].parents.find(
-                    (parent) => parent === tag.what
-                  )
-              )
-          );
-        }
-        automaticTags.sort((a, b) => {
-          if (a.what === "bird") {
-            return 2;
-          } else if (b.what === "bird") {
-            return -2;
-          }
-          return a.what <= b.what ? -1 : 1;
-        });
-
-        if (humanTags.length > 0) {
-          //tags which match or, matches an ai tag which is a parent of this tag but not a top level tag
-          const confirmedTags = humanTags.filter(
-            (tag) =>
-              automaticTags.filter(
-                (autoTag) =>
-                  autoTag.what === tag.what ||
-                  (tag.what !== "bird" &&
-                    tag.what in labelToParent &&
-                    automaticTags.find(
-                      (autoTag) =>
-                        autoTag.what in labelToParent &&
-                        labelToParent[autoTag.what].parents.length > 0 &&
-                        tag.what in labelToParent &&
-                        labelToParent[tag.what].parents.find(
-                          (parent) => parent === autoTag.what
-                        )
-                    ))
-              ).length > 0
-          );
-
-          const confirmedTag =
-            confirmedTags.length === 1
-              ? confirmedTags[0]
-              : confirmedTags.length === 0
-              ? null
-              : confirmedTags.reduce((acc, curr) => {
-                  if (acc.what === curr.what) {
-                    return curr;
-                  } else {
-                    return { ...confirmedTags[0], what: "Multiple" };
-                  }
-                });
-
-          if (confirmedTag) {
-            return [
-              {
-                ...confirmedTag,
-                class: TagClass.Confirmed,
-              },
-            ];
-          } else {
-            //filter any that aren't more specific of the human tag
-            automaticTags = automaticTags.filter(
-              (autoTag) =>
-                autoTag.what in labelToParent &&
-                labelToParent[autoTag.what].parents.find(
-                  (parent) => parent === humanTag.what
-                )
-            );
-
-            // check if all human tags are the same
-            return [
-              {
-                ...humanTag,
-                class: TagClass.Human,
-              },
-              ...automaticTags.map((automaticTag) => ({
-                ...automaticTag,
-                class: TagClass.Denied,
-              })),
-            ];
-          }
-        } else {
-          return automaticTags.map((automaticTag) => ({
-            ...automaticTag,
-            class: TagClass.Automatic,
-          }));
-        }
-      } else if (humanTags.length > 0) {
-        return [
-          {
-            ...humanTag,
-            class: TagClass.Human,
-          },
-        ];
-      } else {
-        return [];
-      }
-    };
-
     const createAudioTrack = (
       track: ApiTrackResponse,
       index: number
     ): AudioTrack => {
-      const displayTags = getDisplayTags(track);
+      const displayTags = getDisplayTags(options.value, track);
 
       return {
         deleted: false,
