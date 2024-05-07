@@ -462,19 +462,6 @@ export const getDisplayTags = (
           ).length > 0
       );
 
-      // const confirmedTag =
-      //   confirmedTags.length === 1
-      //     ? confirmedTags[0]
-      //     : confirmedTags.length === 0
-      //     ? null
-      //     : confirmedTags.reduce((acc, curr) => {
-      //         if (acc.what === curr.what) {
-      //           return curr;
-      //         } else {
-      //           return { ...confirmedTags[0], what: "Multiple" };
-      //         }
-      //       });
-
       if (confirmedTags.length > 0) {
         return [
           ...confirmedTags.map((confirmedTag) => ({
@@ -658,7 +645,6 @@ export default defineComponent({
 
     const isGroupAdmin = ref(false);
     const filterHuman = ref(false);
-    // const ignored_parents = ["bird","mammal"]
 
     const createAudioTrack = (
       track: ApiTrackResponse,

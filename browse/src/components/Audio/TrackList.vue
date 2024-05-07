@@ -164,7 +164,7 @@
                 variant="outline-success"
                 class="p-1"
                 size="sm"
-                @click.stop="
+                @click.prevent="
                   () =>
                     confirmTrack(
                       track,
@@ -264,7 +264,11 @@ import Help from "@/components/Help.vue";
 
 import { useState } from "@/utils";
 
-import { AudioTrack, AudioTracks, DisplayTag } from "../Video/AudioRecording.vue";
+import {
+  AudioTrack,
+  AudioTracks,
+  DisplayTag,
+} from "../Video/AudioRecording.vue";
 import Dropdown from "../Dropdown.vue";
 import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 
