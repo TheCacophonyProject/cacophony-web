@@ -1,5 +1,6 @@
 <template>
   <image-loader
+    v-if="resolvedSrc"
     :src="src"
     :width="width"
     :height="height"
@@ -44,6 +45,10 @@ onBeforeMount(async () => {
 
 const src = computed<string>(() => {
   return `/tag-icons/${currentTag.value}.svg`;
+});
+
+const resolvedSrc = computed<boolean>(() => {
+  return currentTag.value !== "";
 });
 
 const tryLoadingParent = () => {

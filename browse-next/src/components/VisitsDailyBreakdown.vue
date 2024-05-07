@@ -7,6 +7,8 @@ import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
   timeAtLocation,
   visitDuration,
+  VisitProcessingStates,
+  someRecordingStillProcessing,
 } from "@models/visitsUtils";
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
@@ -249,26 +251,17 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
     emit("change-highlighted-location", null);
   }
 };
-const processingStates = [
-  RecordingProcessingState.Tracking,
-  RecordingProcessingState.Analyse,
-];
+
 const isStillProcessing = computed<boolean>(() => {
   // TODO: Poll to see if processing has finished
   return visitEvents.value.some(
     (visit) =>
       visit.type === "visit" &&
       visit.data.recordings.some((rec) =>
-        processingStates.includes(rec.processingState)
+        VisitProcessingStates.includes(rec.processingState)
       )
   );
 });
-const someRecordingStillProcessing = (visit: ApiVisitResponse): boolean => {
-  // TODO: Poll to see if processing has finished
-  return visit.data?.recordings.some((rec) =>
-    processingStates.includes(rec.processingState)
-  );
-};
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
@@ -312,7 +305,16 @@ const someRecordingStillProcessing = (visit: ApiVisitResponse): boolean => {
           :class="[classification, ...path.split('.')]"
           :key="index"
         >
-          <span class="count text-capitalize">{{ count }}</span>
+          <span class="count text-capitalize">
+            <b-spinner
+              v-if="classification === 'unclassified'"
+              small
+              class="mx-1"
+            />
+            <span :class="{ 'me-1': classification === 'unclassified' }">{{
+              count
+            }}</span>
+          </span>
           <span class="text-capitalize species d-inline-block">
             {{ displayLabelForClassificationLabel(classification) }}
           </span>
@@ -394,7 +396,7 @@ const someRecordingStillProcessing = (visit: ApiVisitResponse): boolean => {
           v-else
           class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden"
         >
-          <div class="visit-thumb">
+          <div class="visit-thumb rounded-1">
             <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
               alt="Thumbnail for first recording of this visit"
@@ -420,7 +422,11 @@ const someRecordingStillProcessing = (visit: ApiVisitResponse): boolean => {
                   class="me-1"
                   variant="light"
                   v-if="someRecordingStillProcessing(visit.data)"
-                />{{ displayLabelForClassificationLabel(visit.name) }}
+                /><span v-if="someRecordingStillProcessing(visit.data)"
+                  >AI Queued</span
+                ><span v-else>{{
+                  displayLabelForClassificationLabel(visit.name)
+                }}</span>
                 <font-awesome-icon
                   icon="check"
                   v-if="visit.data.classFromUserTag"

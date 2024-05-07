@@ -21,13 +21,14 @@ const flattenNodes = (
 ) => {
   for (const child of node.children || []) {
     const parent = acc[node.label];
+    const path = `${(parent && parent.path) || node.path || node.label}.${
+      child.label
+    }`;
     acc[child.label] = {
       label: child.label,
       display: child.display || child.label,
       node: child,
-      path: `${(parent && parent.path) || node.path || node.label}.${
-        child.label
-      }`,
+      path,
     };
     if (child.aliases) {
       for (const alias of child.aliases) {
@@ -135,6 +136,9 @@ export const displayLabelForClassificationLabel = (
     debugger;
   }
   label = label.toLowerCase();
+  if (label === "unclassified") {
+    return "AI Queued";
+  }
   if (label === "unidentified" && aiTag) {
     return "Unidentified";
   }

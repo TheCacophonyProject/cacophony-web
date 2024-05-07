@@ -49,6 +49,7 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   createdAt: Date;
   updatedAt: Date;
   path: string;
+  used: boolean;
 }
 export const additionalTags = Object.freeze([
   "poor tracking",
@@ -69,6 +70,12 @@ export default function (
     automatic: DataTypes.BOOLEAN,
     data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
+    used: {
+      // This tag is used in visit calculations/canonical tag search.
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   }) as unknown as TrackTagStatic;
 
   //---------------

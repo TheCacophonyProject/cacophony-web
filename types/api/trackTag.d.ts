@@ -24,7 +24,7 @@ export interface ApiTrackTagResponse {
   what: string;
   path: string;
   id: TrackTagId;
-  trackId: TrackId;
+  trackId?: TrackId;
   confidence: number;
   automatic: boolean;
   createdAt?: IsoFormattedDateString;
@@ -44,7 +44,6 @@ export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
 
 export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {
   automatic: true;
-  data: TrackTagData;
 }
 
 export type ApiTrackTag =

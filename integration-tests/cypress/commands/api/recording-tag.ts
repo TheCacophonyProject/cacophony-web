@@ -48,6 +48,7 @@ Cypress.Commands.add(
     ).then((response) => {
       if (statusCode == 200) {
         if (tagName !== null) {
+          cy.wrap(response.body);
           saveIdOnly(tagName, response.body.tagId);
         }
       }

@@ -20,7 +20,7 @@ import {
   ApiRecordingNeedsTagReturned,
   ApiRecordingColumns,
 } from "../types";
-import { ApiRecordingColumnNames } from "../constants";
+import { ApiRecordingColumnNames, NOT_NULL } from "../constants";
 import {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
@@ -28,6 +28,14 @@ import {
 } from "@typedefs/api/recording";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import { RecordingId } from "@typedefs/api/common";
+import { ApiTrackResponse } from "@typedefs/api/track";
+import {
+  TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+  TEMPLATE_TRACK,
+} from "@commands/dataTemplate";
+import { TestCreateRecordingData } from "@commands/api/recording-tests";
+import { TestGetLocationArray } from "@commands/api/station";
 
 // 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
@@ -306,6 +314,67 @@ Cypress.Commands.add(
       if (additionalChecks["message"] !== undefined) {
         expect(x.messages.join("|")).to.include(additionalChecks["message"]);
       }
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingAddWithTracks",
+  (
+    deviceName: string,
+    tracks?: string[][],
+    recordingDateTime?: string,
+    location?: [number, number]
+  ) => {
+    const data = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
+    data.duration = 15.6666666666667;
+    data.recordingDateTime = recordingDateTime || "2021-07-17T20:13:17.248Z";
+    data.location = location || TestGetLocationArray(1);
+    while (data.metadata.tracks.length) {
+      data.metadata.tracks.pop();
+    }
+    if (tracks) {
+      for (const track of tracks) {
+        const trackT = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
+        trackT.start_s = 2;
+        trackT.end_s = 5;
+        const prediction = trackT.predictions.pop();
+        for (const tag of track) {
+          const trackTag = JSON.parse(JSON.stringify(prediction));
+          trackTag.label = tag;
+          trackTag.confident_tag = tag;
+          trackTag.confidence = 0.9;
+          trackT.predictions.push(trackTag);
+        }
+        data.metadata.tracks.push(trackT);
+      }
+      if (!tracks.length) {
+        // If there was an empty array passed, create a track with no tags
+        const trackT = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
+        trackT.start_s = 2;
+        trackT.end_s = 5;
+        trackT.predictions.pop();
+        data.metadata.tracks.push(trackT);
+      }
+    }
+    logTestDescription(`Upload recording with tracks to '${deviceName}'`, {
+      camera: deviceName,
+      requestData: data,
+      tracks,
+    });
+
+    const url = v1ApiPath("recordings");
+    uploadFile(
+      url,
+      deviceName,
+      "invalid.cptv",
+      "thermalRaw",
+      data,
+      "@addRecording",
+      200
+    ).then((p) => {
+      const response = p as unknown as { recordingId: RecordingId };
+      cy.wrap(response.recordingId);
     });
   }
 );
@@ -853,6 +922,62 @@ Cypress.Commands.add(
           additionalChecks["count"]
         );
       }
+      cy.wrap(response.body.rows);
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingsQueryV2Check",
+  (
+    userName: string,
+    projectId: number,
+    query: URLSearchParams,
+    expectedRecordings: (
+      | ApiAudioRecordingResponse
+      | ApiThermalRecordingResponse
+    )[] = undefined,
+    excludeCheckOn: string[] = [],
+    statusCode: number = 200,
+    additionalChecks: any = {}
+  ) => {
+    logTestDescription(`Query recordings where '${query}'`, {
+      user: userName,
+      params: query,
+      expected: expectedRecordings,
+    });
+
+    const url = `${v1ApiPath(`recordings/for-project/${projectId}`)}?${query}`;
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url: url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      if (
+        statusCode === 200 &&
+        expectedRecordings &&
+        expectedRecordings.length
+      ) {
+        checkTreeStructuresAreEqualExcept(
+          expectedRecordings,
+          response.body.recordings,
+          excludeCheckOn
+        );
+      }
+      if (additionalChecks["message"] !== undefined) {
+        expect(response.body.messages.join("|")).to.include(
+          additionalChecks["message"]
+        );
+      }
+      if (additionalChecks["count"] !== undefined) {
+        expect(response.body.count, "Count should be: ").to.equal(
+          additionalChecks["count"]
+        );
+      }
+      cy.wrap(response.body);
     });
   }
 );

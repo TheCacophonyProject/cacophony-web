@@ -940,7 +940,7 @@ export default function (app: Application, baseUrl: string) {
         (track) => track["TrackTags.what"] === tag
       );
       return successResponse(response, "Got tracks with tag", {
-        tracks: filteredTracks.map(mapTrack),
+        tracks: filteredTracks.map((x) => mapTrack(x)),
       });
     }
   );
@@ -1195,7 +1195,7 @@ export default function (app: Application, baseUrl: string) {
           },
         });
       } else {
-        await previousDeviceHistoryEntry.update(
+        await models.DeviceHistory.update(
           {
             settings: {
               ...previousSettings,
@@ -1340,7 +1340,7 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${apiUrl}/:id/mask-regions`,
-    extractJwtAuthorizedUser,
+    extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),

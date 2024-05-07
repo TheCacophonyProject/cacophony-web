@@ -40,6 +40,102 @@ const models = await modelsInit();
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
 
+const extractJwtAuthenticatedEntityCommon = async (
+  jwtDecoded: DecodedJWTToken,
+  types: string[],
+  request: Request,
+  response: Response,
+  next: NextFunction,
+  reqAccess?: { devices?: any },
+  requireSuperAdmin = false,
+  requireActivatedUser = false
+): Promise<void> => {
+  const type = jwtDecoded._type;
+
+  if (types && !types.includes(jwtDecoded._type)) {
+    return next(
+      new AuthenticationError(
+        `Invalid JWT access type '${type}', must be ${
+          types.length > 1 ? "one of " : ""
+        }${types.map((t) => `'${t}'`).join(", ")}`
+      )
+    );
+  }
+
+  if (
+    jwtDecoded._type === "user" &&
+    requireActivatedUser &&
+    jwtDecoded.activated === false
+  ) {
+    return next(
+      new AuthorizationError(
+        "You must have confirmed your email address to activate your account in order to access this API."
+      )
+    );
+  }
+
+  const hasAccess = checkAccess(reqAccess, jwtDecoded);
+  if (!hasAccess) {
+    return next(new AuthenticationError("JWT does not have access."));
+  }
+
+  if (requireSuperAdmin && type !== "user") {
+    return next(new AuthorizationError("Admin has to be a user"));
+  }
+
+  const short = true;
+  if ((short && type === "user") || type === "device") {
+    if (type === "user") {
+      const superUserPermissions = SuperUsers.get(jwtDecoded.id);
+      if (!superUserPermissions) {
+        response.locals.requestUser = {
+          id: jwtDecoded.id,
+          hasGlobalRead: () => false,
+          hasGlobalWrite: () => false,
+          globalPermission: UserGlobalPermission.Off,
+        };
+      } else {
+        response.locals.requestUser = {
+          id: jwtDecoded.id,
+          hasGlobalRead: () => true,
+          hasGlobalWrite: () =>
+            superUserPermissions === UserGlobalPermission.Write,
+          globalPermission: superUserPermissions,
+        };
+      }
+    } else if (type === "device") {
+      response.locals.requestDevice = { id: jwtDecoded.id };
+    }
+  } else {
+    let result: DecodedJWTToken | User | null;
+    try {
+      result = await lookupEntity(models, jwtDecoded);
+    } catch (e) {
+      return next(e);
+    }
+    if (result === null) {
+      return next(
+        new AuthorizationError(
+          `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`
+        )
+      );
+    }
+    response.locals[`request${upperFirst(type)}`] = result;
+  }
+
+  response.locals.viewAsSuperUser = false;
+  if (request.query["view-mode"] !== "user" && response.locals.requestUser) {
+    const globalPermissions = (response.locals.requestUser as User)
+      .globalPermission;
+    response.locals.viewAsSuperUser =
+      globalPermissions !== UserGlobalPermission.Off;
+  }
+
+  if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
+    return next(new AuthorizationError("User is not an admin."));
+  }
+};
+
 const extractJwtAuthenticatedEntity =
   (
     types: string[],
@@ -55,94 +151,16 @@ const extractJwtAuthenticatedEntity =
     try {
       response.locals.token = getVerifiedJWT(request) as DecodedJWTToken;
       const jwtDecoded = response.locals.token;
-      const type = jwtDecoded._type;
-
-      if (types && !types.includes(jwtDecoded._type)) {
-        return next(
-          new AuthenticationError(
-            `Invalid JWT access type '${type}', must be ${
-              types.length > 1 ? "one of " : ""
-            }${types.map((t) => `'${t}'`).join(", ")}`
-          )
-        );
-      }
-
-      if (
-        jwtDecoded._type === "user" &&
-        requireActivatedUser &&
-        jwtDecoded.activated === false
-      ) {
-        return next(
-          new AuthorizationError(
-            "You must have confirmed your email address to activate your account in order to access this API."
-          )
-        );
-      }
-
-      const hasAccess = checkAccess(reqAccess, jwtDecoded);
-      if (!hasAccess) {
-        return next(new AuthenticationError("JWT does not have access."));
-      }
-
-      if (requireSuperAdmin && type !== "user") {
-        return next(new AuthorizationError("Admin has to be a user"));
-      }
-
-      const short = true;
-      if ((short && type === "user") || type === "device") {
-        if (type === "user") {
-          const superUserPermissions = SuperUsers.get(jwtDecoded.id);
-          if (!superUserPermissions) {
-            response.locals.requestUser = {
-              id: jwtDecoded.id,
-              hasGlobalRead: () => false,
-              hasGlobalWrite: () => false,
-              globalPermission: UserGlobalPermission.Off,
-            };
-          } else {
-            response.locals.requestUser = {
-              id: jwtDecoded.id,
-              hasGlobalRead: () => true,
-              hasGlobalWrite: () =>
-                superUserPermissions === UserGlobalPermission.Write,
-              globalPermission: superUserPermissions,
-            };
-          }
-        } else if (type === "device") {
-          response.locals.requestDevice = { id: jwtDecoded.id };
-        }
-      } else {
-        let result;
-        try {
-          result = await lookupEntity(models, jwtDecoded);
-        } catch (e) {
-          return next(e);
-        }
-        if (result === null) {
-          return next(
-            new AuthorizationError(
-              `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`
-            )
-          );
-        }
-        response.locals[`request${upperFirst(type)}`] = result;
-      }
-
-      response.locals.viewAsSuperUser = false;
-      if (
-        request.query["view-mode"] !== "user" &&
-        response.locals.requestUser
-      ) {
-        const globalPermissions = (response.locals.requestUser as User)
-          .globalPermission;
-        response.locals.viewAsSuperUser =
-          globalPermissions !== UserGlobalPermission.Off;
-      }
-
-      if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
-        return next(new AuthorizationError("User is not an admin."));
-      }
-
+      await extractJwtAuthenticatedEntityCommon(
+        jwtDecoded,
+        types,
+        request,
+        response,
+        next,
+        reqAccess,
+        requireSuperAdmin,
+        requireActivatedUser
+      );
       return next();
     } catch (e) {
       return next(e);
@@ -168,96 +186,21 @@ const extractJwtAuthenticatedEntityFromBody =
         request
       ) as DecodedJWTToken;
       response.locals.tokenInfo = jwtDecoded;
-      const type = jwtDecoded._type;
-
-      if (types && !types.includes(jwtDecoded._type)) {
-        return next(
-          new AuthenticationError(
-            `Invalid JWT access type '${type}', must be ${
-              types.length > 1 ? "one of " : ""
-            }${types.map((t) => `'${t}'`).join(", ")}`
-          )
-        );
-      }
-
-      if (jwtDecoded._type === "user" && requireActivatedUser) {
-        return next(
-          new AuthorizationError(
-            "You must have confirmed your email address to activate your account in order to access this API."
-          )
-        );
-      }
-
-      const hasAccess = checkAccess(reqAccess, jwtDecoded);
-      if (!hasAccess) {
-        return next(new AuthenticationError("JWT does not have access."));
-      }
-
-      if (requireSuperAdmin && type !== "user") {
-        return next(new AuthorizationError("Admin has to be a user"));
-      }
-
-      const short = true;
-      if ((short && type === "user") || type === "device") {
-        if (type === "user") {
-          const superUserPermissions = SuperUsers.get(jwtDecoded.id);
-          if (!superUserPermissions) {
-            response.locals.requestUser = {
-              id: jwtDecoded.id,
-              hasGlobalRead: () => false,
-              hasGlobalWrite: () => false,
-              globalPermission: UserGlobalPermission.Off,
-            };
-          } else {
-            response.locals.requestUser = {
-              id: jwtDecoded.id,
-              hasGlobalRead: () => true,
-              hasGlobalWrite: () =>
-                superUserPermissions === UserGlobalPermission.Write,
-              globalPermission: superUserPermissions,
-            };
-          }
-        } else if (type === "device") {
-          response.locals.requestDevice = { id: jwtDecoded.id };
-        }
-      } else {
-        let result;
-        try {
-          result = await lookupEntity(models, jwtDecoded);
-        } catch (e) {
-          return next(e);
-        }
-        if (result === null) {
-          return next(
-            new AuthorizationError(
-              `Could not find entity '${jwtDecoded.id}' of type '${type}' referenced by JWT.`
-            )
-          );
-        }
-        response.locals[`request${upperFirst(type)}`] = result;
-      }
-
-      response.locals.viewAsSuperUser = false;
-      if (
-        request.query["view-mode"] !== "user" &&
-        response.locals.requestUser
-      ) {
-        const globalPermissions = (response.locals.requestUser as User)
-          .globalPermission;
-        response.locals.viewAsSuperUser =
-          globalPermissions !== UserGlobalPermission.Off;
-      }
-
-      if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
-        return next(new AuthorizationError("User is not an admin."));
-      }
-
+      await extractJwtAuthenticatedEntityCommon(
+        jwtDecoded,
+        types,
+        request,
+        response,
+        next,
+        reqAccess,
+        requireSuperAdmin,
+        requireActivatedUser
+      );
       return next();
     } catch (e) {
       return next(e);
     }
   };
-
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
 export const extractJwtAuthorizedActivatedUser = extractJwtAuthenticatedEntity(
   ["user"],

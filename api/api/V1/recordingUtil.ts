@@ -40,6 +40,7 @@ import type {
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
+import track from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
@@ -288,7 +289,6 @@ export async function saveThumbnailInfo(
     log.warning(`No thumbnails to be made for ${recording.id}`);
     return;
   }
-  let thumb;
   let frames;
   if (recording.type == RecordingType.InfraredVideo) {
     frames = await getIRFrame(recording, frameNumbers);
@@ -297,7 +297,7 @@ export async function saveThumbnailInfo(
     }
   } else {
     frames = await getCPTVFrames(recording, frameNumbers);
-    log.error("GOT CPTV Frames %s", Object.values(frames).length);
+    log.info("Got %s CPTV Frame(s)", Object.values(frames).length);
     if (!frames) {
       throw new Error(`Failed to extract frames ${frameNumbers}`);
     }
@@ -1366,6 +1366,7 @@ export const tracksFromMeta = async (
     );
 
     const promises = [];
+    const tracks = [];
     for (const trackMeta of metadata["tracks"]) {
       promises.push(
         new Promise((resolve, _reject) => {
@@ -1381,6 +1382,7 @@ export const tracksFromMeta = async (
               ) {
                 track.updateIsFiltered().then(resolve);
               } else {
+                tracks.push(track);
                 const trackPromises = [];
                 for (const prediction of trackMeta["predictions"]) {
                   let modelName = "unknown";
@@ -1431,6 +1433,9 @@ export const tracksFromMeta = async (
       );
     }
     await Promise.all(promises);
+    if (tracks.length) {
+      await Promise.all(tracks.map((track) => track.updateIsFiltered()));
+    }
   } catch (err) {
     log.error(
       "Error creating recording tracks from metadata: %s",

@@ -52,7 +52,8 @@
     "sequelize-cli": "^6.6.0",
     "temp": "^0.9.4",
     "uuid": "^8.3.2",
-    "winston": "^3.3.3"
+    "winston": "^3.3.3",
+    "sql-formatter": "^15.3.0"
   },
   "devDependencies": {
     "@types/earcut": "^2.1.4",

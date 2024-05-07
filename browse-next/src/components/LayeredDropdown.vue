@@ -244,7 +244,9 @@ const displayedOptions = computed<Classification[]>(() => {
   if (searchTerm.value && searchTerm.value.trim()) {
     // Get all the options that relate to the search term.
     const searchResults = searchOptions(
-      props.options.children as Classification[]
+      (props.options.children as Classification[]).filter(
+        (item) => item.label !== "animal"
+      )
     );
     if (searchResults.length !== 0) {
       return searchResults;
@@ -368,8 +370,8 @@ defineExpose({
       >
         <div
           class="options-list-item d-flex justify-content-between"
-          :key="option.label"
-          v-for="option in displayedOptions"
+          :key="index"
+          v-for="(option, index) in displayedOptions"
         >
           <button
             class="options-list-label btn text-start text-capitalize"

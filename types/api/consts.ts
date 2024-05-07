@@ -23,6 +23,7 @@ export enum TagMode {
   AutomaticOnly = "automatic-only",
   HumanOnly = "human-only",
   AutomaticHuman = "automatic+human",
+  AutomaticHumanUrlSafe = "automatic-and-human",
 }
 
 export enum RecordingProcessingState {
