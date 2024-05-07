@@ -401,13 +401,39 @@ export const getDisplayTags = (
       ((tag.data as any) === "Master" || tag.data.name === "Master")
   );
   const humanTags = track.tags.filter((tag) => !tag.automatic);
-  const reducedHuman = [];
+  let reducedHuman = {};
+
   humanTags.forEach((humanTag) => {
-    if (!reducedHuman.find((tag) => tag.what === humanTag.what)) {
-      reducedHuman.push(humanTag);
+    let exists = false;
+    const parents =
+      humanTag.what in labelToParent
+        ? labelToParent[humanTag.what].parents
+        : [];
+
+    for (const existingWhat of Object.keys(reducedHuman)) {
+      if (existingWhat === humanTag.what) {
+        exists = true;
+        break;
+      }
+      const existingParents =
+        existingWhat in labelToParent
+          ? labelToParent[existingWhat].parents
+          : [];
+      if (existingParents.includes(humanTag.what)) {
+        exists = true;
+        break;
+      }
+      if (parents.includes(existingWhat)) {
+        //remove existing what and add this
+        delete reducedHuman[existingWhat];
+      }
+    }
+
+    if (!exists) {
+      reducedHuman[humanTag.what] = humanTag;
     }
   });
-
+  reducedHuman = Object.values(reducedHuman);
   if (automaticTags && automaticTags.length > 0) {
     if (automaticTags.length > 1 && humanTags.length == 0) {
       automaticTags = automaticTags.filter(
