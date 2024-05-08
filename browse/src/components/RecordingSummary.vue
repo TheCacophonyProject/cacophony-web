@@ -197,6 +197,12 @@ import {
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
 import { DisplayTag, IntermediateDisplayTag } from "./RecordingsList.vue";
+import { Option } from "./LayeredDropdown.vue";
+import { getClassifications } from "./ClassificationsDropdown.vue";
+
+import { getDisplayTags, TagClass } from "./Video/AudioRecording.vue";
+import { ApiTrackResponse, ApiTrackDataRequest } from "@typedefs/api/track";
+import { RecordingType } from "@typedefs/api/consts";
 
 const addToListOfTags = (
   allTags: Record<string, IntermediateDisplayTag>,
@@ -220,13 +226,36 @@ const addToListOfTags = (
   allTags[tagName] = tag;
 };
 
-const collateTags = (recTags: any[], tracks: any[]): DisplayTag[] => {
+const collateTags = (
+  recType: RecordingType,
+  options: Option,
+  recTags: any[],
+  tracks: ApiTrackResponse[]
+): DisplayTag[] => {
   // Build a collection of tagItems - one per animal
   const tagItems: Record<string, DisplayTag> = {};
-
   if (tracks) {
     for (let j = 0; j < tracks.length; j++) {
       const track = tracks[j];
+      if (recType === RecordingType.Audio) {
+        const displayTags = getDisplayTags(options, track);
+
+        for (let i = 0; i < displayTags.length; i++) {
+          const tag = displayTags[i];
+          addToListOfTags(
+            tagItems,
+            tag.what,
+            tag.automatic,
+            tag.automatic ? null : tag.userId
+          );
+          if (tag.class === TagClass.Confirmed) {
+            tagItems[tag.what].automatic = true;
+            tagItems[tag.what].human = true;
+          }
+        }
+        continue;
+      }
+
       // For track tags, pick the best one, which is the "master AI" tag.
       const aiTag = track.tags.find(
         (tag: ApiAutomaticTrackTagResponse) =>
@@ -327,9 +356,13 @@ export default {
       type: Object,
     },
   },
+  mounted: async function () {
+    this.options = (await getClassifications()) as Option;
+  },
   data() {
     return {
       showingLocation: false,
+      options: {},
     };
   },
   computed: {
@@ -344,10 +377,24 @@ export default {
     },
     filteredTags() {
       if (this.$store.state.User.userData.showFiltered) {
-        return collateTags(this.item.recTags, this.item.tracks) ?? [];
+        return (
+          collateTags(
+            this.item.type,
+            this.options,
+            this.item.recTags,
+            this.item.tracks
+          ) ?? []
+        );
       } else {
         const goodTracks = this.item.tracks.filter((track) => !track.filtered);
-        return collateTags(this.item.recTags, goodTracks) ?? [];
+        return (
+          collateTags(
+            this.item.type,
+            this.options,
+            this.item.recTags,
+            goodTracks
+          ) ?? []
+        );
       }
     },
     thumbnailSrc(): string {

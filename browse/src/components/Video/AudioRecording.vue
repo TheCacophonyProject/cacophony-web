@@ -364,10 +364,177 @@ import {
 } from "@typedefs/api/trackTag";
 import { ApiAudioRecordingResponse } from "@typedefs/api/recording";
 import { TrackId } from "@typedefs/api/common";
-import ClassificationsDropdown from "../ClassificationsDropdown.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 import { ApiGroupResponse } from "@typedefs/api/group";
 import { ApiRecordingTagRequest } from "@typedefs/api/tag";
+import { getClassifications } from "../ClassificationsDropdown.vue";
+import ClassificationsDropdown from "../ClassificationsDropdown.vue";
+
+import { Option } from "./LayeredDropdown.vue";
+import { reduce } from "lodash";
+
+const flattenNodes = (
+  acc: Record<string, { label: string; display: string; parents: string[] }>,
+  node: Option,
+  parents: string[]
+) => {
+  for (const child of node.children || []) {
+    acc[child.label] = {
+      label: child.label,
+      display: child.display || child.label,
+      parents: [...parents],
+    };
+    flattenNodes(acc, child, [...acc[child.label].parents, child.label]);
+  }
+  return acc;
+};
+
+export const getDisplayTags = (
+  options: Option,
+  track: ApiTrackResponse
+): DisplayTag[] => {
+  const labelToParent = {};
+  const classifications = flattenNodes(labelToParent, options, []);
+  let automaticTags = track.tags.filter(
+    (tag) =>
+      tag.automatic &&
+      ((tag.data as any) === "Master" || tag.data.name === "Master")
+  );
+  const humanTags = track.tags.filter((tag) => !tag.automatic);
+  let reducedHuman = {};
+
+  humanTags.forEach((humanTag) => {
+    let exists = false;
+    const parents =
+      humanTag.what in labelToParent
+        ? labelToParent[humanTag.what].parents
+        : [];
+
+    for (const existingWhat of Object.keys(reducedHuman)) {
+      if (existingWhat === humanTag.what) {
+        exists = true;
+        break;
+      }
+      const existingParents =
+        existingWhat in labelToParent
+          ? labelToParent[existingWhat].parents
+          : [];
+      if (existingParents.includes(humanTag.what)) {
+        exists = true;
+        break;
+      }
+      if (parents.includes(existingWhat)) {
+        //remove existing what and add this
+        delete reducedHuman[existingWhat];
+      }
+    }
+
+    if (!exists) {
+      reducedHuman[humanTag.what] = humanTag;
+    }
+  });
+  reducedHuman = Object.values(reducedHuman);
+  if (automaticTags && automaticTags.length > 0) {
+    if (automaticTags.length > 1 && humanTags.length == 0) {
+      automaticTags = automaticTags.filter(
+        (tag) =>
+          !automaticTags.find(
+            (others) =>
+              others != tag &&
+              others.what in labelToParent &&
+              labelToParent[others.what].parents.find(
+                (parent) => parent === tag.what
+              )
+          )
+      );
+    }
+
+    reducedHuman.sort((a, b) => {
+      if (a.what === "bird") {
+        return 2;
+      } else if (b.what === "bird") {
+        return -2;
+      }
+      return a.what <= b.what ? -1 : 1;
+    });
+
+    automaticTags.sort((a, b) => {
+      if (a.what === "bird") {
+        return 2;
+      } else if (b.what === "bird") {
+        return -2;
+      }
+      return a.what <= b.what ? -1 : 1;
+    });
+
+    if (humanTags.length > 0) {
+      //tags which match or, matches an ai tag which is a parent of this tag but not a top level tag
+      const confirmedTags = reducedHuman.filter(
+        (tag) =>
+          automaticTags.filter(
+            (autoTag) =>
+              autoTag.what === tag.what ||
+              (tag.what !== "bird" &&
+                tag.what in labelToParent &&
+                automaticTags.find(
+                  (autoTag) =>
+                    autoTag.what in labelToParent &&
+                    labelToParent[autoTag.what].parents.length > 0 &&
+                    tag.what in labelToParent &&
+                    labelToParent[tag.what].parents.find(
+                      (parent) => parent === autoTag.what
+                    )
+                ))
+          ).length > 0
+      );
+
+      if (confirmedTags.length > 0) {
+        return [
+          ...confirmedTags.map((confirmedTag) => ({
+            ...confirmedTag,
+            class: TagClass.Confirmed,
+          })),
+        ];
+      } else {
+        //might want another way of showing this information
+        //filter any that aren't more specific of the human tag
+        //automaticTags = automaticTags.filter(
+        // (autoTag) =>
+        //    autoTag.what in labelToParent &&
+        //    labelToParent[autoTag.what].parents.find((parent) =>
+        //      reducedHuman.find((humanTag) => parent === humanTag.what)
+        //    )
+        //);
+
+        // check if all human tags are the same
+        return [
+          ...reducedHuman.map((humanTag) => ({
+            ...humanTag,
+            class: TagClass.Human,
+          })),
+          //...automaticTags.map((automaticTag) => ({
+          //  ...automaticTag,
+          //  class: TagClass.Denied,
+          // })),
+        ];
+      }
+    } else {
+      return automaticTags.map((automaticTag) => ({
+        ...automaticTag,
+        class: TagClass.Automatic,
+      }));
+    }
+  } else if (reducedHuman.length > 0) {
+    return [
+      ...reducedHuman.map((humanTag) => ({
+        ...humanTag,
+        class: TagClass.Human,
+      })),
+    ];
+  } else {
+    return [];
+  }
+};
 
 export enum TagClass {
   Automatic = "automatic",
@@ -423,6 +590,8 @@ export default defineComponent({
     Help,
   },
   setup(props, context) {
+    const options = ref<Option>({ label: "", children: [] });
+
     const userName = store.state.User.userData.userName;
     const userId = store.state.User.userData.id;
     const [url, setUrl] = useState(
@@ -504,71 +673,12 @@ export default defineComponent({
     const isGroupAdmin = ref(false);
     const filterHuman = ref(false);
 
-    const getDisplayTags = (track: ApiTrackResponse): DisplayTag[] => {
-      const automaticTags = track.tags.filter(
-        (tag) => tag.automatic && tag.data.name === "Master"
-      );
-      const humanTags = track.tags.filter((tag) => !tag.automatic);
-      const humanTag =
-        humanTags.length === 1
-          ? humanTags[0]
-          : humanTags.length === 0
-          ? null
-          : humanTags.reduce((acc, curr) => {
-              if (acc.what === curr.what) {
-                return curr;
-              } else {
-                return { ...humanTags[0], what: "Multiple" };
-              }
-            });
-      if (automaticTags) {
-        if (humanTags.length > 0) {
-          const confirmedTag = humanTags.find((tag) =>
-            automaticTags.find((autoTag) => autoTag.what === tag.what)
-          );
-          if (confirmedTag) {
-            return [
-              {
-                ...confirmedTag,
-                class: TagClass.Confirmed,
-              },
-            ];
-          } else {
-            // check if all human tags are the same
-            return [
-              {
-                ...humanTag,
-                class: TagClass.Human,
-              },
-              ...automaticTags.map((automaticTag) => ({
-                ...automaticTag,
-                class: TagClass.Denied,
-              })),
-            ];
-          }
-        } else {
-          return automaticTags.map((automaticTag) => ({
-            ...automaticTag,
-            class: TagClass.Automatic,
-          }));
-        }
-      } else if (humanTags.length > 0) {
-        return [
-          {
-            ...humanTag,
-            class: TagClass.Human,
-          },
-        ];
-      } else {
-        return [];
-      }
-    };
-
     const createAudioTrack = (
       track: ApiTrackResponse,
       index: number
     ): AudioTrack => {
-      const displayTags = getDisplayTags(track);
+      const displayTags = getDisplayTags(options.value, track);
+
       return {
         deleted: false,
         colour: TagColours[index % TagColours.length],
@@ -743,7 +853,7 @@ export default defineComponent({
           confirming: false,
           tags: newTags,
         });
-        const displayTags = getDisplayTags(taggedTrack);
+        const displayTags = getDisplayTags(options.value, taggedTrack);
         const currTrack = modifyTrack(trackId, {
           displayTags,
           confirming: false,
@@ -830,7 +940,7 @@ export default defineComponent({
         const taggedTrack = modifyTrack(trackId, {
           tags: currTags,
         });
-        const displayTags = getDisplayTags(taggedTrack);
+        const displayTags = getDisplayTags(options.value, taggedTrack);
         const currTrack = modifyTrack(trackId, {
           displayTags,
           confirming: false,
@@ -1079,6 +1189,8 @@ export default defineComponent({
     };
 
     onMounted(async () => {
+      options.value = (await getClassifications()) as Option;
+
       buffer.value = await fetchAudioBuffer(url.value);
       const response = await api.groups.getGroupById(props.recording.groupId);
       if (response.success) {
