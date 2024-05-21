@@ -48,6 +48,8 @@ const RECORDING_TYPES = "RECORDING_TYPES";
 const PAGING = "PAGING";
 const BEFORE_CACOPHONY = new Date(2017, 1, 1);
 
+// TODO: Constrain this by date-range we care about
+
 const LAST_TIMES_TABLE = `with lasttimes as                                    
 (select "recordingDateTime", "StationId", "GroupId",
    LAG("recordingDateTime", 1) OVER (PARTITION BY "StationId" ORDER BY "recordingDateTime") lasttime,

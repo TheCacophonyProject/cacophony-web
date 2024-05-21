@@ -1,13 +1,20 @@
 <script lang="ts" setup>
 import { BModal } from "bootstrap-vue-next";
 import {
-  UserProjects,
   currentSelectedProject,
   showSwitchProject,
+  type LoggedInUser,
 } from "@models/LoggedInUser";
-import { computed, onMounted } from "vue";
+import { computed, inject, onMounted, type Ref } from "vue";
 import { useRoute } from "vue-router";
 import { urlNormaliseName } from "@/utils";
+import { currentUser as currentUserInfo } from "@models/provides.ts";
+import { userProjects as currentUserProjects } from "@models/provides.ts";
+import type { ApiGroupResponse } from "@typedefs/api/group";
+import { DateTime } from "luxon";
+
+const userProjects = inject(currentUserProjects) as Ref<ApiGroupResponse[]>;
+const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
 const nextRoute = (projectName: string) => {
   const currentRoute = useRoute();
@@ -38,6 +45,39 @@ const currentProjectName = computed<string>(() => {
   );
 });
 
+const getLatestRecordingTime = (group: ApiGroupResponse): Date => {
+  const lastThermal =
+    (group.lastThermalRecordingTime &&
+      new Date(group.lastThermalRecordingTime)) ||
+    new Date(0);
+  const lastAudio =
+    (group.lastAudioRecordingTime && new Date(group.lastAudioRecordingTime)) ||
+    new Date(0);
+  if (lastThermal > lastAudio) {
+    return lastThermal;
+  }
+  return lastAudio;
+};
+
+// Sort projects by latest active device
+const sortedUserProjects = computed(() => {
+  const projects = [...userProjects.value].map((project) => ({
+    ...project,
+    latestRecordingTime: getLatestRecordingTime(project),
+  }));
+  projects.sort((a, b) => {
+    return b.latestRecordingTime.getTime() - a.latestRecordingTime.getTime();
+  });
+  return projects;
+});
+
+const lastActiveRelativeToNow = (date: Date): string => {
+  if (date.getTime() === 0) {
+    return "Not active";
+  }
+  return DateTime.fromJSDate(date).toRelative() as string;
+};
+
 onMounted(() => {
   showSwitchProject.visible = true;
 });
@@ -52,22 +92,65 @@ onMounted(() => {
     hide-footer
     @hidden="showSwitchProject.enabled = false"
   >
-    <div class="list-group" v-if="UserProjects">
+    <div v-if="currentUser.globalPermission !== 'off'">
+      View any project
+      <multiselect :options="sortedUserProjects"> </multiselect>
+    </div>
+    <div class="list-group" v-if="sortedUserProjects">
+      <p v-if="currentUser.globalPermission !== 'off'">My projects</p>
       <router-link
         :class="[
           'list-group-item',
           { 'list-group-item-action': groupName !== currentProjectName },
           { disabled: groupName === currentProjectName },
         ]"
-        v-for="({ groupName, id }, index) in UserProjects"
+        v-for="(
+          {
+            groupName,
+            id,
+            lastThermalRecordingTime,
+            lastAudioRecordingTime,
+            latestRecordingTime,
+          },
+          index
+        ) in sortedUserProjects"
         :key="id"
         :to="nextRoute(groupName)"
         :aria-disabled="groupName === currentProjectName"
         :tabindex="groupName === currentProjectName ? -1 : index"
         @click="showSwitchProject.visible = false"
       >
-        {{ groupName }}
-        <span v-if="groupName === currentProjectName">(selected)</span>
+        <span class="d-flex justify-content-between">
+          <span>
+            <span
+              >{{ groupName }} (active
+              {{ lastActiveRelativeToNow(latestRecordingTime) }})</span
+            >
+            <span v-if="groupName === currentProjectName" class="ms-1"
+              >(selected)</span
+            >
+          </span>
+          <span>
+            <font-awesome-icon
+              color="#999"
+              icon="camera"
+              v-if="lastThermalRecordingTime"
+              class="ms-1"
+            />
+            <font-awesome-icon
+              color="#999"
+              icon="music"
+              v-if="lastAudioRecordingTime"
+              class="ms-1"
+            />
+            <font-awesome-icon
+              color="#999"
+              icon="question"
+              v-if="!lastAudioRecordingTime && !lastThermalRecordingTime"
+              class="ms-1"
+            />
+          </span>
+        </span>
       </router-link>
     </div>
   </b-modal>

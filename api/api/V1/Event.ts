@@ -359,6 +359,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiQuery {String} [type] Alphaonly string describing the type of event wanted
    * @apiQuery {Boolean} [latest] Set to true to see the most recent events recorded listed first
    * @apiQuery {Boolean} [only-active=true] Only return events for active devices
+   * @apiQuery {Boolean} [include-count=true] Get count of all events matching this query
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} offset Offset of returned page of results from 1st result matched by query.
@@ -381,28 +382,16 @@ export default function (app: Application, baseUrl: string) {
         .isISO8601({ strict: true })
         .optional()
         .withMessage(expectedTypeOf("ISO formatted date string")),
-      idOf(query("deviceId")).optional(),
+      idOf(query("deviceId")),
       integerOf(query("offset")).optional(),
       integerOf(query("limit")).optional(),
       query("type").matches(EVENT_TYPE_REGEXP).optional(),
       booleanOf(query("latest")).optional(),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active")).optional(),
+      booleanOf(query("include-count")).optional().default(true),
     ]),
     // Extract required resources
-    fetchAuthorizedOptionalDeviceById(query("deviceId")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // deviceId is optional, but if it is supplied we need to make sure that the user
-      // is allowed to access it.
-      if (request.query.deviceId && !response.locals.device) {
-        return next(
-          new ClientError(
-            `Could not find a device with an id of '${request.query.deviceId} for user`,
-            HttpStatusCode.Forbidden
-          )
-        );
-      }
-      next();
-    },
+    fetchAuthorizedRequiredDeviceById(query("deviceId")),
     // Check permissions on resources
     // Extract device if any, and check that user has permissions to access it
     async (request: Request, response: Response) => {
@@ -413,6 +402,7 @@ export default function (app: Application, baseUrl: string) {
       if (query.type) {
         options = { eventType: query.type } as QueryOptions;
       }
+      const includeCount = query["include-count"] as unknown as boolean;
       const result = await models.Event.query(
         response.locals.requestUser.id,
         query.startTime as string,
@@ -421,17 +411,22 @@ export default function (app: Application, baseUrl: string) {
         offset,
         query.limit as unknown as number,
         query.latest as unknown as boolean,
-        options
+        options,
+        includeCount
       );
-      return successResponse(response, "Completed query.", {
+      const payload = {
         limit: query.limit,
         offset,
-        count: result.count,
-        rows: result.rows,
-      });
+        rows: includeCount ? result.rows : result,
+      };
+      if (includeCount) {
+        (payload as any).count = result.count;
+      }
+      return successResponse(response, "Completed query.", payload);
     }
   );
 
+  // DEPRECATED: As far as I can tell, no client ever actually calls this API endpoint, is it only used by CI?
   /**
    * @api {get} /api/v1/events/errors Query recorded errors
    * @apiName QueryErrors
@@ -525,6 +520,7 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  // DEPRECATED: As far as I can tell, no client ever calls this API endpoint - is it only used by CI?
   /**
    * @api {get} /api/v1/events/powerEvents Query power events for devices
    * @apiName QueryPower

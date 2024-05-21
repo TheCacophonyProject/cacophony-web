@@ -162,6 +162,7 @@ export const visitsByNightAtLocation = (
   location: LatLng
 ): [DateTime, ApiVisitResponse[]][] => {
   const zone = timezoneForLatLng(location);
+  console.log("Recalc visitsByNightAtLocation", visits.length);
   const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
   for (const visit of visits) {
     // If the visit is after sunset, and before sunrise, it goes to the current day

@@ -49,8 +49,9 @@ export interface EventStatic extends ModelStaticCommon<Event> {
     offset?: number,
     limit?: number,
     latest?: boolean,
-    options?: QueryOptions
-  ) => Promise<{ rows: Event[]; count: number }>;
+    options?: QueryOptions,
+    includeCount?: boolean
+  ) => Promise<{ rows: Event[]; count?: number }>;
   latestEvents: (
     userId?: UserId,
     deviceId?: DeviceId,
@@ -81,7 +82,7 @@ export default function (sequelize, DataTypes) {
   };
 
   /**
-   * Return one or more recordings for a user matching the query
+   * Return one or more events for a user matching the query
    * arguments given.
    */
   Event.query = async function (
@@ -92,7 +93,8 @@ export default function (sequelize, DataTypes) {
     offset,
     limit,
     latestFirst,
-    options
+    options,
+    includeCount
   ) {
     const where: any = {};
     offset = offset || 0;
@@ -130,17 +132,10 @@ export default function (sequelize, DataTypes) {
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-    let user;
-    if (userId) {
-      // NOTE: This function is sometimes called by scripts without a user
-      user = await models.User.findByPk(userId);
-    }
-    return this.findAndCountAll({
+    return this[includeCount ? "findAndCountAll" : "findAll"]({
       where: {
         [Op.and]: [
           where, // User query
-          // FIXME: Move permissions stuff to middleware
-          options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
       order,
@@ -152,6 +147,7 @@ export default function (sequelize, DataTypes) {
           where: eventWhere,
         },
         {
+          required: !!deviceId,
           model: models.Device,
           attributes: ["deviceName"],
         },
@@ -187,17 +183,10 @@ export default function (sequelize, DataTypes) {
       ["dateTime", "DESC"],
     ];
 
-    let user;
-    if (userId) {
-      // NOTE - This function is called by scripts without supplying a user.
-      user = await models.User.findByPk(userId);
-    }
     return this.findAll({
       where: {
         [Op.and]: [
           where, // User query
-          // FIXME: Move permissions stuff to middleware (though this function is invoked via scripts also, so maybe not?)
-          options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
       order,

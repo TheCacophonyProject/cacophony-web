@@ -73,6 +73,8 @@ import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
   type BulkVisitsResponse,
   getAllVisitsForProjectBetweenTimes,
+  getVisitsForProject,
+  type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
 import { getLocationsForProject } from "@api/Project.ts";
@@ -332,15 +334,14 @@ const deserialiseAndValidateRouteValue = (
       {}
     );
     if (value in knownLabels) {
-      dateRange.value[0] = knownLabels[value][0];
-      dateRange.value[1] = knownLabels[value][1];
+      dateRange.value = [...knownLabels[value]];
       searchParams.value.from = value;
     } else {
       const date = new Date(value);
       if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
         return { replacement: availableDateRanges.value[0].from };
       }
-      dateRange.value[0] = date;
+      dateRange.value = [date, dateRange.value[1]];
       searchParams.value.from = date;
     }
   } else if (key === "until") {
@@ -349,7 +350,7 @@ const deserialiseAndValidateRouteValue = (
     if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
       return { replacement: null };
     }
-    dateRange.value[1] = date;
+    dateRange.value = [dateRange.value[0], date];
     searchParams.value.until = date;
   } else if (key === "locations") {
     value = value || [];
@@ -405,6 +406,7 @@ const deserialiseAndValidateRouteValue = (
       if (validTags.length) {
         return { replacement: validTags.join(",") };
       } else {
+        searchParams.value.taggedWith = [];
         return { replacement: null };
       }
     }
@@ -459,6 +461,7 @@ const syncSearchQuery = async (
   if (replacements["tagged-with"]) {
     replacements["tag-mode"] = TagMode.Tagged;
   }
+
   const isDateRange =
     queryValueIsDate(next.from) && queryValueIsDate(next.until);
   if (Object.entries(replacements).length) {
@@ -476,6 +479,7 @@ const syncSearchQuery = async (
       delete query.until;
       delete searchParams.value.until;
     }
+
     await router.replace({
       query,
     });
@@ -486,31 +490,36 @@ const route = useRoute();
 const watchQuery = ref<WatchStopHandle | null>(null);
 
 const loading = ref<boolean>(false);
-onBeforeMount(async () => {
-  loading.value = true;
-  if (currentProject.value) {
-    // TODO: This could be provided for group at a higher level.
-    locations.value = await getLocationsForProject(
-      (currentProject.value as SelectedProject).id.toString(),
-      true
+
+const dateRangeInternal = ref<[Date | null, Date | null]>([null, null]);
+const dateRange = computed({
+  get: (): [Date | null, Date | null] => {
+    return [...dateRangeInternal.value] as [Date, Date];
+  },
+  set: (val: [Date | null, Date | null]) => {
+    console.log(
+      "**** Set new date range",
+      localDateString(val[0]),
+      localDateString(val[1])
     );
-    // Validate the current query on load.
-    watchQuery.value = watch(() => route.query, syncSearchQuery, {
-      deep: true,
-      immediate: true,
-    });
-  }
-  loading.value = false;
-});
-onBeforeUnmount(() => {
-  //watchParams();
-  watchQuery.value && watchQuery.value();
+    dateRangeInternal.value = val;
+  },
 });
 
-const dateRange = ref<[Date, Date]>([new Date(), new Date()]);
-// const dateRange = computed<DateRange>(() => {
-//   return [new Date(), new Date()];
-// });
+watch(dateRange, (next, prev) => {
+  if (prev[0] === null && prev[1] === null) {
+    // Initialising date range
+    if (next[0] !== null && next[1] !== null) {
+      currentQueryCursor.value = {
+        untilDateTime: endOfDay(next[1]),
+        fromDateTime: endOfDay(next[1]),
+      };
+    }
+  }
+  if (next[0] !== null && next[1] !== null) {
+    doSearch();
+  }
+});
 
 const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
   return {
@@ -566,6 +575,9 @@ const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
 });
 
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
+  if (dateRange.value[0] === null || dateRange.value[1] === null) {
+    return [];
+  }
   if (locations.value) {
     return (locations.value as ApiLocationResponse[]).filter((location) => {
       if (location.location.lat === 0 && location.location.lng === 0) {
@@ -577,8 +589,8 @@ const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
       );
       return (
         latestDateForLocation &&
-        latestDateForLocation >= dateRange.value[0] &&
-        new Date(location.activeAt) <= dateRange.value[1]
+        latestDateForLocation >= (dateRange.value[0] as Date) &&
+        new Date(location.activeAt) <= (dateRange.value[1] as Date)
       );
     });
   }
@@ -632,7 +644,44 @@ const minDateForSelectedLocations = computed<Date>(() => {
   }
   return earliest;
 });
-const highlightPoint = (_point: NamedPoint) => {
+
+const maxDateForSelectedLocations = computed<Date>(() => {
+  // Latest active location
+  if (selectedLocations.value.includes("any")) {
+    return new Date(maxDateForProject.value);
+  }
+  let latest = new Date(0);
+  if (selectedLocations.value) {
+    for (const location of selectedLocations.value) {
+      const loc = location as ApiLocationResponse;
+      const lastActiveAudio =
+        (loc.lastActiveAudioTime && new Date(loc.lastActiveAudioTime)) ||
+        new Date(0);
+      const lastActiveThermal =
+        (loc.lastActiveThermalTime && new Date(loc.lastActiveThermalTime)) ||
+        new Date(0);
+      const lastThermalRecording =
+        (loc.lastThermalRecordingTime &&
+          new Date(loc.lastThermalRecordingTime)) ||
+        new Date(0);
+      const lastAudioRecording =
+        (loc.lastAudioRecordingTime && new Date(loc.lastAudioRecordingTime)) ||
+        new Date(0);
+      const activeAt = maxDate(
+        lastActiveAudio,
+        maxDate(
+          lastActiveThermal,
+          maxDate(lastThermalRecording, lastAudioRecording)
+        )
+      );
+      if (activeAt > latest) {
+        latest = activeAt;
+      }
+    }
+  }
+  return latest;
+});
+const highlightPoint = (_point: NamedPoint | null) => {
   // TODO: Could highlight all visible list items that correspond to the highlighted map location?
 };
 const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
@@ -659,8 +708,9 @@ const currentTotalRecordings = computed<number>(() => {
 });
 const canExpandSearchBackFurther = computed<boolean>(() => {
   return (
-    currentQueryCursor.value.fromDateTime.getTime() !==
-    minDateForSelectedLocations.value.getTime()
+    currentQueryCursor.value.fromDateTime !== null &&
+    currentQueryCursor.value.fromDateTime.getTime() >
+      minDateForSelectedLocations.value.getTime()
   );
 });
 const updatedRecording = (recording: ApiRecordingResponse) => {
@@ -688,14 +738,23 @@ const chunkedRecordings = ref<
 >([]);
 
 interface RecordingQueryCursor {
-  fromDateTime: Date;
-  untilDateTime: Date;
+  fromDateTime: Date | null;
+  untilDateTime: Date | null;
 }
-
+const endOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+const startOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
 const currentQueryHash = ref<string>("");
 const currentQueryCursor = ref<RecordingQueryCursor>({
-  fromDateTime: new Date(),
-  untilDateTime: new Date(),
+  fromDateTime: null,
+  untilDateTime: null,
 });
 const currentQueryCount = ref<LoadedResource<number>>(null);
 const currentQueryLoaded = ref<number>(0);
@@ -777,12 +836,11 @@ onUpdated(() => {
 
 const getCurrentQueryHash = (): string => {
   // Keep track of the recordingState/cursor using a hash of the query,
-  const fromDateTime = dateRange.value[0];
-  const untilDateTime = dateRange.value[1];
+  const untilDateTime = endOfDay(dateRange.value[1] as Date);
   return JSON.stringify({
     ...getCurrentQuery(),
     displayMode: displayMode.value,
-    fromDateTime,
+    //fromDateTime,
     untilDateTime,
   });
 };
@@ -801,7 +859,7 @@ interface RecordingQueryBase {
   includeFilteredFalsePositivesAndNones: boolean;
 }
 const getCurrentQuery = (): QueryRecordingsOptions => {
-  console.log("Search params", searchParams.value);
+  // console.log("Search params", searchParams.value);
   const query: QueryRecordingsOptions = {
     types:
       searchParams.value.recordingMode === "cameras"
@@ -811,10 +869,12 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
             ConcreteRecordingType.TrailCamImage,
           ]
         : [ConcreteRecordingType.Audio],
-    includeFilteredFalsePositivesAndNones:
-      searchParams.value.includeFalsePositives ||
-      searchParams.value.tagMode === TagMode.UnTagged,
   };
+  if (searchParams.value.displayMode === "recordings") {
+    query.includeFilteredFalsePositivesAndNones =
+      searchParams.value.includeFalsePositives ||
+      searchParams.value.tagMode === TagMode.UnTagged;
+  }
   const isAnyLocation = selectedLocations.value.includes("any");
   if (!isAnyLocation) {
     query.locations = selectedLocations.value.map(
@@ -952,8 +1012,8 @@ const resetQuery = (
   // TODO Also, make it abortable if we change queries.
   currentQueryCount.value = undefined;
   currentQueryCursor.value = {
-    fromDateTime,
-    untilDateTime,
+    fromDateTime: new Date(fromDateTime),
+    untilDateTime: new Date(untilDateTime),
   };
 };
 
@@ -966,77 +1026,127 @@ const inRecordingsMode = computed<boolean>(
 const inVisitsMode = computed<boolean>(
   () => displayMode.value === ActivitySearchDisplayMode.Visits
 );
+
+const maxDate = (a: Date, b: Date): Date => {
+  if (a > b) {
+    return a;
+  }
+  return b;
+};
+
+const minDate = (a: Date, b: Date): Date => {
+  if (a < b) {
+    return a;
+  }
+  return b;
+};
+
+const firstLoad = ref<boolean>(true);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   // NOTE: We try to load at most one month at a time.
   if (currentProject.value) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
-    const query = getCurrentQuery();
-    const queryHash = getCurrentQueryHash();
-    const isNewQuery = queryHash !== currentQueryHash.value;
-    const project = currentProject.value as SelectedProject;
 
-    console.log(isNewQuery ? "Using new query" : "Using existing query", query);
+    if (fromDateTime === null && untilDateTime === null) {
+      // Date range not yet defined
+      return;
+    }
+    let queryHash = getCurrentQueryHash();
+    let query = getCurrentQuery();
+    console.log(
+      `Query Hash (changed ${currentQueryHash.value !== queryHash}): current ${
+        currentQueryHash.value
+      }, new ${queryHash}`
+    );
+    const project = currentProject.value as SelectedProject;
+    let isNewQuery = false;
+    if (firstLoad.value) {
+      firstLoad.value = false;
+      queryHash = getCurrentQueryHash();
+      query = getCurrentQuery();
+    } else {
+      isNewQuery = queryHash !== currentQueryHash.value;
+    }
+    if (
+      (currentQueryCursor.value.fromDateTime as Date) < (fromDateTime as Date)
+    ) {
+      // We need to narrow the already loaded search range
+      isNewQuery = true;
+    }
+    let earliestRecord = null;
+    if (inRecordingsMode.value) {
+      if (loadedRecordings.value.length) {
+        earliestRecord = new Date(
+          loadedRecordings.value[
+            loadedRecordings.value.length - 1
+          ].recordingDateTime
+        );
+      }
+    } else {
+      // Visits
+    }
+    if (earliestRecord !== null && earliestRecord < (fromDateTime as Date)) {
+      isNewQuery = true;
+    }
 
     if (isNewQuery) {
-      resetQuery(queryHash, fromDateTime, untilDateTime);
-      // if (inRecordingsMode.value) {
-      //   // Load total recording count for query lazily, so we
-      //   // don't lock the main rendering query.
-      //   queryRecordingsInProjectNew(project.id, {
-      //     ...query,
-      //     limit: 1,
-      //     countAll: true,
-      //     fromDateTime,
-      //     untilDateTime,
-      //   }).then((response) => {
-      //     if (response.success) {
-      //       currentQueryCount.value = response.result.count;
-      //     } else {
-      //       currentQueryCount.value = null;
-      //     }
-      //   });
-      // } else {
-      //   currentQueryCount.value = null;
-      // }
+      console.log("Reset query");
+      resetQuery(
+        queryHash,
+        endOfDay(untilDateTime as Date),
+        endOfDay(untilDateTime as Date)
+      );
     }
-    // TODO: Make this add the count to the first query, rather than doing two queries?
+    console.log(
+      "fromDateTime",
+      localDateString(fromDateTime as Date),
+      localDateString(dateRange.value[0] as Date),
+      localDateString(currentQueryCursor.value.fromDateTime as Date)
+    );
+
     const hasNotLoadedAllOfQueryTimeRange =
-      currentQueryCursor.value.fromDateTime <
-      currentQueryCursor.value.untilDateTime;
+      (currentQueryCursor.value.fromDateTime as Date) > (fromDateTime as Date);
+
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
       const itemHeight = inRecordingsMode.value ? 80 : 160;
       const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
-      let response: FetchResult<BulkRecordingsResponse> | BulkVisitsResponse;
+      let response:
+        | FetchResult<BulkRecordingsResponse>
+        | FetchResult<VisitsQueryResult>;
+      console.warn(
+        "Requesting",
+        localDateString(dateRange.value[0] as Date),
+        " -- ",
+        localDateString(currentQueryCursor.value.untilDateTime as Date)
+      );
       if (inRecordingsMode.value) {
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
           countAll: isNewQuery,
           limit: twoPagesWorth,
-          fromDateTime: currentQueryCursor.value.fromDateTime,
-          untilDateTime: currentQueryCursor.value.untilDateTime,
+          fromDateTime: dateRange.value[0],
+          untilDateTime: currentQueryCursor.value.untilDateTime as Date,
         });
         if (response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
         }
       } else {
         // Else visits
-        console.log(
-          "Requesting",
-          DateTime.fromJSDate(
-            currentQueryCursor.value.fromDateTime as Date
-          ).toLocaleString(),
-          DateTime.fromJSDate(
-            currentQueryCursor.value.untilDateTime as Date
-          ).toLocaleString()
-        );
+
         console.log(`Load ${twoPagesWorth} days of visits`, query.types);
-        response = await getAllVisitsForProjectBetweenTimes(
+
+        // TODO: This needs to have a limit
+        // Make it the lesser of the current date range or 2 pages worth of days.
+        response = await getVisitsForProject(
           project.id,
-          currentQueryCursor.value.fromDateTime,
-          currentQueryCursor.value.untilDateTime,
+          dateRange.value[0] as Date,
+          minDate(
+            currentQueryCursor.value.untilDateTime as Date,
+            endOfDay(maxDateForSelectedLocations.value)
+          ),
           query.locations,
           query.types
         );
@@ -1067,12 +1177,14 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             console.log("Got until date", gotUntilDate);
           }
         } else if (inVisitsMode.value) {
-          const visitsResponse = response as BulkVisitsResponse;
+          // FIXME: From/until adjustments
+
+          const visitsResponse = response.result as VisitsQueryResult;
           const visits = visitsResponse.visits as ApiVisitResponse[];
-          loadedFewerItemsThanRequested = !visitsResponse.all;
+          loadedFewerItemsThanRequested =
+            visitsResponse.params.pagesEstimate > 1;
 
           if (visits.length !== 0) {
-            // Set current time to 8.02am Fri 31st March for incomplete visits
             let lastVisit = visits[visits.length - 1];
             gotUntilDate = new Date(lastVisit.timeStart);
             if (lastVisit.incomplete) {
@@ -1095,8 +1207,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           currentQueryCursor.value.untilDateTime = gotUntilDate;
 
           if (loadedFewerItemsThanRequested) {
+            console.log("loadedFewerItemsThanRequested");
             const reachedMinDateForSelectedLocations =
-              currentQueryCursor.value.fromDateTime.getTime() ===
+              (currentQueryCursor.value.fromDateTime as Date).getTime() ===
               minDateForSelectedLocations.value.getTime();
             if (reachedMinDateForSelectedLocations) {
               console.log("!!! stopping any observers");
@@ -1111,6 +1224,12 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               );
             }
             completedCurrentQuery.value = true;
+          } else {
+            console.log("HERE");
+            // currentQueryCursor.value.fromDateTime = new Date(
+            //     currentQueryCursor.value.untilDateTime as Date
+            // );
+            // completedCurrentQuery.value = true;
           }
         } else {
           console.log("Completed current query range");
@@ -1131,11 +1250,13 @@ const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100
 );
 const doSearch = async () => {
-  showOffcanvasSearch.value = false;
-  searching.value = true;
-  await getClassifications();
-  await getRecordingsOrVisitsForCurrentQuery();
-  searching.value = false;
+  if (!searching.value) {
+    showOffcanvasSearch.value = false;
+    searching.value = true;
+    await getClassifications();
+    await getRecordingsOrVisitsForCurrentQuery();
+    searching.value = false;
+  }
 };
 
 const download = (url: string, filename: string) => {
@@ -1258,7 +1379,11 @@ const doExport = async () => {
   exportProgress.value = 0;
   exporting.value = true;
   await getClassifications();
-  if (currentProject.value) {
+  if (
+    currentProject.value &&
+    dateRange.value[0] !== null &&
+    dateRange.value[1] !== null
+  ) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
     const query = getCurrentQuery();
@@ -1312,8 +1437,7 @@ const fromDateMinusIncrement = computed<Date>(() => {
   // What was the selected increment?  One day? One month?  One year?
   // Use that initial increment to expand search backwards in time by that amount.
   //const currentInc =
-
-  const fromDateTime = new Date(dateRange.value[0]);
+  const fromDateTime = new Date(dateRange.value[0] as Date);
   const setBackFourWeeks = fromDateTime.setDate(fromDateTime.getDate() - 28);
   const from = Math.max(
     minDateForSelectedLocations.value.getTime(),
@@ -1359,7 +1483,7 @@ const adjustTimespanBackwards = async () => {
     searchParams.value.from = fromDateMinusIncrement.value;
   } else {
     searchParams.value.from = fromDateMinusIncrement.value;
-    searchParams.value.until = dateRange.value[1];
+    searchParams.value.until = dateRange.value[1] as Date;
     //
     // const initialSelectedDateRangeUntil = new Date(selectedDateRange.value[1]);
     customAutomaticallySet.value = true;
@@ -1380,14 +1504,16 @@ const adjustTimespanBackwards = async () => {
     // }
   }
   // console.log("Cursor was", JSON.stringify(currentQueryCursor.value, null, '\t'));
-  currentQueryCursor.value.fromDateTime = fromDateMinusIncrement.value;
+  //currentQueryCursor.value.fromDateTime = fromDateMinusIncrement.value;
+  dateRange.value = [fromDateMinusIncrement.value, dateRange.value[1]];
   // Reset the key, so that we continue the current search
-  currentQueryHash.value = getCurrentQueryHash();
+  //currentQueryHash.value = getCurrentQueryHash();
   //console.log("Cursor is now", JSON.stringify(currentQueryCursor.value, null, '\t'));
 
   // TODO - When we expand a search, we need to issue another count request for the span added, so we
   // can update the total.
-  await doSearch();
+  // console.log("adjustTimespanBackwards");
+  // await doSearch();
 };
 
 // FIXME: Handle recording closing etc, restoring route.
@@ -1478,6 +1604,39 @@ const toggleOffcanvasSearch = () => {
 const shouldShowSearchControlsInline = computed<boolean>(
   () => windowWidth.value >= 768
 );
+
+const localDateString = (d: Date): string => {
+  return DateTime.fromJSDate(d).toLocaleString({
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+onBeforeMount(async () => {
+  loading.value = true;
+  if (currentProject.value) {
+    // TODO: This could be provided for group at a higher level.
+    locations.value = await getLocationsForProject(
+      (currentProject.value as SelectedProject).id.toString(),
+      true
+    );
+    // Validate the current query on load.
+    watchQuery.value = watch(() => route.query, syncSearchQuery, {
+      deep: true,
+      immediate: true,
+    });
+  }
+  loading.value = false;
+});
+onBeforeUnmount(() => {
+  //watchParams();
+  watchQuery.value && watchQuery.value();
+});
 </script>
 <template>
   <section-header>Activity</section-header>
@@ -1605,8 +1764,16 @@ const shouldShowSearchControlsInline = computed<boolean>(
             {{ relativeTimeIncrementInPast }}
           </button>
         </div>
-        <div v-else-if="loadedRecordings.length">
-          No results before this time.
+        <div
+          v-else-if="
+            (searchParams.displayMode === 'recordings' &&
+              loadedRecordings.length) ||
+            (searchParams.displayMode === 'visits' && chunkedVisits.length)
+          "
+        >
+          <span class="text-center mb-2"
+            >No results before this time for the current search.</span
+          >
         </div>
       </div>
     </div>

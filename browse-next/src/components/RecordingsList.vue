@@ -91,7 +91,7 @@
         v-else
         class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
       >
-        <div class="visit-thumb rounded-1">
+        <div class="visit-thumb">
           <image-loader
             :src="thumbnailSrcForRecording(item.data)"
             alt="Thumbnail for first recording of this visit"
@@ -430,6 +430,7 @@ const unhighlightedLocation = (item: RecordingItem | SunItem) => {
     overflow: hidden;
     position: relative;
     background: #aaa;
+    border-radius: 2.5px;
     .num-recordings {
       background: rgba(0, 0, 0, 0.8);
       color: white;

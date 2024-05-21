@@ -11,11 +11,14 @@ import { updateUserFields } from "@api/User";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import router from "@/router";
 import { currentUser as currentUserInfo } from "@models/provides";
+import Multiselect from "@vueform/multiselect";
 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 
 const changeDisplayNameModal = ref<boolean>(false);
 const changeEmailModal = ref<boolean>(false);
+
+const toggleViewAsAnotherUser = ref<boolean>(false);
 
 const updateUserErrorMessage = ref<ErrorResult | false>(false);
 const userUpdateInProgress = ref(false);
@@ -215,6 +218,25 @@ const updateUserEmailAddress = async () => {
       </div>
     </div>
   </div>
+  <div v-if="currentUser?.globalPermission !== 'off'" class="mt-4">
+    <h2 class="h5">
+      Masquerade as another user
+      <b-form-checkbox
+        v-model="toggleViewAsAnotherUser"
+        switch
+      ></b-form-checkbox>
+    </h2>
+    <div v-if="toggleViewAsAnotherUser">
+      <multiselect
+        v-model="otherUsers"
+        :options="commonDateRanges"
+        value-prop="value"
+        label="label"
+        class="ms-bootstrap"
+      />
+      <b-button>Go</b-button>
+    </div>
+  </div>
 
   <b-modal
     v-model="changeDisplayNameModal"
@@ -304,11 +326,10 @@ const updateUserEmailAddress = async () => {
     </b-form>
   </b-modal>
 
-  <h6>Things that could appear here:</h6>
-  <ul>
-    <li>Reset/change my password</li>
-    <li>Review the End User Agreement?</li>
-    <li>Show release info/changelog?</li>
-    <li>Global transactional email settings</li>
-  </ul>
+  <!--  <h6>Things that could appear here:</h6>-->
+  <!--  <ul>-->
+  <!--    <li>Review the End User Agreement?</li>-->
+  <!--    <li>Show release info/changelog?</li>-->
+  <!--    <li>Global transactional email settings</li>-->
+  <!--  </ul>-->
 </template>

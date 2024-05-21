@@ -396,7 +396,7 @@ const isStillProcessing = computed<boolean>(() => {
           v-else
           class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden"
         >
-          <div class="visit-thumb rounded-1">
+          <div class="visit-thumb">
             <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
               alt="Thumbnail for first recording of this visit"
@@ -554,6 +554,7 @@ const isStillProcessing = computed<boolean>(() => {
     overflow: hidden;
     position: relative;
     background: #aaa;
+    border-radius: 2.5px;
     .num-recordings {
       background: rgba(0, 0, 0, 0.8);
       color: white;

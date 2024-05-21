@@ -100,7 +100,7 @@ export interface QueryRecordingsOptions {
   untilDateTime?: Date;
   limit?: number;
   tagMode?: TagMode;
-  includeFilteredFalsePositivesAndNones: boolean;
+  includeFilteredFalsePositivesAndNones?: boolean;
   subClassTags?: boolean;
 
   durationMinSecs?: number;
