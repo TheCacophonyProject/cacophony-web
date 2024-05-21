@@ -19,6 +19,25 @@ import {
 } from "@vue/composition-api";
 import LayeredDropdown, { Option } from "./LayeredDropdown.vue";
 
+export const getClassifications = async () => {
+  const cached = localStorage.getItem("classifications");
+  if (cached) {
+    const parsed = JSON.parse(cached);
+    api.classifications.getClassifications(parsed.version).then((res) => {
+      if (res.success && res.result.version !== parsed.version) {
+        localStorage.setItem("classifications", JSON.stringify(res.result));
+      }
+    });
+    return parsed;
+  } else {
+    const res = await api.classifications.getClassifications();
+    if (res.success) {
+      localStorage.setItem("classifications", JSON.stringify(res.result));
+      return res.result;
+    }
+    throw new Error("Could not get classifications");
+  }
+};
 export default defineComponent({
   props: {
     value: {
@@ -44,25 +63,6 @@ export default defineComponent({
   setup(props) {
     const options = ref<Option>({ label: "", children: [] });
 
-    const getClassifications = async () => {
-      const cached = localStorage.getItem("classifications");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        api.classifications.getClassifications(parsed.version).then((res) => {
-          if (res.success && res.result.version !== parsed.version) {
-            localStorage.setItem("classifications", JSON.stringify(res.result));
-          }
-        });
-        return parsed;
-      } else {
-        const res = await api.classifications.getClassifications();
-        if (res.success) {
-          localStorage.setItem("classifications", JSON.stringify(res.result));
-          return res.result;
-        }
-        throw new Error("Could not get classifications");
-      }
-    };
     onMounted(async () => {
       options.value = (await getClassifications()) as Option;
       // classifications is a tree, we want to filter out excluded nodes

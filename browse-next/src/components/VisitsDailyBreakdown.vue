@@ -396,7 +396,7 @@ const isStillProcessing = computed<boolean>(() => {
           v-else
           class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden"
         >
-          <div class="visit-thumb">
+          <div class="visit-thumb rounded-1">
             <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
               alt="Thumbnail for first recording of this visit"
