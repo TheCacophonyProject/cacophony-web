@@ -202,9 +202,8 @@ export default function (sequelize, DataTypes) {
         [Op.and]: [
           where, // User query
           // FIXME: Move permissions stuff to middleware (though this function is invoked via scripts also, so maybe not?)
-          options && options.admin && !!deviceId
-            ? ""
-            : await user.getWhereDeviceVisible(), // can only see devices they should
+          // FIXME: Weird behaviour that this is required if a deviceId is supplied for tests to pass...
+          options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
       order,
