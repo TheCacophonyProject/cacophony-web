@@ -2547,7 +2547,7 @@ export default (app: Application, baseUrl: string) => {
         const query = request.query;
         const projectId = response.locals.group.id;
         // Return a max of 200 recordings at once
-        const limit = Math.min(query["max-results"] as unknown as number, 200);
+        const limit = Math.min(query["max-results"] as unknown as number, 1000);
         const offset = ((query["page-num"] as unknown as number) || 0) * limit;
         let tagMode = query["tag-mode"] as TagMode;
         const taggedWith =

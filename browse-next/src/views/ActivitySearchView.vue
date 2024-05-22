@@ -1225,6 +1225,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 const searching = ref<boolean>(false);
 const exporting = ref<boolean>(false);
 const exportProgress = ref<number>(0);
+const exportStartTime = ref<number>(0);
+const exportTime = ref<number>(0);
 const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100
 );
@@ -1354,9 +1356,14 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
   return arrayToCsv(csv);
 };
 
+const exportTimeElapsed = computed<number>(
+  () => exportTime.value - exportStartTime.value
+);
+
 const doExport = async () => {
   exportProgress.value = 0;
   exporting.value = true;
+  exportStartTime.value = performance.now();
   await getClassifications();
   if (
     currentProject.value &&
@@ -1378,6 +1385,7 @@ const doExport = async () => {
         query.types,
         (progress) => {
           exportProgress.value = progress;
+          exportTime.value = performance.now();
         }
       );
       const csvFileData = createVisitsCsv(
@@ -1397,6 +1405,7 @@ const doExport = async () => {
         query,
         (progress) => {
           exportProgress.value = progress;
+          exportTime.value = performance.now();
         }
       );
       const csvFileData = createRecordingsCsv(recordings);
@@ -1795,6 +1804,10 @@ onBeforeUnmount(() => {
       :search-params="searchParams"
     />
     <b-progress :value="exportProgressZeroOneHundred" />
+    <span class="mt-1"
+      >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
+      elapsed</span
+    >
   </b-modal>
 </template>
 <style lang="less" scoped>

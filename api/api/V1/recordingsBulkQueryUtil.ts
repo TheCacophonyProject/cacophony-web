@@ -193,7 +193,7 @@ export const getSelfJoinForTagMode = (
       ? ""
       : `
         order by ${tableName}."recordingDateTime" desc
-        limit ${Math.min(maxResults, 200)} ${
+        limit ${maxResults} ${
           offsetResults === 0 ? "" : `offset ${offsetResults}`
         }`;
   };
