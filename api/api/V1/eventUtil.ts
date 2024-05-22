@@ -35,9 +35,9 @@ export const errors = async (
     query.offset,
     query.limit,
     false,
-    options
+    options,
+    true
   );
-
   return groupSystemErrors(result.rows);
 };
 

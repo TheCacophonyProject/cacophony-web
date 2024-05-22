@@ -132,10 +132,19 @@ export default function (sequelize, DataTypes) {
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-    return this[includeCount ? "findAndCountAll" : "findAll"]({
+    let user;
+    if (userId) {
+      // NOTE: This function is sometimes called by scripts without a user
+      user = await models.User.findByPk(userId);
+    }
+    return this.findAndCountAll({
       where: {
         [Op.and]: [
           where, // User query
+          // FIXME: Move permissions stuff to middleware
+          options && options.admin && !!deviceId
+            ? ""
+            : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
       order,
@@ -183,10 +192,19 @@ export default function (sequelize, DataTypes) {
       ["dateTime", "DESC"],
     ];
 
+    let user;
+    if (userId) {
+      // NOTE - This function is called by scripts without supplying a user.
+      user = await models.User.findByPk(userId);
+    }
     return this.findAll({
       where: {
         [Op.and]: [
           where, // User query
+          // FIXME: Move permissions stuff to middleware (though this function is invoked via scripts also, so maybe not?)
+          options && options.admin && !!deviceId
+            ? ""
+            : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
       },
       order,

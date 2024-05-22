@@ -382,16 +382,29 @@ export default function (app: Application, baseUrl: string) {
         .isISO8601({ strict: true })
         .optional()
         .withMessage(expectedTypeOf("ISO formatted date string")),
-      idOf(query("deviceId")),
+      idOf(query("deviceId")).optional(),
       integerOf(query("offset")).optional(),
       integerOf(query("limit")).optional(),
       query("type").matches(EVENT_TYPE_REGEXP).optional(),
       booleanOf(query("latest")).optional(),
       booleanOf(query("only-active")).optional(),
-      booleanOf(query("include-count")).optional().default(true),
+      booleanOf(query("include-count"), true),
     ]),
     // Extract required resources
-    fetchAuthorizedRequiredDeviceById(query("deviceId")),
+    fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // deviceId is optional, but if it is supplied we need to make sure that the user
+      // is allowed to access it.
+      if (request.query.deviceId && !response.locals.device) {
+        return next(
+          new ClientError(
+            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            HttpStatusCode.Forbidden
+          )
+        );
+      }
+      next();
+    },
     // Check permissions on resources
     // Extract device if any, and check that user has permissions to access it
     async (request: Request, response: Response) => {
@@ -553,11 +566,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/powerEvents`,
     extractJwtAuthorizedUser,
     validateFields([
-      query("deviceId")
-        .isInt()
-        .optional()
-        .toInt()
-        .withMessage(expectedTypeOf("integer")),
+      idOf(query("deviceId")).optional(),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     // Extract required resources
