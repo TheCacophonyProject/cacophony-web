@@ -2451,7 +2451,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/for-project/:projectId`,
-    //extractJwtAuthorizedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       idOf(param("projectId")),
       query("view-mode").optional().equals("user"),
@@ -2540,8 +2540,8 @@ export default (app: Application, baseUrl: string) => {
           return true;
         }),
     ]),
-    //fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
-    fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
+    fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
+    //fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
       try {
         const query = request.query;
