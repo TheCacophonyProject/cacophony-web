@@ -119,8 +119,6 @@ import { format } from "util";
 import { asyncLocalStorage } from "@/Globals.js";
 import {
   getFirstPass,
-  getInclude,
-  getRecordingsWhere,
   getSelfJoinForTagMode,
   sqlDebugOutput,
 } from "./recordingsBulkQueryUtil.js";
@@ -2442,6 +2440,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {Boolean} [include-false-positives] Recordings consisting of only false-positives are filtered out by default; set this value to `true` to include them
    * @apiQuery {Number[]} [devices] Include only recordings that belong to any of the `DeviceId`s supplied
    * @apiQuery {Boolean} [sub-class-tags] `true` by default, setting this to `false` will turn off hierarchical animal tag matching.
+   * @apiQuery {Boolean} [include-deleted] `false` by default, setting this to `true` will include deleted recordings in the query.
    * @apiQuery {Boolean} [with-total-count] `false` by default, setting this to `true` will return a total count for the query along with recordings.
    * @apiQuery {String} [processing-state] Return only recordings matching a given processing state
    * @apiQuery {Number[]} [locations] Include only recordings that are located within any of the `LocationId`s supplied
@@ -2452,7 +2451,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/for-project/:projectId`,
-    extractJwtAuthorizedUser,
+    //extractJwtAuthorizedUser,
     validateFields([
       idOf(param("projectId")),
       query("view-mode").optional().equals("user"),
@@ -2476,6 +2475,7 @@ export default (app: Application, baseUrl: string) => {
           "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
         ),
       query("sub-class-tags").default(true).isBoolean().toBoolean(),
+      query("include-deleted").default(false).isBoolean().toBoolean(),
       query("with-total-count").default(false).isBoolean().toBoolean(),
       query("tag-mode")
         .default(TagMode.Any)
@@ -2540,8 +2540,8 @@ export default (app: Application, baseUrl: string) => {
           return true;
         }),
     ]),
-    fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
-    //fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
+    //fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
+    fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
       try {
         const query = request.query;
@@ -2565,10 +2565,14 @@ export default (app: Application, baseUrl: string) => {
           }
           return x;
         }) as RecordingType[];
+        const includeDeletedRecordings = query[
+          "include-deleted"
+        ] as unknown as boolean;
         const tagged = tagMode !== TagMode.UnTagged && taggedWith.length !== 0;
         const labelled = labelledWith.length !== 0;
         const locations = ((query.locations || []) as string[]).map(Number);
         const devices = ((query.devices || []) as string[]).map(Number);
+        const minDuration = query.duration as unknown as number;
         const includeFalsePositives =
           (query["include-false-positives"] as unknown as boolean) ||
           taggedWith.includes("false-positive");
@@ -2593,15 +2597,6 @@ export default (app: Application, baseUrl: string) => {
         const sqlPasses: string[] = [];
         const sqlTimings: number[] = [];
         const now = performance.now();
-        const toInclude = getInclude(
-          models,
-          false,
-          includeFilteredTracks,
-          labelled,
-          tagged,
-          tagMode,
-          true
-        );
 
         const loggingFn =
           (sqlPasses: string[], sqlTimings: number[]) =>
@@ -2621,48 +2616,30 @@ export default (app: Application, baseUrl: string) => {
             }
           };
         const logging = loggingFn(sqlPasses, sqlTimings);
-        const firstPass = (withTags: boolean) =>
+        const firstPass = (withTags: boolean, automatic: boolean) =>
           getFirstPass(
-            getRecordingsWhere(
-              projectId,
-              2.5,
-              types,
-              devices,
-              locations,
-              tagMode,
-              taggedWith,
-              subClassTags,
-              includeFilteredTracks,
-              labelledWith,
-              withTags,
-              fromDate,
-              untilDate,
-              processingState
-            ),
-            toInclude,
+            models,
+            projectId,
+            minDuration,
+            includeDeletedRecordings,
+            types,
+            processingState,
+            devices,
+            locations,
+            withTags,
+            taggedWith,
+            subClassTags,
+            labelledWith,
+            tagged,
+            labelled,
+            tagMode,
+            includeFilteredTracks,
             withTotalCount,
-            logging
+            limit,
+            automatic,
+            fromDate,
+            untilDate
           );
-        const countQuery = getSelfJoinForTagMode(
-          models,
-          firstPass,
-          tagMode,
-          taggedWith,
-          subClassTags,
-          limit,
-          offset,
-          true
-        );
-        const recordingIdsQuery = getSelfJoinForTagMode(
-          models,
-          firstPass,
-          tagMode,
-          taggedWith,
-          subClassTags,
-          limit,
-          offset,
-          false
-        );
         const tagReplacements = {};
         for (let i = 0; i < taggedWith.length; i++) {
           tagReplacements[`tag_${i}`] = `*.${taggedWith[i].replace(
@@ -2671,17 +2648,41 @@ export default (app: Application, baseUrl: string) => {
           )}.*`;
         }
         const getCount = withTotalCount
-          ? models.sequelize.query(countQuery, {
-              logging,
-              type: QueryTypes.SELECT,
-              replacements: { taggedWith, ...tagReplacements },
-            })
+          ? models.sequelize.query(
+              getSelfJoinForTagMode(
+                models,
+                firstPass,
+                tagMode,
+                taggedWith,
+                subClassTags,
+                limit,
+                offset,
+                true
+              ),
+              {
+                logging,
+                type: QueryTypes.SELECT,
+                replacements: { taggedWith, ...tagReplacements },
+              }
+            )
           : new Promise((resolve) => resolve([{ count: 0 }]));
-        const getRecordingIds = models.sequelize.query(recordingIdsQuery, {
-          logging,
-          type: QueryTypes.SELECT,
-          replacements: { taggedWith, ...tagReplacements },
-        });
+        const getRecordingIds = models.sequelize.query(
+          getSelfJoinForTagMode(
+            models,
+            firstPass,
+            tagMode,
+            taggedWith,
+            subClassTags,
+            limit,
+            offset,
+            false
+          ),
+          {
+            logging,
+            type: QueryTypes.SELECT,
+            replacements: { taggedWith, ...tagReplacements },
+          }
+        );
         const [countResult, recordingIds] = await Promise.all([
           getCount,
           getRecordingIds,
@@ -2700,14 +2701,62 @@ export default (app: Application, baseUrl: string) => {
             where: {
               id: { [Op.in]: recordingIds },
             },
-            include: getInclude(
-              models,
-              true,
-              includeFilteredTracks,
-              labelled,
-              tagged,
-              tagMode
-            ),
+            include: [
+              {
+                model: models.Track,
+                required: false,
+                attributes: ["id", "data"],
+                where: {
+                  archivedAt: {
+                    [Op.is]: null,
+                  },
+                  ...(!includeFalsePositives && { filtered: false }),
+                },
+                include: [
+                  {
+                    required: false,
+                    model: models.TrackTag,
+                    attributes: [
+                      "what",
+                      "path",
+                      "UserId",
+                      "id",
+                      "automatic",
+                      "confidence",
+                    ],
+                    include: [{ model: models.User, attributes: ["userName"] }],
+                    where: {
+                      used: true,
+                      archivedAt: {
+                        [Op.is]: null,
+                      },
+                    },
+                  },
+                ],
+              },
+              {
+                model: models.Station,
+                attributes: ["name"],
+              },
+              {
+                model: models.Group,
+                attributes: ["groupName"],
+              },
+              {
+                model: models.Device,
+                attributes: ["deviceName"],
+              },
+              {
+                model: models.Tag,
+                attributes: [
+                  "detail",
+                  "taggerId",
+                  "id",
+                  "comment",
+                  "createdAt",
+                ],
+              },
+            ],
             attributes: [
               "id",
               "recordingDateTime",
