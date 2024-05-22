@@ -163,7 +163,6 @@ export const getFirstPass = (
       sequelize.col('"Tracks->TrackTags".what'),
       sequelize.col('"Tracks->TrackTags".path'),
     ],
-    ...(!withTotalCount ? { limit: maxResults } : {}),
     ...(!withTotalCount ? { order: [["recordingDateTime", "desc"]] } : {}),
   };
 };

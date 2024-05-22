@@ -497,11 +497,6 @@ const dateRange = computed({
     return [...dateRangeInternal.value] as [Date, Date];
   },
   set: (val: [Date | null, Date | null]) => {
-    console.log(
-      "**** Set new date range",
-      localDateString(val[0]),
-      localDateString(val[1])
-    );
     dateRangeInternal.value = val;
   },
 });
@@ -1041,6 +1036,18 @@ const minDate = (a: Date, b: Date): Date => {
   return b;
 };
 
+const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
+  if (searchParams.value.recordingMode === "cameras") {
+    return [
+      ConcreteRecordingType.ThermalRaw,
+      ConcreteRecordingType.TrailCamVideo,
+      ConcreteRecordingType.TrailCamImage,
+    ];
+  } else {
+    return [ConcreteRecordingType.Audio];
+  }
+});
+
 const firstLoad = ref<boolean>(true);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   // NOTE: We try to load at most one month at a time.
@@ -1054,11 +1061,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     }
     let queryHash = getCurrentQueryHash();
     let query = getCurrentQuery();
-    console.log(
-      `Query Hash (changed ${currentQueryHash.value !== queryHash}): current ${
-        currentQueryHash.value
-      }, new ${queryHash}`
-    );
     const project = currentProject.value as SelectedProject;
     let isNewQuery = false;
     if (firstLoad.value) {
@@ -1091,19 +1093,12 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     }
 
     if (isNewQuery) {
-      console.log("Reset query");
       resetQuery(
         queryHash,
         endOfDay(untilDateTime as Date),
         endOfDay(untilDateTime as Date)
       );
     }
-    console.log(
-      "fromDateTime",
-      localDateString(fromDateTime as Date),
-      localDateString(dateRange.value[0] as Date),
-      localDateString(currentQueryCursor.value.fromDateTime as Date)
-    );
 
     const hasNotLoadedAllOfQueryTimeRange =
       (currentQueryCursor.value.fromDateTime as Date) > (fromDateTime as Date);
@@ -1116,12 +1111,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       let response:
         | FetchResult<BulkRecordingsResponse>
         | FetchResult<VisitsQueryResult>;
-      console.warn(
-        "Requesting",
-        localDateString(dateRange.value[0] as Date),
-        " -- ",
-        localDateString(currentQueryCursor.value.untilDateTime as Date)
-      );
       if (inRecordingsMode.value) {
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
@@ -1129,15 +1118,18 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           limit: twoPagesWorth,
           fromDateTime: dateRange.value[0],
           untilDateTime: currentQueryCursor.value.untilDateTime as Date,
+          types: typesForRecordingMode.value as (
+            | RecordingType.TrailCamImage
+            | RecordingType.TrailCamVideo
+            | RecordingType.ThermalRaw
+            | RecordingType.Audio
+          )[],
         });
         if (response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
         }
       } else {
         // Else visits
-
-        console.log(`Load ${twoPagesWorth} days of visits`, query.types);
-
         // TODO: This needs to have a limit
         // Make it the lesser of the current date range or 2 pages worth of days.
         response = await getVisitsForProject(
@@ -1159,7 +1151,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             recordings: ApiRecordingResponse[];
             count: number;
           }>;
-          console.log("Recordings", recordingsResponse);
           // debugger;
           // loadedFewerItemsThanRequested =
           //   recordingsResponse.result.recordings.length < 100;
@@ -1174,11 +1165,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             gotUntilDate = new Date(
               recordings[recordings.length - 1].recordingDateTime
             );
-            console.log("Got until date", gotUntilDate);
           }
         } else if (inVisitsMode.value) {
-          // FIXME: From/until adjustments
-
           const visitsResponse = response.result as VisitsQueryResult;
           const visits = visitsResponse.visits as ApiVisitResponse[];
           loadedFewerItemsThanRequested =
@@ -1207,12 +1195,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           currentQueryCursor.value.untilDateTime = gotUntilDate;
 
           if (loadedFewerItemsThanRequested) {
-            console.log("loadedFewerItemsThanRequested");
             const reachedMinDateForSelectedLocations =
               (currentQueryCursor.value.fromDateTime as Date).getTime() ===
               minDateForSelectedLocations.value.getTime();
             if (reachedMinDateForSelectedLocations) {
-              console.log("!!! stopping any observers");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1224,15 +1210,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               );
             }
             completedCurrentQuery.value = true;
-          } else {
-            console.log("HERE");
-            // currentQueryCursor.value.fromDateTime = new Date(
-            //     currentQueryCursor.value.untilDateTime as Date
-            // );
-            // completedCurrentQuery.value = true;
           }
         } else {
-          console.log("Completed current query range");
           currentQueryCursor.value.fromDateTime = new Date(
             currentQueryCursor.value.untilDateTime as Date
           );

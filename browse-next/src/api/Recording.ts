@@ -96,8 +96,8 @@ export interface QueryRecordingsOptions {
   locations?: LocationId[];
   taggedWith?: string[];
   labelledWith?: string[];
-  fromDateTime?: Date;
-  untilDateTime?: Date;
+  fromDateTime?: Date | null;
+  untilDateTime?: Date | null;
   limit?: number;
   tagMode?: TagMode;
   includeFilteredFalsePositivesAndNones?: boolean;
