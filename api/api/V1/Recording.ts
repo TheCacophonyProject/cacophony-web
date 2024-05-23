@@ -519,7 +519,7 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("deviceId")),
       // Default to also allowing inactive devices to have uploads on their
       // behalf
-      query("only-active").default(false).isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request, response, next) =>

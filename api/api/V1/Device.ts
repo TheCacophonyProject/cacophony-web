@@ -45,6 +45,7 @@ import {
 } from "../extract-middleware.js";
 import {
   anyOf,
+  booleanOf,
   checkDeviceNameIsUniqueInGroup,
   deprecatedField,
   idOf,
@@ -370,7 +371,11 @@ export default function (app: Application, baseUrl: string) {
   app.delete(
     `${apiUrl}/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("deviceId")), nameOrIdOf(body("group"))]),
+    validateFields([
+      idOf(param("deviceId")),
+      nameOrIdOf(body("group")),
+      booleanOf(body("only-active"), false),
+    ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -570,6 +575,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("at-time").isISO8601().toDate().optional(),
       query("type").optional().isIn(["pov", "in-situ"]),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -818,6 +824,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
       query("at-time").isISO8601().toDate().optional(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -866,6 +873,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("from-time").isISO8601().toDate().optional(),
       query("until-time").isISO8601().toDate().optional(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -955,6 +963,7 @@ export default function (app: Application, baseUrl: string) {
       query("from-time").isISO8601().toDate().optional(),
       query("until-time").isISO8601().toDate().optional(),
       idOf(query("stationId")).optional(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -1059,6 +1068,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -1136,6 +1146,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
       query("type").optional().isIn(["pov", "in-situ"]),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response) => {
@@ -1397,6 +1408,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response) => {
@@ -1844,7 +1856,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(body("scheduleId")),
       idOf(param("deviceId")),
       // Allow adding a schedule to an inactive device by default
-      query("only-active").default(false).isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -1894,8 +1906,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(body("scheduleId")),
       idOf(param("deviceId")),
-      // Allow adding a schedule to an inactive device by default
-      query("only-active").default(false).isBoolean().toBoolean(),
+      // Allow removing a schedule from an inactive device by default
+      booleanOf(query("only-active"), false),
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -2000,7 +2012,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2096,7 +2108,7 @@ export default function (app: Application, baseUrl: string) {
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       stringOf(query("interval")).default("days"),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2136,7 +2148,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2176,7 +2188,7 @@ export default function (app: Application, baseUrl: string) {
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       stringOf(query("type")).default("audio"),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2219,7 +2231,7 @@ export default function (app: Application, baseUrl: string) {
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       stringOf(query("interval")).default("days"),
       stringOf(query("type")).default("audio"),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2257,6 +2269,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      booleanOf(query("only-active")).optional(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {

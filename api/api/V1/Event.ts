@@ -325,7 +325,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       ...commonEventFields,
       // Default to also allowing inactive devices to have uploads on their behalf
-      query("only-active").default(false).isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
