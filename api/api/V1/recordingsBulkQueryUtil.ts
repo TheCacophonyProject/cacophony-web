@@ -38,7 +38,7 @@ export const getFirstPass = (
   const isHumanOnlyTagMode = [TagMode.HumanOnly].includes(tagMode);
   return {
     where: {
-      ...(includeDeletedRecordings ? { deletedAt: { [Op.eq]: null } } : {}),
+      ...(includeDeletedRecordings ? {} : { deletedAt: { [Op.eq]: null } }),
       ...(types.length !== 0 ? { type: { [Op.in]: types } } : {}),
       ...(processingState !== undefined ? { processingState } : {}),
       ...(devices.length !== 0 ? { DeviceId: { [Op.in]: devices } } : {}),

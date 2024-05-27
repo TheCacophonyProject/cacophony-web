@@ -411,6 +411,15 @@ describe("Recordings query using improved query API", () => {
       cy.apiRecordingAddWithTracks(group2Device1, [["deer"]]).then((id) => {
         cy.testUserAddTagRecording(id, 0, group2Admin, "false-positive");
       });
+
+      // Recording with 1 non-false-positive track, confirmed by user, then deleted.
+      cy.apiRecordingAddWithTracks(group2Device1, [["rabbit"]]).then((id) => {
+        cy.testUserAddTagRecording(id, 0, group2Admin, "rabbit").then(() => {
+          cy.apiRecordingDelete(group2Admin, id.toString(), 200, {
+            useRawRecordingId: true,
+          });
+        });
+      });
     });
   });
 
@@ -1250,6 +1259,26 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         count: 1,
+      }
+    );
+  });
+
+  it("Group member can view deleted recordings", () => {
+    // NOTE: By default we don't count if the AI and/or the human tagged a track as false-positive
+    // The AI and human tags must agree.
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "with-total-count": true.toString(),
+        "tag-mode": TagMode.AutomaticHumanUrlSafe,
+        "include-deleted": true.toString(),
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        count: 2,
       }
     );
   });
