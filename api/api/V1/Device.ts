@@ -1410,10 +1410,10 @@ export default function (app: Application, baseUrl: string) {
             where: {
               DeviceId: device.id,
               GroupId: device.GroupId,
+              location: { [Op.ne]: null },
               fromDateTime: { [Op.lte]: atTime },
             },
             order: [["fromDateTime", "DESC"]],
-            limit: 1,
           });
 
         if (deviceSettings && deviceSettings.settings) {
