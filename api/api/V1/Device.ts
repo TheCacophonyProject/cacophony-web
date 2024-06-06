@@ -63,6 +63,7 @@ import type {
   MaskRegion,
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
+import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" assert { type: "json" };
 import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
@@ -1403,15 +1404,16 @@ export default function (app: Application, baseUrl: string) {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
+
         const deviceSettings: DeviceHistory | null =
           await models.DeviceHistory.findOne({
             where: {
               DeviceId: device.id,
               GroupId: device.GroupId,
-              location: { [Op.ne]: null },
               fromDateTime: { [Op.lte]: atTime },
             },
             order: [["fromDateTime", "DESC"]],
+            limit: 1,
           });
 
         if (deviceSettings && deviceSettings.settings) {
@@ -1424,10 +1426,60 @@ export default function (app: Application, baseUrl: string) {
           return successResponse(response, "No device settings found");
         }
       } catch (e) {
-        console.log(e);
+        console.error(e);
       }
     }
   );
+  /**
+   * @api {post} /api/v1/devices/:deviceId/settings Update device settings
+   * @apiName UpdateDeviceSettings
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   *
+   * @apiDescription Updates settings in the DeviceHistory table for a specified device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiDeviceSettingsResponseSuccess}
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/settings`,
+    extractJwtAuthorizedUserOrDevice,
+    validateFields([
+      idOf(param("id")),
+      body("settings").custom(jsonSchemaOf(ApiDeviceHistorySettingsSchema)),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response) => {
+      try {
+        const device = response.locals.device as Device;
+        const newSettings: ApiDeviceHistorySettings = request.body.settings;
+        logging.info("Updating device settings", newSettings);
+        const setBy = response.locals.requestUser?.id ? "user" : "automatic";
+
+        const updatedEntry = await models.DeviceHistory.updateDeviceSettings(
+          device.id,
+          device.GroupId,
+          newSettings,
+          setBy
+        );
+
+        return successResponse(
+          response,
+          "Device settings updated successfully",
+          {
+            settings: updatedEntry,
+          }
+        );
+      } catch (e) {
+        console.log(e);
+        return response.status(500).send({ error: "Internal Server Error" });
+      }
+    }
+  );
+
   /**
    * @api {patch} /api/v1/devices/:deviceId/fix-location Fix a device location at a given time
    * @apiName FixupDeviceLocationAtTimeById

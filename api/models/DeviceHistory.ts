@@ -23,6 +23,7 @@ import type {
 } from "@typedefs/api/common.js";
 import { locationField } from "@models/util/util.js";
 import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
+import { Op } from "sequelize";
 
 export type DeviceHistorySetBy =
   | "automatic"
@@ -45,7 +46,14 @@ export interface DeviceHistory
   settings?: ApiDeviceHistorySettings;
 }
 
-export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {}
+export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {
+  updateDeviceSettings(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    newSettings: ApiDeviceHistorySettings,
+    setBy: DeviceHistorySetBy
+  ): Promise<ApiDeviceHistorySettings>;
+}
 
 export default function (
   sequelize: Sequelize.Sequelize,
@@ -113,5 +121,82 @@ export default function (
     });
   };
 
+  DeviceHistory.updateDeviceSettings = async function (
+    deviceId: DeviceId,
+    groupId: GroupId,
+    newSettings: ApiDeviceHistorySettings,
+    setBy: DeviceHistorySetBy
+  ): Promise<ApiDeviceHistorySettings> {
+    const currentSettingsEntry: DeviceHistory = await this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+      },
+      order: [["fromDateTime", "DESC"]],
+    });
+
+    const currentSettings: ApiDeviceHistorySettings =
+      currentSettingsEntry?.settings ?? ({} as ApiDeviceHistorySettings);
+    const mergedSettings = mergeSettings(currentSettings, newSettings, setBy);
+
+    if (currentSettingsEntry) {
+      // Update the existing entry
+      await currentSettingsEntry.update({
+        setBy: setBy,
+        settings: mergedSettings,
+        fromDateTime: new Date(), // Optional: update the timestamp if needed
+      });
+    } else {
+      // Create a new entry if none exists
+      await this.create({
+        DeviceId: deviceId,
+        GroupId: groupId,
+        fromDateTime: new Date(),
+        setBy: setBy,
+        settings: mergedSettings,
+      });
+    }
+
+    return mergedSettings;
+  };
+
   return DeviceHistory;
+}
+// Function to merge settings using "Last Write Wins"
+function mergeSettings(
+  currentSettings: ApiDeviceHistorySettings,
+  incomingSettings: ApiDeviceHistorySettings,
+  setBy: DeviceHistorySetBy
+): ApiDeviceHistorySettings {
+  const mergedSettings: ApiDeviceHistorySettings = { ...currentSettings };
+
+  for (const key in incomingSettings) {
+    if (incomingSettings.hasOwnProperty(key)) {
+      const incomingValue = incomingSettings[key];
+
+      // If the current settings do not have this key, add it
+      if (!currentSettings.hasOwnProperty(key)) {
+        mergedSettings[key] = incomingValue;
+        continue;
+      }
+
+      const currentSetting = currentSettings[key];
+
+      if (incomingValue.updated && currentSetting.updated) {
+        const currentUpdated = new Date(currentSetting.updated);
+        const incomingUpdated = new Date(incomingValue.updated);
+
+        if (incomingUpdated > currentUpdated) {
+          mergedSettings[key] = incomingValue;
+        }
+      } else {
+        mergedSettings[key] = incomingValue;
+      }
+    }
+  }
+
+  // Set synced based on setBy
+  mergedSettings.synced = setBy === "automatic";
+
+  return mergedSettings;
 }

@@ -51,10 +51,24 @@ export interface ApiDeviceLocationFixup {
   location?: LatLng; // Supply a location to map to the station
 }
 
+type SettingsBase = {
+  updated: IsoFormattedDateString;
+};
+
+export type ThermalRecordingSettings = {
+  useLowPowerMode: boolean;
+} & SettingsBase;
+
+export type WindowsSettings = {
+  startRecording: string;
+  stopRecording: string;
+  powerOn: string;
+  powerOff: string;
+} & SettingsBase;
+
 export interface ApiDeviceHistorySettings {
   referenceImagePOV?: string; // S3 Key for a device reference image
   referenceImagePOVFileSize?: number;
-
   referenceImageInSitu?: string; // S3 Key for a device reference image
   referenceImageInSituFileSize?: number;
   warp?: {
@@ -67,4 +81,7 @@ export interface ApiDeviceHistorySettings {
   };
   maskRegions?: MaskRegions;
   ratThresh?: any;
+  thermalRecording?: ThermalRecordingSettings;
+  windows?: WindowsSettings;
+  synced?: boolean;
 }

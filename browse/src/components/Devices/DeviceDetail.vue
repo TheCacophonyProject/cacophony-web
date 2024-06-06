@@ -2,7 +2,7 @@
   <b-container class="tabs-container">
     <tab-list v-model="currentTabIndex">
       <tab-list-item title="About" lazy>
-        <DeviceSoftware :software="software" />
+        <DeviceInfo :device-id="device.id" :software="software" />
       </tab-list-item>
       <tab-list-item title="All Events" lazy>
         <DeviceEvents :device="device" />
@@ -26,7 +26,7 @@
 </template>
 
 <script lang="ts">
-import DeviceSoftware from "./DeviceSoftware.vue";
+import DeviceInfo from "./DeviceInfo.vue";
 import DeviceEvents from "./DeviceEvents.vue";
 import TabTemplate from "@/components/TabTemplate.vue";
 import RecordingsTab from "@/components/RecordingsTab.vue";
@@ -40,7 +40,7 @@ export default {
     TabList,
     TabListItem,
     RecordingsTab,
-    DeviceSoftware,
+    DeviceInfo,
     DeviceEvents,
     TabTemplate,
   },
