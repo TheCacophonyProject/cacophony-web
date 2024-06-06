@@ -1242,8 +1242,7 @@ const getDevice =
           new ClientError("No authorizing user specified")
         );
       }
-    }
-    if (forDevice || !forRequestUser) {
+    } else {
       getDeviceOptions = {
         where: deviceWhere,
         attributes: deviceAttributes,

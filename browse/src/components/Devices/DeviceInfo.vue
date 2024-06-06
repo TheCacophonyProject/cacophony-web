@@ -1,31 +1,5 @@
 <template>
   <b-container class="versions" style="padding: 0">
-    <h2>Current software versions</h2>
-    <div v-if="!software.result">{{ software.message }}</div>
-    <div
-      v-else-if="
-        software.result.EventDetail && software.result.EventDetail.details
-      "
-    >
-      <div
-        v-for="(version, component) in software.result.EventDetail.details"
-        :key="component"
-      >
-        <b>{{ component }}</b
-        >: {{ version }}
-      </div>
-      <div v-if="software.result.dateTime">
-        <i
-          >Recorded {{ dayOfSnapshot.toLowerCase() }} at {{ timeOfSnapshot }}</i
-        >
-      </div>
-      <p>
-        Current released software versions are listed
-        <a href="https://github.com/TheCacophonyProject/saltops#branch-prod"
-          >here</a
-        >.
-      </p>
-    </div>
     <h2 class="mt-4">Device Settings</h2>
     <div v-if="settings" class="device-settings mt-3">
       <div><b>Synced:</b> {{ settings.synced ? "Yes" : "No" }}</div>
@@ -55,6 +29,32 @@
           </div>
         </template>
       </b-table>
+    </div>
+    <h2>Current software versions</h2>
+    <div v-if="!software.result">{{ software.message }}</div>
+    <div
+      v-else-if="
+        software.result.EventDetail && software.result.EventDetail.details
+      "
+    >
+      <div
+        v-for="(version, component) in software.result.EventDetail.details"
+        :key="component"
+      >
+        <b>{{ component }}</b
+        >: {{ version }}
+      </div>
+      <div v-if="software.result.dateTime">
+        <i
+          >Recorded {{ dayOfSnapshot.toLowerCase() }} at {{ timeOfSnapshot }}</i
+        >
+      </div>
+      <p>
+        Current released software versions are listed
+        <a href="https://github.com/TheCacophonyProject/saltops#branch-prod"
+          >here</a
+        >.
+      </p>
     </div>
 
     <b-modal
