@@ -114,12 +114,11 @@ import {
   uploadGenericRecordingOnBehalfOfDevice,
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import type { RecordingId, TrackId } from "@typedefs/api/common.js";
+import type { TrackId } from "@typedefs/api/common.js";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals.js";
 import {
-  getFirstPass,
-  getSelfJoinForTagMode,
+  queryRecordingsInProject,
   sqlDebugOutput,
 } from "./recordingsBulkQueryUtil.js";
 
@@ -239,7 +238,7 @@ const ifNotNull = (val: any | null) => {
   return undefined;
 };
 
-const mapRecordingResponse = (
+export const mapRecordingResponse = (
   recording: Recording,
   minimal: boolean = false
 ): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
@@ -2541,7 +2540,7 @@ export default (app: Application, baseUrl: string) => {
         }),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
-    fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
+    //fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
       try {
         const query = request.query;
@@ -2568,9 +2567,6 @@ export default (app: Application, baseUrl: string) => {
         const includeDeletedRecordings = query[
           "include-deleted"
         ] as unknown as boolean;
-        console.error("Include deleted?", includeDeletedRecordings);
-        const tagged = tagMode !== TagMode.UnTagged && taggedWith.length !== 0;
-        const labelled = labelledWith.length !== 0;
         const locations = ((query.locations || []) as string[]).map(Number);
         const devices = ((query.devices || []) as string[]).map(Number);
         const minDuration = query.duration as unknown as number;
@@ -2579,13 +2575,13 @@ export default (app: Application, baseUrl: string) => {
           taggedWith.includes("false-positive");
         const includeFilteredTracks =
           includeFalsePositives || tagMode === TagMode.UnTagged;
-        const processingState = query[
-          "processing-state"
-        ] as unknown as RecordingProcessingState;
-
+        const processingState = query["processing-state"] as unknown as
+          | RecordingProcessingState
+          | undefined;
         const fromDate = query.from as unknown as Date | undefined;
         const untilDate = query.until as unknown as Date | undefined;
         const withTotalCount = query["with-total-count"] as unknown as boolean;
+
         // NOTE: The query strategy used here is to do two passes:
         //  The first to find recordings that match the tag constraints, and the second to query those recordings getting
         //  *all* tags and labels associated with each recording, not just those that match the constraints.
@@ -2617,87 +2613,30 @@ export default (app: Application, baseUrl: string) => {
             }
           };
         const logging = loggingFn(sqlPasses, sqlTimings);
-        const firstPass = (withTags: boolean, automatic: boolean) =>
-          getFirstPass(
-            models,
-            projectId,
-            minDuration,
-            includeDeletedRecordings,
-            types,
-            processingState,
-            devices,
-            locations,
-            withTags,
-            taggedWith,
-            subClassTags,
-            labelledWith,
-            tagged,
-            labelled,
-            tagMode,
-            includeFilteredTracks,
-            withTotalCount,
-            limit,
-            automatic,
-            fromDate,
-            untilDate
-          );
-        const tagReplacements = {};
-        for (let i = 0; i < taggedWith.length; i++) {
-          tagReplacements[`tag_${i}`] = `*.${taggedWith[i].replace(
-            /-/g,
-            "_"
-          )}.*`;
-        }
-        const getCount = withTotalCount
-          ? models.sequelize.query(
-              getSelfJoinForTagMode(
-                models,
-                firstPass,
-                tagMode,
-                taggedWith,
-                subClassTags,
-                limit,
-                offset,
-                true
-              ),
-              {
-                logging,
-                type: QueryTypes.SELECT,
-                replacements: { taggedWith, ...tagReplacements },
-              }
-            )
-          : new Promise((resolve) => resolve([{ count: 0 }]));
-        const getRecordingIds = models.sequelize.query(
-          getSelfJoinForTagMode(
-            models,
-            firstPass,
-            tagMode,
-            taggedWith,
-            subClassTags,
-            limit,
-            offset,
-            false
-          ),
-          {
-            logging,
-            type: QueryTypes.SELECT,
-            replacements: { taggedWith, ...tagReplacements },
-          }
+        const { count, recordingIds } = await queryRecordingsInProject(
+          models,
+          projectId,
+          minDuration,
+          includeDeletedRecordings,
+          types,
+          processingState,
+          devices,
+          locations,
+          taggedWith,
+          subClassTags,
+          labelledWith,
+          tagMode,
+          includeFilteredTracks,
+          withTotalCount,
+          limit,
+          fromDate,
+          untilDate,
+          offset,
+          logging
         );
-        const [countResult, recordingIds] = await Promise.all([
-          getCount,
-          getRecordingIds,
-        ]);
-
-        const count: number = Number((countResult[0] as any).count);
-        const recordings: { id: RecordingId }[] = recordingIds as {
-          id: number;
-        }[];
-
         // NOTE: Finally, just query for the recordings we want by their ids.
         let fullRecordings = [];
-        if (recordings.length) {
-          const recordingIds = recordings.map(({ id }) => id);
+        if (recordingIds.length) {
           fullRecordings = await models.Recording.findAll({
             where: {
               id: { [Op.in]: recordingIds },

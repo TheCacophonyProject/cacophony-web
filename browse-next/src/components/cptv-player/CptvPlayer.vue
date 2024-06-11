@@ -1119,13 +1119,14 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       isExporting.value = false;
       return;
     }
-    const recordingIdSuffix = `recording_${props.recordingId}__`;
+    const recordingIdSuffix = `recording-${props.recordingId}-`;
     trackExportOptions.value = exportOptions.value;
+
     download(
       URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
-      `${recordingIdSuffix}${new Date(
-        (header.value as CptvHeader).timestamp / 1000
-      ).toLocaleString()}`
+      `${recordingIdSuffix}${DateTime.fromJSDate(
+        new Date((header.value as CptvHeader).timestamp / 1000)
+      ).toFormat("dd-MM-yyyy--HH-mm-ss")}`
     );
     isExporting.value = false;
     emit("export-completed");
@@ -1304,10 +1305,13 @@ watch(frameNum, () => {
   // If there's only one possible track for this frame, set it to selected.
   const frameTracks =
     tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][]);
-  if (props.currentTrack && props.canSelectTracks && frameTracks.length === 1) {
+  if (props.canSelectTracks && frameTracks.length === 1) {
     const trackId = frameTracks[0][0];
     // If the track is the only track at this time offset, make it the selected track.
-    if (props.currentTrack.id !== trackId) {
+    if (
+      !props.currentTrack ||
+      (props.currentTrack && props.currentTrack.id !== trackId)
+    ) {
       emit("track-selected", { trackId, automatically: true });
     }
   }

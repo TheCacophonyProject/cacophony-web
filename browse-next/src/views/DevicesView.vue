@@ -159,15 +159,18 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
     (poweredDevice) => poweredDevice.id === device.id
   );
-  const status =
-    device.hasOwnProperty("isHealthy") && device.active
-      ? device.isHealthy
-        ? isPoweredOn
-          ? "online"
-          : "standby"
-        : "stopped"
-      : "-";
-  return status;
+
+  // TODO: isHealthy relates to devices that have a heartbeart.
+  // In the absence of a heartbeat, we should be able to look at whether we've ever heard from this device,
+  // and if so, have we heard from it within the last 24 hours?
+
+  return device.hasOwnProperty("isHealthy") && device.active
+    ? device.isHealthy
+      ? isPoweredOn
+        ? "online"
+        : "standby"
+      : "stopped"
+    : "-";
 };
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
@@ -204,17 +207,6 @@ const tableItems = computed<
   return devices.value
     .filter((device) => showInactiveDevicesInternal.value || device.active)
     .map((device: ApiDeviceResponse) => {
-      const isPoweredOn = currentlyPoweredOnDevices.value.some(
-        (poweredDevice) => poweredDevice.id === device.id
-      );
-      const status =
-        device.hasOwnProperty("isHealthy") && device.active
-          ? device.isHealthy
-            ? isPoweredOn
-              ? "online"
-              : "standby"
-            : "stopped"
-          : "-";
       return {
         deviceName: device.deviceName, // Use device name with icon like we do currently?
         lastSeen: noWrap(
@@ -224,7 +216,7 @@ const tableItems = computed<
               ).toRelative() as string)
             : "never (offline device)"
         ),
-        status,
+        status: statusForDevice(device),
         _deleteAction: {
           value: device,
           cellClasses: ["d-flex", "justify-content-end"],
@@ -424,7 +416,9 @@ const isDevicesRoot = computed(() => {
       v-if="selectedDevice"
       :name="(selectedDevice as ApiDeviceResponse).deviceName"
       :type="(selectedDevice as ApiDeviceResponse).type"
-    />
+    >
+      <b-button class="ms-4">View recordings at current location</b-button>
+    </device-name>
     <span v-else>Devices</span>
   </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->

@@ -51,7 +51,7 @@ let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
 const conflictTag = "conflicting tags";
 
-const META_TAGS = ["part", "poor tracking"];
+export const META_TAGS = ["part", "poor tracking"];
 export const UNIDENTIFIED_TAGS = ["unidentified", "unknown"];
 export const NON_ANIMAL_TAGS = [...META_TAGS, ...UNIDENTIFIED_TAGS];
 
@@ -78,7 +78,7 @@ function sortTracks(tracks: Track[]) {
   });
 }
 
-const getCommonAncestorForTags = (tags: string[]): string => {
+export const getCommonAncestorForTags = (tags: string[]): string => {
   // Find common parents of classifications.
   const classes = tags
     .map((tag) => flatClassifications[tag])

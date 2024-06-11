@@ -719,6 +719,7 @@ const syncParams = (
   } else {
     selectedTags.value = [];
   }
+  showUntaggedOnly.value = tagMode.value === TagMode.UnTagged;
   if (next.labelledWith && next.labelledWith.length) {
     starredLabel.value = next.labelledWith.includes(COOL);
     flaggedLabel.value = next.labelledWith.includes(FLAG);

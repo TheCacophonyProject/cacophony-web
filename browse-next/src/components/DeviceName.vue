@@ -1,5 +1,7 @@
 <template>
-  <font-awesome-icon :icon="deviceTypeIcon" class="me-2" /> {{ name }}
+  <span
+    ><font-awesome-icon :icon="deviceTypeIcon" class="me-2" /> {{ name }}</span
+  ><span><slot></slot></span>
 </template>
 
 <script lang="ts" setup>

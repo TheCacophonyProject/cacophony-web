@@ -20,8 +20,9 @@ import {
   activeLocations,
   currentSelectedProject as currentActiveProject,
   latLngForActiveLocations,
+  urlNormalisedCurrentSelectedProjectName,
 } from "@models/provides";
-import type { SelectedProject } from "@models/LoggedInUser";
+import { type SelectedProject } from "@models/LoggedInUser";
 import type {
   FetchResult,
   LoadedResource,
@@ -111,6 +112,10 @@ const mapBufferWidth = computed<number>(() => {
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
+
+const fileSafeProjectName = inject(
+  urlNormalisedCurrentSelectedProjectName
+) as ComputedRef<string>;
 
 export interface ActivitySearchParams {
   // relativeDateRange: [Date, Date] | null;
@@ -1054,7 +1059,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
   if (currentProject.value) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
-
     if (fromDateTime === null && untilDateTime === null) {
       // Date range not yet defined
       return;
@@ -1062,11 +1066,12 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     let queryHash = getCurrentQueryHash();
     let query = getCurrentQuery();
     const project = currentProject.value as SelectedProject;
-    let isNewQuery = false;
+    let isNewQuery;
     if (firstLoad.value) {
       firstLoad.value = false;
       queryHash = getCurrentQueryHash();
       query = getCurrentQuery();
+      isNewQuery = true;
     } else {
       isNewQuery = queryHash !== currentQueryHash.value;
     }
@@ -1076,6 +1081,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       // We need to narrow the already loaded search range
       isNewQuery = true;
     }
+
     let earliestRecord = null;
     if (inRecordingsMode.value) {
       if (loadedRecordings.value.length) {
@@ -1112,9 +1118,11 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         | FetchResult<BulkRecordingsResponse>
         | FetchResult<VisitsQueryResult>;
       if (inRecordingsMode.value) {
+        // NOTE: Not sure we need to ever get the total count for this query for the
+        //  purposes of this UI?
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
-          countAll: isNewQuery,
+          //countAll: isNewQuery,
           limit: twoPagesWorth,
           fromDateTime: dateRange.value[0],
           untilDateTime: currentQueryCursor.value.untilDateTime as Date,
@@ -1132,6 +1140,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         // Else visits
         // TODO: This needs to have a limit
         // Make it the lesser of the current date range or 2 pages worth of days.
+        const pageSize = 100;
         response = await getVisitsForProject(
           project.id,
           dateRange.value[0] as Date,
@@ -1139,6 +1148,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             currentQueryCursor.value.untilDateTime as Date,
             endOfDay(maxDateForSelectedLocations.value)
           ),
+          pageSize,
           query.locations,
           query.types
         );
@@ -1232,7 +1242,6 @@ const exportProgressZeroOneHundred = computed<number>(
 );
 const doSearch = async () => {
   if (!searching.value) {
-    showOffcanvasSearch.value = false;
     searching.value = true;
     await getClassifications();
     await getRecordingsOrVisitsForCurrentQuery();
@@ -1325,6 +1334,7 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
       "Local time",
       "Duration",
       "Classification",
+      "Labels",
     ],
   ];
   for (const recording of data) {
@@ -1334,12 +1344,15 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
     if (location) {
       const tags = tagsForRecording(recording);
       const displays = [];
+      const labels = recording.tags.map((tag) => tag.detail);
       for (const tag of tags) {
         const display = displayLabelForClassificationLabel(
           tag.what,
           tag.automatic && !tag.human
         );
-        displays.push(upperFirst(display));
+        displays.push(
+          `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+        );
       }
 
       csv.push([
@@ -1350,6 +1363,7 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
         dayAndTimeAtLocation(recording.recordingDateTime, location.location),
         formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
         displays.join(", "),
+        labels.join(", "),
       ]);
     }
   }
@@ -1395,7 +1409,7 @@ const doExport = async () => {
         URL.createObjectURL(
           new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
         ),
-        `visits-export.csv`
+        `${fileSafeProjectName.value}-visits-export.csv`
       );
     } else if (inRecordingsMode.value) {
       query.fromDateTime = fromDateTime;
@@ -1413,7 +1427,7 @@ const doExport = async () => {
         URL.createObjectURL(
           new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
         ),
-        `recordings-export.csv`
+        `${fileSafeProjectName.value}-recordings-export.csv`
       );
     }
   }
@@ -1640,7 +1654,7 @@ onBeforeUnmount(() => {
     v-if="loading"
     class="d-flex justify-content-center align-items-center centered-overlay"
   >
-    <b-spinner />
+    <b-spinner variant="secondary" />
   </div>
   <div v-else-if="!projectHasLocationsWithRecordings">
     This project has no activity yet.
@@ -1659,7 +1673,6 @@ onBeforeUnmount(() => {
           <font-awesome-icon icon="sliders" />
         </b-button>
       </div>
-      <!--   TODO: Close button should be < inline and custom.   -->
       <b-offcanvas
         v-if="!shouldShowSearchControlsInline"
         v-model="showOffcanvasSearch"
@@ -1677,6 +1690,9 @@ onBeforeUnmount(() => {
           @search-requested="doSearch"
           @export-requested="doExport"
         />
+        <div class="d-flex flex-column mt-3">
+          <b-button @click="showOffcanvasSearch = false">Search</b-button>
+        </div>
       </b-offcanvas>
       <div class="search-controls" v-if="shouldShowSearchControlsInline">
         <activity-search-parameters
@@ -1701,13 +1717,6 @@ onBeforeUnmount(() => {
           :available-date-ranges="availableDateRanges"
           :search-params="searchParams"
         />
-        <!--        <div v-if="currentQueryCount === undefined">-->
-        <!--          Loading totals...-->
-        <!--          <b-spinner />-->
-        <!--        </div>-->
-        <!--        <div v-else-if="currentQueryCount || currentQueryCount === 0">-->
-        <!--          Loaded {{ currentQueryLoaded }} / Total {{ currentQueryCount }}-->
-        <!--        </div>-->
         <div class="search-items-container">
           <recordings-list
             v-if="inRecordingsMode"
@@ -1732,9 +1741,9 @@ onBeforeUnmount(() => {
         </div>
         <div
           v-if="searching"
-          class="d-flex justify-content-center flex-columns align-items-center"
+          class="d-flex justify-content-center flex-columns align-items-center flex-fill"
         >
-          <b-spinner />
+          <b-spinner variant="secondary" />
         </div>
         <div
           v-else-if="completedCurrentQuery && canExpandSearchBackFurther"

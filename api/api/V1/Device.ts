@@ -113,18 +113,21 @@ export const mapDeviceResponse = (
     if (device.lastRecordingTime) {
       mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
-    if (device.heartbeat && device.nextHeartbeat && device.active) {
-      // NOTE: If the device is inactive, we don't get a health indicator for it.
-      mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
-    } else if (device.active && device.kind === "audio") {
-      // TODO: Can we update battery levels for bird monitors to the device, and show some health stats?
-      const twelveHoursAgo = new Date();
-      twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
-      mapped.isHealthy =
-        (device.lastConnectionTime &&
-          device.lastConnectionTime.getTime() > twelveHoursAgo.getTime()) ||
-        false;
+    if (device.active) {
+      if (device.heartbeat && device.nextHeartbeat) {
+        // NOTE: If the device is inactive, we don't get a health indicator for it.
+        mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
+      } else {
+        const twentyFourHoursAgo = new Date();
+        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 25);
+        mapped.isHealthy =
+          (device.lastConnectionTime &&
+            device.lastConnectionTime.getTime() >
+              twentyFourHoursAgo.getTime()) ||
+          false;
+      }
     }
+
     if (device.location) {
       mapped.location = device.location;
     }
@@ -634,31 +637,66 @@ export default function (app: Application, baseUrl: string) {
         };
         if (laterDeviceHistoryEntry) {
           payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
-          // Now check if there's a daytime image in that timespan
+          // Now check if there's a daytime image in that timespan, preferably without any tracks,
+          // to avoid there being animals present
+          const options = {
+            type: QueryTypes.SELECT,
+            replacements: {
+              groupId: device.GroupId,
+              deviceId: device.id,
+              atTime: fromTime,
+              untilTime: laterDeviceHistoryEntry.fromDateTime,
+            },
+          };
           recording = await models.sequelize.query(
-            `
+            `          
+          select * from "Recordings"
+          left outer join "Tracks"
+          on "Tracks"."RecordingId" = "Tracks".id
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and "recordingDateTime" < :untilTime
+          and type = 'trailcam-image'
+          and "Tracks".id is null
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          where 
+          limit 1
+          `,
+            options
+          );
+          if (!recording.length) {
+            recording = await models.sequelize.query(
+              `
           select * from "Recordings" 
           where "DeviceId" = :deviceId
           and "GroupId" = :groupId
           and location is not null
           and "recordingDateTime" >= :atTime
           and "recordingDateTime" < :untilTime
+          and type = 'trailcam-image'
           and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
           BETWEEN TIME '9:00' AND TIME '16:00'
           order by "recordingDateTime" desc
           limit 1
           `,
-            {
-              type: QueryTypes.SELECT,
-              replacements: {
-                groupId: device.GroupId,
-                deviceId: device.id,
-                atTime: fromTime,
-                untilTime: laterDeviceHistoryEntry.fromDateTime,
-              },
-            }
-          );
+              options
+            );
+          }
         } else {
+          // Now check if there's a daytime image in that timespan, preferably without any tracks,
+          // to avoid there being animals present
+          const options = {
+            type: QueryTypes.SELECT,
+            replacements: {
+              groupId: device.GroupId,
+              deviceId: device.id,
+              atTime: fromTime,
+            },
+          };
           recording = await models.sequelize.query(
             `
           select * from "Recordings" 
@@ -666,20 +704,31 @@ export default function (app: Application, baseUrl: string) {
           and "GroupId" = :groupId
           and location is not null
           and "recordingDateTime" >= :atTime
+          and type = 'trailcam-image'
           and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
           BETWEEN TIME '9:00' AND TIME '16:00'
           order by "recordingDateTime" desc
           limit 1
       `,
-            {
-              type: QueryTypes.SELECT,
-              replacements: {
-                groupId: device.GroupId,
-                deviceId: device.id,
-                atTime: fromTime,
-              },
-            }
+            options
           );
+          if (!recording.length) {
+            recording = await models.sequelize.query(
+              `
+          select * from "Recordings"         
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and type = 'trailcam-image'        
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          limit 1
+      `,
+              options
+            );
+          }
         }
         if (recording.length) {
           if (checkIfExists) {

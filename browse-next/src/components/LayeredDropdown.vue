@@ -2,7 +2,10 @@
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 import { onClickOutside } from "@vueuse/core";
-import { getClassificationForLabel } from "@api/Classifications";
+import {
+  displayLabelForClassificationLabel,
+  getClassificationForLabel,
+} from "@api/Classifications";
 
 const props = withDefaults(
   defineProps<{
@@ -379,7 +382,19 @@ defineExpose({
             @click.prevent="addSelectedOption(option)"
             :disabled="disabledTags.includes(option.label)"
           >
-            {{ option.display || option.label }}
+            <span style="vertical-align: middle">{{
+              displayLabelForClassificationLabel(option.label)
+            }}</span
+            ><span
+              v-if="
+                option.display &&
+                displayLabelForClassificationLabel(option.label) !==
+                  option.label
+              "
+              class="fs-7 text-black-50"
+              style="vertical-align: middle"
+              >&nbsp;({{ option.label }})</span
+            >
           </button>
           <div v-else class="options-list-label no-results btn">
             {{ option.label }}

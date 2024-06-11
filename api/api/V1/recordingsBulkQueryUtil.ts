@@ -1,10 +1,12 @@
+import type { RecordingProcessingState } from "@typedefs/api/consts.js";
+import { RecordingType, TagMode } from "@typedefs/api/consts.js";
 import type {
-  RecordingProcessingState,
-  RecordingType,
-} from "@typedefs/api/consts.js";
-import { TagMode } from "@typedefs/api/consts.js";
-import type { DeviceId, GroupId, StationId } from "@typedefs/api/common.js";
-import sequelize, { Op } from "sequelize";
+  DeviceId,
+  GroupId,
+  RecordingId,
+  StationId,
+} from "@typedefs/api/common.js";
+import sequelize, { Op, QueryTypes } from "sequelize";
 import type { ModelsDictionary } from "@models";
 
 export const getFirstPass = (
@@ -13,7 +15,7 @@ export const getFirstPass = (
   minDuration: number,
   includeDeletedRecordings: boolean,
   types: RecordingType[],
-  processingState: RecordingProcessingState,
+  processingState: RecordingProcessingState | undefined,
   devices: DeviceId[],
   locations: StationId[],
   withTags: boolean,
@@ -25,10 +27,10 @@ export const getFirstPass = (
   tagMode: TagMode,
   includeFilteredTracks: boolean,
   withTotalCount: boolean,
-  maxResults: number,
   automatic: boolean | null,
   from: Date | undefined,
-  until: Date | undefined
+  until: Date | undefined,
+  direction
 ) => {
   const requiresTags = [
     TagMode.HumanTagged,
@@ -55,7 +57,7 @@ export const getFirstPass = (
           : { recordingDateTime: { [Op.lt]: until } }
         : {}),
       GroupId: projectId,
-      redacted: false,
+      ...(types.includes(RecordingType.Audio) ? { redacted: false } : {}),
       duration: { [Op.gte]: minDuration },
       [Op.and]: [
         ...(tagMode === TagMode.UnTagged
@@ -163,7 +165,7 @@ export const getFirstPass = (
       sequelize.col('"Tracks->TrackTags".what'),
       sequelize.col('"Tracks->TrackTags".path'),
     ],
-    ...(!withTotalCount ? { order: [["recordingDateTime", "desc"]] } : {}),
+    ...(!withTotalCount ? { order: [["recordingDateTime", direction]] } : {}),
   };
 };
 
@@ -186,13 +188,15 @@ export const getSelfJoinForTagMode = (
   subClassTags: boolean,
   maxResults: number,
   offsetResults: number,
-  count: boolean = false
+  includeFilteredTracks: boolean,
+  count: boolean = false,
+  direction: "asc" | "desc" = "desc"
 ) => {
   const limit = (tableName: string) => {
     return count
       ? ""
       : `
-        order by ${tableName}."recordingDateTime" desc
+        order by ${tableName}."recordingDateTime" ${direction}
         limit ${maxResults} ${
           offsetResults === 0 ? "" : `offset ${offsetResults}`
         }`;
@@ -352,9 +356,13 @@ export const getSelfJoinForTagMode = (
     case TagMode.Any: {
       // NOTE: Any recordings, tagged or untagged – but not false-positive only/filtered by default.
       //  If filtering by tags, this won't get used – it will switch to using TagMode.Tagged
-      const automaticSql = getRawSql(models, options(true, true));
-      const humanSql = getRawSql(models, options(false, false));
-      return `
+
+      // TODO: Improve this query, since it doesn't really need the left join as we're not checking tags - although we
+      //  are filtering false positives
+      if (!includeFilteredTracks) {
+        const automaticSql = getRawSql(models, options(true, true));
+        const humanSql = getRawSql(models, options(false, false));
+        return `
         select ${recordingIds("automatic_recordings")} 
         from 
         (${automaticSql}) as automatic_recordings 
@@ -363,6 +371,16 @@ export const getSelfJoinForTagMode = (
         on automatic_recordings.id = human_recordings.id                 
         ${limit("automatic_recordings")}       
       `;
+      } else {
+        // TODO: keep this?
+        const sql = getRawSql(models, options(false, null));
+        return `
+        select ${recordingIds("all_recordings")} 
+        from 
+        (${sql}) as all_recordings                
+        ${limit("all_recordings")}
+        `;
+      }
     }
     default: {
       throw new Error("Unknown case");
@@ -380,9 +398,22 @@ export const sqlDebugOutput = (
   totalResults: number,
   queryTimes: number[],
   queriesSQL: string[],
-  totalTime: number
+  totalTime: number,
+  records?: any[]
 ): string => {
   const queryTime = queryTimes.reduce((acc, num) => acc + num, 0);
+
+  let recordsOutput = "";
+  if (records) {
+    recordsOutput = `
+    <pre style="background: black;" class="language-json theme-atom-one-dark"><code class="code">${JSON.stringify(
+      records,
+      null,
+      "\t"
+    )}</code></pre>
+    `;
+  }
+
   return `
           <!DOCTYPE html>
           <body style="background-color: black">
@@ -396,13 +427,14 @@ export const sqlDebugOutput = (
               queryParams,
               null,
               "\t"
-            )}</code></pre>
+            )}</code></pre>     
+            ${recordsOutput}    
             ${queriesSQL
               .map(
-                (query) => `
+                (query, index) => `
             <div style="position: relative">
               <pre style="background: black;" class="language-sql theme-atom-one-dark"><code class="code">${query}</code></pre>
-              <button class="btn" style="position: absolute; right: 20px; top: 20px;">Copy</button>
+              <button class="btn" style="position: absolute; right: 20px; top: 20px;">Copy (${queryTimes[index]}ms)</button>
             </div>
             `
               )
@@ -427,4 +459,108 @@ export const sqlDebugOutput = (
           </script>
           </html>
         `;
+};
+
+export const queryRecordingsInProject = async (
+  models: ModelsDictionary,
+  projectId: GroupId,
+  minDuration: number,
+  includeDeletedRecordings: boolean,
+  types: RecordingType[],
+  processingState: RecordingProcessingState | undefined,
+  devices: DeviceId[],
+  locations: StationId[],
+  taggedWith: string[],
+  subClassTags: boolean,
+  labelledWith: string[],
+  tagMode: TagMode,
+  includeFilteredTracks: boolean,
+  withTotalCount: boolean,
+  limit: number,
+  fromDate: Date,
+  untilDate: Date,
+  offset: number,
+  logging: (message: string, time: number) => void,
+  direction: "desc" | "asc" = "desc"
+): Promise<{ recordingIds: RecordingId[]; count: number }> => {
+  const tagged = tagMode !== TagMode.UnTagged && taggedWith.length !== 0;
+  const labelled = labelledWith.length !== 0;
+  const firstPass = (withTags: boolean, automatic: boolean) =>
+    getFirstPass(
+      models,
+      projectId,
+      minDuration,
+      includeDeletedRecordings,
+      types,
+      processingState,
+      devices,
+      locations,
+      withTags,
+      taggedWith,
+      subClassTags,
+      labelledWith,
+      tagged,
+      labelled,
+      tagMode,
+      includeFilteredTracks,
+      withTotalCount,
+      automatic,
+      fromDate,
+      untilDate,
+      direction
+    );
+  const tagReplacements = {};
+  for (let i = 0; i < taggedWith.length; i++) {
+    tagReplacements[`tag_${i}`] = `*.${taggedWith[i].replace(/-/g, "_")}.*`;
+  }
+  const getCount = withTotalCount
+    ? models.sequelize.query(
+        getSelfJoinForTagMode(
+          models,
+          firstPass,
+          tagMode,
+          taggedWith,
+          subClassTags,
+          limit,
+          offset,
+          includeFilteredTracks,
+          true,
+          direction
+        ),
+        {
+          logging,
+          type: QueryTypes.SELECT,
+          replacements: { taggedWith, ...tagReplacements },
+        }
+      )
+    : new Promise((resolve) => resolve([{ count: 0 }]));
+  const getRecordingIds = models.sequelize.query(
+    getSelfJoinForTagMode(
+      models,
+      firstPass,
+      tagMode,
+      taggedWith,
+      subClassTags,
+      limit,
+      offset,
+      includeFilteredTracks,
+      false,
+      direction
+    ),
+    {
+      logging,
+      type: QueryTypes.SELECT,
+      replacements: { taggedWith, ...tagReplacements },
+    }
+  );
+  const [countResult, recordings] = await Promise.all([
+    getCount,
+    getRecordingIds,
+  ]);
+
+  const count: number = Number((countResult[0] as any).count);
+  return {
+    recordingIds: (recordings as { id: RecordingId }[]).map(({ id }) => id),
+    count,
+  };
 };

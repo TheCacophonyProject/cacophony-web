@@ -850,7 +850,8 @@ from (
     const noArchived = { archivedAt: null };
     const onlyMasterModel = options.filterModel
       ? {
-          [Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
+          //[Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
+          [Op.or]: { used: true },
         }
       : {};
     if (hideFiltered) {

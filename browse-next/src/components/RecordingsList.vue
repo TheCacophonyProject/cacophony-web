@@ -334,7 +334,7 @@ const unhighlightedLocation = (item: RecordingItem | SunItem) => {
   --bs-spinner-border-width: 0.2em;
 }
 .visit-station-name {
-  max-width: calc(100% - 1rem);
+  max-width: calc(100cqw - 65px);
 }
 .visits-daily-breakdown {
   background: white;
@@ -512,6 +512,7 @@ const unhighlightedLocation = (item: RecordingItem | SunItem) => {
   }
 
   .recording-detail {
+    container-type: inline-size;
     max-width: 469px;
     background: white;
     border-radius: 3px;

@@ -10,7 +10,10 @@ import {
   queryValueIsDate,
 } from "@/components/activitySearchUtils.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
-import { flatClassifications } from "@api/Classifications.ts";
+import {
+  displayLabelForClassificationLabel,
+  flatClassifications,
+} from "@api/Classifications.ts";
 const COOL = "cool";
 const FLAG = "requires review";
 const props = defineProps<{
@@ -170,7 +173,9 @@ const otherLabels = computed<string[]>(
         </span>
         <span :key="index" v-for="(tag, index) in searchParams.taggedWith">
           <strong class="fw-semibold"
-            ><span class="text-capitalize">{{ tag }}</span></strong
+            ><span class="text-capitalize">{{
+              displayLabelForClassificationLabel(tag)
+            }}</span></strong
           ><span v-if="index === searchParams.taggedWith.length - 2"> or </span
           ><span
             v-else-if="

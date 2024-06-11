@@ -183,8 +183,11 @@ const haveHeardDirectlyFromDeviceInItsCurrentLocation = computed<boolean>(
 
 const deviceStopped = computed<boolean>(() => {
   if (device.value) {
+    if (!device.value.active) {
+      return true;
+    }
     return (
-      !haveHeardDirectlyFromDeviceInItsCurrentLocation.value &&
+      haveHeardDirectlyFromDeviceInItsCurrentLocation.value &&
       !device.value.isHealthy
     );
   }
@@ -400,14 +403,14 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
         <h6 class="mt-3">Recording status:</h6>
         <div v-if="!shouldBeRecordingNow && recordingWindow">
           <span v-if="deviceStopped">
-            Camera has stopped<span v-if="device.location">, otherwise</span>
-            <span v-if="records247">would be ready to recording now</span
+            Camera has stopped<span v-if="device.location">, otherwise </span>
+            <span v-if="records247">would be recording now</span
             ><span v-else-if="scheduledRecordStartTime"
               >would be ready to record
               {{
                 DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
               }}</span
-            >.
+            >
           </span>
           <span v-else-if="scheduledRecordStartTime"
             >Ready to record
@@ -416,7 +419,8 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
             }}</span
           >
           <span v-if="device.location">
-            for {{ minsHoursFromMins(currentRecordingWindowLengthMins) }}</span
+            for a duration of
+            {{ minsHoursFromMins(currentRecordingWindowLengthMins) }}.</span
           >
         </div>
 
@@ -428,7 +432,10 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
         <div v-else>Recording window unavailable</div>
       </div>
       <div class="mt-md-0 mt-4">
-        <h6>Current location:</h6>
+        <h6>
+          <span v-if="!deviceStopped">Current location:</span>
+          <span v-else>Last known location:</span>
+        </h6>
         <!-- Show the device "inside" its station if possible -->
         <div v-if="device.location">
           <div v-if="locationInfoLoading">

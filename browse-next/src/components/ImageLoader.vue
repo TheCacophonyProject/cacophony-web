@@ -113,7 +113,7 @@ onMounted(() => {
       :class="$attrs['class']"
       v-if="loading"
     >
-      <b-spinner small />
+      <b-spinner variant="secondary" small />
     </div>
   </div>
 </template>
