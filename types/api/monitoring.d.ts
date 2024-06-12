@@ -29,8 +29,6 @@ export interface MonitoringPageCriteria {
   )[];
 }
 
-
-
 interface VisitRecordingTag {
   aiTag: string | null;
   end: number;
