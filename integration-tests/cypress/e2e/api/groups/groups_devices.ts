@@ -25,6 +25,7 @@ describe("Groups - get devices for group", () => {
           active: true,
           admin: true,
           type: DeviceType.Unknown,
+          isHealthy: false,
         };
       }
     );
@@ -43,6 +44,7 @@ describe("Groups - get devices for group", () => {
         active: true,
         admin: true,
         type: DeviceType.Unknown,
+        isHealthy: false,
       };
     });
 
@@ -121,6 +123,7 @@ describe("Groups - get devices for group", () => {
         active: false,
         admin: true,
         type: DeviceType.Unknown,
+        isHealthy: true,
       };
     });
 
@@ -136,6 +139,7 @@ describe("Groups - get devices for group", () => {
         admin: true,
         type: DeviceType.Unknown,
         lastConnectionTime: NOT_NULL_STRING,
+        isHealthy: true,
       };
       expectedDevice4b = {
         id: getCreds("gdCam4b").id,
@@ -147,6 +151,7 @@ describe("Groups - get devices for group", () => {
         admin: true,
         type: DeviceType.Unknown,
         lastConnectionTime: NOT_NULL_STRING,
+        isHealthy: true,
       };
 
       cy.log(
