@@ -26,6 +26,7 @@ describe("User: manage global access permissions", () => {
           type: DeviceType.Unknown,
           admin: true,
           active: true,
+          isHealthy: false,
         };
         cy.apiUserAdd("gapUser3");
       }

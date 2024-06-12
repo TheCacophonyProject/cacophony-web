@@ -32,7 +32,6 @@ export const getVisitsForProjectNew = async (
   )[]
 ) => {
   const params = new URLSearchParams();
-  //params.append("groups", projectId.toString());
   params.append("from", fromDate.toISOString());
   params.append("until", untilDate.toISOString());
   if (locations && locations.length) {

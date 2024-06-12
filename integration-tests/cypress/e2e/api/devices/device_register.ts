@@ -137,6 +137,7 @@ describe("Device register", () => {
       type: DeviceType.Unknown,
       active: true,
       admin: true,
+      isHealthy: false,
     };
 
     //Test with Salt Id = device id by default
