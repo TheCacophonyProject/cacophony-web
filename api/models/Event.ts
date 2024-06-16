@@ -142,7 +142,7 @@ export default function (sequelize, DataTypes) {
         [Op.and]: [
           where, // User query
           // FIXME: Move permissions stuff to middleware
-          options && options.admin && !!deviceId
+          (options && options.admin) || (options && options.admin && !!deviceId)
             ? ""
             : await user.getWhereDeviceVisible(), // can only see devices they should
         ],
