@@ -218,7 +218,7 @@ const updateUserEmailAddress = async () => {
       </div>
     </div>
   </div>
-  <div v-if="currentUser?.globalPermission !== 'off'" class="mt-4">
+  <div v-if="currentUser && currentUser.globalPermission !== 'off'" class="mt-4">
     <h2 class="h5">
       Masquerade as another user
       <b-form-checkbox

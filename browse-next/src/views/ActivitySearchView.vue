@@ -1627,6 +1627,7 @@ onBeforeMount(async () => {
       (currentProject.value as SelectedProject).id.toString(),
       true
     );
+    console.log("Got locations, validate query");
     // Validate the current query on load.
     watchQuery.value = watch(() => route.query, syncSearchQuery, {
       deep: true,

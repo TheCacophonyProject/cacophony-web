@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForProject } from "@api/Project";
@@ -16,10 +16,15 @@ import type { NamedPoint } from "@models/mapUtils";
 import type { DeviceId, LatLng } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import type { DeviceType } from "@typedefs/api/consts";
+import { DeviceType as ConcreteDeviceType } from "@typedefs/api/consts";
 import DeviceName from "@/components/DeviceName.vue";
 import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { deleteDevice, getDeviceConfig } from "@api/Device";
+import {
+  deleteDevice,
+  getDeviceConfig,
+  getDeviceLocationAtTime,
+} from "@api/Device";
 import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
@@ -32,6 +37,9 @@ import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
+import type { ApiStationResponse } from "@typedefs/api/station";
+import type { LoadedResource } from "@api/types.ts";
+import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
 
 const projectDevices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -137,13 +145,16 @@ const findProbablyOnlineDevices = async () => {
   });
 };
 
-onMounted(async () => {
+onBeforeMount(async () => {
   if (showInactiveDevices.value) {
     // Inactive devices are not provided by default
     await loadDevices();
   } else {
     await projectDevicesLoaded();
     const _ = findProbablyOnlineDevices();
+  }
+  if (selectedDevice.value) {
+    await getSelectedDeviceLocation();
   }
 });
 
@@ -387,6 +398,20 @@ const selectedDevice = computed<ApiDeviceResponse | null>(() => {
   }
   return null;
 });
+const deviceLocation = ref<LoadedResource<ApiStationResponse>>(null);
+const getSelectedDeviceLocation = async () => {
+  if (selectedDevice.value?.location) {
+    deviceLocation.value = await getDeviceLocationAtTime(
+      selectedDevice.value.id
+    );
+  }
+};
+
+watch(selectedDevice, async (next) => {
+  if (next) {
+    await getSelectedDeviceLocation();
+  }
+});
 
 const selectTableDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
   const device = devices.value.find(({ id }) => id === Number(deviceId));
@@ -406,18 +431,53 @@ const openSelectedDevice = async (device: ApiDeviceResponse) => {
   });
 };
 
+const selectedDeviceLatestRecordingDateTime = computed<Date | null>(() => {
+  if (selectedDevice.value && deviceLocation.value) {
+    return latestRecordingTimeForDeviceAtLocation(
+      selectedDevice.value,
+      deviceLocation.value
+    );
+  }
+  return null;
+});
+
+const selectedDeviceActiveAtMinusOneWeek = computed<Date | null>(() => {
+  if (selectedDeviceLatestRecordingDateTime.value) {
+    const latestTime = new Date(selectedDeviceLatestRecordingDateTime.value);
+    latestTime.setDate(latestTime.getDate() - 7);
+    return latestTime;
+  }
+  return null;
+});
+
 const isDevicesRoot = computed(() => {
   return route.name === "devices";
 });
 </script>
 <template>
-  <section-header>
+  <section-header class="justify-content-between border-1">
     <device-name
       v-if="selectedDevice"
       :name="(selectedDevice as ApiDeviceResponse).deviceName"
       :type="(selectedDevice as ApiDeviceResponse).type"
     >
-      <b-button class="ms-4">View recordings at current location</b-button>
+      <b-button
+        class="ms-4"
+        variant="outline-secondary"
+        v-if="deviceLocation"
+        :to="{
+          name: 'activity',
+          query: {
+            devices: [selectedDevice.id],
+            locations: [deviceLocation.id],
+            until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
+            from: (selectedDeviceActiveAtMinusOneWeek as Date).toISOString(),
+            'display-mode': 'recordings',
+          },
+        }"
+        >View Recordings
+        <font-awesome-icon icon="diamond-turn-right" />
+      </b-button>
     </device-name>
     <span v-else>Devices</span>
   </section-header>
