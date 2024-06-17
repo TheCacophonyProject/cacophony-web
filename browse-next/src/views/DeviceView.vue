@@ -69,18 +69,18 @@ const _deviceType = computed<string>(() => {
 <template>
   <div class="device-view d-flex flex-column">
     <overflowing-tab-list v-if="!deviceLoading">
-      <router-link
-        v-if="currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
-        :class="[
-          ...navLinkClasses,
-          { active: activeTabPath.includes('device-events') },
-        ]"
-        title="Events"
-        :to="{
-          name: 'device-events',
-        }"
-        >Events</router-link
-      >
+      <!--      <router-link-->
+      <!--        v-if="currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"-->
+      <!--        :class="[-->
+      <!--          ...navLinkClasses,-->
+      <!--          { active: activeTabPath.includes('device-events') },-->
+      <!--        ]"-->
+      <!--        title="Events"-->
+      <!--        :to="{-->
+      <!--          name: 'device-events',-->
+      <!--        }"-->
+      <!--        >Events</router-link-->
+      <!--      >-->
       <router-link
         v-if="[DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
         :class="[

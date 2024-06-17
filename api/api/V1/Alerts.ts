@@ -25,13 +25,19 @@ import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
 import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" assert { type: "json" };
 import {
   extractJwtAuthorizedUser,
+  fetchAdminAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredAlertById,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredStationById,
   parseJSONField,
 } from "../extract-middleware.js";
 import { anyOf, idOf, integerOfWithDefault } from "../validation-middleware.js";
-import type { DeviceId, Seconds } from "@typedefs/api/common.js";
+import type {
+  DeviceId,
+  GroupId,
+  Seconds,
+  StationId,
+} from "@typedefs/api/common.js";
 import type {
   ApiAlertCondition,
   ApiAlertResponse,
@@ -46,7 +52,9 @@ const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiPostAlertRequestBody {
   name: string;
-  deviceId: DeviceId;
+  deviceId?: DeviceId;
+  stationId?: StationId;
+  projectId?: GroupId;
   conditions: ApiAlertCondition[];
   frequencySeconds?: Seconds; // Defaults to 30 minutes
 }
@@ -97,7 +105,11 @@ export default function (app: Application, baseUrl: string) {
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
       body("name").exists(),
       integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
-      anyOf(idOf(body("deviceId")), idOf(body("stationId"))),
+      anyOf(
+        idOf(body("deviceId")),
+        idOf(body("stationId")),
+        idOf(body("projectId"))
+      ),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
       if (request.body.deviceId) {
@@ -108,6 +120,12 @@ export default function (app: Application, baseUrl: string) {
         );
       } else if (request.body.stationId) {
         await fetchAuthorizedRequiredStationById(body("stationId"))(
+          request,
+          response,
+          next
+        );
+      } else if (request.body.projectId) {
+        await fetchAdminAuthorizedRequiredGroupById(body("projectId"))(
           request,
           response,
           next
@@ -126,6 +144,8 @@ export default function (app: Application, baseUrl: string) {
         (alert as any).DeviceId = response.locals.device.id;
       } else if (response.locals.station) {
         (alert as any).StationId = response.locals.station.id;
+      } else if (response.locals.group) {
+        (alert as any).GroupId = response.locals.group.id;
       }
       const { id } = await models.Alert.create(alert);
       return successResponse(response, "Created new Alert.", { id });
@@ -214,6 +234,51 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       const alerts = await models.Alert.queryUserStation(
         response.locals.station.id,
+        response.locals.requestUser.id,
+        null,
+        response.locals.viewAsSuperUser
+      );
+      return successResponse(response, { alerts });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/alerts/station/:stationId Get Alerts for a station
+   * @apiName GetAlertsForStation
+   * @apiGroup Alert
+   *
+   * @apiDescription Returns all alerts for a station
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {number} stationId stationId of the station to get alerts for
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
+   *
+   * @apiUse V1ResponseError
+   *
+   * @apiSuccessExample {JSON} Alerts:
+   * [{
+   * "id":123,
+   * "name":"alert name",
+   * "frequencySeconds":120,
+   * "conditions":[{"tag":"cat", "automatic":true}],
+   * "lastAlert":"2021-07-21T02:01:05.118Z",
+   * }]
+   */
+  app.get(
+    `${apiUrl}/project/:projectId`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("projectId")),
+      query("view-mode").optional().equals("user"),
+      query("only-active").optional().isBoolean().toBoolean(),
+    ]),
+    fetchAdminAuthorizedRequiredGroupById(param("projectId")),
+    async (request: Request, response: Response) => {
+      const alerts = await models.Alert.queryUserProject(
+        response.locals.group.id,
         response.locals.requestUser.id,
         null,
         response.locals.viewAsSuperUser
