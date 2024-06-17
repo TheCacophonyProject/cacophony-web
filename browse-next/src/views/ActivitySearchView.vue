@@ -456,6 +456,10 @@ const syncSearchQuery = async (
     // Set the lower time bound first
     deserialiseAndValidateRouteValue("from", next.from);
   }
+  if (next.until) {
+    // Set the upper time bound next
+    deserialiseAndValidateRouteValue("until", next.until);
+  }
 
   for (const [key, val] of Object.entries(diff)) {
     const replacement = deserialiseAndValidateRouteValue(key, val);
@@ -707,6 +711,12 @@ const currentTotalRecordings = computed<number>(() => {
   return loadedRecordings.value.length;
 });
 const canExpandSearchBackFurther = computed<boolean>(() => {
+  console.log(
+    currentQueryCursor.value.fromDateTime,
+    minDateForSelectedLocations.value,
+    currentQueryCursor.value.untilDateTime
+  );
+  //return currentQueryCursor.value.fromDateTime === currentQueryCursor.value.untilDateTime;
   return (
     currentQueryCursor.value.fromDateTime !== null &&
     currentQueryCursor.value.fromDateTime.getTime() >
@@ -1122,7 +1132,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         //  purposes of this UI?
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
-          //countAll: isNewQuery,
+          countAll: isNewQuery,
           limit: twoPagesWorth,
           fromDateTime: dateRange.value[0],
           untilDateTime: currentQueryCursor.value.untilDateTime as Date,
@@ -1148,9 +1158,15 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             currentQueryCursor.value.untilDateTime as Date,
             endOfDay(maxDateForSelectedLocations.value)
           ),
-          pageSize,
+          //pageSize,
           query.locations,
-          query.types
+          query.types as
+            | (
+                | RecordingType.ThermalRaw
+                | RecordingType.TrailCamImage
+                | RecordingType.TrailCamVideo
+              )[]
+            | undefined
         );
       }
       if (response && response.success) {
@@ -1159,15 +1175,15 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         if (inRecordingsMode.value) {
           const recordingsResponse = response as unknown as SuccessFetchResult<{
             recordings: ApiRecordingResponse[];
-            count: number;
           }>;
-          // debugger;
           // loadedFewerItemsThanRequested =
           //   recordingsResponse.result.recordings.length < 100;
           const recordings = recordingsResponse.result.recordings;
           loadedRecordings.value.push(...recordings);
-          loadedFewerItemsThanRequested =
-            loadedRecordings.value.length < recordingsResponse.result.count;
+          if (currentQueryCount.value) {
+            loadedFewerItemsThanRequested =
+              loadedRecordings.value.length < currentQueryCount.value;
+          }
           loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
           appendRecordingsChunkedByDay(recordings);
           currentQueryLoaded.value += recordings.length;
@@ -1203,11 +1219,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           // NOTE: Not sure if this offsetting is necessary?
           gotUntilDate.setMilliseconds(gotUntilDate.getMilliseconds() - 1);
           currentQueryCursor.value.untilDateTime = gotUntilDate;
-
+          const reachedMinDateForSelectedLocations =
+            (currentQueryCursor.value.fromDateTime as Date).getTime() ===
+            minDateForSelectedLocations.value.getTime();
           if (loadedFewerItemsThanRequested) {
-            const reachedMinDateForSelectedLocations =
-              (currentQueryCursor.value.fromDateTime as Date).getTime() ===
-              minDateForSelectedLocations.value.getTime();
             if (reachedMinDateForSelectedLocations) {
               currentObserver && currentObserver.stop();
               currentObserver = null;
@@ -1222,9 +1237,19 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             completedCurrentQuery.value = true;
           }
         } else {
-          currentQueryCursor.value.fromDateTime = new Date(
-            currentQueryCursor.value.untilDateTime as Date
-          );
+          if (
+            dateRange.value[0] &&
+            dateRange.value[0].getTime() ===
+              minDateForSelectedLocations.value.getTime()
+          ) {
+            currentQueryCursor.value.fromDateTime = new Date(
+              minDateForSelectedLocations.value
+            );
+          } else {
+            currentQueryCursor.value.fromDateTime = new Date(
+              currentQueryCursor.value.untilDateTime as Date
+            );
+          }
           completedCurrentQuery.value = true;
         }
       }
@@ -1627,7 +1652,7 @@ onBeforeMount(async () => {
       (currentProject.value as SelectedProject).id.toString(),
       true
     );
-    console.log("Got locations, validate query");
+    console.log("Got locations, validate query", locations.value);
     // Validate the current query on load.
     watchQuery.value = watch(() => route.query, syncSearchQuery, {
       deep: true,

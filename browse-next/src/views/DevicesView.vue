@@ -15,8 +15,7 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils";
 import type { DeviceId, LatLng } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
-import type { DeviceType } from "@typedefs/api/consts";
-import { DeviceType as ConcreteDeviceType } from "@typedefs/api/consts";
+import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
 import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
@@ -441,13 +440,18 @@ const selectedDeviceLatestRecordingDateTime = computed<Date | null>(() => {
   return null;
 });
 
-const selectedDeviceActiveAtMinusOneWeek = computed<Date | null>(() => {
-  if (selectedDeviceLatestRecordingDateTime.value) {
-    const latestTime = new Date(selectedDeviceLatestRecordingDateTime.value);
-    latestTime.setDate(latestTime.getDate() - 7);
-    return latestTime;
+const selectedDeviceActiveFrom = computed<Date | null>(() => {
+  if (selectedDevice.value && deviceLocation.value) {
+    return new Date(deviceLocation.value.activeAt);
   }
   return null;
+});
+
+const deviceRecordingMode = computed<"cameras" | "audio">(() => {
+  if (selectedDevice.value && selectedDevice.value.type === DeviceType.Audio) {
+    return "audio";
+  }
+  return "cameras";
 });
 
 const isDevicesRoot = computed(() => {
@@ -471,8 +475,9 @@ const isDevicesRoot = computed(() => {
             devices: [selectedDevice.id],
             locations: [deviceLocation.id],
             until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
-            from: (selectedDeviceActiveAtMinusOneWeek as Date).toISOString(),
+            from: (selectedDeviceActiveFrom as Date).toISOString(),
             'display-mode': 'recordings',
+            'recording-mode': deviceRecordingMode
           },
         }"
         >View Recordings
