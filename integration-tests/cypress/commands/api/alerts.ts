@@ -222,9 +222,11 @@ function checkExpectedAlerts(
     `conditions should have been ${expectedAlert.conditions[0].automatic}`
   ).to.eq(expectedAlert.conditions[0].automatic);
   if (expectedAlert.hasLastAlert == false) {
-    expect(thealert.lastAlert, `lastAlert should have been null `).to.eq(null);
+    expect(thealert.lastAlert, `lastAlert should have been 'never'`).to.eq(
+      "never"
+    );
   } else {
-    expect(thealert.lastAlert, `should have a lastAlert`).to.not.eq(null);
+    expect(thealert.lastAlert, `should have a lastAlert`).to.not.eq("never");
   }
   return response;
 }
