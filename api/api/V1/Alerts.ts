@@ -27,7 +27,8 @@ import {
   extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredAlertById,
-  fetchAuthorizedRequiredDeviceById, fetchAuthorizedRequiredGroupById,
+  fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredStationById,
   parseJSONField,
 } from "../extract-middleware.js";
@@ -44,7 +45,7 @@ import type {
 } from "@typedefs/api/alerts.js";
 import type { Alert } from "@models/Alert.js";
 import type { Request, Response } from "express";
-import {AuthorizationError} from "@api/customErrors.js";
+import { AuthorizationError } from "@api/customErrors.js";
 import logger from "@log";
 
 const models = await modelsInit();
@@ -67,7 +68,11 @@ interface ApiGetAlertsResponse {
 }
 
 const mapAlertResponse = (alert: Alert): ApiAlertResponse => {
-  const alertScope = alert.DeviceId ? "device" : alert.StationId ? "location" : "project";
+  const alertScope = alert.DeviceId
+    ? "device"
+    : alert.StationId
+    ? "location"
+    : "project";
   return {
     conditions: alert.conditions,
     frequencySeconds: alert.frequencySeconds,
@@ -75,7 +80,7 @@ const mapAlertResponse = (alert: Alert): ApiAlertResponse => {
     lastAlert: (alert.lastAlert && alert.lastAlert.toISOString()) || "never",
     name: alert.name,
     scope: alertScope,
-    scopeId: alert.DeviceId || alert.StationId || alert.GroupId
+    scopeId: alert.DeviceId || alert.StationId || alert.GroupId,
   };
 };
 
@@ -164,7 +169,7 @@ export default function (app: Application, baseUrl: string) {
       } else {
         return next(new AuthorizationError("Invalid alert scope"));
       }
-      logger.warning("Alert %s", JSON.stringify(alert, null, '\t'));
+      logger.warning("Alert %s", JSON.stringify(alert, null, "\t"));
       const { id } = await models.Alert.create(alert);
       return successResponse(response, "Created new Alert.", { id });
     }
@@ -195,12 +200,14 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response) => {
-      const alerts = (await models.Alert.queryUserDevice(
-        response.locals.device.id,
-        response.locals.requestUser.id,
-        null,
-        response.locals.viewAsSuperUser
-      )).map(mapAlertResponse);
+      const alerts = (
+        await models.Alert.queryUserDevice(
+          response.locals.device.id,
+          response.locals.requestUser.id,
+          null,
+          response.locals.viewAsSuperUser
+        )
+      ).map(mapAlertResponse);
       return successResponse(response, { alerts });
     }
   );
@@ -230,12 +237,14 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredStationById(param("stationId")),
     async (_request: Request, response: Response) => {
-      const alerts = (await models.Alert.queryUserStation(
-        response.locals.station.id,
-        response.locals.requestUser.id,
-        null,
-        response.locals.viewAsSuperUser
-      )).map(mapAlertResponse);
+      const alerts = (
+        await models.Alert.queryUserStation(
+          response.locals.station.id,
+          response.locals.requestUser.id,
+          null,
+          response.locals.viewAsSuperUser
+        )
+      ).map(mapAlertResponse);
       return successResponse(response, { alerts });
     }
   );
@@ -265,12 +274,14 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupById(param("projectId")),
     async (_request: Request, response: Response) => {
-      const alerts = (await models.Alert.queryUserProject(
-        response.locals.group.id,
-        response.locals.requestUser.id,
-        null,
-        response.locals.viewAsSuperUser
-      )).map(mapAlertResponse);
+      const alerts = (
+        await models.Alert.queryUserProject(
+          response.locals.group.id,
+          response.locals.requestUser.id,
+          null,
+          response.locals.viewAsSuperUser
+        )
+      ).map(mapAlertResponse);
       return successResponse(response, { alerts });
     }
   );
@@ -292,15 +303,15 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}`,
     extractJwtAuthorizedUser,
-    validateFields([
-      query("view-mode").optional().equals("user"),
-    ]),
+    validateFields([query("view-mode").optional().equals("user")]),
     async (_request: Request, response: Response) => {
       let alerts: ApiAlertResponse[];
       if (!response.locals.viewAsSuperUser) {
-        alerts = (await models.Alert.findAll({
-          where: { UserId: response.locals.requestUser.id },
-        })).map(mapAlertResponse);
+        alerts = (
+          await models.Alert.findAll({
+            where: { UserId: response.locals.requestUser.id },
+          })
+        ).map(mapAlertResponse);
       } else {
         alerts = (await models.Alert.findAll()).map(mapAlertResponse);
       }

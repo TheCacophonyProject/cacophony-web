@@ -1,4 +1,12 @@
-import {AlertId, DeviceId, GroupId, IsoFormattedDateString, Seconds, StationId, UserId} from "./common";
+import {
+  AlertId,
+  DeviceId,
+  GroupId,
+  IsoFormattedDateString,
+  Seconds,
+  StationId,
+  UserId,
+} from "./common";
 
 export interface ApiAlertCondition {
   tag: string;
@@ -11,8 +19,8 @@ export interface ApiAlertResponse {
   frequencySeconds: Seconds;
   conditions: ApiAlertCondition[];
   lastAlert: IsoFormattedDateString | "never";
-  scope: "project" | "device" | "location",
-  scopeId: GroupId | DeviceId | StationId
+  scope: "project" | "device" | "location";
+  scopeId: GroupId | DeviceId | StationId;
 }
 
 export interface ApiPostAlertRequestBody {

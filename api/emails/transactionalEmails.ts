@@ -453,14 +453,17 @@ export const sendAnimalAlertEmailForEvent = async (
 ) => {
   const common = commonInterpolants(origin);
   const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-      groupName
+    groupName
   )}`;
   const emailSettingsUrl = `${projectRoot}/my-settings`;
   const targetTag =
     classification.charAt(0).toUpperCase() + classification.slice(1);
   const matchedTag =
-      matchedClassification.charAt(0).toUpperCase() + matchedClassification.slice(1);
-  const stationUrl = `${projectRoot}/locations/${urlNormaliseName(stationName)}`;
+    matchedClassification.charAt(0).toUpperCase() +
+    matchedClassification.slice(1);
+  const stationUrl = `${projectRoot}/locations/${urlNormaliseName(
+    stationName
+  )}`;
   const recordingUrl = `${projectRoot}/recording/${recordingId}/tracks/${trackId}/detail`;
   const { text, html } = await createEmailWithTemplate("animal-alert.html", {
     targetTag,

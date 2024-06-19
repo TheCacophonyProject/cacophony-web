@@ -29,7 +29,7 @@ import type {
 } from "@typedefs/api/common.js";
 import logger from "../logging.js";
 import { alertBody, sendEmail } from "@/emails/sendEmail.js";
-import {User} from "@models/User.js";
+import { User } from "@models/User.js";
 //
 export type AlertId = number;
 const Op = Sequelize.Op;

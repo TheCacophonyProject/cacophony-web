@@ -42,7 +42,8 @@ export const CurrentUser = ref<LoadedResource<LoggedInUser>>(null);
 export const UserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 export const DevicesForCurrentProject =
   ref<LoadedResource<ApiDeviceResponse[]>>(null);
-export const LocationsForCurrentProject = ref<LoadedResource<ApiLocationResponse[]>>(null);
+export const LocationsForCurrentProject =
+  ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 export const nonPendingUserProjects = computed<ApiProjectResponse[]>(() => {
   if (!UserProjects.value) {

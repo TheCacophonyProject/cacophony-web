@@ -14,7 +14,8 @@ import {
   userIsLoggedIn,
   userIsProjectAdmin,
   userProjects,
-  userHasProjects, allHistoricLocations,
+  userHasProjects,
+  allHistoricLocations,
 } from "@models/provides";
 import {
   currentSelectedProject as fallibleCurrentSelectedProject,
@@ -25,7 +26,8 @@ import {
   userIsAdminForCurrentSelectedProject,
   userIsLoggedIn as hasLoggedInUser,
   userHasProjects as hasProjects,
-  UserProjects, LocationsForCurrentProject,
+  UserProjects,
+  LocationsForCurrentProject,
 } from "@models/LoggedInUser";
 
 const app = createApp(App);
