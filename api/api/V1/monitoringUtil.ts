@@ -24,13 +24,8 @@ const RECORDINGS_LIMIT = 2000;
 const MAX_MINS_AFTER_TIME = 70;
 
 export interface MonitoringPageCriteria2 {
-  //compareAi: string;
   stations: StationId[];
   group: GroupId;
-  // page: number;
-  // pagesEstimate: number;
-  // pageFrom?: Date;
-  // pageUntil?: Date;
   searchFrom: Date;
   searchUntil: Date;
   types?: (
@@ -172,40 +167,46 @@ async function getRecordings2(
   //  I guess we do still have visits of "None" currently, and we include recordings as part of the visit that would
   //  otherwise be filtered.
 
-  const { recordingIds } = await queryRecordingsInProject(
-    models,
-    params.group,
-    2.5,
-    false,
-    params.types,
-    undefined,
-    [],
-    params.stations || [],
-    [],
-    false,
-    [],
-    TagMode.Any,
-    true,
-    false,
-    200,
-    from,
-    until,
-    0,
-    logging,
-    "desc"
-  );
+  // const { recordingIds } = await queryRecordingsInProject(
+  //   models,
+  //   params.group,
+  //   2.5,
+  //   false,
+  //   params.types,
+  //   undefined,
+  //   [],
+  //   params.stations || [],
+  //   [],
+  //   false,
+  //   [],
+  //   TagMode.Any,
+  //   true,
+  //   false,
+  //   200,
+  //   from,
+  //   until,
+  //   0,
+  //   logging,
+  //   "desc"
+  // );
+
+  // TODO: If we got the limit, we need to cull back to the beginning of the earliest visit boundary.
+  // Then the user is expected to adjust there from param to the earliest time and make another request, until
+  // they exhaust the returned visits.  I guess it's possible that no visits complete in the time specified?
   return models.Recording.findAll({
     where: {
       // NOTE: use two-pass and recording ids if we want to exclude filtered tracks
-      id: { [Op.in]: recordingIds },
-      // GroupId: { [Op.in]: [params.group] },
-      // duration: { [Op.gte]: 2.5 },
-      // deletedAt: { [Op.eq]: null },
-      // type: { [Op.in]: params.types },
-      // //processingState: ConcreteRecordingProcessingState.Finished,
-      // ...(params.stations.length ? {StationId: { [Op.in]: params.stations}} : {}),
-      // recordingDateTime: { [Op.gte]: from, [Op.lt]: until },
+      //id: { [Op.in]: recordingIds },
+      GroupId: { [Op.in]: [params.group] },
+      duration: { [Op.gte]: 2.5 },
+      deletedAt: { [Op.eq]: null },
+      type: { [Op.in]: params.types },
+      ...(params.stations.length
+        ? { StationId: { [Op.in]: params.stations } }
+        : {}),
+      recordingDateTime: { [Op.gte]: from, [Op.lt]: until },
     },
+    attributes: ["id", "recordingDateTime"],
     include: [
       {
         model: models.Group,
@@ -249,67 +250,9 @@ async function getRecordings2(
       },
     ],
     order: [["recordingDateTime", "desc"]],
-    limit: 500,
+    limit: 200,
     logging,
   });
-  // return models.Recording.findAll({
-  //   where: {
-  //     // NOTE: use two-pass and recording ids if we want to exclude filtered tracks
-  //     //id: { [Op.in]: recordingIds },
-  //     GroupId: { [Op.in]: [params.group] },
-  //     duration: { [Op.gte]: 2.5 },
-  //     deletedAt: { [Op.eq]: null },
-  //     type: { [Op.in]: params.types },
-  //     //processingState: ConcreteRecordingProcessingState.Finished,
-  //     ...(params.stations.length ? {StationId: { [Op.in]: params.stations}} : {}),
-  //     recordingDateTime: { [Op.gte]: from, [Op.lt]: until },
-  //   },
-  //   include: [
-  //     {
-  //       model: models.Group,
-  //       attributes: ["id", "groupName"]
-  //     },
-  //     {
-  //       model: models.Track,
-  //       required: false,
-  //       attributes: ["id", "data"],
-  //       where: {
-  //         archivedAt: {
-  //           [Op.is]: null,
-  //         },
-  //         filtered: false,
-  //       },
-  //       include: [
-  //         {
-  //           required: false,
-  //           model: models.TrackTag,
-  //           attributes: [
-  //             "what",
-  //             "path",
-  //             "UserId",
-  //             "id",
-  //             "automatic",
-  //             "confidence",
-  //           ],
-  //           include: [{ model: models.User, attributes: ["userName", "id"] }],
-  //           where: {
-  //             used: true,
-  //             archivedAt: {
-  //               [Op.is]: null,
-  //             },
-  //           },
-  //         },
-  //       ],
-  //     },
-  //     {
-  //       model: models.Station,
-  //       attributes: ["name", "id", "location"],
-  //     },
-  //   ],
-  //   order: [["recordingDateTime", "desc"]],
-  //   limit: 500,
-  //   logging,
-  // });
 }
 
 interface VisitRecording {

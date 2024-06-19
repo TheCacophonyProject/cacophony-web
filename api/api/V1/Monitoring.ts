@@ -256,20 +256,6 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       query("debug").optional(),
       idOf(param("projectId")),
-      query("page-size")
-        .exists()
-        .withMessage(expectedTypeOf("integer"))
-        .bail()
-        .isInt({ min: 1, max: 100 })
-        .toInt()
-        .withMessage(`Parameter 'page-size' must be an integer from 1 to 100`), //${range.min} and ${range.max}
-      query("page")
-        .exists()
-        .withMessage(expectedTypeOf("integer"))
-        .bail()
-        .isInt({ min: 1, max: 10000 })
-        .toInt()
-        .withMessage(`Parameter 'page' must be an integer from 1 to 10000`), //${range.min} and ${range.max}
       query("locations")
         .optional()
         .toArray()
@@ -308,11 +294,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     //fetchAuthorizedRequiredGroupById(param("projectId")),
     fetchUnauthorizedRequiredGroupById(param("projectId")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, _next: NextFunction) => {
       const query = request.query;
-      // const requestUser = await models.User.findByPk(
-      //   (response.locals.requestUser && response.locals.requestUser.id) || 200
-      // );
       const types = (
         (query["types"] as string[]) || [RecordingType.ThermalRaw]
       ).map((x) => {
@@ -327,7 +310,7 @@ export default function (app: Application, baseUrl: string) {
       )[];
 
       const stationIds: StationId[] =
-        ((request.query.stations as string[]) || []).map(Number) || [];
+        ((request.query.locations as string[]) || []).map(Number) || [];
       const groupId = response.locals.group.id;
 
       const sqlPasses: string[] = [];
@@ -352,7 +335,7 @@ export default function (app: Application, baseUrl: string) {
           }
         };
       const logging = loggingFn(sqlPasses, sqlTimings);
-      const searchDetails: MonitoringPageCriteria2 = {
+      const searchDetails = {
         group: groupId,
         searchFrom: (request.query.from as unknown as Date) || new Date(0),
         searchUntil: (request.query.until as unknown as Date) || new Date(),

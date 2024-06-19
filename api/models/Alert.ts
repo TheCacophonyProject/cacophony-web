@@ -29,12 +29,14 @@ import type {
 } from "@typedefs/api/common.js";
 import logger from "../logging.js";
 import { alertBody, sendEmail } from "@/emails/sendEmail.js";
+import {User} from "@models/User.js";
 //
 export type AlertId = number;
 const Op = Sequelize.Op;
 
 export interface AlertCondition {
   tag: string;
+  automatic: boolean;
 }
 export function isAlertCondition(condition: any) {
   return condition.hasOwnProperty("tag");
@@ -49,6 +51,13 @@ export interface Alert extends Sequelize.Model, ModelCommon<Alert> {
   GroupId: GroupId | null;
   conditions: AlertCondition[];
   frequencySeconds: number;
+  lastAlert: Date;
+  User?: {
+    id: UserId;
+    userName: string;
+    email: string;
+    emailConfirmed: boolean;
+  };
   sendAlert: (
     recording: Recording,
     track: Track,
@@ -86,7 +95,8 @@ export interface AlertStatic extends ModelStaticCommon<Alert> {
   getActiveAlerts: (
     tagPath: string,
     deviceId?: DeviceId,
-    stationId?: StationId
+    stationId?: StationId,
+    groupId?: GroupId
   ) => Promise<Alert[]>;
 }
 
@@ -115,6 +125,7 @@ export default function (sequelize, DataTypes): AlertStatic {
     models.Alert.belongsTo(models.User);
     models.Alert.belongsTo(models.Device);
     models.Alert.belongsTo(models.Station);
+    models.Alert.belongsTo(models.Group);
   };
 
   Alert.queryUserDevice = async (
@@ -183,7 +194,7 @@ export default function (sequelize, DataTypes): AlertStatic {
       (whereClause as any).include = [
         {
           model: models.User,
-          attributes: ["id", "userName", "email"],
+          attributes: ["id", "userName", "email", "emailConfirmed"],
         },
       ];
     }
@@ -204,18 +215,22 @@ export default function (sequelize, DataTypes): AlertStatic {
   Alert.getActiveAlerts = async function (
     tagPath: string,
     deviceId?: DeviceId,
-    stationId?: StationId
+    stationId?: StationId,
+    groupId?: GroupId
   ): Promise<Alert[]> {
-    const deviceOrStation = [];
+    const deviceOrLocationOrProject = [];
     if (deviceId) {
-      deviceOrStation.push({ DeviceId: deviceId });
+      deviceOrLocationOrProject.push({ DeviceId: deviceId });
     }
     if (stationId) {
-      deviceOrStation.push({ StationId: stationId });
+      deviceOrLocationOrProject.push({ StationId: stationId });
+    }
+    if (groupId) {
+      deviceOrLocationOrProject.push({ GroupId: groupId });
     }
     return Alert.query(
       {
-        [Op.or]: deviceOrStation,
+        [Op.or]: deviceOrLocationOrProject,
         lastAlert: {
           [Op.or]: {
             [Op.eq]: null,

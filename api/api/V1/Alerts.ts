@@ -27,7 +27,7 @@ import {
   extractJwtAuthorizedUser,
   fetchAdminAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredAlertById,
-  fetchAuthorizedRequiredDeviceById,
+  fetchAuthorizedRequiredDeviceById, fetchAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredStationById,
   parseJSONField,
 } from "../extract-middleware.js";
@@ -44,6 +44,8 @@ import type {
 } from "@typedefs/api/alerts.js";
 import type { Alert } from "@models/Alert.js";
 import type { Request, Response } from "express";
+import {AuthorizationError} from "@api/customErrors.js";
+import logger from "@log";
 
 const models = await modelsInit();
 
@@ -63,6 +65,19 @@ interface ApiPostAlertRequestBody {
 interface ApiGetAlertsResponse {
   Alerts: ApiAlertResponse[];
 }
+
+const mapAlertResponse = (alert: Alert): ApiAlertResponse => {
+  const alertScope = alert.DeviceId ? "device" : alert.StationId ? "location" : "project";
+  return {
+    conditions: alert.conditions,
+    frequencySeconds: alert.frequencySeconds,
+    id: alert.id,
+    lastAlert: (alert.lastAlert && alert.lastAlert.toISOString()) || "never",
+    name: alert.name,
+    scope: alertScope,
+    scopeId: alert.DeviceId || alert.StationId || alert.GroupId
+  };
+};
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/alerts`;
@@ -125,7 +140,7 @@ export default function (app: Application, baseUrl: string) {
           next
         );
       } else if (request.body.projectId) {
-        await fetchAdminAuthorizedRequiredGroupById(body("projectId"))(
+        await fetchAuthorizedRequiredGroupById(body("projectId"))(
           request,
           response,
           next
@@ -133,7 +148,7 @@ export default function (app: Application, baseUrl: string) {
       }
     },
     parseJSONField(body("conditions")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       const alert = {
         name: request.body.name,
         conditions: response.locals.conditions,
@@ -146,7 +161,10 @@ export default function (app: Application, baseUrl: string) {
         (alert as any).StationId = response.locals.station.id;
       } else if (response.locals.group) {
         (alert as any).GroupId = response.locals.group.id;
+      } else {
+        return next(new AuthorizationError("Invalid alert scope"));
       }
+      logger.warning("Alert %s", JSON.stringify(alert, null, '\t'));
       const { id } = await models.Alert.create(alert);
       return successResponse(response, "Created new Alert.", { id });
     }
@@ -157,7 +175,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetAlerts
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for the requesting user for a device
+   * @apiDescription Returns all alerts for the requesting user for a device for requesting user
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -167,15 +185,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
    *
    * @apiUse V1ResponseError
-   *
-   * @apiSuccessExample {JSON} Alerts:
-   * [{
-   * "id":123,
-   * "name":"alert name",
-   * "frequencySeconds":120,
-   * "conditions":[{"tag":"cat", "automatic":true}],
-   * "lastAlert":"2021-07-21T02:01:05.118Z",
-   * }]
    * */
   app.get(
     `${apiUrl}/device/:deviceId`,
@@ -183,44 +192,34 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("deviceId")),
       query("view-mode").optional().equals("user"),
-      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async (request: Request, response: Response) => {
-      const alerts = await models.Alert.queryUserDevice(
+    async (_request: Request, response: Response) => {
+      const alerts = (await models.Alert.queryUserDevice(
         response.locals.device.id,
         response.locals.requestUser.id,
         null,
         response.locals.viewAsSuperUser
-      );
+      )).map(mapAlertResponse);
       return successResponse(response, { alerts });
     }
   );
 
   /**
-   * @api {get} /api/v1/alerts/station/:stationId Get Alerts for a station
-   * @apiName GetAlertsForStation
+   * @api {get} /api/v1/alerts/station/:locationId Get Alerts for a location
+   * @apiName GetAlertsForLocation
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for a station
+   * @apiDescription Returns all alerts for a location for requesting user
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {number} stationId stationId of the station to get alerts for
+   * @apiParam {number} locationId locationId of the location to get alerts for
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
    *
    * @apiUse V1ResponseError
-   *
-   * @apiSuccessExample {JSON} Alerts:
-   * [{
-   * "id":123,
-   * "name":"alert name",
-   * "frequencySeconds":120,
-   * "conditions":[{"tag":"cat", "automatic":true}],
-   * "lastAlert":"2021-07-21T02:01:05.118Z",
-   * }]
    */
   app.get(
     `${apiUrl}/station/:stationId`,
@@ -228,44 +227,34 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("stationId")),
       query("view-mode").optional().equals("user"),
-      query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredStationById(param("stationId")),
-    async (request: Request, response: Response) => {
-      const alerts = await models.Alert.queryUserStation(
+    async (_request: Request, response: Response) => {
+      const alerts = (await models.Alert.queryUserStation(
         response.locals.station.id,
         response.locals.requestUser.id,
         null,
         response.locals.viewAsSuperUser
-      );
+      )).map(mapAlertResponse);
       return successResponse(response, { alerts });
     }
   );
 
   /**
-   * @api {get} /api/v1/alerts/station/:stationId Get Alerts for a station
-   * @apiName GetAlertsForStation
+   * @api {get} /api/v1/alerts/project/:projectId Get Alerts for a project for requesting user
+   * @apiName GetAlertsForProject
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for a station
+   * @apiDescription Returns all alerts for a project
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {number} stationId stationId of the station to get alerts for
+   * @apiParam {number} projectId projectId of the project to get alerts for
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
    *
    * @apiUse V1ResponseError
-   *
-   * @apiSuccessExample {JSON} Alerts:
-   * [{
-   * "id":123,
-   * "name":"alert name",
-   * "frequencySeconds":120,
-   * "conditions":[{"tag":"cat", "automatic":true}],
-   * "lastAlert":"2021-07-21T02:01:05.118Z",
-   * }]
    */
   app.get(
     `${apiUrl}/project/:projectId`,
@@ -273,16 +262,15 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("projectId")),
       query("view-mode").optional().equals("user"),
-      query("only-active").optional().isBoolean().toBoolean(),
     ]),
-    fetchAdminAuthorizedRequiredGroupById(param("projectId")),
-    async (request: Request, response: Response) => {
-      const alerts = await models.Alert.queryUserProject(
+    fetchAuthorizedRequiredGroupById(param("projectId")),
+    async (_request: Request, response: Response) => {
+      const alerts = (await models.Alert.queryUserProject(
         response.locals.group.id,
         response.locals.requestUser.id,
         null,
         response.locals.viewAsSuperUser
-      );
+      )).map(mapAlertResponse);
       return successResponse(response, { alerts });
     }
   );
@@ -300,31 +288,21 @@ export default function (app: Application, baseUrl: string) {
    * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
    *
    * @apiUse V1ResponseError
-   *
-   * @apiSuccessExample {JSON} Alerts:
-   * [{
-   * "id":123,
-   * "name":"alert name",
-   * "frequencySeconds":120,
-   * "conditions":[{"tag":"cat", "automatic":true}],
-   * "lastAlert":"2021-07-21T02:01:05.118Z",
-   * }]
    */
   app.get(
     `${apiUrl}`,
     extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
-      query("only-active").optional().isBoolean().toBoolean(),
     ]),
-    async (request: Request, response: Response) => {
-      let alerts: Alert[];
+    async (_request: Request, response: Response) => {
+      let alerts: ApiAlertResponse[];
       if (!response.locals.viewAsSuperUser) {
-        alerts = await models.Alert.findAll({
+        alerts = (await models.Alert.findAll({
           where: { UserId: response.locals.requestUser.id },
-        });
+        })).map(mapAlertResponse);
       } else {
-        alerts = await models.Alert.findAll();
+        alerts = (await models.Alert.findAll()).map(mapAlertResponse);
       }
       return successResponse(response, { alerts });
     }
@@ -349,7 +327,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredAlertById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await response.locals.alert.destroy();
       return successResponse(response, "Deleted alert");
     }

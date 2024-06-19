@@ -444,48 +444,43 @@ export const sendAnimalAlertEmailForEvent = async (
   deviceName: string,
   stationName: string,
   classification: string,
+  matchedClassification: string,
   recordingId: number,
   trackId: number,
   userEmailAddress: string,
-  recipientTimeZoneOffset: number
+  recipientTimeZoneOffset: number | null,
+  thumbnail?: Buffer
 ) => {
   const common = commonInterpolants(origin);
-  const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/my-settings`;
-  const targetSpecies =
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+      groupName
+  )}`;
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+  const targetTag =
     classification.charAt(0).toUpperCase() + classification.slice(1);
-  const cacophonyBrowseUrl = config.server.browse_url;
-  const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(stationName)}`;
-  const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(
-    stationName
-  )}/recording/${recordingId}/track/${trackId}`;
-
+  const matchedTag =
+      matchedClassification.charAt(0).toUpperCase() + matchedClassification.slice(1);
+  const stationUrl = `${projectRoot}/locations/${urlNormaliseName(stationName)}`;
+  const recordingUrl = `${projectRoot}/recording/${recordingId}/tracks/${trackId}/detail`;
   const { text, html } = await createEmailWithTemplate("animal-alert.html", {
-    targetSpecies:
-      targetSpecies.charAt(0).toUpperCase() + targetSpecies.slice(1),
+    targetTag,
+    matchedTag,
     emailSettingsUrl,
     groupName,
+    deviceName,
     recordingUrl,
     stationUrl,
     ...common,
   });
-  // FIXME - fetch actual thumbnail
   return await sendEmail(
     html,
     text,
     userEmailAddress,
-    `🎯 ${targetSpecies} alert at '${stationName}'`,
+    `🎯 ${matchedClassification} alert at '${stationName}'`,
     [
       ...(await commonAttachments()),
       {
-        buffer: await fs.readFile(
-          `${__dirname}/templates/image-attachments/test-thumb.png`
-        ),
+        buffer: thumbnail,
         mimeType: "image/png",
         cid: "thumbnail",
       },

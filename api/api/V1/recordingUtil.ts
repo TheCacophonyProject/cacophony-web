@@ -83,6 +83,7 @@ import temp from "temp";
 temp.track();
 
 import fs from "fs";
+import {sendAnimalAlertEmailForEvent} from "@/emails/transactionalEmails.js";
 
 // Create a png thumbnail image  from this frame with thumbnail info
 // Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
@@ -1851,10 +1852,11 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
   const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
     matchedTag.path,
     recording.DeviceId || undefined,
-    recording.StationId || undefined
+    recording.StationId || undefined,
+    recording.GroupId || undefined
   );
 
-  if (alerts.length > 0) {
+  if (alerts.length !== 0) {
     let thumbnail;
     try {
       thumbnail = await getThumbnail(recording, matchedTrack.id);
@@ -1870,22 +1872,66 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
       }
     }
     for (const alert of alerts) {
-      await alert.sendAlert(
-        recording,
-        matchedTrack,
-        matchedTag,
-        alert.StationId !== null ? "station" : "device",
-        thumbnail && {
-          buffer: Buffer.from(thumbnail),
-          cid: "thumbnail",
-          mimeType: "image/png",
+      if (alert.User) {
+        if (!alert.User.emailConfirmed) {
+          // Send old alert email
+          await alert.sendAlert(
+              recording,
+              matchedTrack,
+              matchedTag,
+              alert.GroupId !== null
+                  ? "project"
+                  : alert.StationId !== null
+                      ? "station"
+                      : "device",
+              thumbnail && {
+                buffer: Buffer.from(thumbnail),
+                cid: "thumbnail",
+                mimeType: "image/png",
+              }
+          );
+        } else {
+          // Send new style alert email if the user has confirmed their email via browse-next
+          const alertTime = new Date().toISOString();
+          const alertClassification = "goo";
+          const matchedClassification = "bar";
+          const alertSendSuccess = await sendAnimalAlertEmailForEvent(
+            "browse-next.cacophony.org.nz",
+              recording.Group.groupName,
+              recording.Device.deviceName,
+              (recording.Station && recording.Station.name || "unknown location"),
+              alertClassification,
+              matchedClassification,
+              recId,
+              matchedTrack.id,
+              alert.User.email,
+              null, // TODO: Adjust stated email times to user timezone if known.
+              Buffer.from(thumbnail)
+          );
+          if (alertSendSuccess) {
+            // Log an email alert event also
+            const detail = await models.DetailSnapshot.getOrCreateMatching("alert", {
+              alertId: alert.id,
+              recId: recording.id,
+              trackId: matchedTrack.id,
+              success: alertSendSuccess,
+            });
+            await models.Event.create({
+              DeviceId: recording.Device.id,
+              EventDetailId: detail.id,
+              dateTime: alertTime,
+            });
+            await alert.update({lastAlert: alertTime});
+          }
         }
-      );
+      }
     }
   }
   return alerts;
 }
 
+// TODO: This would be to send email alerts when we don't get recordings uploaded, we just get classification events
+//  from i.e. a Lora node.
 export async function sendEventAlerts(
   models: ModelsDictionary,
   data: { what: string; conf: number; dateTimes?: IsoFormattedDateString[] },

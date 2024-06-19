@@ -22,7 +22,6 @@ export const getVisitsForProjectNew = async (
   projectId: ProjectId,
   fromDate: Date,
   untilDate: Date,
-  pageSize = 100,
   locations?: LocationId[],
   types?: (
     | RecordingType.TrailCamVideo
@@ -36,7 +35,7 @@ export const getVisitsForProjectNew = async (
   params.append("until", untilDate.toISOString());
   if (locations && locations.length) {
     for (const location of locations) {
-      params.append("stations", location.toString());
+      params.append("locations", location.toString());
     }
   }
   if (types && types.length) {
@@ -44,8 +43,8 @@ export const getVisitsForProjectNew = async (
       params.append("types", type);
     }
   }
-  params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
-  params.append("page-size", pageSize.toString()); // 100 recordings per page of visits, which is the max
+  //params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
+  //params.append("page-size", pageSize.toString()); // 100 recordings per page of visits, which is the max
   if (!shouldViewAsSuperUser.value) {
     params.append("view-mode", "user");
   }

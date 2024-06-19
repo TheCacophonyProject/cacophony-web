@@ -75,6 +75,7 @@ import {
   type BulkVisitsResponse,
   getAllVisitsForProjectBetweenTimes,
   getVisitsForProject,
+  getVisitsForProjectNew,
   type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
@@ -711,12 +712,6 @@ const currentTotalRecordings = computed<number>(() => {
   return loadedRecordings.value.length;
 });
 const canExpandSearchBackFurther = computed<boolean>(() => {
-  console.log(
-    currentQueryCursor.value.fromDateTime,
-    minDateForSelectedLocations.value,
-    currentQueryCursor.value.untilDateTime
-  );
-  //return currentQueryCursor.value.fromDateTime === currentQueryCursor.value.untilDateTime;
   return (
     currentQueryCursor.value.fromDateTime !== null &&
     currentQueryCursor.value.fromDateTime.getTime() >
@@ -1150,7 +1145,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         // Else visits
         // TODO: This needs to have a limit
         // Make it the lesser of the current date range or 2 pages worth of days.
-        const pageSize = 100;
+        //const pageSize = 100;
         response = await getVisitsForProject(
           project.id,
           dateRange.value[0] as Date,
@@ -1421,7 +1416,13 @@ const doExport = async () => {
         fromDateTime,
         untilDateTime,
         query.locations,
-        query.types,
+        query.types as
+          | (
+              | RecordingType.TrailCamVideo
+              | RecordingType.ThermalRaw
+              | RecordingType.TrailCamImage
+            )[]
+          | undefined,
         (progress) => {
           exportProgress.value = progress;
           exportTime.value = performance.now();
