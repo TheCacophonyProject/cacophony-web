@@ -459,14 +459,25 @@ const isDevicesRoot = computed(() => {
 });
 </script>
 <template>
-  <section-header class="justify-content-between border-1">
+  <section-header class="justify-content-between border-1 align-items-center">
     <device-name
       v-if="selectedDevice"
       :name="(selectedDevice as ApiDeviceResponse).deviceName"
       :type="(selectedDevice as ApiDeviceResponse).type"
+      :to="(deviceLocation ? {
+          name: 'activity',
+          query: {
+            devices: [selectedDevice.id],
+            locations: [deviceLocation.id],
+            until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
+            from: (selectedDeviceActiveFrom as Date).toISOString(),
+            'display-mode': 'recordings',
+            'recording-mode': deviceRecordingMode
+          },
+        } : null)"
     >
       <b-button
-        class="ms-4"
+        class="ms-4 align-items-center d-none d-md-flex"
         variant="outline-secondary"
         v-if="deviceLocation"
         :to="{
@@ -480,8 +491,13 @@ const isDevicesRoot = computed(() => {
             'recording-mode': deviceRecordingMode
           },
         }"
-        >View Recordings
-        <font-awesome-icon icon="diamond-turn-right" />
+        ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
+        <font-awesome-icon
+          icon="arrow-turn-down"
+          :rotation="270"
+          size="xs"
+          class="ps-1"
+        />
       </b-button>
     </device-name>
     <span v-else>Devices</span>
