@@ -22,7 +22,6 @@ import { DateTime } from "luxon";
 import {
   currentSelectedProject as currentActiveProject,
   selectedProjectDevices,
-  activeLocations,
   allHistoricLocations,
 } from "@models/provides";
 
@@ -93,7 +92,11 @@ const alertBelongsToCurrentProject = (alert: ApiAlertResponse): boolean => {
       (location) => location.id === alert.scopeId
     );
   } else if (alert.scope === "device") {
-    return !!activeDevices.value.find((device) => device.id === alert.scopeId);
+    return (
+      (activeDevices.value &&
+        !!activeDevices.value.find((device) => device.id === alert.scopeId)) ||
+      false
+    );
   }
   return false;
 };
@@ -127,7 +130,7 @@ const saveAlert = async () => {
   creatingAlert.value = true;
   await createAlertForScope(
     alertScope.value,
-    scopeId.value,
+    scopeId.value as number,
     alertOnTags.value,
     Math.max(1, maxAlertFrequencyMins.value) * 60
   );
@@ -136,7 +139,6 @@ const saveAlert = async () => {
   creatingAlert.value = false;
 };
 
-// TODO: Inject locations and devices at the top level, since we want these everywhere, and there shouldn't be super large numbers.
 interface AlertItem {
   alertOn: string[];
   alertScope: "This project" | ApiLocationResponse | ApiDeviceResponse;
@@ -146,35 +148,35 @@ interface AlertItem {
   _deleteAction: AlertId;
 }
 
-const alertItems = computed<AlertItem[]>(() => {
-  // TODO: Could resolve alert scope into Location, Project or device name.
-
-  const getAlertScope = (alert: ApiAlertResponse) => {
-    if (alert.scope === "project") {
-      return "This project";
-    } else if (alert.scope === "device" && activeDevices.value.length !== 0) {
-      const device = activeDevices.value.find(
-        (device) => device.id === alert.scopeId
-      );
-      if (device) {
-        return device;
-      }
-      return null;
-    } else if (
-      alert.scope === "location" &&
-      activeLocations.value.length !== 0
-    ) {
-      const location = activeLocations.value.find(
-        (location) => location.id === alert.scopeId
-      );
-      if (location) {
-        return location;
-      }
-      return null;
+const getAlertScope = (alert: ApiAlertResponse) => {
+  if (alert.scope === "project") {
+    return "This project";
+  } else if (
+    alert.scope === "device" &&
+    activeDevices.value &&
+    activeDevices.value.length !== 0
+  ) {
+    const device = activeDevices.value.find(
+      (device) => device.id === alert.scopeId
+    );
+    if (device) {
+      return device;
     }
     return null;
-  };
+  } else if (alert.scope === "location" && activeLocations.value.length !== 0) {
+    const location = activeLocations.value.find(
+      (location) => location.id === alert.scopeId
+    );
+    if (location) {
+      return location;
+    }
+    return null;
+  }
+  return null;
+};
 
+const alertItems = computed<AlertItem[]>(() => {
+  // TODO: Could resolve alert scope into Location, Project or device name.
   return alerts.value.map((alert: ApiAlertResponse) => ({
     alertOn: alert.conditions.map(({ tag }) => tag),
     alertScope: getAlertScope(alert),
@@ -203,7 +205,7 @@ const alertItems = computed<AlertItem[]>(() => {
       <b-badge
         v-for="(tag, index) in cell"
         :key="index"
-        class="me-1 fs-8"
+        class="me-1 fs-8 my-1"
         variant="secondary"
         >{{ tag }}</b-badge
       >
@@ -228,11 +230,14 @@ const alertItems = computed<AlertItem[]>(() => {
           color="rgba(0, 0, 0, 0.7)"
         />
         <span class="text-truncate" ref="stationNameSpan">
-          {{ cell.name }}
+          {{ (cell as ApiLocationResponse).name }}
         </span>
       </div>
       <div v-else-if="row.__scope === 'device' && cell">
-        <device-name :name="cell.deviceName" :type="cell.type" />
+        <device-name
+          :name="(cell as ApiDeviceResponse).deviceName"
+          :type="(cell as ApiDeviceResponse).type"
+        />
       </div>
     </template>
     <template #_deleteAction="{ cell }">
@@ -280,13 +285,13 @@ const alertItems = computed<AlertItem[]>(() => {
                 color="rgba(0, 0, 0, 0.7)"
               />
               <span class="text-truncate" ref="stationNameSpan">
-                {{ card.alertScope.name }}
+                {{ (card.alertScope as ApiLocationResponse).name }}
               </span>
             </span>
             <span v-else-if="card.__scope === 'device'">
               <device-name
-                :name="card.alertScope.deviceName"
-                :type="card.alertScope.type"
+                :name="(card.alertScope as ApiDeviceResponse).deviceName"
+                :type="(card.alertScope as ApiDeviceResponse).type"
               />
             </span>
           </div>

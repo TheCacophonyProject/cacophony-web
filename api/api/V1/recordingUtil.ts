@@ -29,6 +29,7 @@ import type { Event, QueryOptions } from "@models/Event.js";
 import type { User } from "@models/User.js";
 import Sequelize, { Op, QueryTypes } from "sequelize";
 import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
+import { NON_ANIMAL_TAGS } from "./Visits.js";
 import { DeviceSummary, Visit } from "./Visits.js";
 import type { Station } from "@models/Station.js";
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
@@ -83,7 +84,7 @@ import temp from "temp";
 temp.track();
 
 import fs from "fs";
-import { sendAnimalAlertEmailForEvent } from "@/emails/transactionalEmails.js";
+import { sendAnimalAlertEmail } from "@/emails/transactionalEmails.js";
 
 // Create a png thumbnail image  from this frame with thumbnail info
 // Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
@@ -1525,7 +1526,7 @@ export async function queryVisits(
     if (devVisits.visitCount == 0) {
       continue;
     }
-    const events = await models.Event.query(
+    const events = (await models.Event.query(
       userId,
       devVisits.startTime.clone().startOf("day").toISOString(),
       devVisits.endTime.toISOString(),
@@ -1533,10 +1534,11 @@ export async function queryVisits(
       0,
       1000,
       false,
-      { eventType: "audioBait" } as QueryOptions
-    );
-    if (events.rows) {
-      devVisits.addAudioBaitEvents(events.rows);
+      { eventType: "audioBait" } as QueryOptions,
+      false
+    )) as Event[];
+    if (events) {
+      devVisits.addAudioBaitEvents(events);
     }
   }
 
@@ -1786,7 +1788,6 @@ export async function getRecordingForVisit(
               "end_s",
               Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
             ),
-            "data",
           ],
         ],
         required: false,
@@ -1828,26 +1829,109 @@ export async function getRecordingForVisit(
 }
 
 export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
-  const recording = await getRecordingForVisit(models, recId);
-  const recVisit = new Visit(recording, 0);
-  recVisit.completeVisit();
-  let matchedTrack;
-  let matchedTag: TrackTag;
-  // find any ai master tags that match the visit tag.
-
-  // Currently we only send one alert per recording.
-  for (const track of recording.Tracks) {
-    matchedTag = track.TrackTags.find(
-      (tag) => tag.data === AI_MASTER && recVisit.what === tag.what
-    );
-    if (matchedTag) {
-      matchedTrack = track;
-      break;
-    }
-  }
-  if (!matchedTag) {
+  // Get the most common non-false-positive tag for this recording, then get the track with that tag
+  // that has the best thumbnail.
+  const recording: Recording = await models.Recording.findByPk(recId, {
+    include: [
+      {
+        model: models.Track,
+        attributes: [
+          "id",
+          [Sequelize.json("data.thumbnail.score"), "thumbnailScore"] as any,
+        ],
+        required: true,
+        include: [
+          {
+            model: models.TrackTag,
+            required: true,
+            where: {
+              used: true,
+              automatic: true,
+            },
+            attributes: ["what", "TrackId", "path"],
+          },
+        ],
+      },
+      {
+        model: models.Device,
+        attributes: ["deviceName", "id"],
+      },
+      {
+        model: models.Station,
+        attributes: ["name", "id"],
+      },
+      {
+        model: models.Group,
+        attributes: ["groupName"],
+      },
+    ],
+    attributes: [
+      "id",
+      "recordingDateTime",
+      "DeviceId",
+      "GroupId",
+      "StationId",
+      "rawFileKey",
+    ],
+  });
+  if (!recording) {
     return;
   }
+  const tagCounts: Record<
+    string,
+    { count: number; tracks: { track: Track; trackTag: TrackTag }[] }
+  > = {};
+  const excludedTags = [...NON_ANIMAL_TAGS, "false-positive"];
+  for (const track of recording.Tracks) {
+    for (const trackTag of track.TrackTags.filter(
+      (tag) => !excludedTags.includes(tag.what)
+    )) {
+      // Tie-breaking on mass, length of track.
+      tagCounts[trackTag.what] = tagCounts[trackTag.what] || {
+        count: 0,
+        tracks: [],
+      };
+      tagCounts[trackTag.what].count++;
+      tagCounts[trackTag.what].tracks.push({ track, trackTag });
+    }
+  }
+  const bestThumbnailTrack = (
+    tracks: { track: Track; trackTag: TrackTag }[]
+  ): { track: Track; trackTag: TrackTag } => {
+    let bestTrack: { track: Track; trackTag: TrackTag };
+    for (const track of tracks) {
+      if (
+        !bestTrack ||
+        track.track.dataValues.thumbnailScore >
+          bestTrack.track.dataValues.thumbnailScore
+      ) {
+        bestTrack = track;
+      }
+    }
+    return bestTrack;
+  };
+  const sorted = Object.entries(tagCounts).sort(
+    ([_tagA, countA], [_tagB, countB]) => {
+      if (countA.count === countB.count) {
+        // use the tag with the best thumbnail confidence
+        const bestTrackA = bestThumbnailTrack(countA.tracks);
+        const bestTrackB = bestThumbnailTrack(countB.tracks);
+        return (
+          bestTrackB.track.dataValues.thumbnailScore -
+          bestTrackA.track.dataValues.thumbnailScore
+        );
+      }
+      return countB.count - countA.count;
+    }
+  );
+  if (sorted.length === 0) {
+    return;
+  }
+  // Get the best track/tag combo if there is a need to tie-break
+  const bestTrack = bestThumbnailTrack(sorted[0][1].tracks);
+
+  const matchedTrack: Track = bestTrack.track;
+  const matchedTag: TrackTag = bestTrack.trackTag;
   // Find the hierarchy for the matchedTag
   const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
     matchedTag.path,
@@ -1892,21 +1976,44 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
           );
         } else {
           // Send new style alert email if the user has confirmed their email via browse-next
-          const alertTime = new Date().toISOString();
-          const alertClassification = "goo";
-          const matchedClassification = "bar";
-          const alertSendSuccess = await sendAnimalAlertEmailForEvent(
+          const alertTime = recording.recordingDateTime.toLocaleDateString(
+            "en-NZ",
+            {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+              weekday: "short",
+              hour12: true,
+            }
+          );
+
+          // Get the best matching condition.  If the user has an alert for both Mammal and Cat
+          // and we get a classification of Cat, we want the matched condition to be Cat.
+          let matchingCondition = alert.conditions.find(
+            (condition) => matchedTag.what === condition.tag
+          );
+          if (!matchingCondition) {
+            matchingCondition = alert.conditions.find((condition) =>
+              matchedTag.path.split(".").includes(condition.tag)
+            );
+          }
+
+          const alertClassification = matchingCondition.tag;
+          const matchedClassification = matchedTag.what;
+          const alertSendSuccess = await sendAnimalAlertEmail(
             "browse-next.cacophony.org.nz",
             recording.Group.groupName,
             recording.Device.deviceName,
             (recording.Station && recording.Station.name) || "unknown location",
+            alertTime,
             alertClassification,
             matchedClassification,
             recId,
             matchedTrack.id,
             alert.User.email,
             null, // TODO: Adjust stated email times to user timezone if known.
-            Buffer.from(thumbnail)
+            thumbnail && Buffer.from(thumbnail)
           );
           if (alertSendSuccess) {
             // Log an email alert event also

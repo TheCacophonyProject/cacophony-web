@@ -36,7 +36,7 @@ import type { RouteLocationRaw } from "vue-router";
 const props = defineProps<{
   name: string;
   type: DeviceType;
-  to: RouteLocationRaw | null;
+  to?: RouteLocationRaw | null;
 }>();
 
 const deviceTypeIcon = computed<string>(() => {

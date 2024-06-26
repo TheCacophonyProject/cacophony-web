@@ -94,7 +94,7 @@ export const createEmailWithTemplate = async (
   templateFilename: string,
   interpolants: Record<
     string,
-    string | number | StoppedDevice[] | string[] | boolean
+    string | number | StoppedDevice[] | string[] | boolean | any
   >
 ) => {
   const baseTemplate = (

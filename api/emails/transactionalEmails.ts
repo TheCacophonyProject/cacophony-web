@@ -5,15 +5,18 @@ import {
   urlNormaliseName,
 } from "@/emails/htmlEmailUtils.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
-import fs from "fs/promises";
+//import fs from "fs/promises";
 import { sendEmail } from "@/emails/sendEmail.js";
 import config from "@config";
 import logger from "@/logging.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
+import type { GroupedServiceErrors } from "@api/V1/systemError.js";
+import type { DeviceId } from "@typedefs/api/common.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+import fs from "fs";
 
 const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
   const attachments: EmailImageAttachment[] = [];
@@ -388,61 +391,7 @@ export const sendAnimalAlertEmail = async (
   groupName: string,
   deviceName: string,
   stationName: string,
-  classification: string,
-  recordingId: number,
-  trackId: number,
-  userEmailAddress: string,
-  recipientTimeZoneOffset: number
-) => {
-  const common = commonInterpolants(origin);
-  const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/my-settings`;
-  const targetSpecies =
-    classification.charAt(0).toUpperCase() + classification.slice(1);
-  const cacophonyBrowseUrl = config.server.browse_url;
-  const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(stationName)}`;
-  const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(
-    stationName
-  )}/recording/${recordingId}/track/${trackId}`;
-
-  const { text, html } = await createEmailWithTemplate("animal-alert.html", {
-    targetSpecies:
-      targetSpecies.charAt(0).toUpperCase() + targetSpecies.slice(1),
-    emailSettingsUrl,
-    groupName,
-    recordingUrl,
-    stationUrl,
-    ...common,
-  });
-  // FIXME - fetch actual thumbnail
-  return await sendEmail(
-    html,
-    text,
-    userEmailAddress,
-    `🎯 ${targetSpecies} alert at '${stationName}'`,
-    [
-      ...(await commonAttachments()),
-      {
-        buffer: await fs.readFile(
-          `${__dirname}/templates/image-attachments/test-thumb.png`
-        ),
-        mimeType: "image/png",
-        cid: "thumbnail",
-      },
-    ]
-  );
-};
-
-export const sendAnimalAlertEmailForEvent = async (
-  origin: string,
-  groupName: string,
-  deviceName: string,
-  stationName: string,
+  recordingTime: string,
   classification: string,
   matchedClassification: string,
   recordingId: number,
@@ -472,22 +421,26 @@ export const sendAnimalAlertEmailForEvent = async (
     groupName,
     deviceName,
     recordingUrl,
+    recordingTime,
     stationUrl,
+    stationName,
     ...common,
   });
+  const thumb: EmailImageAttachment[] = thumbnail
+    ? [
+        {
+          buffer: thumbnail,
+          mimeType: "image/png",
+          cid: "thumbnail",
+        },
+      ]
+    : [];
   return await sendEmail(
     html,
     text,
     userEmailAddress,
-    `🎯 ${matchedClassification} alert at '${stationName}'`,
-    [
-      ...(await commonAttachments()),
-      {
-        buffer: thumbnail,
-        mimeType: "image/png",
-        cid: "thumbnail",
-      },
-    ]
+    `🎯 ${targetTag} alert at '${stationName}'`,
+    [...(await commonAttachments()), ...thumb]
   );
 };
 
@@ -568,6 +521,76 @@ export const sendPlatformUsageEmail = async (
     text,
     recipientEmailAddress,
     "📈 Cacophony Monitoring Platform usage report",
+    [...(await commonAttachments()), ...imageAttachments]
+  );
+};
+
+export const sendDailyServiceErrorsEmail = async (
+  origin: string,
+  recipientEmailAddress: string,
+  from: Date,
+  until: Date,
+  serviceErrors: Record<string, GroupedServiceErrors[]>,
+  devicesFailingSaltUpdate: Record<string, { id: DeviceId; name: string }[]>,
+  imageAttachments: EmailImageAttachment[] = []
+) => {
+  const common = commonInterpolants(origin);
+  const dateFormat = new Intl.DateTimeFormat("en-NZ", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+  });
+  const fromDate = dateFormat.format(from);
+  const untilDate = dateFormat.format(until);
+  const errors = [];
+  for (const [unit, unitErrors] of Object.entries(serviceErrors)) {
+    const unitErrorsByVersion = [];
+    for (const err of unitErrors) {
+      unitErrorsByVersion.push({
+        unit: err.unit,
+        errors: Object.entries(err.errors).map(([version, errors]) => ({
+          version,
+          errors: errors.map((e) => ({
+            from: dateFormat.format(e.from),
+            until: dateFormat.format(e.until),
+            devices: e.devices,
+            count: `${e.count} event${e.count !== 1 ? "s" : ""}`,
+            logging: e.log,
+          })),
+        })),
+      });
+    }
+    errors.push({
+      unit,
+      unitErrorsByVersion,
+    });
+  }
+  const failingDevices = [];
+  for (const [unit, devices] of Object.entries(devicesFailingSaltUpdate)) {
+    failingDevices.push({
+      unit,
+      devices,
+    });
+  }
+  const { text, html } = await createEmailWithTemplate(
+    "service-errors-report.html",
+    {
+      serviceErrors: errors,
+      failingDevices,
+      fromDate,
+      untilDate,
+      ...common,
+    }
+  );
+  return await sendEmail(
+    html,
+    text,
+    recipientEmailAddress,
+    "⚠️ Service Errors in the last 24 hours",
     [...(await commonAttachments()), ...imageAttachments]
   );
 };

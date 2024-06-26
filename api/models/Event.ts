@@ -51,7 +51,7 @@ export interface EventStatic extends ModelStaticCommon<Event> {
     latest?: boolean,
     options?: QueryOptions,
     includeCount?: boolean
-  ) => Promise<{ rows: Event[]; count?: number }>;
+  ) => Promise<Event[] | { rows: Event[]; count: number }>;
   latestEvents: (
     userId?: UserId,
     deviceId?: DeviceId,
@@ -95,7 +95,7 @@ export default function (sequelize, DataTypes) {
     latestFirst,
     options,
     includeCount
-  ) {
+  ): Promise<Event[] | { rows: Event[]; count: number }> {
     const where: any = {};
     offset = offset || 0;
     limit = limit || 100;
@@ -137,7 +137,7 @@ export default function (sequelize, DataTypes) {
       // NOTE: This function is sometimes called by scripts without a user
       user = await models.User.findByPk(userId);
     }
-    return this.findAndCountAll({
+    const result = await this[includeCount ? "findAndCountAll" : "findAll"]({
       where: {
         [Op.and]: [
           where, // User query
@@ -165,6 +165,7 @@ export default function (sequelize, DataTypes) {
       limit,
       offset,
     });
+    return result;
   };
 
   /**

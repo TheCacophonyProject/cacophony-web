@@ -7,6 +7,7 @@ import type { Recording } from "@models/Recording.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import moment from "moment";
 import type { Alert } from "@models/Alert.js";
+import fs from "fs";
 
 export function alertBody(
   recording: Recording,
@@ -69,6 +70,7 @@ export async function sendEmail(
         name: image.cid,
       });
     }
+    //fs.writeFileSync("email-test.html", html);
     await client.sendAsync(message);
   } catch (err) {
     log.error(err.toString());

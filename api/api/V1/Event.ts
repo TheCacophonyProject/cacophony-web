@@ -22,7 +22,7 @@ import type { Event, QueryOptions } from "@models/Event.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
-import { errors, powerEventsPerDevice } from "./eventUtil.js";
+import { powerEventsPerDevice } from "./eventUtil.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -49,6 +49,8 @@ import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import util from "@api/V1/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
+import config from "@config";
+import { groupedSystemErrors } from "./systemError.js";
 
 const models = await modelsInit();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -430,108 +432,112 @@ export default function (app: Application, baseUrl: string) {
       const payload = {
         limit: query.limit,
         offset,
-        rows: includeCount ? result.rows : result,
+        rows: includeCount
+          ? (result as { rows: Event[]; count: number }).rows
+          : result,
       };
       if (includeCount) {
-        (payload as any).count = result.count;
+        (payload as any).count = (
+          result as { rows: Event[]; count: number }
+        ).count;
       }
       return successResponse(response, "Completed query.", payload);
     }
   );
 
-  // DEPRECATED: As far as I can tell, no client ever actually calls this API endpoint, is it only used by CI?
-  /**
-   * @api {get} /api/v1/events/errors Query recorded errors
-   * @apiName QueryErrors
-   * @apiGroup Events
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiQuery {Datetime} [startTime] Return only errors on or after this time
-   * @apiQuery {Datetime} [endTime] Return only errors from before this time
-   * @apiQuery {Integer} [deviceId] Return only errors for this device id
-   * @apiQuery {Integer} [limit=100] Limit returned errors to this number (default is 100)
-   * @apiQuery {Integer} [offset=0] Offset returned errors by this amount (default is 0)
-   * @apiQuery {Boolean} [only-active=true] Only return errors for active devices
-   *
-   * @apiSuccess {json} rows Map of Service Name to Service errors
-   * @apiUse V1ResponseSuccess
-   * @apiSuccessExample {json} rows
-   * {
-   *   "<service-name>": {
-   *     "name": "<service-name>",
-   *     "devices": ["device1","device2"],
-   *     "errors": ApiEventError[]
-   *   },
-   *   "<service-name2>": {
-   *     "name": "<service-name2>",
-   *     "devices": ["device3","device4"],
-   *     "errors": ApiEventError[]
-   *   }
-   * }
-   * @apiSuccessExample {json} ApiEventError
-   * {
-   *   devices: ["device1", "device2"],
-   *   timestamps: ["2020-08-10T13:10:38.000Z", "2020-08-11T13:10:38.000Z"],
-   *   similar: ApiEventErrorSimilar[],
-   *   patterns: ApiEventErrorPattern[]
-   * }
-   * @apiSuccessExample {json} ApiEventErrorSimilar
-   * {
-   *   device: "device1",
-   *   timestamp: "2020-08-10T13:10:38.000Z",
-   *   lines: ["error line 1", "error line 2", "error line 3"]
-   * }
-   * @apiSuccessExample {json} ApiEventErrorPattern
-   * {
-   *   score: 100,
-   *   index: 0,
-   *   patterns: ["matched error line"]
-   * }
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/errors`,
-    // Authenticate the session
-    extractJwtAuthorizedUser,
-    // Validate request structure
-    validateFields([
-      query("startTime").isISO8601({ strict: true }).optional(),
-      query("endTime").isISO8601({ strict: true }).optional(),
-      idOf(query("deviceId")).optional(),
-      integerOf(query("offset")).optional(),
-      integerOf(query("limit")).optional(),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    // Extract required resources
-    fetchAuthorizedOptionalDeviceById(query("deviceId")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // deviceId is optional, but if it is supplied we need to make sure that the user
-      // is allowed to access it.
-      if (request.query.deviceId && !response.locals.device) {
-        return next(
-          new ClientError(
-            `Could not find a device with an id of '${request.query.deviceId} for user`,
-            HttpStatusCode.Forbidden
-          )
-        );
+  if (!config.productionEnv) {
+    // DEPRECATED: As far as I can tell, no client ever actually calls this API endpoint, is it only used by CI?
+    /**
+     * @api {get} /api/v1/events/errors Query recorded errors
+     * @apiName QueryErrors
+     * @apiGroup Events
+     *
+     * @apiUse V1UserAuthorizationHeader
+     * @apiQuery {Datetime} [startTime] Return only errors on or after this time
+     * @apiQuery {Datetime} [endTime] Return only errors from before this time
+     * @apiQuery {Integer} [deviceId] Return only errors for this device id
+     * @apiQuery {Integer} [limit=100] Limit returned errors to this number (default is 100)
+     * @apiQuery {Integer} [offset=0] Offset returned errors by this amount (default is 0)
+     * @apiQuery {Boolean} [only-active=true] Only return errors for active devices
+     *
+     * @apiSuccess {json} rows Map of Service Name to Service errors
+     * @apiUse V1ResponseSuccess
+     * @apiSuccessExample {json} rows
+     * {
+     *   "<service-name>": {
+     *     "name": "<service-name>",
+     *     "devices": ["device1","device2"],
+     *     "errors": ApiEventError[]
+     *   },
+     *   "<service-name2>": {
+     *     "name": "<service-name2>",
+     *     "devices": ["device3","device4"],
+     *     "errors": ApiEventError[]
+     *   }
+     * }
+     * @apiSuccessExample {json} ApiEventError
+     * {
+     *   devices: ["device1", "device2"],
+     *   timestamps: ["2020-08-10T13:10:38.000Z", "2020-08-11T13:10:38.000Z"],
+     *   similar: ApiEventErrorSimilar[],
+     *   patterns: ApiEventErrorPattern[]
+     * }
+     * @apiSuccessExample {json} ApiEventErrorSimilar
+     * {
+     *   device: "device1",
+     *   timestamp: "2020-08-10T13:10:38.000Z",
+     *   lines: ["error line 1", "error line 2", "error line 3"]
+     * }
+     * @apiSuccessExample {json} ApiEventErrorPattern
+     * {
+     *   score: 100,
+     *   index: 0,
+     *   patterns: ["matched error line"]
+     * }
+     * @apiUse V1ResponseError
+     */
+    app.get(
+      `${apiUrl}/errors`,
+      // Authenticate the session
+      extractJwtAuthorizedUser,
+      // Validate request structure
+      validateFields([
+        query("startTime").isISO8601({ strict: true }).toDate().optional(),
+        query("endTime").isISO8601({ strict: true }).toDate().optional(),
+        idOf(query("deviceId")).optional(),
+        integerOf(query("offset")).optional(),
+        integerOf(query("limit")).optional(),
+        query("only-active").optional().isBoolean().toBoolean(),
+      ]),
+      // Extract required resources
+      fetchAuthorizedOptionalDeviceById(query("deviceId")),
+      async (request: Request, response: Response, next: NextFunction) => {
+        // deviceId is optional, but if it is supplied we need to make sure that the user
+        // is allowed to access it.
+        if (request.query.deviceId && !response.locals.device) {
+          return next(
+            new ClientError(
+              `Could not find a device with an id of '${request.query.deviceId} for user`,
+              HttpStatusCode.Forbidden
+            )
+          );
+        }
+        next();
+      },
+      async (request: Request, response: Response) => {
+        // TODO: Fix these tests.
+        const query = request.query;
+        const startTime = query.startTime as unknown as Date | undefined;
+        const endTime = query.endTime as unknown as Date | undefined;
+        const result = await groupedSystemErrors(startTime, endTime);
+        return successResponse(response, "Completed query.", {
+          limit: query.limit,
+          offset: query.offset,
+          rows: result,
+        });
       }
-      next();
-    },
-    async (request: Request, response: Response) => {
-      const query = request.query;
-
-      // FIXME(jon): This smells bad, sometimes requires user, and sometimes doesn't
-      const result = await errors({
-        query: { ...request.query },
-        res: { locals: { ...response.locals } },
-      });
-      return successResponse(response, "Completed query.", {
-        limit: query.limit,
-        offset: query.offset,
-        rows: result,
-      });
-    }
-  );
+    );
+  }
 
   // DEPRECATED: As far as I can tell, no client ever calls this API endpoint - is it only used by CI?
   /**

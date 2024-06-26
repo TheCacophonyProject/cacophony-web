@@ -24,9 +24,8 @@ export const latestRecordingTimeForDeviceAtLocation = (
 ): Date | null => {
   if (location && device.type) {
     if (
-      (device.type === ConcreteDeviceType.Hybrid &&
-        location.lastAudioRecordingTime) ||
-      location.lastThermalRecordingTime
+      device.type === ConcreteDeviceType.Hybrid &&
+      (location.lastAudioRecordingTime || location.lastThermalRecordingTime)
     ) {
       if (
         location.lastAudioRecordingTime &&

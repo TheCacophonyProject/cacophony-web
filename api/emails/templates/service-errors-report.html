@@ -1,0 +1,105 @@
+<tr>
+  <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+    <br>
+    <div style="font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#DF4726;padding-right:24px">
+      Service Errors {{ fromDate }} &mdash; {{ untilDate }}
+    </div>
+    <style>
+      .info {
+          color: #01b601;
+      }
+      .warn {
+          color: orange;
+      }
+      .error, .fatal, ol > li.info:last-child {
+          color: red;
+          font-weight: bold;
+      }
+      .devices-affected {
+          display: inline-block;
+          background: #63757c;
+          color: white;
+          border-radius: 5px;
+          padding: 3px 5px;
+          margin-bottom: 5px;
+      }
+      .service-unit:nth-child(even) {
+          background: #ececec;
+      }
+      .service-unit:nth-child(odd) {
+
+      }
+      .inner-unit:nth-child(even) {
+          background: white;
+      }
+      .inner-unit:nth-child(odd) {
+
+      }
+    </style>
+    <br>
+    <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333 !important;">
+      {{^serviceErrors}}
+      There were no service errors in the past 24 hours.<br>
+      {{/serviceErrors}}
+      {{#serviceErrors}}
+        <h3>{{unit}}</h3>
+        {{#unitErrorsByVersion}}
+          <div class="service-unit">
+            <h4 style="margin: 0;">{{unit}}.service</h4>
+            <div>
+              {{#errors}}
+                <h5>Version: {{version}}</h5>
+                {{#errors}}
+                  <div class="inner-unit">
+                    <p><strong>{{count}}</strong> {{from}} &mdash; {{until}}</p>
+                    <p>
+                      <strong>Devices affected:</strong>
+                      {{#devices}}
+                      <span class="devices-affected"><strong>{{name}}</strong> (#{{id}})</span>
+                      {{/devices}}
+                    </p>
+                    <div style="font-size: 11px; background-color: black !important; color: yellowgreen; border-radius: 3px; padding: 3px;">
+                      <ol style="margin: 0; padding: 0; padding-left: 20px;">
+                      {{#logging}}
+                        <li class="{{level}}"><code style="display: block;">{{line}}</code></li>
+                      {{/logging}}
+                      </ol>
+                    </div>
+                  </div>
+                {{/errors}}
+              {{/errors}}
+            </div>
+          </div>
+        {{/unitErrorsByVersion}}
+      {{/serviceErrors}}
+      <div style="margin-top: 30px;font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#DF4726;padding-right:24px">Devices currently failing salt update</div>
+      {{^failingDevices}}
+      None
+      {{/failingDevices}}
+      {{#failingDevices}}
+        <h3>{{unit}}</h3>
+        <p>
+        {{#devices}}
+          <span class="devices-affected"><strong>{{name}}</strong> (#{{id}})</span>
+        {{/devices}}
+        </p>
+      {{/failingDevices}}
+
+      <br><br>
+      &ndash; The Cacophony Team.
+      <br><br>
+    </div>
+  </td>
+</tr>
+<tr>
+  <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
+    <br><br>
+
+    <strong>The Cacophony Project.</strong><br>
+    <span class="ios-footer">
+New Zealand.<br>
+</span>
+    <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+    <br><br>
+  </td>
+</tr>

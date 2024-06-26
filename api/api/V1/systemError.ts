@@ -1,365 +1,501 @@
-// Fuzzily checks that error logs are similar
-// METHOD
-// Find the larger non over lapping substrings that are contained in both lines
-// Consider a match if these substrings cover a certain percentage of the string length
-// Consider the logs matching if enough lines are considered matching
-// Example comparing the following lines
-// line1 "the power error has occurred on test-pi 34 the power has gone down"
-// line2 "the power error has occurred on test-pi 40 the power has gone down"
-// subsets are "the power error has occurred on" and "the power has gone down"
-//  and "the power" from the start of line 1 to "the power has gone down" of line 2
-// this last match will be ignored, as the first substring "the power error has occurred on"
-// is longer and overlaps
-// The matching subsets create total of 10 words out of 12 this makes for a match of
-// 100 * 10/12 = 84%
-
 import type { Event } from "@models/Event.js";
+import type { DeviceId } from "@typedefs/api/common.js";
+import levenshteinEditDistance from "levenshtein-edit-distance";
+import config from "@config";
+import modelsInit from "@models/index.js";
+import { Op } from "sequelize";
 
-// minimum number of words in a substring to be considered a match
-const MIN_MATCH_LENGTH = 3;
-// number of lines from the log to compare. in reverse order
-const LINES_CHECK = 5;
-// minimum percentage a line should match to be considered the same
-const MATCH_MIN_COVERAGE = 60;
+const models = await modelsInit();
 
-// how many lines must match with MATCH_MIN_COVERAGE out of the last LINES_CHECK lines
-const MATCH_MIN_LINES = 2;
+type LogLevel = "info" | "warn" | "error" | "fatal";
+interface LogLine {
+  line: string;
+  level: LogLevel;
+}
 
-interface ServiceErrorMap {
-  [key: string]: ServiceError;
+export interface ServiceError {
+  devices: { id: DeviceId; name: string }[];
+  log: LogLine[];
+  count: number;
+  from: Date;
+  until: Date;
+}
+
+const levelWeight = (level: LogLevel) => {
+  return ["info", "warn", "error", "fatal"].indexOf(level) + 1;
+};
+
+const fuzzyErrorMatchScore = (
+  existingLog: LogLine[],
+  log: LogLine[]
+): number => {
+  // NOTE: The last line (where the error cause usually is)
+  //  must have similarity > 0.6, otherwise it's not a match.
+  if (existingLog.length !== 0 && log.length !== 0) {
+    const a = existingLog[existingLog.length - 1].line;
+    const b = log[log.length - 1].line;
+    const longest = Math.max(a.length, b.length);
+    const diff = levenshteinEditDistance(a, b);
+    const similarity = (longest - diff) / longest;
+    if (similarity < 0.6) {
+      return 0;
+    }
+  }
+
+  // Get a levenshtein score for each line vs each other line.
+  let strongSimilarityCount = 0;
+  for (let i = 0; i < existingLog.length; i++) {
+    const existingLine = existingLog[i];
+    for (let j = 0; j < log.length; j++) {
+      const newLine = log[j];
+      const longest = Math.max(newLine.line.length, existingLine.line.length);
+      const diff = levenshteinEditDistance(existingLine.line, newLine.line);
+      const similarity = (longest - diff) / longest;
+      if (similarity > 0.6) {
+        // Weight errors/fatal higher than info status.
+        // Weight later lines higher than earlier ones.
+        const existingWeighting = (i + 1) / existingLog.length;
+        const newWeighting = (j + 1) / log.length;
+        const existingLevelWeight = levelWeight(existingLine.level);
+        const newLevelWeight = levelWeight(newLine.level);
+        strongSimilarityCount +=
+          (1 + newLevelWeight + existingLevelWeight) *
+          existingWeighting *
+          newWeighting *
+          similarity;
+      }
+    }
+  }
+  return strongSimilarityCount;
+};
+
+export type GroupedServiceErrorsByNodeGroup = Record<
+  string,
+  GroupedServiceErrors[]
+>;
+
+export interface GroupedServiceErrors {
+  unit: string;
+  errors: Record<string, ServiceError[]>;
 }
 
 // group provided events by logs are that are similar
-function groupSystemErrors(events: Event[]): ServiceErrorMap {
-  const serviceMap: ServiceErrorMap = {};
-
+export const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
+  const serviceMap: Record<string, GroupedServiceErrors> = {};
   for (const errorEvent of events) {
-    let serviceError: ServiceError;
     const details = errorEvent.EventDetail.details;
     if (!("unitName" in details && "logs" in details)) {
       continue;
     }
-    if (details["unitName"] in serviceMap) {
-      serviceError = serviceMap[details["unitName"]];
-    } else {
-      serviceError = new ServiceError(details["unitName"]);
-      serviceMap[details["unitName"]] = serviceError;
-    }
+    // TODO: Also group these by node-group and latest software version for the devices.
+    // Looking at createdAt date for events that came in in the last 24 hours,
+    // But also checking the actual event date, for events that are older but were just created.
+    const unitName = details["unitName"].replace(".service", "");
+    const serviceError = serviceMap[unitName] || {
+      unit: unitName,
+      errors: {},
+    };
+    serviceError.errors[(errorEvent as any).unitVersion] =
+      serviceError.errors[(errorEvent as any).unitVersion] || [];
+    serviceMap[unitName] = serviceError;
 
-    const log = new Log(
-      errorEvent.Device.deviceName,
-      errorEvent.dateTime,
-      details["logs"]
-    );
-    serviceError.match(log);
-  }
-  scores = [];
-  return serviceMap;
-}
-
-let scores = [];
-class ServiceError {
-  devices: string[];
-  errors: LogError[];
-  constructor(public name: string) {
-    this.devices = [];
-    this.errors = [];
-  }
-
-  match(log: Log): boolean {
-    if (this.devices.indexOf(log.device) == -1) {
-      this.devices.push(log.device);
-    }
-    let matched = false;
-    for (const logGroup of this.errors) {
-      matched = logGroup.compare(log);
-      if (matched) {
-        return true;
+    // Take the first max(5) good lines.
+    const linesWeCareAbout = [];
+    let foundProcessFailLine = false;
+    for (let i = details.logs.length - 1; i > 0; i--) {
+      // Since these are process exits, the most interesting lines are likely the ones right before
+      // 'Main process exited, code=exited, status=1/FAILURE'
+      const line = details.logs[i];
+      if (foundProcessFailLine && linesWeCareAbout.length < 5) {
+        linesWeCareAbout.push(line);
+      }
+      if (
+        !foundProcessFailLine &&
+        line.endsWith("Main process exited, code=exited, status=1/FAILURE")
+      ) {
+        foundProcessFailLine = true;
       }
     }
-    this.errors.push(new LogError(log));
-    return false;
+    const levels = ["INFO", "FATAL", "WARN", "ERROR"].map((code) => [
+      `[${code}]`,
+      code.toLowerCase(),
+    ]);
+    const logLevel = (line: string): LogLine => {
+      if (line.startsWith("[")) {
+        // Parse out the log level and truncate the line
+        for (const [level, code] of levels) {
+          if (line.startsWith(level)) {
+            return { line: line.replace(level, "").trim(), level: code as any };
+          }
+        }
+      }
+      return { line, level: "info" };
+    };
+    const lines = linesWeCareAbout.reverse().map(logLevel);
+    // If the log is similar enough to an existing log, add it here, otherwise create a new log.
+    for (const [unitVersion, errors] of Object.entries(serviceError.errors)) {
+      let bestExistingErrorMatch: ServiceError;
+      let bestMatchScore = 0;
+      for (const existingError of errors) {
+        const matchScore = fuzzyErrorMatchScore(existingError.log, lines);
+        if (matchScore >= 2 && matchScore > bestMatchScore) {
+          bestMatchScore = matchScore;
+          bestExistingErrorMatch = existingError;
+        }
+      }
+      if (bestExistingErrorMatch) {
+        bestExistingErrorMatch.count++;
+        if (
+          !bestExistingErrorMatch.devices.find(
+            ({ id }) => id === errorEvent.DeviceId
+          )
+        ) {
+          bestExistingErrorMatch.devices.push({
+            id: errorEvent.DeviceId,
+            name: errorEvent.Device.deviceName,
+          });
+        }
+        if (bestExistingErrorMatch.from > errorEvent.dateTime) {
+          bestExistingErrorMatch.from = errorEvent.dateTime;
+        }
+        if (bestExistingErrorMatch.until < errorEvent.dateTime) {
+          bestExistingErrorMatch.until = errorEvent.dateTime;
+        }
+      } else {
+        // Add the error.
+        errors.push({
+          devices: [
+            { id: errorEvent.DeviceId, name: errorEvent.Device.deviceName },
+          ],
+          count: 1,
+          from: errorEvent.dateTime,
+          until: errorEvent.dateTime,
+          log: lines,
+        });
+      }
+    }
   }
-}
+  return Object.values(serviceMap);
+};
 
-class LinePattern {
-  patterns: string[];
-  score: number;
-  index: number;
-  constructor(matches: Match[], words: string[], score: number, index: number) {
-    this.score = score;
-    this.index = index;
-    this.patterns = [];
-    for (const match of matches) {
-      this.patterns.push(
-        words.slice(match.start[0], match.start[0] + match.length).join(" ")
+export const getDevicesFailingSaltUpdatesInReportingPeriod = async (
+  fromDate: Date,
+  untilDate: Date,
+  ignoredNodeGroups: string[]
+): Promise<Record<string, { id: DeviceId; name: string }[]>> => {
+  console.log("GET FAILING DEVICES");
+  const saltEvents = await models.Event.findAll({
+    where: {
+      createdAt: {
+        [Op.gte]: fromDate,
+        [Op.lt]: untilDate,
+      },
+    },
+    order: [["createdAt", "DESC"]],
+    include: [
+      {
+        required: true,
+        model: models.DetailSnapshot,
+        as: "EventDetail",
+        attributes: ["type", "details"],
+        where: {
+          type: "salt-update",
+          "details.success": "false",
+          "details.nodegroup": { [Op.notIn]: ignoredNodeGroups },
+        },
+      },
+      {
+        model: models.Device,
+        attributes: ["deviceName"],
+        required: true,
+      },
+    ],
+    attributes: { exclude: ["updatedAt", "EventDetailId"] },
+  });
+  let failingDevices: { id: DeviceId; name: string; nodeGroup: string }[] =
+    Object.values(
+      saltEvents
+        .map((event) => ({
+          id: event.DeviceId,
+          name: event.Device.deviceName,
+          nodeGroup: event.EventDetail.details.nodegroup,
+        }))
+        .reduce((acc, curr) => {
+          acc[curr.id] = curr;
+          return acc;
+        }, {})
+    );
+  const stillFailingPromises = [];
+  for (const device of failingDevices) {
+    stillFailingPromises.push(
+      models.Event.findOne({
+        where: {
+          DeviceId: device.id,
+        },
+        order: [["createdAt", "DESC"]],
+        include: [
+          {
+            required: true,
+            model: models.DetailSnapshot,
+            as: "EventDetail",
+            attributes: ["type", "details"],
+            where: {
+              type: "salt-update",
+            },
+          },
+        ],
+        attributes: { exclude: ["updatedAt", "EventDetailId"] },
+      })
+    );
+  }
+  const stillFailingEvents = await Promise.all(stillFailingPromises);
+  for (const event of stillFailingEvents) {
+    if (event.EventDetail.details.success !== false) {
+      // The latest event for the device shows that salt succeeded eventually.
+      failingDevices = failingDevices.filter(
+        (device) => device.id !== event.DeviceId
       );
     }
   }
+  return failingDevices.reduce((acc, item) => {
+    acc[item.nodeGroup] = acc[item.nodeGroup] || [];
+    acc[item.nodeGroup].push({ id: item.id, name: item.name });
+    return acc;
+  }, {});
+};
 
-  // check if supplied string contains all patters/substrings
-  match(line: string): boolean {
-    let index: number;
-    let compareTo = line;
-    for (const pattern of this.patterns) {
-      index = compareTo.indexOf(pattern);
-      if (index == -1) {
-        return false;
-      }
-      compareTo = compareTo.slice(index + pattern.length);
+export const groupedSystemErrors = async (
+  fromDate?: Date,
+  untilDate?: Date
+): Promise<GroupedServiceErrorsByNodeGroup> => {
+  const where: any = {};
+  // TODO, allow limit/offset just for testing purposes?
+  if (fromDate || untilDate) {
+    where.createdAt = {};
+    if (fromDate) {
+      where.createdAt[Op.gte] = fromDate;
     }
-    return true;
-  }
-}
-
-class LogError {
-  timestamps: Date[];
-  devices: string[];
-  similar: Log[];
-  patterns: LinePattern[];
-  constructor(log: Log) {
-    this.devices = [];
-    this.timestamps = [];
-    this.similar = [];
-    this.add(log);
-  }
-
-  compare(other: Log): boolean {
-    if (this.patterns) {
-      // already has a pattern so attempt to match
-      const correct = this.match(other);
-      return correct;
-    }
-    if (this.similar.length == 0) {
-      return false;
-    }
-
-    this.patterns = this.similar[0].compare(other);
-    if (this.patterns) {
-      this.add(other);
-      return true;
-    }
-    return false;
-  }
-
-  // match checks if the supplied logs matches this logs patterns, sufficiently
-  match(other: Log): boolean {
-    let matches = 0;
-    let otherIndex = 0;
-    for (const linePattern of this.patterns) {
-      for (let i = otherIndex; i < LINES_CHECK && i < other.lines.length; i++) {
-        const match = linePattern.match(other.lines[i]);
-        if (match) {
-          matches += 1;
-          otherIndex = i + 1;
-          break;
-        }
-      }
-    }
-
-    if (
-      (other.lines.length == this.patterns.length &&
-        matches == other.lines.length) ||
-      matches >= MATCH_MIN_LINES
-    ) {
-      this.add(other);
-      // matched all lines, may be less than MATCH_MIN_LNIES
-      return true;
-    }
-
-    return false;
-  }
-
-  add(log: Log) {
-    this.similar.push(log);
-    this.timestamps.push(log.timestamp);
-    if (this.devices.indexOf(log.device) == -1) {
-      this.devices.push(log.device);
+    if (untilDate) {
+      where.createdAt[Op.lt] = untilDate;
     }
   }
-}
+  const ignoredDevices = config.deviceErrorIgnoreList || [];
+  const serviceErrorEvents = (
+    await models.Event.findAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          required: true,
+          model: models.DetailSnapshot,
+          as: "EventDetail",
+          attributes: ["type", "details"],
+          where: {
+            type: "systemError",
+          },
+        },
+        {
+          model: models.Device,
+          attributes: ["deviceName"],
+          required: true,
+        },
+      ],
+      attributes: { exclude: ["updatedAt", "EventDetailId"] },
+      limit: 10000,
+    })
+  )
+    .filter(
+      (event) =>
+        "unitName" in event.EventDetail.details &&
+        "logs" in event.EventDetail.details
+    )
+    .filter((event) => !ignoredDevices.includes(event.DeviceId));
 
-class Log {
-  constructor(
-    public device: string,
-    public timestamp: Date,
-    public lines: string[]
-  ) {
-    this.lines = this.lines.reverse();
-  }
+  // Work out the node groups for each device of these events.
 
-  // generateMatch compare this log to the other log and if they similar create the patterns
-  // that define this log to match future logs
-  compare(other: Log): LinePattern[] | null {
-    const patterns: LinePattern[] = [];
-    let matchedLines = 0;
-    let otherIndex = 0;
-    let minLength = MIN_MATCH_LENGTH;
-    for (let i = 0; i < LINES_CHECK && i < this.lines.length; i++) {
-      const words = this.lines[i].split(" ");
-      for (let j = otherIndex; j < LINES_CHECK && j < other.lines.length; j++) {
-        const otherWords = other.lines[j].split(" ");
-        let matches = align(words, otherWords);
-        // matches.sort((a, b) => b.length - a.length);
-        if (words.length == otherWords.length) {
-          minLength = Math.min(MIN_MATCH_LENGTH, words.length);
-        }
-        matches = findUniqueSubstrings(
-          matches,
-          [0, 0],
-          [words.length, otherWords.length],
-          minLength
-        );
-        let score = 0;
-        for (const match of matches) {
-          if (match.startDiffer()) {
-            score = 0;
-            break;
-          }
-          score += match.score(words.length);
-        }
-        if (score > MATCH_MIN_COVERAGE) {
-          patterns.push(new LinePattern(matches, words, score, i));
-          matchedLines += 1;
-          otherIndex = j + 1;
-          break;
-        }
-      }
+  // Get all the unique devices for the set of events:
+  const devices: Record<DeviceId, { minDate: Date; maxDate: Date }> = {};
+  for (const errorEvent of serviceErrorEvents) {
+    const existingDeviceSpan = devices[errorEvent.DeviceId] || {
+      minDate: errorEvent.dateTime,
+      maxDate: errorEvent.dateTime,
+    };
+    if (errorEvent.dateTime < existingDeviceSpan.minDate) {
+      existingDeviceSpan.minDate = errorEvent.dateTime;
     }
-    if (
-      other.lines.length == this.lines.length &&
-      matchedLines == this.lines.length
-    ) {
-      // matched all lines, may be less than MATCH_MIN_LNIES
-      return patterns;
+    if (errorEvent.dateTime > existingDeviceSpan.maxDate) {
+      existingDeviceSpan.maxDate = errorEvent.dateTime;
     }
-    if (matchedLines >= MATCH_MIN_LINES) {
-      return patterns;
-    }
-    return null;
+    devices[errorEvent.DeviceId] = existingDeviceSpan;
   }
-}
+  const saltUpdates = [];
+  const versionUpdates = [];
+  for (const [deviceId, { minDate, maxDate }] of Object.entries(devices)) {
+    // What node group is the device in during the time period?
+    saltUpdates.push(
+      models.Event.findOne({
+        where: {
+          DeviceId: deviceId,
+          dateTime: {
+            // Last successful salt-update before this event period.
+            // What if node-groups changed during the event period?
+            [Op.lt]: maxDate,
+          },
+        },
+        order: [["dateTime", "DESC"]],
+        include: [
+          {
+            required: true,
+            model: models.DetailSnapshot,
+            as: "EventDetail",
+            attributes: ["type", "details"],
+            where: {
+              type: "salt-update",
+            },
+          },
+        ],
+        attributes: { exclude: ["updatedAt", "EventDetailId"] },
+      })
+    );
 
-class Match {
-  length: number;
-
-  constructor(public start: number[]) {
-    this.length = 1;
-  }
-
-  // if one substring starts at 0 the other almost definitely should too
-  startDiffer(): boolean {
-    return (
-      (this.start[0] == 0 && this.start[1] > 0) ||
-      (this.start[1] == 0 && this.start[0] > 0)
+    versionUpdates.push(
+      models.Event.findOne({
+        where: {
+          DeviceId: deviceId,
+          dateTime: {
+            // Last successful versionUpdate before this event period.
+            [Op.lt]: maxDate,
+          },
+        },
+        order: [["dateTime", "DESC"]],
+        include: [
+          {
+            required: true,
+            model: models.DetailSnapshot,
+            as: "EventDetail",
+            attributes: ["type", "details"],
+            where: {
+              type: "versionData",
+            },
+          },
+        ],
+        attributes: { exclude: ["updatedAt", "EventDetailId"] },
+      })
     );
   }
-
-  score(stringLength: number): number {
-    const startSame = this.start[0] == this.start[1] ? 0.9 : 0;
-
-    return Math.round((this.length / stringLength) * 100) + startSame;
-  }
-}
-
-// align words a with words b, calculate all substring matches of a and b
-function align(a: string[], b: string[]): Match[] {
-  const substrings: Match[] = [];
-  let row;
-  for (let i = 0; i < a.length; i++) {
-    for (let j = 0; j < b.length; j++) {
-      if (scores.length < i + 1) {
-        row = [{}];
-        scores.push(row);
+  const saltEvents: Event[] = await Promise.all(saltUpdates);
+  const versionDataEvents: Event[] = await Promise.all(versionUpdates);
+  for (let i = 0; i < versionDataEvents.length; i++) {
+    const deviceId = Number(Object.keys(devices)[i]);
+    if (!versionDataEvents[i]) {
+      // Never got version data for this device.
+      for (const event of serviceErrorEvents.filter(
+        (event) => event.DeviceId === deviceId
+      )) {
+        (event as any).unitVersion = "unknown-version";
+      }
+      continue;
+    }
+    const versionDataEvent = versionDataEvents[i];
+    for (const event of serviceErrorEvents.filter(
+      (event) => event.DeviceId === deviceId
+    )) {
+      const eventUnit = event.EventDetail.details.unitName.replace(
+        ".service",
+        ""
+      );
+      if (eventUnit in versionDataEvent.EventDetail.details) {
+        (event as any).unitVersion =
+          versionDataEvent.EventDetail.details[eventUnit];
       } else {
-        row = scores[i];
+        (event as any).unitVersion = "unknown-version";
       }
-      if (row.length < j + 1) {
-        row.push({});
-      }
-      if (a[i] == b[j]) {
-        let match: Match;
-        if (i == 0 || j == 0) {
-          const pattern = new Match([i, j]);
-          substrings.push(pattern);
-          match = pattern;
-        } else {
-          match = scores[i - 1][j - 1];
-          if (!match) {
-            const pattern = new Match([i, j]);
-            match = pattern;
-            substrings.push(pattern);
-          } else {
-            match.length += 1;
-          }
+    }
+  }
+
+  const eventsByNodeGroup = {};
+  for (let i = 0; i < saltEvents.length; i++) {
+    const deviceId = Number(Object.keys(devices)[i]);
+    if (!saltEvents[i]) {
+      const nodeGroup = "unknown-node-group";
+      // All events for this device belong in this nodegroup:
+      eventsByNodeGroup[nodeGroup] = eventsByNodeGroup[nodeGroup] || [];
+      eventsByNodeGroup[nodeGroup].push(
+        ...serviceErrorEvents.filter((event) => event.DeviceId === deviceId)
+      );
+      continue;
+    }
+    const saltEvent = saltEvents[i];
+    if (saltEvent.dateTime > devices[saltEvent.DeviceId].minDate) {
+      // Get an earlier salt events for this device just in case the node-group changed
+      const earlierSaltEvent = await models.Event.findOne({
+        where: {
+          DeviceId: saltEvent.DeviceId,
+          dateTime: {
+            // Last successful salt-update before this event period.
+            // What if node-groups changed during the event period?
+            [Op.lt]: saltEvent.dateTime,
+          },
+        },
+        order: [["dateTime", "DESC"]],
+        include: [
+          {
+            required: true,
+            model: models.DetailSnapshot,
+            as: "EventDetail",
+            attributes: ["type", "details"],
+            where: {
+              type: "salt-update",
+            },
+          },
+        ],
+        attributes: { exclude: ["updatedAt", "EventDetailId"] },
+      });
+      if (earlierSaltEvent) {
+        // NOTE: If the node-group changed, it's possible we attribute events to the wrong version of a service,
+        //  but probably not worth trying to be clever here.
+
+        const currentNodeGroup = saltEvent.EventDetail.details.nodegroup;
+        const olderNodeGroup = earlierSaltEvent.EventDetail.details.nodegroup;
+        if (olderNodeGroup !== currentNodeGroup) {
+          // Split events for this device between multiple node-groups.
+          eventsByNodeGroup[currentNodeGroup] =
+            eventsByNodeGroup[currentNodeGroup] || [];
+          eventsByNodeGroup[currentNodeGroup].push(
+            ...serviceErrorEvents.filter(
+              (event) =>
+                event.DeviceId === saltEvent.DeviceId &&
+                event.dateTime > saltEvent.dateTime
+            )
+          );
+
+          eventsByNodeGroup[olderNodeGroup] =
+            eventsByNodeGroup[currentNodeGroup] || [];
+          eventsByNodeGroup[olderNodeGroup].push(
+            ...serviceErrorEvents.filter(
+              (event) =>
+                event.DeviceId === saltEvent.DeviceId &&
+                event.dateTime < saltEvent.dateTime
+            )
+          );
+          continue;
         }
-        scores[i][j] = match;
-      } else {
-        scores[i][j] = null;
       }
     }
-  }
-  return substrings;
-}
-
-// findUniqueSubstrings that do not overlap by choosing the longest match, and then search left and right of that
-function findUniqueSubstrings(
-  substrings: any[],
-  start: number[],
-  end: number[],
-  minLength: number
-): Match[] {
-  const patterns: Match[] = [];
-
-  if (
-    substrings.length == 0 ||
-    end[0] - start[0] < minLength ||
-    end[1] - start[1] < minLength
-  ) {
-    return patterns;
-  }
-  if (end[0] < start[0] || end[1] < start[1]) {
-    return patterns;
-  }
-  let max: Match;
-  let index = 0;
-  for (let i = 0; i < substrings.length; i++) {
-    const sub = substrings[i];
-    if (
-      (!max || sub.lenth > max.length) &&
-      sub.start[0] >= start[0] &&
-      sub.start[1] >= start[1] &&
-      sub.start[0] + sub.length <= end[0] &&
-      sub.start[1] + sub.length <= end[1]
-    ) {
-      max = sub;
-      index = i;
-    }
-  }
-
-  if (max && max.length >= minLength) {
-    const right = substrings.slice(index + 1);
-    substrings.pop();
-    // left side
-    patterns.push(
-      ...findUniqueSubstrings(substrings, start, max.start, minLength)
-    );
-    patterns.push(max);
-    // right side
-    patterns.push(
-      ...findUniqueSubstrings(
-        right,
-        [max.start[0] + max.length, max.start[1] + max.length],
-        end,
-        minLength
+    const nodeGroup = saltEvent.EventDetail.details.nodegroup;
+    // All events for this device belong in this nodegroup:
+    eventsByNodeGroup[nodeGroup] = eventsByNodeGroup[nodeGroup] || [];
+    eventsByNodeGroup[nodeGroup].push(
+      ...serviceErrorEvents.filter(
+        (event) => event.DeviceId === saltEvent.DeviceId
       )
     );
   }
-  return patterns;
-}
-
-export default function () {
-  console.log("");
-}
-
-export { Log, ServiceError, groupSystemErrors, ServiceErrorMap };
+  const groupedErrorsByNodeGroup = {};
+  for (const nodeGroupEvents of Object.entries(eventsByNodeGroup)) {
+    groupedErrorsByNodeGroup[nodeGroupEvents[0]] = groupSystemErrors(
+      nodeGroupEvents[1] as Event[]
+    );
+  }
+  return groupedErrorsByNodeGroup;
+};
