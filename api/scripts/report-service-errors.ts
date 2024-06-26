@@ -19,7 +19,7 @@ async function main() {
   const endDate = new Date();
   endDate.setHours(9, 0, 0, 0);
   const startDate = new Date(endDate);
-  startDate.setHours(endDate.getHours() - 72);
+  startDate.setHours(endDate.getHours() - 24);
   const groupedServiceErrorsByNodeGroup = await groupedSystemErrors(
     startDate,
     endDate
