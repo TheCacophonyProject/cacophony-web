@@ -73,9 +73,9 @@ const sortedUserProjects = computed(() => {
 
 const lastActiveRelativeToNow = (date: Date): string => {
   if (date.getTime() === 0) {
-    return "Not active";
+    return "not active";
   }
-  return DateTime.fromJSDate(date).toRelative() as string;
+  return `active ${DateTime.fromJSDate(date).toRelative() as string}`;
 };
 
 onMounted(() => {
@@ -123,8 +123,9 @@ onMounted(() => {
         <span class="d-flex justify-content-between">
           <span>
             <span
-              >{{ groupName }} (active
-              {{ lastActiveRelativeToNow(latestRecordingTime) }})</span
+              >{{ groupName }} ({{
+                lastActiveRelativeToNow(latestRecordingTime)
+              }})</span
             >
             <span v-if="groupName === currentProjectName" class="ms-1"
               >(selected)</span

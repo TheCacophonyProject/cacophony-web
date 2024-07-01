@@ -28,7 +28,10 @@ import type {
   LoadedResource,
   SuccessFetchResult,
 } from "@api/types";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type {
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+} from "@typedefs/api/recording";
 import {
   type BulkRecordingsResponse,
   getAllRecordingsForProjectBetweenTimes,
@@ -1357,6 +1360,11 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
       "Labels",
     ],
   ];
+  const isAudioMode =
+    searchParams.value.recordingMode === ActivitySearchRecordingMode.Audio;
+  if (isAudioMode) {
+    csv[0].push("Cacophony Index");
+  }
   for (const recording of data) {
     const location = (locations.value || []).find(
       ({ id }) => id === recording.stationId
@@ -1374,8 +1382,7 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
           `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
         );
       }
-
-      csv.push([
+      const row = [
         recording.stationName || "",
         `${recording.location?.lat}, ${recording.location?.lng}`,
         recording.deviceName,
@@ -1384,7 +1391,15 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
         formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
         displays.join(", "),
         labels.join(", "),
-      ]);
+      ];
+      if (isAudioMode) {
+        row.push(
+          ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
+            .map((index: { index_percent: number }) => index.index_percent)
+            .join(", ")
+        );
+      }
+      csv.push(row);
     }
   }
   return arrayToCsv(csv);

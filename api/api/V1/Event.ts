@@ -50,7 +50,6 @@ import { HttpStatusCode } from "@typedefs/api/consts.js";
 import util from "@api/V1/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import config from "@config";
-import { groupedSystemErrors } from "./systemError.js";
 
 const models = await modelsInit();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -496,47 +495,47 @@ export default function (app: Application, baseUrl: string) {
      * }
      * @apiUse V1ResponseError
      */
-    app.get(
-      `${apiUrl}/errors`,
-      // Authenticate the session
-      extractJwtAuthorizedUser,
-      // Validate request structure
-      validateFields([
-        query("startTime").isISO8601({ strict: true }).toDate().optional(),
-        query("endTime").isISO8601({ strict: true }).toDate().optional(),
-        idOf(query("deviceId")).optional(),
-        integerOf(query("offset")).optional(),
-        integerOf(query("limit")).optional(),
-        query("only-active").optional().isBoolean().toBoolean(),
-      ]),
-      // Extract required resources
-      fetchAuthorizedOptionalDeviceById(query("deviceId")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        // deviceId is optional, but if it is supplied we need to make sure that the user
-        // is allowed to access it.
-        if (request.query.deviceId && !response.locals.device) {
-          return next(
-            new ClientError(
-              `Could not find a device with an id of '${request.query.deviceId} for user`,
-              HttpStatusCode.Forbidden
-            )
-          );
-        }
-        next();
-      },
-      async (request: Request, response: Response) => {
-        // TODO: Fix these tests.
-        const query = request.query;
-        const startTime = query.startTime as unknown as Date | undefined;
-        const endTime = query.endTime as unknown as Date | undefined;
-        const result = await groupedSystemErrors(startTime, endTime);
-        return successResponse(response, "Completed query.", {
-          limit: query.limit,
-          offset: query.offset,
-          rows: result,
-        });
-      }
-    );
+    // app.get(
+    //   `${apiUrl}/errors`,
+    //   // Authenticate the session
+    //   extractJwtAuthorizedUser,
+    //   // Validate request structure
+    //   validateFields([
+    //     query("startTime").isISO8601({ strict: true }).toDate().optional(),
+    //     query("endTime").isISO8601({ strict: true }).toDate().optional(),
+    //     idOf(query("deviceId")).optional(),
+    //     integerOf(query("offset")).optional(),
+    //     integerOf(query("limit")).optional(),
+    //     query("only-active").optional().isBoolean().toBoolean(),
+    //   ]),
+    //   // Extract required resources
+    //   fetchAuthorizedOptionalDeviceById(query("deviceId")),
+    //   async (request: Request, response: Response, next: NextFunction) => {
+    //     // deviceId is optional, but if it is supplied we need to make sure that the user
+    //     // is allowed to access it.
+    //     if (request.query.deviceId && !response.locals.device) {
+    //       return next(
+    //         new ClientError(
+    //           `Could not find a device with an id of '${request.query.deviceId} for user`,
+    //           HttpStatusCode.Forbidden
+    //         )
+    //       );
+    //     }
+    //     next();
+    //   },
+    //   async (request: Request, response: Response) => {
+    //     // TODO: Fix these tests.
+    //     const query = request.query;
+    //     const startTime = query.startTime as unknown as Date | undefined;
+    //     const endTime = query.endTime as unknown as Date | undefined;
+    //     const result = await groupedSystemErrors(startTime, endTime);
+    //     return successResponse(response, "Completed query.", {
+    //       limit: query.limit,
+    //       offset: query.offset,
+    //       rows: result,
+    //     });
+    //   }
+    // );
   }
 
   // DEPRECATED: As far as I can tell, no client ever calls this API endpoint - is it only used by CI?

@@ -252,7 +252,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/for-project/:projectId`,
     // Validate session
-    //extractJwtAuthorizedUser,
+    extractJwtAuthorizedUser,
     validateFields([
       query("debug").optional(),
       idOf(param("projectId")),
@@ -292,8 +292,8 @@ export default function (app: Application, baseUrl: string) {
         }),
       query("view-mode").optional(),
     ]),
-    //fetchAuthorizedRequiredGroupById(param("projectId")),
-    fetchUnauthorizedRequiredGroupById(param("projectId")),
+    fetchAuthorizedRequiredGroupById(param("projectId")),
+    //fetchUnauthorizedRequiredGroupById(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
       const query = request.query;
       const types = (

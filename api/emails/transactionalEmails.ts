@@ -12,11 +12,11 @@ import logger from "@/logging.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
-import type { GroupedServiceErrors } from "@api/V1/systemError.js";
 import type { DeviceId } from "@typedefs/api/common.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import fs from "fs";
+import type { GroupedServiceErrors } from "@/scripts/report-service-errors.js";
 
 const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
   const attachments: EmailImageAttachment[] = [];
@@ -547,23 +547,37 @@ export const sendDailyServiceErrorsEmail = async (
   const fromDate = dateFormat.format(from);
   const untilDate = dateFormat.format(until);
   const errors = [];
+  // NOTE: A bit of data munging here to accommodate limitations with how mustache can iterate over collections.
   for (const [unit, unitErrors] of Object.entries(serviceErrors)) {
     const unitErrorsByVersion = [];
     for (const err of unitErrors) {
       unitErrorsByVersion.push({
         unit: err.unit,
-        errors: Object.entries(err.errors).map(([version, errors]) => ({
-          version,
-          errors: errors.map((e) => ({
-            from: dateFormat.format(e.from),
-            until: dateFormat.format(e.until),
-            devices: e.devices,
-            count: `${e.count} event${e.count !== 1 ? "s" : ""}`,
-            logging: e.log,
-          })),
-        })),
+        errors: Object.entries(err.errors)
+          .map(([version, errors]) => ({
+            unit: err.unit,
+            version,
+            errors: errors
+              .map((e) => ({
+                from: dateFormat.format(e.from),
+                until: dateFormat.format(e.until),
+                devices: e.devices,
+                count: `${e.count} instance${e.count !== 1 ? "s" : ""}`,
+                c: e.count,
+                logging: e.log,
+              }))
+              .sort((a, b) => b.c - a.c),
+          }))
+          .sort(
+            (a, b) =>
+              b.errors.reduce((acc, item) => item.c + acc, 0) -
+              a.errors.reduce((acc, item) => item.c + acc, 0)
+          ),
       });
     }
+    unitErrorsByVersion.sort((a, b) => {
+      return a.errors.length - b.errors.length;
+    });
     errors.push({
       unit,
       unitErrorsByVersion,
@@ -590,7 +604,7 @@ export const sendDailyServiceErrorsEmail = async (
     html,
     text,
     recipientEmailAddress,
-    "⚠️ Service Errors in the last 24 hours",
+    "🧨💥 Service Errors in the last 24 hours",
     [...(await commonAttachments()), ...imageAttachments]
   );
 };
