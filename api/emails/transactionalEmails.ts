@@ -565,9 +565,9 @@ export const sendDailyServiceErrorsEmail = async (
                 devices: e.devices,
                 count: `${e.count} instance${e.count !== 1 ? "s" : ""}`,
                 c: e.count,
-                logging: e.log.map(({ line, level }) => {
+                logging: e.log.map(({ line, level }, index) => {
                   let l = "";
-                  if (level === "info") {
+                  if (level === "info" && index !== e.log.length - 1) {
                     l = "color: #01b601 !important";
                   } else if (level === "warn") {
                     l = "color: orange !important";

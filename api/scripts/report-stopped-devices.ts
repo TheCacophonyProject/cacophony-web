@@ -146,8 +146,10 @@ function generateText(stoppedDevices: Device[]): string {
       device.kind == DeviceType.Thermal ||
       device.kind == DeviceType.Hybrid
     ) {
-      lastTime = device.heartbeat;
-      nextTime = device.nextHeartbeat;
+      lastTime = device.heartbeat || device.lastConnectionTime;
+      const date = new Date(lastTime.getTime());
+      nextTime =
+        device.nextHeartbeat || new Date(date.setDate(date.getDate() + 1));
     }
     const deviceText = `${device.Group.groupName}- ${device.deviceName} id: ${
       device.id
@@ -173,11 +175,13 @@ function generateHtml(stoppedDevices: Device[]): string {
       const date = new Date(lastTime.getTime());
       nextTime = new Date(date.setDate(date.getDate() + 1));
     } else if (
-      device.kind === DeviceType.Thermal ||
-      device.kind === DeviceType.Hybrid
+      device.kind == DeviceType.Thermal ||
+      device.kind == DeviceType.Hybrid
     ) {
-      lastTime = device.heartbeat;
-      nextTime = device.nextHeartbeat;
+      lastTime = device.heartbeat || device.lastConnectionTime;
+      const date = new Date(lastTime.getTime());
+      nextTime =
+        device.nextHeartbeat || new Date(date.setDate(date.getDate() + 1));
     }
     const deviceText = `<li>${device.Group.groupName}-${
       device.deviceName
