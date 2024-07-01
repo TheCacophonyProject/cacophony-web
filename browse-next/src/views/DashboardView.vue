@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onMounted, provide, ref, watch } from "vue";
+import {
+  computed,
+  inject,
+  onBeforeMount,
+  onMounted,
+  provide,
+  ref,
+  watch,
+} from "vue";
 import type { Ref, ComputedRef } from "vue";
 import { getAllVisitsForProject } from "@api/Monitoring";
 import {
@@ -244,8 +252,9 @@ watch(timePeriodDays, loadVisits);
 watch(currentProject, reloadDashboard);
 
 const loadedRouteName = ref<string>("");
-onMounted(async () => {
+onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
+  console.log("Loaded route name", loadedRouteName.value);
   if (!classifications.value) {
     await getClassifications();
   }

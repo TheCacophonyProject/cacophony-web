@@ -2006,6 +2006,7 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
             recording.Group.groupName,
             recording.Device.deviceName,
             (recording.Station && recording.Station.name) || "unknown location",
+            recording.StationId,
             alertTime,
             alertClassification,
             matchedClassification,
@@ -2029,9 +2030,9 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
             await models.Event.create({
               DeviceId: recording.Device.id,
               EventDetailId: detail.id,
-              dateTime: alertTime,
+              dateTime: recording.recordingDateTime,
             });
-            await alert.update({ lastAlert: alertTime });
+            await alert.update({ lastAlert: recording.recordingDateTime });
           }
         }
       }

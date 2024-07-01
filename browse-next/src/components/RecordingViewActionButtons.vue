@@ -167,7 +167,7 @@ const notImplemented = () => {
       dropup
       auto-close
       no-caret
-      center="true"
+      :center="true"
       offset="7"
       variant="link"
       toggle-class="dropdown-btn btn-square btn-hi"

@@ -12,7 +12,7 @@ import logger from "@/logging.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
-import type { DeviceId } from "@typedefs/api/common.js";
+import type { DeviceId, StationId } from "@typedefs/api/common.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import fs from "fs";
@@ -391,6 +391,7 @@ export const sendAnimalAlertEmail = async (
   groupName: string,
   deviceName: string,
   stationName: string,
+  stationId: StationId,
   recordingTime: string,
   classification: string,
   matchedClassification: string,
@@ -410,9 +411,9 @@ export const sendAnimalAlertEmail = async (
   const matchedTag =
     matchedClassification.charAt(0).toUpperCase() +
     matchedClassification.slice(1);
-  const stationUrl = `${projectRoot}/locations/${urlNormaliseName(
-    stationName
-  )}`;
+  const stationUrl = stationId
+    ? `${projectRoot}/activity/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
+    : "";
   const recordingUrl = `${projectRoot}/recording/${recordingId}/tracks/${trackId}/detail`;
   const { text, html } = await createEmailWithTemplate("animal-alert.html", {
     targetTag,
@@ -564,7 +565,20 @@ export const sendDailyServiceErrorsEmail = async (
                 devices: e.devices,
                 count: `${e.count} instance${e.count !== 1 ? "s" : ""}`,
                 c: e.count,
-                logging: e.log,
+                logging: e.log.map(({ line, level }) => {
+                  let l = "";
+                  if (level === "info") {
+                    l = "color: #01b601 !important";
+                  } else if (level === "warn") {
+                    l = "color: orange !important";
+                  } else {
+                    l = "color: red !important; font-weight: bold;";
+                  }
+                  return {
+                    line,
+                    level: l,
+                  };
+                }),
               }))
               .sort((a, b) => b.c - a.c),
           }))

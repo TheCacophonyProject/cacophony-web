@@ -114,6 +114,9 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
         foundProcessFailLine = true;
       }
     }
+    if (!foundProcessFailLine) {
+      linesWeCareAbout.push(...details.logs.reverse());
+    }
     const levels = ["INFO", "FATAL", "WARN", "ERROR"].map((code) => [
       `[${code}]`,
       code.toLowerCase(),

@@ -46,6 +46,7 @@ async function main() {
   const devices = (await models.Device.stoppedDevices()).filter((device) => {
     if (
       device.kind === DeviceType.Thermal ||
+      device.kind === DeviceType.Hybrid ||
       device.kind === DeviceType.Unknown
     ) {
       // NOTE: Replicate the deviance of 1 minute from `models.Device.stoppedDevices()` above
@@ -56,15 +57,16 @@ async function main() {
       const hasAlerted =
         stoppedEvents.find(
           (event) =>
-            event.DeviceId == device.id &&
-            event.dateTime > nextHeartbeatMinusOneMin
+            event.DeviceId === device.id &&
+            (event.dateTime > nextHeartbeatMinusOneMin ||
+              event.dateTime > device.lastConnectionTime)
         ) !== undefined;
       return !hasAlerted;
     } else if (device.kind === DeviceType.Audio) {
       const hasAlerted =
         stoppedEvents.find(
           (event) =>
-            event.DeviceId == device.id &&
+            event.DeviceId === device.id &&
             event.dateTime > device.lastConnectionTime
         ) !== undefined;
       return !hasAlerted;
@@ -78,6 +80,7 @@ async function main() {
     return;
   }
 
+  // TODO: Update stopped devices template to use standard template.
   const userEvents = await getUserEvents(devices);
 
   const failedEmails = [];
@@ -170,8 +173,8 @@ function generateHtml(stoppedDevices: Device[]): string {
       const date = new Date(lastTime.getTime());
       nextTime = new Date(date.setDate(date.getDate() + 1));
     } else if (
-      device.kind == DeviceType.Thermal ||
-      device.kind == DeviceType.Hybrid
+      device.kind === DeviceType.Thermal ||
+      device.kind === DeviceType.Hybrid
     ) {
       lastTime = device.heartbeat;
       nextTime = device.nextHeartbeat;

@@ -304,9 +304,18 @@ export default function (
           {
             [Op.and]: [
               {
-                nextHeartbeat: {
-                  [Op.and]: [{ [Op.lt]: oneMinuteAgo }, { [Op.ne]: null }],
-                },
+                [Op.or]: [
+                  {
+                    nextHeartbeat: {
+                      [Op.and]: [{ [Op.lt]: oneMinuteAgo }, { [Op.ne]: null }],
+                    },
+                  },
+                  {
+                    lastConnectionTime: {
+                      [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
+                    },
+                  },
+                ],
               },
               { kind: { [Op.or]: [DeviceType.Thermal, DeviceType.Unknown] } },
             ],
@@ -330,6 +339,7 @@ export default function (
       ],
     });
   };
+
   Device.getFromNameAndGroup = async function (deviceName, groupName) {
     return this.findOne({
       where: { deviceName },
