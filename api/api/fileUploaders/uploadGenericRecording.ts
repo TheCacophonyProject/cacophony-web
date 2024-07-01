@@ -821,6 +821,7 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     updateDevicePayload.location = recording.location;
     updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
   }
+
   if (
     cameraTypes.includes(recording.type) &&
     (!uploadingGroup.lastThermalRecordingTime ||
@@ -840,7 +841,7 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     return new Promise((resolve, _reject) => {
       Promise.all([
         uploadingDevice.update(updateDevicePayload),
-        uploadingGroup.update(updateDevicePayload),
+        uploadingGroup.update(updateGroupPayload),
       ]).then(() => resolve());
     });
   } else if (hasDeviceUpdate) {
