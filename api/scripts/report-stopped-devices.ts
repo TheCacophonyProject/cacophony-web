@@ -149,7 +149,8 @@ function generateText(stoppedDevices: Device[]): string {
       lastTime = device.heartbeat || device.lastConnectionTime;
       const date = new Date(lastTime.getTime());
       nextTime =
-        device.nextHeartbeat || new Date(date.setDate(date.getDate() + 1));
+        (device.heartbeat && device.nextHeartbeat) ||
+        new Date(date.setDate(date.getDate() + 1));
     }
     const deviceText = `${device.Group.groupName}- ${device.deviceName} id: ${
       device.id
@@ -181,7 +182,8 @@ function generateHtml(stoppedDevices: Device[]): string {
       lastTime = device.heartbeat || device.lastConnectionTime;
       const date = new Date(lastTime.getTime());
       nextTime =
-        device.nextHeartbeat || new Date(date.setDate(date.getDate() + 1));
+        (device.heartbeat && device.nextHeartbeat) ||
+        new Date(date.setDate(date.getDate() + 1));
     }
     const deviceText = `<li>${device.Group.groupName}-${
       device.deviceName
