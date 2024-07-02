@@ -317,7 +317,15 @@ export default function (
                   },
                 ],
               },
-              { kind: { [Op.or]: [DeviceType.Thermal, DeviceType.Unknown] } },
+              {
+                kind: {
+                  [Op.or]: [
+                    DeviceType.Thermal,
+                    DeviceType.Unknown,
+                    DeviceType.Hybrid,
+                  ],
+                },
+              },
             ],
           },
           {

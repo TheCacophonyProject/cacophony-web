@@ -135,7 +135,9 @@ const notImplemented = () => {
 };
 </script>
 <template>
-  <div class="recording-icons d-flex justify-content-between px-sm-2">
+  <div
+    class="recording-icons d-flex justify-content-between px-sm-2 align-items-center"
+  >
     <button
       type="button"
       class="btn btn-square btn-hi"
@@ -200,7 +202,6 @@ const notImplemented = () => {
     >
       <font-awesome-icon icon="download" color="#666" />
     </button>
-
     <two-step-action-button
       :action="() => emit('delete-recording')"
       icon="trash-can"

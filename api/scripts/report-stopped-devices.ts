@@ -33,8 +33,8 @@ const getUserEvents = async (devices: Device[]): Promise<UserGroupDevices> => {
       userEvents[user.id] = userEvents[user.id] || { user: user, groups: {} };
       userEvents[user.id].groups[device.GroupId] = userEvents[user.id].groups[
         device.GroupId
-      ] || { group: device.Group, devices: [] };
-      userEvents[user.id].groups[device.GroupId].devices.push(device);
+      ] || { group: device.Group, stoppedDevices: [] };
+      userEvents[user.id].groups[device.GroupId].stoppedDevices.push(device);
     }
   }
   return userEvents;
