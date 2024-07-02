@@ -300,45 +300,9 @@ export default function (
     oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
     return this.findAll({
       where: {
-        [Op.or]: [
-          {
-            [Op.and]: [
-              {
-                [Op.or]: [
-                  {
-                    nextHeartbeat: {
-                      [Op.and]: [{ [Op.lt]: oneMinuteAgo }, { [Op.ne]: null }],
-                    },
-                  },
-                  {
-                    lastConnectionTime: {
-                      [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
-                    },
-                  },
-                ],
-              },
-              {
-                kind: {
-                  [Op.or]: [
-                    DeviceType.Thermal,
-                    DeviceType.Unknown,
-                    DeviceType.Hybrid,
-                  ],
-                },
-              },
-            ],
-          },
-          {
-            [Op.and]: [
-              {
-                lastConnectionTime: {
-                  [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
-                },
-              },
-              { kind: DeviceType.Audio },
-            ],
-          },
-        ],
+        lastConnectionTime: {
+          [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
+        },
       },
       include: [
         {

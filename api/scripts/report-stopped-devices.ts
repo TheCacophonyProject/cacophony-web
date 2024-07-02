@@ -52,29 +52,13 @@ async function main() {
 
   // filter devices which have already been alerted on
   const devices = (await models.Device.stoppedDevices()).filter((device) => {
-    if (
-      device.kind === DeviceType.Thermal ||
-      device.kind === DeviceType.Hybrid ||
-      device.kind === DeviceType.Unknown
-    ) {
-      const hasAlerted =
-        stoppedEvents.find(
-          (event) =>
-            event.DeviceId === device.id &&
-            event.dateTime > device.lastConnectionTime
-        ) !== undefined;
-      return !hasAlerted;
-    } else if (device.kind === DeviceType.Audio) {
-      const hasAlerted =
-        stoppedEvents.find(
-          (event) =>
-            event.DeviceId === device.id &&
-            event.dateTime > device.lastConnectionTime
-        ) !== undefined;
-      return !hasAlerted;
-    } else {
-      return false;
-    }
+    const hasAlerted =
+      stoppedEvents.find(
+        (event) =>
+          event.DeviceId === device.id &&
+          event.dateTime > device.lastConnectionTime
+      ) !== undefined;
+    return !hasAlerted;
   });
 
   if (devices.length == 0) {
