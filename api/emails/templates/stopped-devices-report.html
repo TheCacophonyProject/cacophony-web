@@ -2,19 +2,20 @@
   <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
     <br>
     <div style="font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#DF4726;padding-right:24px">
-      Stopped or offline devices report.
+      '{{ groupName }}': Stopped or offline devices report.
     </div>
     <br>
     <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333">
-      Hi, the following device(s) have either stopped/failed, or were unable to obtain internet connectivity at the scheduled time in order to connect to the Cacophony Monitoring platform.
-      <br><br>
-      {{ stoppedDevicesList }}
+      Hi, this email is to let you know that the battery for the devices(s) listed below may be flat.<br/>
+      It is sent if there has been no communication from the device to the Cacophony Monitoring platform for more than 24 hours.<br/><br/>
+      <ul>
+      {{#stoppedDevicesList}}
+        <li>{{.}}</li>
+      {{/stoppedDevicesList}}
+      </ul>
 
-      <div>
-        Missed device heartbeat May Tue 17th 8am.
-        This device has either stopped/failed, or was unable to obtain internet connectivity at the indicated time.
-        Missed heartbeat from Motutapu Station-Thermal134 id: 1616, received last message at May Tue 17th 5am expected to hear again at May Tue 17th 7am
-      </div>
+      <p style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:18px;text-align:left;color:#666">Note: the battery may not be flat if the device is out of coverage, or is simply no longer being used.<br />
+        You won't get another one of these emails until after the device has come back online again and is not heard from for 24 hours.</p>
 
       <br><br>
       &ndash; The Cacophony Team.
@@ -25,7 +26,7 @@
 <tr>
   <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
     <br><br>
-    You are receiving this email because you are currently an admin of the group '{{ groupName }}'. If you'd prefer not to receive these emails, you can <a href="{{ emailSettingsUrl }}" style="color:#aaaaaa">update your email preferences here</a>.
+    You are receiving this email because you are currently an admin of the project '{{ groupName }}'.
     <br><br>
 
     <strong>The Cacophony Project.</strong><br>

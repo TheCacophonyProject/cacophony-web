@@ -7,7 +7,6 @@ import type { Recording } from "@models/Recording.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import moment from "moment";
 import type { Alert } from "@models/Alert.js";
-import fs from "fs";
 
 export function alertBody(
   recording: Recording,
@@ -50,18 +49,23 @@ export async function sendEmail(
   text: string,
   to: string,
   subject: string,
-  imageAttachments: EmailImageAttachment[] = []
+  imageAttachments: EmailImageAttachment[] = [],
+  adminEmails: string[] = []
 ): Promise<boolean> {
   const client = new SMTPClient(config.smtpDetails);
   log.info(`Sending email with subject ${subject} to ${to}`);
   try {
-    const message = new Message({
+    const messageHeaders = {
       text,
       to,
       subject,
       from: config.smtpDetails.fromName,
       attachment: [{ data: html, alternative: true }],
-    });
+    };
+    if (adminEmails && adminEmails.length) {
+      (messageHeaders as any).bcc = adminEmails;
+    }
+    const message = new Message(messageHeaders);
     for (const image of imageAttachments) {
       message.attach({
         stream: Readable.from(image.buffer),
@@ -70,7 +74,6 @@ export async function sendEmail(
         name: image.cid,
       });
     }
-    //fs.writeFileSync("email-test.html", html);
     await client.sendAsync(message);
   } catch (err) {
     log.error(err.toString());

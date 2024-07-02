@@ -1,36 +1,44 @@
 import config from "../config.js";
 import log from "../logging.js";
 import type { Device } from "@models/Device.js";
-
-import moment from "moment";
 import modelsInit from "@models/index.js";
-import { sendEmail } from "@/emails/sendEmail.js";
 import { Op } from "sequelize";
 import { DeviceType } from "@typedefs/api/consts.js";
+import { sendStoppedDevicesReportEmail } from "@/emails/transactionalEmails.js";
+import type { GroupId, UserId } from "@typedefs/api/common.js";
+import type { User } from "@models/User.js";
+import type { Group } from "@models/Group.js";
 
 const models = await modelsInit();
 
-async function getUserEvents(devices: Device[]) {
+type UserGroupDevices = Record<
+  UserId,
+  {
+    user: User;
+    groups: Record<GroupId, { group: Group; stoppedDevices: Device[] }>;
+  }
+>;
+
+const getUserEvents = async (devices: Device[]): Promise<UserGroupDevices> => {
   const groupAdmins = {};
   const userEvents = {};
-
   for (const device of devices) {
     if (!groupAdmins.hasOwnProperty(device.GroupId)) {
-      const adminUsers = await device.Group.getUsers({
+      groupAdmins[device.GroupId] = await device.Group.getUsers({
         through: { where: { admin: true, removedAt: { [Op.eq]: null } } },
       });
-      groupAdmins[device.GroupId] = adminUsers;
     }
+    // TODO: Get the user group settings, and check if they've opted into these notifications.
     for (const user of groupAdmins[device.GroupId]) {
-      if (userEvents.hasOwnProperty(user.id)) {
-        userEvents[user.id].devices.push(device);
-      } else {
-        userEvents[user.id] = { user: user, devices: [device] };
-      }
+      userEvents[user.id] = userEvents[user.id] || { user: user, groups: {} };
+      userEvents[user.id].groups[device.GroupId] = userEvents[user.id].groups[
+        device.GroupId
+      ] || { group: device.Group, devices: [] };
+      userEvents[user.id].groups[device.GroupId].devices.push(device);
     }
   }
   return userEvents;
-}
+};
 
 async function main() {
   if (!config.smtpDetails) {
@@ -49,17 +57,11 @@ async function main() {
       device.kind === DeviceType.Hybrid ||
       device.kind === DeviceType.Unknown
     ) {
-      // NOTE: Replicate the deviance of 1 minute from `models.Device.stoppedDevices()` above
-      const nextHeartbeatMinusOneMin = new Date(device.nextHeartbeat);
-      nextHeartbeatMinusOneMin.setMinutes(
-        nextHeartbeatMinusOneMin.getMinutes() - 1
-      );
       const hasAlerted =
         stoppedEvents.find(
           (event) =>
             event.DeviceId === device.id &&
-            (event.dateTime > nextHeartbeatMinusOneMin ||
-              event.dateTime > device.lastConnectionTime)
+            event.dateTime > device.lastConnectionTime
         ) !== undefined;
       return !hasAlerted;
     } else if (device.kind === DeviceType.Audio) {
@@ -80,26 +82,18 @@ async function main() {
     return;
   }
 
-  // TODO: Update stopped devices template to use standard template.
   const userEvents = await getUserEvents(devices);
-
   const failedEmails = [];
-  for (const userID in userEvents) {
-    const userInfo = userEvents[userID];
-    const html = generateHtml(userInfo.devices);
-    const text = generateText(userInfo.devices);
-    if (
-      !(await sendEmail(html, text, userInfo.user.email, "Stopped Devices"))
-    ) {
-      failedEmails.push(userInfo.user.email);
-    }
-  }
-  if (config.server.adminEmails) {
-    for (const email of config.server.adminEmails) {
-      const html = generateHtml(devices);
-      const text = generateText(devices);
-      if (!(await sendEmail(html, text, email, "Stopped Devices"))) {
-        failedEmails.push(email);
+  for (const { user, groups } of Object.values(userEvents)) {
+    for (const { group, stoppedDevices } of Object.values(groups)) {
+      const success = await sendStoppedDevicesReportEmail(
+        config.server.browse_url.replace("https://", ""),
+        group.groupName,
+        stoppedDevices.map((device) => device.deviceName),
+        user.email
+      );
+      if (!success) {
+        failedEmails.push(user.email);
       }
     }
   }
@@ -131,72 +125,6 @@ async function main() {
   } catch (exception) {
     log.error("Failed to record stop-reported events. %s", exception.message);
   }
-}
-
-function generateText(stoppedDevices: Device[]): string {
-  let textBody = `Stopped Devices ${moment().format("MMM ddd Do ha")}\r\n`;
-  for (const device of stoppedDevices) {
-    let lastTime: Date;
-    let nextTime: Date;
-    if (device.kind == DeviceType.Audio) {
-      lastTime = device.lastConnectionTime;
-      const date = new Date(lastTime.getTime());
-      nextTime = new Date(date.setDate(date.getDate() + 1));
-    } else if (
-      device.kind == DeviceType.Thermal ||
-      device.kind == DeviceType.Hybrid
-    ) {
-      lastTime = device.heartbeat || device.lastConnectionTime;
-      const date = new Date(lastTime.getTime());
-      nextTime =
-        (device.heartbeat && device.nextHeartbeat) ||
-        new Date(date.setDate(date.getDate() + 1));
-    }
-    const deviceText = `${device.Group.groupName}- ${device.deviceName} id: ${
-      device.id
-    } has stopped, last last message at ${moment(lastTime).format(
-      "MMM ddd Do ha"
-    )} expected to hear again at  ${moment(nextTime).format(
-      "MMM ddd Do ha"
-    )}\r\n`;
-    textBody += deviceText;
-  }
-  textBody += "Thanks, Cacophony Team";
-  return textBody;
-}
-
-function generateHtml(stoppedDevices: Device[]): string {
-  let html = `<b>Stopped Devices ${moment().format("MMM ddd Do ha")} </b>`;
-  html += "<ul>";
-  for (const device of stoppedDevices) {
-    let lastTime: Date;
-    let nextTime: Date;
-    if (device.kind == DeviceType.Audio) {
-      lastTime = device.lastConnectionTime;
-      const date = new Date(lastTime.getTime());
-      nextTime = new Date(date.setDate(date.getDate() + 1));
-    } else if (
-      device.kind == DeviceType.Thermal ||
-      device.kind == DeviceType.Hybrid
-    ) {
-      lastTime = device.heartbeat || device.lastConnectionTime;
-      const date = new Date(lastTime.getTime());
-      nextTime =
-        (device.heartbeat && device.nextHeartbeat) ||
-        new Date(date.setDate(date.getDate() + 1));
-    }
-    const deviceText = `<li>${device.Group.groupName}-${
-      device.deviceName
-    } id: ${device.id} has stopped, received last message at ${moment(
-      lastTime
-    ).format("MMM ddd Do ha")} expected to hear again at ${moment(
-      nextTime
-    ).format("MMM ddd Do ha")}</li>`;
-    html += deviceText;
-  }
-  html += "</ul>";
-  html += "<br><p>Thanks,<br> Cacophony Team</p>";
-  return html;
 }
 
 main()

@@ -365,24 +365,29 @@ export const sendGroupMembershipRequestEmail = async (
 export const sendStoppedDevicesReportEmail = async (
   origin: string,
   groupName: string,
-  stoppedDevices: StoppedDevice[],
+  stoppedDevicesList: string[],
   userEmailAddress: string
 ) => {
   const common = commonInterpolants(origin);
-  // TODO User group settings
+
+  // TODO: When we've completely switched to browse-next, allow admins to opt-out of these notifications via settings.
   const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
   )}/my-settings`;
+
   const { text, html } = await createEmailWithTemplate(
     "stopped-devices-report.html",
-    { emailSettingsUrl, groupName, stoppedDevices, ...common }
+    { emailSettingsUrl, groupName, stoppedDevicesList, ...common }
   );
   return await sendEmail(
     html,
     text,
     userEmailAddress,
-    "Daily device health check for Cacophony Monitoring",
-    await commonAttachments()
+    `💔 Possible stopped or offline device${
+      stoppedDevicesList.length > 1 ? "s" : ""
+    } in '${groupName}'`,
+    await commonAttachments(),
+    config.server.adminEmails
   );
 };
 

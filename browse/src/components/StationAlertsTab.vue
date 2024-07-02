@@ -131,7 +131,9 @@ export default {
           name,
           alertsOn: conditions.map(({ tag }) => tag).join(", "),
           lastAlert:
-            lastAlert === null ? "never" : new Date(lastAlert).toLocaleString(),
+            lastAlert === "never"
+              ? lastAlert
+              : new Date(lastAlert).toLocaleString(),
           remove: "",
         };
       });

@@ -86,8 +86,7 @@ const scrapePlainTextFromHtml = (html: string): string => {
 export interface StoppedDevice {
   id: number;
   deviceName: string;
-  lastHeartbeat: Date;
-  nextHeartbeat: Date;
+  lastConnectionTime: Date;
 }
 
 export const createEmailWithTemplate = async (
