@@ -78,14 +78,11 @@ import {
 import type { Recording } from "@models/Recording.js";
 import config from "@config";
 import { streamS3Object } from "@api/V1/signedUrl.js";
-import { deleteFile } from "@models/util/util.js";
 import { uploadFileStream } from "@api/V1/util.js";
 import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
-import sequelize from "sequelize";
-import { fetchAuthorizedOptionalDeviceById } from "../extract-middleware.js";
 
 const models = await modelsInit();
 
@@ -114,18 +111,12 @@ export const mapDeviceResponse = (
       mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
     if (device.active) {
-      if (device.heartbeat && device.nextHeartbeat) {
-        // NOTE: If the device is inactive, we don't get a health indicator for it.
-        mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
-      } else {
-        const twentyFourHoursAgo = new Date();
-        twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 25);
-        mapped.isHealthy =
-          (device.lastConnectionTime &&
-            device.lastConnectionTime.getTime() >
-              twentyFourHoursAgo.getTime()) ||
-          false;
-      }
+      const twentyFourHoursAgo = new Date();
+      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+      mapped.isHealthy =
+        (device.lastConnectionTime &&
+          device.lastConnectionTime.getTime() > twentyFourHoursAgo.getTime()) ||
+        false;
     }
 
     if (device.location) {

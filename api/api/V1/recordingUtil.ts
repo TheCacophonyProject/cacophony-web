@@ -2033,6 +2033,11 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
               dateTime: recording.recordingDateTime,
             });
             await alert.update({ lastAlert: recording.recordingDateTime });
+          } else {
+            log.warning(
+              "Failed sending animal alert email to %s",
+              alert.User.email
+            );
           }
         }
       }

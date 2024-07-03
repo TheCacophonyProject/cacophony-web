@@ -3,7 +3,6 @@ import log from "../logging.js";
 import type { Device } from "@models/Device.js";
 import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
-import { DeviceType } from "@typedefs/api/consts.js";
 import { sendStoppedDevicesReportEmail } from "@/emails/transactionalEmails.js";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
 import type { User } from "@models/User.js";

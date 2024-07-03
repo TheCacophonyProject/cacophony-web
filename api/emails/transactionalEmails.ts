@@ -30,6 +30,16 @@ const commonInterpolants = (origin: string) => {
     cacophonyDisplayUrl: "browse.cacophony.org.nz",
   };
 };
+
+const getPermissions = (permissions: { owner?: boolean; admin?: boolean }) => {
+  const madeOwner = typeof permissions.owner === "boolean" && permissions.owner;
+  const removedOwner =
+    typeof permissions.owner === "boolean" && !permissions.owner;
+  const madeAdmin = typeof permissions.admin === "boolean" && permissions.admin;
+  const removedAdmin =
+    typeof permissions.admin === "boolean" && !permissions.admin;
+  return { madeAdmin, madeOwner, removedAdmin, removedOwner };
+};
 // const emailSettingsUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/settings`;
 // const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/station/${urlNormaliseGroupName(stationName)}`;
 // const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/station/${urlNormaliseGroupName(stationName)}/recording/${recordingId}/track/${trackId}`;
@@ -208,16 +218,6 @@ export const sendGroupInviteNewMemberEmail = async (
     "You've been invited to join a group on Cacophony Monitoring",
     await commonAttachments()
   );
-};
-
-const getPermissions = (permissions: { owner?: boolean; admin?: boolean }) => {
-  const madeOwner = typeof permissions.owner === "boolean" && permissions.owner;
-  const removedOwner =
-    typeof permissions.owner === "boolean" && !permissions.owner;
-  const madeAdmin = typeof permissions.admin === "boolean" && permissions.admin;
-  const removedAdmin =
-    typeof permissions.admin === "boolean" && !permissions.admin;
-  return { madeAdmin, madeOwner, removedAdmin, removedOwner };
 };
 
 export const sendAddedToGroupNotificationEmail = async (
@@ -625,5 +625,49 @@ export const sendDailyServiceErrorsEmail = async (
     recipientEmailAddress,
     "🧨💥 Service Errors in the last 24 hours",
     [...(await commonAttachments()), ...imageAttachments]
+  );
+};
+
+export const sendProjectActivityDigestEmail = async (
+    origin: string,
+    frequency: "Daily" | "Weekly",
+    projectName: string,
+    recipients: { email: string; userName: string }[],
+    visitsInfo: { species: string, count: number}[]
+) => {
+  const common = commonInterpolants(origin);
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    projectName
+  )}`;
+  const emailFrequency = frequency.toLowerCase();
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+
+  // TODO: Visits table, embed SVG icons.
+
+  const { text, html } = await createEmailWithTemplate(
+    "project-activity-digest.html",
+    {
+      emailSettingsUrl,
+      projectName,
+      emailFrequency,
+      visitsInfo,
+      ...common,
+    }
+  );
+  // TODO: How much info should we try to cram into these reports?
+  const recipientPromises = [];
+  for (const recipient of recipients) {
+    recipientPromises.push(
+      sendEmail(
+        html,
+        text,
+        `${recipient.userName} <${recipient.email}>`,
+        `📊 ${frequency} activity report for '${projectName}'`,
+        [...(await commonAttachments())]
+      )
+    );
+  }
+  return (await Promise.allSettled(recipientPromises)).every(
+    (success) => success.status === "fulfilled"
   );
 };

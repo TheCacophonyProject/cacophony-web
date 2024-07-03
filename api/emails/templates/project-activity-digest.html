@@ -1,0 +1,32 @@
+<tr>
+  <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+    <br>
+    <div style="font-family:Helvetica, Arial, sans-serif;padding-bottom:12px;color:rgb(13, 115, 38);padding-right:24px">
+      <span style="font-size:26px;font-weight:bold;">Activity in '{{ projectName }}'</span>
+    </div>
+    <br>
+    <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333">
+      Hi! <br>Here's your {{ emailFrequency }} update of activity in '{{ projectName }}'.
+      <br><br>
+      {{#visitsInfo}}
+        {{ species }}: {{ count }}
+      {{/visitsInfo}}
+      <br><br>
+      &ndash; The Cacophony Team.
+      <br><br>
+    </div>
+  </td>
+</tr>
+<tr>
+  <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
+    <br><br>
+    You are receiving this email because you are subscribed to {{ emailFrequency }} activity digests in the <strong>'{{ projectName }}'</strong> project. Update your <a href="{{ emailSettingsUrl }}" style="color:#aaaaaa">email digest preferences</a>.
+    <br><br>
+    <strong>The Cacophony Project.</strong><br>
+    <span class="ios-footer">
+New Zealand.<br>
+</span>
+    <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+    <br><br>
+  </td>
+</tr>

@@ -86,7 +86,7 @@ export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
   persistCreds(CurrentUserCreds.value);
 };
 
-export const persistUserGroupSettings = async (
+export const persistUserProjectSettings = async (
   userSettings: ApiProjectUserSettings
 ) => {
   if (currentSelectedProject.value) {

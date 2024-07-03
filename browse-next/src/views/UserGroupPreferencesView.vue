@@ -4,8 +4,10 @@ import {
   type ComputedRef,
   inject,
   onBeforeMount,
+  onMounted,
   type Ref,
   ref,
+  watch,
 } from "vue";
 import SectionHeader from "@/components/SectionHeader.vue";
 import type { ApiAlertResponse } from "@typedefs/api/alerts";
@@ -31,12 +33,16 @@ import type {
   GroupId as ProjectId,
   DeviceId,
 } from "@typedefs/api/common";
-import type { SelectedProject } from "@models/LoggedInUser.ts";
+import {
+  persistUserProjectSettings,
+  type SelectedProject,
+} from "@models/LoggedInUser.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import Multiselect from "@vueform/multiselect";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { LoadedResource } from "@api/types.ts";
+import { type ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -62,10 +68,56 @@ const selectedAddEmailAlert = ref(false);
 const alertOnTags = ref<string[]>([]);
 const maxAlertFrequencyMins = ref<number>(30);
 const alertScope = ref<"project" | "location" | "device">("project");
-const selectedLocation = ref<ApiLocationResponse | null>(null);
-const selectedDevice = ref<ApiDeviceResponse | null>(null);
+const selectedLocation = ref<LocationId | null>(null);
+const selectedDevice = ref<DeviceId | null>(null);
 const creatingAlert = ref<boolean>(false);
 const loadingAlerts = ref<boolean>(false);
+
+const userProjectSettings = computed<ApiProjectUserSettings>(() => {
+  return (
+    (currentProject.value as SelectedProject).userSettings || {
+      displayMode: "visits",
+      tags: [],
+      notificationPreferences: {},
+    }
+  );
+});
+const weeklyDigestEmails = ref<boolean>(false);
+const dailyDigestEmails = ref<boolean>(false);
+const savingDailyDigestSettings = ref<boolean>(false);
+const savingWeeklyDigestSettings = ref<boolean>(false);
+const initialised = ref<boolean>(false);
+onBeforeMount(() => {
+  weeklyDigestEmails.value =
+    userProjectSettings.value.notificationPreferences?.weeklyDigest || false;
+  dailyDigestEmails.value =
+    userProjectSettings.value.notificationPreferences?.dailyDigest || false;
+});
+onMounted(() => {
+  initialised.value = true;
+});
+
+watch(dailyDigestEmails, async (next) => {
+  if (initialised.value) {
+    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+    settings.notificationPreferences = settings.notificationPreferences || {};
+    settings.notificationPreferences.dailyDigest = next;
+    savingDailyDigestSettings.value = true;
+    await persistUserProjectSettings(settings);
+    savingDailyDigestSettings.value = false;
+  }
+});
+
+watch(weeklyDigestEmails, async (next) => {
+  if (initialised.value) {
+    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+    settings.notificationPreferences = settings.notificationPreferences || {};
+    settings.notificationPreferences.weeklyDigest = next;
+    savingWeeklyDigestSettings.value = true;
+    await persistUserProjectSettings(settings);
+    savingWeeklyDigestSettings.value = false;
+  }
+});
 
 const formIsValid = computed<boolean>(() => {
   return alertOnTags.value.length !== 0 && scopeId.value !== null;
@@ -141,14 +193,16 @@ const saveAlert = async () => {
 
 interface AlertItem {
   alertOn: string[];
-  alertScope: "This project" | ApiLocationResponse | ApiDeviceResponse;
+  alertScope: "This project" | ApiLocationResponse | ApiDeviceResponse | null;
   lastTriggered: string;
   minimumTimeBetweenTriggers: string;
   __scope: "project" | "device" | "location";
   _deleteAction: AlertId;
 }
 
-const getAlertScope = (alert: ApiAlertResponse) => {
+const getAlertScope = (
+  alert: ApiAlertResponse
+): "This project" | ApiDeviceResponse | ApiLocationResponse | null => {
   if (alert.scope === "project") {
     return "This project";
   } else if (
@@ -176,7 +230,6 @@ const getAlertScope = (alert: ApiAlertResponse) => {
 };
 
 const alertItems = computed<AlertItem[]>(() => {
-  // TODO: Could resolve alert scope into Location, Project or device name.
   return alerts.value.map((alert: ApiAlertResponse) => ({
     alertOn: alert.conditions.map(({ tag }) => tag),
     alertScope: getAlertScope(alert),
@@ -323,12 +376,32 @@ const alertItems = computed<AlertItem[]>(() => {
       </div>
     </template>
   </card-table>
-  <hr />
-  <div class="d-flex justify-content-end">
+  <div class="d-flex justify-content-end mt-3">
     <b-button @click="selectedAddEmailAlert = true">
       <font-awesome-icon icon="plus" /> Create an email alert
     </b-button>
   </div>
+  <hr />
+
+  <h6>Project activity digest email preferences</h6>
+  <p>
+    Get daily or weekly break-downs of activity in your project &ndash; direct
+    to your inbox.
+  </p>
+  <b-form-checkbox switch v-model="dailyDigestEmails"
+    >I want to receive a daily activity digest<b-spinner
+      class="ms-1"
+      v-if="savingDailyDigestSettings"
+      variant="secondary"
+      small
+  /></b-form-checkbox>
+  <b-form-checkbox switch v-model="weeklyDigestEmails"
+    >I want to receive a weekly activity digest<b-spinner
+      class="ms-1"
+      v-if="savingWeeklyDigestSettings"
+      variant="secondary"
+      small
+  /></b-form-checkbox>
 
   <b-modal
     v-model="selectedAddEmailAlert"
@@ -384,20 +457,22 @@ const alertItems = computed<AlertItem[]>(() => {
       ></b-form-input>
     </div>
   </b-modal>
-
-  <!--  <h6 class="mt-4">TODO</h6>-->
-  <!--  <ul>-->
-  <!--    <li>My preferred tags for video, audio?</li>-->
-  <!--  </ul>-->
-
-  <leave-project-modal v-model="selectedLeaveProject" />
-  <button
-    class="btn btn-outline-danger"
-    type="button"
-    @click="selectedLeaveProject = true"
-    v-if="!isNotOnlyProjectOwnerOrAdmin"
-  >
-    Leave this project
-  </button>
+  <div v-if="false && !isNotOnlyProjectOwnerOrAdmin">
+    <!--  TODO - Let users leave a group of their own accord  -->
+    <hr />
+    <h6>Leave project</h6>
+    <p>
+      If you no longer want to be part of this project, click here to leave it.
+    </p>
+    <leave-project-modal v-model="selectedLeaveProject" />
+    <button
+      class="btn btn-outline-danger"
+      type="button"
+      @click="selectedLeaveProject = true"
+      v-if="!isNotOnlyProjectOwnerOrAdmin"
+    >
+      Leave this project
+    </button>
+  </div>
 </template>
 <style src="@vueform/multiselect/themes/default.css"></style>
