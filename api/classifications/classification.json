@@ -21,6 +21,9 @@
           "label": "goat"
         },
         {
+          "label": "fox"
+        },
+        {
           "label": "hedgehog"
         },
         {
@@ -860,7 +863,7 @@
         },
         {
           "label": "whistler",
-          "children":[
+          "children": [
             {
               "label": "golden whistler"
             },
