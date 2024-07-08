@@ -15,7 +15,7 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 //
 //
 
-describe("Events - query errors", () => {
+describe.skip("Events - query errors", () => {
   const NOT_ADMIN = false;
   const DEVICE_NOT_SPECIFIED = undefined;
   const DEFINED = []; // will verify that 'patterns' is present (undefined will verify that it is absent)

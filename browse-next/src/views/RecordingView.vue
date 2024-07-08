@@ -422,10 +422,21 @@ const visitForRecording = computed<string>(() => {
     if (humanTagCounts.length) {
       let bestHumanTagCount = 0;
       let bestHumanTag;
-      for (const [tag, count] of humanTagCounts) {
+      // If there's anything human tagged that's not false-positive or unidentified, use that first.
+      for (const [tag, count] of humanTagCounts.filter(
+        ([tag, _]) => !["false-positive", "unidentified"].includes(tag)
+      )) {
         if (count > bestHumanTagCount) {
           bestHumanTagCount = count;
           bestHumanTag = tag;
+        }
+      }
+      if (!bestHumanTag) {
+        for (const [tag, count] of humanTagCounts) {
+          if (count > bestHumanTagCount) {
+            bestHumanTagCount = count;
+            bestHumanTag = tag;
+          }
         }
       }
       return (
@@ -1058,9 +1069,9 @@ const requestedDownload = async () => {
       : "application/octet-stream";
     download(
       URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
-      `recording_${recordingId}${new Date(
-        rec.recordingDateTime
-      ).toLocaleString()}.${getExtensionForMimeType(mimeType)}`
+      `recording-${recordingId}-${DateTime.fromJSDate(
+        new Date(rec.recordingDateTime)
+      ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`
     );
   }
 };

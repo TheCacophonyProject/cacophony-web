@@ -15,6 +15,7 @@ import {
   userIsProjectAdmin,
   userProjects,
   userHasProjects,
+  allHistoricLocations,
 } from "@models/provides";
 import {
   currentSelectedProject as fallibleCurrentSelectedProject,
@@ -26,6 +27,7 @@ import {
   userIsLoggedIn as hasLoggedInUser,
   userHasProjects as hasProjects,
   UserProjects,
+  LocationsForCurrentProject,
 } from "@models/LoggedInUser";
 
 const app = createApp(App);
@@ -35,6 +37,7 @@ app.use(createBootstrap());
 app.use(BToast);
 
 app.provide(selectedProjectDevices, DevicesForCurrentProject);
+app.provide(allHistoricLocations, LocationsForCurrentProject);
 app.provide(currentSelectedProject, fallibleCurrentSelectedProject);
 app.provide(
   urlNormalisedCurrentSelectedProjectName,

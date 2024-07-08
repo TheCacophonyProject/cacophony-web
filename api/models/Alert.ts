@@ -21,7 +21,12 @@ import type { Recording } from "./Recording.js";
 import type { Track } from "./Track.js";
 import type { TrackTag } from "./TrackTag.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
-import type { DeviceId, StationId, UserId } from "@typedefs/api/common.js";
+import type {
+  DeviceId,
+  GroupId,
+  StationId,
+  UserId,
+} from "@typedefs/api/common.js";
 import logger from "../logging.js";
 import { alertBody, sendEmail } from "@/emails/sendEmail.js";
 //
@@ -30,6 +35,7 @@ const Op = Sequelize.Op;
 
 export interface AlertCondition {
   tag: string;
+  automatic: boolean;
 }
 export function isAlertCondition(condition: any) {
   return condition.hasOwnProperty("tag");
@@ -41,13 +47,21 @@ export interface Alert extends Sequelize.Model, ModelCommon<Alert> {
   UserId: UserId;
   StationId: StationId | null;
   DeviceId: DeviceId | null;
+  GroupId: GroupId | null;
   conditions: AlertCondition[];
   frequencySeconds: number;
+  lastAlert: Date;
+  User?: {
+    id: UserId;
+    userName: string;
+    email: string;
+    emailConfirmed: boolean;
+  };
   sendAlert: (
     recording: Recording,
     track: Track,
     tag: TrackTag,
-    alertOn: "station" | "device",
+    alertOn: "station" | "device" | "project",
     thumbnail?: EmailImageAttachment
   ) => Promise<null>;
 }
@@ -71,10 +85,17 @@ export interface AlertStatic extends ModelStaticCommon<Alert> {
     trackTag?: TrackTag | null,
     asAdmin?: boolean
   ) => Promise<Alert[]>;
+  queryUserProject: (
+    projectId: GroupId,
+    userId: UserId | null,
+    trackTag?: TrackTag | null,
+    asAdmin?: boolean
+  ) => Promise<Alert[]>;
   getActiveAlerts: (
     tagPath: string,
     deviceId?: DeviceId,
-    stationId?: StationId
+    stationId?: StationId,
+    groupId?: GroupId
   ) => Promise<Alert[]>;
 }
 
@@ -103,6 +124,7 @@ export default function (sequelize, DataTypes): AlertStatic {
     models.Alert.belongsTo(models.User);
     models.Alert.belongsTo(models.Device);
     models.Alert.belongsTo(models.Station);
+    models.Alert.belongsTo(models.Group);
   };
 
   Alert.queryUserDevice = async (
@@ -133,6 +155,20 @@ export default function (sequelize, DataTypes): AlertStatic {
     );
   };
 
+  Alert.queryUserProject = async (
+    projectId: GroupId,
+    userId: UserId | null,
+    trackTag: TrackTag | null = null,
+    asAdmin: boolean = false
+  ): Promise<Alert[]> => {
+    return Alert.query(
+      { GroupId: projectId },
+      userId,
+      (trackTag && trackTag.path) || null,
+      asAdmin
+    );
+  };
+
   Alert.query = async function (
     where: any,
     userId: UserId | null,
@@ -157,7 +193,7 @@ export default function (sequelize, DataTypes): AlertStatic {
       (whereClause as any).include = [
         {
           model: models.User,
-          attributes: ["id", "userName", "email"],
+          attributes: ["id", "userName", "email", "emailConfirmed"],
         },
       ];
     }
@@ -178,18 +214,22 @@ export default function (sequelize, DataTypes): AlertStatic {
   Alert.getActiveAlerts = async function (
     tagPath: string,
     deviceId?: DeviceId,
-    stationId?: StationId
+    stationId?: StationId,
+    groupId?: GroupId
   ): Promise<Alert[]> {
-    const deviceOrStation = [];
+    const deviceOrLocationOrProject = [];
     if (deviceId) {
-      deviceOrStation.push({ DeviceId: deviceId });
+      deviceOrLocationOrProject.push({ DeviceId: deviceId });
     }
     if (stationId) {
-      deviceOrStation.push({ StationId: stationId });
+      deviceOrLocationOrProject.push({ StationId: stationId });
+    }
+    if (groupId) {
+      deviceOrLocationOrProject.push({ GroupId: groupId });
     }
     return Alert.query(
       {
-        [Op.or]: deviceOrStation,
+        [Op.or]: deviceOrLocationOrProject,
         lastAlert: {
           [Op.or]: {
             [Op.eq]: null,
@@ -209,7 +249,7 @@ export default function (sequelize, DataTypes): AlertStatic {
     recording: Recording,
     track: Track,
     tag: TrackTag,
-    alertOn: "station" | "device",
+    alertOn: "station" | "device" | "project",
     thumbnail?: EmailImageAttachment
   ) {
     const subject = `${this.name}  - ${tag.what} Detected`;
@@ -219,7 +259,9 @@ export default function (sequelize, DataTypes): AlertStatic {
       this,
       !!thumbnail,
       alertOn === "device" ? recording.Device?.deviceName : undefined,
-      alertOn === "station" ? recording.Station?.name : undefined
+      ["project", "station"].includes(alertOn)
+        ? recording.Station?.name
+        : undefined
     );
     const alertTime = new Date().toISOString();
     const result = await sendEmail(

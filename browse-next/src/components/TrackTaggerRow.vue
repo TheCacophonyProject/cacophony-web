@@ -426,7 +426,7 @@ onMounted(async () => {
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="masterTag"
-          >{{ masterTag.what }}</span
+          >{{ displayLabelForClassificationLabel(masterTag.what) }}</span
         >
       </div>
       <span v-else-if="hasUserTag" class="d-flex flex-column">
@@ -451,7 +451,9 @@ onMounted(async () => {
               consensusUserTag
           "
           >{{ consensusUserTag }}
-          <span class="strikethrough">{{ masterTag?.what }}</span></span
+          <span class="strikethrough">{{
+            displayLabelForClassificationLabel(masterTag.what)
+          }}</span></span
         >
         <!-- Controversial tag, should be automatically flagged for review. -->
         <span
@@ -466,7 +468,9 @@ onMounted(async () => {
               .map((tag) => displayLabelForClassificationLabel(tag))
               .join(", ")
           }}
-          <span class="strikethrough">{{ masterTag?.what }}</span></span
+          <span class="strikethrough">{{
+            displayLabelForClassificationLabel(masterTag.what)
+          }}</span></span
         >
         <span
           class="classification text-capitalize d-inline-block fw-bold conflicting-tags"

@@ -571,6 +571,13 @@ const getCurrentQuery = (): LocationQuery => {
   } else {
     delete query["labelled-with"];
   }
+  if (query["display-mode"] === "visits") {
+    delete query["tag-mode"];
+    delete query["labelled-with"];
+    delete query["no-false-positives"];
+    delete query["include-descendant-tags"];
+    delete query["recording-mode"];
+  }
   return query;
 };
 const updateDateRouteComponent = async (
@@ -602,13 +609,24 @@ const updateDateRouteComponent = async (
         delete query.until;
       }
     } else {
-      query.from = combinedDateRange.value[0].toISOString();
-      query.until = combinedDateRange.value[1].toISOString();
+      query.from = startOfDay(combinedDateRange.value[0]).toISOString();
+      query.until = endOfDay(combinedDateRange.value[1]).toISOString();
     }
     await router.replace({
       query,
     });
   }
+};
+
+const endOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+const startOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
 const updateRoute = async (
@@ -701,6 +719,7 @@ const syncParams = (
   } else {
     selectedTags.value = [];
   }
+  showUntaggedOnly.value = tagMode.value === TagMode.UnTagged;
   if (next.labelledWith && next.labelledWith.length) {
     starredLabel.value = next.labelledWith.includes(COOL);
     flaggedLabel.value = next.labelledWith.includes(FLAG);
@@ -1111,16 +1130,16 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       />
     </div>
   </div>
-  <b-button
-    variant="secondary"
-    class="w-100 mt-3"
-    :size="scrolledToStickyPosition ? 'sm' : 'md'"
-    :disabled="!searchIsValid || searching"
-    @click="emit('search-requested')"
-  >
-    <b-spinner v-if="searching" small />
-    Search
-  </b-button>
+  <!--  <b-button-->
+  <!--    variant="secondary"-->
+  <!--    class="w-100 mt-3"-->
+  <!--    :size="scrolledToStickyPosition ? 'sm' : 'md'"-->
+  <!--    :disabled="!searchIsValid || searching"-->
+  <!--    @click="emit('search-requested')"-->
+  <!--  >-->
+  <!--    <b-spinner v-if="searching" small />-->
+  <!--    Search-->
+  <!--  </b-button>-->
   <b-button
     variant="link"
     :size="scrolledToStickyPosition ? 'sm' : 'md'"

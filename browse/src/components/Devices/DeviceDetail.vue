@@ -134,7 +134,7 @@ export default {
     visitsQuery() {
       return {
         page: 1,
-        perPage: 100,
+        perPage: 50,
         days: "all",
         // TODO(jon): This should really be chunked into a per-day type thing.
 

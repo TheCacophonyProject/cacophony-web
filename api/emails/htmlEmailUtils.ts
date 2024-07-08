@@ -86,16 +86,12 @@ const scrapePlainTextFromHtml = (html: string): string => {
 export interface StoppedDevice {
   id: number;
   deviceName: string;
-  lastHeartbeat: Date;
-  nextHeartbeat: Date;
+  lastConnectionTime: Date;
 }
 
 export const createEmailWithTemplate = async (
   templateFilename: string,
-  interpolants: Record<
-    string,
-    string | number | StoppedDevice[] | string[] | boolean
-  >
+  interpolants: Record<string, string | number | string[] | boolean | any>
 ) => {
   const baseTemplate = (
     await fs.readFile(`${__dirname}/templates/base-template.html`)

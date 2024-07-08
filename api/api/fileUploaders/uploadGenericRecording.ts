@@ -820,19 +820,20 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
   ) {
     updateDevicePayload.location = recording.location;
     updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
-    if (
-      cameraTypes.includes(recording.type) &&
-      (!uploadingGroup.lastThermalRecordingTime ||
-        uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
-    ) {
-      updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
-    } else if (
-      recording.type === RecordingType.Audio &&
-      (!uploadingGroup.lastAudioRecordingTime ||
-        uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
-    ) {
-      updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
-    }
+  }
+
+  if (
+    cameraTypes.includes(recording.type) &&
+    (!uploadingGroup.lastThermalRecordingTime ||
+      uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
+  ) {
+    updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
+  } else if (
+    recording.type === RecordingType.Audio &&
+    (!uploadingGroup.lastAudioRecordingTime ||
+      uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
+  ) {
+    updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
   }
   const hasGroupUpdate = Object.keys(updateGroupPayload).length !== 0;
   const hasDeviceUpdate = Object.keys(updateDevicePayload).length !== 0;
@@ -840,7 +841,7 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     return new Promise((resolve, _reject) => {
       Promise.all([
         uploadingDevice.update(updateDevicePayload),
-        uploadingGroup.update(updateDevicePayload),
+        uploadingGroup.update(updateGroupPayload),
       ]).then(() => resolve());
     });
   } else if (hasDeviceUpdate) {

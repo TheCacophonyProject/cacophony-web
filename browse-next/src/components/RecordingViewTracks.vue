@@ -183,6 +183,7 @@ const addOrRemoveUserTag = async ({
   tag: string;
   trackId: TrackId;
 }) => {
+  console.log("Add or remove user tag");
   if (props.recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal

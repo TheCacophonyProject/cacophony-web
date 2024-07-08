@@ -1,5 +1,5 @@
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import type { LocationQuery, LocationQueryValue } from "vue-router";
+import type { LocationQueryValue } from "vue-router";
 
 export enum ActivitySearchRecordingMode {
   Cameras = "cameras",

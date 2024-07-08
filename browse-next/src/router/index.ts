@@ -22,13 +22,21 @@ import {
   userHasProjects,
   userIsAdminForCurrentSelectedProject,
   userIsLoggedIn,
+  LocationsForCurrentProject,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
-import { getDevicesForProject, getProjects } from "@api/Project";
+import {
+  getDevicesForProject,
+  getLocationsForProject,
+  getProjects,
+} from "@api/Project";
 import { nextTick, reactive } from "vue";
 import { decodeJWT, urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DeviceType } from "@typedefs/api/consts.ts";
+import type { LoadedResource } from "@api/types.ts";
 
 // Allows us to abort all pending fetch requests when switching between major views.
 export const CurrentViewAbortController = {
@@ -245,6 +253,11 @@ const router = createRouter({
               name: "device-uploads",
               component: () => import("@/views/DeviceUploadsSubView.vue"),
             },
+            // {
+            //   path: "events",
+            //   name: "device-events",
+            //   component: () => import("@/views/DeviceEventsSubView.vue"),
+            // },
             {
               path: "insights",
               name: "device-insights",
@@ -613,18 +626,29 @@ router.beforeEach(async (to, from, next) => {
         });
 
         if (currentSelectedProject.value) {
-          // Get the devices for the current group.
-          if (!DevicesForCurrentProject.value || switchedProject) {
-            const devices = await getDevicesForProject(
-              currentSelectedProject.value.id,
-              false,
-              true
-            );
-            if (devices) {
-              DevicesForCurrentProject.value = devices;
-            }
+          // Get the devices and locations for the current group.
+          if (
+            !DevicesForCurrentProject.value ||
+            !LocationsForCurrentProject.value ||
+            switchedProject
+          ) {
+            const [devices, locations] = await Promise.all([
+              getDevicesForProject(
+                currentSelectedProject.value.id,
+                false,
+                true
+              ),
+              getLocationsForProject(currentSelectedProject.value.id, true),
+            ]);
+            DevicesForCurrentProject.value = devices as LoadedResource<
+              ApiDeviceResponse[]
+            >;
+            LocationsForCurrentProject.value = locations as LoadedResource<
+              ApiLocationResponse[]
+            >;
           }
         } else {
+          LocationsForCurrentProject.value = null;
           DevicesForCurrentProject.value = null;
         }
       } else {

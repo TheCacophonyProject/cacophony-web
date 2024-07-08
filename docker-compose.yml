@@ -1,8 +1,8 @@
-version: "2.4"
 services:
   server:
     container_name: cacophony-api
-    build: ""
+    build:
+      context: .
     environment:
       POSTGRES_PASSWORD: test
       POSTGRES_USER: test

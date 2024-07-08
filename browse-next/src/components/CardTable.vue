@@ -145,7 +145,7 @@ const shouldRenderAsRows = computed(() => width.value >= props.maxCardWidth);
 const hasItems = computed(() => props.items.length !== 0);
 const headings = computed<string[]>(() => {
   if (props.items.length) {
-    return Object.keys(props.items[0]);
+    return Object.keys(props.items[0]).filter((h) => !h.startsWith("__"));
   }
   return [];
 });

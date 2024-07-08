@@ -81,7 +81,7 @@ async function getAllVisits(
   let morePagesExist = true;
   let request = 0;
   let nextRequestQuery = visitQuery;
-  nextRequestQuery.perPage = 100;
+  nextRequestQuery.perPage = 50;
   nextRequestQuery.page = 1;
   while (morePagesExist && request < 100) {
     request++;

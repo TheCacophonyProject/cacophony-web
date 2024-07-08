@@ -45,7 +45,16 @@ export const smtpDetails = {
     user: "noinfo@cacophony.org.nz",
     pass: "thesecretpassword",
   },
+  platformUsageEmail: "usage@example.com",
+  serviceErrorsEmail: "service-errors@example.com"
 };
+
+// List of devices to ignore when making the service error report.
+export const deviceErrorIgnoreList = [];
+// List of Cacophony users to ignore in platform usage report
+export const cacophonyUserIds = [];
+// List of Cacophony groups to ignore in platform usage report
+export const cacophonyGroupIds = [];
 
 // This is needed because Sequelize looks for development by default
 // when using db:migrate
@@ -57,4 +66,7 @@ export default {
   s3Archive,
   database,
   development: database,
+  deviceErrorIgnoreList,
+  cacophonyUserIds,
+  cacophonyGroupIds
 };

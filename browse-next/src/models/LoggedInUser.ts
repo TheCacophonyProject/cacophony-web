@@ -12,6 +12,7 @@ import type {
   ApiGroupSettings as ApiProjectSettings,
   ApiGroupUserSettings as ApiProjectUserSettings,
 } from "@typedefs/api/group";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { decodeJWT, urlNormaliseName } from "@/utils";
 import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
@@ -41,6 +42,8 @@ export const CurrentUser = ref<LoadedResource<LoggedInUser>>(null);
 export const UserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 export const DevicesForCurrentProject =
   ref<LoadedResource<ApiDeviceResponse[]>>(null);
+export const LocationsForCurrentProject =
+  ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 export const nonPendingUserProjects = computed<ApiProjectResponse[]>(() => {
   if (!UserProjects.value) {
@@ -292,9 +295,8 @@ export const switchCurrentProject = (newGroup: {
       console.warn("!!! Abort requests");
       CurrentViewAbortController.newView();
     }
-
-    // FIXME - Clear current devices, locations etc from global project scope.
     DevicesForCurrentProject.value = null;
+    LocationsForCurrentProject.value = null;
 
     setLoggedInUserData({
       ...loggedInUser,
@@ -539,6 +541,22 @@ export const projectDevicesLoaded = async () => {
   } else {
     return new Promise((resolve, reject) => {
       watch(DevicesForCurrentProject, (next) => {
+        if (next && next?.length) {
+          resolve(true);
+        } else {
+          reject();
+        }
+      });
+    });
+  }
+};
+
+export const projectLocationsLoaded = async () => {
+  if (LocationsForCurrentProject.value !== null) {
+    return true;
+  } else {
+    return new Promise((resolve, reject) => {
+      watch(LocationsForCurrentProject, (next) => {
         if (next && next?.length) {
           resolve(true);
         } else {

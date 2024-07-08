@@ -96,11 +96,11 @@ export interface QueryRecordingsOptions {
   locations?: LocationId[];
   taggedWith?: string[];
   labelledWith?: string[];
-  fromDateTime?: Date;
-  untilDateTime?: Date;
+  fromDateTime?: Date | null;
+  untilDateTime?: Date | null;
   limit?: number;
   tagMode?: TagMode;
-  includeFilteredFalsePositivesAndNones: boolean;
+  includeFilteredFalsePositivesAndNones?: boolean;
   subClassTags?: boolean;
 
   durationMinSecs?: number;
@@ -148,6 +148,11 @@ export const queryRecordingsInProjectNew = (
       params.append("locations", locationId.toString());
     }
   }
+  if (options.types) {
+    for (const type of options.types) {
+      params.append("types", type);
+    }
+  }
   if (options.fromDateTime) {
     params.append("from", options.fromDateTime.toISOString());
   }
@@ -156,6 +161,9 @@ export const queryRecordingsInProjectNew = (
   }
   if (options.countAll) {
     params.append("with-total-count", true.toString());
+  }
+  if (options.limit) {
+    params.append("max-results", options.limit.toString());
   }
   // Do we want this, or do we want to show processing recordings?
   // params.append("processingState", RecordingProcessingState.Finished);
@@ -244,32 +252,29 @@ export const getAllRecordingsForProjectBetweenTimes = async (
   query: QueryRecordingsOptions,
   progressUpdater: (progress: number) => void
 ): Promise<ApiRecordingResponse[]> => {
-  query.limit = 100;
+  query.limit = 1000;
   const recordings = [];
   let moreRecordingsToLoad = true;
-
-  const countResponse = await queryRecordingsInProjectNew(projectId, {
-    ...query,
-    limit: 1,
-    countAll: true,
-  });
-  if (countResponse.success) {
-    const countEstimate = countResponse.result.count as number;
-    while (moreRecordingsToLoad) {
-      const response = await queryRecordingsInProjectNew(projectId, query);
-      if (response.success) {
-        const result = response.result;
-        moreRecordingsToLoad = result.count === query.limit;
-        recordings.push(...result.recordings);
-        if (recordings.length) {
-          //debugger;
-          query.untilDateTime = new Date(
-            recordings[recordings.length - 1].recordingDateTime
-          );
-          query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
-        }
-        progressUpdater(recordings.length / countEstimate);
+  let countEstimate = null;
+  while (moreRecordingsToLoad) {
+    const response = await queryRecordingsInProjectNew(projectId, {
+      ...query,
+      ...(countEstimate === null ? { countAll: true } : {}),
+    });
+    if (response.success) {
+      const result = response.result;
+      if (result.count && countEstimate === null) {
+        countEstimate = result.count;
       }
+      recordings.push(...result.recordings);
+      moreRecordingsToLoad = recordings.length < (countEstimate as number);
+      if (recordings.length) {
+        query.untilDateTime = new Date(
+          recordings[recordings.length - 1].recordingDateTime
+        );
+        query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
+      }
+      progressUpdater(recordings.length / (countEstimate as number));
     }
   }
   return recordings;

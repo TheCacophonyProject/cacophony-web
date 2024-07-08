@@ -6,6 +6,7 @@ export interface TagItem {
   what: string;
   path: string;
   displayName: string;
+  count: number;
 }
 
 export const tagsForRecording = (
@@ -23,7 +24,9 @@ export const tagsForRecording = (
         what: tag.what,
         path: tag.path,
         displayName: tag.what,
+        count: 0,
       };
+
       const existingTag = uniqueTrackTags[tag.what];
       if (!existingTag.human && !tag.automatic) {
         isHumanTagged = true;
@@ -36,6 +39,7 @@ export const tagsForRecording = (
     for (const tag of Object.values(uniqueTrackTags)) {
       if ((isHumanTagged && tag.human) || (!isHumanTagged && tag.automatic)) {
         uniqueTags[tag.what] = uniqueTags[tag.what] || tag;
+        uniqueTags[tag.what].count++;
       }
     }
     // Just take the human tags for the track, fall back to automatic.

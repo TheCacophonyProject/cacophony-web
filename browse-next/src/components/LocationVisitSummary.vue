@@ -160,6 +160,16 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       margin-left: 19px;
     }
   }
+
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.2s ease-in-out;
+  &:hover {
+    background-color: #ececec;
+    border-bottom: 4px solid #999;
+  }
 }
 .visit-species-breakdown {
   .species-count {

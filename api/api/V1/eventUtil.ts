@@ -1,45 +1,10 @@
 import modelsInit from "@models/index.js";
 import type { Device } from "@models/Device.js";
 import type { Event, QueryOptions } from "@models/Event.js";
-import { groupSystemErrors } from "./systemError.js";
 import type { Moment } from "moment";
 import moment from "moment";
-import type { DeviceId, IsoFormattedDateString } from "@typedefs/api/common.js";
 
 const models = await modelsInit();
-export const errors = async (
-  request: {
-    query: {
-      limit?: number;
-      offset?: number;
-      startTime?: IsoFormattedDateString;
-      endTime?: IsoFormattedDateString;
-      deviceId?: DeviceId;
-    };
-    res: any;
-  },
-  admin?: boolean
-) => {
-  const query = request.query;
-  const options = {
-    eventType: "systemError",
-    admin: admin === true,
-    useCreatedDate: true,
-  } as QueryOptions;
-
-  const result = await models.Event.query(
-    request.res.locals.requestUser.id,
-    query.startTime,
-    query.endTime,
-    query.deviceId,
-    query.offset,
-    query.limit,
-    false,
-    options
-  );
-
-  return groupSystemErrors(result.rows);
-};
 
 export async function powerEventsPerDevice(
   request: { query: any; res: any },

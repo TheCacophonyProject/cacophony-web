@@ -309,6 +309,7 @@ const isStillProcessing = computed<boolean>(() => {
             <b-spinner
               v-if="classification === 'unclassified'"
               small
+              variant="secondary"
               class="mx-1"
             />
             <span :class="{ 'me-1': classification === 'unclassified' }">{{
@@ -554,6 +555,7 @@ const isStillProcessing = computed<boolean>(() => {
     overflow: hidden;
     position: relative;
     background: #aaa;
+    border-radius: 2.5px;
     .num-recordings {
       background: rgba(0, 0, 0, 0.8);
       color: white;

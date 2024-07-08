@@ -195,7 +195,9 @@ onMounted(() => {
       class="d-flex flex-column align-items-center justify-content-center user-select-none"
     >
       <b-spinner variant="secondary" />
-      <span class="h3 d-block mt-3"> Signing in...</span>
+      <span class="h3 d-block mt-3"
+        ><span v-if="isLoggingInAutomatically">Signing in...</span></span
+      >
     </div>
   </main>
   <main
@@ -485,11 +487,15 @@ onMounted(() => {
       class="nav-bg"
       :class="{ visible: showSideNavBg, hidden: hideNavBg }"
     ></div>
-    <section id="main-content" :class="{ 'offset-content': isWideScreen }">
-      <div class="container-xxl py-0">
+    <section
+      id="main-content"
+      :class="{ 'offset-content': isWideScreen }"
+      class="d-flex"
+    >
+      <div class="container-xxl py-0 d-flex flex-fill flex-column">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
-        <div class="d-flex flex-column router-view">
+        <div class="d-flex flex-column router-view flex-fill">
           <router-view />
         </div>
       </div>

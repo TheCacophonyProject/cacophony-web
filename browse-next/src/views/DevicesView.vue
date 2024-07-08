@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForProject } from "@api/Project";
@@ -15,11 +15,15 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils";
 import type { DeviceId, LatLng } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
-import type { DeviceType } from "@typedefs/api/consts";
+import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
 import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { deleteDevice, getDeviceConfig } from "@api/Device";
+import {
+  deleteDevice,
+  getDeviceConfig,
+  getDeviceLocationAtTime,
+} from "@api/Device";
 import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
@@ -32,6 +36,9 @@ import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
+import type { ApiStationResponse } from "@typedefs/api/station";
+import type { LoadedResource } from "@api/types.ts";
+import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
 
 const projectDevices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -137,13 +144,16 @@ const findProbablyOnlineDevices = async () => {
   });
 };
 
-onMounted(async () => {
+onBeforeMount(async () => {
   if (showInactiveDevices.value) {
     // Inactive devices are not provided by default
     await loadDevices();
   } else {
     await projectDevicesLoaded();
     const _ = findProbablyOnlineDevices();
+  }
+  if (selectedDevice.value) {
+    await getSelectedDeviceLocation();
   }
 });
 
@@ -159,15 +169,18 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
     (poweredDevice) => poweredDevice.id === device.id
   );
-  const status =
-    device.hasOwnProperty("isHealthy") && device.active
-      ? device.isHealthy
-        ? isPoweredOn
-          ? "online"
-          : "standby"
-        : "stopped"
-      : "-";
-  return status;
+
+  // TODO: isHealthy relates to devices that have a heartbeart.
+  // In the absence of a heartbeat, we should be able to look at whether we've ever heard from this device,
+  // and if so, have we heard from it within the last 24 hours?
+
+  return device.hasOwnProperty("isHealthy") && device.active
+    ? device.isHealthy
+      ? isPoweredOn
+        ? "online"
+        : "standby"
+      : "stopped"
+    : "-";
 };
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
@@ -204,17 +217,6 @@ const tableItems = computed<
   return devices.value
     .filter((device) => showInactiveDevicesInternal.value || device.active)
     .map((device: ApiDeviceResponse) => {
-      const isPoweredOn = currentlyPoweredOnDevices.value.some(
-        (poweredDevice) => poweredDevice.id === device.id
-      );
-      const status =
-        device.hasOwnProperty("isHealthy") && device.active
-          ? device.isHealthy
-            ? isPoweredOn
-              ? "online"
-              : "standby"
-            : "stopped"
-          : "-";
       return {
         deviceName: device.deviceName, // Use device name with icon like we do currently?
         lastSeen: noWrap(
@@ -224,7 +226,7 @@ const tableItems = computed<
               ).toRelative() as string)
             : "never (offline device)"
         ),
-        status,
+        status: statusForDevice(device),
         _deleteAction: {
           value: device,
           cellClasses: ["d-flex", "justify-content-end"],
@@ -395,6 +397,20 @@ const selectedDevice = computed<ApiDeviceResponse | null>(() => {
   }
   return null;
 });
+const deviceLocation = ref<LoadedResource<ApiStationResponse>>(null);
+const getSelectedDeviceLocation = async () => {
+  if (selectedDevice.value?.location) {
+    deviceLocation.value = await getDeviceLocationAtTime(
+      selectedDevice.value.id
+    );
+  }
+};
+
+watch(selectedDevice, async (next) => {
+  if (next) {
+    await getSelectedDeviceLocation();
+  }
+});
 
 const selectTableDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
   const device = devices.value.find(({ id }) => id === Number(deviceId));
@@ -414,17 +430,76 @@ const openSelectedDevice = async (device: ApiDeviceResponse) => {
   });
 };
 
+const selectedDeviceLatestRecordingDateTime = computed<Date | null>(() => {
+  if (selectedDevice.value && deviceLocation.value) {
+    return latestRecordingTimeForDeviceAtLocation(
+      selectedDevice.value,
+      deviceLocation.value
+    );
+  }
+  return null;
+});
+
+const selectedDeviceActiveFrom = computed<Date | null>(() => {
+  if (selectedDevice.value && deviceLocation.value) {
+    return new Date(deviceLocation.value.activeAt);
+  }
+  return null;
+});
+
+const deviceRecordingMode = computed<"cameras" | "audio">(() => {
+  if (selectedDevice.value && selectedDevice.value.type === DeviceType.Audio) {
+    return "audio";
+  }
+  return "cameras";
+});
+
 const isDevicesRoot = computed(() => {
   return route.name === "devices";
 });
 </script>
 <template>
-  <section-header>
+  <section-header class="justify-content-between border-1 align-items-center">
     <device-name
       v-if="selectedDevice"
       :name="(selectedDevice as ApiDeviceResponse).deviceName"
       :type="(selectedDevice as ApiDeviceResponse).type"
-    />
+      :to="(deviceLocation ? {
+          name: 'activity',
+          query: {
+            devices: [selectedDevice.id],
+            locations: [deviceLocation.id],
+            until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
+            from: (selectedDeviceActiveFrom as Date).toISOString(),
+            'display-mode': 'recordings',
+            'recording-mode': deviceRecordingMode
+          },
+        } : null)"
+    >
+      <b-button
+        class="ms-4 align-items-center d-none d-md-flex"
+        variant="outline-secondary"
+        v-if="deviceLocation"
+        :to="{
+          name: 'activity',
+          query: {
+            devices: [selectedDevice.id],
+            locations: [deviceLocation.id],
+            until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
+            from: (selectedDeviceActiveFrom as Date).toISOString(),
+            'display-mode': 'recordings',
+            'recording-mode': deviceRecordingMode
+          },
+        }"
+        ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
+        <font-awesome-icon
+          icon="arrow-turn-down"
+          :rotation="270"
+          size="xs"
+          class="ps-1"
+        />
+      </b-button>
+    </device-name>
     <span v-else>Devices</span>
   </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->

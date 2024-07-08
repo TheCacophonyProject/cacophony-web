@@ -454,7 +454,6 @@ async function getRecordings(
 ) {
   const types = [];
   const allowedTypes = [
-    RecordingType.Audio,
     RecordingType.ThermalRaw,
     RecordingType.TrailCamImage,
     RecordingType.TrailCamVideo,

@@ -977,6 +977,12 @@ Cypress.Commands.add(
           additionalChecks["count"]
         );
       }
+      if (additionalChecks["num-results"] !== undefined) {
+        expect(
+          response.body.recordings.length,
+          "Num results should be: "
+        ).to.equal(additionalChecks["num-results"]);
+      }
       cy.wrap(response.body);
     });
   }

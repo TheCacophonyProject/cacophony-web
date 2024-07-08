@@ -35,6 +35,7 @@ const closedModal = () => {
     params,
     query: route.query,
   });
+  console.log("Closed modal");
   emit("close");
 };
 const modal = ref<typeof BModal | null>(null);
@@ -59,7 +60,9 @@ watch(route, (next) => {
 
 const noFadeInternal = ref<boolean>(!props.fadeIn);
 const onShown = () => {
-  noFadeInternal.value = false;
+  setTimeout(() => {
+    noFadeInternal.value = false;
+  }, 100);
   emit("shown");
 };
 
