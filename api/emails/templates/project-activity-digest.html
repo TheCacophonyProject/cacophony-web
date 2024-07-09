@@ -8,9 +8,30 @@
     <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333">
       Hi! <br>Here's your {{ emailFrequency }} update of activity in '{{ projectName }}'.
       <br><br>
+      {{#hasVisitsInPeriod}}
+      <table style="margin-left: 15px">
       {{#visitsInfo}}
-        {{ species }}: {{ count }}
+        <tr>
+          <td style="border-bottom: 15px solid transparent; width: 36px;">
+          {{#hasIcon}}
+          <img width="24" height="24" src="cid:{{species}}" style="margin-right: 15px;" />
+          {{/hasIcon}}
+          <td>
+          <td style="border-bottom: 15px solid transparent;">
+            <strong style="font-family:Helvetica, Arial, sans-serif;font-size:24px;line-height:36px;text-align:left;color:#333333;">{{ count }}</strong><br>
+            <span style="font-family:Helvetica, Arial, sans-serif;font-size:18px;line-height:20px;text-align:left;color:#333333">{{ speciesDisplayName }}</span>
+          </td>
+        </tr>
       {{/visitsInfo}}
+      </table>
+      <br><br>
+      <a href="{{ activityUrl }}" style="background-color: #2f67f6;border:none;border-radius:3px;color:#ffffff;cursor:auto;padding:15px 25px;display: inline-block;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
+        View activity
+      </a>
+      {{/hasVisitsInPeriod}}
+      {{#hasNoVisitsInPeriod}}
+      There was no activity in '{{ projectName }}' during this period.<br>You won't receive this email again until there is some new activity in this project.
+      {{/hasNoVisitsInPeriod}}
       <br><br>
       &ndash; The Cacophony Team.
       <br><br>

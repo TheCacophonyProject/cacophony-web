@@ -23,6 +23,7 @@ export interface ApiUserSettings {
   savedSearchQueries?: string[];
   displayMode?: "audio" | "thermal";
   viewAsSuperUser?: boolean;
+  lastKnownTimezone?: string;
   currentSelectedGroup?: {
     groupName: string;
     id: GroupId;

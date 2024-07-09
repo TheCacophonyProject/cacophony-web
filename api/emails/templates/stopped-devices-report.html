@@ -26,7 +26,12 @@
 <tr>
   <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
     <br><br>
-    You are receiving this email because you are currently an admin of the project '{{ groupName }}'.
+    {{#unconfirmedEmailUsers}}
+    <span>You are receiving this email because you are currently an admin of the project '{{ groupName }}'.</span>
+    {{/unconfirmedEmailUsers}}
+    {{#confirmedEmailUsers}}
+    <span>You are receiving this email because you are subscribed to stopped device alerts for the project '{{ groupName }}'. Update your <a href="{{ emailSettingsUrl }}" style="color:#aaaaaa">notification preferences</a>.</span>
+    {{/confirmedEmailUsers}}
     <br><br>
 
     <strong>The Cacophony Project.</strong><br>

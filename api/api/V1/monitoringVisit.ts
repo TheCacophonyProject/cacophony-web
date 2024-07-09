@@ -27,7 +27,7 @@ const MAX_MINS_AFTER_TIME = 70;
 
 type TagName = string;
 
-class Visit {
+export class Visit {
   rawRecordings?: Recording[];
   classification?: string;
   classificationAi?: string;

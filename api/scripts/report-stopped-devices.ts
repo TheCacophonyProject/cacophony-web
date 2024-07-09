@@ -18,25 +18,52 @@ type UserGroupDevices = Record<
   }
 >;
 
-const getUserEvents = async (devices: Device[]): Promise<UserGroupDevices> => {
-  const groupAdmins = {};
-  const userEvents = {};
+type GroupUserDevices = Record<
+  GroupId,
+  {
+    group: Group;
+    stoppedDevices: Device[];
+    users: User[];
+  }
+>;
+
+const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
+  const recipientUsers = {};
   for (const device of devices) {
-    if (!groupAdmins.hasOwnProperty(device.GroupId)) {
-      groupAdmins[device.GroupId] = await device.Group.getUsers({
-        through: { where: { admin: true, removedAt: { [Op.eq]: null } } },
+    if (!recipientUsers.hasOwnProperty(device.GroupId)) {
+      recipientUsers[device.GroupId] = await device.Group.getUsers({
+        through: {
+          where: {
+            [Op.or]: [
+              {
+                [Op.and]: [
+                  { admin: true },
+                  {
+                    [Op.ne]: {
+                      "settings.notificationPreferences.reportStoppedDevices":
+                        false,
+                    },
+                  },
+                ],
+              },
+              { "settings.notificationPreferences.reportStoppedDevices": true },
+            ],
+            removedAt: { [Op.eq]: null },
+          },
+        },
       });
     }
-    // TODO: Get the user group settings, and check if they've opted into these notifications.
-    for (const user of groupAdmins[device.GroupId]) {
-      userEvents[user.id] = userEvents[user.id] || { user: user, groups: {} };
-      userEvents[user.id].groups[device.GroupId] = userEvents[user.id].groups[
-        device.GroupId
-      ] || { group: device.Group, stoppedDevices: [] };
-      userEvents[user.id].groups[device.GroupId].stoppedDevices.push(device);
-    }
   }
-  return userEvents;
+  const groupUserDevices = {};
+  for (const device of devices) {
+    groupUserDevices[device.GroupId] = groupUserDevices[device.GroupId] || {
+      stoppedDevices: [],
+      users: recipientUsers[device.GroupId],
+      group: device.Group,
+    };
+    groupUserDevices[device.GroupId].stoppedDevices.push(device);
+  }
+  return groupUserDevices;
 };
 
 async function main() {
@@ -67,16 +94,20 @@ async function main() {
 
   const userEvents = await getUserEvents(devices);
   const failedEmails = [];
-  for (const { user, groups } of Object.values(userEvents)) {
-    for (const { group, stoppedDevices } of Object.values(groups)) {
-      const success = await sendStoppedDevicesReportEmail(
-        config.server.browse_url.replace("https://", ""),
-        group.groupName,
-        stoppedDevices.map((device) => device.deviceName),
-        user.email
-      );
-      if (!success) {
-        failedEmails.push(user.email);
+  for (const { group, stoppedDevices, users } of Object.values(userEvents)) {
+    const userEmails = users.map(({ email, emailConfirmed }) => ({
+      email,
+      emailConfirmed,
+    }));
+    const successes = await sendStoppedDevicesReportEmail(
+      config.server.browse_url.replace("https://", ""),
+      group.groupName,
+      stoppedDevices.map((device) => device.deviceName),
+      userEmails
+    );
+    for (let i = 0; i < successes.length; i++) {
+      if (!successes[i]) {
+        failedEmails.push(userEmails[i].email);
       }
     }
   }

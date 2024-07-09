@@ -4,5 +4,5 @@ import modelsInit from "../models/index.js";
 (async () => {
   const models = await modelsInit();
   //await sendAlerts(models, 1822136);
-  await sendAlerts(models, 1808997);
+  await sendAlerts(models, 1808997, true);
 })();

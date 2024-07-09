@@ -1,21 +1,17 @@
-import type { StoppedDevice } from "@/emails/htmlEmailUtils.js";
 import { embedImage } from "@/emails/htmlEmailUtils.js";
 import {
   createEmailWithTemplate,
   urlNormaliseName,
 } from "@/emails/htmlEmailUtils.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
-//import fs from "fs/promises";
 import { sendEmail } from "@/emails/sendEmail.js";
 import config from "@config";
 import logger from "@/logging.js";
-
 import path from "path";
 import { fileURLToPath } from "url";
 import type { DeviceId, StationId } from "@typedefs/api/common.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-import fs from "fs";
 import type { GroupedServiceErrors } from "@/scripts/report-service-errors.js";
 
 const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
@@ -366,28 +362,82 @@ export const sendStoppedDevicesReportEmail = async (
   origin: string,
   groupName: string,
   stoppedDevicesList: string[],
-  userEmailAddress: string
+  recipients: { email: string; emailConfirmed: boolean }[]
 ) => {
-  const common = commonInterpolants(origin);
+  const sendPromises = [];
+  const confirmedEmailUsers = recipients
+    .filter(({ emailConfirmed }) => emailConfirmed)
+    .map(({ email }) => email);
+  const unconfirmedEmailUsers = recipients
+    .filter(({ emailConfirmed }) => !emailConfirmed)
+    .map(({ email }) => email);
 
-  // TODO: When we've completely switched to browse-next, allow admins to opt-out of these notifications via settings.
+  const common = commonInterpolants(origin);
   const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
   )}/my-settings`;
-
-  const { text, html } = await createEmailWithTemplate(
-    "stopped-devices-report.html",
-    { emailSettingsUrl, groupName, stoppedDevicesList, ...common }
-  );
-  return await sendEmail(
-    html,
-    text,
-    userEmailAddress,
-    `💔 Possible stopped or offline device${
-      stoppedDevicesList.length > 1 ? "s" : ""
-    } in '${groupName}'`,
-    await commonAttachments(),
-    config.server.adminEmails
+  let confirmedEmailTemplate;
+  let unconfirmedEmailTemplate;
+  if (confirmedEmailUsers.length !== 0) {
+    confirmedEmailTemplate = await createEmailWithTemplate(
+      "stopped-devices-report.html",
+      {
+        emailSettingsUrl,
+        confirmedEmailUsers: true,
+        unconfirmedEmailUsers: false,
+        groupName,
+        stoppedDevicesList,
+        ...common,
+      }
+    );
+  }
+  if (unconfirmedEmailUsers.length !== 0) {
+    unconfirmedEmailTemplate = await createEmailWithTemplate(
+      "stopped-devices-report.html",
+      {
+        emailSettingsUrl,
+        confirmedEmailUsers: false,
+        unconfirmedEmailUsers: true,
+        groupName,
+        stoppedDevicesList,
+        ...common,
+      }
+    );
+  }
+  let sentAdminCopy = false;
+  for (const recipient of confirmedEmailUsers) {
+    sendPromises.push(
+      sendEmail(
+        confirmedEmailTemplate.html,
+        confirmedEmailTemplate.text,
+        recipient,
+        `💔 Possible stopped or offline device${
+          stoppedDevicesList.length > 1 ? "s" : ""
+        } in '${groupName}'`,
+        await commonAttachments(),
+        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
+      )
+    );
+    sentAdminCopy = true;
+  }
+  // TODO: When we've completely switched to browse-next, remove this
+  for (const recipient of unconfirmedEmailUsers) {
+    sendPromises.push(
+      sendEmail(
+        unconfirmedEmailTemplate.html,
+        unconfirmedEmailTemplate.text,
+        recipient,
+        `💔 Possible stopped or offline device${
+          stoppedDevicesList.length > 1 ? "s" : ""
+        } in '${groupName}'`,
+        await commonAttachments(),
+        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
+      )
+    );
+    sentAdminCopy = true;
+  }
+  return (await Promise.allSettled(sendPromises)).map(
+    (p) => p.status === "fulfilled"
   );
 };
 
@@ -397,13 +447,13 @@ export const sendAnimalAlertEmail = async (
   deviceName: string,
   stationName: string,
   stationId: StationId,
-  recordingTime: string,
+  recordingDateTime: Date,
   classification: string,
   matchedClassification: string,
   recordingId: number,
   trackId: number,
   userEmailAddress: string,
-  recipientTimeZoneOffset: number | null,
+  deviceTimezone: string | null,
   thumbnail?: Buffer
 ) => {
   const common = commonInterpolants(origin);
@@ -417,9 +467,18 @@ export const sendAnimalAlertEmail = async (
     matchedClassification.charAt(0).toUpperCase() +
     matchedClassification.slice(1);
   const stationUrl = stationId
-    ? `${projectRoot}/activity/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
+    ? `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
     : "";
   const recordingUrl = `${projectRoot}/recording/${recordingId}/tracks/${trackId}/detail`;
+  const recordingTime = recordingDateTime.toLocaleDateString("en-NZ", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+    timeZone: deviceTimezone || "Pacific/Auckland",
+  });
   const { text, html } = await createEmailWithTemplate("animal-alert.html", {
     targetTag,
     matchedTag,
@@ -629,11 +688,16 @@ export const sendDailyServiceErrorsEmail = async (
 };
 
 export const sendProjectActivityDigestEmail = async (
-    origin: string,
-    frequency: "Daily" | "Weekly",
-    projectName: string,
-    recipients: { email: string; userName: string }[],
-    visitsInfo: { species: string, count: number}[]
+  origin: string,
+  frequency: "Daily" | "Weekly",
+  projectName: string,
+  recipients: { email: string; userName: string }[],
+  visitsInfo: {
+    species: string;
+    speciesDisplayName: string;
+    count: number;
+    hasIcon?: boolean;
+  }[]
 ) => {
   const common = commonInterpolants(origin);
   const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
@@ -641,9 +705,18 @@ export const sendProjectActivityDigestEmail = async (
   )}`;
   const emailFrequency = frequency.toLowerCase();
   const emailSettingsUrl = `${projectRoot}/my-settings`;
-
-  // TODO: Visits table, embed SVG icons.
-
+  const timespan = frequency === "Weekly" ? "1-week-ago" : "24-hours-ago";
+  const activityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=any&from=${timespan}&tag-mode=any`;
+  const imageAttachments = [...(await commonAttachments())];
+  for (const species of visitsInfo) {
+    const iconExists = await embedImage(
+      species.species,
+      imageAttachments,
+      `classification-icons/${species.species}.svg`,
+      false
+    );
+    species.hasIcon = iconExists !== false;
+  }
   const { text, html } = await createEmailWithTemplate(
     "project-activity-digest.html",
     {
@@ -651,9 +724,13 @@ export const sendProjectActivityDigestEmail = async (
       projectName,
       emailFrequency,
       visitsInfo,
+      hasVisitsInPeriod: visitsInfo.length !== 0,
+      hasNoVisitsInPeriod: visitsInfo.length === 0,
+      activityUrl,
       ...common,
     }
   );
+
   // TODO: How much info should we try to cram into these reports?
   const recipientPromises = [];
   for (const recipient of recipients) {
@@ -663,7 +740,7 @@ export const sendProjectActivityDigestEmail = async (
         text,
         `${recipient.userName} <${recipient.email}>`,
         `📊 ${frequency} activity report for '${projectName}'`,
-        [...(await commonAttachments())]
+        imageAttachments
       )
     );
   }

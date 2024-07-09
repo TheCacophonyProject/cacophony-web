@@ -83,12 +83,6 @@ const scrapePlainTextFromHtml = (html: string): string => {
   return output.join("\r\n");
 };
 
-export interface StoppedDevice {
-  id: number;
-  deviceName: string;
-  lastConnectionTime: Date;
-}
-
 export const createEmailWithTemplate = async (
   templateFilename: string,
   interpolants: Record<string, string | number | string[] | boolean | any>
@@ -118,7 +112,8 @@ export const createEmailWithTemplate = async (
 export const embedImage = async (
   cid: string,
   imageAttachments: EmailImageAttachment[],
-  src: string
+  src: string,
+  errorOnMissing: boolean = true
 ) => {
   const filePath = `${__dirname}/templates/image-attachments/${src}`;
   let imageBuffer: Buffer;
@@ -151,9 +146,11 @@ export const embedImage = async (
           compressionLevel: 9,
         })
         .toBuffer();
-    } else {
+    } else if (errorOnMissing) {
       // TODO Handle file missing errors
       throw new Error(`File not found: ${filePath}`);
+    } else {
+      return false;
     }
   }
   imageAttachments.push({

@@ -19,7 +19,7 @@ import sharp from "sharp";
 import zlib from "zlib";
 import type { Alert, AlertStatic } from "@models/Alert.js";
 import type { TrackTag } from "@models/TrackTag.js";
-import { AI_MASTER } from "@models/TrackTag.js";
+import tzLookup from "tz-lookup-oss";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
 import moment from "moment";
@@ -1828,7 +1828,11 @@ export async function getRecordingForVisit(
   return await models.Recording.findByPk(id, query);
 }
 
-export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
+export async function sendAlerts(
+  models: ModelsDictionary,
+  recId: RecordingId,
+  debug: boolean = false
+) {
   // Get the most common non-false-positive tag for this recording, then get the track with that tag
   // that has the best thumbnail.
   const recording: Recording = await models.Recording.findByPk(recId, {
@@ -1854,7 +1858,7 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
       },
       {
         model: models.Device,
-        attributes: ["deviceName", "id"],
+        attributes: ["deviceName", "id", "location"],
       },
       {
         model: models.Station,
@@ -1875,6 +1879,14 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
     ],
   });
   if (!recording) {
+    return;
+  }
+  // If the recording is more than 24 hours old, don't send an alert
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  if (
+    !debug &&
+    new Date().getTime() - recording.recordingDateTime.getTime() > oneDayMs
+  ) {
     return;
   }
   const tagCounts: Record<
@@ -1976,17 +1988,7 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
           );
         } else {
           // Send new style alert email if the user has confirmed their email via browse-next
-          const alertTime = recording.recordingDateTime.toLocaleDateString(
-            "en-NZ",
-            {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "numeric",
-              weekday: "short",
-              hour12: true,
-            }
-          );
+          const alertTime = recording.recordingDateTime;
 
           // Get the best matching condition.  If the user has an alert for both Mammal and Cat
           // and we get a classification of Cat, we want the matched condition to be Cat.
@@ -2001,6 +2003,15 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
 
           const alertClassification = matchingCondition.tag;
           const matchedClassification = matchedTag.what;
+
+          // NOTE: We want to display the alert time in the devices' timezone if known
+          let deviceTimezone = null;
+          if (recording.Device.location) {
+            deviceTimezone = tzLookup(
+              recording.Device.location.lat,
+              recording.Device.location.lng
+            );
+          }
           const alertSendSuccess = await sendAnimalAlertEmail(
             "browse-next.cacophony.org.nz",
             recording.Group.groupName,
@@ -2013,7 +2024,7 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
             recId,
             matchedTrack.id,
             alert.User.email,
-            null, // TODO: Adjust stated email times to user timezone if known.
+            deviceTimezone,
             thumbnail && Buffer.from(thumbnail)
           );
           if (alertSendSuccess) {
@@ -2032,7 +2043,7 @@ export async function sendAlerts(models: ModelsDictionary, recId: RecordingId) {
               EventDetailId: detail.id,
               dateTime: recording.recordingDateTime,
             });
-            await alert.update({ lastAlert: recording.recordingDateTime });
+            await alert.update({ lastAlert: new Date() });
           } else {
             log.warning(
               "Failed sending animal alert email to %s",
