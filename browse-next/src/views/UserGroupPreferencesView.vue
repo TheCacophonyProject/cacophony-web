@@ -84,14 +84,20 @@ const userProjectSettings = computed<ApiProjectUserSettings>(() => {
 });
 const weeklyDigestEmails = ref<boolean>(false);
 const dailyDigestEmails = ref<boolean>(false);
+const stoppedDeviceEmails = ref<boolean>(false);
 const savingDailyDigestSettings = ref<boolean>(false);
 const savingWeeklyDigestSettings = ref<boolean>(false);
+const savingStoppedDeviceSettings = ref<boolean>(false);
 const initialised = ref<boolean>(false);
 onBeforeMount(() => {
   weeklyDigestEmails.value =
     userProjectSettings.value.notificationPreferences?.weeklyDigest || false;
   dailyDigestEmails.value =
     userProjectSettings.value.notificationPreferences?.dailyDigest || false;
+  // TODO: Set this to true in the DB for all group admins who currently have emailConfirmed
+  stoppedDeviceEmails.value =
+    userProjectSettings.value.notificationPreferences?.reportStoppedDevices ||
+    false;
 });
 onMounted(() => {
   initialised.value = true;
@@ -116,6 +122,17 @@ watch(weeklyDigestEmails, async (next) => {
     savingWeeklyDigestSettings.value = true;
     await persistUserProjectSettings(settings);
     savingWeeklyDigestSettings.value = false;
+  }
+});
+
+watch(stoppedDeviceEmails, async (next) => {
+  if (initialised.value) {
+    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+    settings.notificationPreferences = settings.notificationPreferences || {};
+    settings.notificationPreferences.reportStoppedDevices = next;
+    savingStoppedDeviceSettings.value = true;
+    await persistUserProjectSettings(settings);
+    savingStoppedDeviceSettings.value = false;
   }
 });
 
@@ -399,6 +416,19 @@ const alertItems = computed<AlertItem[]>(() => {
     >I want to receive a weekly activity digest<b-spinner
       class="ms-1"
       v-if="savingWeeklyDigestSettings"
+      variant="secondary"
+      small
+  /></b-form-checkbox>
+  <hr />
+  <h6>Stopped device notifications</h6>
+  <p>
+    Get notified about possible flat batteries when a device hasn't connected to
+    the Cacophony Monitoring platform in the last 24 hours
+  </p>
+  <b-form-checkbox switch v-model="stoppedDeviceEmails"
+    >I want to receive emails about devices that might have stopped<b-spinner
+      class="ms-1"
+      v-if="savingStoppedDeviceSettings"
       variant="secondary"
       small
   /></b-form-checkbox>
