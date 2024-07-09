@@ -1,5 +1,6 @@
 import type { TrackId } from "@typedefs/api/common";
 import type {
+  IntermediateTrack,
   TrackBox,
   TrackExportOption,
 } from "@/components/cptv-player/cptv-player-types";
@@ -89,7 +90,7 @@ export const drawRectWithText = (
   dims: Rectangle,
   what: string | null,
   isExporting: boolean,
-  tracks: ApiTrackResponse[] = [],
+  tracks: IntermediateTrack[] | ApiTrackResponse[] = [],
   currentTrack: ApiTrackResponse | undefined,
   pixelRatio: number,
   scale: number,
@@ -172,7 +173,7 @@ export const renderOverlay = (
   timeSinceFFCSeconds: number | null,
   isExporting: boolean,
   frameNum: number,
-  tracks: ApiTrackResponse[],
+  tracks: IntermediateTrack[],
   canSelectTracks: boolean,
   currentTrack: ApiTrackResponse | undefined,
   motionPaths: MotionPath[],

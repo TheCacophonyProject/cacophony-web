@@ -1328,6 +1328,7 @@ const inlineModal = ref<boolean>(false);
             >
           </ul>
           <div class="tags-overflow" v-if="!isMobileView">
+            <!-- RecordingViewTracks -->
             <router-view
               :recording="recording"
               @track-tag-changed="trackTagChanged"

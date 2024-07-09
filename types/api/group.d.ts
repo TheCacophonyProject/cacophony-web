@@ -38,4 +38,5 @@ export interface ApiGroupUserSettings {
   tags?: string[];
   audioTags?: string[];
   notificationPreferences?: Record<string, boolean>;
+  showFalseTriggers?: boolean;
 }
