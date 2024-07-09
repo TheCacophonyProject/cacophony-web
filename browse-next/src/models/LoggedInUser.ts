@@ -153,6 +153,8 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
           user.settings as ApiUserSettings
         )
       ) {
+        // TODO: If something not allowed in user settings schema makes it into settings, we need to remove
+        //  it before it can validate properly.  Client-side json schema validation? Or just be careful?
         // Update settings on server?
         saveUserSettings(user.settings as ApiUserSettings).then((response) => {
           console.warn("User settings updated", response);

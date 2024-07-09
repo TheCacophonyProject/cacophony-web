@@ -247,17 +247,20 @@ const getAlertScope = (
 };
 
 const alertItems = computed<AlertItem[]>(() => {
-  return alerts.value.map((alert: ApiAlertResponse) => ({
-    alertOn: alert.conditions.map(({ tag }) => tag),
-    alertScope: getAlertScope(alert),
-    lastTriggered:
-      alert.lastAlert === "never"
-        ? alert.lastAlert
-        : DateTime.fromJSDate(new Date(alert.lastAlert)).toRelative(),
-    minimumTimeBetweenTriggers: `${alert.frequencySeconds / 60} mins`,
-    __scope: alert.scope,
-    _deleteAction: alert.id,
-  }));
+  return alerts.value.map(
+    (alert: ApiAlertResponse) =>
+      ({
+        alertOn: alert.conditions.map(({ tag }) => tag),
+        alertScope: getAlertScope(alert),
+        lastTriggered:
+          alert.lastAlert === "never"
+            ? alert.lastAlert
+            : DateTime.fromJSDate(new Date(alert.lastAlert)).toRelative(),
+        minimumTimeBetweenTriggers: `${alert.frequencySeconds / 60} mins`,
+        __scope: alert.scope,
+        _deleteAction: alert.id,
+      } as AlertItem)
+  );
 });
 </script>
 <template>
