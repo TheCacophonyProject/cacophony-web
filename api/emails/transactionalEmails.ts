@@ -405,6 +405,7 @@ export const sendStoppedDevicesReportEmail = async (
     );
   }
   let sentAdminCopy = false;
+  const attachments = await commonAttachments();
   for (const recipient of confirmedEmailUsers) {
     sendPromises.push(
       sendEmail(
@@ -414,8 +415,10 @@ export const sendStoppedDevicesReportEmail = async (
         `💔 Possible stopped or offline device${
           stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
-        await commonAttachments(),
-        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
+        attachments,
+        !sentAdminCopy
+          ? config.server.adminEmails
+          : [config.server.adminEmails[config.server.admingEmails.length - 1]] // Just bcc admin for the first email in a group.
       )
     );
     sentAdminCopy = true;
@@ -430,8 +433,10 @@ export const sendStoppedDevicesReportEmail = async (
         `💔 Possible stopped or offline device${
           stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
-        await commonAttachments(),
-        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
+        attachments,
+        !sentAdminCopy
+          ? config.server.adminEmails
+          : [config.server.adminEmails[config.server.admingEmails.length - 1]] // Just bcc admin for the first email in a group.
       )
     );
     sentAdminCopy = true;
