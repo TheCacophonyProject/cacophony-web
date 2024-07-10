@@ -36,15 +36,10 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
           where: {
             [Op.or]: [
               {
-                [Op.and]: [
-                  { admin: true },
-                  {
-                    [Op.ne]: {
-                      "settings.notificationPreferences.reportStoppedDevices":
-                        false,
-                    },
-                  },
-                ],
+                admin: true,
+                "settings.notificationPreferences.reportStoppedDevices": {
+                  [Op.ne]: false,
+                },
               },
               { "settings.notificationPreferences.reportStoppedDevices": true },
             ],
@@ -142,7 +137,10 @@ async function main() {
 }
 
 main()
-  .catch(log.error)
+  .catch((e) => {
+    log.error(e);
+    console.trace(e);
+  })
   .then(() => {
     process.exit(0);
   });
