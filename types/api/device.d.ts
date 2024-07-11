@@ -67,6 +67,7 @@ export type WindowsSettings = {
 } & SettingsBase;
 
 export interface ApiDeviceHistorySettings {
+  location?: LatLng;
   referenceImagePOV?: string; // S3 Key for a device reference image
   referenceImagePOVFileSize?: number;
   referenceImageInSitu?: string; // S3 Key for a device reference image

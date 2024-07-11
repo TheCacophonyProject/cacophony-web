@@ -965,6 +965,7 @@ from (
       offset,
       attributes: Recording.queryGetAttributes,
     };
+
     if (!includeAttributes) {
       const recursiveDelete = (obj: any) => {
         for (const key in obj) {

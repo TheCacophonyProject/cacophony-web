@@ -1465,23 +1465,30 @@ export default function (app: Application, baseUrl: string) {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
+        const where = {
+          DeviceId: device.id,
+          GroupId: device.GroupId,
+          location: { [Op.ne]: null },
+          fromDateTime: { [Op.lte]: atTime },
+        };
+        console.log(where);
+        debugger;
 
         const deviceSettings: DeviceHistory | null =
           await models.DeviceHistory.findOne({
-            where: {
-              DeviceId: device.id,
-              GroupId: device.GroupId,
-              location: { [Op.ne]: null },
-              fromDateTime: { [Op.lte]: atTime },
-            },
+            where,
             order: [["fromDateTime", "DESC"]],
           });
+        const settings = {
+          ...deviceSettings.settings,
+          location: device.location,
+        };
 
         if (deviceSettings && deviceSettings.settings) {
           return successResponse(
             response,
             "Device settings retrieved successfully",
-            { settings: deviceSettings.settings }
+            { settings }
           );
         } else {
           return successResponse(response, "No device settings found");
@@ -1491,6 +1498,7 @@ export default function (app: Application, baseUrl: string) {
       }
     }
   );
+
   /**
    * @api {post} /api/v1/devices/:deviceId/settings Update device settings
    * @apiName UpdateDeviceSettings
@@ -1518,6 +1526,7 @@ export default function (app: Application, baseUrl: string) {
         const device = response.locals.device as Device;
         const newSettings: ApiDeviceHistorySettings = request.body.settings;
         logging.info("Updating device settings", newSettings);
+        debugger;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
 
         const updatedEntry = await models.DeviceHistory.updateDeviceSettings(

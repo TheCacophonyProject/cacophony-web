@@ -1242,7 +1242,8 @@ const getDevice =
           new ClientError("No authorizing user specified")
         );
       }
-    } else {
+    }
+    if (!getDeviceOptions) {
       getDeviceOptions = {
         where: deviceWhere,
         attributes: deviceAttributes,
@@ -1255,6 +1256,7 @@ const getDevice =
         ],
       };
     }
+
     // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
