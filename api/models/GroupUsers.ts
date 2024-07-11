@@ -72,8 +72,16 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
     name,
     attributes
   ) as unknown as GroupUsersStatic;
-
-  GroupUsers.addAssociations = function () {};
+  const models = sequelize.models;
+  GroupUsers.addAssociations = function () {
+    // models.Group.hasMany(models.Device);
+    // models.Group.belongsToMany(models.User, { through: models.GroupUsers });
+    // models.Group.hasMany(models.Recording);
+    // models.Group.hasMany(models.Station);
+    // models.Group.hasMany(models.GroupInvites);
+    models.GroupUsers.belongsTo(models.User);
+    models.GroupUsers.belongsTo(models.Group);
+  };
 
   //---------------
   // CLASS METHODS

@@ -3,7 +3,6 @@ import log from "../logging.js";
 import type { Device } from "@models/Device.js";
 import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
-import { DeviceType } from "@typedefs/api/consts.js";
 import { sendStoppedDevicesReportEmail } from "@/emails/transactionalEmails.js";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
 import type { User } from "@models/User.js";
@@ -19,25 +18,47 @@ type UserGroupDevices = Record<
   }
 >;
 
-const getUserEvents = async (devices: Device[]): Promise<UserGroupDevices> => {
-  const groupAdmins = {};
-  const userEvents = {};
+type GroupUserDevices = Record<
+  GroupId,
+  {
+    group: Group;
+    stoppedDevices: Device[];
+    users: User[];
+  }
+>;
+
+const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
+  const recipientUsers = {};
   for (const device of devices) {
-    if (!groupAdmins.hasOwnProperty(device.GroupId)) {
-      groupAdmins[device.GroupId] = await device.Group.getUsers({
-        through: { where: { admin: true, removedAt: { [Op.eq]: null } } },
+    if (!recipientUsers.hasOwnProperty(device.GroupId)) {
+      recipientUsers[device.GroupId] = await device.Group.getUsers({
+        through: {
+          where: {
+            [Op.or]: [
+              {
+                admin: true,
+                "settings.notificationPreferences.reportStoppedDevices": {
+                  [Op.ne]: false,
+                },
+              },
+              { "settings.notificationPreferences.reportStoppedDevices": true },
+            ],
+            removedAt: { [Op.eq]: null },
+          },
+        },
       });
     }
-    // TODO: Get the user group settings, and check if they've opted into these notifications.
-    for (const user of groupAdmins[device.GroupId]) {
-      userEvents[user.id] = userEvents[user.id] || { user: user, groups: {} };
-      userEvents[user.id].groups[device.GroupId] = userEvents[user.id].groups[
-        device.GroupId
-      ] || { group: device.Group, stoppedDevices: [] };
-      userEvents[user.id].groups[device.GroupId].stoppedDevices.push(device);
-    }
   }
-  return userEvents;
+  const groupUserDevices = {};
+  for (const device of devices) {
+    groupUserDevices[device.GroupId] = groupUserDevices[device.GroupId] || {
+      stoppedDevices: [],
+      users: recipientUsers[device.GroupId],
+      group: device.Group,
+    };
+    groupUserDevices[device.GroupId].stoppedDevices.push(device);
+  }
+  return groupUserDevices;
 };
 
 async function main() {
@@ -68,16 +89,20 @@ async function main() {
 
   const userEvents = await getUserEvents(devices);
   const failedEmails = [];
-  for (const { user, groups } of Object.values(userEvents)) {
-    for (const { group, stoppedDevices } of Object.values(groups)) {
-      const success = await sendStoppedDevicesReportEmail(
-        config.server.browse_url.replace("https://", ""),
-        group.groupName,
-        stoppedDevices.map((device) => device.deviceName),
-        user.email
-      );
-      if (!success) {
-        failedEmails.push(user.email);
+  for (const { group, stoppedDevices, users } of Object.values(userEvents)) {
+    const userEmails = users.map(({ email, emailConfirmed }) => ({
+      email,
+      emailConfirmed,
+    }));
+    const successes = await sendStoppedDevicesReportEmail(
+      config.server.browse_url.replace("https://", ""),
+      group.groupName,
+      stoppedDevices.map((device) => device.deviceName),
+      userEmails
+    );
+    for (let i = 0; i < successes.length; i++) {
+      if (!successes[i]) {
+        failedEmails.push(userEmails[i].email);
       }
     }
   }
@@ -112,7 +137,10 @@ async function main() {
 }
 
 main()
-  .catch(log.error)
+  .catch((e) => {
+    log.error(e);
+    console.trace(e);
+  })
   .then(() => {
     process.exit(0);
   });

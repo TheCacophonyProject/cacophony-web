@@ -22,6 +22,7 @@ files:
   "_release/cacophony-api-report-stopped-devices": "/etc/cron.d/cacophony-api-report-stopped-devices"
   "_release/cacophony-api-rat-threshold": "/etc/cron.d/cacophony-api-rat-threshold"
   "_release/cacophony-api-usage-report": "/etc/cron.d/cacophony-api-usage-report"
+  "_release/cacophony-project-activity-digests": "/etc/cron.d/cacophony-project-activity-digests"
 
 #  "_release/cacophony-api-prune-objects": "/etc/cron.d/cacophony-api-prune-objects"
 #  "_release/cacophony-api-remove-dups": "/etc/cron.d/cacophony-api-remove-dups"

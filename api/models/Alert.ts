@@ -29,6 +29,7 @@ import type {
 } from "@typedefs/api/common.js";
 import logger from "../logging.js";
 import { alertBody, sendEmail } from "@/emails/sendEmail.js";
+import type { ApiUserSettings } from "@typedefs/api/user.js";
 //
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -56,6 +57,7 @@ export interface Alert extends Sequelize.Model, ModelCommon<Alert> {
     userName: string;
     email: string;
     emailConfirmed: boolean;
+    settings: ApiUserSettings | null;
   };
   sendAlert: (
     recording: Recording,
@@ -193,7 +195,7 @@ export default function (sequelize, DataTypes): AlertStatic {
       (whereClause as any).include = [
         {
           model: models.User,
-          attributes: ["id", "userName", "email", "emailConfirmed"],
+          attributes: ["id", "userName", "email", "emailConfirmed", "settings"],
         },
       ];
     }

@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "adfe5a24-89ec-42ff-bc36-d8b79915a5ea",
+  "version": "adfe5a24-89fc-42ff-bc36-d8b799f5a5ea",
   "children": [
     {
       "label": "mammal",
@@ -12,10 +12,19 @@
           "label": "cat"
         },
         {
-          "label": "deer"
+          "label": "cow"
+        },
+        {
+          "label": "deer",
+          "children": [{
+            "label": "sambar deer"
+          }]
         },
         {
           "label": "dog"
+        },
+        {
+          "label": "echidna"
         },
         {
           "label": "goat"
@@ -32,6 +41,15 @@
           "display": "human speech"
         },
         {
+          "label": "kangaroo",
+          "children": [{
+            "label": "grey kangaroo"
+          }]
+        },
+        {
+          "label": "koala"
+        },
+        {
           "label": "leporidae",
           "children": [
             {
@@ -42,6 +60,9 @@
             }
           ],
           "display": "rabbit or hare"
+        },
+        {
+          "label": "long-nosed potoroo"
         },
         {
           "label": "mustelid",
@@ -61,7 +82,12 @@
           "label": "pig"
         },
         {
-          "label": "possum"
+          "label": "possum",
+          "children": [{
+            "label": "ringtail possum"
+          }, {
+            "label": "brushtail possum"
+          }]
         },
         {
           "label": "rodent",
@@ -71,6 +97,10 @@
             },
             {
               "label": "rat"
+            },
+            {
+              "label": "rakali",
+              "aliases": ["rabe", "australian otter", "water-rat"]
             }
           ]
         },
@@ -83,6 +113,9 @@
         },
         {
           "label": "wallaby"
+        },
+        {
+          "label": "wombat"
         }
       ]
     },
@@ -109,7 +142,12 @@
           "label": "interesting"
         },
         {
-          "label": "lizard"
+          "label": "lizard",
+          "children": [
+            {
+              "label": "blue-tongue lizard"
+            }
+          ]
         },
         {
           "label": "part",
@@ -124,6 +162,9 @@
         {
           "label": "rain",
           "display": "Rain/Water Droplets"
+        },
+        {
+          "label": "snake"
         },
         {
           "label": "static"
@@ -191,6 +232,9 @@
           ]
         },
         {
+          "label": "bandicoot"
+        },
+        {
           "label": "bellbird"
         },
         {
@@ -244,6 +288,9 @@
               "label": "cirl bunting"
             }
           ]
+        },
+        {
+          "label": "butcherbird"
         },
         {
           "label": "chaffinch"
@@ -332,6 +379,9 @@
               "label": "eastern curlew"
             }
           ]
+        },
+        {
+          "label": "currawong"
         },
         {
           "label": "dabchick",
@@ -1275,6 +1325,9 @@
           "label": "rainbow lorikeet"
         },
         {
+          "label": "raven"
+        },
+        {
           "label": "redpoll",
           "children": [
             {
@@ -1732,6 +1785,13 @@
           "children": [
             {
               "label": "song thrush"
+            },
+            {
+              "label": "grey shrikethrush",
+              "aliases": ["grey shrike-thrush"]
+            },
+            {
+              "label": "bassian thrush"
             }
           ]
         },

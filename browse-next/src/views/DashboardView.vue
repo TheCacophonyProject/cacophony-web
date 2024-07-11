@@ -393,7 +393,8 @@ const showVisitsForLocation = (location: ApiLocationResponse) => {
 
 const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   return (
-    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0
+    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0 &&
+    maybeFilteredDashboardVisitsContext.value.length !== 0
   );
 });
 

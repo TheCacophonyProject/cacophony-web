@@ -15,7 +15,7 @@ const projectName = computed(() => {
   <b-modal
     @ok="leaveProject"
     ok-variant="danger"
-    ok-title="Yes, leave this group"
+    ok-title="Yes, leave this project"
   >
     <template #title>
       <font-awesome-icon

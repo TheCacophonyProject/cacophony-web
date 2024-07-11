@@ -1,5 +1,4 @@
 import { GroupId, IsoFormattedDateString, UserId } from "./common";
-import { ApiUserResponse } from "./user";
 
 export interface ApiGroupUserResponse {
   userName: string; // Full name of user, or email address of invited user.
@@ -38,4 +37,6 @@ export interface ApiGroupUserSettings {
   displayMode?: "recordings" | "visits";
   tags?: string[];
   audioTags?: string[];
+  notificationPreferences?: Record<string, boolean>;
+  showFalseTriggers?: boolean;
 }

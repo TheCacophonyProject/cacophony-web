@@ -86,7 +86,7 @@ export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
   persistCreds(CurrentUserCreds.value);
 };
 
-export const persistUserGroupSettings = async (
+export const persistUserProjectSettings = async (
   userSettings: ApiProjectUserSettings
 ) => {
   if (currentSelectedProject.value) {
@@ -112,24 +112,53 @@ export const persistProjectSettings = async (settings: ApiProjectSettings) => {
   }
 };
 
+const userSettingsHaveChanged = (
+  prevSettings: ApiUserSettings | undefined,
+  newSettings: ApiUserSettings
+): boolean => {
+  if (!prevSettings && newSettings) {
+    return true;
+  } else if (prevSettings && newSettings) {
+    if (
+      prevSettings.currentSelectedGroup?.id !==
+      newSettings.currentSelectedGroup?.id
+    ) {
+      return true;
+    }
+    if (prevSettings.viewAsSuperUser !== newSettings.viewAsSuperUser) {
+      return true;
+    }
+    if (prevSettings.displayMode !== newSettings.displayMode) {
+      return true;
+    }
+    if (prevSettings.lastKnownTimezone !== newSettings.lastKnownTimezone) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export const setLoggedInUserData = (user: LoggedInUser) => {
   let prevUserData = CurrentUser.value;
   if (prevUserData) {
     try {
       prevUserData = JSON.parse(JSON.stringify(prevUserData)) as LoggedInUser;
-      // TODO: Make this check more permissive
-      if (prevUserData.settings && user.settings) {
-        if (
-          prevUserData.settings.currentSelectedGroup?.id !==
-          user.settings.currentSelectedGroup?.id
-        ) {
-          // Update settings on server?
-          saveUserSettings(user.settings).then((response) => {
-            console.warn("User settings updated", response);
-          });
-        }
-        // Check to see if new user values have settings changed.
-        // If so, persist to the server.
+      if (user.settings) {
+        user.settings.lastKnownTimezone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone;
+      }
+      if (
+        userSettingsHaveChanged(
+          prevUserData.settings,
+          user.settings as ApiUserSettings
+        )
+      ) {
+        // TODO: If something not allowed in user settings schema makes it into settings, we need to remove
+        //  it before it can validate properly.  Client-side json schema validation? Or just be careful?
+        // Update settings on server?
+        saveUserSettings(user.settings as ApiUserSettings).then((response) => {
+          console.warn("User settings updated", response);
+        });
       }
     } catch (e) {
       // Shouldn't get malformed json errors here.

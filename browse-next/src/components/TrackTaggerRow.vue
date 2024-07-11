@@ -10,7 +10,7 @@ import type {
 import type { Ref } from "vue";
 import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
-import { persistUserGroupSettings } from "@models/LoggedInUser";
+import { persistUserProjectSettings } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
@@ -25,7 +25,7 @@ import type {
   GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
-import type { ApiGroupUserSettings } from "@typedefs/api/group";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
@@ -364,21 +364,21 @@ const rejectAiSuggestedTag = () => {
 
 const pinCustomTag = async (classification: Classification) => {
   if (currentSelectedProject.value) {
-    const userGroupSettings: ApiGroupUserSettings = currentSelectedProject.value
-      .userSettings || {
+    const userProjectSettings: ApiProjectUserSettings = currentSelectedProject
+      .value.userSettings || {
       displayMode: "visits",
       tags: [],
     };
-    const tags = userGroupSettings.tags || [];
+    const tags = userProjectSettings.tags || [];
     if (tags.includes(classification.label)) {
-      userGroupSettings.tags = tags.filter(
+      userProjectSettings.tags = tags.filter(
         (tag) => tag !== classification.label
       );
     } else {
-      userGroupSettings.tags = userGroupSettings.tags || [];
-      userGroupSettings.tags.push(classification.label);
+      userProjectSettings.tags = userProjectSettings.tags || [];
+      userProjectSettings.tags.push(classification.label);
     }
-    await persistUserGroupSettings(userGroupSettings);
+    await persistUserProjectSettings(userProjectSettings);
   }
 };
 

@@ -295,9 +295,7 @@ export default function (
 
   Device.stoppedDevices = async function () {
     const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-    const oneMinuteAgo = new Date();
-    oneMinuteAgo.setMinutes(oneMinuteAgo.getMinutes() - 1);
+    oneDayAgo.setHours(oneDayAgo.getHours() - 25);
     return this.findAll({
       where: {
         lastConnectionTime: {
