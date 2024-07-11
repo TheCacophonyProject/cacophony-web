@@ -1460,7 +1460,6 @@ export default function (app: Application, baseUrl: string) {
           DeviceId: device.id,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
-          fromDateTime: { [Op.lte]: atTime },
         };
         console.log(where);
         debugger;

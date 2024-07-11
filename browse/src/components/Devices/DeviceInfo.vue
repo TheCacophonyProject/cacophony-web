@@ -12,7 +12,9 @@
       >
         <template #cell(actions)="row">
           <div v-if="row.item.name === 'Use Low Power Mode'">
-            <b-button @click="toggleSetting(row.item)" variant="secondary"
+            <b-button
+              @click="toggleUseLowPowerMode(row.item)"
+              variant="secondary"
               >Toggle</b-button
             >
           </div>
@@ -154,13 +156,18 @@ export default defineComponent({
     });
 
     const fetchSettings = async () => {
-      const response = await DeviceApi.getDeviceSettings(props.deviceId);
-      if (response.success) {
-        settings.value = response.result.settings;
+      try {
+        const response = await DeviceApi.getDeviceSettings(props.deviceId);
+        console.log("Settings", response);
+        if (response.success) {
+          settings.value = response.result.settings;
+        }
+      } catch (e) {
+        console.error(e);
       }
     };
 
-    const toggleSetting = async (setting) => {
+    const toggleUseLowPowerMode = async (setting) => {
       if (setting.name === "Use Low Power Mode") {
         const response = await DeviceApi.toggleUseLowPowerMode(props.deviceId);
         if (response.success) {
@@ -226,6 +233,8 @@ export default defineComponent({
     };
 
     const formatTime = (timeString) => {
+      if (timeString[0] === "+" || timeString[0] === "-") return timeString;
+      debugger;
       const [hours, minutes] = timeString.split(":");
       return `${hours}:${minutes}`;
     };
@@ -261,8 +270,9 @@ export default defineComponent({
       return rows;
     });
 
-    onMounted(() => {
-      fetchSettings();
+    debugger;
+    onMounted(async () => {
+      await fetchSettings();
     });
 
     return {
@@ -270,7 +280,7 @@ export default defineComponent({
       fields,
       showCustomModal,
       customSettings,
-      toggleSetting,
+      toggleUseLowPowerMode,
       setDefaultRecordingWindows,
       set24HourRecordingWindows,
       enableCustomRecordingWindows,
