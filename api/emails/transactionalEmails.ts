@@ -416,9 +416,7 @@ export const sendStoppedDevicesReportEmail = async (
           stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
         attachments,
-        !sentAdminCopy
-          ? config.server.adminEmails
-          : [config.server.adminEmails[config.server.admingEmails.length - 1]] // Just bcc admin for the first email in a group.
+        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
       )
     );
     sentAdminCopy = true;
@@ -434,9 +432,7 @@ export const sendStoppedDevicesReportEmail = async (
           stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
         attachments,
-        !sentAdminCopy
-          ? config.server.adminEmails
-          : [config.server.adminEmails[config.server.admingEmails.length - 1]] // Just bcc admin for the first email in a group.
+        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
       )
     );
     sentAdminCopy = true;
