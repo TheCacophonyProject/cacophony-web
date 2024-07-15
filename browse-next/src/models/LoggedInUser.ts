@@ -8,6 +8,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId as ProjectId } from "@typedefs/api/common";
 import type {
+  ApiGroupResponse,
   ApiGroupResponse as ApiProjectResponse,
   ApiGroupSettings as ApiProjectSettings,
   ApiGroupUserSettings as ApiProjectUserSettings,
@@ -18,7 +19,8 @@ import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
 import {
-  getProjects,
+  getAllProjects,
+  getCurrentUserProjects,
   saveProjectSettings,
   saveProjectUserSettings,
 } from "@api/Project";
@@ -40,6 +42,7 @@ export interface PendingRequest {
 export const CurrentUserCreds = ref<LoadedResource<LoggedInUserAuth>>(null);
 export const CurrentUser = ref<LoadedResource<LoggedInUser>>(null);
 export const UserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
+export const NonUserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 export const DevicesForCurrentProject =
   ref<LoadedResource<ApiDeviceResponse[]>>(null);
 export const LocationsForCurrentProject =
@@ -71,6 +74,13 @@ export const userIsLoggedIn = computed<boolean>({
       CurrentUser.value = null;
     }
   },
+});
+
+export const currentUserIsSuperUser = computed<boolean>(() => {
+  if (!userIsLoggedIn.value) {
+    return false;
+  }
+  return (CurrentUser.value as LoggedInUser).globalPermission !== "off";
 });
 
 export const userHasProjects = computed<boolean>(() => {
@@ -123,9 +133,6 @@ const userSettingsHaveChanged = (
       prevSettings.currentSelectedGroup?.id !==
       newSettings.currentSelectedGroup?.id
     ) {
-      return true;
-    }
-    if (prevSettings.viewAsSuperUser !== newSettings.viewAsSuperUser) {
       return true;
     }
     if (prevSettings.displayMode !== newSettings.displayMode) {
@@ -309,6 +316,9 @@ export const forgetUserOnCurrentDevice = () => {
   window.localStorage.removeItem("saved-login-credentials");
   window.localStorage.removeItem("saved-login-user-data");
   UserProjects.value = null;
+  NonUserProjects.value = null;
+  DevicesForCurrentProject.value = null;
+  LocationsForCurrentProject.value = null;
   userIsLoggedIn.value = false;
 };
 
@@ -389,20 +399,31 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
     ) {
       const potentialGroupId =
         currentUserSettings.value.currentSelectedGroup.id;
-      const matchedGroup = nonPendingUserProjects.value.find(
+      let matchedProject = nonPendingUserProjects.value.find(
         ({ id }) => id === potentialGroupId
       );
-      if (!matchedGroup) {
+      if (matchedProject) {
+        isViewingAsSuperUser.value = false;
+      }
+
+      if (!matchedProject && currentUserIsSuperUser.value) {
+        matchedProject = (
+          (NonUserProjects.value as ApiGroupResponse[]) || []
+        ).find(({ id }) => id === potentialGroupId);
+        isViewingAsSuperUser.value = !!matchedProject;
+      }
+
+      if (!matchedProject) {
         debugger;
         return false;
       }
       return {
-        id: matchedGroup.id,
-        groupName: matchedGroup.groupName,
-        settings: matchedGroup.settings,
-        userSettings: matchedGroup.userSettings,
-        admin: matchedGroup.admin,
-        owner: matchedGroup.owner,
+        id: matchedProject.id,
+        groupName: matchedProject.groupName,
+        settings: matchedProject.settings,
+        userSettings: matchedProject.userSettings,
+        admin: matchedProject.admin,
+        owner: matchedProject.owner,
       };
     }
   }
@@ -422,6 +443,9 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
 });
 
 export const userIsAdminForCurrentSelectedProject = computed<boolean>(() => {
+  if (isViewingAsSuperUser.value) {
+    return true;
+  }
   if (currentSelectedProject.value && UserProjects.value) {
     const currentGroup = UserProjects.value.find(
       ({ id }) =>
@@ -440,10 +464,11 @@ export const userHasMultipleProjects = computed<boolean>(() => {
 
 export const shouldViewAsSuperUser = computed<boolean>(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
-    return currentUserSettings.value.viewAsSuperUser || false;
+    return isViewingAsSuperUser.value;
   }
   return false;
 });
+export const isViewingAsSuperUser = ref<boolean>(false);
 
 // TODO - If viewing other user as super user, return appropriate name
 export const userDisplayName = computed<string>(() => {
@@ -477,17 +502,24 @@ export const refreshUserProjects = async () => {
   isFetchingProjects.value = true;
   console.warn("Fetching user projects");
   const NO_ABORT = false;
-  const projectsResponse = await getProjects(NO_ABORT);
+  const projectsResponse = await getCurrentUserProjects(NO_ABORT);
   if (projectsResponse.success) {
     UserProjects.value = reactive(projectsResponse.result.groups);
-    console.warn(
-      "Fetched user projects",
-      currentSelectedProject.value,
-      JSON.stringify(UserProjects.value)
-    );
   } else {
     console.log("res", projectsResponse);
   }
+  if (currentUserIsSuperUser.value) {
+    const allProjectsResponse = await getAllProjects(NO_ABORT);
+    if (allProjectsResponse.success) {
+      NonUserProjects.value = reactive(
+        (allProjectsResponse.result.groups || []).filter(
+          (project) =>
+            !(UserProjects.value || []).map((p) => p.id).includes(project.id)
+        )
+      );
+    }
+  }
+
   isFetchingProjects.value = false;
   return projectsResponse;
 };

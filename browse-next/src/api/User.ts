@@ -137,10 +137,25 @@ export const saveUserSettings = (settings: ApiUserSettings) =>
 export const updateUserFields = (
   fields: ApiLoggedInUserUpdates,
   abortable?: boolean
-) =>
-  CacophonyApi.patch("/api/v1/users", fields, abortable) as Promise<
+) => {
+  const allowedFields = [
+    "displayMode",
+    "lastKnownTimezone",
+    "currentSelectedGroup",
+  ];
+  const toRemove = [];
+  for (const field of Object.keys(fields)) {
+    if (!allowedFields.includes(field)) {
+      toRemove.push(field);
+    }
+  }
+  for (const field of toRemove) {
+    delete (fields as any)[field];
+  }
+  return CacophonyApi.patch("/api/v1/users", fields, abortable) as Promise<
     FetchResult<void>
   >;
+};
 
 export const getEUAVersion = () =>
   CacophonyApi.get("/api/v1/end-user-agreement/latest", NO_ABORT) as Promise<

@@ -42,6 +42,13 @@ const handleImageLoaded = (e: Event) => {
   image.value?.removeEventListener("error", handleImageError);
 };
 
+watch(
+  () => props.src,
+  () => {
+    initImageLoadHandlers();
+  }
+);
+
 const image = ref<HTMLImageElement>();
 const elementIsVisible = ref(false);
 const initImageLoadHandlers = () => {

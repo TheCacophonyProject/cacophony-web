@@ -11,14 +11,11 @@ import { updateUserFields } from "@api/User";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import router from "@/router";
 import { currentUser as currentUserInfo } from "@models/provides";
-import Multiselect from "@vueform/multiselect";
 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 
 const changeDisplayNameModal = ref<boolean>(false);
 const changeEmailModal = ref<boolean>(false);
-
-const toggleViewAsAnotherUser = ref<boolean>(false);
 
 const updateUserErrorMessage = ref<ErrorResult | false>(false);
 const userUpdateInProgress = ref(false);
@@ -216,28 +213,6 @@ const updateUserEmailAddress = async () => {
           <font-awesome-icon icon="pencil-alt" size="xs" />
         </button>
       </div>
-    </div>
-  </div>
-  <div
-    v-if="currentUser && currentUser.globalPermission !== 'off'"
-    class="mt-4"
-  >
-    <h2 class="h5">
-      Masquerade as another user
-      <b-form-checkbox
-        v-model="toggleViewAsAnotherUser"
-        switch
-      ></b-form-checkbox>
-    </h2>
-    <div v-if="toggleViewAsAnotherUser">
-      <multiselect
-        v-model="otherUsers"
-        :options="commonDateRanges"
-        value-prop="value"
-        label="label"
-        class="ms-bootstrap"
-      />
-      <b-button>Go</b-button>
     </div>
   </div>
 

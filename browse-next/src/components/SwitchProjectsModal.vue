@@ -4,20 +4,25 @@ import {
   currentSelectedProject,
   showSwitchProject,
   type LoggedInUser,
+  shouldViewAsSuperUser,
 } from "@models/LoggedInUser";
-import { computed, inject, onMounted, type Ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, inject, onBeforeMount, onMounted, ref, type Ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import { currentUser as currentUserInfo } from "@models/provides.ts";
 import { userProjects as currentUserProjects } from "@models/provides.ts";
-import type { ApiGroupResponse } from "@typedefs/api/group";
+import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { DateTime } from "luxon";
+import Multiselect from "@vueform/multiselect";
+import type { LoadedResource } from "@api/types.ts";
+import { getAllProjects } from "@api/Project.ts";
 
-const userProjects = inject(currentUserProjects) as Ref<ApiGroupResponse[]>;
+const router = useRouter();
+const currentRoute = useRoute();
+const userProjects = inject(currentUserProjects) as Ref<ApiProjectResponse[]>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
 const nextRoute = (projectName: string) => {
-  const currentRoute = useRoute();
   if (currentRoute.params.groupName) {
     return {
       ...currentRoute,
@@ -45,7 +50,7 @@ const currentProjectName = computed<string>(() => {
   );
 });
 
-const getLatestRecordingTime = (group: ApiGroupResponse): Date => {
+const getLatestRecordingTime = (group: ApiProjectResponse): Date => {
   const lastThermal =
     (group.lastThermalRecordingTime &&
       new Date(group.lastThermalRecordingTime)) ||
@@ -78,11 +83,70 @@ const lastActiveRelativeToNow = (date: Date): string => {
   return `active ${DateTime.fromJSDate(date).toRelative() as string}`;
 };
 
+const selectedGroupName = ref<string>("");
+
+onBeforeMount(async () => {
+  if (
+    !sortedUserProjects.value.find(
+      ({ groupName }) => currentProjectName.value === groupName
+    )
+  ) {
+    await loadAllProjects();
+    if (
+      (allProjects.value || []).find(
+        ({ groupName }) => groupName === currentProjectName.value
+      )
+    ) {
+      selectedGroupName.value = currentProjectName.value;
+    }
+  }
+});
+
+const allProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
+const loadAllProjects = async () => {
+  if (allProjects.value === null) {
+    // Load projects
+    const response = await getAllProjects(false);
+    if (response.success) {
+      allProjects.value = response.result.groups;
+    }
+  }
+  return allNonUserProjects.value;
+};
+
+const allNonUserProjects = computed<ApiProjectResponse[]>(() => {
+  if (allProjects.value) {
+    return allProjects.value
+      .filter(
+        (project) =>
+          !sortedUserProjects.value.map((p) => p.id).includes(project.id)
+      )
+      .map((project) => {
+        return {
+          ...project,
+          latestRecordingTime: getLatestRecordingTime(project),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.latestRecordingTime.getTime() - a.latestRecordingTime.getTime()
+      );
+  }
+  return [];
+});
+
+const gotoNonUserProject = async () => {
+  await router.push(nextRoute(selectedGroupName.value));
+  showSwitchProject.visible = false;
+};
+
 onMounted(() => {
   showSwitchProject.visible = true;
 });
 
-// TODO: Add icons for a) the kinds of devices in the group, and b) If there are recent recordings in the last 24 hours for each device type.
+interface ProjectListOption extends ApiProjectResponse {
+  latestRecordingTime: Date;
+}
 </script>
 <template>
   <b-modal
@@ -92,9 +156,94 @@ onMounted(() => {
     hide-footer
     @hidden="showSwitchProject.enabled = false"
   >
-    <div v-if="currentUser.globalPermission !== 'off'">
-      View any project
-      <multiselect :options="sortedUserProjects"> </multiselect>
+    <div
+      v-if="currentUser.globalPermission !== 'off'"
+      class="super-user-overrides"
+    >
+      <div class="mb-3">
+        Go to any project
+        <multiselect
+          placeholder="Select a project"
+          value-prop="groupName"
+          :options="loadAllProjects"
+          v-model="selectedGroupName"
+          @select="gotoNonUserProject"
+        >
+          <template #option="{ option }: { option: ProjectListOption }">
+            <span class="d-flex justify-content-between w-100">
+              <span>
+                <span
+                  >{{ option.groupName }} ({{
+                    lastActiveRelativeToNow(option.latestRecordingTime)
+                  }})</span
+                >
+                <span
+                  v-if="option.groupName === currentProjectName"
+                  class="ms-1"
+                  >(selected)</span
+                >
+              </span>
+              <span>
+                <font-awesome-icon
+                  color="#999"
+                  icon="camera"
+                  v-if="option.lastThermalRecordingTime"
+                  class="ms-1"
+                />
+                <font-awesome-icon
+                  color="#999"
+                  icon="music"
+                  v-if="option.lastAudioRecordingTime"
+                  class="ms-1"
+                />
+                <font-awesome-icon
+                  color="#999"
+                  icon="question"
+                  v-if="
+                    !option.lastAudioRecordingTime &&
+                    !option.lastThermalRecordingTime
+                  "
+                  class="ms-1"
+                />
+              </span>
+            </span>
+          </template>
+          <template #singlelabel="{ value }: { value: ProjectListOption }">
+            <span class="w-100 px-3">
+              <span>
+                <span
+                  >{{ value.groupName }} ({{
+                    lastActiveRelativeToNow(value.latestRecordingTime)
+                  }})</span
+                >
+              </span>
+              <span>
+                <font-awesome-icon
+                  color="#999"
+                  icon="camera"
+                  v-if="value.lastThermalRecordingTime"
+                  class="ms-1"
+                />
+                <font-awesome-icon
+                  color="#999"
+                  icon="music"
+                  v-if="value.lastAudioRecordingTime"
+                  class="ms-1"
+                />
+                <font-awesome-icon
+                  color="#999"
+                  icon="question"
+                  v-if="
+                    !value.lastAudioRecordingTime &&
+                    !value.lastThermalRecordingTime
+                  "
+                  class="ms-1"
+                />
+              </span>
+            </span>
+          </template>
+        </multiselect>
+      </div>
     </div>
     <div class="list-group" v-if="sortedUserProjects">
       <p v-if="currentUser.globalPermission !== 'off'">My projects</p>
@@ -156,3 +305,4 @@ onMounted(() => {
     </div>
   </b-modal>
 </template>
+<style src="@vueform/multiselect/themes/default.css"></style>
