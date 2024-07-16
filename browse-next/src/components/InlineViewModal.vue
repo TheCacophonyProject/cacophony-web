@@ -5,6 +5,7 @@ import { useRoute, useRouter } from "vue-router";
 import type { RouteRecordName } from "vue-router";
 import { BModal } from "bootstrap-vue-next";
 import { urlNormalisedCurrentSelectedProjectName } from "@models/provides";
+import type { RecordingId } from "@typedefs/api/common";
 const route = useRoute();
 const router = useRouter();
 const emit = defineEmits(["close", "shown"]);
@@ -66,6 +67,8 @@ const onShown = () => {
   emit("shown");
 };
 
+const updatedRecording = (recordingId: RecordingId, action: string) => {};
+
 const isBusy = ref<boolean>(false);
 </script>
 <template>
@@ -102,6 +105,7 @@ const isBusy = ref<boolean>(false);
         @close="show = false"
         @start-blocking-work="isBusy = true"
         @end-blocking-work="isBusy = false"
+        @recording-updated="updatedRecording"
       />
     </b-modal>
   </router-view>

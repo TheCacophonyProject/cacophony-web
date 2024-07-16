@@ -712,7 +712,7 @@ const currentTotalRecordings = computed<number>(() => {
   if (currentQueryCount.value) {
     return currentQueryCount.value as number;
   }
-  return loadedRecordings.value.length;
+  return filteredLoadedRecordings.value.length;
 });
 const canExpandSearchBackFurther = computed<boolean>(() => {
   return (
@@ -721,18 +721,25 @@ const canExpandSearchBackFurther = computed<boolean>(() => {
       minDateForSelectedLocations.value.getTime()
   );
 });
-const updatedRecording = (recording: ApiRecordingResponse) => {
+const updatedRecording = (
+  recording: ApiRecordingResponse,
+  recordingWasDeleted = false
+) => {
   const loadedRecording = loadedRecordings.value.find(
     ({ id }) => id === recording.id
   );
   if (loadedRecording) {
-    loadedRecording.tracks = recording.tracks;
-    loadedRecording.tags = recording.tags;
+    if (recordingWasDeleted) {
+      loadedRecording.tombstoned = true;
+    } else {
+      loadedRecording.tracks = recording.tracks;
+      loadedRecording.tags = recording.tags;
+    }
   }
 };
 
 const currentlySelectedVisit = ref<ApiVisitResponse | null>(null);
-const chunkedVisits = ref<ApiVisitResponse[]>([]);
+
 //const visitsContext = ref<ApiVisitResponse[] | null>(null);
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -744,6 +751,18 @@ const chunkedRecordings = ref<
     items: (RecordingItem | SunItem)[];
   }[]
 >([]);
+
+const prefilteredChunkedVisits = ref<ApiVisitResponse[]>([]);
+const chunkedVisits = computed<ApiVisitResponse[]>(() => {
+  return prefilteredChunkedVisits.value.filter(
+    (visit) => !visit.hasOwnProperty("tombstoned")
+  );
+});
+const filteredLoadedRecordings = computed<ApiRecordingResponse[]>(() => {
+  return loadedRecordings.value.filter(
+    (rec) => !rec.hasOwnProperty("tombstoned")
+  );
+});
 
 interface RecordingQueryCursor {
   fromDateTime: Date | null;
@@ -769,11 +788,15 @@ const currentQueryLoaded = ref<number>(0);
 const completedCurrentQuery = ref<boolean>(false);
 
 let needsObserverUpdate = false;
-watch(loadedRecordings.value, () => {
-  needsObserverUpdate = true;
+watch(filteredLoadedRecordings.value, (next, prev) => {
+  if (next && prev && next.length !== prev.length) {
+    needsObserverUpdate = true;
+  }
 });
-watch(chunkedVisits.value, () => {
-  needsObserverUpdate = true;
+watch(chunkedVisits.value, (next, prev) => {
+  if (next && prev && next.length !== prev.length) {
+    needsObserverUpdate = true;
+  }
 });
 
 let currentObserver: { stop: () => void } | null;
@@ -992,7 +1015,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
 const appendVisitsChunkedByDay = (visits: ApiVisitResponse[]) => {
   for (const visit of visits) {
     // TODO: May need to optimise this as the list gets long?
-    chunkedVisits.value.push(visit);
+    prefilteredChunkedVisits.value.push(visit);
   }
 };
 
@@ -1010,8 +1033,8 @@ const resetQuery = (
   while (chunkedRecordings.value.length) {
     chunkedRecordings.value.pop();
   }
-  while (chunkedVisits.value.length) {
-    chunkedVisits.value.pop();
+  while (prefilteredChunkedVisits.value.length) {
+    prefilteredChunkedVisits.value.pop();
   }
   currentQueryHash.value = newQueryHash;
   currentQueryLoaded.value = 0;
@@ -1092,10 +1115,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
     let earliestRecord = null;
     if (inRecordingsMode.value) {
-      if (loadedRecordings.value.length) {
+      if (filteredLoadedRecordings.value.length) {
         earliestRecord = new Date(
-          loadedRecordings.value[
-            loadedRecordings.value.length - 1
+          filteredLoadedRecordings.value[
+            filteredLoadedRecordings.value.length - 1
           ].recordingDateTime
         );
       }
@@ -1117,6 +1140,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     const hasNotLoadedAllOfQueryTimeRange =
       (currentQueryCursor.value.fromDateTime as Date) > (fromDateTime as Date);
 
+    console.log(
+      "Has not loaded all of time range",
+      hasNotLoadedAllOfQueryTimeRange
+    );
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
@@ -1168,6 +1195,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         );
       }
       if (response && response.success) {
+        console.log("Got response");
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
         if (inRecordingsMode.value) {
@@ -1232,8 +1260,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
                 currentQueryCursor.value.untilDateTime as Date
               );
             }
-            completedCurrentQuery.value = true;
           }
+          // FIXME - Not sure about placement of this.
+          completedCurrentQuery.value = true;
         } else {
           if (
             dateRange.value[0] &&
@@ -1610,9 +1639,14 @@ const closedModal = () => {
   currentlySelectedVisit.value = null;
 };
 
+const filteredLoadedRecordingIds = computed<RecordingId[]>(() => {
+  return (filteredLoadedRecordings.value || []).map(({ id }) => id);
+});
+
 provide(activeLocations, locationsInSelectedTimespan);
 provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
-provide("loadedRecordingIds", loadedRecordingIds);
+provide("loadedRecordingIds", filteredLoadedRecordingIds);
+provide("loadedRecordings", loadedRecordings);
 provide("currentRecordingCount", currentTotalRecordings);
 provide("canLoadMoreRecordingsInPast", canLoadMoreRecordingsInPast);
 provide("updatedRecording", updatedRecording);
@@ -1806,7 +1840,7 @@ onBeforeUnmount(() => {
         <div
           v-else-if="
             (searchParams.displayMode === 'recordings' &&
-              loadedRecordings.length) ||
+              filteredLoadedRecordings.length) ||
             (searchParams.displayMode === 'visits' && chunkedVisits.length)
           "
         >

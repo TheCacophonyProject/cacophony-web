@@ -57,19 +57,27 @@ const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
   null
 );
 
+const visitIsTombstoned = (visit: ApiVisitResponse): boolean => {
+  return visit.hasOwnProperty("tombstoned");
+};
+
 const currentVisitsFilterComputed = computed<
   (visit: ApiVisitResponse) => boolean
 >(() => {
   if (currentVisitsFilter.value === null) {
-    return visitorIsPredator;
+    return (visit) => visitorIsPredator(visit) && !visitIsTombstoned(visit);
   } else {
-    return currentVisitsFilter.value;
+    return (visit) =>
+      currentVisitsFilter.value(visit) && !visitIsTombstoned(visit);
   }
 });
 
 // TODO: Move to provides/inject
+// FIXME: Any time any visit is mutated (tags change etc, we have to recompute this,
+//  which could be very slow for a large list?
 const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
+    console.log("Recompute visits context");
     return (visitsContext.value as ApiVisitResponse[]).filter(
       currentVisitsFilterComputed.value
     );
@@ -135,14 +143,14 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
 
-const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
-  if (visitsContext.value) {
-    return (visitsContext.value as ApiVisitResponse[]).filter(
-      visitorIsPredator
-    );
-  }
-  return [];
-});
+// const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
+//   if (visitsContext.value) {
+//     return (visitsContext.value as ApiVisitResponse[]).filter(
+//       visitorIsPredator
+//     );
+//   }
+//   return [];
+// });
 
 // Two ways we can go about next/prev visit.  We pass the loaded visits through from the parent context,
 // and then move through them as an array index.
@@ -193,7 +201,7 @@ const loadingVisitsProgress = ref<number>(0);
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 const speciesSummary = computed<Record<string, number>>(() => {
-  return maybeFilteredDashboardVisitsContext.value.reduce(
+  return maybeFilteredVisitsContext.value.reduce(
     (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
       if (currentValue.classification) {
         acc[currentValue.classification] =
@@ -394,7 +402,7 @@ const showVisitsForLocation = (location: ApiLocationResponse) => {
 const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   return (
     locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0 &&
-    maybeFilteredDashboardVisitsContext.value.length !== 0
+    maybeFilteredVisitsContext.value.length !== 0
   );
 });
 
@@ -482,12 +490,12 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       class="mb-5 flex-md-fill me-md-3"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-      :visits="maybeFilteredDashboardVisitsContext"
+      :visits="maybeFilteredVisitsContext"
       :start-date="earliestDate"
       :loading="isLoading"
     />
     <visits-breakdown-list
-      :visits="maybeFilteredDashboardVisitsContext"
+      :visits="maybeFilteredVisitsContext"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
       @selected-visit="(visit: ApiVisitResponse) => (selectedVisit = visit)"
@@ -518,7 +526,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         "
         @click="showVisitsForLocation(location)"
         :locations="allLocations"
-        :visits="maybeFilteredDashboardVisitsContext"
+        :visits="maybeFilteredVisitsContext"
         :key="index"
       />
     </div>
