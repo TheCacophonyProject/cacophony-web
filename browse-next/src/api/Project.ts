@@ -156,12 +156,17 @@ export const getDevicesForProject = (
 
 export const getLocationsForProject = (
   projectNameOrId: string,
-  activeAndInactive = false
+  activeAndInactive = false, // Only active locations by default (non-retired)
+  withRecordings = true // Only locations with recordings - locations with all recordings deleted won't show.
 ): Promise<LoadedResource<ApiLocationResponse[]>> => {
   const params = new URLSearchParams();
   params.append(
     "only-active",
     activeAndInactive ? false.toString() : true.toString()
+  );
+  params.append(
+    "with-recordings",
+    withRecordings ? false.toString() : true.toString()
   );
   return unwrapLoadedResource(
     CacophonyApi.get(

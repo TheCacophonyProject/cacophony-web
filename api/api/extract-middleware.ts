@@ -506,6 +506,7 @@ export const fetchModel =
       id2 = extractValFromRequest(request, secondary) as string;
     }
     response.locals.onlyActive = true; // Default to only showing active devices.
+    response.locals.withRecordings = false; // Default to showing stations without any recordings.
     if (
       ("onlyActive" in request.query &&
         Boolean(request.query.onlyActive) === false) ||
@@ -513,6 +514,12 @@ export const fetchModel =
         Boolean(request.query["only-active"]) === false)
     ) {
       response.locals.onlyActive = false;
+    }
+    if (
+      "with-recordings" in request.query &&
+      Boolean(request.query["with-recordings"]) === true
+    ) {
+      response.locals.withRecordings = true;
     }
     if ("deleted" in request.query) {
       response.locals.deleted = Boolean(request.query.deleted);
@@ -727,6 +734,24 @@ const getStations =
       (getStationsOptions as any).where =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
+    }
+    if (context.withRecordings) {
+      (getStationsOptions as any).where =
+        (getStationsOptions as any).where || {};
+      (getStationsOptions as any).where[Op.and] = [
+        {
+          [Op.or]: [
+            {
+              lastThermalRecordingTime: { [Op.ne]: null },
+              lastAudioRecordingTime: { [Op.ne]: null },
+              automatic: true,
+            },
+            {
+              automatic: false,
+            },
+          ],
+        },
+      ];
     }
 
     return models.Station.findAll({

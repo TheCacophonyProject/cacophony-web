@@ -1727,8 +1727,6 @@ export default (app: Application, baseUrl: string) => {
       if (recording.StationId) {
         const station = await models.Station.findByPk(recording.StationId);
         if (!latestStationRecordingOfSameType) {
-          // FIXME - If this is the *last* recording for a station, and the station is automatic, remove the station,
-          //  and the corresponding DeviceHistory entry. (Do we need to worry about undelete then?)
           if (cameras.includes(recording.type)) {
             await station.update({
               lastThermalRecordingTime: null,

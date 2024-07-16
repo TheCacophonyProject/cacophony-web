@@ -1116,6 +1116,9 @@ const deleteRecording = async () => {
         } else {
           await gotoPreviousRecordingOrVisit();
         }
+      } else {
+        // Close the modal if there are no other recordings to move to.
+        emit("close");
       }
       if (isInVisitContext.value) {
         let ids = route.params.recordingIds;
