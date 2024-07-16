@@ -96,6 +96,8 @@ import {
 import {
   addTag,
   bulkDelete,
+  fixupLatestRecordingTimesForDeletedRecording,
+  fixupLatestRecordingTimesForUndeletedRecording,
   getThumbnail,
   getTrackTags,
   getTrackTagsCount,
@@ -1615,6 +1617,8 @@ export default (app: Application, baseUrl: string) => {
         const rawFileKey = recording.rawFileKey;
         const fileKey = recording.fileKey;
         const thumbKey = `${rawFileKey}-thumb`;
+        const trackIds = (await recording.getTracks()).map(({ id }) => id);
+
         try {
           await recording.destroy({ force: true });
           deleted = true;
@@ -1625,141 +1629,26 @@ export default (app: Application, baseUrl: string) => {
           await util.deleteS3Object(rawFileKey).catch((err) => {
             log.warning(err);
           });
+          // Delete thumbs
+          await util.deleteS3Object(thumbKey).catch((err) => {
+            log.warning(err);
+          });
+          // NOTE: There can be other thumbnails related to appending tracks, so delete those too.
+          for (const trackId of trackIds) {
+            await util
+              .deleteS3Object(`${rawFileKey}-${trackId}-thumb`)
+              .catch((err) => {
+                log.warning(err);
+              });
+          }
         }
         if (deleted && fileKey) {
           await util.deleteS3Object(fileKey).catch((err) => {
             log.warning(err);
           });
         }
-        if (deleted && thumbKey) {
-          // TODO: There can be other thumbnails related to appending tracks, and we should probably delete those too.
-          await util.deleteS3Object(thumbKey).catch((err) => {
-            log.warning(err);
-          });
-        }
       }
-      // Check if there are any more device/group/station recordings, or if the latest recording of this type
-      // is not different. If not, set lastRecordingTime to null,
-      // so that the device will appear as deletable.
-      const cameras = [RecordingType.ThermalRaw, RecordingType.TrailCamImage];
-      let types = [RecordingType.Audio];
-      if (
-        [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-          recording.type
-        )
-      ) {
-        types = cameras;
-      }
-      const [
-        latestDeviceRecording,
-        latestGroupRecordingOfSameType,
-        latestStationRecordingOfSameType,
-      ] = await Promise.all([
-        models.Recording.findOne({
-          where: { DeviceId: recording.DeviceId, deletedAt: null },
-          order: [["recordingDateTime", "DESC"]],
-        }),
-        models.Recording.findOne({
-          where: {
-            GroupId: recording.GroupId,
-            deletedAt: null,
-            type: { [Op.in]: types },
-          },
-          order: [["recordingDateTime", "DESC"]],
-        }),
-        models.Recording.findOne({
-          where: {
-            StationId: recording.StationId,
-            deletedAt: null,
-            type: { [Op.in]: types },
-          },
-          order: [["recordingDateTime", "DESC"]],
-        }),
-      ]);
-      const [device, group] = await Promise.all([
-        models.Device.findByPk(recording.DeviceId),
-        models.Group.findByPk(recording.GroupId),
-      ]);
-      if (!latestDeviceRecording) {
-        await device.update({
-          lastRecordingTime: null,
-        });
-      } else if (
-        latestDeviceRecording.recordingDateTime < device.lastRecordingTime
-      ) {
-        await device.update({
-          lastRecordingTime: latestDeviceRecording.recordingDateTime,
-        });
-      }
-      if (!latestGroupRecordingOfSameType) {
-        if (cameras.includes(recording.type)) {
-          await group.update({
-            lastThermalRecordingTime: null,
-          });
-        } else if (recording.type === RecordingType.Audio) {
-          await group.update({
-            lastAudioRecordingTime: null,
-          });
-        }
-      } else {
-        if (cameras.includes(recording.type)) {
-          if (
-            latestGroupRecordingOfSameType.recordingDateTime <
-            group.lastThermalRecordingTime
-          ) {
-            await group.update({
-              lastThermalRecordingTime:
-                latestGroupRecordingOfSameType.recordingDateTime,
-            });
-          }
-        } else if (recording.type === RecordingType.Audio) {
-          if (
-            latestGroupRecordingOfSameType.recordingDateTime <
-            group.lastAudioRecordingTime
-          ) {
-            await group.update({
-              lastAudioRecordingTime:
-                latestGroupRecordingOfSameType.recordingDateTime,
-            });
-          }
-        }
-      }
-      if (recording.StationId) {
-        const station = await models.Station.findByPk(recording.StationId);
-        if (!latestStationRecordingOfSameType) {
-          if (cameras.includes(recording.type)) {
-            await station.update({
-              lastThermalRecordingTime: null,
-            });
-          } else if (recording.type === RecordingType.Audio) {
-            await station.update({
-              lastAudioRecordingTime: null,
-            });
-          }
-        } else {
-          if (cameras.includes(recording.type)) {
-            if (
-              latestStationRecordingOfSameType.recordingDateTime <
-              station.lastThermalRecordingTime
-            ) {
-              await station.update({
-                lastThermalRecordingTime:
-                  latestStationRecordingOfSameType.recordingDateTime,
-              });
-            }
-          } else if (recording.type === RecordingType.Audio) {
-            if (
-              latestStationRecordingOfSameType.recordingDateTime <
-              station.lastAudioRecordingTime
-            ) {
-              await station.update({
-                lastAudioRecordingTime:
-                  latestStationRecordingOfSameType.recordingDateTime,
-              });
-            }
-          }
-        }
-      }
+      await fixupLatestRecordingTimesForDeletedRecording(models, recording);
       if (softDelete) {
         return successResponse(response, "Deleted recording.");
       } else {
@@ -1832,55 +1721,7 @@ export default (app: Application, baseUrl: string) => {
         deletedAt: null,
         deletedBy: null,
       });
-      const cameras = [RecordingType.TrailCamImage, RecordingType.ThermalRaw];
-      const [device, group] = await Promise.all([
-        models.Device.findByPk(recording.DeviceId),
-        models.Group.findByPk(recording.GroupId),
-      ]);
-      if (
-        (device && device.lastRecordingTime === null) ||
-        recording.recordingDateTime > device.lastRecordingTime
-      ) {
-        await device.update({ lastRecordingTime: recording.recordingDateTime });
-      }
-      if (
-        (group && group.lastRecordingTime === null) ||
-        recording.recordingDateTime > device.lastRecordingTime
-      ) {
-        if (
-          cameras.includes(recording.type) &&
-          recording.recordingDateTime > group.lastThermalRecordingTime
-        ) {
-          await group.update({
-            lastThermalRecordingTime: recording.recordingDateTime,
-          });
-        } else if (
-          recording.type === RecordingType.Audio &&
-          recording.recordingDateTime > group.lastAudioRecordingTime
-        ) {
-          await group.update({
-            lastAudioRecordingTime: recording.recordingDateTime,
-          });
-        }
-      }
-      if (recording.StationId) {
-        const station = await models.Station.findByPk(recording.StationId);
-        if (
-          cameras.includes(recording.type) &&
-          recording.recordingDateTime > station.lastThermalRecordingTime
-        ) {
-          await station.update({
-            lastThermalRecordingTime: recording.recordingDateTime,
-          });
-        } else if (
-          recording.type === RecordingType.Audio &&
-          recording.recordingDateTime > station.lastAudioRecordingTime
-        ) {
-          await station.update({
-            lastAudioRecordingTime: recording.recordingDateTime,
-          });
-        }
-      }
+      await fixupLatestRecordingTimesForUndeletedRecording(models, recording);
       return successResponse(response, "Undeleted recording.");
     }
   );

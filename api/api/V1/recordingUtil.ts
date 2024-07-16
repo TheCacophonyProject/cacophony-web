@@ -878,16 +878,21 @@ export async function bulkDelete(
     options
   );
 
-  const values = (await models.Recording.findAll(builder.get())) as Recording[];
-  if (values.length === 0) {
+  const recordings = (await models.Recording.findAll(
+    builder.get()
+  )) as Recording[];
+  if (recordings.length === 0) {
     throw new Error("No recordings found to delete");
   }
   const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
-  const ids = values.map((value) => value.id);
+  const ids = recordings.map((value) => value.id);
   const deletedValues = (await models.Recording.update(deletion, {
     where: { id: ids },
     returning: ["id"],
   })) as unknown as Promise<[number, { id: number }[]]>;
+  for (const recording of recordings) {
+    await fixupLatestRecordingTimesForDeletedRecording(models, recording);
+  }
   if (deletedValues[1]) {
     return deletedValues[1].map((value) => value.id);
   }
@@ -2452,5 +2457,188 @@ export const finishedProcessingRecording = async (
 
   if (prevState !== RecordingProcessingState.Reprocess) {
     await sendAlerts(models, recording.id);
+  }
+};
+
+export const fixupLatestRecordingTimesForDeletedRecording = async (
+  models: ModelsDictionary,
+  recording: Recording
+) => {
+  // Check if there are any more device/group/station recordings, or if the latest recording of this type
+  // is not different. If not, set lastRecordingTime to null,
+  // so that the device will appear as deletable.
+  const cameras = [RecordingType.ThermalRaw, RecordingType.TrailCamImage];
+  let types = [RecordingType.Audio];
+  if (
+    [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
+      recording.type
+    )
+  ) {
+    types = cameras;
+  }
+  const [
+    latestDeviceRecording,
+    latestGroupRecordingOfSameType,
+    latestStationRecordingOfSameType,
+  ] = await Promise.all([
+    models.Recording.findOne({
+      where: { DeviceId: recording.DeviceId, deletedAt: null },
+      order: [["recordingDateTime", "DESC"]],
+    }),
+    models.Recording.findOne({
+      where: {
+        GroupId: recording.GroupId,
+        deletedAt: null,
+        type: { [Op.in]: types },
+      },
+      order: [["recordingDateTime", "DESC"]],
+    }),
+    models.Recording.findOne({
+      where: {
+        StationId: recording.StationId,
+        deletedAt: null,
+        type: { [Op.in]: types },
+      },
+      order: [["recordingDateTime", "DESC"]],
+    }),
+  ]);
+  const [device, group] = await Promise.all([
+    models.Device.findByPk(recording.DeviceId),
+    models.Group.findByPk(recording.GroupId),
+  ]);
+  if (!latestDeviceRecording) {
+    await device.update({
+      lastRecordingTime: null,
+    });
+  } else if (
+    latestDeviceRecording.recordingDateTime < device.lastRecordingTime
+  ) {
+    await device.update({
+      lastRecordingTime: latestDeviceRecording.recordingDateTime,
+    });
+  }
+  if (!latestGroupRecordingOfSameType) {
+    if (cameras.includes(recording.type)) {
+      await group.update({
+        lastThermalRecordingTime: null,
+      });
+    } else if (recording.type === RecordingType.Audio) {
+      await group.update({
+        lastAudioRecordingTime: null,
+      });
+    }
+  } else {
+    if (cameras.includes(recording.type)) {
+      if (
+        latestGroupRecordingOfSameType.recordingDateTime <
+        group.lastThermalRecordingTime
+      ) {
+        await group.update({
+          lastThermalRecordingTime:
+            latestGroupRecordingOfSameType.recordingDateTime,
+        });
+      }
+    } else if (recording.type === RecordingType.Audio) {
+      if (
+        latestGroupRecordingOfSameType.recordingDateTime <
+        group.lastAudioRecordingTime
+      ) {
+        await group.update({
+          lastAudioRecordingTime:
+            latestGroupRecordingOfSameType.recordingDateTime,
+        });
+      }
+    }
+  }
+  if (recording.StationId) {
+    const station = await models.Station.findByPk(recording.StationId);
+    if (!latestStationRecordingOfSameType) {
+      if (cameras.includes(recording.type)) {
+        await station.update({
+          lastThermalRecordingTime: null,
+        });
+      } else if (recording.type === RecordingType.Audio) {
+        await station.update({
+          lastAudioRecordingTime: null,
+        });
+      }
+    } else {
+      if (cameras.includes(recording.type)) {
+        if (
+          latestStationRecordingOfSameType.recordingDateTime <
+          station.lastThermalRecordingTime
+        ) {
+          await station.update({
+            lastThermalRecordingTime:
+              latestStationRecordingOfSameType.recordingDateTime,
+          });
+        }
+      } else if (recording.type === RecordingType.Audio) {
+        if (
+          latestStationRecordingOfSameType.recordingDateTime <
+          station.lastAudioRecordingTime
+        ) {
+          await station.update({
+            lastAudioRecordingTime:
+              latestStationRecordingOfSameType.recordingDateTime,
+          });
+        }
+      }
+    }
+  }
+};
+
+export const fixupLatestRecordingTimesForUndeletedRecording = async (
+  models: ModelsDictionary,
+  recording: Recording
+) => {
+  const cameras = [RecordingType.TrailCamImage, RecordingType.ThermalRaw];
+  const [device, group] = await Promise.all([
+    models.Device.findByPk(recording.DeviceId),
+    models.Group.findByPk(recording.GroupId),
+  ]);
+  if (
+    (device && device.lastRecordingTime === null) ||
+    recording.recordingDateTime > device.lastRecordingTime
+  ) {
+    await device.update({ lastRecordingTime: recording.recordingDateTime });
+  }
+  if (
+    (group && group.lastRecordingTime === null) ||
+    recording.recordingDateTime > device.lastRecordingTime
+  ) {
+    if (
+      cameras.includes(recording.type) &&
+      recording.recordingDateTime > group.lastThermalRecordingTime
+    ) {
+      await group.update({
+        lastThermalRecordingTime: recording.recordingDateTime,
+      });
+    } else if (
+      recording.type === RecordingType.Audio &&
+      recording.recordingDateTime > group.lastAudioRecordingTime
+    ) {
+      await group.update({
+        lastAudioRecordingTime: recording.recordingDateTime,
+      });
+    }
+  }
+  if (recording.StationId) {
+    const station = await models.Station.findByPk(recording.StationId);
+    if (
+      cameras.includes(recording.type) &&
+      recording.recordingDateTime > station.lastThermalRecordingTime
+    ) {
+      await station.update({
+        lastThermalRecordingTime: recording.recordingDateTime,
+      });
+    } else if (
+      recording.type === RecordingType.Audio &&
+      recording.recordingDateTime > station.lastAudioRecordingTime
+    ) {
+      await station.update({
+        lastAudioRecordingTime: recording.recordingDateTime,
+      });
+    }
   }
 };
