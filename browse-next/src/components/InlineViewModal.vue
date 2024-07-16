@@ -67,6 +67,7 @@ const onShown = () => {
   emit("shown");
 };
 
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 const updatedRecording = (recordingId: RecordingId, action: string) => {};
 
 const isBusy = ref<boolean>(false);

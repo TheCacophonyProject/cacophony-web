@@ -1022,7 +1022,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       tooltip
       custom-class="tag-info-popover"
       placement="right-start"
-      container="body"
+      teleport-to="body"
       :target="falsePositiveInfoParent"
     >
       Include recordings that are only tagged as false trigger, or which have no
@@ -1079,7 +1079,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         </div>
         <b-popover
           click
-          container="body"
+          teleport-to="body"
           variant="secondary"
           v-model="toggleSubspeciesHelp"
           tooltip
