@@ -418,9 +418,17 @@ const recordingTracksPossiblyFiltered = computed<ApiTrackResponse[]>(() => {
   if (!showFalseTriggers.value) {
     return recordingTracksLocal.value.filter((track) => {
       const userTags = track.tags.filter((tag) => !tag.automatic);
+      const userHasNonFalseTriggerTags = userTags.some(
+        (tag) => tag.what !== "false-positive"
+      );
+      const userHasFalseTriggerTags = userTags.some(
+        (tag) => tag.what === "false-positive"
+      );
+      if (userHasNonFalseTriggerTags) {
+        return true;
+      }
       const userFalseTrigger =
-        userTags.some((tag) => tag.what === "false-positive") &&
-        !userTags.some((tag) => tag.what !== "false-positive");
+        userHasFalseTriggerTags && !userHasNonFalseTriggerTags;
       if (userFalseTrigger) {
         //If the track was just marked as false-positive by the user, keep it visible for now
         if (
