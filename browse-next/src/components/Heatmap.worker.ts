@@ -6,6 +6,15 @@ const processHeatmap = (tracks: ApiTrackResponse[]): Promise<Uint32Array> => {
       if (track.positions) {
         //const temp = new Uint8Array(160 * 120);
         for (const position of track.positions) {
+          if (
+            position.x === 0 &&
+            position.y === 0 &&
+            position.width === 160 &&
+            position.height === 120
+          ) {
+            // Ignore synthetic tracks that take up the whole frame
+            continue;
+          }
           // Create a sort of circle around the position, or just draw the square?
           // We could draw into a canvas if that helps?
           const halfW = position.width / 2;

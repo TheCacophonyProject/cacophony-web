@@ -106,6 +106,13 @@ export const persistUserProjectSettings = async (
     if (localProjectToUpdate) {
       localProjectToUpdate.userSettings = userSettings;
       await saveProjectUserSettings(localProjectToUpdate.id, userSettings);
+    } else if (isViewingAsSuperUser.value) {
+      const nonUserProjectToUpdate = NonUserProjects.value.find(
+        ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
+      );
+      if (nonUserProjectToUpdate) {
+        nonUserProjectToUpdate.userSettings = userSettings;
+      }
     }
   }
 };
@@ -383,6 +390,7 @@ export interface SelectedProject {
   userSettings?: ApiProjectUserSettings;
 }
 export const currentSelectedProject = computed<SelectedProject | false>(() => {
+  console.log("Recompute current selected project");
   if (
     userIsLoggedIn.value &&
     currentUserSettings.value &&
@@ -411,6 +419,9 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
           (NonUserProjects.value as ApiGroupResponse[]) || []
         ).find(({ id }) => id === potentialGroupId);
         isViewingAsSuperUser.value = !!matchedProject;
+        if (matchedProject) {
+          return matchedProject;
+        }
       }
 
       if (!matchedProject) {

@@ -62,7 +62,7 @@ const userProjectSettings = computed<ApiProjectUserSettings>(() => {
       displayMode: "visits",
       tags: [],
       notificationPreferences: {},
-      showFalseTriggers: true,
+      showFalseTriggers: false,
     }
   );
 });
