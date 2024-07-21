@@ -143,14 +143,16 @@ export const updateUserFields = (
     "lastKnownTimezone",
     "currentSelectedGroup",
   ];
-  const toRemove = [];
-  for (const field of Object.keys(fields)) {
-    if (!allowedFields.includes(field)) {
-      toRemove.push(field);
+  if (fields.settings) {
+    const toRemove = [];
+    for (const field of Object.keys(fields.settings)) {
+      if (!allowedFields.includes(field)) {
+        toRemove.push(field);
+      }
     }
-  }
-  for (const field of toRemove) {
-    delete (fields as any)[field];
+    for (const field of toRemove) {
+      delete (fields.settings as any)[field];
+    }
   }
   return CacophonyApi.patch("/api/v1/users", fields, abortable) as Promise<
     FetchResult<void>

@@ -1,17 +1,14 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, ref, watch } from "vue";
+import { computed, type ComputedRef, inject, ref, watch } from "vue";
 import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
 import type { SelectedProject } from "@models/LoggedInUser";
-import {
-  currentSelectedProject,
-  CurrentUser,
-  showUnimplementedModal,
-} from "@models/LoggedInUser";
+import { CurrentUser, showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { RecordingType } from "@typedefs/api/consts.ts";
+import { currentSelectedProject } from "@models/provides.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 
 const props = withDefaults(
@@ -21,6 +18,10 @@ const props = withDefaults(
   { recording: null }
 );
 const currentRecordingType = ref<"cptv" | "image">("cptv");
+
+const currentProject = inject(currentSelectedProject) as ComputedRef<
+  SelectedProject | false
+>;
 
 watch(
   () => props.recording,
@@ -127,8 +128,15 @@ const recordingIsFlagged = computed<boolean>(() => {
   return false;
 });
 
-const userIsGroupAdmin = (currentSelectedProject.value as SelectedProject)
-  .admin;
+const userIsGroupAdmin = computed<boolean>(() => {
+  if (currentProject.value) {
+    return (
+      currentProject.value.hasOwnProperty("admin") &&
+      currentProject.value.admin === true
+    );
+  }
+  return false;
+});
 
 const notImplemented = () => {
   showUnimplementedModal.value = true;
