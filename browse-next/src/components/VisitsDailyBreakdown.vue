@@ -20,6 +20,7 @@ import {
 } from "@api/Classifications";
 import ImageLoader from "@/components/ImageLoader.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
@@ -227,6 +228,21 @@ const visitTime = (timeIsoString: string) =>
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   if (visit.recordings.length) {
+    let foundTrack;
+    let foundRec;
+    for (const rec of visit.recordings) {
+      const track = rec.tracks.find(
+        (track) => track.tag === visit.classification
+      );
+      if (track) {
+        foundRec = rec;
+        foundTrack = track;
+        break;
+      }
+    }
+    if (foundTrack && foundRec) {
+      return `${API_ROOT}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
+    }
     return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
   }
   return "";

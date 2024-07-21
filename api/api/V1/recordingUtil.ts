@@ -182,9 +182,10 @@ export async function getThumbnail(
   rec: Recording,
   trackId?: number
 ): Promise<Uint8Array> {
-  let thumbKey: string;
   const fileKey = rec.rawFileKey;
-  if (trackId) {
+  let thumbKey = `${fileKey}-thumb`;
+  const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
+  if (trackId && !!thumbedTracks.find((track) => track.id === trackId)) {
     thumbKey = `${fileKey}-${trackId}-thumb`;
   } else {
     const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
@@ -207,8 +208,6 @@ export async function getThumbnail(
           : -1;
       });
       thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
-    } else {
-      thumbKey = `${fileKey}-thumb`;
     }
   }
 
