@@ -184,33 +184,34 @@ export async function getThumbnail(
 ): Promise<Uint8Array> {
   const fileKey = rec.rawFileKey;
   let thumbKey = `${fileKey}-thumb`;
-  const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
-  if (trackId && !!thumbedTracks.find((track) => track.id === trackId)) {
+  const thumbedTracks = (rec.Tracks || []).filter((track) => {
+    return !!(track as any).dataValues.thumbnailScore;
+  });
+  if (
+    trackId !== undefined &&
+    !!thumbedTracks.find((track) => track.id === trackId)
+  ) {
     thumbKey = `${fileKey}-${trackId}-thumb`;
-  } else {
-    const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
-    if (thumbedTracks.length > 0) {
-      // choose best track based off visit tag and highest score
-      const recVisit = new Visit(rec, 0, thumbedTracks);
-      const commonTag = recVisit.mostCommonTag();
-      const trackIds = recVisit.events
-        .filter((event) => event.trackTag.what == commonTag.what)
-        .map((event) => event.trackID);
-      const bestTracks = rec.Tracks.filter((track) =>
-        trackIds.includes(track.id)
-      );
-
+  } else if (thumbedTracks.length > 0) {
+    // choose best track based off visit tag and highest score
+    const recVisit = new Visit(rec, 0, thumbedTracks);
+    const commonTag = recVisit.mostCommonTag();
+    const trackIds = recVisit.events
+      .filter((event) => event.trackTag.what == commonTag.what)
+      .map((event) => event.trackID);
+    const bestTracks = rec.Tracks.filter((track) =>
+      trackIds.includes(track.id)
+    );
+    if (bestTracks.length !== 0) {
       // sort by area
-      bestTracks.sort(function (a, b) {
-        return a.data.thumbnail.width * a.data.thumbnail.height >
-          b.data.thumbnail.width * b.data.thumbnail.height
-          ? 1
-          : -1;
-      });
+      bestTracks.sort(
+        (a, b) =>
+          b.data.thumbnail.width * b.data.thumbnail.height -
+          a.data.thumbnail.width * a.data.thumbnail.height
+      );
       thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
     }
   }
-
   const s3 = openS3();
   if (thumbKey.startsWith("a_")) {
     thumbKey = thumbKey.slice(2);
@@ -1961,15 +1962,11 @@ export async function sendAlerts(
     try {
       thumbnail = await getThumbnail(recording, matchedTrack.id);
     } catch (e) {
-      try {
-        thumbnail = await getThumbnail(recording);
-      } catch (e) {
-        log.warning(
-          "Alerting without thumbnail for %d and track %d",
-          recId,
-          matchedTrack.id
-        );
-      }
+      log.warning(
+        "Alerting without thumbnail for %d and track %d",
+        recId,
+        matchedTrack.id
+      );
     }
     for (const alert of alerts) {
       if (alert.User) {
