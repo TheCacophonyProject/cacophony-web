@@ -79,7 +79,7 @@ const allVisitsForProjectInTimespan = async (
   // We send the email at 9.10am, but let's make it so it's only up to 9am.
   now.setHours(9, 0, 0, 0);
   const startOfPeriod = new Date(now);
-  startOfPeriod.setHours(startOfPeriod.getHours() - (24 * numDays));
+  startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
   const digestGroups = await models.Group.findAll({
     attributes: ["groupName", "id"],
     include: [
@@ -116,8 +116,8 @@ const allVisitsForProjectInTimespan = async (
       // Check previous timespan for visits
       const period = new Date(startOfPeriod);
       const newNow = new Date(now);
-      period.setHours(startOfPeriod.getHours() - (24 * numDays));
-      now.setHours(now.getHours() - (24 * numDays));
+      period.setHours(startOfPeriod.getHours() - 24 * numDays);
+      now.setHours(now.getHours() - 24 * numDays);
       const visitsInPreviousTimespan = await allVisitsForProjectInTimespan(
         group.id,
         period,

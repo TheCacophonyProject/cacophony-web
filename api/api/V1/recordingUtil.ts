@@ -185,7 +185,7 @@ export async function getThumbnail(
   const fileKey = rec.rawFileKey;
   let thumbKey = `${fileKey}-thumb`;
   const thumbedTracks = (rec.Tracks || []).filter((track) => {
-    return !!(track as any).dataValues.thumbnailScore;
+    return (track as any).dataValues.hasOwnProperty("thumbnailScore");
   });
   if (
     trackId !== undefined &&
@@ -203,7 +203,7 @@ export async function getThumbnail(
       trackIds.includes(track.id)
     );
     if (bestTracks.length !== 0) {
-      // sort by area
+      // sort by area (could also sort by thumbnailScore for consistency?)
       bestTracks.sort(
         (a, b) =>
           b.data.thumbnail.width * b.data.thumbnail.height -
