@@ -39,6 +39,7 @@ const allVisitsForProjectInTimespan = async (
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const visitsPage = await generateVisits(user.id, searchDetails, false);
+
     if (Array.isArray(visitsPage)) {
       const completeVisits = visitsPage.filter((visit) => !visit.incomplete);
       if (completeVisits.length === 0) {
@@ -77,8 +78,8 @@ const allVisitsForProjectInTimespan = async (
   const now = new Date();
   // We send the email at 9.10am, but let's make it so it's only up to 9am.
   now.setHours(9, 0, 0, 0);
-  const startOfPeriod = new Date();
-  startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
+  const startOfPeriod = new Date(now);
+  startOfPeriod.setHours(startOfPeriod.getHours() - (24 * numDays));
   const digestGroups = await models.Group.findAll({
     attributes: ["groupName", "id"],
     include: [
@@ -113,12 +114,14 @@ const allVisitsForProjectInTimespan = async (
     let alreadySentNoActivityEmail = false;
     if (noVisitsInTimespan) {
       // Check previous timespan for visits
-      startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
-      now.setHours(now.getHours() - 24 * numDays);
+      const period = new Date(startOfPeriod);
+      const newNow = new Date(now);
+      period.setHours(startOfPeriod.getHours() - (24 * numDays));
+      now.setHours(now.getHours() - (24 * numDays));
       const visitsInPreviousTimespan = await allVisitsForProjectInTimespan(
         group.id,
-        startOfPeriod,
-        now,
+        period,
+        newNow,
         group.Users[0]
       );
       if (visitsInPreviousTimespan.length === 0) {
