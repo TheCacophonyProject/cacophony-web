@@ -111,11 +111,11 @@ export const mapDeviceResponse = (
       mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
     if (device.active) {
-      const twentyFourHoursAgo = new Date();
-      twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+      const twentyFiveHoursAgo = new Date();
+      twentyFiveHoursAgo.setHours(twentyFiveHoursAgo.getHours() - 25);
       mapped.isHealthy =
         (device.lastConnectionTime &&
-          device.lastConnectionTime.getTime() > twentyFourHoursAgo.getTime()) ||
+          device.lastConnectionTime.getTime() > twentyFiveHoursAgo.getTime()) ||
         false;
     }
 

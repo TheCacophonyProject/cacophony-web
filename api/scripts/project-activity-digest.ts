@@ -117,7 +117,7 @@ const allVisitsForProjectInTimespan = async (
       const period = new Date(startOfPeriod);
       const newNow = new Date(now);
       period.setHours(startOfPeriod.getHours() - 24 * numDays);
-      now.setHours(now.getHours() - 24 * numDays);
+      newNow.setHours(now.getHours() - 24 * numDays);
       const visitsInPreviousTimespan = await allVisitsForProjectInTimespan(
         group.id,
         period,

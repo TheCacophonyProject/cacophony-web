@@ -29,8 +29,7 @@ import type { Event, QueryOptions } from "@models/Event.js";
 import type { User } from "@models/User.js";
 import Sequelize, { Op, QueryTypes } from "sequelize";
 import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
-import { NON_ANIMAL_TAGS } from "./Visits.js";
-import { DeviceSummary, Visit } from "./Visits.js";
+import { DeviceSummary, NON_ANIMAL_TAGS, Visit } from "./Visits.js";
 import type { Station } from "@models/Station.js";
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import type { Device } from "@models/Device.js";
@@ -41,7 +40,6 @@ import type {
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
-import track from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
@@ -76,15 +74,15 @@ import {
 import { openS3 } from "@models/util/util.js";
 import type { ReadableStream } from "stream/web";
 import type { ModelsDictionary } from "@models";
-const ffmpegPath = "/usr/bin/ffmpeg";
 import ffmpeg from "fluent-ffmpeg";
-ffmpeg.setFfmpegPath(ffmpegPath);
 import { Writable } from "stream";
 import temp from "temp";
-temp.track();
-
 import fs from "fs";
 import { sendAnimalAlertEmail } from "@/emails/transactionalEmails.js";
+
+const ffmpegPath = "/usr/bin/ffmpeg";
+ffmpeg.setFfmpegPath(ffmpegPath);
+temp.track();
 
 // Create a png thumbnail image  from this frame with thumbnail info
 // Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
@@ -185,11 +183,14 @@ export async function getThumbnail(
   const fileKey = rec.rawFileKey;
   let thumbKey = `${fileKey}-thumb`;
   const thumbedTracks = (rec.Tracks || []).filter((track) => {
-    return (track as any).dataValues.hasOwnProperty("thumbnailScore");
+    return (
+      track.dataValues.hasOwnProperty("thumbnailScore") ||
+      (track.dataValues.data && track.dataValues.hasOwnProperty("thumbnail"))
+    );
   });
   if (
     trackId !== undefined &&
-    !!thumbedTracks.find((track) => track.id === trackId)
+    thumbedTracks.some((track) => track.id === trackId)
   ) {
     thumbKey = `${fileKey}-${trackId}-thumb`;
   } else if (thumbedTracks.length > 0) {
@@ -203,12 +204,15 @@ export async function getThumbnail(
       trackIds.includes(track.id)
     );
     if (bestTracks.length !== 0) {
-      // sort by area (could also sort by thumbnailScore for consistency?)
-      bestTracks.sort(
-        (a, b) =>
-          b.data.thumbnail.width * b.data.thumbnail.height -
-          a.data.thumbnail.width * a.data.thumbnail.height
-      );
+      bestTracks.sort((a, b) => {
+        if (
+          a.dataValues.hasOwnProperty("thumbnailScore") &&
+          b.dataValues.hasOwnProperty("thumbnailScore")
+        ) {
+          return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+        }
+        return b.data.thumbnail.score - a.data.thumbnail.score;
+      });
       thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
     }
   }
@@ -1881,9 +1885,13 @@ export async function sendAlerts(
       "GroupId",
       "StationId",
       "rawFileKey",
+      "type",
     ],
   });
   if (!recording) {
+    return;
+  }
+  if (recording.type !== RecordingType.ThermalRaw) {
     return;
   }
   // If the recording is more than 24 hours old, don't send an alert
@@ -1956,7 +1964,6 @@ export async function sendAlerts(
     recording.StationId || undefined,
     recording.GroupId || undefined
   );
-
   if (alerts.length !== 0) {
     let thumbnail;
     try {
