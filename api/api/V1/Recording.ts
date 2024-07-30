@@ -2528,6 +2528,8 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
     //fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
+      // TODO: Allow this API to be used for retrieving the latest status recording.
+
       try {
         const query = request.query;
         const projectId = response.locals.group.id;

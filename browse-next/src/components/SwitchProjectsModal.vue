@@ -4,7 +4,6 @@ import {
   currentSelectedProject,
   showSwitchProject,
   type LoggedInUser,
-  shouldViewAsSuperUser,
 } from "@models/LoggedInUser";
 import { computed, inject, onBeforeMount, onMounted, ref, type Ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -104,10 +103,12 @@ onBeforeMount(async () => {
 
 const allProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 const loadAllProjects = async () => {
+  console.log("Load all projects?");
   if (allProjects.value === null) {
     // Load projects
     const response = await getAllProjects(false);
     if (response.success) {
+      console.log("Load all projects?", response);
       allProjects.value = response.result.groups;
     }
   }

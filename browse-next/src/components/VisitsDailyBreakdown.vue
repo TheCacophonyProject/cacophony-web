@@ -269,10 +269,18 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
         break;
       }
     }
-    if (foundTrack && foundRec) {
-      return `${API_ROOT}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
+
+    if (import.meta.env.DEV) {
+      if (foundTrack && foundRec) {
+        return `https://api.cacophony.org.nz/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
+      }
+      return `https://api.cacophony.org.nz/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+    } else {
+      if (foundTrack && foundRec) {
+        return `${API_ROOT}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
+      }
+      return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
     }
-    return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
   }
   return "";
 };

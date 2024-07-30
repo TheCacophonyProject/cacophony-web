@@ -311,6 +311,12 @@ const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
   const nonFalsePositiveTrack = recording.tracks.filter((track) => {
     return track.tags.some((tag) => tag.what !== "false-positive");
   });
+  if (import.meta.env.DEV) {
+    if (nonFalsePositiveTrack.length !== 0) {
+      return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;
+    }
+    return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail`;
+  }
   if (nonFalsePositiveTrack.length !== 0) {
     return `${API_ROOT}/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;
   }

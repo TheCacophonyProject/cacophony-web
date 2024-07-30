@@ -11,11 +11,14 @@ import type { LoggedInUser } from "@models/LoggedInUser";
 
 const NO_ABORT = false;
 
-export const login = (userEmail: string, password: string) =>
-  CacophonyApi.post("/api/v1/users/authenticate", {
-    email: userEmail,
-    password,
-  }) as Promise<
+export const login = (userEmail: string, password: string, dev = false) =>
+  CacophonyApi.post(
+    `${dev ? "https://api.cacophony.org.nz" : ""}/api/v1/users/authenticate`,
+    {
+      email: userEmail,
+      password,
+    }
+  ) as Promise<
     FetchResult<{
       userData: ApiLoggedInUserResponse;
       token: JwtToken<UserId>;

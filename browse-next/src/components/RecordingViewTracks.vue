@@ -200,8 +200,8 @@ const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
   }
 };
 
-const selectedTrack = (trackId: TrackId) => {
-  if (trackId !== currentTrackId.value) {
+const selectedTrack = (trackId: TrackId, forceReplay = false) => {
+  if (trackId !== currentTrackId.value || forceReplay) {
     const track = getTrackById(trackId);
     if (track) {
       // Change track.

@@ -18,11 +18,17 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import {
   activeLocations,
+  allHistoricLocations,
   currentSelectedProject as currentActiveProject,
   latLngForActiveLocations,
+  selectedProjectDevices,
   urlNormalisedCurrentSelectedProjectName,
 } from "@models/provides";
-import { type SelectedProject } from "@models/LoggedInUser";
+import {
+  projectDevicesLoaded,
+  projectLocationsLoaded,
+  type SelectedProject,
+} from "@models/LoggedInUser";
 import type {
   FetchResult,
   LoadedResource,
@@ -82,7 +88,7 @@ import {
   type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
-import { getLocationsForProject } from "@api/Project.ts";
+import { getDevicesForProject, getLocationsForProject } from "@api/Project.ts";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
@@ -99,6 +105,7 @@ import {
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
 import { delayMs } from "@/utils.ts";
 import { tagsForRecording } from "@models/recordingUtils.ts";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -139,7 +146,12 @@ export interface ActivitySearchParams {
   displayMode: ActivitySearchDisplayMode;
 }
 
-const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
+const locations = inject(allHistoricLocations) as ComputedRef<
+  ApiLocationResponse[]
+>;
+const devices = inject(selectedProjectDevices) as ComputedRef<
+  ApiDeviceResponse[]
+>;
 
 const arrayContentsAreTheSame = (
   a: LocationQueryValue[],
@@ -392,6 +404,16 @@ const deserialiseAndValidateRouteValue = (
     } else {
       console.error("Invalid timespan?", value);
     }
+  } else if (key === "devices") {
+    value = value || [];
+    // Check that the location ids are valid.
+    let ids: number[];
+    if (Array.isArray(value)) {
+      ids = value.map(Number);
+    } else {
+      ids = value.toString().split(",").map(Number);
+    }
+    searchParams.value.devices = ids;
   } else if (key === "tag-mode") {
     // Map the tagged by into searchParams.
     const taggedBy = (value || "").trim() as TagMode;
@@ -580,6 +602,15 @@ const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
       locationsInSelectedTimespan.value.find(({ id }) => id === locId)
     )
     .filter((item) => !!item) as ApiLocationResponse[];
+});
+
+const selectedDevices = computed<ApiDeviceResponse[] | "all">(() => {
+  if (searchParams.value.devices === "all") {
+    return "all";
+  }
+  return (searchParams.value.devices as DeviceId[]).map((deviceId) =>
+    (devices.value || []).find(({ id }) => id === deviceId)
+  );
 });
 
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
@@ -912,6 +943,12 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
       (loc) => (loc as ApiLocationResponse).id
     );
   }
+  const isAllDevices = selectedDevices.value.includes("all");
+  if (!isAllDevices) {
+    query.devices = selectedDevices.value.map(
+      (device) => (device as ApiDeviceResponse).id
+    );
+  }
   const taggedWithAny = searchParams.value.taggedWith.includes("any");
   if (!taggedWithAny) {
     query.taggedWith = searchParams.value.taggedWith || [];
@@ -927,7 +964,7 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
     query.labelledWith = searchParams.value.labelledWith;
   }
 
-  // Hack in support for Megadetector "animal" into our heirarchy:
+  // Hack in support for Megadetector "animal" into our hierarchy:
   if (query.taggedWith?.includes("animal") && query.subClassTags) {
     const animalChildren = [
       "mammal",
@@ -1155,6 +1192,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (inRecordingsMode.value) {
         // NOTE: Not sure we need to ever get the total count for this query for the
         //  purposes of this UI?
+
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
           countAll: isNewQuery,
@@ -1195,13 +1233,13 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         );
       }
       if (response && response.success) {
-        console.log("Got response");
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
         if (inRecordingsMode.value) {
           const recordingsResponse = response as unknown as SuccessFetchResult<{
             recordings: ApiRecordingResponse[];
           }>;
+          console.log("Got response", recordingsResponse);
           // loadedFewerItemsThanRequested =
           //   recordingsResponse.result.recordings.length < 100;
           const recordings = recordingsResponse.result.recordings;
@@ -1697,11 +1735,7 @@ const localDateString = (d: Date): string => {
 onBeforeMount(async () => {
   loading.value = true;
   if (currentProject.value) {
-    // TODO: This could be provided for group at a higher level.
-    locations.value = await getLocationsForProject(
-      (currentProject.value as SelectedProject).id.toString(),
-      true
-    );
+    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
     console.log("Got locations, validate query", locations.value);
     // Validate the current query on load.
     watchQuery.value = watch(() => route.query, syncSearchQuery, {
@@ -1790,6 +1824,7 @@ onBeforeUnmount(() => {
         <activity-search-description
           :locations-in-selected-timespan="locationsInSelectedTimespan"
           :selected-locations="selectedLocations"
+          :selected-devices="selectedDevices"
           :available-date-ranges="availableDateRanges"
           :search-params="searchParams"
         />
@@ -1843,9 +1878,15 @@ onBeforeUnmount(() => {
               filteredLoadedRecordings.length) ||
             (searchParams.displayMode === 'visits' && chunkedVisits.length)
           "
+          class="d-flex justify-content-center"
         >
           <span class="text-center mb-2"
             >No results before this time for the current search.</span
+          >
+        </div>
+        <div v-else class="d-flex justify-content-center">
+          <span class="text-center mb-2"
+            >No results for the current search.</span
           >
         </div>
       </div>
@@ -1885,6 +1926,7 @@ onBeforeUnmount(() => {
     <activity-search-description
       :locations-in-selected-timespan="locationsInSelectedTimespan"
       :selected-locations="selectedLocations"
+      :selected-devices="selectedDevices"
       :available-date-ranges="availableDateRanges"
       :search-params="searchParams"
     />

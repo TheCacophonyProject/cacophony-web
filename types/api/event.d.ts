@@ -56,7 +56,10 @@ export interface DeviceConfigDetail {
   ports: null;
   "test-hosts": null;
   "thermal-motion": null;
-  "thermal-recorder": null;
+  "thermal-recorder"?: {
+    "updated": IsoFormattedString;
+    "use-low-power-mode"?: boolean;
+  };
   "thermal-throttler": null;
   windows: {
     updated: IsoFormattedString;

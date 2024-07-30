@@ -41,6 +41,9 @@ export interface PendingRequest {
 
 export const CurrentUserCreds = ref<LoadedResource<LoggedInUserAuth>>(null);
 export const CurrentUser = ref<LoadedResource<LoggedInUser>>(null);
+
+export const CurrentUserCredsDev = ref<LoadedResource<LoggedInUserAuth>>(null);
+
 export const UserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 export const NonUserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 export const DevicesForCurrentProject =
@@ -91,9 +94,14 @@ export const userHasProjectsIncludingPending = computed<boolean>(() => {
   return !!UserProjects.value && UserProjects.value.length !== 0;
 });
 
-export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
-  CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
-  persistCreds(CurrentUserCreds.value);
+export const setLoggedInUserCreds = (creds: LoggedInUserAuth, dev = false) => {
+  if (!dev) {
+    CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
+    persistCreds(CurrentUserCreds.value);
+  } else {
+    CurrentUserCredsDev.value = reactive<LoggedInUserAuth>(creds);
+    persistCreds(CurrentUserCredsDev.value, true);
+  }
 };
 
 export const persistUserProjectSettings = async (
@@ -107,7 +115,7 @@ export const persistUserProjectSettings = async (
       localProjectToUpdate.userSettings = userSettings;
       await saveProjectUserSettings(localProjectToUpdate.id, userSettings);
     } else if (isViewingAsSuperUser.value) {
-      const nonUserProjectToUpdate = NonUserProjects.value.find(
+      const nonUserProjectToUpdate = (NonUserProjects.value || []).find(
         ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
       );
       if (nonUserProjectToUpdate) {
@@ -182,6 +190,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
 };
+
 export const login = async (
   userEmailAddress: string,
   userPassword: string,
@@ -205,6 +214,24 @@ export const login = async (
     console.log("Sign in error", loggedInUserResponse.result);
     signInInProgress.errors = loggedInUserResponse.result;
   }
+  if (import.meta.env.DEV) {
+    const loggedInUserResponse = await userLogin(emailAddress, password, true);
+    if (loggedInUserResponse.success) {
+      const signedInUser = loggedInUserResponse.result;
+      setLoggedInUserCreds(
+        {
+          apiToken: signedInUser.token,
+          refreshToken: signedInUser.refreshToken,
+          refreshingToken: false,
+        },
+        true
+      );
+    } else {
+      console.log("Sign in error", loggedInUserResponse.result);
+      signInInProgress.errors = loggedInUserResponse.result;
+    }
+  }
+
   signInInProgress.requestPending = false;
 };
 
@@ -215,9 +242,19 @@ export const persistUser = (currentUser: LoggedInUser) => {
   );
 };
 
-export const persistCreds = (creds: LoggedInUserAuth) => {
-  // NOTE: These credentials have already been validated.
-  window.localStorage.setItem("saved-login-credentials", JSON.stringify(creds));
+export const persistCreds = (creds: LoggedInUserAuth, dev = false) => {
+  if (!dev) {
+    // NOTE: These credentials have already been validated.
+    window.localStorage.setItem(
+      "saved-login-credentials",
+      JSON.stringify(creds)
+    );
+  } else {
+    window.localStorage.setItem(
+      "saved-login-credentials-dev",
+      JSON.stringify(creds)
+    );
+  }
 };
 
 export const refreshLocallyStoredUserActivation = (): boolean => {
@@ -281,7 +318,6 @@ const refreshCredentials = async () => {
   const rememberedCredentials = window.localStorage.getItem(
     "saved-login-credentials"
   );
-
   if (rememberedCredentials) {
     if (!import.meta.env.DEV) {
       console.warn("-- Resuming from saved credentials");
@@ -299,8 +335,8 @@ const refreshCredentials = async () => {
         refreshLocallyStoredUser();
         if (!import.meta.env.DEV) {
           console.log("Not out of date yet, can use existing user");
+          return;
         }
-        return;
       } else {
         await maybeRefreshStaleCredentials();
         refreshLocallyStoredUser();
@@ -308,6 +344,37 @@ const refreshCredentials = async () => {
     } catch (e) {
       // JSON user creds was malformed, so clear it, and prompt login again
       forgetUserOnCurrentDevice();
+    }
+  }
+  if (import.meta.env.DEV) {
+    const rememberedCredentialsDev = window.localStorage.getItem(
+      "saved-login-credentials-dev"
+    );
+    if (rememberedCredentialsDev) {
+      let currentUserCreds;
+      const now = new Date();
+      try {
+        currentUserCreds = JSON.parse(
+          rememberedCredentialsDev
+        ) as LoggedInUserAuth;
+        const currentToken = currentUserCreds.apiToken;
+        const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
+        if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
+          if (
+            JSON.stringify(CurrentUserCredsDev.value) !==
+            rememberedCredentialsDev
+          ) {
+            CurrentUserCredsDev.value =
+              reactive<LoggedInUserAuth>(currentUserCreds);
+          }
+          return;
+        } else {
+          await maybeRefreshStaleCredentials(true);
+        }
+      } catch (e) {
+        // JSON user creds was malformed, so clear it, and prompt login again
+        forgetUserOnCurrentDevice();
+      }
     }
   }
 };
@@ -322,6 +389,9 @@ export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
   window.localStorage.removeItem("saved-login-user-data");
+  if (import.meta.env.DEV) {
+    window.localStorage.removeItem("saved-login-credentials-dev");
+  }
   UserProjects.value = null;
   NonUserProjects.value = null;
   DevicesForCurrentProject.value = null;
@@ -608,6 +678,7 @@ export const userProjectsLoaded = async () => {
 };
 
 export const projectDevicesLoaded = async () => {
+  // This gets loaded in the route handler, so won't be hot-reloaded?
   if (DevicesForCurrentProject.value !== null) {
     return true;
   } else {
@@ -624,6 +695,7 @@ export const projectDevicesLoaded = async () => {
 };
 
 export const projectLocationsLoaded = async () => {
+  // This gets loaded in the route handler, so won't be hot-reloaded?
   if (LocationsForCurrentProject.value !== null) {
     return true;
   } else {

@@ -1121,11 +1121,11 @@ const deleteRecording = async () => {
         emit("close");
       }
       if (isInVisitContext.value) {
-        let ids = route.params.recordingIds;
-        ids = ((ids && (ids as string).split(",").map(Number)) || []).filter(
-          (id) => id !== recordingIdToDelete
-        );
-        route.params.recordingIds = ids;
+        const ids = (
+          (route.params.recordingIds &&
+            (route.params.recordingIds as string).split(",").map(Number)) ||
+          []
+        ).filter((id) => id !== recordingIdToDelete);
         const params = {
           ...route.params,
           recordingIds: ids.map((id) => String(id)).join(","),
@@ -1152,7 +1152,7 @@ const deleteRecording = async () => {
           if (targetVisit.recordings.length !== 0) {
             await mutateCurrentVisit(targetVisit);
           } else {
-            targetVisit.tombstoned = true;
+            (targetVisit as any).tombstoned = true;
           }
         }
       } else {
@@ -1160,7 +1160,7 @@ const deleteRecording = async () => {
           (rec) => rec.id === recordingIdToDelete
         );
         if (targetRecording) {
-          targetRecording.tombstoned = true;
+          (targetRecording as any).tombstoned = true;
         }
       }
     }
