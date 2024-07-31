@@ -5,7 +5,16 @@ import {
   showSwitchProject,
   type LoggedInUser,
 } from "@models/LoggedInUser";
-import { computed, inject, onBeforeMount, onMounted, ref, type Ref } from "vue";
+import {
+  computed,
+  inject,
+  nextTick,
+  onBeforeMount,
+  onMounted,
+  ref,
+  type Ref,
+  watch,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import { currentUser as currentUserInfo } from "@models/provides.ts";
@@ -15,6 +24,15 @@ import { DateTime } from "luxon";
 import Multiselect from "@vueform/multiselect";
 import type { LoadedResource } from "@api/types.ts";
 import { getAllProjects } from "@api/Project.ts";
+import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import {
+  list as listUsers,
+  superUserGetProjectsForUserByEmail,
+} from "@api/User.ts";
+import type { DeviceId, UserId } from "@typedefs/api/common";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import { getActiveDevicesForCurrentUser } from "@api/Device.ts";
+import DeviceName from "@/components/DeviceName.vue";
 
 const router = useRouter();
 const currentRoute = useRoute();
@@ -82,34 +100,34 @@ const lastActiveRelativeToNow = (date: Date): string => {
   return `active ${DateTime.fromJSDate(date).toRelative() as string}`;
 };
 
-const selectedGroupName = ref<string>("");
+const selectedProjectName = ref<string>("");
 
 onBeforeMount(async () => {
+  if (currentUser.value.globalPermission !== "off") {
+    await loadAllProjects();
+  }
   if (
     !sortedUserProjects.value.find(
       ({ groupName }) => currentProjectName.value === groupName
     )
   ) {
-    await loadAllProjects();
     if (
       (allProjects.value || []).find(
         ({ groupName }) => groupName === currentProjectName.value
       )
     ) {
-      selectedGroupName.value = currentProjectName.value;
+      selectedProjectName.value = currentProjectName.value;
     }
   }
 });
 
-const allProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
+const allProjectsInternal = ref<LoadedResource<ApiProjectResponse[]>>(null);
 const loadAllProjects = async () => {
-  console.log("Load all projects?");
-  if (allProjects.value === null) {
+  if (allProjectsInternal.value === null) {
     // Load projects
     const response = await getAllProjects(false);
     if (response.success) {
-      console.log("Load all projects?", response);
-      allProjects.value = response.result.groups;
+      allProjectsInternal.value = response.result.groups;
     }
   }
   return allNonUserProjects.value;
@@ -136,9 +154,27 @@ const allNonUserProjects = computed<ApiProjectResponse[]>(() => {
   return [];
 });
 
+const allProjects = computed<ApiProjectResponse[]>(() => {
+  if (userToFilterProjects.value && filterUserProjects.value) {
+    return filterUserProjects.value || [];
+  }
+  return allProjectsInternal.value || [];
+});
+
 const gotoNonUserProject = async () => {
-  await router.push(nextRoute(selectedGroupName.value));
+  await router.push(nextRoute(selectedProjectName.value));
   showSwitchProject.visible = false;
+};
+
+const gotoNonUserProjectForDevice = async () => {
+  const device = (devicesList.value || []).find(
+    (device) => device.id === deviceToFilterProjects.value
+  );
+  if (device) {
+    selectedProjectName.value = device.groupName;
+    await router.push(nextRoute(selectedProjectName.value));
+    showSwitchProject.visible = false;
+  }
 };
 
 onMounted(() => {
@@ -148,6 +184,121 @@ onMounted(() => {
 interface ProjectListOption extends ApiProjectResponse {
   latestRecordingTime: Date;
 }
+const projectSearch = ref<Multiselect>();
+const projectSearchEnabled = ref<boolean>(false);
+const enableProjectSearch = async () => {
+  projectSearchEnabled.value = true;
+  await nextTick();
+  projectSearch.value &&
+    (projectSearch.value as any).$el
+      .querySelectorAll("input")
+      .forEach((input: HTMLInputElement) => {
+        if (input !== document.activeElement) {
+          input.focus();
+        }
+      });
+};
+const disableProjectSearch = () => {
+  projectSearchEnabled.value = false;
+};
+
+const userSearch = ref<Multiselect>();
+const userSearchEnabled = ref<boolean>(false);
+const enableUserSearch = async () => {
+  userSearchEnabled.value = true;
+  await nextTick();
+  userSearch.value &&
+    (userSearch.value as any).$el
+      .querySelectorAll("input")
+      .forEach((input: HTMLInputElement) => {
+        if (input !== document.activeElement) {
+          input.focus();
+        }
+      });
+};
+const disableUserSearch = () => {
+  userSearchEnabled.value = false;
+};
+
+const deviceSearch = ref<Multiselect>();
+const deviceSearchEnabled = ref<boolean>(false);
+const enableDeviceSearch = async () => {
+  deviceSearchEnabled.value = true;
+  await nextTick();
+  deviceSearch.value &&
+    (deviceSearch.value as any).$el
+      .querySelectorAll("input")
+      .forEach((input: HTMLInputElement) => {
+        if (input !== document.activeElement) {
+          input.focus();
+        }
+      });
+};
+const disableDeviceSearch = () => {
+  deviceSearchEnabled.value = false;
+};
+
+const usersList = ref<LoadedResource<ApiLoggedInUserResponse[]>>(null);
+const devicesList = ref<LoadedResource<ApiDeviceResponse[]>>(null);
+const userToFilterProjects = ref<UserId | null>(null);
+const deviceToFilterProjects = ref<DeviceId | null>(null);
+const filterUser = computed(() =>
+  (usersList.value || []).find((user) => user.id === userToFilterProjects.value)
+);
+const loadAllUsers = async () => {
+  const response = await listUsers();
+  if (response.success) {
+    usersList.value = response.result.usersList.sort((a, b) => {
+      const ua = a.userName.toLowerCase();
+      const ub = b.userName.toLowerCase();
+      if (ua > ub) {
+        return 1;
+      } else if (ua === ub) {
+        const uae = a.email.toLowerCase();
+        const ube = b.email.toLowerCase();
+        if (uae > ube) {
+          return 1;
+        }
+      }
+      return -1;
+    });
+    return usersList.value;
+  }
+  return [];
+};
+const loadAllDevices = async () => {
+  const devices = await getActiveDevicesForCurrentUser();
+  if (devices) {
+    devicesList.value = devices;
+  } else {
+    devicesList.value = [];
+  }
+  return devicesList.value;
+};
+const filterUserProjects = ref<ApiProjectResponse[] | null>(null);
+watch(userToFilterProjects, (userId) => {
+  if (userId) {
+    if (filterUser.value) {
+      superUserGetProjectsForUserByEmail(filterUser.value.email).then(
+        (projects) => {
+          if (projects) {
+            filterUserProjects.value = projects as ApiProjectResponse[];
+            if (
+              selectedProjectName.value &&
+              !filterUserProjects.value.some(
+                (project) => project.groupName === selectedProjectName.value
+              )
+            ) {
+              selectedProjectName.value = "";
+            }
+          }
+        }
+      );
+    }
+  } else {
+    filterUserProjects.value = null;
+  }
+});
 </script>
 <template>
   <b-modal
@@ -166,9 +317,15 @@ interface ProjectListOption extends ApiProjectResponse {
         <multiselect
           placeholder="Select a project"
           value-prop="groupName"
-          :options="loadAllProjects"
-          v-model="selectedGroupName"
+          :can-clear="false"
+          :options="allNonUserProjects"
+          v-model="selectedProjectName"
           @select="gotoNonUserProject"
+          track-by="groupName"
+          ref="projectSearch"
+          :searchable="projectSearchEnabled"
+          @open="enableProjectSearch"
+          @close="disableProjectSearch"
         >
           <template #option="{ option }: { option: ProjectListOption }">
             <span class="d-flex justify-content-between w-100">
@@ -242,6 +399,60 @@ interface ProjectListOption extends ApiProjectResponse {
                 />
               </span>
             </span>
+          </template>
+        </multiselect>
+      </div>
+      <div class="mb-3">
+        Filter to projects for user
+        <multiselect
+          placeholder="Select a user"
+          value-prop="id"
+          ref="userSearch"
+          :can-clear="false"
+          :options="loadAllUsers"
+          :resolve-on-load="true"
+          v-model="userToFilterProjects"
+          track-by="email"
+          :searchable="userSearchEnabled"
+          @open="enableUserSearch"
+          @close="disableUserSearch"
+        >
+          <template #option="{ option }: { option: ApiLoggedInUserResponse }">
+            <span>{{ option.userName }}</span
+            >&nbsp;<span>({{ option.email }})</span>
+          </template>
+          <template
+            #singlelabel="{ value }: { value: ApiLoggedInUserResponse }"
+          >
+            <span class="w-100 px-3">
+              <span>{{ value.userName }}</span
+              >&nbsp;<span>({{ value.email }})</span>
+            </span>
+          </template>
+        </multiselect>
+      </div>
+      <div class="mb-3">
+        Go to project containing device
+        <multiselect
+          placeholder="Select a device"
+          value-prop="id"
+          ref="deviceSearch"
+          label="deviceName"
+          :can-clear="false"
+          :options="loadAllDevices"
+          :resolve-on-load="true"
+          @select="gotoNonUserProjectForDevice"
+          v-model="deviceToFilterProjects"
+          trackBy="deviceName"
+          :searchable="deviceSearchEnabled"
+          @open="enableDeviceSearch"
+          @close="disableDeviceSearch"
+        >
+          <template #option="{ option }: { option: ApiDeviceResponse }">
+            <device-name :name="option.deviceName" :type="option.type" />
+          </template>
+          <template #singlelabel="{ value }: { value: ApiDeviceResponse }">
+            <device-name :name="value.deviceName" :type="value.type" />
           </template>
         </multiselect>
       </div>

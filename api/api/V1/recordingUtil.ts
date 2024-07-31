@@ -185,7 +185,8 @@ export async function getThumbnail(
   const thumbedTracks = (rec.Tracks || []).filter((track) => {
     return (
       track.dataValues.hasOwnProperty("thumbnailScore") ||
-      (track.dataValues.data && track.dataValues.hasOwnProperty("thumbnail"))
+      (track.dataValues.data &&
+        track.dataValues.data.hasOwnProperty("thumbnail"))
     );
   });
   if (

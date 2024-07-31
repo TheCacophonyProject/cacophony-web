@@ -5,23 +5,46 @@
     :to="to"
     style="color: #666"
     variant="secondary"
-    ><font-awesome-icon :icon="deviceTypeIcon" class="me-2" />
+  >
+    <span class="ms-1 me-2 align-self-center position-relative">
+      <font-awesome-icon :icon="deviceTypeIcon" class="me-2" />
+      <font-awesome-icon
+        v-if="type === 'hybrid-thermal-audio'"
+        icon="music"
+        class="position-absolute inner-icon align-self-center"
+        size="xs"
+        color="white"
+      />
+    </span>
     <span class="me-2 me-md-0">{{ name }}</span
     ><font-awesome-icon
       icon="arrow-turn-down"
       :rotation="270"
       size="xs"
-      class="ps-1 d-sm-inline-block d-md-none"
-  /></b-link>
-  <span class="d-inline-flex align-items-center" v-else
-    ><font-awesome-icon :icon="deviceTypeIcon" class="me-2" /> {{ name }}</span
+      class="ps-1 d-sm-inline-block d-md-none align-self-center"
+    />
+  </b-link>
+  <span class="d-inline-flex align-items-center" v-else>
+    <span class="ms-1 me-2 align-self-center position-relative"
+      ><font-awesome-icon :icon="deviceTypeIcon" />
+      <font-awesome-icon
+        v-if="type === 'hybrid-thermal-audio'"
+        icon="music"
+        class="position-absolute inner-icon align-self-center"
+        size="xs"
+        color="white"
+      />
+    </span>
+    {{ name }}</span
   ><span><slot></slot></span>
 </template>
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { DeviceType } from "@typedefs/api/consts.ts";
-import { DeviceType as ConcreteDeviceType } from "@typedefs/api/consts.ts";
+import {
+  type DeviceType,
+  DeviceType as ConcreteDeviceType,
+} from "@typedefs/api/consts.ts";
 import type { RouteLocationRaw } from "vue-router";
 
 // NOTE: For some reason importing this enum from global consts fails :-/
@@ -44,6 +67,7 @@ const deviceTypeIcon = computed<string>(() => {
     case ConcreteDeviceType.Audio:
       return "music";
     case ConcreteDeviceType.Thermal:
+    case ConcreteDeviceType.Hybrid:
       return "video";
     case ConcreteDeviceType.Unknown:
       return "question";
@@ -54,4 +78,10 @@ const deviceTypeIcon = computed<string>(() => {
 });
 </script>
 
-<style scoped></style>
+<style scoped lang="less">
+.inner-icon {
+  left: -0.5px;
+  top: 25%;
+  scale: 70%;
+}
+</style>

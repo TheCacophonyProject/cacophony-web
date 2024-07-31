@@ -1,7 +1,7 @@
-import CacophonyApi from "./api";
+import CacophonyApi, { unwrapLoadedResource } from "./api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { GroupId, UserId } from "@typedefs/api/common";
-import type { FetchResult, JwtToken } from "@api/types";
+import type { FetchResult, JwtToken, LoadedResource } from "@api/types";
 import type { UserGlobalPermission } from "@typedefs/api/consts";
 import type { EndUserAgreementVersion } from "@typedefs/api/common";
 import type { ApiUserSettings } from "@typedefs/api/user";
@@ -102,7 +102,7 @@ export const debugGetEmailConfirmationToken = (email: string) =>
   }) as Promise<FetchResult<{ token: string }>>;
 
 export const list = () =>
-  CacophonyApi.get("/api/v1/list-users") as Promise<
+  CacophonyApi.get("/api/v1/users/list-users") as Promise<
     FetchResult<{ usersList: ApiLoggedInUserResponse[] }>
   >;
 
@@ -177,6 +177,18 @@ export const getProjectsForProjectAdminByEmail = (
     )}`,
     abortable
   ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
+
+export const superUserGetProjectsForUserByEmail = (
+  userEmail: string,
+  abortable = false
+): Promise<LoadedResource<ApiGroupResponse[]>> =>
+  unwrapLoadedResource(
+    CacophonyApi.get(
+      `/api/v1/users/groups-for-user/${encodeURIComponent(userEmail)}`,
+      abortable
+    ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>,
+    "groups"
+  );
 
 export const requestToJoinGroup = (
   groupAdminEmail: string,

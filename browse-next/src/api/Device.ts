@@ -248,6 +248,16 @@ export const getLocationHistory = (
   );
 };
 
+export const getActiveDevicesForCurrentUser = (): Promise<
+  LoadedResource<ApiDeviceResponse[]>
+> =>
+  unwrapLoadedResource(
+    CacophonyApi.get("/api/v1/devices?only-active=true") as Promise<
+      FetchResult<{ devices: ApiDeviceResponse[] }>
+    >,
+    "devices"
+  );
+
 export const getDeviceConfig = (deviceId: DeviceId) => {
   return new Promise((resolve) => {
     getLatestEventsByDeviceId(deviceId, {
