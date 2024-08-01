@@ -308,3 +308,16 @@ export const dayAndTimeAtLocation = (
     hourCycle: "h12",
   });
 };
+
+export const intlFormatForLocation = (location: LatLng) => {
+  return new Intl.DateTimeFormat("en-NZ", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+    timeZone: timezoneForLatLng(location),
+  });
+};

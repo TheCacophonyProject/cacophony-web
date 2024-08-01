@@ -134,46 +134,46 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
     };
     const lines = linesWeCareAbout.reverse().map(logLevel);
     // If the log is similar enough to an existing log, add it here, otherwise create a new log.
-    for (const errors of Object.values(serviceError.errors)) {
-      let bestExistingErrorMatch: ServiceError;
-      let bestMatchScore = 0;
-      for (const existingError of errors) {
-        const matchScore = fuzzyErrorMatchScore(existingError.log, lines);
-        if (matchScore >= 2 && matchScore > bestMatchScore) {
-          bestMatchScore = matchScore;
-          bestExistingErrorMatch = existingError;
-        }
+    let bestExistingErrorMatch: ServiceError;
+    let bestMatchScore = 0;
+    for (const existingError of serviceError.errors[
+      (errorEvent as any).unitVersion
+    ]) {
+      const matchScore = fuzzyErrorMatchScore(existingError.log, lines);
+      if (matchScore >= 2 && matchScore > bestMatchScore) {
+        bestMatchScore = matchScore;
+        bestExistingErrorMatch = existingError;
       }
-      if (bestExistingErrorMatch) {
-        bestExistingErrorMatch.count++;
-        if (
-          !bestExistingErrorMatch.devices.find(
-            ({ id }) => id === errorEvent.DeviceId
-          )
-        ) {
-          bestExistingErrorMatch.devices.push({
-            id: errorEvent.DeviceId,
-            name: errorEvent.Device.deviceName,
-          });
-        }
-        if (bestExistingErrorMatch.from > errorEvent.dateTime) {
-          bestExistingErrorMatch.from = errorEvent.dateTime;
-        }
-        if (bestExistingErrorMatch.until < errorEvent.dateTime) {
-          bestExistingErrorMatch.until = errorEvent.dateTime;
-        }
-      } else {
-        // Add the error.
-        errors.push({
-          devices: [
-            { id: errorEvent.DeviceId, name: errorEvent.Device.deviceName },
-          ],
-          count: 1,
-          from: errorEvent.dateTime,
-          until: errorEvent.dateTime,
-          log: lines,
+    }
+    if (bestExistingErrorMatch) {
+      bestExistingErrorMatch.count++;
+      if (
+        !bestExistingErrorMatch.devices.find(
+          ({ id }) => id === errorEvent.DeviceId
+        )
+      ) {
+        bestExistingErrorMatch.devices.push({
+          id: errorEvent.DeviceId,
+          name: errorEvent.Device.deviceName,
         });
       }
+      if (bestExistingErrorMatch.from > errorEvent.dateTime) {
+        bestExistingErrorMatch.from = errorEvent.dateTime;
+      }
+      if (bestExistingErrorMatch.until < errorEvent.dateTime) {
+        bestExistingErrorMatch.until = errorEvent.dateTime;
+      }
+    } else {
+      // Add the error.
+      serviceError.errors[(errorEvent as any).unitVersion].push({
+        devices: [
+          { id: errorEvent.DeviceId, name: errorEvent.Device.deviceName },
+        ],
+        count: 1,
+        from: errorEvent.dateTime,
+        until: errorEvent.dateTime,
+        log: lines,
+      });
     }
   }
   return Object.values(serviceMap);
@@ -328,6 +328,7 @@ const groupedSystemErrors = async (
     }
     devices[errorEvent.DeviceId] = existingDeviceSpan;
   }
+
   const saltUpdates = [];
   const versionUpdates = [];
   for (const [deviceId, { maxDate }] of Object.entries(devices)) {

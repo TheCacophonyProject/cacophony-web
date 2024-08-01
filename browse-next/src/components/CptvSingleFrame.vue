@@ -20,13 +20,14 @@ import type { Ref } from "vue";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { CptvDecoder } from "@/components/cptv-player/cptv-decoder/decoder";
 import type { LoggedInUserAuth } from "@models/LoggedInUser";
-import { currentUserCreds } from "@models/provides";
+import { currentUserCreds, currentUserCredsDev } from "@models/provides";
 import {
   ColourMaps,
   renderFrameIntoFrameBuffer,
 } from "@/components/cptv-player/cptv-decoder/frameRenderUtils";
 
-const creds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
+const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
+const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
 const defaultPalette = computed(
   () =>
     ColourMaps.find(([name, _val]) => name === props.palette) as [
@@ -34,6 +35,12 @@ const defaultPalette = computed(
       Uint32Array
     ]
 );
+const creds = computed<LoggedInUserAuth | null>(() => {
+  if (import.meta.env.DEV) {
+    return devCreds.value;
+  }
+  return prodCreds.value;
+});
 const defaultOverlayPalette = ColourMaps.find(
   ([name, _val]) => name === "Default"
 ) as [string, Uint32Array];

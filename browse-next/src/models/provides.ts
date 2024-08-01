@@ -13,6 +13,9 @@ export const urlNormalisedCurrentSelectedProjectName = Symbol(
 );
 
 export const currentUserCreds = Symbol("credentials for current user");
+export const currentUserCredsDev = Symbol(
+  "dev-mode credentials for current user"
+);
 
 export const currentUser = Symbol("current user login details");
 export const userIsProjectAdmin = Symbol(

@@ -8,6 +8,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { login as userLogin, saveUserSettings } from "@api/User";
 import type { GroupId as ProjectId } from "@typedefs/api/common";
 import type {
+  ApiGroupResponse,
   ApiGroupResponse as ApiProjectResponse,
   ApiGroupSettings as ApiProjectSettings,
   ApiGroupUserSettings as ApiProjectUserSettings,
@@ -18,7 +19,8 @@ import { CurrentViewAbortController } from "@/router";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { useWindowSize } from "@vueuse/core";
 import {
-  getProjects,
+  getAllProjects,
+  getCurrentUserProjects,
   saveProjectSettings,
   saveProjectUserSettings,
 } from "@api/Project";
@@ -39,7 +41,11 @@ export interface PendingRequest {
 
 export const CurrentUserCreds = ref<LoadedResource<LoggedInUserAuth>>(null);
 export const CurrentUser = ref<LoadedResource<LoggedInUser>>(null);
+
+export const CurrentUserCredsDev = ref<LoadedResource<LoggedInUserAuth>>(null);
+
 export const UserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
+export const NonUserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 export const DevicesForCurrentProject =
   ref<LoadedResource<ApiDeviceResponse[]>>(null);
 export const LocationsForCurrentProject =
@@ -73,6 +79,13 @@ export const userIsLoggedIn = computed<boolean>({
   },
 });
 
+export const currentUserIsSuperUser = computed<boolean>(() => {
+  if (!userIsLoggedIn.value) {
+    return false;
+  }
+  return (CurrentUser.value as LoggedInUser).globalPermission !== "off";
+});
+
 export const userHasProjects = computed<boolean>(() => {
   return nonPendingUserProjects.value.length !== 0;
 });
@@ -81,9 +94,14 @@ export const userHasProjectsIncludingPending = computed<boolean>(() => {
   return !!UserProjects.value && UserProjects.value.length !== 0;
 });
 
-export const setLoggedInUserCreds = (creds: LoggedInUserAuth) => {
-  CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
-  persistCreds(CurrentUserCreds.value);
+export const setLoggedInUserCreds = (creds: LoggedInUserAuth, dev = false) => {
+  if (!dev) {
+    CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
+    persistCreds(CurrentUserCreds.value);
+  } else {
+    CurrentUserCredsDev.value = reactive<LoggedInUserAuth>(creds);
+    persistCreds(CurrentUserCredsDev.value, true);
+  }
 };
 
 export const persistUserProjectSettings = async (
@@ -96,6 +114,13 @@ export const persistUserProjectSettings = async (
     if (localProjectToUpdate) {
       localProjectToUpdate.userSettings = userSettings;
       await saveProjectUserSettings(localProjectToUpdate.id, userSettings);
+    } else if (isViewingAsSuperUser.value) {
+      const nonUserProjectToUpdate = (NonUserProjects.value || []).find(
+        ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
+      );
+      if (nonUserProjectToUpdate) {
+        nonUserProjectToUpdate.userSettings = userSettings;
+      }
     }
   }
 };
@@ -123,9 +148,6 @@ const userSettingsHaveChanged = (
       prevSettings.currentSelectedGroup?.id !==
       newSettings.currentSelectedGroup?.id
     ) {
-      return true;
-    }
-    if (prevSettings.viewAsSuperUser !== newSettings.viewAsSuperUser) {
       return true;
     }
     if (prevSettings.displayMode !== newSettings.displayMode) {
@@ -168,6 +190,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
   CurrentUser.value = reactive<LoggedInUser>(user);
   persistUser(CurrentUser.value);
 };
+
 export const login = async (
   userEmailAddress: string,
   userPassword: string,
@@ -191,6 +214,24 @@ export const login = async (
     console.log("Sign in error", loggedInUserResponse.result);
     signInInProgress.errors = loggedInUserResponse.result;
   }
+  if (import.meta.env.DEV) {
+    const loggedInUserResponse = await userLogin(emailAddress, password, true);
+    if (loggedInUserResponse.success) {
+      const signedInUser = loggedInUserResponse.result;
+      setLoggedInUserCreds(
+        {
+          apiToken: signedInUser.token,
+          refreshToken: signedInUser.refreshToken,
+          refreshingToken: false,
+        },
+        true
+      );
+    } else {
+      console.log("Sign in error", loggedInUserResponse.result);
+      signInInProgress.errors = loggedInUserResponse.result;
+    }
+  }
+
   signInInProgress.requestPending = false;
 };
 
@@ -201,9 +242,19 @@ export const persistUser = (currentUser: LoggedInUser) => {
   );
 };
 
-export const persistCreds = (creds: LoggedInUserAuth) => {
-  // NOTE: These credentials have already been validated.
-  window.localStorage.setItem("saved-login-credentials", JSON.stringify(creds));
+export const persistCreds = (creds: LoggedInUserAuth, dev = false) => {
+  if (!dev) {
+    // NOTE: These credentials have already been validated.
+    window.localStorage.setItem(
+      "saved-login-credentials",
+      JSON.stringify(creds)
+    );
+  } else {
+    window.localStorage.setItem(
+      "saved-login-credentials-dev",
+      JSON.stringify(creds)
+    );
+  }
 };
 
 export const refreshLocallyStoredUserActivation = (): boolean => {
@@ -267,7 +318,6 @@ const refreshCredentials = async () => {
   const rememberedCredentials = window.localStorage.getItem(
     "saved-login-credentials"
   );
-
   if (rememberedCredentials) {
     if (!import.meta.env.DEV) {
       console.warn("-- Resuming from saved credentials");
@@ -285,8 +335,8 @@ const refreshCredentials = async () => {
         refreshLocallyStoredUser();
         if (!import.meta.env.DEV) {
           console.log("Not out of date yet, can use existing user");
+          return;
         }
-        return;
       } else {
         await maybeRefreshStaleCredentials();
         refreshLocallyStoredUser();
@@ -294,6 +344,37 @@ const refreshCredentials = async () => {
     } catch (e) {
       // JSON user creds was malformed, so clear it, and prompt login again
       forgetUserOnCurrentDevice();
+    }
+  }
+  if (import.meta.env.DEV) {
+    const rememberedCredentialsDev = window.localStorage.getItem(
+      "saved-login-credentials-dev"
+    );
+    if (rememberedCredentialsDev) {
+      let currentUserCreds;
+      const now = new Date();
+      try {
+        currentUserCreds = JSON.parse(
+          rememberedCredentialsDev
+        ) as LoggedInUserAuth;
+        const currentToken = currentUserCreds.apiToken;
+        const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
+        if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
+          if (
+            JSON.stringify(CurrentUserCredsDev.value) !==
+            rememberedCredentialsDev
+          ) {
+            CurrentUserCredsDev.value =
+              reactive<LoggedInUserAuth>(currentUserCreds);
+          }
+          return;
+        } else {
+          await maybeRefreshStaleCredentials(true);
+        }
+      } catch (e) {
+        // JSON user creds was malformed, so clear it, and prompt login again
+        forgetUserOnCurrentDevice();
+      }
     }
   }
 };
@@ -308,7 +389,13 @@ export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
   window.localStorage.removeItem("saved-login-credentials");
   window.localStorage.removeItem("saved-login-user-data");
+  if (import.meta.env.DEV) {
+    window.localStorage.removeItem("saved-login-credentials-dev");
+  }
   UserProjects.value = null;
+  NonUserProjects.value = null;
+  DevicesForCurrentProject.value = null;
+  LocationsForCurrentProject.value = null;
   userIsLoggedIn.value = false;
 };
 
@@ -373,6 +460,7 @@ export interface SelectedProject {
   userSettings?: ApiProjectUserSettings;
 }
 export const currentSelectedProject = computed<SelectedProject | false>(() => {
+  console.log("Recompute current selected project");
   if (
     userIsLoggedIn.value &&
     currentUserSettings.value &&
@@ -389,20 +477,34 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
     ) {
       const potentialGroupId =
         currentUserSettings.value.currentSelectedGroup.id;
-      const matchedGroup = nonPendingUserProjects.value.find(
+      let matchedProject = nonPendingUserProjects.value.find(
         ({ id }) => id === potentialGroupId
       );
-      if (!matchedGroup) {
+      if (matchedProject) {
+        isViewingAsSuperUser.value = false;
+      }
+
+      if (!matchedProject && currentUserIsSuperUser.value) {
+        matchedProject = (
+          (NonUserProjects.value as ApiGroupResponse[]) || []
+        ).find(({ id }) => id === potentialGroupId);
+        isViewingAsSuperUser.value = !!matchedProject;
+        if (matchedProject) {
+          return matchedProject;
+        }
+      }
+
+      if (!matchedProject) {
         debugger;
         return false;
       }
       return {
-        id: matchedGroup.id,
-        groupName: matchedGroup.groupName,
-        settings: matchedGroup.settings,
-        userSettings: matchedGroup.userSettings,
-        admin: matchedGroup.admin,
-        owner: matchedGroup.owner,
+        id: matchedProject.id,
+        groupName: matchedProject.groupName,
+        settings: matchedProject.settings,
+        userSettings: matchedProject.userSettings,
+        admin: matchedProject.admin,
+        owner: matchedProject.owner,
       };
     }
   }
@@ -422,6 +524,9 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
 });
 
 export const userIsAdminForCurrentSelectedProject = computed<boolean>(() => {
+  if (isViewingAsSuperUser.value) {
+    return true;
+  }
   if (currentSelectedProject.value && UserProjects.value) {
     const currentGroup = UserProjects.value.find(
       ({ id }) =>
@@ -440,10 +545,11 @@ export const userHasMultipleProjects = computed<boolean>(() => {
 
 export const shouldViewAsSuperUser = computed<boolean>(() => {
   if (userIsLoggedIn.value && currentUserSettings.value) {
-    return currentUserSettings.value.viewAsSuperUser || false;
+    return isViewingAsSuperUser.value;
   }
   return false;
 });
+export const isViewingAsSuperUser = ref<boolean>(false);
 
 // TODO - If viewing other user as super user, return appropriate name
 export const userDisplayName = computed<string>(() => {
@@ -477,17 +583,24 @@ export const refreshUserProjects = async () => {
   isFetchingProjects.value = true;
   console.warn("Fetching user projects");
   const NO_ABORT = false;
-  const projectsResponse = await getProjects(NO_ABORT);
+  const projectsResponse = await getCurrentUserProjects(NO_ABORT);
   if (projectsResponse.success) {
     UserProjects.value = reactive(projectsResponse.result.groups);
-    console.warn(
-      "Fetched user projects",
-      currentSelectedProject.value,
-      JSON.stringify(UserProjects.value)
-    );
   } else {
     console.log("res", projectsResponse);
   }
+  if (currentUserIsSuperUser.value) {
+    const allProjectsResponse = await getAllProjects(NO_ABORT);
+    if (allProjectsResponse.success) {
+      NonUserProjects.value = reactive(
+        (allProjectsResponse.result.groups || []).filter(
+          (project) =>
+            !(UserProjects.value || []).map((p) => p.id).includes(project.id)
+        )
+      );
+    }
+  }
+
   isFetchingProjects.value = false;
   return projectsResponse;
 };
@@ -565,6 +678,7 @@ export const userProjectsLoaded = async () => {
 };
 
 export const projectDevicesLoaded = async () => {
+  // This gets loaded in the route handler, so won't be hot-reloaded?
   if (DevicesForCurrentProject.value !== null) {
     return true;
   } else {
@@ -581,6 +695,7 @@ export const projectDevicesLoaded = async () => {
 };
 
 export const projectLocationsLoaded = async () => {
+  // This gets loaded in the route handler, so won't be hot-reloaded?
   if (LocationsForCurrentProject.value !== null) {
     return true;
   } else {

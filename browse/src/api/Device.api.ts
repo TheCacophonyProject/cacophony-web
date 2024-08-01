@@ -208,7 +208,12 @@ export const DeviceEventTypes = [
   "test",
   "throttle",
   "versionData",
-] as const;
+  "throttle",
+  "rpiBattery",
+  "rtc-ntp-drift",
+  "attiny-firmware-update",
+  "tempHumidity",
+].sort();
 
 type IsoFormattedString = string;
 

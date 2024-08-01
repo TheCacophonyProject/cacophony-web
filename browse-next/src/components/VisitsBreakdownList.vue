@@ -49,7 +49,7 @@ const hasVisits = computed<boolean>(() => props.visits.length !== 0);
   <div class="visits-breakdown-list">
     <visits-daily-breakdown
       v-for="([startTime, visits], index) in visitsByChunk"
-      :key="index"
+      :key="`${startTime.toISO()}_${index}`"
       :start-time="startTime"
       :visits="visits"
       :is-nocturnal="isNocturnal"

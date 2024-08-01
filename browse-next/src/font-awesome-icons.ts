@@ -79,6 +79,8 @@ import {
   faSliders,
   faDiamondTurnRight,
   faArrowTurnDown,
+  faArrowTurnUp,
+  faArrowLeft,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -182,7 +184,9 @@ library.add(
   faPanorama,
   faSliders,
   faDiamondTurnRight,
-  faArrowTurnDown
+  faArrowTurnDown,
+  faArrowTurnUp,
+  faArrowLeft
 );
 
 export default FontAwesomeIcon;

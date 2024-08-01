@@ -200,8 +200,8 @@ const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
   }
 };
 
-const selectedTrack = (trackId: TrackId) => {
-  if (trackId !== currentTrackId.value) {
+const selectedTrack = (trackId: TrackId, forceReplay = false) => {
+  if (trackId !== currentTrackId.value || forceReplay) {
     const track = getTrackById(trackId);
     if (track) {
       // Change track.
@@ -228,7 +228,6 @@ const addOrRemoveUserTag = async ({
   tag: string;
   trackId: TrackId;
 }) => {
-  console.log("Add or remove user tag");
   if (props.recording && currentUser.value && !updatingTags.value) {
     updatingTags.value = true;
     // Remove the current user tag from recordingTracksLocal
@@ -360,7 +359,6 @@ const addOrRemoveUserTag = async ({
         }
       }
     }
-    cloneLocalTracks(props.recording.tracks);
     if (trackWasCreated) {
       emit("track-selected", { trackId, automatically: false });
     }
@@ -418,9 +416,17 @@ const recordingTracksPossiblyFiltered = computed<ApiTrackResponse[]>(() => {
   if (!showFalseTriggers.value) {
     return recordingTracksLocal.value.filter((track) => {
       const userTags = track.tags.filter((tag) => !tag.automatic);
+      const userHasNonFalseTriggerTags = userTags.some(
+        (tag) => tag.what !== "false-positive"
+      );
+      const userHasFalseTriggerTags = userTags.some(
+        (tag) => tag.what === "false-positive"
+      );
+      if (userHasNonFalseTriggerTags) {
+        return true;
+      }
       const userFalseTrigger =
-        userTags.some((tag) => tag.what === "false-positive") &&
-        !userTags.some((tag) => tag.what !== "false-positive");
+        userHasFalseTriggerTags && !userHasNonFalseTriggerTags;
       if (userFalseTrigger) {
         //If the track was just marked as false-positive by the user, keep it visible for now
         if (

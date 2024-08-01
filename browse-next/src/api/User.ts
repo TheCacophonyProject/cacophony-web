@@ -1,7 +1,7 @@
-import CacophonyApi from "./api";
+import CacophonyApi, { unwrapLoadedResource } from "./api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { GroupId, UserId } from "@typedefs/api/common";
-import type { FetchResult, JwtToken } from "@api/types";
+import type { FetchResult, JwtToken, LoadedResource } from "@api/types";
 import type { UserGlobalPermission } from "@typedefs/api/consts";
 import type { EndUserAgreementVersion } from "@typedefs/api/common";
 import type { ApiUserSettings } from "@typedefs/api/user";
@@ -11,11 +11,14 @@ import type { LoggedInUser } from "@models/LoggedInUser";
 
 const NO_ABORT = false;
 
-export const login = (userEmail: string, password: string) =>
-  CacophonyApi.post("/api/v1/users/authenticate", {
-    email: userEmail,
-    password,
-  }) as Promise<
+export const login = (userEmail: string, password: string, dev = false) =>
+  CacophonyApi.post(
+    `${dev ? "https://api.cacophony.org.nz" : ""}/api/v1/users/authenticate`,
+    {
+      email: userEmail,
+      password,
+    }
+  ) as Promise<
     FetchResult<{
       userData: ApiLoggedInUserResponse;
       token: JwtToken<UserId>;
@@ -99,7 +102,7 @@ export const debugGetEmailConfirmationToken = (email: string) =>
   }) as Promise<FetchResult<{ token: string }>>;
 
 export const list = () =>
-  CacophonyApi.get("/api/v1/list-users") as Promise<
+  CacophonyApi.get("/api/v1/users/list-users") as Promise<
     FetchResult<{ usersList: ApiLoggedInUserResponse[] }>
   >;
 
@@ -137,10 +140,27 @@ export const saveUserSettings = (settings: ApiUserSettings) =>
 export const updateUserFields = (
   fields: ApiLoggedInUserUpdates,
   abortable?: boolean
-) =>
-  CacophonyApi.patch("/api/v1/users", fields, abortable) as Promise<
+) => {
+  const allowedFields = [
+    "displayMode",
+    "lastKnownTimezone",
+    "currentSelectedGroup",
+  ];
+  if (fields.settings) {
+    const toRemove = [];
+    for (const field of Object.keys(fields.settings)) {
+      if (!allowedFields.includes(field)) {
+        toRemove.push(field);
+      }
+    }
+    for (const field of toRemove) {
+      delete (fields.settings as any)[field];
+    }
+  }
+  return CacophonyApi.patch("/api/v1/users", fields, abortable) as Promise<
     FetchResult<void>
   >;
+};
 
 export const getEUAVersion = () =>
   CacophonyApi.get("/api/v1/end-user-agreement/latest", NO_ABORT) as Promise<
@@ -157,6 +177,18 @@ export const getProjectsForProjectAdminByEmail = (
     )}`,
     abortable
   ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
+
+export const superUserGetProjectsForUserByEmail = (
+  userEmail: string,
+  abortable = false
+): Promise<LoadedResource<ApiGroupResponse[]>> =>
+  unwrapLoadedResource(
+    CacophonyApi.get(
+      `/api/v1/users/groups-for-user/${encodeURIComponent(userEmail)}`,
+      abortable
+    ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>,
+    "groups"
+  );
 
 export const requestToJoinGroup = (
   groupAdminEmail: string,

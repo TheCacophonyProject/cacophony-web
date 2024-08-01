@@ -18,11 +18,17 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import {
   activeLocations,
+  allHistoricLocations,
   currentSelectedProject as currentActiveProject,
   latLngForActiveLocations,
+  selectedProjectDevices,
   urlNormalisedCurrentSelectedProjectName,
 } from "@models/provides";
-import { type SelectedProject } from "@models/LoggedInUser";
+import {
+  projectDevicesLoaded,
+  projectLocationsLoaded,
+  type SelectedProject,
+} from "@models/LoggedInUser";
 import type {
   FetchResult,
   LoadedResource,
@@ -82,7 +88,7 @@ import {
   type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
-import { getLocationsForProject } from "@api/Project.ts";
+import { getDevicesForProject, getLocationsForProject } from "@api/Project.ts";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
@@ -99,6 +105,7 @@ import {
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
 import { delayMs } from "@/utils.ts";
 import { tagsForRecording } from "@models/recordingUtils.ts";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -139,7 +146,12 @@ export interface ActivitySearchParams {
   displayMode: ActivitySearchDisplayMode;
 }
 
-const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
+const locations = inject(allHistoricLocations) as ComputedRef<
+  ApiLocationResponse[]
+>;
+const devices = inject(selectedProjectDevices) as ComputedRef<
+  ApiDeviceResponse[]
+>;
 
 const arrayContentsAreTheSame = (
   a: LocationQueryValue[],
@@ -392,6 +404,16 @@ const deserialiseAndValidateRouteValue = (
     } else {
       console.error("Invalid timespan?", value);
     }
+  } else if (key === "devices") {
+    value = value || [];
+    // Check that the location ids are valid.
+    let ids: number[];
+    if (Array.isArray(value)) {
+      ids = value.map(Number);
+    } else {
+      ids = value.toString().split(",").map(Number);
+    }
+    searchParams.value.devices = ids;
   } else if (key === "tag-mode") {
     // Map the tagged by into searchParams.
     const taggedBy = (value || "").trim() as TagMode;
@@ -582,6 +604,15 @@ const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
     .filter((item) => !!item) as ApiLocationResponse[];
 });
 
+const selectedDevices = computed<ApiDeviceResponse[] | "all">(() => {
+  if (searchParams.value.devices === "all") {
+    return "all";
+  }
+  return (searchParams.value.devices as DeviceId[]).map((deviceId) =>
+    (devices.value || []).find(({ id }) => id === deviceId)
+  );
+});
+
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
   if (dateRange.value[0] === null || dateRange.value[1] === null) {
     return [];
@@ -712,7 +743,7 @@ const currentTotalRecordings = computed<number>(() => {
   if (currentQueryCount.value) {
     return currentQueryCount.value as number;
   }
-  return loadedRecordings.value.length;
+  return filteredLoadedRecordings.value.length;
 });
 const canExpandSearchBackFurther = computed<boolean>(() => {
   return (
@@ -721,18 +752,25 @@ const canExpandSearchBackFurther = computed<boolean>(() => {
       minDateForSelectedLocations.value.getTime()
   );
 });
-const updatedRecording = (recording: ApiRecordingResponse) => {
+const updatedRecording = (
+  recording: ApiRecordingResponse,
+  recordingWasDeleted = false
+) => {
   const loadedRecording = loadedRecordings.value.find(
     ({ id }) => id === recording.id
   );
   if (loadedRecording) {
-    loadedRecording.tracks = recording.tracks;
-    loadedRecording.tags = recording.tags;
+    if (recordingWasDeleted) {
+      loadedRecording.tombstoned = true;
+    } else {
+      loadedRecording.tracks = recording.tracks;
+      loadedRecording.tags = recording.tags;
+    }
   }
 };
 
 const currentlySelectedVisit = ref<ApiVisitResponse | null>(null);
-const chunkedVisits = ref<ApiVisitResponse[]>([]);
+
 //const visitsContext = ref<ApiVisitResponse[] | null>(null);
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -744,6 +782,18 @@ const chunkedRecordings = ref<
     items: (RecordingItem | SunItem)[];
   }[]
 >([]);
+
+const prefilteredChunkedVisits = ref<ApiVisitResponse[]>([]);
+const chunkedVisits = computed<ApiVisitResponse[]>(() => {
+  return prefilteredChunkedVisits.value.filter(
+    (visit) => !visit.hasOwnProperty("tombstoned")
+  );
+});
+const filteredLoadedRecordings = computed<ApiRecordingResponse[]>(() => {
+  return loadedRecordings.value.filter(
+    (rec) => !rec.hasOwnProperty("tombstoned")
+  );
+});
 
 interface RecordingQueryCursor {
   fromDateTime: Date | null;
@@ -769,11 +819,15 @@ const currentQueryLoaded = ref<number>(0);
 const completedCurrentQuery = ref<boolean>(false);
 
 let needsObserverUpdate = false;
-watch(loadedRecordings.value, () => {
-  needsObserverUpdate = true;
+watch(filteredLoadedRecordings.value, (next, prev) => {
+  if (next && prev && next.length !== prev.length) {
+    needsObserverUpdate = true;
+  }
 });
-watch(chunkedVisits.value, () => {
-  needsObserverUpdate = true;
+watch(chunkedVisits.value, (next, prev) => {
+  if (next && prev && next.length !== prev.length) {
+    needsObserverUpdate = true;
+  }
 });
 
 let currentObserver: { stop: () => void } | null;
@@ -889,6 +943,12 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
       (loc) => (loc as ApiLocationResponse).id
     );
   }
+  const isAllDevices = selectedDevices.value.includes("all");
+  if (!isAllDevices) {
+    query.devices = selectedDevices.value.map(
+      (device) => (device as ApiDeviceResponse).id
+    );
+  }
   const taggedWithAny = searchParams.value.taggedWith.includes("any");
   if (!taggedWithAny) {
     query.taggedWith = searchParams.value.taggedWith || [];
@@ -904,7 +964,7 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
     query.labelledWith = searchParams.value.labelledWith;
   }
 
-  // Hack in support for Megadetector "animal" into our heirarchy:
+  // Hack in support for Megadetector "animal" into our hierarchy:
   if (query.taggedWith?.includes("animal") && query.subClassTags) {
     const animalChildren = [
       "mammal",
@@ -992,7 +1052,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
 const appendVisitsChunkedByDay = (visits: ApiVisitResponse[]) => {
   for (const visit of visits) {
     // TODO: May need to optimise this as the list gets long?
-    chunkedVisits.value.push(visit);
+    prefilteredChunkedVisits.value.push(visit);
   }
 };
 
@@ -1010,8 +1070,8 @@ const resetQuery = (
   while (chunkedRecordings.value.length) {
     chunkedRecordings.value.pop();
   }
-  while (chunkedVisits.value.length) {
-    chunkedVisits.value.pop();
+  while (prefilteredChunkedVisits.value.length) {
+    prefilteredChunkedVisits.value.pop();
   }
   currentQueryHash.value = newQueryHash;
   currentQueryLoaded.value = 0;
@@ -1092,10 +1152,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
     let earliestRecord = null;
     if (inRecordingsMode.value) {
-      if (loadedRecordings.value.length) {
+      if (filteredLoadedRecordings.value.length) {
         earliestRecord = new Date(
-          loadedRecordings.value[
-            loadedRecordings.value.length - 1
+          filteredLoadedRecordings.value[
+            filteredLoadedRecordings.value.length - 1
           ].recordingDateTime
         );
       }
@@ -1117,6 +1177,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     const hasNotLoadedAllOfQueryTimeRange =
       (currentQueryCursor.value.fromDateTime as Date) > (fromDateTime as Date);
 
+    console.log(
+      "Has not loaded all of time range",
+      hasNotLoadedAllOfQueryTimeRange
+    );
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
@@ -1128,6 +1192,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (inRecordingsMode.value) {
         // NOTE: Not sure we need to ever get the total count for this query for the
         //  purposes of this UI?
+
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
           countAll: isNewQuery,
@@ -1174,6 +1239,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           const recordingsResponse = response as unknown as SuccessFetchResult<{
             recordings: ApiRecordingResponse[];
           }>;
+          console.log("Got response", recordingsResponse);
           // loadedFewerItemsThanRequested =
           //   recordingsResponse.result.recordings.length < 100;
           const recordings = recordingsResponse.result.recordings;
@@ -1232,8 +1298,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
                 currentQueryCursor.value.untilDateTime as Date
               );
             }
-            completedCurrentQuery.value = true;
           }
+          // FIXME - Not sure about placement of this.
+          completedCurrentQuery.value = true;
         } else {
           if (
             dateRange.value[0] &&
@@ -1610,9 +1677,14 @@ const closedModal = () => {
   currentlySelectedVisit.value = null;
 };
 
+const filteredLoadedRecordingIds = computed<RecordingId[]>(() => {
+  return (filteredLoadedRecordings.value || []).map(({ id }) => id);
+});
+
 provide(activeLocations, locationsInSelectedTimespan);
 provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
-provide("loadedRecordingIds", loadedRecordingIds);
+provide("loadedRecordingIds", filteredLoadedRecordingIds);
+provide("loadedRecordings", loadedRecordings);
 provide("currentRecordingCount", currentTotalRecordings);
 provide("canLoadMoreRecordingsInPast", canLoadMoreRecordingsInPast);
 provide("updatedRecording", updatedRecording);
@@ -1663,11 +1735,7 @@ const localDateString = (d: Date): string => {
 onBeforeMount(async () => {
   loading.value = true;
   if (currentProject.value) {
-    // TODO: This could be provided for group at a higher level.
-    locations.value = await getLocationsForProject(
-      (currentProject.value as SelectedProject).id.toString(),
-      true
-    );
+    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
     console.log("Got locations, validate query", locations.value);
     // Validate the current query on load.
     watchQuery.value = watch(() => route.query, syncSearchQuery, {
@@ -1756,6 +1824,7 @@ onBeforeUnmount(() => {
         <activity-search-description
           :locations-in-selected-timespan="locationsInSelectedTimespan"
           :selected-locations="selectedLocations"
+          :selected-devices="selectedDevices"
           :available-date-ranges="availableDateRanges"
           :search-params="searchParams"
         />
@@ -1806,12 +1875,18 @@ onBeforeUnmount(() => {
         <div
           v-else-if="
             (searchParams.displayMode === 'recordings' &&
-              loadedRecordings.length) ||
+              filteredLoadedRecordings.length) ||
             (searchParams.displayMode === 'visits' && chunkedVisits.length)
           "
+          class="d-flex justify-content-center"
         >
           <span class="text-center mb-2"
             >No results before this time for the current search.</span
+          >
+        </div>
+        <div v-else class="d-flex justify-content-center">
+          <span class="text-center mb-2"
+            >No results for the current search.</span
           >
         </div>
       </div>
@@ -1851,6 +1926,7 @@ onBeforeUnmount(() => {
     <activity-search-description
       :locations-in-selected-timespan="locationsInSelectedTimespan"
       :selected-locations="selectedLocations"
+      :selected-devices="selectedDevices"
       :available-date-ranges="availableDateRanges"
       :search-params="searchParams"
     />

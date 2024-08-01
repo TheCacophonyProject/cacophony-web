@@ -61,7 +61,7 @@ import { body, param, query } from "express-validator";
 import * as csv from "fast-csv";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
-import sequelize, { Op, QueryTypes } from "sequelize";
+import { Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" assert { type: "json" };
 
 import {
@@ -78,7 +78,6 @@ import {
   fetchAuthorizedRequiredDevices,
   fetchAuthorizedRequiredGroupByNameOrId,
   fetchAuthorizedRequiredRecordingById,
-  fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
@@ -97,6 +96,8 @@ import {
 import {
   addTag,
   bulkDelete,
+  fixupLatestRecordingTimesForDeletedRecording,
+  fixupLatestRecordingTimesForUndeletedRecording,
   getThumbnail,
   getTrackTags,
   getTrackTagsCount,
@@ -1604,8 +1605,6 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      // FIXME - If this is the *last* recording for a station, and the station is automatic, remove the station,
-      //  and the corresponding DeviceHistory entry. (Do we need to worry about undelete then?)
       let softDelete = false;
       const recording: Recording = response.locals.recording;
       if (request.query["soft-delete"]) {
@@ -1618,6 +1617,8 @@ export default (app: Application, baseUrl: string) => {
         const rawFileKey = recording.rawFileKey;
         const fileKey = recording.fileKey;
         const thumbKey = `${rawFileKey}-thumb`;
+        const trackIds = (await recording.getTracks()).map(({ id }) => id);
+
         try {
           await recording.destroy({ force: true });
           deleted = true;
@@ -1628,35 +1629,26 @@ export default (app: Application, baseUrl: string) => {
           await util.deleteS3Object(rawFileKey).catch((err) => {
             log.warning(err);
           });
+          // Delete thumbs
+          await util.deleteS3Object(thumbKey).catch((err) => {
+            log.warning(err);
+          });
+          // NOTE: There can be other thumbnails related to appending tracks, so delete those too.
+          for (const trackId of trackIds) {
+            await util
+              .deleteS3Object(`${rawFileKey}-${trackId}-thumb`)
+              .catch((err) => {
+                log.warning(err);
+              });
+          }
         }
         if (deleted && fileKey) {
           await util.deleteS3Object(fileKey).catch((err) => {
             log.warning(err);
           });
         }
-        if (deleted && thumbKey) {
-          // TODO: There can be other thumbnails related to appending tracks, and we should probably delete those too.
-          await util.deleteS3Object(thumbKey).catch((err) => {
-            log.warning(err);
-          });
-        }
       }
-      // Check if there are any more device recordings.  If not, set lastRecordingTime to null,
-      // so that the device will appear as deletable.
-      const latestRecording = await models.Recording.findOne({
-        where: { DeviceId: recording.DeviceId, deletedAt: null },
-        order: [["recordingDateTime", "DESC"]],
-      });
-      const device = recording.Device;
-      if (!latestRecording) {
-        await device.update({
-          lastRecordingTime: null,
-        });
-      } else if (latestRecording.recordingDateTime > device.lastRecordingTime) {
-        await device.update({
-          lastRecordingTime: latestRecording.recordingDateTime,
-        });
-      }
+      await fixupLatestRecordingTimesForDeletedRecording(models, recording);
       if (softDelete) {
         return successResponse(response, "Deleted recording.");
       } else {
@@ -1729,13 +1721,7 @@ export default (app: Application, baseUrl: string) => {
         deletedAt: null,
         deletedBy: null,
       });
-      const device = await models.Device.findByPk(recording.DeviceId);
-      if (
-        (device && device.lastRecordingTime === null) ||
-        recording.recordingDateTime > device.lastRecordingTime
-      ) {
-        await device.update({ lastRecordingTime: recording.recordingDateTime });
-      }
+      await fixupLatestRecordingTimesForUndeletedRecording(models, recording);
       return successResponse(response, "Undeleted recording.");
     }
   );
@@ -2542,6 +2528,8 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredGroupByNameOrId(param("projectId")),
     //fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
+      // TODO: Allow this API to be used for retrieving the latest status recording.
+
       try {
         const query = request.query;
         const projectId = response.locals.group.id;

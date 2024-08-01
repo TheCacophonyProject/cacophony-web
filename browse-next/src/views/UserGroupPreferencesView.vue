@@ -490,19 +490,23 @@ const alertItems = computed<AlertItem[]>(() => {
       ></b-form-input>
     </div>
   </b-modal>
-  <div v-if="false && !isNotOnlyProjectOwnerOrAdmin">
-    <!--  TODO - Let users leave a group of their own accord  -->
+  <div v-if="false && isNotOnlyProjectOwnerOrAdmin">
+    <!-- TODO: We need to mark a user as "left project" at a certain date,
+          and then once billing related to this user quota has happened,
+          we can actually remove the user from the project?  Maybe billing doesn't care how much
+          data a given user uses?
+    -->
     <hr />
     <h6>Leave project</h6>
     <p>
-      If you no longer want to be part of this project, click here to leave it.
+      If you no longer want to be part of this project, click the 'Leave this
+      project' button to leave it.
     </p>
     <leave-project-modal v-model="selectedLeaveProject" />
     <button
       class="btn btn-outline-danger"
       type="button"
       @click="selectedLeaveProject = true"
-      v-if="!isNotOnlyProjectOwnerOrAdmin"
     >
       Leave this project
     </button>

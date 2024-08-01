@@ -24,6 +24,7 @@ import {
   isSmallScreen,
   showUnimplementedModal,
   DevicesForCurrentProject,
+  isViewingAsSuperUser,
 } from "@/models/LoggedInUser";
 import type { SelectedProject, LoggedInUser } from "@/models/LoggedInUser";
 import {
@@ -377,7 +378,7 @@ onMounted(() => {
                 >
                   <path
                     d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
-                    fill="#d9001b"
+                    fill="darkred"
                   />
                 </svg>
               </span>
@@ -406,7 +407,7 @@ onMounted(() => {
         <!--            <span>Report</span>-->
         <!--          </router-link>-->
         <!--        </li>-->
-        <li class="nav-item">
+        <li class="nav-item" v-if="!isViewingAsSuperUser">
           <router-link
             :to="{
               name: 'user-project-settings',
@@ -426,7 +427,10 @@ onMounted(() => {
             <span>My&nbsp;preferences</span>
           </router-link>
         </li>
-        <li class="nav-item" v-if="userIsAdminForCurrentSelectedProject">
+        <li
+          class="nav-item"
+          v-if="userIsAdminForCurrentSelectedProject || isViewingAsSuperUser"
+        >
           <router-link
             :to="{
               name: 'project-settings',

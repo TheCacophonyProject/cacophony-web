@@ -9,6 +9,7 @@ import {
   visitDuration,
   VisitProcessingStates,
   someRecordingStillProcessing,
+  intlFormatForLocation,
 } from "@models/visitsUtils";
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
@@ -20,6 +21,7 @@ import {
 } from "@api/Classifications";
 import ImageLoader from "@/components/ImageLoader.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
@@ -80,7 +82,6 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       debugger;
     }
   }
-
   const events: (VisitEventItem | SunEventItem)[] = props.visits.map(
     (visit) =>
       ({
@@ -91,73 +92,57 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         date: new Date(visit.timeStart),
       } as VisitEventItem)
   );
-
   const now = new Date();
-  const endTime = events[0].date;
-  const startTime = events[events.length - 1].date;
-  {
-    // If the startTime is *after* its own sunrise, then use the sunset from it.
-    const { sunrise, sunset } = sunCalc.getTimes(
-      startTime,
-      props.location.lat,
-      props.location.lng
-    );
-    if (startTime > sunrise) {
-      events.push({
-        type: "sun",
-        name: `Sunset`,
-        timeStart: sunset.toISOString(),
-        date: sunset,
-      } as SunEventItem);
-    } else {
-      // startTime is after midnight, so use the sunset from the previous day.
-      const prevDay = new Date(startTime);
-      prevDay.setDate(prevDay.getDate() - 1);
-      const { sunset } = sunCalc.getTimes(
-        prevDay,
+  if (props.isNocturnal) {
+    const endTime = events[0].date;
+    const startTime = events[events.length - 1].date;
+    {
+      // If the startTime is *after* its own sunrise, then use the sunset from it.
+      const { sunrise, sunset } = sunCalc.getTimes(
+        startTime,
         props.location.lat,
         props.location.lng
       );
-      events.push({
-        type: "sun",
-        name: `Sunset`,
-        timeStart: sunset.toISOString(),
-        date: sunset,
-      } as SunEventItem);
+      if (startTime > sunrise) {
+        events.push({
+          type: "sun",
+          name: `Sunset`,
+          timeStart: sunset.toISOString(),
+          date: sunset,
+        } as SunEventItem);
+      } else {
+        // startTime is after midnight, so use the sunset from the previous day.
+        const prevDay = new Date(startTime);
+        prevDay.setDate(prevDay.getDate() - 1);
+        const { sunset } = sunCalc.getTimes(
+          prevDay,
+          props.location.lat,
+          props.location.lng
+        );
+        events.push({
+          type: "sun",
+          name: `Sunset`,
+          timeStart: sunset.toISOString(),
+          date: sunset,
+        } as SunEventItem);
+      }
     }
-  }
-  {
-    const { sunrise, sunset } = sunCalc.getTimes(
-      endTime,
-      props.location.lat,
-      props.location.lng
-    );
-    if (now < sunrise) {
-      // If we're before sunrise, then use the "Now" placeholder
-      events.push({
-        type: "sun",
-        name: `Now`,
-        timeStart: now.toISOString(),
-        date: now,
-      } as SunEventItem);
-    } else if (endTime < sunrise || (endTime > sunrise && endTime < sunset)) {
-      // If the endTime is *before* its own sunrise, then use the sunrise from it.
-      events.push({
-        type: "sun",
-        name: `Sunrise`,
-        timeStart: sunrise.toISOString(),
-        date: sunrise,
-      } as SunEventItem);
-    } else {
-      // Otherwise, use the sunrise from the next day.
-      const endTimePlusOneDay = new Date(endTime);
-      endTimePlusOneDay.setDate(endTimePlusOneDay.getDate() + 1);
-      const { sunrise } = sunCalc.getTimes(
-        endTimePlusOneDay,
+    {
+      const { sunrise, sunset } = sunCalc.getTimes(
+        endTime,
         props.location.lat,
         props.location.lng
       );
-      if (sunrise < now) {
+      if (now < sunrise) {
+        // If we're before sunrise, then use the "Now" placeholder
+        events.push({
+          type: "sun",
+          name: `Now`,
+          timeStart: now.toISOString(),
+          date: now,
+        } as SunEventItem);
+      } else if (endTime < sunrise || (endTime > sunrise && endTime < sunset)) {
+        // If the endTime is *before* its own sunrise, then use the sunrise from it.
         events.push({
           type: "sun",
           name: `Sunrise`,
@@ -165,13 +150,58 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
           date: sunrise,
         } as SunEventItem);
       } else {
-        events.push({
-          type: "sun",
-          name: `Now`,
-          timeStart: now.toISOString(),
-          date: now,
-        } as SunEventItem);
+        // Otherwise, use the sunrise from the next day.
+        const endTimePlusOneDay = new Date(endTime);
+        endTimePlusOneDay.setDate(endTimePlusOneDay.getDate() + 1);
+        const { sunrise } = sunCalc.getTimes(
+          endTimePlusOneDay,
+          props.location.lat,
+          props.location.lng
+        );
+        if (sunrise < now) {
+          events.push({
+            type: "sun",
+            name: `Sunrise`,
+            timeStart: sunrise.toISOString(),
+            date: sunrise,
+          } as SunEventItem);
+        } else {
+          events.push({
+            type: "sun",
+            name: `Now`,
+            timeStart: now.toISOString(),
+            date: now,
+          } as SunEventItem);
+        }
       }
+    }
+  } else {
+    const endTime = events[0].date;
+    const { sunrise, sunset } = sunCalc.getTimes(
+      endTime,
+      props.location.lat,
+      props.location.lng
+    );
+    events.push({
+      type: "sun",
+      name: `Sunrise`,
+      timeStart: sunrise.toISOString(),
+      date: sunrise,
+    } as SunEventItem);
+    if (sunset < now) {
+      events.push({
+        type: "sun",
+        name: `Sunset`,
+        timeStart: sunset.toISOString(),
+        date: sunset,
+      } as SunEventItem);
+    } else if (sunrise < endTime) {
+      events.push({
+        type: "sun",
+        name: `Now`,
+        timeStart: now.toISOString(),
+        date: now,
+      } as SunEventItem);
     }
   }
   events.sort((a, b) => {
@@ -227,7 +257,30 @@ const visitTime = (timeIsoString: string) =>
 
 const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
   if (visit.recordings.length) {
-    return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+    let foundTrack;
+    let foundRec;
+    for (const rec of visit.recordings) {
+      const track = rec.tracks.find(
+        (track) => track.tag === visit.classification
+      );
+      if (track) {
+        foundRec = rec;
+        foundTrack = track;
+        break;
+      }
+    }
+
+    if (import.meta.env.DEV) {
+      if (foundTrack && foundRec) {
+        return `https://api.cacophony.org.nz/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
+      }
+      return `https://api.cacophony.org.nz/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+    } else {
+      if (foundTrack && foundRec) {
+        return `${API_ROOT}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
+      }
+      return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+    }
   }
   return "";
 };

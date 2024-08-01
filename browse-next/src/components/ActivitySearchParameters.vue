@@ -887,37 +887,37 @@ const scrolledToStickyPosition = computed<boolean>(() => {
 
 <template>
   <div ref="searchParamsContainer">
-    <div
-      class="btn-group btn-group-sm d-flex mb-2"
-      role="group"
-      aria-label="Toggle between camera and bird monitor results"
-      v-if="projectHasAudioAndThermal"
-    >
-      <input
-        type="radio"
-        class="btn-check"
-        name="recording-mode"
-        id="recording-mode-cameras"
-        autocomplete="off"
-        v-model="recordingMode"
-        value="cameras"
-      />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"
-        >Cameras</label
-      >
-      <input
-        type="radio"
-        class="btn-check"
-        name="recording-mode"
-        id="recording-mode-audio"
-        autocomplete="off"
-        v-model="recordingMode"
-        value="audio"
-      />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"
-        >Bird Monitors</label
-      >
-    </div>
+    <!--    <div-->
+    <!--      class="btn-group btn-group-sm d-flex mb-2"-->
+    <!--      role="group"-->
+    <!--      aria-label="Toggle between camera and bird monitor results"-->
+    <!--      v-if="projectHasAudioAndThermal"-->
+    <!--    >-->
+    <!--      <input-->
+    <!--        type="radio"-->
+    <!--        class="btn-check"-->
+    <!--        name="recording-mode"-->
+    <!--        id="recording-mode-cameras"-->
+    <!--        autocomplete="off"-->
+    <!--        v-model="recordingMode"-->
+    <!--        value="cameras"-->
+    <!--      />-->
+    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"-->
+    <!--        >Cameras</label-->
+    <!--      >-->
+    <!--      <input-->
+    <!--        type="radio"-->
+    <!--        class="btn-check"-->
+    <!--        name="recording-mode"-->
+    <!--        id="recording-mode-audio"-->
+    <!--        autocomplete="off"-->
+    <!--        v-model="recordingMode"-->
+    <!--        value="audio"-->
+    <!--      />-->
+    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"-->
+    <!--        >Bird Monitors</label-->
+    <!--      >-->
+    <!--    </div>-->
     <div
       class="btn-group d-flex"
       :class="{ 'btn-group-sm': scrolledToStickyPosition }"
@@ -1022,7 +1022,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       tooltip
       custom-class="tag-info-popover"
       placement="right-start"
-      container="body"
+      teleport-to="body"
       :target="falsePositiveInfoParent"
     >
       Include recordings that are only tagged as false trigger, or which have no
@@ -1079,7 +1079,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         </div>
         <b-popover
           click
-          container="body"
+          teleport-to="body"
           variant="secondary"
           v-model="toggleSubspeciesHelp"
           tooltip

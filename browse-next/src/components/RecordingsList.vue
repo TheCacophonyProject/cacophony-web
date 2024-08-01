@@ -4,201 +4,211 @@
     v-for="day in recordingsByDay"
     :key="day.dateTime.day"
   >
-    <div class="day-header fw-bold px-2 pb-2 fs-7">
+    <div
+      class="day-header fw-bold px-2 pb-2 fs-7"
+      v-if="
+        day.items.filter((r) => !r.data.hasOwnProperty('tombstoned')).length !==
+        0
+      "
+    >
       {{ day.dateTime.toLocaleString(DateTime.DATE_FULL) }}
     </div>
 
     <div
       v-for="(item, index) in day.items"
       :key="index"
-      class="list-item d-flex user-select-none fs-8"
-      :class="[
-        item.type,
-        {
-          selected:
-            item.type === 'recording' &&
-            item.data.id === currentlySelectedRecordingId,
-        },
-      ]"
       @click="selectedRecording(item)"
       @mouseenter="() => highlightedLocation(item)"
       @mouseleave="() => unhighlightedLocation(item)"
     >
       <div
-        class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
+        v-if="!item.data.hasOwnProperty('tombstoned')"
+        class="list-item d-flex user-select-none fs-8"
+        :class="[
+          item.type,
+          {
+            selected:
+              item.type === 'recording' &&
+              item.data.id === currentlySelectedRecordingId,
+          },
+        ]"
       >
-        <span class="pb-1" v-if="item.type === 'recording'">{{
-          timeAtLocation(item.data.recordingDateTime, canonicalLocation)
-        }}</span>
-        <span class="pb-1" v-else>{{
-          timeAtLocation(item.data, canonicalLocation)
-        }}</span>
-        <span
-          class="duration fs-8"
-          v-if="
-            item.type === 'recording' &&
-            item.data.type === RecordingType.ThermalRaw
-          "
-          v-html="formatDuration(item.data.duration * 1000)"
-        ></span>
-      </div>
-      <div class="visit-timeline">
-        <svg
-          viewBox="0 0 32 36"
-          class="sun-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          v-if="item.type === 'sunrise'"
+        <div
+          class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
         >
-          <rect x="-2" y="-2" width="36" height="40" fill="#f6f6f6" />
-          <g transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)">
-            <path
-              fill="currentColor"
-              d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
-            />
-            <path
-              fill="currentColor"
-              d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
-              style="fill-rule: nonzero"
-            />
-          </g>
-        </svg>
-        <svg
-          viewBox="0 0 32 36"
-          class="sun-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          v-else-if="item.type === 'sunset'"
-        >
-          <rect x="-2" y="-2" width="36" height="40" fill="#f6f6f6" />
-          <g transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)">
-            <path
-              fill="currentColor"
-              d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
-            />
-            <path
-              fill="currentColor"
-              class="sun-arrow"
-              d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
-              style="fill-rule: nonzero"
-            />
-          </g>
-        </svg>
-        <div v-else class="circle"></div>
-      </div>
-      <div v-if="item.type !== 'recording'" class="py-2 ps-3 text-capitalize">
-        {{ item.type }}
-      </div>
-      <div
-        v-else
-        class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
-      >
-        <div class="visit-thumb rounded-1">
-          <image-loader
-            :src="thumbnailSrcForRecording(item.data)"
-            alt="Thumbnail for first recording of this visit"
-            width="45"
-            height="45"
-          />
+          <span class="pb-1" v-if="item.type === 'recording'">{{
+            timeAtLocation(item.data.recordingDateTime, canonicalLocation)
+          }}</span>
+          <span class="pb-1" v-else>{{
+            timeAtLocation(item.data, canonicalLocation)
+          }}</span>
+          <span
+            class="duration fs-8"
+            v-if="
+              item.type === 'recording' &&
+              item.data.type === RecordingType.ThermalRaw
+            "
+            v-html="formatDuration(item.data.duration * 1000)"
+          ></span>
+        </div>
+        <div class="visit-timeline">
+          <svg
+            viewBox="0 0 32 36"
+            class="sun-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            v-if="item.type === 'sunrise'"
+          >
+            <rect x="-2" y="-2" width="36" height="40" fill="#f6f6f6" />
+            <g transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)">
+              <path
+                fill="currentColor"
+                d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
+              />
+              <path
+                fill="currentColor"
+                d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
+                style="fill-rule: nonzero"
+              />
+            </g>
+          </svg>
+          <svg
+            viewBox="0 0 32 36"
+            class="sun-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            v-else-if="item.type === 'sunset'"
+          >
+            <rect x="-2" y="-2" width="36" height="40" fill="#f6f6f6" />
+            <g transform="matrix(0.151304,0,0,0.151304,-22.1954,-34.6843)">
+              <path
+                fill="currentColor"
+                d="M161.213,434.531L161.213,418.781L194.046,418.781L194.541,415.968C195.47,410.687 197.983,404.084 201.238,398.372L204.49,392.666L181.46,369.671L192.71,358.421L215.841,381.516L219.464,379.197C224.28,376.115 229.455,373.935 235.838,372.298L241.088,370.952L241.492,337.781L257.934,337.781L258.338,370.952L263.588,372.298C269.971,373.935 275.146,376.115 279.962,379.197L283.585,381.516L306.703,358.434L317.973,369.629L294.734,392.906L296.282,395.156C299.306,399.551 302.884,407.739 304.177,413.221L305.487,418.781L338.213,418.781L338.213,434.531L161.213,434.531ZM288.226,414.843C286.39,408.589 283.456,403.805 278.213,398.518C262.19,382.361 237.323,382.358 221.203,398.51C215.98,403.743 213.057,408.516 211.2,414.842L210.044,418.78L289.382,418.78L288.226,414.843Z"
+              />
+              <path
+                fill="currentColor"
+                class="sun-arrow"
+                d="M241.463,322.031L241.463,289.781C241.463,289.781 218.213,289.525 218.213,289.212C218.213,288.899 249.713,257.169 249.713,257.169C249.713,257.169 281.213,288.899 281.213,289.212C281.213,289.525 257.963,289.781 257.963,289.781L257.963,322.031L241.463,322.031Z"
+                style="fill-rule: nonzero"
+              />
+            </g>
+          </svg>
+          <div v-else class="circle"></div>
+        </div>
+        <div v-if="item.type !== 'recording'" class="py-2 ps-3 text-capitalize">
+          {{ item.type }}
         </div>
         <div
-          class="ps-3 d-flex flex-column text-truncate flex-wrap flex-grow-1"
+          v-else
+          class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
         >
+          <div class="visit-thumb rounded-1">
+            <image-loader
+              :src="thumbnailSrcForRecording(item.data)"
+              alt="Thumbnail for first recording of this visit"
+              width="45"
+              height="45"
+            />
+          </div>
           <div
-            class="tags-container d-flex justify-content-between flex-grow-1"
+            class="ps-3 d-flex flex-column text-truncate flex-wrap flex-grow-1"
           >
-            <div class="d-flex flex-wrap">
-              <span
-                class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
-                v-if="processingInProgress.includes((item.data as ApiRecordingResponse).processingState)"
-                ><b-spinner small variant="secondary" /><span class="ms-1"
-                  >AI Queued</span
+            <div
+              class="tags-container d-flex justify-content-between flex-grow-1"
+            >
+              <div class="d-flex flex-wrap">
+                <span
+                  class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
+                  v-if="processingInProgress.includes((item.data as ApiRecordingResponse).processingState)"
+                  ><b-spinner small variant="secondary" /><span class="ms-1"
+                    >AI Queued</span
+                  ></span
+                >
+                <span
+                  v-else
+                  class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                  :class="tag.path.split('.')"
+                  :key="tag.what"
+                  v-for="tag in tagsForRecording(item.data)"
+                  ><span class="me-1">{{
+                    displayLabelForClassificationLabel(
+                      tag.what,
+                      tag.automatic && !tag.human
+                    )
+                  }}</span
+                  ><font-awesome-icon
+                    icon="check"
+                    size="xs"
+                    v-if="tag.human && tag.automatic"
+                    class="mx-1 align-middle"
+                    style="padding-bottom: 2px"
+                  /><font-awesome-icon
+                    icon="user"
+                    size="xs"
+                    v-else-if="tag.human"
+                    class="mx-1 align-middle"
+                    style="padding-bottom: 2px"
+                  /><font-awesome-icon
+                    icon="cog"
+                    size="xs"
+                    v-else-if="tag.automatic"
+                    class="mx-1 align-middle"
+                    style="padding-bottom: 2px"
+                  />
+                </span>
+                <span
+                  class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                  :class="[label.what]"
+                  :key="label.what"
+                  v-for="label in regularLabelsForRecording((item as RecordingItem).data)"
+                  >{{ label.what }}
+                </span>
+              </div>
+              <div>
+                <span
+                  class="px-1 mb-1 me-1"
+                  :class="[label.what]"
+                  :key="label.what"
+                  v-for="label in specialLabelsForRecording((item as RecordingItem).data)"
+                >
+                  <font-awesome-icon
+                    :icon="
+                      label.what === 'cool' ? ['fas', 'star'] : ['fas', 'flag']
+                    "
+                    :color="label.what === 'cool' ? 'goldenrod' : '#ad0707'"
+                  />
+                </span>
+              </div>
+            </div>
+
+            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
+              ><font-awesome-icon
+                icon="map-marker-alt"
+                size="xs"
+                class="station-icon pe-1 text"
+              />{{ (item as RecordingItem).data.stationName }}</span
+            >
+            <div class="d-flex">
+              <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
+                ><font-awesome-icon
+                  icon="video"
+                  size="xs"
+                  class="station-icon pe-1 text"
+                />{{ (item as RecordingItem).data.deviceName }}</span
+              >
+              <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
+                ><font-awesome-icon
+                  icon="stream"
+                  size="xs"
+                  class="station-icon pe-1 text"
+                /><span v-if="(item as RecordingItem).data.tracks.length === 0"
+                  >No tracks</span
+                ><span
+                  v-else-if="(item as RecordingItem).data.tracks.length === 1"
+                  >1 track</span
+                ><span v-else
+                  >{{ (item as RecordingItem).data.tracks.length }} tracks</span
                 ></span
               >
-              <span
-                v-else
-                class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                :class="tag.path.split('.')"
-                :key="tag.what"
-                v-for="tag in tagsForRecording(item.data)"
-                ><span class="me-1">{{
-                  displayLabelForClassificationLabel(
-                    tag.what,
-                    tag.automatic && !tag.human
-                  )
-                }}</span
-                ><font-awesome-icon
-                  icon="check"
-                  size="xs"
-                  v-if="tag.human && tag.automatic"
-                  class="mx-1 align-middle"
-                  style="padding-bottom: 2px"
-                /><font-awesome-icon
-                  icon="user"
-                  size="xs"
-                  v-else-if="tag.human"
-                  class="mx-1 align-middle"
-                  style="padding-bottom: 2px"
-                /><font-awesome-icon
-                  icon="cog"
-                  size="xs"
-                  v-else-if="tag.automatic"
-                  class="mx-1 align-middle"
-                  style="padding-bottom: 2px"
-                />
-              </span>
-              <span
-                class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                :class="[label.what]"
-                :key="label.what"
-                v-for="label in regularLabelsForRecording((item as RecordingItem).data)"
-                >{{ label.what }}
-              </span>
             </div>
-            <div>
-              <span
-                class="px-1 mb-1 me-1"
-                :class="[label.what]"
-                :key="label.what"
-                v-for="label in specialLabelsForRecording((item as RecordingItem).data)"
-              >
-                <font-awesome-icon
-                  :icon="
-                    label.what === 'cool' ? ['fas', 'star'] : ['fas', 'flag']
-                  "
-                  :color="label.what === 'cool' ? 'goldenrod' : '#ad0707'"
-                />
-              </span>
-            </div>
-          </div>
-
-          <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-            ><font-awesome-icon
-              icon="map-marker-alt"
-              size="xs"
-              class="station-icon pe-1 text"
-            />{{ (item as RecordingItem).data.stationName }}</span
-          >
-          <div class="d-flex">
-            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-              ><font-awesome-icon
-                icon="video"
-                size="xs"
-                class="station-icon pe-1 text"
-              />{{ (item as RecordingItem).data.deviceName }}</span
-            >
-            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-              ><font-awesome-icon
-                icon="stream"
-                size="xs"
-                class="station-icon pe-1 text"
-              /><span v-if="(item as RecordingItem).data.tracks.length === 0"
-                >No tracks</span
-              ><span
-                v-else-if="(item as RecordingItem).data.tracks.length === 1"
-                >1 track</span
-              ><span v-else
-                >{{ (item as RecordingItem).data.tracks.length }} tracks</span
-              ></span
-            >
           </div>
         </div>
       </div>
@@ -301,6 +311,12 @@ const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
   const nonFalsePositiveTrack = recording.tracks.filter((track) => {
     return track.tags.some((tag) => tag.what !== "false-positive");
   });
+  if (import.meta.env.DEV) {
+    if (nonFalsePositiveTrack.length !== 0) {
+      return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;
+    }
+    return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail`;
+  }
   if (nonFalsePositiveTrack.length !== 0) {
     return `${API_ROOT}/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;
   }

@@ -47,7 +47,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "expanded-changed", trackId: TrackId, expanded: boolean): void;
-  (e: "selected-track", trackId: TrackId): void;
+  (e: "selected-track", trackId: TrackId, forceReplay?: boolean): void;
   (
     e: "add-or-remove-user-tag",
     payload: { trackId: TrackId; tag: string }
@@ -356,6 +356,9 @@ const confirmAiSuggestedTag = () => {
     });
   }
 };
+const replaySelectedTrack = () => {
+  emit("selected-track", props.track.id, true);
+};
 
 const rejectAiSuggestedTag = () => {
   expandedInternal.value = true;
@@ -535,11 +538,21 @@ onMounted(async () => {
       </button>
     </div>
     <div v-else>
+      <button
+        type="button"
+        aria-label="Replay track"
+        class="btn"
+        @click.stop.prevent="replaySelectedTrack"
+      >
+        <span class="visually-hidden">Replay track</span>
+        <font-awesome-icon icon="rotate-right" color="#666" />
+      </button>
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>
         <font-awesome-icon
           icon="chevron-right"
           :rotation="expanded ? 270 : 90"
+          color="#666"
         />
       </button>
     </div>

@@ -43,14 +43,17 @@ import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
 import type { LoggedInUserAuth, SelectedProject } from "@models/LoggedInUser";
-import { CurrentUserCreds } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { type CancelableDelay, delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
 import { getReferenceImageForDeviceAtTime } from "@api/Device.ts";
-import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
+import {
+  currentSelectedProject as currentActiveProject,
+  currentUserCreds,
+  currentUserCredsDev,
+} from "@models/provides.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
@@ -62,7 +65,7 @@ const userProjectSettings = computed<ApiProjectUserSettings>(() => {
       displayMode: "visits",
       tags: [],
       notificationPreferences: {},
-      showFalseTriggers: true,
+      showFalseTriggers: false,
     }
   );
 });
@@ -1735,6 +1738,15 @@ watch(
   }
 );
 
+const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
+const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
+const creds = computed<LoggedInUserAuth | null>(() => {
+  if (import.meta.env.DEV) {
+    return devCreds.value;
+  }
+  return prodCreds.value;
+});
+
 const currentRecordingType = ref<"cptv" | "image">("cptv");
 let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
@@ -1765,11 +1777,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
   loadTimeout && loadTimeout.cancel();
-  if (CurrentUserCreds.value) {
+  if (creds.value) {
     loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
       nextRecordingId,
       props.cptvSize || 0,
-      (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+      (creds.value as LoggedInUserAuth).apiToken
     );
   }
 

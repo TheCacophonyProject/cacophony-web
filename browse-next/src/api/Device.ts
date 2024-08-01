@@ -82,6 +82,7 @@ export const getLatestEventsByDeviceId = (
   params.append("deviceId", deviceId.toString());
   params.append("latest", true.toString());
   params.append("only-active", false.toString());
+  params.append("include-count", false.toString());
   if (eventParams) {
     for (const [key, val] of Object.entries(eventParams)) {
       params.append(key, val.toString());
@@ -96,6 +97,7 @@ export const getStoppedEvents = (deviceId: DeviceId, startTime: Date) => {
   const params = new URLSearchParams();
   params.append("deviceId", deviceId.toString());
   params.append("only-active", true.toString());
+  params.append("include-count", false.toString());
   params.append("startTime", startTime.toISOString());
   params.append("type", "stop-reported");
   return CacophonyApi.get(`/api/v1/events?${params}`) as Promise<
@@ -109,10 +111,90 @@ export const getLastStoppedEvent = (deviceId: DeviceId) => {
   params.append("only-active", true.toString());
   params.append("latest", true.toString());
   params.append("limit", "1");
+  params.append("include-count", false.toString());
   params.append("type", "stop-reported");
   return CacophonyApi.get(`/api/v1/events?${params}`) as Promise<
     FetchResult<{ rows: DeviceEvent[] }>
   >;
+};
+
+export const getDeviceNodeGroup = (deviceId: DeviceId) => {
+  return new Promise((resolve) => {
+    getLatestEventsByDeviceId(deviceId, {
+      type: "salt-update",
+      limit: 1,
+    }).then((response) => {
+      if (response.success && response.result.rows.length) {
+        resolve(
+          response.result.rows[0].EventDetail.details.nodegroup ||
+            "unknown channel"
+        );
+      } else {
+        resolve(false);
+      }
+    });
+  }) as Promise<string | false>;
+};
+
+export interface BatteryInfoEvent {
+  dateTime: IsoFormattedString | Date;
+  voltage: number | null;
+  battery: number | null;
+  batteryType: "unknown" | "lime" | "mains" | "li-ion";
+}
+
+export const getBatteryInfo = (deviceId: DeviceId, startTime: Date) => {
+  // There may be a limit of 100 events, so make sure we get as far back to startTime as possible.
+  let untilDateTime = new Date();
+  let fromDateTime = new Date(startTime);
+  const batteryEpoch = new Date("2024-06-20 16:27:25.312 +1200");
+  if (batteryEpoch > fromDateTime) {
+    fromDateTime = batteryEpoch;
+  }
+  // eslint-disable-next-line no-async-promise-executor
+  return new Promise(async (resolve) => {
+    let stillHasEvents = true;
+    const events: BatteryInfoEvent[] = [];
+    while (stillHasEvents) {
+      const params = new URLSearchParams();
+      params.append("deviceId", deviceId.toString());
+      params.append("only-active", true.toString());
+      params.append("startTime", fromDateTime.toISOString());
+      params.append("endTime", untilDateTime.toISOString());
+      params.append("include-count", false.toString());
+      params.append("limit", String(300));
+      params.append("type", "rpiBattery");
+      params.append("latest", true.toString());
+      const response = (await CacophonyApi.get(
+        `/api/v1/events?${params}`
+      )) as unknown as FetchResult<{ rows: DeviceEvent[] }>;
+      if (response && response.success) {
+        const eventsSubset = response.result.rows.map(
+          ({
+            dateTime,
+            EventDetail: {
+              details: { voltage, battery, batteryType },
+            },
+          }) => ({
+            dateTime,
+            voltage,
+            battery,
+            batteryType,
+          })
+        );
+        events.push(...eventsSubset);
+        if (eventsSubset.length === 0) {
+          stillHasEvents = false;
+          resolve(events);
+        } else {
+          untilDateTime = new Date(events[events.length - 1].dateTime);
+        }
+      } else {
+        stillHasEvents = false;
+        resolve(false);
+      }
+    }
+  }) as Promise<BatteryInfoEvent[] | false>;
 };
 
 export const getEarliestEventAfterTime = (
@@ -124,6 +206,7 @@ export const getEarliestEventAfterTime = (
   params.append("only-active", true.toString());
   params.append("limit", "1");
   params.append("type", "rpi-power-on");
+  params.append("include-count", false.toString());
   params.append("startTime", startTime.toISOString());
   return CacophonyApi.get(`/api/v1/events?${params}`) as Promise<
     FetchResult<{ rows: DeviceEvent[] }>
@@ -165,6 +248,16 @@ export const getLocationHistory = (
   );
 };
 
+export const getActiveDevicesForCurrentUser = (): Promise<
+  LoadedResource<ApiDeviceResponse[]>
+> =>
+  unwrapLoadedResource(
+    CacophonyApi.get("/api/v1/devices?only-active=true") as Promise<
+      FetchResult<{ devices: ApiDeviceResponse[] }>
+    >,
+    "devices"
+  );
+
 export const getDeviceConfig = (deviceId: DeviceId) => {
   return new Promise((resolve) => {
     getLatestEventsByDeviceId(deviceId, {
@@ -189,6 +282,7 @@ export const getLatestStatusRecordingForDevice = (
     const params = new URLSearchParams();
     params.append("limit", "1");
     params.append("type", "thermalRaw");
+    params.append("countAll", false.toString());
     const where = {
       duration: use2SecondRecordings ? { $gte: 2, $lte: 3 } : { $gte: 2 },
       GroupId: projectId,

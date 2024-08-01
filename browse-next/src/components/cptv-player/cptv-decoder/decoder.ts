@@ -85,8 +85,20 @@ export class CptvDecoder {
   ): Promise<string | boolean | Blob> {
     await this.init();
     const type = "initWithRecordingIdAndSize";
-    decoder &&
-      decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
+    if (import.meta.env.DEV) {
+      decoder &&
+        decoder.postMessage({
+          type,
+          id,
+          size,
+          apiToken,
+          apiRoot: "https://api.cacophony.org.nz",
+        });
+    } else {
+      decoder &&
+        decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
+    }
+
     return (await this.waitForMessage(type)) as string | boolean | Blob;
   }
 

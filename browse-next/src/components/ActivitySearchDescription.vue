@@ -14,11 +14,14 @@ import {
   displayLabelForClassificationLabel,
   flatClassifications,
 } from "@api/Classifications.ts";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import DeviceName from "@/components/DeviceName.vue";
 const COOL = "cool";
 const FLAG = "requires review";
 const props = defineProps<{
   searchParams: ActivitySearchParams;
   selectedLocations: ("any" | ApiLocationResponse)[];
+  selectedDevices: "all" | ApiDeviceResponse[];
   locationsInSelectedTimespan: ApiLocationResponse[];
   availableDateRanges: { range: [Date, Date]; from: string; label: string }[];
 }>();
@@ -152,6 +155,18 @@ const otherLabels = computed<string[]>(
           </span></span
         >
       </span>
+    </span>
+    <span v-if="selectedDevices && selectedDevices !== 'all'">
+      for
+      <strong v-for="(device, index) in selectedDevices" :key="index">
+        <device-name :name="device.deviceName" :type="device.type" />
+        <span
+          v-if="
+            selectedDevices.length > 1 && index < selectedDevices.length - 1
+          "
+          >,
+        </span>
+      </strong>
     </span>
     <span>&nbsp;</span>
     <span>{{ timespan }}</span>

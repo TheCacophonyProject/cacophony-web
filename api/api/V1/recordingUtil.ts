@@ -29,8 +29,7 @@ import type { Event, QueryOptions } from "@models/Event.js";
 import type { User } from "@models/User.js";
 import Sequelize, { Op, QueryTypes } from "sequelize";
 import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
-import { NON_ANIMAL_TAGS } from "./Visits.js";
-import { DeviceSummary, Visit } from "./Visits.js";
+import { DeviceSummary, NON_ANIMAL_TAGS, Visit } from "./Visits.js";
 import type { Station } from "@models/Station.js";
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import type { Device } from "@models/Device.js";
@@ -41,7 +40,6 @@ import type {
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
-import track from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
@@ -76,15 +74,15 @@ import {
 import { openS3 } from "@models/util/util.js";
 import type { ReadableStream } from "stream/web";
 import type { ModelsDictionary } from "@models";
-const ffmpegPath = "/usr/bin/ffmpeg";
 import ffmpeg from "fluent-ffmpeg";
-ffmpeg.setFfmpegPath(ffmpegPath);
 import { Writable } from "stream";
 import temp from "temp";
-temp.track();
-
 import fs from "fs";
 import { sendAnimalAlertEmail } from "@/emails/transactionalEmails.js";
+
+const ffmpegPath = "/usr/bin/ffmpeg";
+ffmpeg.setFfmpegPath(ffmpegPath);
+temp.track();
 
 // Create a png thumbnail image  from this frame with thumbnail info
 // Expand the thumbnail region such that it is a square and at least THUMBNAIL_MIN_SIZE
@@ -182,36 +180,43 @@ export async function getThumbnail(
   rec: Recording,
   trackId?: number
 ): Promise<Uint8Array> {
-  let thumbKey: string;
   const fileKey = rec.rawFileKey;
-  if (trackId) {
+  let thumbKey = `${fileKey}-thumb`;
+  const thumbedTracks = (rec.Tracks || []).filter((track) => {
+    return (
+      track.dataValues.hasOwnProperty("thumbnailScore") ||
+      (track.dataValues.data &&
+        track.dataValues.data.hasOwnProperty("thumbnail"))
+    );
+  });
+  if (
+    trackId !== undefined &&
+    thumbedTracks.some((track) => track.id === trackId)
+  ) {
     thumbKey = `${fileKey}-${trackId}-thumb`;
-  } else {
-    const thumbedTracks = rec.Tracks.filter((track) => track.data?.thumbnail);
-    if (thumbedTracks.length > 0) {
-      // choose best track based off visit tag and highest score
-      const recVisit = new Visit(rec, 0, thumbedTracks);
-      const commonTag = recVisit.mostCommonTag();
-      const trackIds = recVisit.events
-        .filter((event) => event.trackTag.what == commonTag.what)
-        .map((event) => event.trackID);
-      const bestTracks = rec.Tracks.filter((track) =>
-        trackIds.includes(track.id)
-      );
-
-      // sort by area
-      bestTracks.sort(function (a, b) {
-        return a.data.thumbnail.width * a.data.thumbnail.height >
-          b.data.thumbnail.width * b.data.thumbnail.height
-          ? 1
-          : -1;
+  } else if (thumbedTracks.length > 0) {
+    // choose best track based off visit tag and highest score
+    const recVisit = new Visit(rec, 0, thumbedTracks);
+    const commonTag = recVisit.mostCommonTag();
+    const trackIds = recVisit.events
+      .filter((event) => event.trackTag.what == commonTag.what)
+      .map((event) => event.trackID);
+    const bestTracks = rec.Tracks.filter((track) =>
+      trackIds.includes(track.id)
+    );
+    if (bestTracks.length !== 0) {
+      bestTracks.sort((a, b) => {
+        if (
+          a.dataValues.hasOwnProperty("thumbnailScore") &&
+          b.dataValues.hasOwnProperty("thumbnailScore")
+        ) {
+          return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+        }
+        return b.data.thumbnail.score - a.data.thumbnail.score;
       });
       thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
-    } else {
-      thumbKey = `${fileKey}-thumb`;
     }
   }
-
   const s3 = openS3();
   if (thumbKey.startsWith("a_")) {
     thumbKey = thumbKey.slice(2);
@@ -878,16 +883,21 @@ export async function bulkDelete(
     options
   );
 
-  const values = (await models.Recording.findAll(builder.get())) as Recording[];
-  if (values.length === 0) {
+  const recordings = (await models.Recording.findAll(
+    builder.get()
+  )) as Recording[];
+  if (recordings.length === 0) {
     throw new Error("No recordings found to delete");
   }
   const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
-  const ids = values.map((value) => value.id);
+  const ids = recordings.map((value) => value.id);
   const deletedValues = (await models.Recording.update(deletion, {
     where: { id: ids },
     returning: ["id"],
   })) as unknown as Promise<[number, { id: number }[]]>;
+  for (const recording of recordings) {
+    await fixupLatestRecordingTimesForDeletedRecording(models, recording);
+  }
   if (deletedValues[1]) {
     return deletedValues[1].map((value) => value.id);
   }
@@ -1876,9 +1886,13 @@ export async function sendAlerts(
       "GroupId",
       "StationId",
       "rawFileKey",
+      "type",
     ],
   });
   if (!recording) {
+    return;
+  }
+  if (recording.type !== RecordingType.ThermalRaw) {
     return;
   }
   // If the recording is more than 24 hours old, don't send an alert
@@ -1951,21 +1965,16 @@ export async function sendAlerts(
     recording.StationId || undefined,
     recording.GroupId || undefined
   );
-
   if (alerts.length !== 0) {
     let thumbnail;
     try {
       thumbnail = await getThumbnail(recording, matchedTrack.id);
     } catch (e) {
-      try {
-        thumbnail = await getThumbnail(recording);
-      } catch (e) {
-        log.warning(
-          "Alerting without thumbnail for %d and track %d",
-          recId,
-          matchedTrack.id
-        );
-      }
+      log.warning(
+        "Alerting without thumbnail for %d and track %d",
+        recId,
+        matchedTrack.id
+      );
     }
     for (const alert of alerts) {
       if (alert.User) {
@@ -2452,5 +2461,188 @@ export const finishedProcessingRecording = async (
 
   if (prevState !== RecordingProcessingState.Reprocess) {
     await sendAlerts(models, recording.id);
+  }
+};
+
+export const fixupLatestRecordingTimesForDeletedRecording = async (
+  models: ModelsDictionary,
+  recording: Recording
+) => {
+  // Check if there are any more device/group/station recordings, or if the latest recording of this type
+  // is not different. If not, set lastRecordingTime to null,
+  // so that the device will appear as deletable.
+  const cameras = [RecordingType.ThermalRaw, RecordingType.TrailCamImage];
+  let types = [RecordingType.Audio];
+  if (
+    [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
+      recording.type
+    )
+  ) {
+    types = cameras;
+  }
+  const [
+    latestDeviceRecording,
+    latestGroupRecordingOfSameType,
+    latestStationRecordingOfSameType,
+  ] = await Promise.all([
+    models.Recording.findOne({
+      where: { DeviceId: recording.DeviceId, deletedAt: null },
+      order: [["recordingDateTime", "DESC"]],
+    }),
+    models.Recording.findOne({
+      where: {
+        GroupId: recording.GroupId,
+        deletedAt: null,
+        type: { [Op.in]: types },
+      },
+      order: [["recordingDateTime", "DESC"]],
+    }),
+    models.Recording.findOne({
+      where: {
+        StationId: recording.StationId,
+        deletedAt: null,
+        type: { [Op.in]: types },
+      },
+      order: [["recordingDateTime", "DESC"]],
+    }),
+  ]);
+  const [device, group] = await Promise.all([
+    models.Device.findByPk(recording.DeviceId),
+    models.Group.findByPk(recording.GroupId),
+  ]);
+  if (!latestDeviceRecording) {
+    await device.update({
+      lastRecordingTime: null,
+    });
+  } else if (
+    latestDeviceRecording.recordingDateTime < device.lastRecordingTime
+  ) {
+    await device.update({
+      lastRecordingTime: latestDeviceRecording.recordingDateTime,
+    });
+  }
+  if (!latestGroupRecordingOfSameType) {
+    if (cameras.includes(recording.type)) {
+      await group.update({
+        lastThermalRecordingTime: null,
+      });
+    } else if (recording.type === RecordingType.Audio) {
+      await group.update({
+        lastAudioRecordingTime: null,
+      });
+    }
+  } else {
+    if (cameras.includes(recording.type)) {
+      if (
+        latestGroupRecordingOfSameType.recordingDateTime <
+        group.lastThermalRecordingTime
+      ) {
+        await group.update({
+          lastThermalRecordingTime:
+            latestGroupRecordingOfSameType.recordingDateTime,
+        });
+      }
+    } else if (recording.type === RecordingType.Audio) {
+      if (
+        latestGroupRecordingOfSameType.recordingDateTime <
+        group.lastAudioRecordingTime
+      ) {
+        await group.update({
+          lastAudioRecordingTime:
+            latestGroupRecordingOfSameType.recordingDateTime,
+        });
+      }
+    }
+  }
+  if (recording.StationId) {
+    const station = await models.Station.findByPk(recording.StationId);
+    if (!latestStationRecordingOfSameType) {
+      if (cameras.includes(recording.type)) {
+        await station.update({
+          lastThermalRecordingTime: null,
+        });
+      } else if (recording.type === RecordingType.Audio) {
+        await station.update({
+          lastAudioRecordingTime: null,
+        });
+      }
+    } else {
+      if (cameras.includes(recording.type)) {
+        if (
+          latestStationRecordingOfSameType.recordingDateTime <
+          station.lastThermalRecordingTime
+        ) {
+          await station.update({
+            lastThermalRecordingTime:
+              latestStationRecordingOfSameType.recordingDateTime,
+          });
+        }
+      } else if (recording.type === RecordingType.Audio) {
+        if (
+          latestStationRecordingOfSameType.recordingDateTime <
+          station.lastAudioRecordingTime
+        ) {
+          await station.update({
+            lastAudioRecordingTime:
+              latestStationRecordingOfSameType.recordingDateTime,
+          });
+        }
+      }
+    }
+  }
+};
+
+export const fixupLatestRecordingTimesForUndeletedRecording = async (
+  models: ModelsDictionary,
+  recording: Recording
+) => {
+  const cameras = [RecordingType.TrailCamImage, RecordingType.ThermalRaw];
+  const [device, group] = await Promise.all([
+    models.Device.findByPk(recording.DeviceId),
+    models.Group.findByPk(recording.GroupId),
+  ]);
+  if (
+    (device && device.lastRecordingTime === null) ||
+    recording.recordingDateTime > device.lastRecordingTime
+  ) {
+    await device.update({ lastRecordingTime: recording.recordingDateTime });
+  }
+  if (
+    (group && group.lastRecordingTime === null) ||
+    recording.recordingDateTime > device.lastRecordingTime
+  ) {
+    if (
+      cameras.includes(recording.type) &&
+      recording.recordingDateTime > group.lastThermalRecordingTime
+    ) {
+      await group.update({
+        lastThermalRecordingTime: recording.recordingDateTime,
+      });
+    } else if (
+      recording.type === RecordingType.Audio &&
+      recording.recordingDateTime > group.lastAudioRecordingTime
+    ) {
+      await group.update({
+        lastAudioRecordingTime: recording.recordingDateTime,
+      });
+    }
+  }
+  if (recording.StationId) {
+    const station = await models.Station.findByPk(recording.StationId);
+    if (
+      cameras.includes(recording.type) &&
+      recording.recordingDateTime > station.lastThermalRecordingTime
+    ) {
+      await station.update({
+        lastThermalRecordingTime: recording.recordingDateTime,
+      });
+    } else if (
+      recording.type === RecordingType.Audio &&
+      recording.recordingDateTime > station.lastAudioRecordingTime
+    ) {
+      await station.update({
+        lastAudioRecordingTime: recording.recordingDateTime,
+      });
+    }
   }
 };

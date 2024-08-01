@@ -21,6 +21,9 @@ const fetchJsonWithMethod = async (
   if (body) {
     payload.body = JSON.stringify(body);
   }
+  if (endpoint.startsWith("https://")) {
+    return fetch(endpoint, payload, abortable);
+  }
   return fetch(`${API_ROOT}${endpoint}`, payload, abortable);
 };
 

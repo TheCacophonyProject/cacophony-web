@@ -23,12 +23,16 @@ import {
   userIsAdminForCurrentSelectedProject,
   userIsLoggedIn,
   LocationsForCurrentProject,
+  currentUserIsSuperUser,
+  NonUserProjects,
+  isViewingAsSuperUser,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
 import {
   getDevicesForProject,
   getLocationsForProject,
-  getProjects,
+  getCurrentUserProjects,
+  getAllProjects,
 } from "@api/Project";
 import { nextTick, reactive } from "vue";
 import { decodeJWT, urlNormaliseName } from "@/utils";
@@ -572,22 +576,13 @@ router.beforeEach(async (to, from, next) => {
       .shift();
     if (userIsLoggedIn.value && !UserProjects.value) {
       // Grab the users' groups, and select the first one.
-      isFetchingProjects.value = true;
-      // console.warn("Fetching user groups");
-      const NO_ABORT = false;
-      const projectsResponse = await getProjects(NO_ABORT);
-      if (projectsResponse.success) {
-        UserProjects.value = reactive(projectsResponse.result.groups);
-        // console.warn(
-        //   "Fetched user groups",
-        //   currentSelectedGroup.value,
-        //   JSON.stringify(UserGroups.value)
-        // );
-      }
-      isFetchingProjects.value = false;
+      const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-out" });
-      } else if (UserProjects.value && UserProjects.value?.length === 0) {
+      } else if (
+        UserProjects.value !== null &&
+        (UserProjects.value || []).length === 0
+      ) {
         if (to.name !== "setup" && to.name !== "confirm-email") {
           return next({ name: "setup" });
         } else {
@@ -597,11 +592,23 @@ router.beforeEach(async (to, from, next) => {
     }
     if (potentialProjectName) {
       potentialProjectName = urlNormaliseName(potentialProjectName);
-      const matchedProject = (
+      let matchedProject = (
         (UserProjects.value as ApiGroupResponse[]) || []
       ).find(
         ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName
       );
+      if (!matchedProject && currentUserIsSuperUser.value) {
+        matchedProject = (
+          (NonUserProjects.value as ApiGroupResponse[]) || []
+        ).find(
+          ({ groupName }) =>
+            urlNormaliseName(groupName) === potentialProjectName
+        );
+      }
+
+      // TODO: In super-user mode, match on a different set of groups.  I guess we should maybe store all those
+      //  groups globally the first time they're requested?
+
       // console.warn("Found match", matchedGroup);
       /*
       if (currentSelectedGroup.value) {
@@ -638,7 +645,10 @@ router.beforeEach(async (to, from, next) => {
                 false,
                 true
               ),
-              getLocationsForProject(currentSelectedProject.value.id, true),
+              getLocationsForProject(
+                currentSelectedProject.value.id.toString(),
+                true
+              ),
             ]);
             DevicesForCurrentProject.value = devices as LoadedResource<
               ApiDeviceResponse[]
@@ -667,7 +677,8 @@ router.beforeEach(async (to, from, next) => {
 
   if (
     to.meta.requiresGroupAdmin &&
-    !userIsAdminForCurrentSelectedProject.value
+    !userIsAdminForCurrentSelectedProject.value &&
+    !isViewingAsSuperUser.value
   ) {
     console.error("Trying to access admin only route");
     return next({

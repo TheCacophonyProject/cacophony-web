@@ -978,13 +978,15 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetStationsForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view stations that belong
-   * to a group.q
+   * to a group.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer|String} groupIdOrName Group name or group id
    * @apiQuery {Boolean} [only-active=false] Returns both retired and active stations by default.  Set true to only
    * return currently active stations.
+   * @apiQuery {Boolean} [with-recordings=false] Returns automatic stations without recordings by default.  Set true to only
+   * return automatic stations with recordings (stations can have no recordings if they were deleted).
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationResponse[] showing details of stations in group
@@ -1009,6 +1011,7 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
       query("view-mode").optional().equals("user"),
       query("only-active").default(false).isBoolean().toBoolean(),
+      query("with-recordings").default(false).isBoolean().toBoolean(),
     ]),
     // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),

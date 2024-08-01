@@ -55,6 +55,8 @@ const _deviceType = computed<string>(() => {
     switch ((device.value as ApiDeviceResponse).type) {
       case DeviceType.Thermal:
         return "Thermal camera";
+      case DeviceType.Hybrid:
+        return "Thermal camera + Bird monitor";
       case DeviceType.Audio:
         return "Bird monitor";
       case DeviceType.TrailCam:
@@ -94,7 +96,7 @@ const _deviceType = computed<string>(() => {
         >Diagnostics</router-link
       >
       <router-link
-        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal && (device as ApiDeviceResponse).location"
+        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-insights') },
@@ -106,7 +108,7 @@ const _deviceType = computed<string>(() => {
         >Insights</router-link
       >
       <router-link
-        v-if="(device as ApiDeviceResponse).type === DeviceType.Thermal"
+        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type)"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-setup') },
