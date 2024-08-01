@@ -139,23 +139,14 @@ export default function (
       currentSettingsEntry?.settings ?? ({} as ApiDeviceHistorySettings);
     const mergedSettings = mergeSettings(currentSettings, newSettings, setBy);
 
-    if (currentSettingsEntry) {
-      // Update the existing entry
-      await currentSettingsEntry.update({
-        setBy: setBy,
-        settings: mergedSettings,
-        fromDateTime: new Date(), // Optional: update the timestamp if needed
-      });
-    } else {
-      // Create a new entry if none exists
-      await this.create({
-        DeviceId: deviceId,
-        GroupId: groupId,
-        fromDateTime: new Date(),
-        setBy: setBy,
-        settings: mergedSettings,
-      });
-    }
+    // add to device history ledger
+    await this.create({
+      DeviceId: deviceId,
+      GroupId: groupId,
+      fromDateTime: new Date(),
+      setBy,
+      settings: mergedSettings,
+    });
 
     return mergedSettings;
   };
