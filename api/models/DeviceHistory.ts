@@ -137,18 +137,24 @@ export default function (
 
     const currentSettings: ApiDeviceHistorySettings =
       currentSettingsEntry?.settings ?? ({} as ApiDeviceHistorySettings);
-    const mergedSettings = mergeSettings(currentSettings, newSettings, setBy);
+    const { settings, changed } = mergeSettings(
+      currentSettings,
+      newSettings,
+      setBy
+    );
 
     // add to device history ledger
-    await this.create({
-      DeviceId: deviceId,
-      GroupId: groupId,
-      fromDateTime: new Date(),
-      setBy,
-      settings: mergedSettings,
-    });
+    if (changed) {
+      await this.create({
+        DeviceId: deviceId,
+        GroupId: groupId,
+        fromDateTime: new Date(),
+        setBy,
+        settings,
+      });
+    }
 
-    return mergedSettings;
+    return settings;
   };
 
   return DeviceHistory;
@@ -158,9 +164,10 @@ function mergeSettings(
   currentSettings: ApiDeviceHistorySettings,
   incomingSettings: ApiDeviceHistorySettings,
   setBy: DeviceHistorySetBy
-): ApiDeviceHistorySettings {
+): { settings: ApiDeviceHistorySettings; changed: boolean } {
   const mergedSettings: ApiDeviceHistorySettings = { ...currentSettings };
 
+  let changed = false;
   for (const key in incomingSettings) {
     if (incomingSettings.hasOwnProperty(key)) {
       const incomingValue = incomingSettings[key];
@@ -179,9 +186,11 @@ function mergeSettings(
 
         if (incomingUpdated > currentUpdated) {
           mergedSettings[key] = incomingValue;
+          changed = true;
         }
       } else {
         mergedSettings[key] = incomingValue;
+        changed = true;
       }
     }
   }
@@ -189,5 +198,5 @@ function mergeSettings(
   // Set synced based on setBy
   mergedSettings.synced = setBy === "automatic";
 
-  return mergedSettings;
+  return { settings: mergedSettings, changed };
 }
