@@ -6,7 +6,6 @@ import {
   startMailServerStub,
   waitForEmail,
 } from "@commands/emailUtils";
-import { getCreds } from "@commands/server";
 const apiRoot = `${Cypress.env("cacophony-api-server")}/api/v1`;
 const cyEl = (str: string) => {
   return cy.get(`[data-cy='${str}']`);

@@ -24,6 +24,11 @@ export interface NetworkConnectionErrorSignal {
   control: boolean;
 }
 
+const nonLoggedInRoutes = [
+  "/api/v1/users/authenticate",
+  "/api/v1/users/validate-reset-token",
+];
+
 const getScreenOrientation = (): string => {
   if (window.screen.orientation) {
     return window.screen.orientation?.type;
@@ -230,7 +235,7 @@ export async function fetch<T>(
       window.devicePixelRatio
     } - ${getScreenOrientation()}`;
   }
-  let response;
+  let response: Response;
   try {
     response = await window.fetch(url, request);
     networkConnectionError.retryInterval = INITIAL_RETRY_INTERVAL;
@@ -274,7 +279,7 @@ export async function fetch<T>(
   }
   if (
     response.status === HttpStatusCode.AuthorizationError &&
-    !response.url.endsWith("/api/v1/users/authenticate")
+    !nonLoggedInRoutes.some((route) => (response as any).url.endsWith(route))
   ) {
     {
       const isJSON = (

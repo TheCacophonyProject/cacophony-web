@@ -227,8 +227,7 @@ export const login = async (
         true
       );
     } else {
-      console.log("Sign in error", loggedInUserResponse.result);
-      signInInProgress.errors = loggedInUserResponse.result;
+      console.log("Sign in error for dev account", loggedInUserResponse.result);
     }
   }
 

@@ -26,6 +26,7 @@ import {
   currentUserIsSuperUser,
   NonUserProjects,
   isViewingAsSuperUser,
+  CurrentUser,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
 import {
@@ -466,7 +467,7 @@ router.afterEach(async (to) => {
 router.beforeEach(async (to, from, next) => {
   if (to.name === "sign-out") {
     userIsLoggedIn.value = false;
-    await forgetUserOnCurrentDevice();
+    forgetUserOnCurrentDevice();
     return next({
       name: "sign-in",
     });
@@ -493,7 +494,7 @@ router.beforeEach(async (to, from, next) => {
   }
   // TODO: Match groupName, and set currentSelectedGroup.
   // NOTE: Check for a logged in user here.
-  if (!userIsLoggedIn.value) {
+  if (!userIsLoggedIn.value && (to.meta.requiresLogin || to.path === "/")) {
     isResumingSession.value = true;
     //console.log("--- Trying to resume saved session");
     const [_, euaResponse] = await Promise.all([
@@ -511,6 +512,7 @@ router.beforeEach(async (to, from, next) => {
       !currentSelectedProject.value &&
       !isFetchingProjects.value
     ) {
+      console.log("User is logged in, refresh projects (2)");
       const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
@@ -527,11 +529,15 @@ router.beforeEach(async (to, from, next) => {
     if (userIsLoggedIn.value) {
       console.warn("Resumed session");
     } else {
-      console.warn("Failed to resume session or no session to resume");
+      console.warn(
+        "Failed to resume session or no session to resume",
+        to.fullPath
+      );
       if (to.meta.requiresLogin || to.path === "/") {
         console.warn("Redirect to sign-in");
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else {
+        isResumingSession.value = false;
         return next();
       }
     }
@@ -576,6 +582,11 @@ router.beforeEach(async (to, from, next) => {
       .shift();
     if (userIsLoggedIn.value && !UserProjects.value) {
       // Grab the users' groups, and select the first one.
+      console.log(
+        "User is logged in, refresh projects",
+        userIsLoggedIn.value,
+        CurrentUser.value
+      );
       const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-out" });
@@ -708,7 +719,7 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
   }
 
-  if (!from.meta.requiresLogin && to.query.nextUrl) {
+  if (from.meta.requiresLogin && to.query.nextUrl && userIsLoggedIn.value) {
     // We just logged in.
     return next({
       path: to.query.nextUrl as string,
