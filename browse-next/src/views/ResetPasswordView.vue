@@ -174,6 +174,7 @@ const resetPassword = async () => {
         <div class="mb-3">
           <div class="input-group">
             <b-form-input
+              data-cy="new password field"
               :type="showPassword ? 'text' : 'password'"
               v-model="userPassword.value"
               @blur="userPassword.touched = true"
@@ -203,6 +204,7 @@ const resetPassword = async () => {
         </div>
         <div class="mb-3">
           <b-form-input
+            data-cy="new password confirmation field"
             :type="showPassword ? 'text' : 'password'"
             v-model="userPasswordConfirmation.value"
             @blur="userPasswordConfirmation.touched = true"
@@ -221,6 +223,7 @@ const resetPassword = async () => {
         <button
           type="submit"
           class="btn btn-primary"
+          data-cy="reset password button"
           :disabled="!resetFormIsFilledAndValid || resetInProgress"
         >
           <span v-if="resetInProgress">
@@ -237,6 +240,7 @@ const resetPassword = async () => {
     </div>
     <div v-if="changedPassword" class="d-flex justify-content-center">
       <b-button
+        data-cy="sign in button"
         class="d-flex flex-grow-1 justify-content-center"
         :to="{ name: 'sign-in' }"
         variant="primary"

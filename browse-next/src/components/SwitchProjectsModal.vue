@@ -39,6 +39,10 @@ const currentRoute = useRoute();
 const userProjects = inject(currentUserProjects) as Ref<ApiProjectResponse[]>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
+interface MultiSelectElement extends Multiselect {
+  $el: HTMLElement;
+}
+
 const nextRoute = (projectName: string) => {
   if (currentRoute.params.groupName) {
     return {
@@ -184,13 +188,13 @@ onMounted(() => {
 interface ProjectListOption extends ApiProjectResponse {
   latestRecordingTime: Date;
 }
-const projectSearch = ref<Multiselect>();
+const projectSearch = ref<MultiSelectElement>();
 const projectSearchEnabled = ref<boolean>(false);
 const enableProjectSearch = async () => {
   projectSearchEnabled.value = true;
   await nextTick();
   projectSearch.value &&
-    (projectSearch.value as any).$el
+    projectSearch.value.$el
       .querySelectorAll("input")
       .forEach((input: HTMLInputElement) => {
         if (input !== document.activeElement) {
@@ -202,13 +206,13 @@ const disableProjectSearch = () => {
   projectSearchEnabled.value = false;
 };
 
-const userSearch = ref<Multiselect>();
+const userSearch = ref<MultiSelectElement>();
 const userSearchEnabled = ref<boolean>(false);
 const enableUserSearch = async () => {
   userSearchEnabled.value = true;
   await nextTick();
   userSearch.value &&
-    (userSearch.value as any).$el
+    userSearch.value.$el
       .querySelectorAll("input")
       .forEach((input: HTMLInputElement) => {
         if (input !== document.activeElement) {
@@ -220,13 +224,13 @@ const disableUserSearch = () => {
   userSearchEnabled.value = false;
 };
 
-const deviceSearch = ref<Multiselect>();
+const deviceSearch = ref<MultiSelectElement>();
 const deviceSearchEnabled = ref<boolean>(false);
 const enableDeviceSearch = async () => {
   deviceSearchEnabled.value = true;
   await nextTick();
   deviceSearch.value &&
-    (deviceSearch.value as any).$el
+    deviceSearch.value.$el
       .querySelectorAll("input")
       .forEach((input: HTMLInputElement) => {
         if (input !== document.activeElement) {
@@ -476,6 +480,7 @@ watch(userToFilterProjects, (userId) => {
           index
         ) in sortedUserProjects"
         :key="id"
+        :cy-data="urlNormaliseName(groupName)"
         :to="nextRoute(groupName)"
         :aria-disabled="groupName === currentProjectName"
         :tabindex="groupName === currentProjectName ? -1 : index"

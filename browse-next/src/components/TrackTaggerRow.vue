@@ -460,7 +460,7 @@ onMounted(async () => {
         >
         <!-- Controversial tag, should be automatically flagged for review. -->
         <span
-          class="classification text-capitalize d-inline-block fw-bold"
+          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
           v-else-if="
             !consensusUserTag &&
             masterTag &&
@@ -471,7 +471,7 @@ onMounted(async () => {
               .map((tag) => displayLabelForClassificationLabel(tag))
               .join(", ")
           }}
-          <span class="strikethrough">{{
+          <span class="strikethrough conflicting-tags">{{
             displayLabelForClassificationLabel(masterTag.what)
           }}</span></span
         >
@@ -807,6 +807,9 @@ onMounted(async () => {
 .strikethrough {
   text-decoration: line-through;
   color: rgba(126, 42, 42, 0.75);
+  &.conflicting-tags {
+    color: #666;
+  }
 }
 .conflicting-tags {
   color: darkred;

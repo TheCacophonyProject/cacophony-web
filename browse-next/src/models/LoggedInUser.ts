@@ -211,7 +211,7 @@ export const login = async (
       refreshingToken: false,
     });
   } else {
-    console.log("Sign in error", loggedInUserResponse.result);
+    // console.log("Sign in error", loggedInUserResponse.result);
     signInInProgress.errors = loggedInUserResponse.result;
   }
   if (import.meta.env.DEV) {
@@ -227,7 +227,7 @@ export const login = async (
         true
       );
     } else {
-      console.log("Sign in error for dev account", loggedInUserResponse.result);
+      // console.log("Sign in error for dev account", loggedInUserResponse.result);
     }
   }
 
@@ -333,7 +333,7 @@ const refreshCredentials = async () => {
         }
         refreshLocallyStoredUser();
         if (!import.meta.env.DEV) {
-          console.log("Not out of date yet, can use existing user");
+          // console.log("Not out of date yet, can use existing user");
           return;
         }
       } else {
@@ -459,7 +459,7 @@ export interface SelectedProject {
   userSettings?: ApiProjectUserSettings;
 }
 export const currentSelectedProject = computed<SelectedProject | false>(() => {
-  console.log("Recompute current selected project");
+  // console.log("Recompute current selected project");
   if (
     userIsLoggedIn.value &&
     currentUserSettings.value &&
@@ -467,7 +467,6 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
   ) {
     // Basically don't try to get currentSelectedGroup until UserGroups has loaded?
     if (nonPendingUserProjects.value.length === 0) {
-      debugger;
       return false;
     }
     if (
@@ -494,7 +493,6 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
       }
 
       if (!matchedProject) {
-        debugger;
         return false;
       }
       return {
@@ -585,8 +583,6 @@ export const refreshUserProjects = async () => {
   const projectsResponse = await getCurrentUserProjects(NO_ABORT);
   if (projectsResponse.success) {
     UserProjects.value = reactive(projectsResponse.result.groups);
-  } else {
-    console.log("res", projectsResponse);
   }
   if (currentUserIsSuperUser.value) {
     const allProjectsResponse = await getAllProjects(NO_ABORT);

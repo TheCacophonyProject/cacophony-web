@@ -279,7 +279,7 @@ export async function fetch<T>(
   }
   if (
     response.status === HttpStatusCode.AuthorizationError &&
-    !nonLoggedInRoutes.some((route) => (response as any).url.endsWith(route))
+    !nonLoggedInRoutes.some((route) => response.url.endsWith(route))
   ) {
     {
       const isJSON = (
@@ -291,7 +291,7 @@ export async function fetch<T>(
       );
       if (isJSON) {
         const _result = await response.json();
-        debugger;
+        // debugger;
       }
     }
 

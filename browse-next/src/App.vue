@@ -249,6 +249,7 @@ onMounted(() => {
           <button
             class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
             v-if="userHasMultipleProjects"
+            data-cy="switch project button"
             @click="() => (showSwitchProject.enabled = true)"
           >
             {{ selectedProject.groupName }}
@@ -278,13 +279,17 @@ onMounted(() => {
             <b-dropdown-item-button
               @click.stop.prevent="creatingNewProject.enabled = true"
             >
-              Create a new project
+              <span data-cy="create new project button"
+                >Create a new project</span
+              >
             </b-dropdown-item-button>
             <b-dropdown-item-button
               data-cy="join existing project button"
               @click.stop.prevent="joiningNewProject.enabled = true"
             >
-              Join an existing project
+              <span data-cy="join existing project button"
+                >Join an existing project</span
+              >
             </b-dropdown-item-button>
           </b-dropdown>
         </div>

@@ -154,7 +154,7 @@ export const updateUserFields = (
       }
     }
     for (const field of toRemove) {
-      delete (fields.settings as any)[field];
+      delete (fields.settings as Record<string, unknown>)[field];
     }
   }
   return CacophonyApi.patch("/api/v1/users", fields, abortable) as Promise<
