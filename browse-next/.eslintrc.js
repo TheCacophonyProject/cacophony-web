@@ -47,6 +47,7 @@ module.exports = {
         ignorePattern: "^_",
       },
     ],
+    "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/no-non-null-assertion": ["off"],
     "vue/no-setup-props-destructure": ["off"],
   },
