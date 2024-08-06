@@ -44,8 +44,9 @@ interface MultiSelectElement extends Multiselect {
 }
 
 const nextRoute = (projectName: string) => {
-  if (currentRoute.params.groupName) {
-    return {
+  let newRoute;
+  if (currentRoute.params.projectName) {
+    newRoute = {
       ...currentRoute,
       params: {
         ...currentRoute.params,
@@ -54,15 +55,17 @@ const nextRoute = (projectName: string) => {
     };
   } else {
     // On a non-group scoped route, so reset to dashboard view
-    return {
+    newRoute = {
       ...currentRoute,
       name: "dashboard",
       params: {
-        ...currentRoute.params,
         projectName: urlNormaliseName(projectName),
       },
     };
   }
+  delete (newRoute as never)["path"];
+  delete (newRoute as never)["fullPath"];
+  return newRoute;
 };
 const currentProjectName = computed<string>(() => {
   return (
@@ -313,7 +316,7 @@ watch(userToFilterProjects, (userId) => {
     @hidden="showSwitchProject.enabled = false"
   >
     <div
-      v-if="currentUser.globalPermission !== 'off'"
+      v-if="currentUser && currentUser.globalPermission !== 'off'"
       class="super-user-overrides"
     >
       <div class="mb-3">

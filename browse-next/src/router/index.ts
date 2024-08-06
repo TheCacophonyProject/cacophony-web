@@ -644,6 +644,8 @@ router.beforeEach(async (to, from, next) => {
             !LocationsForCurrentProject.value ||
             switchedProject
           ) {
+            LocationsForCurrentProject.value = null;
+            DevicesForCurrentProject.value = null;
             const [devices, locations] = await Promise.all([
               getDevicesForProject(
                 currentSelectedProject.value.id,

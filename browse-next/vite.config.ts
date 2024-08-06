@@ -42,4 +42,7 @@ export default defineConfig({
       "@typedefs": fileURLToPath(new URL("../types", import.meta.url)),
     },
   },
+  define: {
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: "false",
+  },
 });

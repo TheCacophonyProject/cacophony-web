@@ -264,7 +264,7 @@ export const getDeviceConfig = (deviceId: DeviceId) => {
       type: "config",
       limit: 1,
     }).then((response) => {
-      if (response.success && response.result.rows.length) {
+      if (response && response.success && response.result.rows.length) {
         resolve(response.result.rows[0].EventDetail.details);
       } else {
         resolve(false);

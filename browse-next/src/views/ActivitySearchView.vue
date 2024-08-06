@@ -153,6 +153,17 @@ const devices = inject(selectedProjectDevices) as ComputedRef<
   ApiDeviceResponse[]
 >;
 
+watch(currentProject, async (next, prev) => {
+  if (next && prev && next.groupName !== prev.groupName) {
+    prefilteredChunkedVisits.value = [];
+    chunkedRecordings.value = [];
+    // FIXME: Maybe need to clear all search params, and reset internal queries such
+    //  that locations and devices and timespans that belong to other projects are removed.
+    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
+    await doSearch();
+  }
+});
+
 const arrayContentsAreTheSame = (
   a: LocationQueryValue[],
   b: LocationQueryValue[]
@@ -610,7 +621,7 @@ const selectedDevices = computed<ApiDeviceResponse[] | "all">(() => {
   }
   return (searchParams.value.devices as DeviceId[]).map((deviceId) =>
     (devices.value || []).find(({ id }) => id === deviceId)
-  );
+  ) as ApiDeviceResponse[];
 });
 
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
@@ -727,6 +738,10 @@ const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
   locationsInSelectedTimespan
 );
 
+interface MaybeDeletedRecording extends ApiRecordingResponse {
+  tombstoned?: boolean;
+}
+
 const loadedRecordings = ref<ApiRecordingResponse[]>([]);
 const loadedRecordingIds = ref<RecordingId[]>([]);
 
@@ -761,7 +776,7 @@ const updatedRecording = (
   );
   if (loadedRecording) {
     if (recordingWasDeleted) {
-      loadedRecording.tombstoned = true;
+      (loadedRecording as MaybeDeletedRecording).tombstoned = true;
     } else {
       loadedRecording.tracks = recording.tracks;
       loadedRecording.tags = recording.tags;
@@ -819,12 +834,12 @@ const currentQueryLoaded = ref<number>(0);
 const completedCurrentQuery = ref<boolean>(false);
 
 let needsObserverUpdate = false;
-watch(filteredLoadedRecordings.value, (next, prev) => {
+watch(filteredLoadedRecordings, (next, prev) => {
   if (next && prev && next.length !== prev.length) {
     needsObserverUpdate = true;
   }
 });
-watch(chunkedVisits.value, (next, prev) => {
+watch(chunkedVisits, (next, prev) => {
   if (next && prev && next.length !== prev.length) {
     needsObserverUpdate = true;
   }
@@ -943,9 +958,9 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
       (loc) => (loc as ApiLocationResponse).id
     );
   }
-  const isAllDevices = selectedDevices.value.includes("all");
+  const isAllDevices = selectedDevices.value === "all";
   if (!isAllDevices) {
-    query.devices = selectedDevices.value.map(
+    query.devices = (selectedDevices.value as ApiDeviceResponse[]).map(
       (device) => (device as ApiDeviceResponse).id
     );
   }
@@ -1277,6 +1292,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
           appendVisitsChunkedByDay(visits);
+          console.log("appending visits", visits.length);
         }
         if (gotUntilDate) {
           // Increment the cursor.
@@ -1288,6 +1304,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             minDateForSelectedLocations.value.getTime();
           if (loadedFewerItemsThanRequested) {
             if (reachedMinDateForSelectedLocations) {
+              console.log("Stopping observer");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1300,7 +1317,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             }
           }
           // FIXME !!!! - Not sure about placement of this.
-          completedCurrentQuery.value = true;
+          //completedCurrentQuery.value = true;
         } else {
           if (
             dateRange.value[0] &&
@@ -1315,7 +1332,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               currentQueryCursor.value.untilDateTime as Date
             );
           }
-          completedCurrentQuery.value = true;
+          //completedCurrentQuery.value = true;
         }
       }
     }
