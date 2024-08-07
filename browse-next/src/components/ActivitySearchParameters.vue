@@ -760,7 +760,7 @@ const syncParams = (
       const from = new Date(next.from).getTime();
       const until = new Date(next.until).getTime();
       const min = minDateForProject.value.getTime();
-      const max = maxDateForProject.value.getTime();
+      const max = endOfDay(new Date()).getTime(); //maxDateForProject.value.getTime();
       const constrainedFrom = Math.min(Math.max(from, min), max);
       const constrainedUntil = Math.min(Math.max(until, min), max);
       const constrainedRange =
@@ -808,7 +808,7 @@ const hasAdvancedFiltersSet = computed<boolean>(() => {
 onBeforeMount(() => {
   watchProps.value = watch(props.params, syncParams, {
     deep: true,
-    immediate: true,
+    immediate: false,
   });
   watchRecordingMode.value = watch(recordingMode, updateRoute);
   watchDisplayMode.value = watch(displayMode, updateRoute);

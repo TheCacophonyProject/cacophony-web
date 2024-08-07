@@ -20,10 +20,11 @@
       @click="selectedRecording(item)"
       @mouseenter="() => highlightedLocation(item)"
       @mouseleave="() => unhighlightedLocation(item)"
+      class="list-item"
     >
       <div
         v-if="!item.data.hasOwnProperty('tombstoned')"
-        class="list-item d-flex user-select-none fs-8"
+        class="d-flex user-select-none fs-8"
         :class="[
           item.type,
           {

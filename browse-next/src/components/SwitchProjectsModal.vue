@@ -44,25 +44,14 @@ interface MultiSelectElement extends Multiselect {
 }
 
 const nextRoute = (projectName: string) => {
-  let newRoute;
-  if (currentRoute.params.projectName) {
-    newRoute = {
-      ...currentRoute,
-      params: {
-        ...currentRoute.params,
-        projectName: urlNormaliseName(projectName),
-      },
-    };
-  } else {
-    // On a non-group scoped route, so reset to dashboard view
-    newRoute = {
-      ...currentRoute,
-      name: "dashboard",
-      params: {
-        projectName: urlNormaliseName(projectName),
-      },
-    };
-  }
+  const newRoute = {
+    ...currentRoute,
+    name: "dashboard",
+    params: {
+      projectName: urlNormaliseName(projectName),
+    },
+    query: null,
+  };
   delete (newRoute as never)["path"];
   delete (newRoute as never)["fullPath"];
   return newRoute;

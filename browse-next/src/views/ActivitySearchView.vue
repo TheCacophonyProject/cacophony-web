@@ -88,7 +88,6 @@ import {
   type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
-import { getDevicesForProject, getLocationsForProject } from "@api/Project.ts";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
@@ -155,11 +154,15 @@ const devices = inject(selectedProjectDevices) as ComputedRef<
 
 watch(currentProject, async (next, prev) => {
   if (next && prev && next.groupName !== prev.groupName) {
+    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
+    searchParams.value = initSearchParams();
     prefilteredChunkedVisits.value = [];
     chunkedRecordings.value = [];
+    currentQueryCursor.value.fromDateTime = null;
+    currentQueryCursor.value.untilDateTime = null;
+    dateRange.value = [null, null];
     // FIXME: Maybe need to clear all search params, and reset internal queries such
     //  that locations and devices and timespans that belong to other projects are removed.
-    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
     await doSearch();
   }
 });
@@ -214,7 +217,7 @@ const DefaultSearchParams = {
   from: "24-hours-ago",
 };
 
-const searchParams = ref<ActivitySearchParams>({
+const initSearchParams = (): ActivitySearchParams => ({
   devices: "all",
   duration: "any",
   includeFalsePositives: false,
@@ -229,6 +232,8 @@ const searchParams = ref<ActivitySearchParams>({
   locations: ["any"],
   from: "24-hours-ago",
 });
+
+const searchParams = ref<ActivitySearchParams>(initSearchParams());
 
 const now = new Date();
 const oneDayAgo = new Date(new Date().setDate(now.getDate() - 1));
@@ -763,8 +768,8 @@ const currentTotalRecordings = computed<number>(() => {
 const canExpandSearchBackFurther = computed<boolean>(() => {
   return (
     currentQueryCursor.value.fromDateTime !== null &&
-    currentQueryCursor.value.fromDateTime.getTime() >
-      minDateForSelectedLocations.value.getTime()
+    Math.floor(currentQueryCursor.value.fromDateTime.getTime() / 1000) >
+      Math.floor(minDateForSelectedLocations.value.getTime() / 1000)
   );
 });
 const updatedRecording = (
@@ -895,9 +900,9 @@ onUpdated(() => {
             for (const intersection of intersections) {
               if (intersection.isIntersecting) {
                 console.log("load more");
-                doSearch();
                 currentObserver && currentObserver.stop();
                 currentObserver = null;
+                doSearch();
                 break;
               }
             }
@@ -1189,13 +1194,11 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       );
     }
 
-    const hasNotLoadedAllOfQueryTimeRange =
-      (currentQueryCursor.value.fromDateTime as Date) > (fromDateTime as Date);
-
-    console.log(
-      "Has not loaded all of time range",
-      hasNotLoadedAllOfQueryTimeRange
-    );
+    const aa = new Date(currentQueryCursor.value.fromDateTime as Date);
+    const bb = new Date(fromDateTime as Date);
+    aa.setMilliseconds(0);
+    bb.setMilliseconds(0);
+    const hasNotLoadedAllOfQueryTimeRange = aa > bb;
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
@@ -1250,6 +1253,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (response && response.success) {
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
+        let gotNoItems = false;
         if (inRecordingsMode.value) {
           const recordingsResponse = response as unknown as SuccessFetchResult<{
             recordings: ApiRecordingResponse[];
@@ -1270,6 +1274,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             gotUntilDate = new Date(
               recordings[recordings.length - 1].recordingDateTime
             );
+          } else {
+            gotNoItems = true;
           }
         } else if (inVisitsMode.value) {
           const visitsResponse = response.result as VisitsQueryResult;
@@ -1286,13 +1292,20 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               if (visits.length) {
                 lastVisit = visits[visits.length - 1];
                 gotUntilDate = new Date(lastVisit.timeStart);
+              } else {
+                gotUntilDate = null;
               }
             }
+          } else {
+            gotNoItems = true;
           }
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
           appendVisitsChunkedByDay(visits);
           console.log("appending visits", visits.length);
+          if (visits.length === 0) {
+            //debugger;
+          }
         }
         if (gotUntilDate) {
           // Increment the cursor.
@@ -1316,12 +1329,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               );
             }
           }
-          // FIXME !!!! - Not sure about placement of this.
-          //completedCurrentQuery.value = true;
         } else {
           if (
             dateRange.value[0] &&
-            dateRange.value[0].getTime() ===
+            dateRange.value[0].getTime() <=
               minDateForSelectedLocations.value.getTime()
           ) {
             currentQueryCursor.value.fromDateTime = new Date(
@@ -1332,7 +1343,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               currentQueryCursor.value.untilDateTime as Date
             );
           }
-          //completedCurrentQuery.value = true;
+          completedCurrentQuery.value = true;
         }
       }
     }
@@ -1571,6 +1582,14 @@ const fromDateMinusIncrement = computed<Date>(() => {
     new Date(setBackFourWeeks).getTime()
   );
   return new Date(from);
+});
+
+const atMinimumTimeForSelectedLocations = computed<boolean>(() => {
+  return (
+    !!currentQueryCursor.value.fromDateTime &&
+    Math.floor(minDateForSelectedLocations.value.getTime() / 1000) ===
+      Math.floor(currentQueryCursor.value.fromDateTime.getTime() / 1000)
+  );
 });
 
 const relativeTimeIncrementInPast = computed<string>(() => {
@@ -1888,6 +1907,14 @@ onBeforeUnmount(() => {
             Expand the search start back to
             {{ relativeTimeIncrementInPast }}
           </button>
+        </div>
+        <div
+          v-else-if="atMinimumTimeForSelectedLocations"
+          class="d-flex justify-content-center"
+        >
+          <span class="text-center mb-2"
+            >No results for the selected locations before this time.</span
+          >
         </div>
         <div
           v-else-if="
