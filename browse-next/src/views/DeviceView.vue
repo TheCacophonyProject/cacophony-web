@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
-import type { Ref } from "vue";
+import type {
+  ApiDeviceResponse,
+  ApiMaskRegionsData,
+} from "@typedefs/api/device";
+import { provide, type Ref } from "vue";
 import { computed, inject, onBeforeMount, ref } from "vue";
 import { projectDevicesLoaded, userProjectsLoaded } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import OverflowingTabList from "@/components/OverflowingTabList.vue";
+import type { LoadedResource } from "@api/types.ts";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import {
+  getLatestStatusRecordingForDevice,
+  getMaskRegionsForDevice,
+  getReferenceImageForDeviceAtCurrentLocation,
+} from "@api/Device.ts";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
@@ -15,9 +25,13 @@ const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
 const projectDevices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
+const latestStatusRecording = ref<LoadedResource<ApiRecordingResponse>>(null);
+const latestReferenceImageURL = ref<LoadedResource<string>>(null);
+const latestMaskRegions = ref<LoadedResource<ApiMaskRegionsData>>(null);
 
-// TODO:
-const currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin = ref<boolean>(true);
+provide("latestStatusRecording", latestStatusRecording);
+provide("latestMaskRegions", latestMaskRegions);
+provide("latestReferenceImageURL", latestReferenceImageURL);
 
 const deviceLoading = ref<boolean>(false);
 const device = ref<ApiDeviceResponse | null>(null);
@@ -42,9 +56,44 @@ const loadDevice = async (deviceId: DeviceId) => {
   deviceLoading.value = false;
 };
 
+const loadReferenceImage = (deviceId: DeviceId) => {
+  latestReferenceImageURL.value = null;
+  getReferenceImageForDeviceAtCurrentLocation(deviceId).then(
+    ({ result, success }) => {
+      if (success) {
+        latestReferenceImageURL.value = URL.createObjectURL(result);
+      } else {
+        latestReferenceImageURL.value = false;
+      }
+    }
+  );
+};
+
 onBeforeMount(async () => {
   await loadDevice(Number(route.params.deviceId) as DeviceId);
+  if (
+    device.value &&
+    [DeviceType.Thermal, DeviceType.Hybrid].includes(device.value.type)
+  ) {
+    //  TODO: Latest status recording should match current location.
+    //  TODO: Use meta/status to get low power 2s recordings
+    getLatestStatusRecordingForDevice(
+      device.value.id,
+      device.value.groupId
+    ).then((result) => (latestStatusRecording.value = result));
+    loadReferenceImage(device.value.id);
+    getMaskRegionsForDevice(device.value.id).then(({ success, result }) => {
+      if (success) {
+        latestMaskRegions.value = {
+          maskRegions: result.maskRegions,
+        };
+      } else {
+        latestMaskRegions.value = false;
+      }
+    });
+  }
 });
+
 const activeTabPath = computed(() => {
   return route.matched.map((item) => item.name);
 });
@@ -108,7 +157,7 @@ const _deviceType = computed<string>(() => {
         >Insights</router-link
       >
       <router-link
-        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type)"
+        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-setup') },
@@ -148,6 +197,8 @@ const _deviceType = computed<string>(() => {
     <router-view
       @start-blocking-work="() => emit('start-blocking-work')"
       @end-blocking-work="() => emit('end-blocking-work')"
+      @updated-regions="(e) => (latestMaskRegions = e)"
+      @updated-reference-image="loadReferenceImage"
     />
   </div>
 </template>

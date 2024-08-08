@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import { computed, inject, onMounted, ref } from "vue";
+import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import {
+  type BatteryInfoEvent,
+  getBatteryInfo,
   getDeviceConfig,
   getDeviceLastPoweredOff,
   getDeviceLastPoweredOn,
   getDeviceLocationAtTime,
+  getDeviceNodeGroup,
   getDeviceVersionInfo,
   getLatestStatusRecordingForDevice,
 } from "@api/Device";
@@ -16,7 +19,11 @@ import type { CardTableRows } from "@/components/CardTableTypes";
 import type { DeviceConfigDetail } from "@typedefs/api/event";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { projectDevicesLoaded } from "@models/LoggedInUser";
+import {
+  DevicesForCurrentProject,
+  projectDevicesLoaded,
+  projectLocationsLoaded,
+} from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils";
@@ -25,6 +32,10 @@ import sunCalc from "suncalc";
 import { DateTime } from "luxon";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
+import { FixedScaleAxis, Interpolation, LineChart } from "chartist";
+import { DeviceType } from "@typedefs/api/consts.ts";
+
+const batteryTimeSeries = ref<HTMLDivElement>();
 
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -46,11 +57,15 @@ const deviceConfig = ref<LoadedResource<DeviceConfigDetail>>(null);
 const currentLocationForDevice = ref<LoadedResource<ApiLocationResponse>>(null);
 const lastPowerOffTime = ref<LoadedResource<Date>>(null);
 const lastPowerOnTime = ref<LoadedResource<Date>>(null);
+const saltNodeGroup = ref<LoadedResource<string>>(null);
 const isLoading = (val: Ref<LoadedResource<unknown>>) =>
   computed<boolean>(() => val.value === null);
 const configInfoLoading = isLoading(deviceConfig);
 const versionInfoLoading = isLoading(versionInfo);
 const locationInfoLoading = isLoading(currentLocationForDevice);
+const nodeGroupInfoLoading = isLoading(saltNodeGroup);
+
+const lastUpdateWasUnsuccessful = ref<boolean>(true);
 
 const records247 = computed<boolean>(() => {
   // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
@@ -89,6 +104,9 @@ const absoluteTime = (timeStr: string, relativeTo: Date): Date => {
     const [hours, mins] = timeStr.split(":").map(Number);
     now.setHours(hours);
     now.setMinutes(mins);
+    if (now < new Date()) {
+      now.setDate(now.getDate() + 1);
+    }
     return now;
   }
   return rel;
@@ -144,6 +162,9 @@ const scheduledRecordEndTime = computed<Date | null>(() => {
 });
 
 const shouldBeRecordingNow = computed<boolean>(() => {
+  if (records247.value) {
+    return true;
+  }
   const now = new Date();
   const on = scheduledRecordStartTime.value;
   const off = scheduledRecordEndTime.value;
@@ -196,7 +217,7 @@ const deviceStopped = computed<boolean>(() => {
 //
 const recordingWindow = computed<string | null>(() => {
   if (records247.value) {
-    return "Set to be ready to record 24/7";
+    return "Set to record 24/7";
   } else if (deviceConfig.value) {
     const windows = (deviceConfig.value as DeviceConfigDetail).windows;
     const start = (windows && windows["start-recording"]) || "-30m";
@@ -253,66 +274,188 @@ const uptimes = computed<number[]>(() => {
   return [];
 });
 
-const nullRequest = (): Promise<false> => {
-  return new Promise((resolve) => {
-    resolve(false);
-  });
+const initBatteryInfoTimeSeries = () => {
+  // TODO: Show discontinuities for when battery type changes.
+  if (interpolatedBatteryInfo.value) {
+    console.log(interpolatedBatteryInfo.value);
+    // const max = interpolatedBatteryInfo.value.reduce((acc, curr) => {
+    //   return Math.max(acc, curr.battery);
+    // }, 0);
+
+    // Make sure we always load up a month, and make the x axis ticks be 24 hours.
+    // Also load config changes in here and show them as events on the x axis.
+    // If we're in low power mode, maybe we want to show times the recordings were offloaded?
+    // Maybe we could also show recording events, to see if more recordings correlates with more power?
+
+    // Take whatever we get and pad it out to ~2 months.
+    // For days when there is no battery info in the timespan, add a zero point, to show that it's
+    // probably offline?
+
+    // const voltageLion = interpolatedBatteryInfo.value
+    //   .filter((item) => item.batteryType === "li-ion")
+    //   .map((item) => ({
+    //     x: new Date(item.dateTime),
+    //     y: item.battery,
+    //   }));
+    // const voltageMains = interpolatedBatteryInfo.value
+    //   .filter(
+    //     (item) => item.batteryType === "mains" || item.batteryType === "unknown"
+    //   )
+    //   .map((item) => ({
+    //     x: new Date(item.dateTime),
+    //     y: max,
+    //   }));
+    // const voltageLime = interpolatedBatteryInfo.value
+    //   .filter((item) => item.batteryType === "lime")
+    //   .map((item) => ({
+    //     x: new Date(item.dateTime),
+    //     y: item.battery,
+    //   }));
+
+    const batteryAll = interpolatedBatteryInfo.value.map((item) => ({
+      x: new Date(item.dateTime),
+      y: item.battery,
+    }));
+    if (batteryAll.length) {
+      // Break up the voltage into times when it's on each kind of battery?
+      new LineChart(
+        batteryTimeSeries.value as HTMLDivElement,
+        {
+          series: [
+            {
+              name: "Voltage All",
+              data: batteryAll,
+            },
+            // {
+            //   name: "Voltage Lion",
+            //   data: voltageLion,
+            // },
+            // {
+            //   name: "Voltage Mains",
+            //   data: voltageMains,
+            // },
+            // {
+            //   name: "Voltage Lime",
+            //   data: voltageLime,
+            // },
+          ],
+        },
+        {
+          showArea: true,
+          low: 0,
+          high: 100,
+          lineSmooth: Interpolation.none(),
+          axisX: {
+            type: FixedScaleAxis,
+            divisor: 10,
+            labelInterpolationFnc: (value) =>
+              new Date(value).toLocaleString("en-NZ", {
+                month: "short",
+                day: "numeric",
+              }),
+          },
+        }
+      );
+    }
+  }
 };
 
-const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
-onMounted(async () => {
-  if (!devices.value) {
-    await projectDevicesLoaded();
+const batteryInfo = ref<LoadedResource<BatteryInfoEvent[]>>(null);
+const batteryInfoIsLoading = computed(() => batteryInfo.value === null);
+const appearsToBeOnMainsPower = computed<boolean>(() => {
+  if (!isTc2Device.value) {
+    return false;
   }
+  return (
+    !!batteryInfo.value &&
+    batteryInfo.value.length !== 0 &&
+    batteryInfo.value.every(
+      (item) => item.batteryType === "unknown" || item.batteryType === "mains"
+    )
+  );
+});
+
+const interpolatedBatteryInfo = computed<BatteryInfoEvent[]>(() => {
+  const eightWeeksAgo = new Date();
+  const now = new Date();
+  eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+  if (batteryInfo.value && batteryInfo.value.length !== 0) {
+    const firstEventTime = new Date(
+      batteryInfo.value[batteryInfo.value.length - 1].dateTime
+    );
+    const lastEventTime = new Date(batteryInfo.value[0].dateTime);
+    const emptyDaysAtStart = Math.floor(
+      (firstEventTime.getTime() - eightWeeksAgo.getTime()) / 1000 / 60 / 60 / 24
+    );
+    const emptyDaysAtEnd = Math.floor(
+      (now.getTime() - lastEventTime.getTime()) / 1000 / 60 / 60 / 24
+    );
+    const interpolatedValues: BatteryInfoEvent[] = [];
+    for (let i = 0; i < emptyDaysAtStart; i++) {
+      const dateTime = new Date(eightWeeksAgo);
+      dateTime.setDate(dateTime.getDate() + i);
+      interpolatedValues.push({
+        dateTime,
+        voltage: null,
+        battery: null,
+        batteryType: "lime",
+      });
+    }
+    const sorted = [...batteryInfo.value];
+    sorted.sort(
+      (a, b) => new Date(b.dateTime).getDate() - new Date(a.dateTime).getTime()
+    );
+
+    // TODO: If the voltage goes up, and there were days missed, then show a discontinuity.
+    //  Show discontinuities if we missed samples some days
+
+    interpolatedValues.push(...sorted);
+    for (let i = 0; i < emptyDaysAtEnd; i++) {
+      const dateTime = new Date(lastEventTime);
+      dateTime.setDate(dateTime.getDate() + i);
+      interpolatedValues.push({
+        dateTime,
+        voltage: null,
+        battery: null,
+        batteryType: "lime",
+      });
+    }
+    return interpolatedValues;
+  }
+  return [];
+});
+
+const latestStatusRecording = inject("latestStatusRecording") as Ref<
+  LoadedResource<ApiRecordingResponse>
+>;
+watch(batteryTimeSeries, () => {
+  initBatteryInfoTimeSeries();
+});
+
+const loadResource = (
+  target: Ref<LoadedResource<unknown>>,
+  loader: () => Promise<unknown | false>
+) => {
+  if (isLoading(target)) {
+    loader().then((result) => (target.value = result));
+  }
+};
+
+const init = async () => {
+  await Promise.all([projectDevicesLoaded(), projectLocationsLoaded()]);
+
   if (device.value) {
-    const thisDevice = device.value as ApiDeviceResponse;
-    const thermalEvents = [
-      getDeviceConfig,
-      getDeviceVersionInfo,
-      getDeviceLastPoweredOn,
-      getDeviceLastPoweredOff,
-    ].map((fn) => fn(deviceId));
-    const infoRequests = [];
-    if (thisDevice.type === "thermal") {
-      infoRequests.push(...thermalEvents);
-    } else {
-      infoRequests.push(
-        nullRequest(),
-        nullRequest(),
-        nullRequest(),
-        nullRequest()
-      );
-    }
-    if (device.value?.location) {
-      infoRequests.push(getDeviceLocationAtTime(deviceId));
-    } else {
-      infoRequests.push(nullRequest());
-    }
-
-    // FIXME: Should we block for everything to load here, or pop content in
-    //  as individual pieces load in.
-    const [config, version, poweredOn, poweredOff, station] = (
-      await Promise.allSettled(infoRequests)
-    ).map((result) => (result.status === "fulfilled" ? result.value : false));
-    deviceConfig.value = config as DeviceConfigDetail | false;
-    versionInfo.value = version as Record<string, string> | false;
-    currentLocationForDevice.value = station as ApiLocationResponse | false;
-
-    lastPowerOffTime.value = poweredOff as Date | false;
-    lastPowerOnTime.value = poweredOn as Date | false;
-    //Now we can work out if the device is currently on?
-
-    if (thisDevice.type === "thermal") {
-      const latestStatus = await getLatestStatusRecordingForDevice(
-        thisDevice.id,
-        thisDevice.groupId,
-        false
-      );
-      if (latestStatus) {
-        latestStatusRecording.value = latestStatus;
-      }
-    }
-
+    loadResource(deviceConfig, () => getDeviceConfig(deviceId));
+    loadResource(versionInfo, () => getDeviceVersionInfo(deviceId));
+    loadResource(currentLocationForDevice, () =>
+      getDeviceLocationAtTime(deviceId)
+    );
+    loadResource(lastPowerOffTime, () => getDeviceLastPoweredOff(deviceId));
+    loadResource(lastPowerOnTime, () => getDeviceLastPoweredOn(deviceId));
+    loadResource(saltNodeGroup, () => getDeviceNodeGroup(deviceId));
+    const eightWeeksAgo = new Date();
+    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+    loadResource(batteryInfo, () => getBatteryInfo(deviceId, eightWeeksAgo));
     /*
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -349,7 +492,9 @@ onMounted(async () => {
     }
     */
   }
-});
+};
+
+onBeforeMount(init);
 
 const versionInfoTable = computed<CardTableRows<string>>(() =>
   Object.entries(versionInfo.value || []).map(([software, version]) => ({
@@ -380,6 +525,29 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
     return [];
   }
 });
+
+enum DevicePowerProfile {
+  LowPower,
+  HighPower,
+  MediumPower,
+  Unknown,
+}
+
+const powerProfile = computed<DevicePowerProfile>(() => {
+  if (
+    deviceConfig.value &&
+    deviceConfig.value["thermal-recorder"] &&
+    deviceConfig.value["thermal-recorder"]["use-low-power-mode"]
+  ) {
+    return DevicePowerProfile.LowPower;
+  }
+
+  return DevicePowerProfile.HighPower;
+});
+
+const isTc2Device = computed<boolean>(() => {
+  return (saltNodeGroup.value || "").includes("tc2");
+});
 </script>
 <template>
   <div v-if="device" class="mt-3">
@@ -399,7 +567,6 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
           :width="320"
           :height="240"
         />
-
         <h6 class="mt-3">Recording status:</h6>
         <div v-if="!shouldBeRecordingNow && recordingWindow">
           <span v-if="deviceStopped">
@@ -428,7 +595,10 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
           <b-spinner small class="me-2" />
           Loading recording window
         </div>
-        <div v-else-if="recordingWindow">Would {{ recordingWindow }}.</div>
+        <div v-else-if="recordingWindow && !records247">
+          Will {{ recordingWindow }}.
+        </div>
+        <div v-else-if="records247">{{ recordingWindow }}.</div>
         <div v-else>Recording window unavailable</div>
       </div>
       <div class="mt-md-0 mt-4">
@@ -452,7 +622,7 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
               :zoom="false"
               :can-change-base-map="false"
               :loading="locationInfoLoading"
-              style="min-height: 200px"
+              style="min-height: 200px;min-width: 200px; aspect-ratio: 1"
             />
           </div>
           <div v-else>Device is not currently at a known location</div>
@@ -460,8 +630,75 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
         <div v-else>Device does not currently have a known location</div>
       </div>
     </div>
-    <div class="mt-4" v-if="device.type === 'thermal'">
+    <div class="mt-4">
+      <h6>Power profile:</h6>
+      <span v-if="configInfoLoading">
+        <b-spinner small class="me-2" />
+      </span>
+      <!--  TODO: Based on the current recording window, and the power mode, we can estimate how long the battery might last  -->
+      <div v-else-if="powerProfile === DevicePowerProfile.HighPower">
+        <p>This device is currently in 'High Power' mode.</p>
+        <p>
+          In this mode the device is always ready to upload new recordings to
+          the Cacophony Monitoring Platform, which means that you can be alerted
+          about detected species a short time after the detection happened. This
+          also uses more power since the device remains in a more active state.
+        </p>
+<!--        <p>-->
+<!--          When recording at night, you should expect around 10 days of battery-->
+<!--          life in this mode. This is heavily dependent on the length of the-->
+<!--          nights at various times of the year.-->
+<!--        </p>-->
+      </div>
+      <div v-else-if="powerProfile === DevicePowerProfile.LowPower">
+        <p>This device is currently in 'Low Power' mode.</p>
+        <p>
+          In this mode the device makes recordings during the configured
+          recording window, but doesn't connect to the Cacophony Monitoring
+          Platform to offload the recordings until the end of the recording
+          period.<br />
+          This means that any animal alerts you configure may be delayed by many
+          hours. If timely alerts are important to your use-case, enable 'High
+          Power' mode.
+        </p>
+<!--        <p>-->
+<!--          When recording at night, you should expect at least a month of battery-->
+<!--          life in this mode.-->
+<!--        </p>-->
+      </div>
+      <!-- TODO: What kind of battery are we using? -->
+      <!-- TODO: Is the device currently online?  Duplicate info from devices listing.   -->
+    </div>
+    <div class="mt-4">
+      <h6>Battery info:</h6>
+      <div v-if="batteryInfoIsLoading">
+        <b-spinner small class="me-2" /> Loading battery info
+      </div>
+      <div v-else-if="appearsToBeOnMainsPower">
+        This device appears to be running off mains power.
+      </div>
+      <div
+        v-else-if="batteryInfo && batteryInfo.length !== 0"
+        ref="batteryTimeSeries"
+        class="battery-info-time-series"
+      ></div>
+      <div v-else>No battery info available.</div>
+    </div>
+    <div class="mt-4">
+      <h6>Channel:</h6>
+      <span v-if="nodeGroupInfoLoading">
+        <b-spinner small class="me-2" />
+        Loading channel info
+      </span>
+      <span v-else>{{ saltNodeGroup }}</span>
+    </div>
+    <div
+      class="mt-4"
+      v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)"
+    >
       <h6>Software package versions:</h6>
+<!--      <div>Last successful update at ???</div>-->
+<!--      <div v-if="lastUpdateWasUnsuccessful">Last update at ??? failed</div>-->
       <div v-if="versionInfoLoading">
         <b-spinner small class="me-2" />
         Loading version info
@@ -478,10 +715,13 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
   </div>
   <div v-else class="p-3">Device not found in group.</div>
 </template>
-
 <style scoped lang="less">
 .map {
   width: 320px;
   height: 240px;
 }
+.battery-info-time-series {
+  // min-height?
+}
 </style>
+<style src="chartist/dist/index.css" lang="css"></style>
