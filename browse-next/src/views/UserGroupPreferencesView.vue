@@ -42,12 +42,12 @@ import Multiselect from "@vueform/multiselect";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { LoadedResource } from "@api/types.ts";
-import { type ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
-const activeDevices = inject(selectedProjectDevices) as Ref<
+const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
 >;
 const allLocations = inject(allHistoricLocations) as Ref<
@@ -59,6 +59,10 @@ const activeLocations = computed<ApiLocationResponse[]>(() => {
     return allLocations.value.filter((location) => !location.retiredAt);
   }
   return [];
+});
+
+const activeDevices = computed<ApiDeviceResponse[]>(() => {
+  return activeProjectDevices.value || [];
 });
 
 const selectedLeaveProject = ref(false);
