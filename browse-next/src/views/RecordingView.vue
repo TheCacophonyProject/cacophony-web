@@ -102,7 +102,7 @@ const requestLoadMoreRecordingsInPast = inject(
   () => {
     //
   }
-) as () => void;
+) as () => Promise<void>;
 const currentRecordingCount = inject(
   "currentRecordingCount",
   ref(0)
