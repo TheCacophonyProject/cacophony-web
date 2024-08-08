@@ -35,6 +35,7 @@ import {
 import type { ActivitySearchParams } from "@views/ActivitySearchView.vue";
 import { type LocationQuery, useRoute, useRouter } from "vue-router";
 import { useElementBounding } from "@vueuse/core";
+import { urlNormaliseName } from "@/utils.ts";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -810,6 +811,14 @@ onBeforeMount(() => {
     deep: true,
     immediate: false,
   });
+  if (
+    currentProject.value &&
+    urlNormaliseName(currentProject.value.groupName) ===
+      route.params.projectName
+  ) {
+    syncParams(props.params, undefined);
+  }
+
   watchRecordingMode.value = watch(recordingMode, updateRoute);
   watchDisplayMode.value = watch(displayMode, updateRoute);
   watchCombinedDateRange.value = watch(

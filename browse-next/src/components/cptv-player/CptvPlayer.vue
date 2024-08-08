@@ -2463,7 +2463,7 @@ watch(
   .video-canvas {
     width: 100%;
     height: 100%;
-    max-width: 100vh;
+    //max-width: 100vh;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     &.smoothed {
