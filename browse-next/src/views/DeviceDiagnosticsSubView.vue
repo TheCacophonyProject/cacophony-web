@@ -622,7 +622,7 @@ const isTc2Device = computed<boolean>(() => {
               :zoom="false"
               :can-change-base-map="false"
               :loading="locationInfoLoading"
-              style="min-height: 200px;min-width: 200px; aspect-ratio: 1"
+              style="min-height: 200px; min-width: 200px; aspect-ratio: 1"
             />
           </div>
           <div v-else>Device is not currently at a known location</div>
@@ -644,11 +644,11 @@ const isTc2Device = computed<boolean>(() => {
           about detected species a short time after the detection happened. This
           also uses more power since the device remains in a more active state.
         </p>
-<!--        <p>-->
-<!--          When recording at night, you should expect around 10 days of battery-->
-<!--          life in this mode. This is heavily dependent on the length of the-->
-<!--          nights at various times of the year.-->
-<!--        </p>-->
+        <!--        <p>-->
+        <!--          When recording at night, you should expect around 10 days of battery-->
+        <!--          life in this mode. This is heavily dependent on the length of the-->
+        <!--          nights at various times of the year.-->
+        <!--        </p>-->
       </div>
       <div v-else-if="powerProfile === DevicePowerProfile.LowPower">
         <p>This device is currently in 'Low Power' mode.</p>
@@ -661,10 +661,10 @@ const isTc2Device = computed<boolean>(() => {
           hours. If timely alerts are important to your use-case, enable 'High
           Power' mode.
         </p>
-<!--        <p>-->
-<!--          When recording at night, you should expect at least a month of battery-->
-<!--          life in this mode.-->
-<!--        </p>-->
+        <!--        <p>-->
+        <!--          When recording at night, you should expect at least a month of battery-->
+        <!--          life in this mode.-->
+        <!--        </p>-->
       </div>
       <!-- TODO: What kind of battery are we using? -->
       <!-- TODO: Is the device currently online?  Duplicate info from devices listing.   -->
@@ -697,8 +697,8 @@ const isTc2Device = computed<boolean>(() => {
       v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)"
     >
       <h6>Software package versions:</h6>
-<!--      <div>Last successful update at ???</div>-->
-<!--      <div v-if="lastUpdateWasUnsuccessful">Last update at ??? failed</div>-->
+      <!--      <div>Last successful update at ???</div>-->
+      <!--      <div v-if="lastUpdateWasUnsuccessful">Last update at ??? failed</div>-->
       <div v-if="versionInfoLoading">
         <b-spinner small class="me-2" />
         Loading version info
