@@ -101,12 +101,15 @@ const absoluteTime = (timeStr: string, relativeTo: Date): Date => {
     rel.setMinutes(rel.getMinutes() + offsetMinutes);
   } else {
     const now = new Date();
+    now.setHours(17);
     const [hours, mins] = timeStr.split(":").map(Number);
     now.setHours(hours);
     now.setMinutes(mins);
-    if (now < new Date()) {
-      now.setDate(now.getDate() + 1);
-    }
+    const nowNow = new Date();
+    nowNow.setHours(17);
+    // if (now < nowNow) {
+    //   now.setDate(now.getDate() + 1);
+    // }
     return now;
   }
   return rel;
@@ -250,9 +253,12 @@ const currentRecordingWindowLengthMins = computed<number>(() => {
     return -1;
   }
   if (scheduledRecordStartTime.value && scheduledRecordEndTime.value) {
-    const ms =
-      scheduledRecordEndTime.value?.getTime() -
-      scheduledRecordStartTime.value?.getTime();
+    const start = new Date(scheduledRecordStartTime.value);
+    const end = new Date(scheduledRecordEndTime.value);
+    if (start > end) {
+      end.setDate(end.getDate() + 1);
+    }
+    const ms = end.getTime() - start.getTime();
     return Math.round(ms / 1000 / 60);
   }
   return 0;
@@ -276,8 +282,8 @@ const uptimes = computed<number[]>(() => {
 
 const initBatteryInfoTimeSeries = () => {
   // TODO: Show discontinuities for when battery type changes.
-  if (interpolatedBatteryInfo.value) {
-    console.log(interpolatedBatteryInfo.value);
+  if (interpolatedBatteryInfo.value && batteryTimeSeries.value) {
+    //console.log(interpolatedBatteryInfo.value);
     // const max = interpolatedBatteryInfo.value.reduce((acc, curr) => {
     //   return Math.max(acc, curr.battery);
     // }, 0);

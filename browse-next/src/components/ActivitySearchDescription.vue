@@ -156,7 +156,13 @@ const otherLabels = computed<string[]>(
         >
       </span>
     </span>
-    <span v-if="selectedDevices && selectedDevices !== 'all'">
+    <span
+      v-if="
+        selectedDevices &&
+        selectedDevices !== 'all' &&
+        searchParams.displayMode === ActivitySearchDisplayMode.Recordings
+      "
+    >
       for
       <strong v-for="(device, index) in selectedDevices" :key="index">
         <device-name :name="device.deviceName" :type="device.type" />
