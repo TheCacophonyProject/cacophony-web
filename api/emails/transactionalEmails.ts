@@ -13,6 +13,7 @@ import type { DeviceId, StationId } from "@typedefs/api/common.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 import type { GroupedServiceErrors } from "@/scripts/report-service-errors.js";
+import { flatClassifications } from "@/classifications/classifications.js";
 
 const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
   const attachments: EmailImageAttachment[] = [];
@@ -710,12 +711,32 @@ export const sendProjectActivityDigestEmail = async (
   const activityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=any&from=${timespan}&tag-mode=any`;
   const imageAttachments = [...(await commonAttachments())];
   for (const species of visitsInfo) {
-    const iconExists = await embedImage(
+    let iconExists = await embedImage(
       species.species,
       imageAttachments,
       `classification-icons/${species.species}.svg`,
       false
     );
+    if (!iconExists) {
+      // Fallback to path parent icons.
+      const classificationPath = (
+        (flatClassifications[species.species] &&
+          flatClassifications[species.species].path) ||
+        ""
+      ).split(".");
+      while (classificationPath.length !== 0) {
+        const pathPart = classificationPath.pop();
+        iconExists = await embedImage(
+          pathPart,
+          imageAttachments,
+          `classification-icons/${pathPart}.svg`,
+          false
+        );
+        if (iconExists) {
+          break;
+        }
+      }
+    }
     species.hasIcon = iconExists !== false;
   }
   const { text, html } = await createEmailWithTemplate(

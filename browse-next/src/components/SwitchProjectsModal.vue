@@ -79,7 +79,7 @@ const getLatestRecordingTime = (group: ApiProjectResponse): Date => {
 
 // Sort projects by latest active device
 const sortedUserProjects = computed(() => {
-  const projects = [...userProjects.value].map((project) => ({
+  const projects = [...(userProjects.value || [])].map((project) => ({
     ...project,
     latestRecordingTime: getLatestRecordingTime(project),
   }));

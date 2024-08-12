@@ -168,10 +168,10 @@ const projectHasLocations = computed<boolean>(() => {
   <div>
     <section-header>Locations</section-header>
     <div
-      class="justify-content-center align-items-center d-flex flex-fill"
+      class="justify-content-center align-content-center d-flex flex-fill"
       v-if="loadingLocations"
     >
-      <h1 class="h3"><b-spinner /> Loading locations...</h1>
+      <b-spinner size="xl" /> <span class="h3 ms-3">Loading locations...</span>
       <!--      TODO - Maybe use bootstrap 'placeholder' elements -->
     </div>
     <div
