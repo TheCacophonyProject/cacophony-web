@@ -834,3 +834,4 @@ main {
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
+<style src="@vueform/multiselect/themes/default.css"></style>

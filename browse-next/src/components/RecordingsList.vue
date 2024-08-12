@@ -235,6 +235,8 @@ import {
   RecordingType,
 } from "@typedefs/api/consts.ts";
 import { type TagItem, tagsForRecording } from "@models/recordingUtils.ts";
+import type { ApiTrackResponse } from "@typedefs/api/track";
+import type { ApiTrackTag, ApiTrackTagResponse } from "@typedefs/api/trackTag";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -308,9 +310,19 @@ const specialLabelsForRecording = (
   );
 };
 
+const tagsForTrack = (track: ApiTrackResponse): ApiTrackTag[] => {
+  const humanTags = track.tags.filter((track) => track.automatic);
+  if (humanTags.length) {
+    return humanTags;
+  }
+  return track.tags;
+};
+
 const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
   const nonFalsePositiveTrack = recording.tracks.filter((track) => {
-    return track.tags.some((tag) => tag.what !== "false-positive");
+    return tagsForTrack(track).some((tag) =>
+      ["false-positive", "unidentified"].includes(tag.what)
+    );
   });
   if (import.meta.env.DEV) {
     if (nonFalsePositiveTrack.length !== 0) {
