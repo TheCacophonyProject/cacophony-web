@@ -368,7 +368,7 @@ const initBatteryInfoTimeSeries = () => {
 
 const batteryInfo = ref<LoadedResource<BatteryInfoEvent[]>>(null);
 const batteryInfoIsLoading = computed(() => batteryInfo.value === null);
-const appearsToBeOnMainsPower = computed<boolean>(() => {
+const hasUnknownPowerSource = computed<boolean>(() => {
   if (!isTc2Device.value) {
     return false;
   }
@@ -680,8 +680,8 @@ const isTc2Device = computed<boolean>(() => {
       <div v-if="batteryInfoIsLoading">
         <b-spinner small class="me-2" /> Loading battery info
       </div>
-      <div v-else-if="appearsToBeOnMainsPower">
-        This device appears to be running off mains power.
+      <div v-else-if="hasUnknownPowerSource">
+        This device has an unrecognised power source.
       </div>
       <div
         v-else-if="batteryInfo && batteryInfo.length !== 0"

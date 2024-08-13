@@ -1213,7 +1213,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
 
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
-          countAll: isNewQuery,
           limit: twoPagesWorth,
           fromDateTime: dateRange.value[0],
           untilDateTime: currentQueryCursor.value.untilDateTime as Date,
@@ -1224,7 +1223,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             | RecordingType.Audio
           )[],
         });
-        if (response.success && response.result.count) {
+        if (response && response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
         }
       } else {
@@ -1253,20 +1252,14 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (response && response.success) {
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
-        let gotNoItems = false;
         if (inRecordingsMode.value) {
           const recordingsResponse = response as unknown as SuccessFetchResult<{
             recordings: ApiRecordingResponse[];
           }>;
           console.log("Got response", recordingsResponse);
-          // loadedFewerItemsThanRequested =
-          //   recordingsResponse.result.recordings.length < 100;
           const recordings = recordingsResponse.result.recordings;
           loadedRecordings.value.push(...recordings);
-          if (currentQueryCount.value) {
-            loadedFewerItemsThanRequested =
-              loadedRecordings.value.length < currentQueryCount.value;
-          }
+          loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
           loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
           appendRecordingsChunkedByDay(recordings);
           currentQueryLoaded.value += recordings.length;
@@ -1274,8 +1267,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             gotUntilDate = new Date(
               recordings[recordings.length - 1].recordingDateTime
             );
-          } else {
-            gotNoItems = true;
           }
         } else if (inVisitsMode.value) {
           const visitsResponse = response.result as VisitsQueryResult;
@@ -1293,11 +1284,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
                 lastVisit = visits[visits.length - 1];
                 gotUntilDate = new Date(lastVisit.timeStart);
               } else {
-                gotUntilDate = null;
+                gotUntilDate = undefined;
               }
             }
-          } else {
-            gotNoItems = true;
           }
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
@@ -1599,9 +1588,15 @@ const relativeTimeIncrementInPast = computed<string>(() => {
   ) {
     return "the earliest available date for this selection";
   }
+  const oneYear = 1000 * 60 * 60 * 24 * 365;
+  if (Date.now() - fromDateMinusIncrement.value.getTime() > oneYear) {
+    return DateTime.fromJSDate(fromDateMinusIncrement.value).toRelative({
+      unit: "months",
+    }) as string;
+  }
   return DateTime.fromJSDate(fromDateMinusIncrement.value).toRelative({
     round: true,
-    padding: 1000 * 60 * 60 * 24 * 14,
+    padding: 1000 * 60 * 60 * 24 * 14, //
   }) as string;
 });
 

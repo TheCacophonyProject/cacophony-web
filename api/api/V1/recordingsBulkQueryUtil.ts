@@ -26,11 +26,10 @@ export const getFirstPass = (
   labelled: boolean,
   tagMode: TagMode,
   includeFilteredTracks: boolean,
-  withTotalCount: boolean,
   automatic: boolean | null,
   from: Date | undefined,
   until: Date | undefined,
-  direction
+  direction: "asc" | "desc" = "desc"
 ) => {
   const requiresTags = [
     TagMode.HumanTagged,
@@ -165,7 +164,7 @@ export const getFirstPass = (
       sequelize.col('"Tracks->TrackTags".what'),
       sequelize.col('"Tracks->TrackTags".path'),
     ],
-    ...(!withTotalCount ? { order: [["recordingDateTime", direction]] } : {}),
+    order: [["recordingDateTime", direction]],
   };
 };
 
@@ -187,24 +186,16 @@ export const getSelfJoinForTagMode = (
   taggedWith: string[],
   subClassTags: boolean,
   maxResults: number,
-  offsetResults: number,
   includeFilteredTracks: boolean,
-  count: boolean = false,
   direction: "asc" | "desc" = "desc"
 ) => {
   const limit = (tableName: string) => {
-    return count
-      ? ""
-      : `
+    return `
         order by ${tableName}."recordingDateTime" ${direction}
-        limit ${maxResults} ${
-          offsetResults === 0 ? "" : `offset ${offsetResults}`
-        }`;
+        limit ${maxResults}`;
   };
   const recordingIds = (tableName: string) =>
-    count
-      ? `count(distinct ${tableName}.id)`
-      : `distinct ${tableName}.id, ${tableName}."recordingDateTime"`;
+    `distinct ${tableName}.id, ${tableName}."recordingDateTime"`;
   const whereTaggedWith = (tableName: string, tags: string[]) => {
     if (tags.length === 0) {
       return "";
@@ -395,7 +386,6 @@ interface ParsedQs {
 export const sqlDebugOutput = (
   queryParams: ParsedQs,
   numResults: number,
-  totalResults: number,
   queryTimes: number[],
   queriesSQL: string[],
   totalTime: number,
@@ -420,7 +410,7 @@ export const sqlDebugOutput = (
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
           <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>       
           <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
-            <h1 style="color: white;">${numResults}/${totalResults} recordings, DB: ${queryTime}ms (${queryTimes.join(
+            <h1 style="color: white;">${numResults} recordings, DB: ${queryTime}ms (${queryTimes.join(
     "ms, "
   )}ms), Sequelize: ${Math.round(totalTime - queryTime)}ms</h1>
             <pre style="background: black;" class="language-json theme-atom-one-dark"><code class="code">${JSON.stringify(
@@ -475,14 +465,12 @@ export const queryRecordingsInProject = async (
   labelledWith: string[],
   tagMode: TagMode,
   includeFilteredTracks: boolean,
-  withTotalCount: boolean,
   limit: number,
-  fromDate: Date,
-  untilDate: Date,
-  offset: number,
+  fromDate: Date | undefined,
+  untilDate: Date | undefined,
   logging: (message: string, time: number) => void,
   direction: "desc" | "asc" = "desc"
-): Promise<{ recordingIds: RecordingId[]; count: number }> => {
+): Promise<{ id: RecordingId; recordingDateTime: Date }[]> => {
   const tagged = tagMode !== TagMode.UnTagged && taggedWith.length !== 0;
   const labelled = labelledWith.length !== 0;
   const firstPass = (withTags: boolean, automatic: boolean) =>
@@ -503,7 +491,6 @@ export const queryRecordingsInProject = async (
       labelled,
       tagMode,
       includeFilteredTracks,
-      withTotalCount,
       automatic,
       fromDate,
       untilDate,
@@ -513,28 +500,7 @@ export const queryRecordingsInProject = async (
   for (let i = 0; i < taggedWith.length; i++) {
     tagReplacements[`tag_${i}`] = `*.${taggedWith[i].replace(/-/g, "_")}.*`;
   }
-  const getCount = withTotalCount
-    ? models.sequelize.query(
-        getSelfJoinForTagMode(
-          models,
-          firstPass,
-          tagMode,
-          taggedWith,
-          subClassTags,
-          limit,
-          offset,
-          includeFilteredTracks,
-          true,
-          direction
-        ),
-        {
-          logging,
-          type: QueryTypes.SELECT,
-          replacements: { taggedWith, ...tagReplacements },
-        }
-      )
-    : new Promise((resolve) => resolve([{ count: 0 }]));
-  const getRecordingIds = models.sequelize.query(
+  const recordings = await models.sequelize.query(
     getSelfJoinForTagMode(
       models,
       firstPass,
@@ -542,9 +508,7 @@ export const queryRecordingsInProject = async (
       taggedWith,
       subClassTags,
       limit,
-      offset,
       includeFilteredTracks,
-      false,
       direction
     ),
     {
@@ -553,14 +517,10 @@ export const queryRecordingsInProject = async (
       replacements: { taggedWith, ...tagReplacements },
     }
   );
-  const [countResult, recordings] = await Promise.all([
-    getCount,
-    getRecordingIds,
-  ]);
-
-  const count: number = Number((countResult[0] as any).count);
-  return {
-    recordingIds: (recordings as { id: RecordingId }[]).map(({ id }) => id),
-    count,
-  };
+  return (recordings as { id: RecordingId; recordingDateTime: Date }[]).map(
+    ({ id, recordingDateTime }) => ({
+      id,
+      recordingDateTime: new Date(recordingDateTime),
+    })
+  );
 };
