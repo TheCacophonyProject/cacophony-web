@@ -1453,38 +1453,41 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
     const location = (locations.value || []).find(
       ({ id }) => id === recording.stationId
     );
-    if (location) {
-      const tags = tagsForRecording(recording);
-      const displays = [];
-      const labels = recording.tags.map((tag) => tag.detail);
-      for (const tag of tags) {
-        const display = displayLabelForClassificationLabel(
-          tag.what,
-          tag.automatic && !tag.human
-        );
-        displays.push(
-          `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
-        );
-      }
-      const row = [
-        recording.stationName || "",
-        `${recording.location?.lat}, ${recording.location?.lng}`,
-        recording.deviceName,
-        recording.recordingDateTime,
-        dayAndTimeAtLocation(recording.recordingDateTime, location.location),
-        formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
-        displays.join(", "),
-        labels.join(", "),
-      ];
-      if (isAudioMode) {
-        row.push(
-          ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
-            .map((index: { index_percent: number }) => index.index_percent)
-            .join(", ")
-        );
-      }
-      csv.push(row);
+
+    const tags = tagsForRecording(recording);
+    const displays = [];
+    const labels = recording.tags.map((tag) => tag.detail);
+    for (const tag of tags) {
+      const display = displayLabelForClassificationLabel(
+        tag.what,
+        tag.automatic && !tag.human
+      );
+      displays.push(
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+      );
     }
+    const row = [
+      recording.stationName || "unknown",
+      (recording.location &&
+        `${recording.location?.lat}, ${recording.location?.lng}`) ||
+        "unknown",
+      recording.deviceName,
+      recording.recordingDateTime,
+      (location &&
+        dayAndTimeAtLocation(recording.recordingDateTime, location.location)) ||
+        "unknown",
+      formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
+      displays.join(", "),
+      labels.join(", "),
+    ];
+    if (isAudioMode) {
+      row.push(
+        ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
+          .map((index: { index_percent: number }) => index.index_percent)
+          .join(", ")
+      );
+    }
+    csv.push(row);
   }
   return arrayToCsv(csv);
 };
@@ -1542,8 +1545,7 @@ const doExport = async () => {
       const recordings = await getAllRecordingsForProjectBetweenTimes(
         project.id,
         query,
-        (progress) => {
-          exportProgress.value = progress;
+        () => {
           exportTime.value = performance.now();
         }
       );
@@ -1969,11 +1971,20 @@ onBeforeUnmount(() => {
       :available-date-ranges="availableDateRanges"
       :search-params="searchParams"
     />
-    <b-progress :value="exportProgressZeroOneHundred" />
-    <span class="mt-1"
-      >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
-      elapsed</span
-    >
+    <div v-if="inVisitsMode">
+      <b-progress :value="exportProgressZeroOneHundred" />
+      <span class="mt-1"
+        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
+        elapsed</span
+      >
+    </div>
+    <div class="d-flex align-content-center align-items-center" v-else>
+      <b-spinner variant="secondary" class="me-3" />
+      <span class="mt-1"
+        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
+        elapsed</span
+      >
+    </div>
   </b-modal>
 </template>
 <style lang="less" scoped>
