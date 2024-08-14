@@ -42,7 +42,6 @@ export const CurrentViewAbortController = {
   newView() {
     this.controller && this.controller.abort();
     this.controller = new AbortController();
-    this.controller = new AbortController();
   },
   controller: new AbortController(),
 };

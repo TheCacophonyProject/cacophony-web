@@ -121,6 +121,8 @@ const expanded = computed<boolean>(() => {
   );
 });
 
+const expandedOnce = ref<boolean>(false);
+
 const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
@@ -128,6 +130,7 @@ const handleExpansion = (isExpanding: boolean) => {
         (trackDetails.value as HTMLDivElement).scrollHeight
       }px`;
     }
+    expandedOnce.value = true;
   } else {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = "0";
@@ -584,6 +587,7 @@ onMounted(async () => {
           ><font-awesome-icon icon="thumbtack" />
         </span>
         <tag-image
+          v-if="expandedOnce"
           :tag="tag.label"
           width="24"
           height="24"

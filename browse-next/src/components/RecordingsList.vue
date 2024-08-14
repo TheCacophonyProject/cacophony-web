@@ -311,7 +311,7 @@ const specialLabelsForRecording = (
 };
 
 const tagsForTrack = (track: ApiTrackResponse): ApiTrackTag[] => {
-  const humanTags = track.tags.filter((track) => track.automatic);
+  const humanTags = track.tags.filter((track) => !track.automatic);
   if (humanTags.length) {
     return humanTags;
   }
@@ -320,10 +320,11 @@ const tagsForTrack = (track: ApiTrackResponse): ApiTrackTag[] => {
 
 const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
   const nonFalsePositiveTrack = recording.tracks.filter((track) => {
-    return tagsForTrack(track).some((tag) =>
-      ["false-positive", "unidentified"].includes(tag.what)
+    return tagsForTrack(track).some(
+      (tag) => !["false-positive", "unidentified"].includes(tag.what)
     );
   });
+
   if (import.meta.env.DEV) {
     if (nonFalsePositiveTrack.length !== 0) {
       return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;

@@ -105,6 +105,7 @@ import ActivitySearchDescription from "@/components/ActivitySearchDescription.vu
 import { delayMs } from "@/utils.ts";
 import { tagsForRecording } from "@models/recordingUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
+import { CurrentViewAbortController } from "@/router";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -475,6 +476,10 @@ const syncSearchQuery = async (
   next: LocationQuery,
   prev: LocationQuery | undefined
 ) => {
+  if (route.name !== "activity") {
+    return;
+  }
+
   if (prev === undefined) {
     prev = DefaultSearchParams as LocationQuery;
   }
@@ -1210,7 +1215,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (inRecordingsMode.value) {
         // NOTE: Not sure we need to ever get the total count for this query for the
         //  purposes of this UI?
-
+        CurrentViewAbortController.newView();
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
           limit: twoPagesWorth,
@@ -1231,6 +1236,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         // TODO: This needs to have a limit
         // Make it the lesser of the current date range or 2 pages worth of days.
         //const pageSize = 100;
+        CurrentViewAbortController.newView();
         response = await getVisitsForProject(
           project.id,
           dateRange.value[0] as Date,
@@ -1348,12 +1354,10 @@ const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100
 );
 const doSearch = async () => {
-  if (!searching.value) {
-    searching.value = true;
-    await getClassifications();
-    await getRecordingsOrVisitsForCurrentQuery();
-    searching.value = false;
-  }
+  searching.value = true;
+  await getClassifications();
+  await getRecordingsOrVisitsForCurrentQuery();
+  searching.value = false;
 };
 
 const download = (url: string, filename: string) => {

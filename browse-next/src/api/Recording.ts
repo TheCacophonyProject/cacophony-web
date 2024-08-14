@@ -181,8 +181,10 @@ export const queryRecordingsInProjectNew = (
   // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
   //  or we need to hold onto the pagination value.
   //return unwrapLoadedResource(
+  const ABORTABLE = true;
   return CacophonyApi.get(
-    `/api/v1/recordings/for-project/${projectId}?${params}`
+    `/api/v1/recordings/for-project/${projectId}?${params}`,
+    ABORTABLE
   ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
   //"rows"
   //);
@@ -258,6 +260,7 @@ export const getAllRecordingsForProjectBetweenTimes = async (
       const result = response.result;
       recordings.push(...result.recordings);
       moreRecordingsToLoad = result.recordings.length !== 0;
+      // TODO: Show progress bar based on a linear interpolation of start vs end time.
       if (recordings.length) {
         query.untilDateTime = new Date(
           recordings[recordings.length - 1].recordingDateTime

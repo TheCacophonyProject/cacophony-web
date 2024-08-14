@@ -471,7 +471,8 @@ const numFalseTriggers = computed<number>(() => {
           tag.what === "false-positive" &&
           tag.data &&
           (tag.data as TrackTagData).name === "Master"
-      )
+      ) &&
+      !userTags.length
     ) {
       falseTriggerCount++;
     }

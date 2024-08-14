@@ -110,7 +110,7 @@ export const getClassifications = async (
     if (cached && !loadedClassificationsThisSession.value) {
       const parsed = JSON.parse(cached);
       apiGetClassifications(parsed.version).then(async (res) => {
-        if (res.success && res.result.version !== parsed.version) {
+        if (res && res.success && res.result.version !== parsed.version) {
           const classifications = await getFreshClassifications();
           cb && cb(classifications);
         }

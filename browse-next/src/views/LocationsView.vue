@@ -31,7 +31,18 @@ onMounted(async () => {
 const locationsForMap = computed<NamedPoint[]>(() => {
   if (locations.value) {
     return (locations.value as ApiLocationResponse[])
-      .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
+      .filter((location) => {
+        const {
+          location: loc,
+          lastThermalRecordingTime,
+          lastAudioRecordingTime,
+        } = location;
+        return (
+          loc.lng !== 0 &&
+          loc.lat !== 0 &&
+          (!!lastThermalRecordingTime || !!lastAudioRecordingTime)
+        );
+      })
       .map(({ name, groupName, location }) => ({
         name,
         project: groupName,

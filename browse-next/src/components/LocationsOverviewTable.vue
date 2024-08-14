@@ -5,6 +5,7 @@
     @entered-item="enteredTableItem"
     @left-item="leftTableItem"
     :highlighted-item="highlightedItem"
+    :max-card-width="2000"
   >
     <template #card="{ card }">
       <span>
