@@ -55,4 +55,16 @@ export const RecordingLabels: {
     text: "Multiple animals",
     description: "There is more than one animal in this recording",
   },
+  {
+    text: "Outside",
+    description: "Outside",
+  },
+  {
+    text: "Inside",
+    description: "Inside",
+  },
+  {
+    text: "Incursion",
+    description: "Incursion",
+  },
 ];

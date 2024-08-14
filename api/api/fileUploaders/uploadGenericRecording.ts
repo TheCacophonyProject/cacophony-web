@@ -751,27 +751,27 @@ const maybeUpdateLastRecordingTimesForStation = async (
       resolve();
     }
   );
-  // Only update our times for non-status recordings
-  if (recordingData.duration >= 3) {
-    if (station) {
-      recordingData.StationId = station.id;
-      {
-        // Update station lastRecordingTimes if needed.
-        if (
-          recordingData.type === RecordingType.Audio &&
-          (!station.lastAudioRecordingTime ||
-            recordingData.recordingDateTime > station.lastAudioRecordingTime)
-        ) {
-          station.lastAudioRecordingTime = recordingData.recordingDateTime;
-          stationUpdatePromise = station.save();
-        } else if (
-          cameraTypes.includes(recordingData.type) &&
-          (!station.lastThermalRecordingTime ||
-            recordingData.recordingDateTime > station.lastThermalRecordingTime)
-        ) {
-          station.lastThermalRecordingTime = recordingData.recordingDateTime;
-          stationUpdatePromise = station.save();
-        }
+
+  if (station) {
+    recordingData.StationId = station.id;
+
+    // Only update our times for non-status recordings
+    if (recordingData.duration >= 3) {
+      // Update station lastRecordingTimes if needed.
+      if (
+        recordingData.type === RecordingType.Audio &&
+        (!station.lastAudioRecordingTime ||
+          recordingData.recordingDateTime > station.lastAudioRecordingTime)
+      ) {
+        station.lastAudioRecordingTime = recordingData.recordingDateTime;
+        stationUpdatePromise = station.save();
+      } else if (
+        cameraTypes.includes(recordingData.type) &&
+        (!station.lastThermalRecordingTime ||
+          recordingData.recordingDateTime > station.lastThermalRecordingTime)
+      ) {
+        station.lastThermalRecordingTime = recordingData.recordingDateTime;
+        stationUpdatePromise = station.save();
       }
     }
   }

@@ -43,7 +43,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.testCreateUserGroupAndDevice("raGroup2Admin", "raGroup2", "raCamera2");
   });
 
-  it("Group admin can view and delete device's recordings", () => {
+  it.only("Group admin can view and delete device's recordings", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
 

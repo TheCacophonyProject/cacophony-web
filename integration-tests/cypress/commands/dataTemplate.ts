@@ -281,7 +281,7 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
 export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
   type: RecordingType.ThermalRaw,
   fileHash: null,
-  duration: 0.5555555555555556,
+  duration: 4.5,
   recordingDateTime: "2021-07-17T20:13:17.248Z",
   location: [-45.29115, 169.30845],
   additionalMetadata: {

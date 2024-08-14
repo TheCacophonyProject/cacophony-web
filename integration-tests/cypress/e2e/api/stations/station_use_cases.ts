@@ -67,8 +67,8 @@ describe("Stations: use cases", () => {
     // User adds a new recoding in the corrected location
     // -> recording assigned to the manual station
     // -> DeviceHistory is unchanged
-    // -> Station has lastThermalRecordingztime updated --- NOT TESTED
-    // Another week later User adds a new recording in a new loaction
+    // -> Station has lastThermalRecordingTime updated --- NOT TESTED
+    // Another week later User adds a new recording in a new location
     // -> recording assigned to a new station in new location
     // -> additional deviceHistory entry created for new location, new station and new recording's time
     const deviceName = "new-device-3";
