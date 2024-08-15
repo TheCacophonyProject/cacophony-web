@@ -1149,6 +1149,7 @@ const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
 const firstLoad = ref<boolean>(true);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   // NOTE: We try to load at most one month at a time.
+  let succeededWithoutAbort = true;
   if (currentProject.value) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
@@ -1230,6 +1231,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         });
         if (response && response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
+        } else {
+          succeededWithoutAbort = false;
         }
       } else {
         // Else visits
@@ -1340,9 +1343,12 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           }
           completedCurrentQuery.value = true;
         }
+      } else {
+        succeededWithoutAbort = false;
       }
     }
   }
+  return succeededWithoutAbort;
 };
 
 const searching = ref<boolean>(false);
@@ -1356,8 +1362,10 @@ const exportProgressZeroOneHundred = computed<number>(
 const doSearch = async () => {
   searching.value = true;
   await getClassifications();
-  await getRecordingsOrVisitsForCurrentQuery();
-  searching.value = false;
+  const success = await getRecordingsOrVisitsForCurrentQuery();
+  if (success) {
+    searching.value = false;
+  }
 };
 
 const download = (url: string, filename: string) => {
