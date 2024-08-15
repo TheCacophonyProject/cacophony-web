@@ -1231,8 +1231,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         });
         if (response && response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
-        } else {
-          succeededWithoutAbort = false;
         }
       } else {
         // Else visits
