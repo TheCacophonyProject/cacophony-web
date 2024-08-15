@@ -2486,13 +2486,18 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
     latestStationRecordingOfSameType,
   ] = await Promise.all([
     models.Recording.findOne({
-      where: { DeviceId: recording.DeviceId, deletedAt: null },
+      where: {
+        DeviceId: recording.DeviceId,
+        deletedAt: null,
+        duration: { [Op.gte]: 3 },
+      },
       order: [["recordingDateTime", "DESC"]],
     }),
     models.Recording.findOne({
       where: {
         GroupId: recording.GroupId,
         deletedAt: null,
+        duration: { [Op.gte]: 3 },
         type: { [Op.in]: types },
       },
       order: [["recordingDateTime", "DESC"]],
@@ -2500,6 +2505,7 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
     models.Recording.findOne({
       where: {
         StationId: recording.StationId,
+        duration: { [Op.gte]: 3 },
         deletedAt: null,
         type: { [Op.in]: types },
       },
