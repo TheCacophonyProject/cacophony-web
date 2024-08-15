@@ -499,7 +499,10 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       if (await cptvDecoder.hasStreamError()) {
         streamLoadError.value = await cptvDecoder.getStreamError();
         await cptvDecoder.free();
+      }
+      if (frames.length !== 0) {
         totalFrames.value = frames.length;
+        console.log("total frames", totalFrames.value);
       }
       break;
     }
@@ -1029,7 +1032,6 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       return;
     }
     // Make sure everything is loaded to ensure that we have final min/max numbers for normalisation
-    //await ensureEntireFileIsLoaded();
     await makeSureWeHaveTheFrame(100000);
 
     if (await cptvDecoder.hasStreamError()) {
