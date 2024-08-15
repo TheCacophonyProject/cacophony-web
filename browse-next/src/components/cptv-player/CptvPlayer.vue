@@ -1053,13 +1053,19 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     const numTotalFrames = totalFrames.value || 0;
     let startFrame = 0;
     let onePastLastFrame = numTotalFrames;
+    let options: TrackExportOption[];
+    if (useExportOptions.length) {
+      options = useExportOptions;
+    } else {
+      options = trackExportOptions.value;
+    }
     if (
-      trackExportOptions.value.filter((track) => track.includeInExportTime)
-        .length !== 0
+      options.filter((track) => track.includeInExportTime).length !== 0 &&
+      props.exportRequested === "advanced"
     ) {
       startFrame = numTotalFrames;
       onePastLastFrame = 0;
-      for (const { includeInExportTime, trackId } of trackExportOptions.value) {
+      for (const { includeInExportTime, trackId } of options) {
         if (includeInExportTime) {
           const track = (props.recording as ApiRecordingResponse).tracks.find(
             (track) => track.id === trackId
