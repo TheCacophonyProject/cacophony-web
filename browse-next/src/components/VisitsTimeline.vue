@@ -200,7 +200,7 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
           :class="[
             'event-item-visit',
             visit.classification,
-            ...(getPathForLabel(visit.classification) || '').split('.'),
+            ...(getPathForLabel(visit.classification || '') || '').split('.'),
           ]"
         />
         <div
