@@ -146,6 +146,7 @@ export default function (
     // add to device history ledger
     if (changed) {
       await this.create({
+        ...currentSettingsEntry.get({ plain: true }),
         DeviceId: deviceId,
         GroupId: groupId,
         fromDateTime: new Date(),
@@ -175,6 +176,7 @@ function mergeSettings(
       // If the current settings do not have this key, add it
       if (!currentSettings.hasOwnProperty(key)) {
         mergedSettings[key] = incomingValue;
+        changed = true;
         continue;
       }
 
@@ -186,11 +188,15 @@ function mergeSettings(
 
         if (incomingUpdated > currentUpdated) {
           mergedSettings[key] = incomingValue;
-          changed = true;
+          if (incomingValue !== currentSetting) {
+            changed = true;
+          }
         }
       } else {
         mergedSettings[key] = incomingValue;
-        changed = true;
+        if (incomingValue !== currentSetting) {
+          changed = true;
+        }
       }
     }
   }

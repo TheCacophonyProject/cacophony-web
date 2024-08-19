@@ -1,37 +1,51 @@
 <template>
   <b-container class="versions" style="padding: 0">
-    <h2 class="mt-4">Device Settings</h2>
-    <div v-if="settings" class="device-settings mt-3">
-      <div><b>Synced:</b> {{ settings.synced ? "Yes" : "No" }}</div>
-      <b-table
-        :items="settingsTable"
-        :fields="fields"
-        striped
-        hover
-        class="settings-table mt-3"
-      >
-        <template #cell(actions)="row">
-          <div v-if="row.item.name === 'Use Low Power Mode'">
-            <b-button
-              @click="toggleUseLowPowerMode(row.item)"
-              variant="secondary"
-              >Toggle</b-button
-            >
-          </div>
-          <div v-if="row.item.name === 'Recording Windows'" class="btn-group">
-            <b-button @click="setDefaultRecordingWindows" variant="secondary"
-              >Default</b-button
-            >
-            <b-button @click="set24HourRecordingWindows" variant="secondary"
-              >24 Hours</b-button
-            >
-            <b-button @click="enableCustomRecordingWindows" variant="secondary"
-              >Custom</b-button
-            >
-          </div>
-        </template>
-      </b-table>
-    </div>
+    <b-container v-if="settings">
+      <h2 class="mt-4">Device Settings</h2>
+      <div class="device-settings mt-3">
+        <div><b>Synced:</b> {{ settings.synced ? "Yes" : "No" }}</div>
+        <b-table
+          :items="settingsTable"
+          :fields="fields"
+          striped
+          hover
+          class="settings-table mt-3"
+        >
+          <template #cell(actions)="row">
+            <div v-if="row.item.name === 'Use Low Power Mode'">
+              <b-button
+                @click="toggleUseLowPowerMode(row.item)"
+                variant="secondary"
+                >Toggle</b-button
+              >
+            </div>
+            <div v-if="row.item.name === 'Recording Windows'" class="btn-group">
+              <b-button
+                @click="setDefaultRecordingWindows"
+                :variant="
+                  currentWindowsType === 'default' ? 'primary' : 'secondary'
+                "
+                >Default</b-button
+              >
+              <b-button
+                @click="set24HourRecordingWindows"
+                :variant="
+                  currentWindowsType === '24hour' ? 'primary' : 'secondary'
+                "
+                >24 Hours</b-button
+              >
+              <b-button
+                @click="enableCustomRecordingWindows"
+                :variant="
+                  currentWindowsType === 'custom' ? 'primary' : 'secondary'
+                "
+                >Custom</b-button
+              >
+            </div>
+          </template>
+        </b-table>
+      </div>
+    </b-container>
     <h2>Current software versions</h2>
     <div v-if="!software.result">{{ software.message }}</div>
     <div
@@ -158,12 +172,11 @@ export default defineComponent({
     const fetchSettings = async () => {
       try {
         const response = await DeviceApi.getDeviceSettings(props.deviceId);
-        console.log("Settings", response);
         if (response.success) {
           settings.value = response.result.settings;
         }
       } catch (e) {
-        console.error(e);
+        //console.error(e);
       }
     };
 
@@ -193,6 +206,30 @@ export default defineComponent({
         settings.value = response.result.settings;
       }
     };
+    const currentWindowsType = computed(() => {
+      if (!settings.value || !settings.value.windows) {
+        return "unknown";
+      }
+      const { powerOn, powerOff, startRecording, stopRecording } =
+        settings.value.windows;
+      if (
+        powerOn === "-30m" &&
+        powerOff === "+30m" &&
+        startRecording === "-30m" &&
+        stopRecording === "+30m"
+      ) {
+        return "default";
+      } else if (
+        powerOn === "12:00" &&
+        powerOff === "12:00" &&
+        startRecording === "12:00" &&
+        stopRecording === "12:00"
+      ) {
+        return "24hour";
+      } else {
+        return "custom";
+      }
+    });
 
     const enableCustomRecordingWindows = () => {
       const windows = settings.value.windows;
@@ -234,7 +271,6 @@ export default defineComponent({
 
     const formatTime = (timeString) => {
       if (timeString[0] === "+" || timeString[0] === "-") return timeString;
-      debugger;
       const [hours, minutes] = timeString.split(":");
       return `${hours}:${minutes}`;
     };
@@ -248,35 +284,35 @@ export default defineComponent({
     };
 
     const settingsTable = computed(() => {
-      if (!settings.value) {
-        return [];
-      }
-
-      const rows = [];
-      if (settings.value.thermalRecording) {
-        rows.push({
+      const rows = [
+        {
           name: "Use Low Power Mode",
-          value: settings.value.thermalRecording.useLowPowerMode,
-          synced: settings.value.synced ? "Yes" : "No",
-        });
-      }
-      if (settings.value.windows) {
-        rows.push({
+          value: settings.value?.thermalRecording?.useLowPowerMode ?? false,
+          synced:
+            settings.value?.thermalRecording?.useLowPowerMode !== undefined &&
+            settings.value?.synced
+              ? "Yes"
+              : "No",
+        },
+        {
           name: "Recording Windows",
-          value: formatRecordingWindows(settings.value.windows),
-          synced: settings.value.synced ? "Yes" : "No",
-        });
-      }
+          value: settings.value?.windows
+            ? formatRecordingWindows(settings.value.windows)
+            : "Not set",
+          synced: settings.value?.synced ? "Yes" : "No",
+        },
+      ];
+
       return rows;
     });
 
-    debugger;
     onMounted(async () => {
       await fetchSettings();
     });
 
     return {
       settings,
+      currentWindowsType,
       fields,
       showCustomModal,
       customSettings,

@@ -1459,7 +1459,6 @@ export default function (app: Application, baseUrl: string) {
         const where = {
           DeviceId: device.id,
           GroupId: device.GroupId,
-          location: { [Op.ne]: null },
         };
         console.log(where);
         debugger;
@@ -1471,8 +1470,10 @@ export default function (app: Application, baseUrl: string) {
           });
         const settings = {
           ...deviceSettings.settings,
-          location: device.location,
         };
+        if (deviceSettings.location) {
+          settings.location = deviceSettings.location;
+        }
 
         if (deviceSettings && deviceSettings.settings) {
           return successResponse(
@@ -1515,8 +1516,6 @@ export default function (app: Application, baseUrl: string) {
       try {
         const device = response.locals.device as Device;
         const newSettings: ApiDeviceHistorySettings = request.body.settings;
-        logging.info("Updating device settings", newSettings);
-        debugger;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
 
         const updatedEntry = await models.DeviceHistory.updateDeviceSettings(

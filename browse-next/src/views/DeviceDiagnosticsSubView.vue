@@ -7,6 +7,11 @@ import {
   getDeviceLocationAtTime,
   getDeviceVersionInfo,
   getLatestStatusRecordingForDevice,
+  getSettingsForDevice,
+  set24HourRecordingWindows,
+  setCustomRecordingWindows,
+  setDefaultRecordingWindows,
+  toggleUseLowPowerMode,
 } from "@api/Device";
 import { useRoute } from "vue-router";
 import type { Ref } from "vue";
@@ -15,7 +20,12 @@ import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
 import type { DeviceConfigDetail } from "@typedefs/api/event";
 import { selectedProjectDevices } from "@models/provides";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
+import {
+  type ApiDeviceHistorySettings,
+  type ApiDeviceResponse,
+  type SettingsBase,
+  type WindowsSettings,
+} from "@typedefs/api/device";
 import { projectDevicesLoaded } from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -46,11 +56,149 @@ const deviceConfig = ref<LoadedResource<DeviceConfigDetail>>(null);
 const currentLocationForDevice = ref<LoadedResource<ApiLocationResponse>>(null);
 const lastPowerOffTime = ref<LoadedResource<Date>>(null);
 const lastPowerOnTime = ref<LoadedResource<Date>>(null);
+// Device Settings
+const settings = ref<ApiDeviceHistorySettings | null>(null);
+const showCustomModal = ref(false);
+const customSettings = ref<Omit<WindowsSettings, "updated">>({
+  powerOff: "+30m",
+  powerOn: "-30m",
+  startRecording: "-30m",
+  stopRecording: "+30m",
+});
+
 const isLoading = (val: Ref<LoadedResource<unknown>>) =>
   computed<boolean>(() => val.value === null);
 const configInfoLoading = isLoading(deviceConfig);
 const versionInfoLoading = isLoading(versionInfo);
 const locationInfoLoading = isLoading(currentLocationForDevice);
+
+const fields = [
+  { key: "name", label: "Setting" },
+  { key: "value", label: "Value" },
+  { key: "actions", label: "Actions" },
+];
+
+const currentWindowsType = computed(() => {
+  if (!settings.value || !settings.value.windows) {
+    return "unknown";
+  }
+  const { powerOn, powerOff, startRecording, stopRecording } =
+    settings.value.windows;
+  if (
+    powerOn === "-30m" &&
+    powerOff === "+30m" &&
+    startRecording === "-30m" &&
+    stopRecording === "+30m"
+  ) {
+    return "default";
+  } else if (
+    powerOn === "12:00" &&
+    powerOff === "12:00" &&
+    startRecording === "12:00" &&
+    stopRecording === "12:00"
+  ) {
+    return "24hour";
+  } else {
+    return "custom";
+  }
+});
+
+const formatTime = (timeString: string) => {
+  if (timeString[0] === "+" || timeString[0] === "-") return timeString;
+  const [hours, minutes] = timeString.split(":");
+  return `${hours}:${minutes}`;
+};
+
+const formatRecordingWindows = (windows: WindowsSettings) => {
+  return `Power On: ${formatTime(windows.powerOn)}, Power Off: ${formatTime(
+    windows.powerOff
+  )}, Start Recording: ${formatTime(
+    windows.startRecording
+  )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
+};
+
+const settingsTable = computed(() => {
+  const rows = [
+    {
+      name: "Use Low Power Mode",
+      value: settings.value?.thermalRecording?.useLowPowerMode ?? false,
+    },
+    {
+      name: "Recording Windows",
+      value: settings.value?.windows
+        ? formatRecordingWindows(settings.value.windows)
+        : "Not set",
+    },
+  ];
+
+  return rows;
+});
+
+const fetchSettings = async () => {
+  try {
+    const response = await getSettingsForDevice(deviceId);
+    if (response.success) {
+      settings.value = response.result.settings;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleToggleUseLowPowerMode = async (setting: { name: string }) => {
+  if (setting.name === "Use Low Power Mode") {
+    const response = await toggleUseLowPowerMode(deviceId);
+    if (response.success) {
+      settings.value = response.result.settings;
+    }
+  }
+};
+
+const handleSetDefaultRecordingWindows = async () => {
+  const response = await setDefaultRecordingWindows(deviceId);
+  if (response.success) {
+    settings.value = response.result.settings;
+  }
+};
+
+const handleSet24HourRecordingWindows = async () => {
+  const response = await set24HourRecordingWindows(deviceId);
+  if (response.success) {
+    settings.value = response.result.settings;
+  }
+};
+
+const enableCustomRecordingWindows = () => {
+  if (!settings.value || !settings.value.windows) return;
+  const windows = settings.value.windows;
+  customSettings.value = {
+    powerOn: windows.powerOn,
+    powerOff: windows.powerOff,
+    startRecording: windows.startRecording,
+    stopRecording: windows.stopRecording,
+  };
+  showCustomModal.value = true;
+};
+
+const handleOk = (bvModalEvent) => {
+  bvModalEvent.preventDefault();
+  saveCustomRecordingWindows();
+};
+
+const handleCancel = () => {
+  showCustomModal.value = false;
+};
+
+const saveCustomRecordingWindows = async () => {
+  const response = await setCustomRecordingWindows(
+    deviceId,
+    customSettings.value
+  );
+  if (response.success) {
+    settings.value = response.result.settings;
+  }
+  showCustomModal.value = false;
+};
 
 const records247 = computed<boolean>(() => {
   // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
@@ -312,7 +460,7 @@ onMounted(async () => {
         latestStatusRecording.value = latestStatus;
       }
     }
-
+    await fetchSettings();
     /*
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -458,6 +606,52 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
           <div v-else>Device is not currently at a known location</div>
         </div>
         <div v-else>Device does not currently have a known location</div>
+      </div>
+    </div>
+    <div class="mt-4" v-if="device.type === 'thermal'">
+      <h6 class="mt-4">Device Settings:</h6>
+      <div v-if="settings" class="device-settings mt-3">
+        <div><b>Synced:</b> {{ settings.synced ? "Yes" : "No" }}</div>
+        <b-table
+          :items="settingsTable"
+          :fields="fields"
+          striped
+          hover
+          class="settings-table mt-3"
+        >
+          <template #cell(actions)="row">
+            <div v-if="row.item.name === 'Use Low Power Mode'">
+              <b-button
+                @click="handleToggleUseLowPowerMode(row.item)"
+                variant="secondary"
+                >Toggle</b-button
+              >
+            </div>
+            <div v-if="row.item.name === 'Recording Windows'" class="btn-group">
+              <b-button
+                @click="handleSetDefaultRecordingWindows"
+                :variant="
+                  currentWindowsType === 'default' ? 'primary' : 'secondary'
+                "
+                >Default</b-button
+              >
+              <b-button
+                @click="handleSet24HourRecordingWindows"
+                :variant="
+                  currentWindowsType === '24hour' ? 'primary' : 'secondary'
+                "
+                >24 Hours</b-button
+              >
+              <b-button
+                @click="enableCustomRecordingWindows"
+                :variant="
+                  currentWindowsType === 'custom' ? 'primary' : 'secondary'
+                "
+                >Custom</b-button
+              >
+            </div>
+          </template>
+        </b-table>
       </div>
     </div>
     <div class="mt-4" v-if="device.type === 'thermal'">
