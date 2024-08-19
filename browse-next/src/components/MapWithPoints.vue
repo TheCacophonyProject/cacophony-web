@@ -496,7 +496,7 @@ onMounted(() => {
     scrollWheelZoom: props.isInteractive,
     keyboard: props.isInteractive,
     tap: props.isInteractive,
-    maxZoom: 16,
+    maxZoom: 15,
     minZoom: props.minZoom,
     attributionControl: false,
     center: props.center || mapBounds.value?.getCenter(),
