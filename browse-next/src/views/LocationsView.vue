@@ -209,6 +209,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
 
         <h6 v-if="locationsActiveInLastMonth.length">Active in past month</h6>
@@ -218,6 +219,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
 
         <h6 v-if="locationsActiveInLastYear.length">Active in past year</h6>
@@ -227,6 +229,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
 
         <h6 v-if="locationsNotActiveInLastYear.length">
@@ -238,6 +241,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
         <h6 v-if="retiredLocations.length">Retired</h6>
         <locations-overview-table
@@ -246,6 +250,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
       </div>
       <map-with-points

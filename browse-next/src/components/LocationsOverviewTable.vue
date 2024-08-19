@@ -4,7 +4,6 @@
     :items="locations"
     @entered-item="enteredTableItem"
     @left-item="leftTableItem"
-    :highlighted-item="highlightedItem"
     :max-card-width="2000"
   >
     <template #card="{ card }">
@@ -14,10 +13,10 @@
         </strong>
         <div v-html="activeBetween(card as ApiLocationResponse)" />
       </div>
-      <div class="d-flex mt-2 justify-content-end">
+      <div class="d-flex mt-2">
         <b-button
           class="align-items-center justify-content-between d-flex"
-          variant="link"
+          variant="light"
           :to="{
             name: 'activity',
             query: {
@@ -37,7 +36,7 @@
         </b-button>
         <b-button
           class="align-items-center justify-content-between d-flex ms-2"
-          variant="link"
+          variant="light"
           :to="{
             name: 'activity',
             query: {

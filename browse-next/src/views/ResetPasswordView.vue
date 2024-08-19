@@ -43,13 +43,6 @@ const invalidResetToken = ref(false);
 const changedPassword = ref(false);
 const resetToken = ref("");
 const resetUser = ref<ApiLoggedInUserResponse | null>(null);
-const userName = computed(() => {
-  if (resetUser.value === null) {
-    return "";
-  }
-  return resetUser.value.userName;
-});
-
 const hasNonValidationError = computed({
   get: () => {
     // Validation error messages should be handled at the field level.
