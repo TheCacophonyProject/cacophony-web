@@ -131,6 +131,7 @@ export default function (
       where: {
         DeviceId: deviceId,
         GroupId: groupId,
+        location: { [Op.ne]: null },
       },
       order: [["fromDateTime", "DESC"]],
     });
@@ -143,6 +144,7 @@ export default function (
       setBy
     );
 
+    const synced = setBy === "automatic";
     // add to device history ledger
     if (changed) {
       await this.create({
@@ -153,6 +155,9 @@ export default function (
         setBy,
         settings,
       });
+    } else if (synced) {
+      // in place only if the device already had the settings so no change
+      await currentSettingsEntry.update("settings", settings);
     }
 
     return settings;

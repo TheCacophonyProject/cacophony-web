@@ -1459,6 +1459,7 @@ export default function (app: Application, baseUrl: string) {
         const where = {
           DeviceId: device.id,
           GroupId: device.GroupId,
+          location: { [Op.ne]: null },
         };
         console.log(where);
         debugger;

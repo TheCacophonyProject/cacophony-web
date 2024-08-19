@@ -46,15 +46,15 @@ const hasFlagged = computed<boolean>(
 
 const timespan = computed<string>(() => {
   const { searchParams, availableDateRanges } = props;
-  let timespan = "";
+  let timespan: string;
   if (
     queryValueIsDate(searchParams.from) &&
     queryValueIsDate(searchParams.until)
   ) {
     const from = new Date(searchParams.from as string | Date);
     const until = new Date(searchParams.until as string | Date);
-    let fromString = "";
-    let untilString = "";
+    let fromString: string;
+    let untilString: string;
     if (
       from.getFullYear() === until.getFullYear() &&
       from.getFullYear() === new Date().getFullYear()
@@ -156,7 +156,13 @@ const otherLabels = computed<string[]>(
         >
       </span>
     </span>
-    <span v-if="selectedDevices && selectedDevices !== 'all'">
+    <span
+      v-if="
+        selectedDevices &&
+        selectedDevices !== 'all' &&
+        searchParams.displayMode === ActivitySearchDisplayMode.Recordings
+      "
+    >
       for
       <strong v-for="(device, index) in selectedDevices" :key="index">
         <device-name :name="device.deviceName" :type="device.type" />

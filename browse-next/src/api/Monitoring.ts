@@ -81,8 +81,10 @@ export const getVisitsForProject = async (
   if (!shouldViewAsSuperUser.value) {
     params.append("view-mode", "user");
   }
+  const ABORTABLE = true;
   return (await CacophonyApi.get(
-    `/api/v1/monitoring/page?${params}`
+    `/api/v1/monitoring/page?${params}`,
+    ABORTABLE
   )) as FetchResult<VisitsQueryResult>;
 };
 

@@ -367,7 +367,6 @@ export default function (app: Application, baseUrl: string) {
           sqlDebugOutput(
             query,
             (Array.isArray(visits) && visits.length) || 0,
-            0,
             sqlTimings,
             sqlPasses,
             sequelizeTime

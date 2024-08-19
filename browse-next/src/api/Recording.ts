@@ -112,8 +112,6 @@ export interface QueryRecordingsOptions {
     | RecordingType.ThermalRaw
     | RecordingType.Audio
   )[];
-
-  countAll?: boolean;
 }
 
 export interface BulkRecordingsResponse {
@@ -159,9 +157,6 @@ export const queryRecordingsInProjectNew = (
   if (options.untilDateTime) {
     params.append("until", options.untilDateTime.toISOString());
   }
-  if (options.countAll) {
-    params.append("with-total-count", true.toString());
-  }
   if (options.limit) {
     params.append("max-results", options.limit.toString());
   }
@@ -186,8 +181,10 @@ export const queryRecordingsInProjectNew = (
   // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
   //  or we need to hold onto the pagination value.
   //return unwrapLoadedResource(
+  const ABORTABLE = true;
   return CacophonyApi.get(
-    `/api/v1/recordings/for-project/${projectId}?${params}`
+    `/api/v1/recordings/for-project/${projectId}?${params}`,
+    ABORTABLE
   ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
   //"rows"
   //);
@@ -250,31 +247,27 @@ export const getRecordingsForLocationsAndDevicesInProject = (
 export const getAllRecordingsForProjectBetweenTimes = async (
   projectId: ProjectId,
   query: QueryRecordingsOptions,
-  progressUpdater: (progress: number) => void
+  progressUpdater: () => void
 ): Promise<ApiRecordingResponse[]> => {
   query.limit = 1000;
   const recordings = [];
   let moreRecordingsToLoad = true;
-  let countEstimate = null;
   while (moreRecordingsToLoad) {
     const response = await queryRecordingsInProjectNew(projectId, {
       ...query,
-      ...(countEstimate === null ? { countAll: true } : {}),
     });
     if (response.success) {
       const result = response.result;
-      if (result.count && countEstimate === null) {
-        countEstimate = result.count;
-      }
       recordings.push(...result.recordings);
-      moreRecordingsToLoad = recordings.length < (countEstimate as number);
+      moreRecordingsToLoad = result.recordings.length !== 0;
+      // TODO: Show progress bar based on a linear interpolation of start vs end time.
       if (recordings.length) {
         query.untilDateTime = new Date(
           recordings[recordings.length - 1].recordingDateTime
         );
         query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
       }
-      progressUpdater(recordings.length / (countEstimate as number));
+      progressUpdater();
     }
   }
   return recordings;

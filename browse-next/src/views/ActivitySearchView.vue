@@ -88,7 +88,6 @@ import {
   type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
-import { getDevicesForProject, getLocationsForProject } from "@api/Project.ts";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
@@ -106,6 +105,7 @@ import ActivitySearchDescription from "@/components/ActivitySearchDescription.vu
 import { delayMs } from "@/utils.ts";
 import { tagsForRecording } from "@models/recordingUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
+import { CurrentViewAbortController } from "@/router";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -152,6 +152,21 @@ const locations = inject(allHistoricLocations) as ComputedRef<
 const devices = inject(selectedProjectDevices) as ComputedRef<
   ApiDeviceResponse[]
 >;
+
+watch(currentProject, async (next, prev) => {
+  if (next && prev && next.groupName !== prev.groupName) {
+    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
+    searchParams.value = initSearchParams();
+    prefilteredChunkedVisits.value = [];
+    chunkedRecordings.value = [];
+    currentQueryCursor.value.fromDateTime = null;
+    currentQueryCursor.value.untilDateTime = null;
+    dateRange.value = [null, null];
+    // FIXME: Maybe need to clear all search params, and reset internal queries such
+    //  that locations and devices and timespans that belong to other projects are removed.
+    await doSearch();
+  }
+});
 
 const arrayContentsAreTheSame = (
   a: LocationQueryValue[],
@@ -203,7 +218,7 @@ const DefaultSearchParams = {
   from: "24-hours-ago",
 };
 
-const searchParams = ref<ActivitySearchParams>({
+const initSearchParams = (): ActivitySearchParams => ({
   devices: "all",
   duration: "any",
   includeFalsePositives: false,
@@ -218,6 +233,8 @@ const searchParams = ref<ActivitySearchParams>({
   locations: ["any"],
   from: "24-hours-ago",
 });
+
+const searchParams = ref<ActivitySearchParams>(initSearchParams());
 
 const now = new Date();
 const oneDayAgo = new Date(new Date().setDate(now.getDate() - 1));
@@ -459,6 +476,10 @@ const syncSearchQuery = async (
   next: LocationQuery,
   prev: LocationQuery | undefined
 ) => {
+  if (route.name !== "activity") {
+    return;
+  }
+
   if (prev === undefined) {
     prev = DefaultSearchParams as LocationQuery;
   }
@@ -610,7 +631,7 @@ const selectedDevices = computed<ApiDeviceResponse[] | "all">(() => {
   }
   return (searchParams.value.devices as DeviceId[]).map((deviceId) =>
     (devices.value || []).find(({ id }) => id === deviceId)
-  );
+  ) as ApiDeviceResponse[];
 });
 
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
@@ -727,6 +748,10 @@ const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
   locationsInSelectedTimespan
 );
 
+interface MaybeDeletedRecording extends ApiRecordingResponse {
+  tombstoned?: boolean;
+}
+
 const loadedRecordings = ref<ApiRecordingResponse[]>([]);
 const loadedRecordingIds = ref<RecordingId[]>([]);
 
@@ -748,8 +773,8 @@ const currentTotalRecordings = computed<number>(() => {
 const canExpandSearchBackFurther = computed<boolean>(() => {
   return (
     currentQueryCursor.value.fromDateTime !== null &&
-    currentQueryCursor.value.fromDateTime.getTime() >
-      minDateForSelectedLocations.value.getTime()
+    Math.floor(currentQueryCursor.value.fromDateTime.getTime() / 1000) >
+      Math.floor(minDateForSelectedLocations.value.getTime() / 1000)
   );
 });
 const updatedRecording = (
@@ -761,7 +786,7 @@ const updatedRecording = (
   );
   if (loadedRecording) {
     if (recordingWasDeleted) {
-      loadedRecording.tombstoned = true;
+      (loadedRecording as MaybeDeletedRecording).tombstoned = true;
     } else {
       loadedRecording.tracks = recording.tracks;
       loadedRecording.tags = recording.tags;
@@ -819,12 +844,12 @@ const currentQueryLoaded = ref<number>(0);
 const completedCurrentQuery = ref<boolean>(false);
 
 let needsObserverUpdate = false;
-watch(filteredLoadedRecordings.value, (next, prev) => {
+watch(filteredLoadedRecordings, (next, prev) => {
   if (next && prev && next.length !== prev.length) {
     needsObserverUpdate = true;
   }
 });
-watch(chunkedVisits.value, (next, prev) => {
+watch(chunkedVisits, (next, prev) => {
   if (next && prev && next.length !== prev.length) {
     needsObserverUpdate = true;
   }
@@ -880,9 +905,9 @@ onUpdated(() => {
             for (const intersection of intersections) {
               if (intersection.isIntersecting) {
                 console.log("load more");
-                doSearch();
                 currentObserver && currentObserver.stop();
                 currentObserver = null;
+                doSearch();
                 break;
               }
             }
@@ -943,9 +968,9 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
       (loc) => (loc as ApiLocationResponse).id
     );
   }
-  const isAllDevices = selectedDevices.value.includes("all");
+  const isAllDevices = selectedDevices.value === "all";
   if (!isAllDevices) {
-    query.devices = selectedDevices.value.map(
+    query.devices = (selectedDevices.value as ApiDeviceResponse[]).map(
       (device) => (device as ApiDeviceResponse).id
     );
   }
@@ -1124,6 +1149,7 @@ const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
 const firstLoad = ref<boolean>(true);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   // NOTE: We try to load at most one month at a time.
+  let succeededWithoutAbort = true;
   if (currentProject.value) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
@@ -1174,13 +1200,11 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       );
     }
 
-    const hasNotLoadedAllOfQueryTimeRange =
-      (currentQueryCursor.value.fromDateTime as Date) > (fromDateTime as Date);
-
-    console.log(
-      "Has not loaded all of time range",
-      hasNotLoadedAllOfQueryTimeRange
-    );
+    const aa = new Date(currentQueryCursor.value.fromDateTime as Date);
+    const bb = new Date(fromDateTime as Date);
+    aa.setMilliseconds(0);
+    bb.setMilliseconds(0);
+    const hasNotLoadedAllOfQueryTimeRange = aa > bb;
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
@@ -1192,10 +1216,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       if (inRecordingsMode.value) {
         // NOTE: Not sure we need to ever get the total count for this query for the
         //  purposes of this UI?
-
+        CurrentViewAbortController.newView();
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
-          countAll: isNewQuery,
           limit: twoPagesWorth,
           fromDateTime: dateRange.value[0],
           untilDateTime: currentQueryCursor.value.untilDateTime as Date,
@@ -1206,7 +1229,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             | RecordingType.Audio
           )[],
         });
-        if (response.success && response.result.count) {
+        if (response && response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
         }
       } else {
@@ -1214,6 +1237,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         // TODO: This needs to have a limit
         // Make it the lesser of the current date range or 2 pages worth of days.
         //const pageSize = 100;
+        CurrentViewAbortController.newView();
         response = await getVisitsForProject(
           project.id,
           dateRange.value[0] as Date,
@@ -1240,14 +1264,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             recordings: ApiRecordingResponse[];
           }>;
           console.log("Got response", recordingsResponse);
-          // loadedFewerItemsThanRequested =
-          //   recordingsResponse.result.recordings.length < 100;
           const recordings = recordingsResponse.result.recordings;
           loadedRecordings.value.push(...recordings);
-          if (currentQueryCount.value) {
-            loadedFewerItemsThanRequested =
-              loadedRecordings.value.length < currentQueryCount.value;
-          }
+          loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
           loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
           appendRecordingsChunkedByDay(recordings);
           currentQueryLoaded.value += recordings.length;
@@ -1271,12 +1290,18 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               if (visits.length) {
                 lastVisit = visits[visits.length - 1];
                 gotUntilDate = new Date(lastVisit.timeStart);
+              } else {
+                gotUntilDate = undefined;
               }
             }
           }
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
           appendVisitsChunkedByDay(visits);
+          console.log("appending visits", visits.length);
+          if (visits.length === 0) {
+            //debugger;
+          }
         }
         if (gotUntilDate) {
           // Increment the cursor.
@@ -1288,6 +1313,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             minDateForSelectedLocations.value.getTime();
           if (loadedFewerItemsThanRequested) {
             if (reachedMinDateForSelectedLocations) {
+              console.log("Stopping observer");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1299,12 +1325,10 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               );
             }
           }
-          // FIXME - Not sure about placement of this.
-          completedCurrentQuery.value = true;
         } else {
           if (
             dateRange.value[0] &&
-            dateRange.value[0].getTime() ===
+            dateRange.value[0].getTime() <=
               minDateForSelectedLocations.value.getTime()
           ) {
             currentQueryCursor.value.fromDateTime = new Date(
@@ -1317,9 +1341,12 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           }
           completedCurrentQuery.value = true;
         }
+      } else {
+        succeededWithoutAbort = false;
       }
     }
   }
+  return succeededWithoutAbort;
 };
 
 const searching = ref<boolean>(false);
@@ -1331,10 +1358,10 @@ const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100
 );
 const doSearch = async () => {
-  if (!searching.value) {
-    searching.value = true;
-    await getClassifications();
-    await getRecordingsOrVisitsForCurrentQuery();
+  searching.value = true;
+  await getClassifications();
+  const success = await getRecordingsOrVisitsForCurrentQuery();
+  if (success) {
     searching.value = false;
   }
 };
@@ -1436,38 +1463,41 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
     const location = (locations.value || []).find(
       ({ id }) => id === recording.stationId
     );
-    if (location) {
-      const tags = tagsForRecording(recording);
-      const displays = [];
-      const labels = recording.tags.map((tag) => tag.detail);
-      for (const tag of tags) {
-        const display = displayLabelForClassificationLabel(
-          tag.what,
-          tag.automatic && !tag.human
-        );
-        displays.push(
-          `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
-        );
-      }
-      const row = [
-        recording.stationName || "",
-        `${recording.location?.lat}, ${recording.location?.lng}`,
-        recording.deviceName,
-        recording.recordingDateTime,
-        dayAndTimeAtLocation(recording.recordingDateTime, location.location),
-        formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
-        displays.join(", "),
-        labels.join(", "),
-      ];
-      if (isAudioMode) {
-        row.push(
-          ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
-            .map((index: { index_percent: number }) => index.index_percent)
-            .join(", ")
-        );
-      }
-      csv.push(row);
+
+    const tags = tagsForRecording(recording);
+    const displays = [];
+    const labels = recording.tags.map((tag) => tag.detail);
+    for (const tag of tags) {
+      const display = displayLabelForClassificationLabel(
+        tag.what,
+        tag.automatic && !tag.human
+      );
+      displays.push(
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+      );
     }
+    const row = [
+      recording.stationName || "unknown",
+      (recording.location &&
+        `${recording.location?.lat}, ${recording.location?.lng}`) ||
+        "unknown",
+      recording.deviceName,
+      recording.recordingDateTime,
+      (location &&
+        dayAndTimeAtLocation(recording.recordingDateTime, location.location)) ||
+        "unknown",
+      formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
+      displays.join(", "),
+      labels.join(", "),
+    ];
+    if (isAudioMode) {
+      row.push(
+        ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
+          .map((index: { index_percent: number }) => index.index_percent)
+          .join(", ")
+      );
+    }
+    csv.push(row);
   }
   return arrayToCsv(csv);
 };
@@ -1525,8 +1555,7 @@ const doExport = async () => {
       const recordings = await getAllRecordingsForProjectBetweenTimes(
         project.id,
         query,
-        (progress) => {
-          exportProgress.value = progress;
+        () => {
           exportTime.value = performance.now();
         }
       );
@@ -1556,6 +1585,14 @@ const fromDateMinusIncrement = computed<Date>(() => {
   return new Date(from);
 });
 
+const atMinimumTimeForSelectedLocations = computed<boolean>(() => {
+  return (
+    !!currentQueryCursor.value.fromDateTime &&
+    Math.floor(minDateForSelectedLocations.value.getTime() / 1000) ===
+      Math.floor(currentQueryCursor.value.fromDateTime.getTime() / 1000)
+  );
+});
+
 const relativeTimeIncrementInPast = computed<string>(() => {
   if (
     fromDateMinusIncrement.value.getTime() ===
@@ -1563,9 +1600,15 @@ const relativeTimeIncrementInPast = computed<string>(() => {
   ) {
     return "the earliest available date for this selection";
   }
+  const oneYear = 1000 * 60 * 60 * 24 * 365;
+  if (Date.now() - fromDateMinusIncrement.value.getTime() > oneYear) {
+    return DateTime.fromJSDate(fromDateMinusIncrement.value).toRelative({
+      unit: "months",
+    }) as string;
+  }
   return DateTime.fromJSDate(fromDateMinusIncrement.value).toRelative({
     round: true,
-    padding: 1000 * 60 * 60 * 24 * 14,
+    padding: 1000 * 60 * 60 * 24 * 14, //
   }) as string;
 });
 
@@ -1873,6 +1916,14 @@ onBeforeUnmount(() => {
           </button>
         </div>
         <div
+          v-else-if="atMinimumTimeForSelectedLocations"
+          class="d-flex justify-content-center"
+        >
+          <span class="text-center mb-2"
+            >No results for the selected locations before this time.</span
+          >
+        </div>
+        <div
           v-else-if="
             (searchParams.displayMode === 'recordings' &&
               filteredLoadedRecordings.length) ||
@@ -1930,11 +1981,20 @@ onBeforeUnmount(() => {
       :available-date-ranges="availableDateRanges"
       :search-params="searchParams"
     />
-    <b-progress :value="exportProgressZeroOneHundred" />
-    <span class="mt-1"
-      >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
-      elapsed</span
-    >
+    <div v-if="inVisitsMode">
+      <b-progress :value="exportProgressZeroOneHundred" />
+      <span class="mt-1"
+        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
+        elapsed</span
+      >
+    </div>
+    <div class="d-flex align-content-center align-items-center" v-else>
+      <b-spinner variant="secondary" class="me-3" />
+      <span class="mt-1"
+        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
+        elapsed</span
+      >
+    </div>
   </b-modal>
 </template>
 <style lang="less" scoped>

@@ -4,7 +4,11 @@ import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForProject } from "@api/Project";
-import type { SelectedProject } from "@models/LoggedInUser";
+import {
+  DevicesForCurrentProject,
+  type SelectedProject,
+  urlNormalisedCurrentProjectName,
+} from "@models/LoggedInUser";
 import type {
   CardTableItem,
   CardTableRow,
@@ -40,20 +44,34 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LoadedResource } from "@api/types.ts";
 import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
 
-const projectDevices = inject(selectedProjectDevices) as Ref<
-  ApiDeviceResponse[] | null
+const activeProjectDevices = inject(selectedProjectDevices) as Ref<
+  LoadedResource<ApiDeviceResponse[]>
 >;
+const allProjectDevices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
 const route = useRoute();
 const router = useRouter();
 const devices = computed<ApiDeviceResponse[]>(() => {
-  if (projectDevices.value) {
-    return projectDevices.value;
+  if (allProjectDevices.value !== null) {
+    if (showInactiveDevices.value) {
+      return allProjectDevices.value as ApiDeviceResponse[];
+    }
+    return (allProjectDevices.value as ApiDeviceResponse[]).filter(
+      (device) => device.active
+    );
+  }
+  if (activeProjectDevices.value && !showInactiveDevices.value) {
+    return activeProjectDevices.value;
   }
   return [];
 });
-const loadingDevices = ref<boolean>(false);
+const loadingDevices = computed<boolean>(() => {
+  if (showInactiveDevices.value) {
+    return allProjectDevices.value === null;
+  }
+  return activeProjectDevices.value === null;
+});
 const currentlyPoweredOnDevices = ref<ApiDeviceResponse[]>([]);
 
 const noWrap = (str: string) => str.replace(/ /g, "&nbsp;");
@@ -92,21 +110,27 @@ watch(route, async (next) => {
   ) {
     showInactiveDevicesInternal.value = showInactiveDevices.value;
     showInactiveDevicesInternalCheck.value = showInactiveDevices.value;
-    await loadDevices();
+    if (
+      allProjectDevices.value === null &&
+      activeProjectDevices.value !== null
+    ) {
+      allProjectDevices.value = [...(activeProjectDevices.value || [])];
+    }
+    await reloadAllDevices();
   }
 });
 
-const loadDevices = async () => {
-  console.warn("RELOAD DEVICES");
-  loadingDevices.value = true;
+const reloadAllDevices = async () => {
   const devicesResponse = await getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
-    showInactiveDevicesInternal.value
+    true
   );
   if (devicesResponse) {
-    projectDevices.value = devicesResponse;
+    allProjectDevices.value = devicesResponse;
+    DevicesForCurrentProject.value = devicesResponse.filter(
+      (device) => device.active
+    );
   }
-  loadingDevices.value = false;
   showCreateProxyDevicePrompt.value = false;
   const _ = findProbablyOnlineDevices();
 };
@@ -115,7 +139,7 @@ const findProbablyOnlineDevices = async () => {
   // For each healthy device (which is on standby if not known otherwise)
   // get the recording windows, and show a different icon if they're expected to be online now.
   const healthyDevices =
-    projectDevices.value?.filter((device) => device.isHealthy) || [];
+    activeProjectDevices.value?.filter((device) => device.isHealthy) || [];
   const configPromises = [];
   for (const device of healthyDevices) {
     configPromises.push(getDeviceConfig(device.id));
@@ -125,7 +149,7 @@ const findProbablyOnlineDevices = async () => {
     const poweredOnDevices = [];
     for (const config of configs) {
       if (config) {
-        const device = projectDevices.value?.find(
+        const device = activeProjectDevices.value?.find(
           (device) => device.id === config.device.id
         );
         if (device) {
@@ -145,14 +169,15 @@ const findProbablyOnlineDevices = async () => {
 };
 
 onBeforeMount(async () => {
-  if (showInactiveDevices.value) {
-    // Inactive devices are not provided by default
-    await loadDevices();
-  } else {
-    await projectDevicesLoaded();
+  if (route.name === "devices") {
+    if (showInactiveDevices.value) {
+      // Inactive devices are not provided by default
+      await reloadAllDevices();
+    } else {
+      await projectDevicesLoaded();
+    }
     const _ = findProbablyOnlineDevices();
-  }
-  if (selectedDevice.value) {
+  } else if (selectedDevice.value) {
     await getSelectedDeviceLocation();
   }
 });
@@ -164,22 +189,19 @@ onBeforeMount(async () => {
 
 // Maybe just popup modals?  Upload modal.  Info modal
 
-type DeviceStatus = "online" | "standby" | "stopped" | "-";
+type DeviceStatus = "online" | "standby" | "stopped or offline" | "-";
 const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
     (poweredDevice) => poweredDevice.id === device.id
   );
-
-  // TODO: isHealthy relates to devices that have a heartbeart.
-  // In the absence of a heartbeat, we should be able to look at whether we've ever heard from this device,
-  // and if so, have we heard from it within the last 24 hours?
-
-  return device.hasOwnProperty("isHealthy") && device.active
+  return device.hasOwnProperty("isHealthy") &&
+    device.active &&
+    device.type !== DeviceType.TrailCam
     ? device.isHealthy
       ? isPoweredOn
         ? "online"
         : "standby"
-      : "stopped"
+      : "stopped or offline"
     : "-";
 };
 const colorForStatus = (status: DeviceStatus): string => {
@@ -188,7 +210,7 @@ const colorForStatus = (status: DeviceStatus): string => {
       return "#666";
     case "standby":
       return "#e7bc0b";
-    case "stopped":
+    case "stopped or offline":
       return "#be0000";
     case "online":
       return "#6dbd4b";
@@ -376,7 +398,7 @@ const someDevicesHaveKnownLocations = computed<boolean>(() =>
 
 const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
   await deleteDevice(selectedProject.value.id, deviceId);
-  await loadDevices();
+  await reloadAllDevices();
 };
 
 const deleteConfirmationLabelForDevice = (
@@ -459,28 +481,35 @@ const isDevicesRoot = computed(() => {
 });
 </script>
 <template>
-  <section-header class="justify-content-between border-1 align-items-center">
-    <device-name
+  <section-header class="justify-content-between align-items-center">
+    <div
       v-if="selectedDevice"
-      :name="(selectedDevice as ApiDeviceResponse).deviceName"
-      :type="(selectedDevice as ApiDeviceResponse).type"
-      :to="(deviceLocation ? {
-          name: 'activity',
-          query: {
-            devices: [selectedDevice.id],
-            locations: [deviceLocation.id],
-            until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
-            from: (selectedDeviceActiveFrom as Date).toISOString(),
-            'display-mode': 'recordings',
-            'recording-mode': deviceRecordingMode
-          },
-        } : null)"
+      class="d-flex justify-content-between align-items-center flex-grow-1"
     >
       <b-button
-        class="ms-4 align-items-center d-none d-md-flex"
-        variant="outline-secondary"
-        v-if="deviceLocation"
+        class="ps-0 py-0 d-none d-md-flex"
+        variant="link"
         :to="{
+          name: 'devices',
+          params: {
+            projectName: urlNormalisedCurrentProjectName,
+          },
+        }"
+      >
+        <font-awesome-icon icon="arrow-left" size="lg" color="#333" />
+      </b-button>
+      <div
+        class="d-flex flex-grow-1 justify-content-between align-items-center"
+      >
+        <device-name
+          :name="(selectedDevice as ApiDeviceResponse).deviceName"
+          :type="(selectedDevice as ApiDeviceResponse).type"
+        >
+          <b-button
+            class="ms-4 align-items-center d-none d-md-flex"
+            variant="outline-secondary"
+            v-if="deviceLocation"
+            :to="{
           name: 'activity',
           query: {
             devices: [selectedDevice.id],
@@ -491,15 +520,17 @@ const isDevicesRoot = computed(() => {
             'recording-mode': deviceRecordingMode
           },
         }"
-        ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
-        <font-awesome-icon
-          icon="arrow-turn-down"
-          :rotation="270"
-          size="xs"
-          class="ps-1"
-        />
-      </b-button>
-    </device-name>
+            ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
+            <font-awesome-icon
+              icon="arrow-turn-down"
+              :rotation="270"
+              size="xs"
+              class="ps-1"
+            />
+          </b-button>
+        </device-name>
+      </div>
+    </div>
     <span v-else>Devices</span>
   </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->
@@ -515,7 +546,7 @@ const isDevicesRoot = computed(() => {
   <!--  </ul>-->
 
   <div v-if="isDevicesRoot">
-    <b-spinner v-if="!projectDevices" />
+    <b-spinner v-if="loadingDevices" />
     <div v-else>
       <div v-if="devices.length">
         <!-- active-points was devicesSeenInThePast24Hours -->
@@ -696,7 +727,7 @@ const isDevicesRoot = computed(() => {
     <create-proxy-device-modal
       v-model="showCreateProxyDevicePrompt"
       id="create-proxy-device-modal"
-      @proxy-device-created="loadDevices"
+      @proxy-device-created="reloadAllDevices"
     />
   </div>
   <router-view v-else></router-view>

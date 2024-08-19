@@ -1738,7 +1738,7 @@ export const fetchUnauthorizedRequiredUserByResetToken =
     try {
       resetInfo = getDecodedToken(token);
     } catch (e) {
-      return next(new AuthenticationError(`Reset token expired`));
+      return next(e);
     }
     response.locals.resetInfo = resetInfo;
     const user = await models.User.findByPk(response.locals.resetInfo.id);

@@ -16,6 +16,7 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import { formFieldInputText, type FormInputValidationState } from "@/utils.ts";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import CardTable from "@/components/CardTable.vue";
+import type { LoadedResource } from "@api/types.ts";
 interface Point {
   x: number;
   y: number;
@@ -36,15 +37,15 @@ const regionsProvided = inject(
   ),
   true
 );
+
 const regions = ref<
   Record<string, { regionData: Region; alertOnEnter?: boolean }>
 >({});
 const points = reactive<Point[]>([]);
 const { pixelRatio: devicePixelRatio } = useDevicePixelRatio();
-const latestStatusRecording: Ref<ApiRecordingResponse | null> = inject(
-  "latestStatusRecording",
-  ref(null)
-);
+const latestStatusRecording = inject("latestStatusRecording") as Ref<
+  LoadedResource<ApiRecordingResponse>
+>;
 const route = useRoute();
 const deviceId = Number(route.params.deviceId) as DeviceId;
 const submittingNewRegionRequest = ref<boolean>(false);
@@ -578,7 +579,7 @@ watch(
         <cptv-single-frame
           :width="'100%'"
           :recording="latestStatusRecording"
-          apron-pixels="8"
+          :apron-pixels="8"
           ref="singleFrameCanvas"
           :smoothing="false"
         />

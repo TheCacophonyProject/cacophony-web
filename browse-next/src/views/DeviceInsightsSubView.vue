@@ -3,7 +3,6 @@ import { computed, inject, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
-  getLatestStatusRecordingForDevice,
   getLocationHistory,
   getTracksWithTagForDeviceInProject,
   getUniqueTrackTagsForDeviceInProject,
@@ -21,12 +20,15 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import type { LoadedResource } from "@api/types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { DateTime } from "luxon";
+import { DeviceType } from "@typedefs/api/consts.ts";
 
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
 const project = inject(currentSelectedProject) as Ref<SelectedProject>;
-const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
+const latestStatusRecording = inject("latestStatusRecording") as Ref<
+  LoadedResource<ApiRecordingResponse>
+>;
 const route = useRoute();
 const deviceId = computed<number>(
   () => Number(route.params.deviceId) as DeviceId
@@ -97,15 +99,6 @@ onMounted(async () => {
     await projectDevicesLoaded();
   }
   if (device.value) {
-    if (device.value.type === "thermal") {
-      const latestStatus = await getLatestStatusRecordingForDevice(
-        device.value.id,
-        device.value.groupId
-      );
-      if (latestStatus) {
-        latestStatusRecording.value = latestStatus;
-      }
-    }
     // How long has the device been in its current location?  That's the timespan we care about by default.
     const locationHistory = await getLocationHistory(deviceId.value);
     if (locationHistory && locationHistory.length) {

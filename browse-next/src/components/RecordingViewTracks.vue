@@ -12,7 +12,7 @@ import type {
   ApiTrackDataRequest,
   ApiTrackResponse,
 } from "@typedefs/api/track";
-import { type TrackId, type TrackTagId } from "@typedefs/api/common";
+import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   addRecordingLabel,
   createDummyTrack,
@@ -471,7 +471,8 @@ const numFalseTriggers = computed<number>(() => {
           tag.what === "false-positive" &&
           tag.data &&
           (tag.data as TrackTagData).name === "Master"
-      )
+      ) &&
+      !userTags.length
     ) {
       falseTriggerCount++;
     }

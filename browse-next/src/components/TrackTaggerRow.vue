@@ -121,6 +121,8 @@ const expanded = computed<boolean>(() => {
   );
 });
 
+const expandedOnce = ref<boolean>(false);
+
 const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
@@ -128,6 +130,7 @@ const handleExpansion = (isExpanding: boolean) => {
         (trackDetails.value as HTMLDivElement).scrollHeight
       }px`;
     }
+    expandedOnce.value = true;
   } else {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = "0";
@@ -460,7 +463,7 @@ onMounted(async () => {
         >
         <!-- Controversial tag, should be automatically flagged for review. -->
         <span
-          class="classification text-capitalize d-inline-block fw-bold"
+          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
           v-else-if="
             !consensusUserTag &&
             masterTag &&
@@ -471,7 +474,7 @@ onMounted(async () => {
               .map((tag) => displayLabelForClassificationLabel(tag))
               .join(", ")
           }}
-          <span class="strikethrough">{{
+          <span class="strikethrough conflicting-tags">{{
             displayLabelForClassificationLabel(masterTag.what)
           }}</span></span
         >
@@ -584,6 +587,7 @@ onMounted(async () => {
           ><font-awesome-icon icon="thumbtack" />
         </span>
         <tag-image
+          v-if="expandedOnce"
           :tag="tag.label"
           width="24"
           height="24"
@@ -807,6 +811,9 @@ onMounted(async () => {
 .strikethrough {
   text-decoration: line-through;
   color: rgba(126, 42, 42, 0.75);
+  &.conflicting-tags {
+    color: #666;
+  }
 }
 .conflicting-tags {
   color: darkred;

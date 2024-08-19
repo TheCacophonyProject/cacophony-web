@@ -5,8 +5,8 @@ import {
   extractTokenStartingWith,
   startMailServerStub,
   waitForEmail,
+  RESET_PASSWORD_PREFIX,
 } from "@commands/emailUtils";
-import { getCreds } from "@commands/server";
 const apiRoot = `${Cypress.env("cacophony-api-server")}/api/v1`;
 const cyEl = (str: string) => {
   return cy.get(`[data-cy='${str}']`);
@@ -46,9 +46,21 @@ const signInExistingUser = (userName: string, password: string) => {
 const createProjectFromInitialSetup = (project: string) => {
   cy.url().should("contain", "/setup");
   cyEl("create new project button").click();
-  cyEl("new project name").type(project);
+  cy.log("Create project", project);
+  cyEl("new project name").type(project, { force: true });
+  cyEl("new project name").should("have.value", project);
   cyEl("create project button").click();
+  // We should be taken to the project page (probably the dashboard page?)
+  cy.url().should("contain", urlNormaliseProjectName(project));
+};
 
+const createNewProject = (project: string) => {
+  cyEl("switch or join project button").click();
+  cyEl("create new project button").click();
+  cy.log("Create project", project);
+  cyEl("new project name").type(project, { force: true });
+  cyEl("new project name").should("have.value", project);
+  cyEl("create project button").click();
   // We should be taken to the project page (probably the dashboard page?)
   cy.url().should("contain", urlNormaliseProjectName(project));
 };
@@ -96,7 +108,7 @@ describe("New users can sign up and confirm their email address", () => {
     createProjectFromInitialSetup(project2);
     cyEl("switch or join project button").click();
     cyEl("join existing project button").click();
-    cyEl("project admin email address").type(getEmail(user1));
+    cyEl("project admin email address").type(getEmail(user1), { force: true });
     cyEl("list joinable projects button").click();
 
     // Since there is only one project, it won't show a list of options to choose from.
@@ -105,7 +117,7 @@ describe("New users can sign up and confirm their email address", () => {
     signOut();
 
     waitForEmail("join request").then((email) => {
-      const { payload, token } = extractTokenStartingWith(
+      const { token } = extractTokenStartingWith(
         email,
         JOIN_GROUP_REQUEST_PREFIX
       );
@@ -115,6 +127,10 @@ describe("New users can sign up and confirm their email address", () => {
       cy.url().should("contain", urlNormaliseProjectName(project1));
       cy.visit(`/confirm-project-membership-request/${token}`);
       cy.url().should("contain", urlNormaliseProjectName(project1));
+      signOut();
+      // Now if alice signs in, she should see the project in her projects list.
+      signInExistingUser(user2, password);
+      cyEl("switch project button").should("exist");
     });
   });
 
@@ -195,7 +211,7 @@ describe("New users can sign up and confirm their email address", () => {
     confirmNewUserEmailAddress(user2);
     cy.url().should("contain", "/setup");
     cyEl("join existing project button").click();
-    cyEl("project admin email address").type(getEmail(user1));
+    cyEl("project admin email address").type(getEmail(user1), { force: true });
 
     cyEl("list joinable projects button").click();
     // Since there is only one project, it won't show a list of options to choose from.
@@ -227,7 +243,7 @@ describe("New users can sign up and confirm their email address", () => {
 
     cy.visit(`/${urlNormaliseProjectName(project)}/settings/users`);
     cyEl("invite someone to project button").click();
-    cyEl("invitee email address").type(getEmail(user2));
+    cyEl("invitee email address").type(getEmail(user2), { force: true });
     modalOkayButton("invite-someone-modal").click();
     signOut();
 
@@ -265,15 +281,12 @@ describe("New users can sign up and confirm their email address", () => {
     cy.log("Alice invites Bob to her project Alice-project");
     cy.visit(`/${urlNormaliseProjectName(project2)}/settings/users`);
     cyEl("invite someone to project button").click();
-    cyEl("invitee email address").type(getEmail(user1));
+    cyEl("invitee email address").type(getEmail(user1), { force: true });
     modalOkayButton("invite-someone-modal").click();
     signOut();
 
     waitForEmail("invite").then((email) => {
-      const { payload, token } = extractTokenStartingWith(
-        email,
-        ACCEPT_INVITE_PREFIX
-      );
+      const { token } = extractTokenStartingWith(email, ACCEPT_INVITE_PREFIX);
       cy.log("Bob signs in and accepts the email link");
       signInExistingUser(user1, password);
       cy.url().should("contain", urlNormaliseProjectName(project1));
@@ -282,7 +295,7 @@ describe("New users can sign up and confirm their email address", () => {
     });
   });
 
-  it("Logged in user with a project invite link is able to accept the invitation", () => {
+  it.only("Logged in user with a project invite link is able to accept the invitation", () => {
     cy.log("User 1 registers and creates a project");
     const user1 = uniqueName("Bob");
     const password1 = uniqueName("pass");
@@ -296,32 +309,83 @@ describe("New users can sign up and confirm their email address", () => {
     const user2 = uniqueName("Alice");
     const password2 = uniqueName("pass");
     const project2 = uniqueName("project");
+
     registerNewUser(user2, password2);
     confirmNewUserEmailAddress(user2);
     createProjectFromInitialSetup(project2);
 
     cy.log("User 2 invites User 1 to their project");
-    cy.visit(`/${user2})}/settings/users`);
+    cy.visit(`/${urlNormaliseProjectName(project2)}/settings/users`);
     cyEl("invite someone to project button").click();
-    cyEl("invitee email address").type(getEmail(user1));
+    cyEl("invitee email address").type(getEmail(user1), { force: true });
     modalOkayButton("invite-someone-modal").click();
     signOut();
 
     cy.log("User 1 signs in and accepts the email link");
     signInExistingUser(user1, password1);
     waitForEmail("invite").then((email) => {
-      const { payload, token } = extractTokenStartingWith(
-        email,
-        ACCEPT_INVITE_PREFIX
-      );
+      const { token } = extractTokenStartingWith(email, ACCEPT_INVITE_PREFIX);
       cy.url().should("contain", urlNormaliseProjectName(project1));
       cy.visit(`/accept-invite/${token}`);
       cy.url().should("contain", urlNormaliseProjectName(project2));
+      signOut();
+
+      cy.log(
+        "Logged out user with a project invite link should be able to accept the invitation after login"
+      );
+      signInExistingUser(user2, password2);
+      const project3 = uniqueName("project");
+      createNewProject(project3);
+      cy.visit(`/${urlNormaliseProjectName(project3)}/settings/users`);
+      cyEl("invite someone to project button").click();
+      cyEl("invitee email address").type(getEmail(user1), { force: true });
+      modalOkayButton("invite-someone-modal").click();
+      signOut();
+      cy.url().should("contain", "sign-in");
+
+      waitForEmail("invite-2").then((email) => {
+        const { token } = extractTokenStartingWith(email, ACCEPT_INVITE_PREFIX);
+        cy.log("Accepting project invite while logged out");
+        cy.visit(`/accept-invite/${token}`);
+        signInExistingUser(user1, password1);
+        // Now the invite should be accepted, and we should be able redirected to the project
+        cy.url().should("contain", urlNormaliseProjectName(project3));
+      });
     });
   });
 
-  it("Logged out user with a project invite link is able to accept the invitation after login", () => {
-    // TODO:
+  it("User is able to reset their forgotten password", () => {
+    cy.log("User 1 registers and creates a project");
+    const user = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const newPassword = uniqueName("pass");
+    const project = uniqueName("project");
+    registerNewUser(user, password);
+    confirmNewUserEmailAddress(user);
+    createProjectFromInitialSetup(project);
+    signOut();
+    cy.log("User clicks forgotten password link");
+    cyEl("forgotten password link").click();
+    cy.url().should("contain", "forgot-password");
+    cyEl("user email address").type(getEmail(user), { force: true });
+    cyEl("send reset password email button").click();
+
+    waitForEmail("reset-email").then((email) => {
+      const { token } = extractTokenStartingWith(email, RESET_PASSWORD_PREFIX);
+      cy.visit(`/reset-password/${token}`);
+      cy.url().should("contain", "reset-password");
+
+      cyEl("new password field").type(newPassword, { force: true });
+      cyEl("new password confirmation field").type(newPassword, {
+        force: true,
+      });
+      cyEl("reset password button").click();
+      cyEl("sign in button").click();
+
+      cy.url().should("contain", "sign-in");
+      signInExistingUser(user, newPassword);
+      cy.url().should("contain", urlNormaliseProjectName(project));
+    });
   });
 
   it("Legacy browse users can sign in and have the option of confirming their current email address or choosing a new one", () => {
@@ -343,14 +407,14 @@ describe("New users can sign up and confirm their email address", () => {
     cy.log("Check that user can change their display name");
     cyEl("change display name button").click();
     const newDisplayName = uniqueName("Bob updated");
-    cyEl("display name").type(newDisplayName);
+    cyEl("display name").type(newDisplayName, { force: true });
     modalOkayButton("change-display-name").click();
     expect(cyEl("user display name").contains(newDisplayName)).to.exist;
 
     cy.log("Un-confirm user email address by changing email");
     cyEl("change email address button").click();
     const newEmailAddress = getEmail(newDisplayName);
-    cyEl("email address").type(newEmailAddress);
+    cyEl("email address").type(newEmailAddress, { force: true });
     modalOkayButton("change-email-address").click();
 
     cy.url().should("contain", "/setup");
@@ -370,7 +434,7 @@ describe("New users can sign up and confirm their email address", () => {
       "Check that we can correctly choose another email address from here"
     );
     const evenNewerEmailAddress = getEmail(uniqueName("Bob3"));
-    cyEl("new email address").type(evenNewerEmailAddress);
+    cyEl("new email address").type(evenNewerEmailAddress, { force: true });
     cyEl("update email address button").click();
   });
 });

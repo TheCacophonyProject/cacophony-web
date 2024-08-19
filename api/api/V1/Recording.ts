@@ -2461,7 +2461,6 @@ export default (app: Application, baseUrl: string) => {
         ),
       query("sub-class-tags").default(true).isBoolean().toBoolean(),
       query("include-deleted").default(false).isBoolean().toBoolean(),
-      query("with-total-count").default(false).isBoolean().toBoolean(),
       query("tag-mode")
         .default(TagMode.Any)
         .isString()
@@ -2484,7 +2483,6 @@ export default (app: Application, baseUrl: string) => {
           return true;
         }),
       integerOf(query("max-results"), 200),
-      integerOf(query("page-num")).optional(),
       query("processing-state")
         .optional()
         .isString()
@@ -2529,13 +2527,11 @@ export default (app: Application, baseUrl: string) => {
     //fetchUnauthorizedRequiredGroupByNameOrId(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
       // TODO: Allow this API to be used for retrieving the latest status recording.
-
       try {
         const query = request.query;
         const projectId = response.locals.group.id;
         // Return a max of 200 recordings at once
-        const limit = Math.min(query["max-results"] as unknown as number, 1000);
-        const offset = ((query["page-num"] as unknown as number) || 0) * limit;
+        let limit = Math.min(query["max-results"] as unknown as number, 1000);
         let tagMode = query["tag-mode"] as TagMode;
         const taggedWith =
           tagMode === TagMode.UnTagged
@@ -2566,9 +2562,9 @@ export default (app: Application, baseUrl: string) => {
         const processingState = query["processing-state"] as unknown as
           | RecordingProcessingState
           | undefined;
-        const fromDate = query.from as unknown as Date | undefined;
+        // NOTE: Earliest time in Cacophony DB
+        let fromDate = query.from as unknown as Date | undefined;
         const untilDate = query.until as unknown as Date | undefined;
-        const withTotalCount = query["with-total-count"] as unknown as boolean;
 
         // NOTE: The query strategy used here is to do two passes:
         //  The first to find recordings that match the tag constraints, and the second to query those recordings getting
@@ -2600,34 +2596,146 @@ export default (app: Application, baseUrl: string) => {
               sqlTimings.push(time);
             }
           };
-        const logging = loggingFn(sqlPasses, sqlTimings);
-        const { count, recordingIds } = await queryRecordingsInProject(
-          models,
-          projectId,
-          minDuration,
-          includeDeletedRecordings,
-          types,
-          processingState,
-          devices,
-          locations,
-          taggedWith,
-          subClassTags,
-          labelledWith,
-          tagMode,
-          includeFilteredTracks,
-          withTotalCount,
-          limit,
-          fromDate,
-          untilDate,
-          offset,
-          logging
+        const logging = query.debug
+          ? loggingFn(sqlPasses, sqlTimings)
+          : undefined;
+        const latestDate = (a: Date, b: Date): Date => {
+          if (a > b) {
+            return new Date(a);
+          }
+          return new Date(b);
+        };
+        const dateTimeMinusThreeMonths = (date: Date): Date => {
+          const d = new Date(date);
+          d.setDate(d.getDate() - 90);
+          return d;
+        };
+        // NOTE: On large projects with lots of recordings over longer time-spans, this will always get slow if we request
+        //  recordings over "All time".  To help with this, we start with a smaller timespan and progressively widen it
+        //  until we get the number of `limit` to return.  Typically a window of up to 3 months seems to remain responsive.
+
+        let fromDateTime: Date;
+        let untilDateTime: Date;
+        const earliestAllowedDate = new Date("2017-11-01 17:06:58.015 +1300");
+        if (!untilDate) {
+          // NOTE: In order to do less queries when an until date isn't supplied,
+          //  we do an initial query with a limit of 1 where we find the latest result for the query.
+          const rec = await queryRecordingsInProject(
+            models,
+            projectId,
+            minDuration,
+            includeDeletedRecordings,
+            types,
+            processingState,
+            devices,
+            locations,
+            taggedWith,
+            subClassTags,
+            labelledWith,
+            tagMode,
+            includeFilteredTracks,
+            1,
+            undefined,
+            undefined,
+            logging
+          );
+          if (rec.length === 0) {
+            return successResponse(response, "Got recordings", {
+              recordings: [],
+            });
+          } else {
+            untilDateTime = new Date(rec[0].recordingDateTime);
+            untilDateTime.setMinutes(untilDateTime.getMinutes() + 1);
+          }
+        } else {
+          untilDateTime = new Date(untilDate);
+        }
+        if (!fromDate) {
+          const rec = await queryRecordingsInProject(
+            models,
+            projectId,
+            minDuration,
+            includeDeletedRecordings,
+            types,
+            processingState,
+            devices,
+            locations,
+            taggedWith,
+            subClassTags,
+            labelledWith,
+            tagMode,
+            includeFilteredTracks,
+            1,
+            undefined,
+            undefined,
+            logging,
+            "asc"
+          );
+          if (rec.length === 0) {
+            fromDateTime = new Date(earliestAllowedDate);
+          } else {
+            fromDateTime = new Date(rec[0].recordingDateTime);
+          }
+          fromDate = fromDateTime;
+        } else {
+          fromDateTime = new Date(fromDate);
+        }
+
+        const accumulatedRecordingIds = [];
+        const requestedLimit = limit;
+
+        fromDateTime = latestDate(
+          fromDateTime,
+          dateTimeMinusThreeMonths(untilDateTime)
         );
+        while (accumulatedRecordingIds.length < requestedLimit) {
+          const recordings = await queryRecordingsInProject(
+            models,
+            projectId,
+            minDuration,
+            includeDeletedRecordings,
+            types,
+            processingState,
+            devices,
+            locations,
+            taggedWith,
+            subClassTags,
+            labelledWith,
+            tagMode,
+            includeFilteredTracks,
+            limit,
+            fromDateTime,
+            untilDateTime,
+            logging
+          );
+          if (recordings.length === 0 && fromDateTime <= fromDate) {
+            break;
+          }
+          if (recordings.length !== 0) {
+            limit -= recordings.length;
+            const earliestRecordingTime = new Date(
+              recordings[recordings.length - 1].recordingDateTime
+            );
+            accumulatedRecordingIds.push(...recordings.map(({ id }) => id));
+            untilDateTime = earliestRecordingTime; //
+            fromDateTime = latestDate(
+              fromDate,
+              dateTimeMinusThreeMonths(untilDateTime)
+            );
+          } else {
+            untilDateTime = fromDateTime;
+            fromDateTime = latestDate(
+              fromDate,
+              dateTimeMinusThreeMonths(fromDateTime)
+            );
+          }
+        }
         // NOTE: Finally, just query for the recordings we want by their ids.
         let fullRecordings = [];
-        if (recordingIds.length) {
+        if (accumulatedRecordingIds.length) {
           fullRecordings = await models.Recording.findAll({
             where: {
-              id: { [Op.in]: recordingIds },
+              id: { [Op.in]: accumulatedRecordingIds },
             },
             include: [
               {
@@ -2706,13 +2814,9 @@ export default (app: Application, baseUrl: string) => {
         const recs = fullRecordings.map((x) => mapRecordingResponse(x, true));
         const sequelizeTime = performance.now() - now;
         if (!query.debug) {
-          const data = {
+          return successResponse(response, "Got recordings", {
             recordings: recs,
-          };
-          if (withTotalCount) {
-            (data as any).count = count;
-          }
-          return successResponse(response, "Got recordings", data);
+          });
         } else {
           return response
             .status(200)
@@ -2720,7 +2824,6 @@ export default (app: Application, baseUrl: string) => {
               sqlDebugOutput(
                 query,
                 recs.length,
-                count,
                 sqlTimings,
                 sqlPasses,
                 sequelizeTime

@@ -74,9 +74,9 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <h1 v-if="checkingValidateEmailToken">
-    <span class="spinner-border-sm spinner-border"></span> Accepting invite
-  </h1>
+  <div v-if="checkingValidateEmailToken">
+    <b-spinner size="xl" />&nbsp;<span class="h1">Accepting invite</span>
+  </div>
   <div v-else-if="!isValidValidateToken">
     <span>Error: Accepting invite failed</span>
     {{ validateError }}

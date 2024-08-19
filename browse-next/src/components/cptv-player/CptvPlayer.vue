@@ -499,7 +499,10 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       if (await cptvDecoder.hasStreamError()) {
         streamLoadError.value = await cptvDecoder.getStreamError();
         await cptvDecoder.free();
+      }
+      if (frames.length !== 0) {
         totalFrames.value = frames.length;
+        console.log("total frames", totalFrames.value);
       }
       break;
     }
@@ -1029,7 +1032,6 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       return;
     }
     // Make sure everything is loaded to ensure that we have final min/max numbers for normalisation
-    //await ensureEntireFileIsLoaded();
     await makeSureWeHaveTheFrame(100000);
 
     if (await cptvDecoder.hasStreamError()) {
@@ -1053,13 +1055,19 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     const numTotalFrames = totalFrames.value || 0;
     let startFrame = 0;
     let onePastLastFrame = numTotalFrames;
+    let options: TrackExportOption[];
+    if (useExportOptions.length) {
+      options = useExportOptions;
+    } else {
+      options = trackExportOptions.value;
+    }
     if (
-      trackExportOptions.value.filter((track) => track.includeInExportTime)
-        .length !== 0
+      options.filter((track) => track.includeInExportTime).length !== 0 &&
+      props.exportRequested === "advanced"
     ) {
       startFrame = numTotalFrames;
       onePastLastFrame = 0;
-      for (const { includeInExportTime, trackId } of trackExportOptions.value) {
+      for (const { includeInExportTime, trackId } of options) {
         if (includeInExportTime) {
           const track = (props.recording as ApiRecordingResponse).tracks.find(
             (track) => track.id === trackId
@@ -2463,7 +2471,7 @@ watch(
   .video-canvas {
     width: 100%;
     height: 100%;
-    max-width: 100vh;
+    //max-width: 100vh;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     &.smoothed {

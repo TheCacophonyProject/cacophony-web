@@ -79,8 +79,7 @@ const hasError = computed<boolean>(() => {
           Trailcam name cannot be blank
         </span>
         <span v-else-if="newDeviceName.value.trim().length < 3">
-          Trailcam name must be at least 3 characters // TODO - device name
-          regex (include macrons)
+          Trailcam name must be at least 3 characters
         </span>
       </b-form-invalid-feedback>
     </b-form>

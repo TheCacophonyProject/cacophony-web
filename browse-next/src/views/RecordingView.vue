@@ -40,7 +40,6 @@ import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
-import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import { API_ROOT } from "@api/root";
 import {
@@ -103,7 +102,7 @@ const requestLoadMoreRecordingsInPast = inject(
   () => {
     //
   }
-) as () => void;
+) as () => Promise<void>;
 const currentRecordingCount = inject(
   "currentRecordingCount",
   ref(0)
@@ -1100,6 +1099,13 @@ const recordingType = computed<RecordingType | null>(() => {
   return null;
 });
 
+interface MaybeDeletedRecording extends ApiRecordingResponse {
+  tombstoned?: boolean;
+}
+interface MaybeDeletedVisit extends ApiVisitResponse {
+  tombstoned?: boolean;
+}
+
 const deleteRecording = async () => {
   if (recording.value) {
     const recordingIdToDelete = recording.value.id;
@@ -1152,7 +1158,7 @@ const deleteRecording = async () => {
           if (targetVisit.recordings.length !== 0) {
             await mutateCurrentVisit(targetVisit);
           } else {
-            (targetVisit as any).tombstoned = true;
+            (targetVisit as MaybeDeletedVisit).tombstoned = true;
           }
         }
       } else {
@@ -1160,7 +1166,7 @@ const deleteRecording = async () => {
           (rec) => rec.id === recordingIdToDelete
         );
         if (targetRecording) {
-          (targetRecording as any).tombstoned = true;
+          (targetRecording as MaybeDeletedRecording).tombstoned = true;
         }
       }
     }

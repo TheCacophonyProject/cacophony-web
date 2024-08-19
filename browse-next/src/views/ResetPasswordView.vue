@@ -12,7 +12,7 @@ const userPassword: FormInputValue = formFieldInputText();
 const userPasswordConfirmation: FormInputValue = formFieldInputText();
 const isValidPassword = computed<boolean>(() => !passwordIsTooShort.value);
 const passwordIsTooShort = computed<boolean>(
-  () => userPassword.value.trim().length < 9
+  () => userPassword.value.trim().length < 8
 );
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
   () => (userPassword.touched ? isValidPassword.value : undefined)
@@ -34,7 +34,7 @@ const togglePasswordVisibility = () => {
 };
 
 // ---------- general ------------
-const registerErrorMessage = ref<ErrorResult | false>(false);
+const resetErrorMessage = ref<ErrorResult | false>(false);
 const resetInProgress = ref(false);
 
 // This starts of true when the page loads
@@ -54,20 +54,20 @@ const hasNonValidationError = computed({
   get: () => {
     // Validation error messages should be handled at the field level.
     return (
-      registerErrorMessage.value !== false &&
-      registerErrorMessage.value.errorType !== "validation"
+      resetErrorMessage.value !== false &&
+      resetErrorMessage.value.errorType !== "validation"
     );
   },
   set: (val: boolean) => {
     if (!val) {
-      registerErrorMessage.value = false;
+      resetErrorMessage.value = false;
     }
   },
 });
 
-const registerErrorMessagesDisplay = computed(() => {
-  if (registerErrorMessage.value) {
-    return registerErrorMessage.value.messages.join(", ");
+const resetErrorMessagesDisplay = computed(() => {
+  if (resetErrorMessage.value) {
+    return resetErrorMessage.value.messages.join(", ");
   } else {
     return "";
   }
@@ -75,6 +75,7 @@ const registerErrorMessagesDisplay = computed(() => {
 const resetFormIsFilledAndValid = computed<boolean>(
   () => isValidPassword.value && passwordConfirmationMatches.value
 );
+const invalidReason = ref<string>("");
 const router = useRouter();
 const { params } = useRoute();
 onBeforeMount(async () => {
@@ -83,12 +84,15 @@ onBeforeMount(async () => {
     if (Array.isArray(params.token) && params.token.length) {
       resetToken.value = params.token.shift() as string;
     } else if (typeof params.token === "string") {
-      resetToken.value = params.token;
+      resetToken.value = params.token.replace(/:/g, ".");
     }
     const validateTokenResponse = await validatePasswordResetToken(
-      params.token as string
+      resetToken.value
     );
+    checkingResetToken.value = false;
+    console.log(validateTokenResponse);
     if (!validateTokenResponse.success) {
+      invalidReason.value = validateTokenResponse.result.messages[0];
       // Grab the error.
       invalidResetToken.value = true;
       await router.push({
@@ -100,31 +104,24 @@ onBeforeMount(async () => {
         name: "reset-password",
       });
     }
-    checkingResetToken.value = false;
   } else {
     // No token supplied, redirect to sign-in
     await router.push({
-      path: "sign-in",
+      name: "sign-in",
     });
   }
 });
-
 const resetPassword = async () => {
   resetInProgress.value = true;
-  const resetToken = "FOO";
   const changePasswordResponse = await changePassword(
-    resetToken,
+    resetToken.value,
     userPassword.value
   );
+  console.log("Resetting", userPassword.value);
   if (changePasswordResponse.success) {
-    // FIXME - sign in automatically now?
     changedPassword.value = true;
-    // TODO, show success message, and sign-in button.
   } else {
-    // TODO What failures can we have.
-    // FIXME - handle network connection refused.
-    // TODO - Should network connection failure be a global message? (Maybe similar to the rocket chat banner).
-    //  Once we get a network connection failure, we should poll to re-submit the request using an exponential back-off strategy.
+    resetErrorMessage.value = changePasswordResponse.result;
   }
   resetInProgress.value = false;
 };
@@ -142,12 +139,11 @@ const resetPassword = async () => {
       <span v-else-if="invalidResetToken" class="alert-danger p-2 rounded"
         >Invalid reset token</span
       >
-      <span v-else>Reset your password</span>
+      <span v-else-if="!changedPassword">Reset your password</span>
+      <span v-if="changedPassword">Your password was reset</span>
     </h1>
     <div v-if="invalidResetToken">
-      <p class="mb-4 text-center">
-        Reason the reset token was invalid (already used, validation failed etc)
-      </p>
+      <div class="mb-3 text-danger">{{ invalidReason }}</div>
       <div class="alternate-action-links d-flex justify-content-between my-2">
         <router-link :to="{ name: 'register' }" class="small"
           >Create a new account</router-link
@@ -160,8 +156,7 @@ const resetPassword = async () => {
     <div v-if="checkingResetToken" class="text-center mb-5">
       <span class="spinner-border" />
     </div>
-    <div v-else-if="!invalidResetToken">
-      <h2>{{ userName }}, {{ resetToken }}</h2>
+    <div v-else-if="!invalidResetToken && !changedPassword">
       <b-form
         class="d-flex flex-column"
         @submit.stop.prevent="resetPassword"
@@ -174,11 +169,12 @@ const resetPassword = async () => {
           class="text-center"
           @dismissed="hasNonValidationError = false"
         >
-          {{ registerErrorMessagesDisplay }}
+          {{ resetErrorMessagesDisplay }}
         </b-alert>
         <div class="mb-3">
           <div class="input-group">
             <b-form-input
+              data-cy="new password field"
               :type="showPassword ? 'text' : 'password'"
               v-model="userPassword.value"
               @blur="userPassword.touched = true"
@@ -201,13 +197,14 @@ const resetPassword = async () => {
             <span v-if="userPassword.value.trim().length === 0">
               Password cannot be blank
             </span>
-            <span v-else-if="userPassword.value.trim().length <= 8">
+            <span v-else-if="userPassword.value.trim().length < 8">
               Password must be at least 8 characters
             </span>
           </b-form-invalid-feedback>
         </div>
         <div class="mb-3">
           <b-form-input
+            data-cy="new password confirmation field"
             :type="showPassword ? 'text' : 'password'"
             v-model="userPasswordConfirmation.value"
             @blur="userPasswordConfirmation.touched = true"
@@ -226,6 +223,7 @@ const resetPassword = async () => {
         <button
           type="submit"
           class="btn btn-primary"
+          data-cy="reset password button"
           :disabled="!resetFormIsFilledAndValid || resetInProgress"
         >
           <span v-if="resetInProgress">
@@ -234,11 +232,20 @@ const resetPassword = async () => {
               role="status"
               aria-hidden="true"
             ></span>
-            Registering...
+            Resetting...
           </span>
           <span v-else>Reset my password</span>
         </button>
       </b-form>
+    </div>
+    <div v-if="changedPassword" class="d-flex justify-content-center">
+      <b-button
+        data-cy="sign in button"
+        class="d-flex flex-grow-1 justify-content-center"
+        :to="{ name: 'sign-in' }"
+        variant="primary"
+        >Go to sign in</b-button
+      >
     </div>
   </div>
 </template>

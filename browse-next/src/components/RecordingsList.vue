@@ -20,10 +20,11 @@
       @click="selectedRecording(item)"
       @mouseenter="() => highlightedLocation(item)"
       @mouseleave="() => unhighlightedLocation(item)"
+      class="list-item"
     >
       <div
         v-if="!item.data.hasOwnProperty('tombstoned')"
-        class="list-item d-flex user-select-none fs-8"
+        class="d-flex user-select-none fs-8"
         :class="[
           item.type,
           {
@@ -234,6 +235,8 @@ import {
   RecordingType,
 } from "@typedefs/api/consts.ts";
 import { type TagItem, tagsForRecording } from "@models/recordingUtils.ts";
+import type { ApiTrackResponse } from "@typedefs/api/track";
+import type { ApiTrackTag, ApiTrackTagResponse } from "@typedefs/api/trackTag";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -307,10 +310,21 @@ const specialLabelsForRecording = (
   );
 };
 
+const tagsForTrack = (track: ApiTrackResponse): ApiTrackTag[] => {
+  const humanTags = track.tags.filter((track) => !track.automatic);
+  if (humanTags.length) {
+    return humanTags;
+  }
+  return track.tags;
+};
+
 const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
   const nonFalsePositiveTrack = recording.tracks.filter((track) => {
-    return track.tags.some((tag) => tag.what !== "false-positive");
+    return tagsForTrack(track).some(
+      (tag) => !["false-positive", "unidentified"].includes(tag.what)
+    );
   });
+
   if (import.meta.env.DEV) {
     if (nonFalsePositiveTrack.length !== 0) {
       return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;

@@ -162,17 +162,21 @@ const doAddLabel = async () => {
       @cancel="selectedLabel = ''"
       @ok="doAddLabel"
     >
-      <b-form-radio
-        v-for="(label, index) in unusedLabels"
-        v-model="selectedLabel"
-        :value="label.value"
+      <div
         :key="index"
-        name="add-label-radios"
-        button
         class="text-nowrap mb-2 me-2 d-inline-block"
-        button-variant="outline-secondary"
-        >{{ label.text }}</b-form-radio
+        v-for="(label, index) in unusedLabels"
       >
+        <b-form-radio
+          v-model="selectedLabel"
+          :value="label.value"
+          name="add-label-radios"
+          button
+          button-variant="outline-secondary"
+          >{{ label.text }}</b-form-radio
+        >
+      </div>
+
       <div v-if="labelToAdd" class="alert alert-info mt-2 mb-0">
         {{ labelToAdd.description }}
       </div>

@@ -85,6 +85,7 @@ const resetPassword = async () => {
         </b-alert>
         <div class="mb-3">
           <b-form-input
+            data-cy="user email address"
             type="email"
             v-model="userEmailAddress.value"
             @blur="userEmailAddress.touched = true"
@@ -101,6 +102,7 @@ const resetPassword = async () => {
           </b-form-invalid-feedback>
         </div>
         <button
+          data-cy="send reset password email button"
           type="submit"
           class="btn btn-primary mb-3"
           :disabled="!isValidEmailAddress || resetInProgress"

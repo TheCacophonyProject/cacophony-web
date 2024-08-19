@@ -68,8 +68,16 @@ const currentVisitsFilterComputed = computed<
     return (visit) => visitorIsPredator(visit) && !visitIsTombstoned(visit);
   } else {
     return (visit) =>
-      currentVisitsFilter.value(visit) && !visitIsTombstoned(visit);
+      (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
+        visit
+      ) && !visitIsTombstoned(visit);
   }
+});
+
+const dashboardVisits = computed<ApiVisitResponse[]>(() => {
+  return ((visitsContext.value || []) as ApiVisitResponse[]).filter(
+    (visit) => visitorIsPredator(visit) && !visitIsTombstoned(visit)
+  );
 });
 
 // TODO: Move to provides/inject
@@ -77,7 +85,6 @@ const currentVisitsFilterComputed = computed<
 //  which could be very slow for a large list?
 const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
-    console.log("Recompute visits context");
     return (visitsContext.value as ApiVisitResponse[]).filter(
       currentVisitsFilterComputed.value
     );
@@ -143,15 +150,6 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
 
-// const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
-//   if (visitsContext.value) {
-//     return (visitsContext.value as ApiVisitResponse[]).filter(
-//       visitorIsPredator
-//     );
-//   }
-//   return [];
-// });
-
 // Two ways we can go about next/prev visit.  We pass the loaded visits through from the parent context,
 // and then move through them as an array index.
 
@@ -201,7 +199,7 @@ const loadingVisitsProgress = ref<number>(0);
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 const speciesSummary = computed<Record<string, number>>(() => {
-  return maybeFilteredVisitsContext.value.reduce(
+  return dashboardVisits.value.reduce(
     (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
       if (currentValue.classification) {
         acc[currentValue.classification] =
@@ -402,7 +400,7 @@ const showVisitsForLocation = (location: ApiLocationResponse) => {
 const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   return (
     locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0 &&
-    maybeFilteredVisitsContext.value.length !== 0
+    dashboardVisits.value.length !== 0
   );
 });
 
@@ -490,12 +488,12 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       class="mb-5 flex-md-fill me-md-3"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-      :visits="maybeFilteredVisitsContext"
+      :visits="dashboardVisits"
       :start-date="earliestDate"
       :loading="isLoading"
     />
     <visits-breakdown-list
-      :visits="maybeFilteredVisitsContext"
+      :visits="dashboardVisits"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
       @selected-visit="(visit: ApiVisitResponse) => (selectedVisit = visit)"
@@ -526,7 +524,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         "
         @click="showVisitsForLocation(location)"
         :locations="allLocations"
-        :visits="maybeFilteredVisitsContext"
+        :visits="dashboardVisits"
         :key="index"
       />
     </div>

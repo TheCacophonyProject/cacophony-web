@@ -35,6 +35,7 @@ import {
 import type { ActivitySearchParams } from "@views/ActivitySearchView.vue";
 import { type LocationQuery, useRoute, useRouter } from "vue-router";
 import { useElementBounding } from "@vueuse/core";
+import { urlNormaliseName } from "@/utils.ts";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -760,7 +761,7 @@ const syncParams = (
       const from = new Date(next.from).getTime();
       const until = new Date(next.until).getTime();
       const min = minDateForProject.value.getTime();
-      const max = maxDateForProject.value.getTime();
+      const max = endOfDay(new Date()).getTime(); //maxDateForProject.value.getTime();
       const constrainedFrom = Math.min(Math.max(from, min), max);
       const constrainedUntil = Math.min(Math.max(until, min), max);
       const constrainedRange =
@@ -808,8 +809,16 @@ const hasAdvancedFiltersSet = computed<boolean>(() => {
 onBeforeMount(() => {
   watchProps.value = watch(props.params, syncParams, {
     deep: true,
-    immediate: true,
+    immediate: false,
   });
+  if (
+    currentProject.value &&
+    urlNormaliseName(currentProject.value.groupName) ===
+      route.params.projectName
+  ) {
+    syncParams(props.params, undefined);
+  }
+
   watchRecordingMode.value = watch(recordingMode, updateRoute);
   watchDisplayMode.value = watch(displayMode, updateRoute);
   watchCombinedDateRange.value = watch(

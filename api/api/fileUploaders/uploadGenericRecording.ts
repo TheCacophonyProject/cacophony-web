@@ -751,9 +751,12 @@ const maybeUpdateLastRecordingTimesForStation = async (
       resolve();
     }
   );
+
   if (station) {
     recordingData.StationId = station.id;
-    {
+
+    // Only update our times for non-status recordings
+    if (recordingData.duration >= 3) {
       // Update station lastRecordingTimes if needed.
       if (
         recordingData.type === RecordingType.Audio &&
@@ -819,7 +822,9 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     uploadingDevice.lastRecordingTime < recording.recordingDateTime
   ) {
     updateDevicePayload.location = recording.location;
-    updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
+    if (recording.duration >= 3) {
+      updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
+    }
   }
 
   if (
@@ -827,13 +832,17 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     (!uploadingGroup.lastThermalRecordingTime ||
       uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
   ) {
-    updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
+    if (recording.duration >= 3) {
+      updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
+    }
   } else if (
     recording.type === RecordingType.Audio &&
     (!uploadingGroup.lastAudioRecordingTime ||
       uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
   ) {
-    updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
+    if (recording.duration >= 3) {
+      updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
+    }
   }
   const hasGroupUpdate = Object.keys(updateGroupPayload).length !== 0;
   const hasDeviceUpdate = Object.keys(updateDevicePayload).length !== 0;
