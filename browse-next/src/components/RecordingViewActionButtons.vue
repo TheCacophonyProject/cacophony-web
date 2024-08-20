@@ -222,14 +222,14 @@ const notImplemented = () => {
         <font-awesome-icon icon="trash-can" color="#666" />
       </template>
     </two-step-action-button>
-    <button
-      type="button"
-      class="btn btn-square btn-hi"
-      :disabled="!recordingReady"
-      @click="() => notImplemented()"
-    >
-      <font-awesome-icon icon="link" color="#666" />
-    </button>
+    <!--    <button-->
+    <!--      type="button"-->
+    <!--      class="btn btn-square btn-hi"-->
+    <!--      :disabled="!recordingReady"-->
+    <!--      @click="() => notImplemented()"-->
+    <!--    >-->
+    <!--      <font-awesome-icon icon="link" color="#666" />-->
+    <!--    </button>-->
   </div>
 </template>
 <style lang="less">

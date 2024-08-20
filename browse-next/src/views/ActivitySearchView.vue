@@ -1222,6 +1222,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           limit: twoPagesWorth,
           fromDateTime: dateRange.value[0],
           untilDateTime: currentQueryCursor.value.untilDateTime as Date,
+          queryIsTimeSensitive: true,
           types: typesForRecordingMode.value as (
             | RecordingType.TrailCamImage
             | RecordingType.TrailCamVideo

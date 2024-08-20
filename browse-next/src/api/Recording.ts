@@ -102,6 +102,7 @@ export interface QueryRecordingsOptions {
   tagMode?: TagMode;
   includeFilteredFalsePositivesAndNones?: boolean;
   subClassTags?: boolean;
+  queryIsTimeSensitive?: boolean;
 
   durationMinSecs?: number;
   durationMaxSecs?: number;
@@ -175,6 +176,11 @@ export const queryRecordingsInProjectNew = (
   }
   if (!options.subClassTags) {
     params.append("sub-class-tags", false.toString());
+  }
+  if (options.queryIsTimeSensitive) {
+    // For the front-end, we want to return early with any results to appear responsive.
+    // For exports, we don't care as much.
+    params.append("time-sensitive", true.toString());
   }
   console.log("API params", params.toString());
 
@@ -255,6 +261,7 @@ export const getAllRecordingsForProjectBetweenTimes = async (
   while (moreRecordingsToLoad) {
     const response = await queryRecordingsInProjectNew(projectId, {
       ...query,
+      queryIsTimeSensitive: false,
     });
     if (response.success) {
       const result = response.result;

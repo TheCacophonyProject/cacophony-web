@@ -297,10 +297,7 @@ const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   }
 };
 const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
-  if (
-    visit.type === "visit" &&
-    props.currentlyHighlightedLocation === visit.data.stationId
-  ) {
+  if (visit.type === "visit") {
     emit("change-highlighted-location", null);
   }
 };

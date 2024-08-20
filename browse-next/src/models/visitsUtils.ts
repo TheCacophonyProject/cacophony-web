@@ -48,7 +48,7 @@ const tagPrecedence = [
   }
 })();
 
-export const visitsByStation = (
+export const visitsByLocation = (
   visits: ApiVisitResponse[]
 ): Record<number, ApiVisitResponse[]> =>
   visits.reduce((acc, visit) => {
