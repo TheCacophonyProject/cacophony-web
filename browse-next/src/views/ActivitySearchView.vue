@@ -1208,7 +1208,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
-      const itemHeight = inRecordingsMode.value ? 70 : 160;
+      const itemHeight = inRecordingsMode.value ? 80 : 160;
       const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
       let response:
         | FetchResult<BulkRecordingsResponse>
