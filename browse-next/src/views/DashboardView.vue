@@ -70,7 +70,9 @@ const currentVisitsFilterComputed = computed<
     return (visit) =>
       (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
         visit
-      ) && !visitIsTombstoned(visit);
+      ) &&
+      !visitIsTombstoned(visit) &&
+      visitorIsPredator(visit);
   }
 });
 
@@ -265,13 +267,13 @@ onBeforeMount(async () => {
     await getClassifications();
   }
 });
-// I don't think the underlying data changes?
-//watch(visitsOrRecordings, reloadDashboard);
-//watch(speciesOrStations, reloadDashboard);
 // TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
 const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiLocationResponse[]
 >(() => {
+  const visitLocations = dashboardVisits.value.map(
+    (visit: ApiVisitResponse) => visit.stationId
+  );
   if (locations.value) {
     return (locations.value as ApiLocationResponse[])
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
@@ -291,7 +293,10 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
               new Date(location.lastThermalRecordingTime) > earliestDate.value)
           );
         }
-      });
+      })
+      .filter((location: ApiLocationResponse) =>
+        visitLocations.includes(location.id)
+      );
   }
   return [];
 });
@@ -420,14 +425,14 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
       >
         <div class="d-flex flex-row align-items-center justify-content-between">
-          <span>View </span>
-          <select
-            class="form-select form-select-sm text-end"
-            v-model="visitsOrRecordings"
-          >
-            <option>visits</option>
-            <option>recordings</option>
-          </select>
+          <span>Visits&nbsp;</span>
+          <!--          <select-->
+          <!--            class="form-select form-select-sm text-end"-->
+          <!--            v-model="visitsOrRecordings"-->
+          <!--          >-->
+          <!--            <option>visits</option>-->
+          <!--            <option>recordings</option>-->
+          <!--          </select>-->
         </div>
         <div class="d-flex flex-row align-items-center justify-content-between">
           <span> in the last </span>
@@ -440,16 +445,16 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
             <option value="3">3 days</option>
           </select>
         </div>
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span> grouped by </span>
-          <select
-            class="form-select form-select-sm text-end"
-            v-model="speciesOrLocations"
-          >
-            <option>species</option>
-            <option>location</option>
-          </select>
-        </div>
+        <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
+        <!--          <span> grouped by species</span>-->
+        <!--&lt;!&ndash;          <select&ndash;&gt;-->
+        <!--&lt;!&ndash;            class="form-select form-select-sm text-end"&ndash;&gt;-->
+        <!--&lt;!&ndash;            v-model="speciesOrLocations"&ndash;&gt;-->
+        <!--&lt;!&ndash;          >&ndash;&gt;-->
+        <!--&lt;!&ndash;            <option>species</option>&ndash;&gt;-->
+        <!--&lt;!&ndash;            <option>location</option>&ndash;&gt;-->
+        <!--&lt;!&ndash;          </select>&ndash;&gt;-->
+        <!--        </div>-->
       </div>
     </div>
   </div>

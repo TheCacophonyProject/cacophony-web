@@ -39,6 +39,7 @@ const props = withDefaults(
     navigateToPoint?: (p: NamedPoint) => RouteLocationRaw;
     points?: NamedPoint[];
     highlightedPoint?: NamedPoint | null;
+    centerOnHighlighted?: boolean;
     activePoints?: NamedPoint[];
     focusedPoint?: NamedPoint | null;
     radius?: number;
@@ -65,6 +66,7 @@ const props = withDefaults(
     hasAttribution: true,
     canChangeBaseMap: true,
     highlightedPoint: null,
+    centerOnHighlighted: true,
     focusedPoint: null,
     zoom: true,
     showStationRadius: true,
@@ -185,13 +187,16 @@ watch(
         // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
         pointMarker.foregroundMarker.bringToFront();
         highlightMarker(pointMarker, markerKey);
-        pointMarker.foregroundMarker.openTooltip();
-        (
-          (pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker)
-            ._map as LeafletMap
-        ).panInside(pointMarker.foregroundMarker.getLatLng(), {
-          padding: [100, 30],
-        });
+        if (props.centerOnHighlighted) {
+          pointMarker.foregroundMarker.openTooltip();
+          (
+            (
+              pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
+            )._map as LeafletMap
+          ).panInside(pointMarker.foregroundMarker.getLatLng(), {
+            padding: [100, 30],
+          });
+        }
       } else {
         cancelAnimationFrame(markerAnimationFrames[markerKey]);
         unhighlightImmediately(pointMarker);
@@ -491,7 +496,7 @@ onMounted(() => {
     scrollWheelZoom: props.isInteractive,
     keyboard: props.isInteractive,
     tap: props.isInteractive,
-    maxZoom: 16,
+    maxZoom: 15,
     minZoom: props.minZoom,
     attributionControl: false,
     center: props.center || mapBounds.value?.getCenter(),

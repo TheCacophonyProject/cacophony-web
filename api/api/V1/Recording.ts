@@ -2423,6 +2423,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String[]} [labelled-with] Recording labels you want to filter on, e.g 'cool'
    * @apiQuery {Number} [duration] Filter out recordings that are less than `duration`
    * @apiQuery {Boolean} [include-false-positives] Recordings consisting of only false-positives are filtered out by default; set this value to `true` to include them
+   * @apiQuery {Boolean} [time-sensitive] We'd rather get back some results in a reasonable time, than get all the results we asked for.
    * @apiQuery {Number[]} [devices] Include only recordings that belong to any of the `DeviceId`s supplied
    * @apiQuery {Boolean} [sub-class-tags] `true` by default, setting this to `false` will turn off hierarchical animal tag matching.
    * @apiQuery {Boolean} [include-deleted] `false` by default, setting this to `true` will include deleted recordings in the query.
@@ -2461,6 +2462,7 @@ export default (app: Application, baseUrl: string) => {
         ),
       query("sub-class-tags").default(true).isBoolean().toBoolean(),
       query("include-deleted").default(false).isBoolean().toBoolean(),
+      query("time-sensitive").default(false).isBoolean().toBoolean(),
       query("tag-mode")
         .default(TagMode.Any)
         .isString()
@@ -2562,7 +2564,6 @@ export default (app: Application, baseUrl: string) => {
         const processingState = query["processing-state"] as unknown as
           | RecordingProcessingState
           | undefined;
-        // NOTE: Earliest time in Cacophony DB
         let fromDate = query.from as unknown as Date | undefined;
         const untilDate = query.until as unknown as Date | undefined;
 
@@ -2578,6 +2579,11 @@ export default (app: Application, baseUrl: string) => {
         const sqlPasses: string[] = [];
         const sqlTimings: number[] = [];
         const now = performance.now();
+        const startTime = performance.now();
+        const timeLimitForRequest = 1500;
+        const queryIsTimeSensitive = query[
+          "time-sensitive"
+        ] as unknown as boolean;
 
         const loggingFn =
           (sqlPasses: string[], sqlTimings: number[]) =>
@@ -2616,6 +2622,7 @@ export default (app: Application, baseUrl: string) => {
 
         let fromDateTime: Date;
         let untilDateTime: Date;
+        // NOTE: Earliest time in Cacophony DB
         const earliestAllowedDate = new Date("2017-11-01 17:06:58.015 +1300");
         if (!untilDate) {
           // NOTE: In order to do less queries when an until date isn't supplied,
@@ -2688,6 +2695,7 @@ export default (app: Application, baseUrl: string) => {
           fromDateTime,
           dateTimeMinusThreeMonths(untilDateTime)
         );
+        let timeLimitReached = false;
         while (accumulatedRecordingIds.length < requestedLimit) {
           const recordings = await queryRecordingsInProject(
             models,
@@ -2708,6 +2716,21 @@ export default (app: Application, baseUrl: string) => {
             untilDateTime,
             logging
           );
+          timeLimitReached =
+            performance.now() - startTime > timeLimitForRequest;
+          if (
+            queryIsTimeSensitive &&
+            accumulatedRecordingIds.length !== 0 &&
+            timeLimitReached
+          ) {
+            // If we already have some results, prefer returning a limited list rather than make the user wait even longer
+            // for us to reach our number of max requested recordings (limit)
+            console.warn(
+              "Aborting with some results to hit responsiveness deadline"
+            );
+
+            break;
+          }
           if (recordings.length === 0 && fromDateTime <= fromDate) {
             break;
           }
