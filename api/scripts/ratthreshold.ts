@@ -3,6 +3,9 @@ import { program } from "commander";
 import pkg from "pg";
 const { Client } = pkg;
 import * as config from "../config.js";
+import type { DeviceId } from "@typedefs/api/common.js";
+import modelsInit from "@models/index.js";
+const models = await modelsInit();
 let Config;
 
 const HEIGHT = 120;
@@ -68,27 +71,23 @@ async function main() {
     }
 
     const thresholds = getThresholds(currentDevice.trackData);
-    let settings = devHistory["settings"];
-    if (!settings) {
-      settings = {};
-    }
+    const settings = devHistory["settings"] || {};
     settings["ratThresh"] = {
       gridSize: BOX_DIM,
       version: Date.now(),
       thresholds: thresholds,
     };
-    devHistory["settings"] = settings;
     console.log(
       "Updating device History",
       devHistory["uuid"],
       " with ",
       devHistory["settings"]
     );
-    await updateDeviceHistory(
-      pgClient,
-      devHistory["uuid"],
-      devHistory["fromDateTime"],
-      devHistory["settings"]
+    await models.DeviceHistory.updateDeviceSettings(
+      devHistory["DeviceId"],
+      devHistory["GroupId"],
+      settings,
+      "automatic"
     );
   }
 }
@@ -217,40 +216,58 @@ function overlap(first, second) {
   );
 }
 
-async function updateDeviceHistory(client, uuid, fromDateTime, settings) {
-  const res = await client.query(
-    `update "DeviceHistory" set "settings" = $1 where "uuid"= $2 and "fromDateTime"= $3`,
-    [settings, uuid, fromDateTime]
-  );
-}
-
 async function getDeviceLocation(client) {
-  const res = await client.query(
-    `select distinct on (dh."uuid") dh."DeviceId",dh."uuid", dh."location",dh."fromDateTime" from "DeviceHistory" dh  order by dh."uuid" ,dh."fromDateTime"  desc`
-  );
-  return res;
+  return await client.query(`
+    select distinct on
+      (dh."uuid") dh."DeviceId",
+      dh."GroupId",
+      dh."uuid",
+      dh."location",
+      dh."fromDateTime",
+      dh."settings"
+    from
+      "DeviceHistory" dh
+    order by
+      dh."uuid" ,
+      dh."fromDateTime" desc
+  `);
 }
-async function getRodentData(client, deviceId, location, fromDateTime) {
+async function getRodentData(
+  client,
+  deviceId: DeviceId,
+  location,
+  fromDateTime
+) {
   let locQuery = "";
   if (location) {
     locQuery = `r."location"='${location}'`;
   } else {
     locQuery = `r."location" is null`;
   }
-  const res = await client.query(
-    `select r."recordingDateTime",
-r."DeviceId" ,t.id,r."location" ,t.data,tt."what"
-from
-	"TrackTags" tt
-right join "Tracks" t on
-	tt."TrackId" = t.id
-right join "Recordings" r on t."RecordingId"  = r.id
-where
-r."DeviceId"='${deviceId}' and ${locQuery} and r."recordingDateTime" > '${fromDateTime.toISOString()}' and
-tt.automatic =false and
-	tt.path <@'all.mammal.rodent' order by r."DeviceId",r."recordingDateTime" desc`
-  );
-  return res;
+  return await client.query(`
+    select
+      r."recordingDateTime",
+      r."DeviceId" ,
+      t.id,
+      r."location" ,
+      t.data,
+      tt."what"
+    from
+      "TrackTags" tt
+      right join "Tracks" t on
+      tt."TrackId" = t.id
+      right join "Recordings" r on
+      t."RecordingId" = r.id
+    where
+      r."DeviceId" = '${deviceId}'
+      and ${locQuery}
+      and r."recordingDateTime" > '${fromDateTime.toISOString()}'
+      and tt.automatic = false
+      and tt.path <@'all.mammal.rodent'
+    order by
+      r."DeviceId",
+      r."recordingDateTime" desc
+    `);
 }
 
 async function pgConnect() {

@@ -53,6 +53,11 @@ export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {
     newSettings: ApiDeviceHistorySettings,
     setBy: DeviceHistorySetBy
   ): Promise<ApiDeviceHistorySettings>;
+  latest(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime?: Date
+  ): Promise<DeviceHistory | null>;
 }
 
 export default function (
@@ -121,21 +126,32 @@ export default function (
     });
   };
 
+  DeviceHistory.latest = async function (
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime = new Date()
+  ): Promise<DeviceHistory | null> {
+    return this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+        location: { [Op.ne]: null },
+        fromDateTime: { [Op.lte]: atTime },
+      },
+      order: [["fromDateTime", "DESC"]],
+    });
+  };
+
   DeviceHistory.updateDeviceSettings = async function (
     deviceId: DeviceId,
     groupId: GroupId,
     newSettings: ApiDeviceHistorySettings,
     setBy: DeviceHistorySetBy
   ): Promise<ApiDeviceHistorySettings> {
-    const currentSettingsEntry: DeviceHistory = await this.findOne({
-      where: {
-        DeviceId: deviceId,
-        GroupId: groupId,
-        location: { [Op.ne]: null },
-      },
-      order: [["fromDateTime", "DESC"]],
-    });
-
+    const currentSettingsEntry: DeviceHistory = await this.latest(
+      deviceId,
+      groupId
+    );
     const currentSettings: ApiDeviceHistorySettings =
       currentSettingsEntry?.settings ?? ({} as ApiDeviceHistorySettings);
     const { settings, changed } = mergeSettings(
@@ -159,7 +175,6 @@ export default function (
       // in place only if the device already had the settings so no change
       await currentSettingsEntry.update("settings", settings);
     }
-
     return settings;
   };
 

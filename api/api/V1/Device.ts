@@ -21,7 +21,11 @@ import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
-import { ClientError, UnprocessableError } from "../customErrors.js";
+import {
+  ClientError,
+  FatalError,
+  UnprocessableError,
+} from "../customErrors.js";
 import {
   extractJWTInfo,
   extractJwtAuthorisedDevice,
@@ -580,22 +584,20 @@ export default function (app: Application, baseUrl: string) {
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
       const device = response.locals.device as Device;
-      const deviceHistoryEntry: DeviceHistory =
-        await models.DeviceHistory.findOne({
-          where: {
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            location: { [Op.ne]: null },
-            fromDateTime: { [Op.lte]: atTime },
-          },
-          order: [["fromDateTime", "DESC"]],
-        });
-
+      const deviceHistoryEntry: DeviceHistory | null =
+        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+      if (!deviceHistoryEntry) {
+        return next(
+          new UnprocessableError(
+            "No reference image available for device at time"
+          )
+        );
+      }
       if (device.kind === DeviceType.TrailCam) {
         // NOTE: If the device is a trailcam, try and use the daytime image that closest matches the requested time, if any.
 
         //  The trailcam has been in this location since this time.
-        const fromTime = deviceHistoryEntry?.fromDateTime;
+        const fromTime = deviceHistoryEntry.fromDateTime;
         if (!fromTime) {
           return next(
             new UnprocessableError(
@@ -605,7 +607,7 @@ export default function (app: Application, baseUrl: string) {
         }
         let recording: any;
         // See if this device has a later location
-        const laterDeviceHistoryEntry: DeviceHistory =
+        const laterDeviceHistoryEntry: DeviceHistory | null =
           await models.DeviceHistory.findOne({
             where: [
               {
@@ -895,12 +897,12 @@ export default function (app: Application, baseUrl: string) {
         order: [["fromDateTime", "DESC"]],
       });
       if (deviceHistoryEntry && deviceHistoryEntry.Station) {
-        return successResponse(response, "Got station for device at time", {
+        return successResponse(response, "Got location for device at time", {
           location: mapStation(deviceHistoryEntry.Station),
         });
       }
       return next(
-        new UnprocessableError("No station recorded for device at time")
+        new UnprocessableError("No location recorded for device at time")
       );
     }
   );
@@ -1166,12 +1168,10 @@ export default function (app: Application, baseUrl: string) {
    * @apiName SetDeviceReferenceImageAtTime
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
-   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
    * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
    * @apiBody {Binary} Binary image file for reference image.
    *
-   * @apiDescription Sets a reference image for a device at a given point in time, or now,
-   * if no date time is specified.
+   * @apiDescription Sets a reference image for a device active from now
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1185,7 +1185,6 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
-      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
       query("type").optional().isIn(["pov", "in-situ"]),
       booleanOf(query("only-active"), false),
     ]),
@@ -1196,33 +1195,14 @@ export default function (app: Application, baseUrl: string) {
       // another device history entry?
       const referenceType = request.query.type || "pov";
       // TODO: Make some tests for this.
-      const atTime = request.query["at-time"] as unknown as Date;
       const device = response.locals.device as Device;
-      const previousDeviceHistoryEntry: DeviceHistory =
-        await models.DeviceHistory.findOne({
-          where: {
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            location: { [Op.ne]: null },
-            fromDateTime: { [Op.lt]: atTime },
-          },
-          order: [["fromDateTime", "DESC"]],
-        });
-      if (!previousDeviceHistoryEntry) {
+      if (!device.location) {
         // We can't add an image, because we don't have a device location.
         return successResponse(
           response,
           "No location for device to tag with reference"
         );
       }
-
-      // If there was a previous reference image for this location entry, delete it.
-      const previousSettings: ApiDeviceHistorySettings =
-        previousDeviceHistoryEntry.settings || {};
-      const hadPreviousReferenceImage =
-        !!previousSettings.referenceImagePOV ||
-        !!previousSettings.referenceImageInSitu;
-
       const { key, size } = await uploadFileStream(request as any, "ref");
       const newSettings =
         referenceType === "pov"
@@ -1235,34 +1215,13 @@ export default function (app: Application, baseUrl: string) {
               referenceImageInSitu: key,
             };
 
-      if (hadPreviousReferenceImage) {
-        // Create a new entry at `at-time` for the new reference image, leaving the old
-        // reference image intact in the previous device history entry.
-        await models.DeviceHistory.create({
-          ...previousDeviceHistoryEntry.get({ plain: true }),
-          fromDateTime: atTime,
-          settings: {
-            ...previousSettings,
-            ...newSettings,
-          },
-        });
-      } else {
-        await models.DeviceHistory.update(
-          {
-            settings: {
-              ...previousSettings,
-              ...newSettings,
-            },
-          },
-          {
-            where: {
-              fromDateTime: previousDeviceHistoryEntry.fromDateTime,
-              DeviceId: device.id,
-              GroupId: device.GroupId,
-            },
-          }
-        );
-      }
+      await models.DeviceHistory.updateDeviceSettings(
+        device.id,
+        device.GroupId,
+        newSettings,
+        "user"
+      );
+
       return successResponse(response, { key, size });
     }
   );
@@ -1294,58 +1253,14 @@ export default function (app: Application, baseUrl: string) {
       const maskRegions: Record<string, MaskRegion> = request.body.maskRegions;
       const device = response.locals.device as Device;
       try {
-        const deviceHistoryEntry: DeviceHistory =
-          await models.DeviceHistory.findOne({
-            where: {
-              DeviceId: device.id,
-              GroupId: device.GroupId,
-              location: { [Op.ne]: null },
-            },
-            order: [["fromDateTime", "DESC"]],
-          });
-
-        if (!deviceHistoryEntry) {
-          return next(
-            new ClientError(
-              "No device history settings entry found to add mask regions"
-            )
-          );
-        }
-        const newSettings: ApiDeviceHistorySettings = {
-          ...deviceHistoryEntry.settings,
-        };
-        const hadMaskRegion =
-          !!newSettings.maskRegions &&
-          Object.keys(newSettings.maskRegions).length !== 0;
-        if (Object.keys(maskRegions).length) {
-          newSettings.maskRegions = maskRegions;
-        } else {
-          delete newSettings.maskRegions;
-        }
-        if (hadMaskRegion) {
-          // Create a new copy of the current DeviceHistory entry, so that previous mask regions at this location
-          // are preserved.
-          await models.DeviceHistory.create({
-            ...deviceHistoryEntry.get({ plain: true }),
-            fromDateTime: new Date(),
-            settings: newSettings,
-          });
-        } else {
-          // Update the existing DeviceHistory entry without mask regions in place.  The mask region will apply from
-          // when this location was created.
-          await models.DeviceHistory.update(
-            {
-              settings: newSettings,
-            },
-            {
-              where: {
-                fromDateTime: deviceHistoryEntry.fromDateTime,
-                DeviceId: device.id,
-                GroupId: device.GroupId,
-              },
-            }
-          );
-        }
+        await models.DeviceHistory.updateDeviceSettings(
+          device.id,
+          device.GroupId,
+          {
+            maskRegions,
+          },
+          "user"
+        );
         return successResponse(response, "Mask regions added successfully");
       } catch (e) {
         return next(
@@ -1402,16 +1317,7 @@ export default function (app: Application, baseUrl: string) {
       const atTime = request.query["at-time"] as unknown as Date;
       const device = response.locals.device as Device;
       const deviceSettings: DeviceHistory | null =
-        await models.DeviceHistory.findOne({
-          where: {
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            location: { [Op.ne]: null },
-            fromDateTime: { [Op.lte]: atTime },
-          },
-          order: [["fromDateTime", "DESC"]],
-        });
-
+        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
       if (
         deviceSettings &&
         deviceSettings.settings &&
@@ -1456,21 +1362,10 @@ export default function (app: Application, baseUrl: string) {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
-        const where = {
-          DeviceId: device.id,
-          GroupId: device.GroupId,
-          location: { [Op.ne]: null },
-        };
-        console.log(where);
-        debugger;
-
         const deviceSettings: DeviceHistory | null =
-          await models.DeviceHistory.findOne({
-            where,
-            order: [["fromDateTime", "DESC"]],
-          });
+          await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
         const settings = {
-          ...deviceSettings.settings,
+          ...(deviceSettings.settings || {}),
         };
         if (deviceSettings.location) {
           settings.location = deviceSettings.location;
@@ -1513,19 +1408,17 @@ export default function (app: Application, baseUrl: string) {
       body("settings").custom(jsonSchemaOf(ApiDeviceHistorySettingsSchema)),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       try {
         const device = response.locals.device as Device;
         const newSettings: ApiDeviceHistorySettings = request.body.settings;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
-
         const updatedEntry = await models.DeviceHistory.updateDeviceSettings(
           device.id,
           device.GroupId,
           newSettings,
           setBy
         );
-
         return successResponse(
           response,
           "Device settings updated successfully",
@@ -1534,8 +1427,7 @@ export default function (app: Application, baseUrl: string) {
           }
         );
       } catch (e) {
-        console.log(e);
-        return response.status(500).send({ error: "Internal Server Error" });
+        return next(new FatalError("Failed to update device settings."));
       }
     }
   );
