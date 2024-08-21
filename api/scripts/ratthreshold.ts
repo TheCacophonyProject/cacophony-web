@@ -1,13 +1,9 @@
 import process from "process";
-import { program } from "commander";
-import pkg from "pg";
-const { Client } = pkg;
-import * as config from "../config.js";
 import type { DeviceId } from "@typedefs/api/common.js";
 import modelsInit from "@models/index.js";
+import { QueryTypes } from "sequelize";
+import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
 const models = await modelsInit();
-let Config;
-
 const HEIGHT = 120;
 const WIDTH = 160;
 const BOX_DIM = 10;
@@ -16,79 +12,89 @@ const rows = Math.ceil(HEIGHT / BOX_DIM);
 const columns = Math.ceil(WIDTH / BOX_DIM);
 
 async function main() {
-  program
-    .option("--config <path>", "Configuration file", "./config/app.js")
-    .parse(process.argv);
-  const options = program.opts();
-  Config = {
-    ...config.default,
-    ...(await config.default.loadConfig(options.config)),
-  };
-  console.log("Connecting to db");
-  const pgClient = await pgConnect();
-  const devices = await getDeviceLocation(pgClient);
-  for (const devHistory of devices.rows) {
-    const rodentQ = await getRodentData(
-      pgClient,
-      devHistory["DeviceId"],
-      devHistory["location"],
-      devHistory["fromDateTime"]
-    );
-    // byDevice = {}
-    let currentDevice = null;
-    if (rodentQ.rows.length == 0) {
-      continue;
-    }
-
-    const gridData = [...Array(rows)].map((e) =>
-      [...Array(columns)].map((e) => Array())
-    );
-    // get x ,y values for each track
-    for (const rodentRec of rodentQ.rows) {
-      const positions = rodentRec["data"]["positions"].filter(
-        (x) => x["mass"] > 0 && !x["blank"]
+  const devices = await getDeviceLocation();
+  for (const devHistory of devices) {
+    const earliestDateTimeAtLocation =
+      await models.DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
+        devHistory["DeviceId"],
+        devHistory["GroupId"]
       );
-      if (!currentDevice) {
-        currentDevice = {
-          uuid: rodentRec["uuid"],
-          location: rodentRec["location"],
-          trackData: getGridData(
-            rodentRec["id"],
-            rodentRec["what"],
-            positions,
-            gridData
-          ),
-        };
-      } else {
-        // merge data
-        getGridData(
-          rodentRec["id"],
-          rodentRec["what"],
-          positions,
-          currentDevice.trackData
+    if (earliestDateTimeAtLocation) {
+      if (devHistory["DeviceId"] == 1822) {
+        const rodentQ = await getRodentData(
+          devHistory["DeviceId"],
+          devHistory["location"],
+          earliestDateTimeAtLocation
         );
+
+        console.log(devHistory["DeviceId"], rodentQ);
+        let currentDevice = null;
+        if (rodentQ.length === 0) {
+          continue;
+        }
+        const latestHumanTaggedRodentDateTime = new Date(
+          rodentQ[0]["recordingDateTime"]
+        ).getTime();
+        const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
+          devHistory["DeviceId"],
+          devHistory["GroupId"]
+        );
+        const latestRatThreshTime =
+          (latestDeviceHistoryEntry.settings &&
+            latestDeviceHistoryEntry.settings.ratThresh?.version) ||
+          0;
+        if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
+          // Update the ratThresh
+          const gridData = [...Array(rows)].map((_e) =>
+            [...Array(columns)].map((_e) => Array())
+          );
+          // get x, y values for each track
+          for (const rodentRec of rodentQ) {
+            const positions = rodentRec["data"]["positions"].filter(
+              (x) => x["mass"] > 0 && !x["blank"]
+            );
+            if (!currentDevice) {
+              currentDevice = {
+                uuid: rodentRec["uuid"],
+                location: rodentRec["location"],
+                trackData: getGridData(
+                  rodentRec["id"],
+                  rodentRec["what"],
+                  positions,
+                  gridData
+                ),
+              };
+            } else {
+              // merge data
+              getGridData(
+                rodentRec["id"],
+                rodentRec["what"],
+                positions,
+                currentDevice.trackData
+              );
+            }
+          }
+
+          const thresholds = getThresholds(currentDevice.trackData);
+          let setBy: DeviceHistorySetBy = "user";
+          if (latestDeviceHistoryEntry.settings?.synced) {
+            setBy = "automatic";
+          }
+          await models.DeviceHistory.updateDeviceSettings(
+            devHistory["DeviceId"],
+            devHistory["GroupId"],
+            {
+              ratThresh: {
+                gridSize: BOX_DIM,
+                version: latestHumanTaggedRodentDateTime, // This should be the date of the latest rodent data.
+                thresholds,
+              },
+            },
+            setBy
+          );
+        }
       }
     }
-
-    const thresholds = getThresholds(currentDevice.trackData);
-    const settings = devHistory["settings"] || {};
-    settings["ratThresh"] = {
-      gridSize: BOX_DIM,
-      version: Date.now(),
-      thresholds: thresholds,
-    };
-    console.log(
-      "Updating device History",
-      devHistory["uuid"],
-      " with ",
-      devHistory["settings"]
-    );
-    await models.DeviceHistory.updateDeviceSettings(
-      devHistory["DeviceId"],
-      devHistory["GroupId"],
-      settings,
-      "automatic"
-    );
   }
 }
 const MEDIAN_THRESH = 1.8;
@@ -96,7 +102,7 @@ const MINPOINTS = 2;
 // calculate median of all data before hand if new point is above a certain percentage of previous median, this change indicates a mouse vs rat
 // only bother using data we dont know about i.e. tagged as rodent
 function getThresholds(gridData) {
-  const thresholds = [...Array(rows)].map((e) => [...Array(columns)]);
+  const thresholds = [...Array(rows)].map((_e) => [...Array(columns)]);
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < columns; x++) {
       thresholds[y][x] = null;
@@ -163,9 +169,9 @@ const quantile = (arr, q, isSorted = false) => {
     return sorted[base];
   }
 };
-function getGridData(u_id, tag, positions, existingGridData) {
-  const gridData = [...Array(rows)].map((e) =>
-    [...Array(columns)].map((e) => Array())
+function getGridData(u_id: Number, tag, positions, existingGridData) {
+  const gridData = [...Array(rows)].map((_e) =>
+    [...Array(columns)].map((_e) => Array())
   );
 
   for (const p of positions) {
@@ -195,61 +201,39 @@ function getGridData(u_id, tag, positions, existingGridData) {
   return existingGridData;
 }
 
-function overlap_rect(region, grid) {
-  const x_overlap = overlap(
-    [region["x"], region["x"] + region["width"]],
-    [grid[0], grid[0] + grid[2]]
-  );
-  const y_overlap = overlap(
-    [region["y"], region["y"] + region["height"]],
-    [grid[1], grid[1] + grid[3]]
-  );
-  return x_overlap > 0 && y_overlap > 0;
-}
-
-function overlap(first, second) {
-  return (
-    first[1] -
-    first[0] +
-    (second[1] - second[0]) -
-    (Math.max(first[1], second[1]) - Math.min(first[0], second[0]))
-  );
-}
-
-async function getDeviceLocation(client) {
-  return await client.query(`
+async function getDeviceLocation() {
+  return await models.sequelize.query(
+    `
     select distinct on
       (dh."uuid") dh."DeviceId",
       dh."GroupId",
       dh."uuid",
       dh."location",
-      dh."fromDateTime",
-      dh."settings"
+      dh."fromDateTime"
     from
       "DeviceHistory" dh
+    where dh."location" is not null
     order by
       dh."uuid" ,
       dh."fromDateTime" desc
-  `);
+  `,
+    { type: QueryTypes.SELECT }
+  );
 }
+
 async function getRodentData(
-  client,
   deviceId: DeviceId,
-  location,
-  fromDateTime
+  location: { type: "Point"; coordinates: [number, number] },
+  fromDateTime: Date
 ) {
-  let locQuery = "";
-  if (location) {
-    locQuery = `r."location"='${location}'`;
-  } else {
-    locQuery = `r."location" is null`;
-  }
-  return await client.query(`
+  const locQuery = `ST_Y(r."location") = ${location.coordinates[1]} and ST_X(r."location") = ${location.coordinates[0]}`;
+  return await models.sequelize.query(
+    `
     select
       r."recordingDateTime",
-      r."DeviceId" ,
+      r."DeviceId",
       t.id,
-      r."location" ,
+      r."location",
       t.data,
       tt."what"
     from
@@ -267,25 +251,14 @@ async function getRodentData(
     order by
       r."DeviceId",
       r."recordingDateTime" desc
-    `);
-}
-
-async function pgConnect() {
-  const dbconf = Config.database;
-  const client = new Client({
-    host: dbconf.host,
-    port: dbconf.port,
-    user: dbconf.username,
-    password: dbconf.password,
-    database: dbconf.database,
-  });
-  await client.connect();
-  return client;
+    `,
+    { type: QueryTypes.SELECT }
+  );
 }
 
 main()
   .catch((err) => {
-    console.log(err);
+    console.trace(err);
   })
   .then(() => {
     process.exit(0);

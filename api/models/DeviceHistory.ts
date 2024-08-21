@@ -13,7 +13,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type Sequelize from "sequelize";
+import Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type {
   DeviceId,
@@ -58,6 +58,11 @@ export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {
     groupId: GroupId,
     atTime?: Date
   ): Promise<DeviceHistory | null>;
+  getEarliestFromDateTimeForDeviceAtCurrentLocation(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime?: Date
+  ): Promise<Date | null>;
 }
 
 export default function (
@@ -177,6 +182,42 @@ export default function (
     }
     return settings;
   };
+
+  DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation =
+    async function (
+      deviceId: DeviceId,
+      groupId: GroupId,
+      atTime = new Date()
+    ): Promise<Date | null> {
+      const currentSettingsEntry: DeviceHistory = await this.latest(
+        deviceId,
+        groupId,
+        atTime
+      );
+      if (currentSettingsEntry) {
+        const earliestEntry = await this.findOne({
+          where: [
+            {
+              DeviceId: deviceId,
+              GroupId: groupId,
+              fromDateTime: { [Op.lt]: atTime },
+            },
+            sequelize.where(Sequelize.fn("ST_X", Sequelize.col("location")), {
+              [Op.eq]: currentSettingsEntry.location.lng,
+            }),
+            sequelize.where(Sequelize.fn("ST_Y", Sequelize.col("location")), {
+              [Op.eq]: currentSettingsEntry.location.lat,
+            }),
+          ] as any,
+          order: [["fromDateTime", "ASC"]],
+        });
+        if (earliestEntry) {
+          return earliestEntry.fromDateTime;
+        }
+        return currentSettingsEntry.fromDateTime;
+      }
+      return null;
+    };
 
   return DeviceHistory;
 }
