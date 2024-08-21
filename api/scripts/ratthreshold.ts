@@ -1,5 +1,5 @@
 import process from "process";
-import type { DeviceId } from "@typedefs/api/common.js";
+import type { DeviceId, GroupId } from "@typedefs/api/common.js";
 import modelsInit from "@models/index.js";
 import { QueryTypes } from "sequelize";
 import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
@@ -14,85 +14,82 @@ const columns = Math.ceil(WIDTH / BOX_DIM);
 async function main() {
   const devices = await getDeviceLocation();
   for (const devHistory of devices) {
+    const { DeviceId: deviceId, GroupId: groupId, location } = devHistory;
     const earliestDateTimeAtLocation =
       await models.DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
-        devHistory["DeviceId"],
-        devHistory["GroupId"]
+        deviceId,
+        groupId
       );
     if (earliestDateTimeAtLocation) {
-      if (devHistory["DeviceId"] == 1822) {
-        const rodentQ = await getRodentData(
-          devHistory["DeviceId"],
-          devHistory["location"],
-          earliestDateTimeAtLocation
+      const rodentQ = await getRodentData(
+        deviceId,
+        location,
+        earliestDateTimeAtLocation
+      );
+      let currentDevice = null;
+      if (rodentQ.length === 0) {
+        continue;
+      }
+      const latestHumanTaggedRodentDateTime = new Date(
+        rodentQ[0]["recordingDateTime"]
+      ).getTime();
+      const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
+        deviceId,
+        groupId
+      );
+      const latestRatThreshTime =
+        (latestDeviceHistoryEntry.settings &&
+          latestDeviceHistoryEntry.settings.ratThresh?.version) ||
+        0;
+      if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
+        // Update the ratThresh
+        const gridData = [...Array(rows)].map((_e) =>
+          [...Array(columns)].map((_e) => Array())
         );
-
-        console.log(devHistory["DeviceId"], rodentQ);
-        let currentDevice = null;
-        if (rodentQ.length === 0) {
-          continue;
-        }
-        const latestHumanTaggedRodentDateTime = new Date(
-          rodentQ[0]["recordingDateTime"]
-        ).getTime();
-        const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
-          devHistory["DeviceId"],
-          devHistory["GroupId"]
-        );
-        const latestRatThreshTime =
-          (latestDeviceHistoryEntry.settings &&
-            latestDeviceHistoryEntry.settings.ratThresh?.version) ||
-          0;
-        if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
-          // Update the ratThresh
-          const gridData = [...Array(rows)].map((_e) =>
-            [...Array(columns)].map((_e) => Array())
+        // get x, y values for each track
+        for (const rodentRec of rodentQ) {
+          const positions = rodentRec["data"]["positions"].filter(
+            (x) => x["mass"] > 0 && !x["blank"]
           );
-          // get x, y values for each track
-          for (const rodentRec of rodentQ) {
-            const positions = rodentRec["data"]["positions"].filter(
-              (x) => x["mass"] > 0 && !x["blank"]
-            );
-            if (!currentDevice) {
-              currentDevice = {
-                uuid: rodentRec["uuid"],
-                location: rodentRec["location"],
-                trackData: getGridData(
-                  rodentRec["id"],
-                  rodentRec["what"],
-                  positions,
-                  gridData
-                ),
-              };
-            } else {
-              // merge data
-              getGridData(
+          if (!currentDevice) {
+            currentDevice = {
+              uuid: rodentRec["uuid"],
+              location: rodentRec["location"],
+              trackData: getGridData(
                 rodentRec["id"],
                 rodentRec["what"],
                 positions,
-                currentDevice.trackData
-              );
-            }
+                gridData
+              ),
+            };
+          } else {
+            // merge data
+            getGridData(
+              rodentRec["id"],
+              rodentRec["what"],
+              positions,
+              currentDevice.trackData
+            );
           }
-
-          const thresholds = getThresholds(currentDevice.trackData);
-          let setBy: DeviceHistorySetBy = "user";
-          if (latestDeviceHistoryEntry.settings?.synced) {
-            setBy = "automatic";
-          }
-          await models.DeviceHistory.updateDeviceSettings(
-            devHistory["DeviceId"],
-            devHistory["GroupId"],
-            {
-              ratThresh: {
-                gridSize: BOX_DIM,
-                version: latestHumanTaggedRodentDateTime, // This should be the date of the latest rodent data.
-                thresholds,
-              },
-            },
-            setBy
-          );
         }
+
+        const thresholds = getThresholds(currentDevice.trackData);
+        let setBy: DeviceHistorySetBy = "user";
+        if (latestDeviceHistoryEntry.settings?.synced) {
+          setBy = "automatic";
+        }
+        await models.DeviceHistory.updateDeviceSettings(
+          deviceId,
+          groupId,
+          {
+            ratThresh: {
+              gridSize: BOX_DIM,
+              version: latestHumanTaggedRodentDateTime, // This should be the date of the latest rodent data.
+              thresholds,
+            },
+          },
+          setBy
+        );
       }
     }
   }
@@ -201,8 +198,13 @@ function getGridData(u_id: Number, tag, positions, existingGridData) {
   return existingGridData;
 }
 
-async function getDeviceLocation() {
-  return await models.sequelize.query(
+interface DeviceHistoryItem {
+  GroupId: GroupId;
+  DeviceId: DeviceId;
+  location: { type: "Point"; coordinates: [number, number] };
+}
+async function getDeviceLocation(): Promise<DeviceHistoryItem[]> {
+  return models.sequelize.query(
     `
     select distinct on
       (dh."uuid") dh."DeviceId",
@@ -218,7 +220,7 @@ async function getDeviceLocation() {
       dh."fromDateTime" desc
   `,
     { type: QueryTypes.SELECT }
-  );
+  ) as Promise<DeviceHistoryItem[]>;
 }
 
 async function getRodentData(
