@@ -1461,7 +1461,6 @@ export default function (app: Application, baseUrl: string) {
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
         };
-        console.log(where);
         debugger;
 
         const deviceSettings: DeviceHistory | null =
@@ -1469,22 +1468,18 @@ export default function (app: Application, baseUrl: string) {
             where,
             order: [["fromDateTime", "DESC"]],
           });
-        const settings = {
-          ...deviceSettings.settings,
-        };
-        if (deviceSettings.location) {
-          settings.location = deviceSettings.location;
-        }
-
-        if (deviceSettings && deviceSettings.settings) {
-          return successResponse(
-            response,
-            "Device settings retrieved successfully",
-            { settings }
-          );
-        } else {
+        if (!deviceSettings) {
           return successResponse(response, "No device settings found");
         }
+
+        return successResponse(
+          response,
+          "Device settings retrieved successfully",
+          {
+            settings: deviceSettings.settings,
+            location: deviceSettings.location,
+          }
+        );
       } catch (e) {
         console.error(e);
       }

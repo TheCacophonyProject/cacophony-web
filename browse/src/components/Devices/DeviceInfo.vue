@@ -140,6 +140,7 @@ import {
   computed,
 } from "@vue/composition-api";
 import DeviceApi from "@/api/Device.api";
+import { WindowsSettings } from "@typedefs/api/device";
 
 export default defineComponent({
   name: "DeviceDetail",
@@ -270,17 +271,27 @@ export default defineComponent({
     };
 
     const formatTime = (timeString) => {
-      if (timeString[0] === "+" || timeString[0] === "-") return timeString;
+      if (timeString[0] === "+" || timeString[0] === "-") {
+        return timeString;
+      }
       const [hours, minutes] = timeString.split(":");
       return `${hours}:${minutes}`;
     };
 
-    const formatRecordingWindows = (windows) => {
-      return `Power On: ${formatTime(windows.powerOn)}, Power Off: ${formatTime(
-        windows.powerOff
-      )}, Start Recording: ${formatTime(
-        windows.startRecording
-      )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
+    const formatRecordingWindows = (windows: WindowsSettings) => {
+      if (!(windows.powerOn && windows.powerOff)) {
+        return `Start Recording: ${formatTime(
+          windows.startRecording
+        )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
+      } else {
+        return `Power On: ${formatTime(
+          windows.powerOn!
+        )}, Power Off: ${formatTime(
+          windows.powerOff!
+        )}, Start Recording: ${formatTime(
+          windows.startRecording
+        )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
+      }
     };
 
     const settingsTable = computed(() => {

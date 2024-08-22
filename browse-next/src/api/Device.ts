@@ -7,6 +7,7 @@ import type {
   DeviceId,
   GroupId as ProjectId,
   IsoFormattedDateString,
+  LatLng,
 } from "@typedefs/api/common";
 import type {
   ApiDeviceHistorySettings,
@@ -490,7 +491,9 @@ export const getSettingsForDevice = (deviceId: DeviceId, atTime?: Date) => {
   const queryString = params.toString();
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/settings?${queryString}`
-  ) as Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>>;
+  ) as Promise<
+    FetchResult<{ settings: ApiDeviceHistorySettings; location: LatLng }>
+  >;
 };
 
 export const updateDeviceSettings = (
@@ -526,21 +529,28 @@ export const toggleUseLowPowerMode = async (deviceId: DeviceId) => {
 };
 
 export const setDefaultRecordingWindows = async (
-  deviceId: DeviceId
+  deviceId: DeviceId,
+  isTc2Device: boolean
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> => {
   const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
-    const currentSettings = currentSettingsResponse.result.settings;
+  if (currentSettingsResponse.success) {
+    const currentSettings = currentSettingsResponse.result.settings ?? {};
+    const newWindows = isTc2Device
+      ? {
+          startRecording: "-30m",
+          stopRecording: "+30m",
+        }
+      : {
+          powerOff: "+30m",
+          powerOn: "-30m",
+          startRecording: "-30m",
+          stopRecording: "+30m",
+        };
+
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,
       windows: {
-        powerOff: "+30m",
-        powerOn: "-30m",
-        startRecording: "-30m",
-        stopRecording: "+30m",
+        ...newWindows,
         updated: new Date().toISOString(),
       },
     };
@@ -551,21 +561,28 @@ export const setDefaultRecordingWindows = async (
 };
 
 export const set24HourRecordingWindows = async (
-  deviceId: DeviceId
+  deviceId: DeviceId,
+  isTc2Device: boolean
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> => {
   const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
+  if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
+    const newWindows = isTc2Device
+      ? {
+          startRecording: "12:00",
+          stopRecording: "12:00",
+        }
+      : {
+          powerOff: "12:00",
+          powerOn: "12:00",
+          startRecording: "12:00",
+          stopRecording: "12:00",
+        };
+
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,
       windows: {
-        powerOff: "12:00",
-        powerOn: "12:00",
-        startRecording: "12:00",
-        stopRecording: "12:00",
+        ...newWindows,
         updated: new Date().toISOString(),
       },
     };
