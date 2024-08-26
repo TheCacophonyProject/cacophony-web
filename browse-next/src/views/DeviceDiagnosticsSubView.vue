@@ -93,20 +93,18 @@ const fields = [
 
 const currentWindowsType = computed(() => {
   if (!settings.value || !settings.value.windows) {
-    return "unknown";
+    return "default";
   }
   const { powerOn, powerOff, startRecording, stopRecording } =
     settings.value.windows;
   if (
-    powerOn === "-30m" &&
-    powerOff === "+30m" &&
+    (!isTc2Device.value || (powerOn === "-30m" && powerOff === "+30m")) &&
     startRecording === "-30m" &&
     stopRecording === "+30m"
   ) {
     return "default";
   } else if (
-    powerOn === "12:00" &&
-    powerOff === "12:00" &&
+    (!isTc2Device.value || (powerOn === "12:00" && powerOff === "12:00")) &&
     startRecording === "12:00" &&
     stopRecording === "12:00"
   ) {
@@ -125,11 +123,17 @@ const formatTime = (timeString: string) => {
 };
 
 const formatRecordingWindows = (windows: WindowsSettings) => {
-  return `Power On: ${formatTime(windows.powerOn)}, Power Off: ${formatTime(
-    windows.powerOff
-  )}, Start Recording: ${formatTime(
-    windows.startRecording
-  )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
+  if (isTc2Device.value) {
+    return `Start Recording: ${formatTime(
+      windows.startRecording
+    )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
+  } else {
+    return `Power On: ${formatTime(windows.powerOn!)}, Power Off: ${formatTime(
+      windows.powerOff!
+    )}, Start Recording: ${formatTime(
+      windows.startRecording
+    )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
+  }
 };
 
 const settingsTable = computed(() => {
@@ -152,13 +156,23 @@ const settingsTable = computed(() => {
 const fetchSettings = async () => {
   try {
     const response = await getSettingsForDevice(deviceId);
-    if (response.success) {
+    if (response.success && response.result.settings) {
       return response.result.settings;
     }
   } catch (e) {
     console.error(e);
   }
-  return null;
+  return {
+    windows: {
+      powerOn: "-30m",
+      powerOff: "+30m",
+      startRecording: "-30m",
+      stopRecording: "+30m",
+    },
+    thermalRecording: {
+      toggleUseLowPowerMode: false,
+    },
+  };
 };
 
 const handleToggleUseLowPowerMode = async (setting: { name: string }) => {
@@ -171,20 +185,35 @@ const handleToggleUseLowPowerMode = async (setting: { name: string }) => {
 };
 
 const handleSetDefaultRecordingWindows = async () => {
-  const response = await setDefaultRecordingWindows(deviceId);
+  const response = await setDefaultRecordingWindows(
+    deviceId,
+    isTc2Device.value
+  );
   if (response.success) {
     settings.value = response.result.settings;
   }
 };
 
 const handleSet24HourRecordingWindows = async () => {
-  const response = await set24HourRecordingWindows(deviceId);
+  const response = await set24HourRecordingWindows(deviceId, isTc2Device.value);
   if (response.success) {
     settings.value = response.result.settings;
   }
 };
 const GetWindowSettings = (): Omit<WindowsSettings, "updated"> | null => {
-  if (customPowerTime.value && customRecordingWindow.value) {
+  if (isTc2Device.value && customRecordingWindow.value) {
+    const [startRecording, stopRecording] = customRecordingWindow.value;
+    return {
+      startRecording: timeObjToTimeStr(startRecording),
+      stopRecording: timeObjToTimeStr(stopRecording),
+      powerOn: settings.value?.windows?.powerOn || "-30m",
+      powerOff: settings.value?.windows?.powerOff || "+30m",
+    };
+  } else if (
+    !isTc2Device.value &&
+    customPowerTime.value &&
+    customRecordingWindow.value
+  ) {
     const [powerOn, powerOff] = customPowerTime.value;
     const [startRecording, stopRecording] = customRecordingWindow.value;
     return {
@@ -202,17 +231,18 @@ const enableCustomRecordingWindows = () => {
     return;
   }
   const windows = settings.value.windows;
-  customPowerTime.value = [
-    timeStrToTimeObj(windows.powerOn),
-    timeStrToTimeObj(windows.powerOff),
-  ];
+  if (!isTc2Device.value && windows.powerOn && windows.powerOff) {
+    customPowerTime.value = [
+      timeStrToTimeObj(windows.powerOn),
+      timeStrToTimeObj(windows.powerOff),
+    ];
+  }
   customRecordingWindow.value = [
     timeStrToTimeObj(windows.startRecording),
     timeStrToTimeObj(windows.stopRecording),
   ];
   showCustomModal.value = true;
 };
-
 const timeStrToTimeObj = (timeStr: string): Time => {
   if (!timeStr.includes(":")) {
     return { hours: 12, minutes: 0, seconds: 0 };
@@ -822,8 +852,8 @@ const isTc2Device = computed<boolean>(() => {
       <span v-if="settingsLoading">
         <b-spinner small class="me-2" />
       </span>
-      <div v-else-if="settings" class="device-settings mt-3">
-        <div><b>Synced:</b> {{ settings.synced ? "Yes" : "No" }}</div>
+      <div v-else class="device-settings mt-3">
+        <div><b>Synced:</b> {{ settings?.synced ? "Yes" : "No" }}</div>
         <b-table
           :items="settingsTable"
           :fields="fields"
@@ -957,7 +987,11 @@ const isTc2Device = computed<boolean>(() => {
     @cancel="handleCancel"
   >
     <b-form @submit.stop.prevent="saveCustomRecordingWindows">
-      <b-form-group label="Power On Time" label-for="power-on-time">
+      <b-form-group
+        v-if="!isTc2Device"
+        label="Power On Time"
+        label-for="power-on-time"
+      >
         <datepicker
           v-model="customPowerTime"
           time-picker

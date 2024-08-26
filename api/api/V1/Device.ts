@@ -1453,19 +1453,15 @@ export default function (app: Application, baseUrl: string) {
         const settings = {
           ...(deviceSettings.settings || {}),
         };
-        if (deviceSettings.location) {
-          settings.location = deviceSettings.location;
-        }
 
-        if (deviceSettings && deviceSettings.settings) {
-          return successResponse(
-            response,
-            "Device settings retrieved successfully",
-            { settings }
-          );
-        } else {
-          return successResponse(response, "No device settings found");
-        }
+        return successResponse(
+          response,
+          "Device settings retrieved successfully",
+          {
+            settings,
+            location: deviceSettings.location,
+          }
+        );
       } catch (e) {
         console.error(e);
       }

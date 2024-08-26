@@ -7,7 +7,7 @@ import {
   ApiDeviceResponse,
   WindowsSettings,
 } from "@typedefs/api/device";
-import { DeviceId, ScheduleId } from "@typedefs/api/common";
+import { DeviceId, LatLng, ScheduleId } from "@typedefs/api/common";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 
 export interface DeviceInfo {
@@ -265,7 +265,9 @@ async function getType(
 
 async function getDeviceSettings(
   deviceId: DeviceId
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
+): Promise<
+  FetchResult<{ settings: ApiDeviceHistorySettings; location: LatLng }>
+> {
   return CacophonyApi.get(`/api/v1/devices/${deviceId}/settings`);
 }
 
