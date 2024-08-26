@@ -1168,10 +1168,12 @@ export default function (app: Application, baseUrl: string) {
    * @apiName SetDeviceReferenceImageAtTime
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
    * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
    * @apiBody {Binary} Binary image file for reference image.
    *
-   * @apiDescription Sets a reference image for a device active from now
+   * @apiDescription Sets a reference image for a device at a given point in time, or now,
+   * if no date time is specified.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1185,6 +1187,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
+      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
       query("type").optional().isIn(["pov", "in-situ"]),
       booleanOf(query("only-active"), false),
     ]),
@@ -1194,15 +1197,33 @@ export default function (app: Application, baseUrl: string) {
       // If the location hasn't changed, we need to carry this forward whenever we create
       // another device history entry?
       const referenceType = request.query.type || "pov";
-      // TODO: Make some tests for this.
+      const atTime = request.query["at-time"] as unknown as Date;
       const device = response.locals.device as Device;
-      if (!device.location) {
+      const previousDeviceHistoryEntry: DeviceHistory =
+        await models.DeviceHistory.findOne({
+          where: {
+            DeviceId: device.id,
+            GroupId: device.GroupId,
+            location: { [Op.ne]: null },
+            fromDateTime: { [Op.lt]: atTime },
+          },
+          order: [["fromDateTime", "DESC"]],
+        });
+      if (!previousDeviceHistoryEntry) {
         // We can't add an image, because we don't have a device location.
         return successResponse(
           response,
           "No location for device to tag with reference"
         );
       }
+
+      // If there was a previous reference image for this location entry, delete it.
+      const previousSettings: ApiDeviceHistorySettings =
+        previousDeviceHistoryEntry.settings || {};
+      const hadPreviousReferenceImage =
+        !!previousSettings.referenceImagePOV ||
+        !!previousSettings.referenceImageInSitu;
+
       const { key, size } = await uploadFileStream(request as any, "ref");
       const newSettings =
         referenceType === "pov"
@@ -1215,13 +1236,34 @@ export default function (app: Application, baseUrl: string) {
               referenceImageInSitu: key,
             };
 
-      await models.DeviceHistory.updateDeviceSettings(
-        device.id,
-        device.GroupId,
-        newSettings,
-        "user"
-      );
-
+      if (hadPreviousReferenceImage) {
+        // Create a new entry at `at-time` for the new reference image, leaving the old
+        // reference image intact in the previous device history entry.
+        await models.DeviceHistory.create({
+          ...previousDeviceHistoryEntry.get({ plain: true }),
+          fromDateTime: atTime,
+          settings: {
+            ...previousSettings,
+            ...newSettings,
+          },
+        });
+      } else {
+        await models.DeviceHistory.update(
+          {
+            settings: {
+              ...previousSettings,
+              ...newSettings,
+            },
+          },
+          {
+            where: {
+              fromDateTime: previousDeviceHistoryEntry.fromDateTime,
+              DeviceId: device.id,
+              GroupId: device.GroupId,
+            },
+          }
+        );
+      }
       return successResponse(response, { key, size });
     }
   );
@@ -1253,14 +1295,58 @@ export default function (app: Application, baseUrl: string) {
       const maskRegions: Record<string, MaskRegion> = request.body.maskRegions;
       const device = response.locals.device as Device;
       try {
-        await models.DeviceHistory.updateDeviceSettings(
-          device.id,
-          device.GroupId,
-          {
-            maskRegions,
-          },
-          "user"
-        );
+        const deviceHistoryEntry: DeviceHistory =
+          await models.DeviceHistory.findOne({
+            where: {
+              DeviceId: device.id,
+              GroupId: device.GroupId,
+              location: { [Op.ne]: null },
+            },
+            order: [["fromDateTime", "DESC"]],
+          });
+
+        if (!deviceHistoryEntry) {
+          return next(
+            new ClientError(
+              "No device history settings entry found to add mask regions"
+            )
+          );
+        }
+        const newSettings: ApiDeviceHistorySettings = {
+          ...deviceHistoryEntry.settings,
+        };
+        const hadMaskRegion =
+          !!newSettings.maskRegions &&
+          Object.keys(newSettings.maskRegions).length !== 0;
+        if (Object.keys(maskRegions).length) {
+          newSettings.maskRegions = maskRegions;
+        } else {
+          delete newSettings.maskRegions;
+        }
+        if (hadMaskRegion) {
+          // Create a new copy of the current DeviceHistory entry, so that previous mask regions at this location
+          // are preserved.
+          await models.DeviceHistory.create({
+            ...deviceHistoryEntry.get({ plain: true }),
+            fromDateTime: new Date(),
+            settings: newSettings,
+          });
+        } else {
+          // Update the existing DeviceHistory entry without mask regions in place.  The mask region will apply from
+          // when this location was created.
+          await models.DeviceHistory.update(
+            {
+              settings: newSettings,
+            },
+            {
+              where: {
+                fromDateTime: deviceHistoryEntry.fromDateTime,
+                DeviceId: device.id,
+                GroupId: device.GroupId,
+              },
+            }
+          );
+        }
         return successResponse(response, "Mask regions added successfully");
       } catch (e) {
         return next(
