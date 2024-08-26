@@ -14,8 +14,8 @@ import {
   getSettingsForDevice,
   set24HourRecordingWindows,
   setDefaultRecordingWindows,
-  toggleUseLowPowerMode,
   setCustomRecordingWindows,
+  setUseLowPowerMode,
 } from "@api/Device";
 import { useRoute } from "vue-router";
 import type { Ref } from "vue";
@@ -44,6 +44,7 @@ import type {
   WindowsSettings,
 } from "@typedefs/api/device";
 import type { BvTriggerableEvent } from "bootstrap-vue-next/src/BootstrapVue.js";
+import { defaultWindow } from "@vueuse/core";
 
 const batteryTimeSeries = ref<HTMLDivElement>();
 
@@ -87,7 +88,7 @@ const lastUpdateWasUnsuccessful = ref<boolean>(true);
 
 const fields = [
   { key: "name", label: "Setting" },
-  { key: "value", label: "Value" },
+  { key: "label", label: "" },
   { key: "actions", label: "Actions" },
 ];
 
@@ -95,19 +96,10 @@ const currentWindowsType = computed(() => {
   if (!settings.value || !settings.value.windows) {
     return "default";
   }
-  const { powerOn, powerOff, startRecording, stopRecording } =
-    settings.value.windows;
-  if (
-    (!isTc2Device.value || (powerOn === "-30m" && powerOff === "+30m")) &&
-    startRecording === "-30m" &&
-    stopRecording === "+30m"
-  ) {
+  const { startRecording, stopRecording } = settings.value.windows;
+  if (startRecording === "-30m" && stopRecording === "+30m") {
     return "default";
-  } else if (
-    (!isTc2Device.value || (powerOn === "12:00" && powerOff === "12:00")) &&
-    startRecording === "12:00" &&
-    stopRecording === "12:00"
-  ) {
+  } else if (startRecording === "12:00" && stopRecording === "12:00") {
     return "24hour";
   } else {
     return "custom";
@@ -115,6 +107,7 @@ const currentWindowsType = computed(() => {
 });
 
 const formatTime = (timeString: string) => {
+  if (!timeString) return "";
   if (timeString[0] === "+" || timeString[0] === "-") {
     return timeString;
   }
@@ -122,7 +115,7 @@ const formatTime = (timeString: string) => {
   return `${hours}:${minutes}`;
 };
 
-const formatRecordingWindows = (windows: WindowsSettings) => {
+const formatRecordingWindows = (windows: Omit<WindowsSettings, "updated">) => {
   if (isTc2Device.value) {
     return `Start Recording: ${formatTime(
       windows.startRecording
@@ -136,17 +129,27 @@ const formatRecordingWindows = (windows: WindowsSettings) => {
   }
 };
 
+const defaultWindows = {
+  powerOn: "-30m",
+  powerOff: "+30m",
+  startRecording: "-30m",
+  stopRecording: "+30m",
+};
 const settingsTable = computed(() => {
   const rows = [
     {
-      name: "Use Low Power Mode",
+      name: "Power Mode",
       value: settings.value?.thermalRecording?.useLowPowerMode ?? false,
+      label: settings.value?.thermalRecording?.useLowPowerMode ? "Low" : "High",
     },
     {
       name: "Recording Windows",
       value: settings.value?.windows
         ? formatRecordingWindows(settings.value.windows)
-        : "Not set",
+        : formatRecordingWindows(defaultWindows),
+      label: settings.value?.windows
+        ? formatRecordingWindows(settings.value.windows)
+        : formatRecordingWindows(defaultWindows),
     },
   ];
 
@@ -163,24 +166,17 @@ const fetchSettings = async () => {
     console.error(e);
   }
   return {
-    windows: {
-      powerOn: "-30m",
-      powerOff: "+30m",
-      startRecording: "-30m",
-      stopRecording: "+30m",
-    },
+    windows: defaultWindows,
     thermalRecording: {
       toggleUseLowPowerMode: false,
     },
   };
 };
 
-const handleToggleUseLowPowerMode = async (setting: { name: string }) => {
-  if (setting.name === "Use Low Power Mode") {
-    const response = await toggleUseLowPowerMode(deviceId);
-    if (response.success) {
-      settings.value = response.result.settings;
-    }
+const handleUseLowPowerMode = async (on: boolean) => {
+  const response = await setUseLowPowerMode(deviceId, on);
+  if (response.success) {
+    settings.value = response.result.settings;
   }
 };
 
@@ -426,7 +422,7 @@ const deviceStopped = computed<boolean>(() => {
   }
   return false;
 });
-//
+
 const recordingWindow = computed<string | null>(() => {
   if (records247.value) {
     return "Set to record 24/7";
@@ -847,7 +843,10 @@ const isTc2Device = computed<boolean>(() => {
         <div v-else>Device does not currently have a known location</div>
       </div>
     </div>
-    <div class="mt-4" v-if="device.type === 'thermal'">
+    <div
+      class="mt-4"
+      v-if="device.type === 'thermal' || device.type === 'hybrid-thermal-audio'"
+    >
       <h6 class="mt-4">Device Settings:</h6>
       <span v-if="settingsLoading">
         <b-spinner small class="me-2" />
@@ -862,11 +861,28 @@ const isTc2Device = computed<boolean>(() => {
           class="settings-table mt-3"
         >
           <template #cell(actions)="row">
-            <div v-if="row.item.name === 'Use Low Power Mode'">
+            <div class="btn-group" v-if="row.item.name === 'Power Mode'">
               <b-button
-                @click="handleToggleUseLowPowerMode(row.item)"
-                variant="secondary"
-                >Toggle</b-button
+                @click="() => handleUseLowPowerMode(true)"
+                :variant="
+                  settings?.thermalRecording?.useLowPowerMode ?? false
+                    ? 'primary'
+                    : 'secondary'
+                "
+                :disabled="settings?.thermalRecording?.useLowPowerMode ?? false"
+                >Low Power</b-button
+              >
+              <b-button
+                @click="() => handleUseLowPowerMode(false)"
+                :variant="
+                  !(settings?.thermalRecording?.useLowPowerMode ?? false)
+                    ? 'primary'
+                    : 'secondary'
+                "
+                :disabled="
+                  !settings?.thermalRecording?.useLowPowerMode ?? false
+                "
+                >High Power</b-button
               >
             </div>
             <div v-if="row.item.name === 'Recording Windows'" class="btn-group">

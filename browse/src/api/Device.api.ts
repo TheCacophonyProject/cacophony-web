@@ -284,10 +284,7 @@ async function toggleUseLowPowerMode(
   deviceId: DeviceId
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
   const currentSettingsResponse = await getDeviceSettings(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
+  if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,
@@ -307,10 +304,7 @@ async function setDefaultRecordingWindows(
   deviceId: DeviceId
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
   const currentSettingsResponse = await getDeviceSettings(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
+  if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,
@@ -332,10 +326,7 @@ async function set24HourRecordingWindows(
   deviceId: DeviceId
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
   const currentSettingsResponse = await getDeviceSettings(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
+  if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,
@@ -358,10 +349,7 @@ async function setCustomRecordingWindows(
   customSettings: Omit<WindowsSettings, "updated">
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
   const currentSettingsResponse = await getDeviceSettings(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
+  if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,

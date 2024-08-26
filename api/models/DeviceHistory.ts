@@ -135,9 +135,14 @@ export default function (
       },
       order: [["fromDateTime", "DESC"]],
     });
+    if (!currentSettingsEntry) {
+      throw Error(
+        `Device may not be registered or setup in group ${groupId}/with location`
+      );
+    }
 
     const currentSettings: ApiDeviceHistorySettings =
-      currentSettingsEntry?.settings ?? ({} as ApiDeviceHistorySettings);
+      currentSettingsEntry.settings ?? ({} as ApiDeviceHistorySettings);
     const { settings, changed } = mergeSettings(
       currentSettings,
       newSettings,

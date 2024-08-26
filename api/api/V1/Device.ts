@@ -1452,16 +1452,14 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       try {
-        const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
         const where = {
           DeviceId: device.id,
           GroupId: device.GroupId,
           location: { [Op.ne]: null },
         };
-        debugger;
 
         const deviceSettings: DeviceHistory | null =
           await models.DeviceHistory.findOne({
@@ -1481,7 +1479,7 @@ export default function (app: Application, baseUrl: string) {
           }
         );
       } catch (e) {
-        console.error(e);
+        return next(new ClientError(e.message ?? "Could not get settings"));
       }
     }
   );
@@ -1508,12 +1506,11 @@ export default function (app: Application, baseUrl: string) {
       body("settings").custom(jsonSchemaOf(ApiDeviceHistorySettingsSchema)),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       try {
         const device = response.locals.device as Device;
         const newSettings: ApiDeviceHistorySettings = request.body.settings;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
-
         const updatedEntry = await models.DeviceHistory.updateDeviceSettings(
           device.id,
           device.GroupId,
@@ -1530,7 +1527,7 @@ export default function (app: Application, baseUrl: string) {
         );
       } catch (e) {
         console.log(e);
-        return response.status(500).send({ error: "Internal Server Error" });
+        return next(new ClientError(e.message ?? "Could not update settings"));
       }
     }
   );
