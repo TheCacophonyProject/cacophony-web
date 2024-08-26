@@ -79,6 +79,7 @@ import { Writable } from "stream";
 import temp from "temp";
 import fs from "fs";
 import { sendAnimalAlertEmail } from "@/emails/transactionalEmails.js";
+import {ApiDeviceHistorySettings} from "@typedefs/api/device.js";
 
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -566,6 +567,7 @@ export const maybeUpdateDeviceHistory = async (
       order: [["fromDateTime", "DESC"]], // Get the latest one that's earlier than our current dateTime
     });
 
+
     if (priorLocation) {
       const locationChanged = !locationsAreEqual(
         priorLocation.location,
@@ -668,7 +670,22 @@ export const maybeUpdateDeviceHistory = async (
         GroupId: device.GroupId,
         saltId: device.saltId,
         uuid: device.uuid,
+        settings: null
       };
+      if (priorLocation && priorLocation.settings) {
+        // Preserve any non-location specific settings
+        const settings = {
+          ...priorLocation.settings
+        } as ApiDeviceHistorySettings;
+        delete settings.referenceImagePOV;
+        delete settings.referenceImageInSitu;
+        delete settings.referenceImagePOVFileSize;
+        delete settings.referenceImageInSituFileSize;
+        delete settings.ratThresh;
+        delete settings.maskRegions;
+        delete settings.warp;
+        newDeviceHistoryEntry.settings = settings;
+      }
       let stationToAssign = await tryToMatchLocationToStationInGroup(
         models,
         location,

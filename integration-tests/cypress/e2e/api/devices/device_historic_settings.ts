@@ -4,6 +4,9 @@ import { uploadFile } from "@commands/fileUpload";
 
 describe("Devices historic settings", () => {
   it("A user can add and retrieve a reference image for a device in a location", () => {
+
+    /// When a device is moved from its current location, any maskRegions or reference images should be removed from settings
+
     const user = "Casey";
     const group = "Casey-Team";
     const camera = "Casey-camera";
@@ -77,6 +80,9 @@ describe("Devices historic settings", () => {
             user
           ).then(() => {
             cy.log("Check low power mode has been merged");
+            params = new URLSearchParams();
+            params.append("at-time", new Date().toISOString());
+            queryString = params.toString();
             makeAuthorizedRequest(
               {
                 method: "GET",
@@ -85,7 +91,6 @@ describe("Devices historic settings", () => {
               user
             ).then((response) => {
               const settings = response.body.settings;
-              cy.log(JSON.stringify(settings));
               expect(settings).to.exist;
               const referenceImagePOVExist =
                 settings.hasOwnProperty("referenceImagePOV");
@@ -97,12 +102,13 @@ describe("Devices historic settings", () => {
               const lowPowerModeSettingExist2 =
                 settings.thermalRecording &&
                 settings.thermalRecording.hasOwnProperty("useLowPowerMode");
+              const syncExists = settings.hasOwnProperty("synced");
 
-              // TODO: Sync should be false
               expect(referenceImagePOVExist).to.be.true;
               expect(referenceImagePOVFileSizeExist).to.be.true;
               expect(lowPowerModeSettingExist).to.be.true;
               expect(lowPowerModeSettingExist2).to.be.true;
+              expect(syncExists).to.be.true;
 
               cy.log(
                 "Upload a second recording at a different location to create a new DeviceHistory entry"
@@ -113,8 +119,11 @@ describe("Devices historic settings", () => {
                 noTracks: true,
               }).then(() => {
                 cy.log(
-                  "Make sure the reference image has been cleared for the new location"
+                  "Make sure the settings have been cleared for the older location."
                 );
+                params = new URLSearchParams();
+                params.append("at-time", oneDayAgo.toISOString());
+                queryString = params.toString();
                 makeAuthorizedRequest(
                   {
                     method: "GET",
@@ -122,43 +131,54 @@ describe("Devices historic settings", () => {
                   },
                   user
                 ).then((response) => {
-                  const settings = response.body.settings;
-                  expect(settings).to.exist;
-                  const referenceImagePOVExist =
-                    settings.hasOwnProperty("referenceImagePOV");
-                  const referenceImagePOVFileSizeExist =
-                    settings.hasOwnProperty("referenceImagePOVFileSize");
-                  const lowPowerModeSettingExist =
-                    settings.hasOwnProperty("thermalRecording");
-                  const lowPowerModeSettingExist2 =
-                    settings.thermalRecording &&
-                    settings.thermalRecording.hasOwnProperty("useLowPowerMode");
-                  expect(referenceImagePOVExist).to.be.false;
-                  expect(referenceImagePOVFileSizeExist).to.be.false;
-                  expect(lowPowerModeSettingExist).to.be.true;
-                  expect(lowPowerModeSettingExist2).to.be.true;
+                  const hasSettings = response.body.settings && Object.keys(response.body.settings).length !== 0;
+                  expect(hasSettings).to.be.false;
                 });
               });
+                cy.log("Upload a new recording 'now' in a new location");
+                cy.testUploadRecording(camera, {
+                    ...TestGetLocation(3),
+                    time: new Date(),
+                    noTracks: true,
+                }).then(() => {
+                    cy.log(
+                        "Make sure the location specific settings have been cleared for the new location, while other settings are preserved"
+                    );
+                    params = new URLSearchParams();
+                    params.append("at-time", new Date().toISOString());
+                    queryString = params.toString();
+                    makeAuthorizedRequest(
+                        {
+                            method: "GET",
+                            url: `${deviceSettingsApiUrl}?${queryString}`,
+                        },
+                        user
+                    ).then((response) => {
+                        const settings = response.body.settings;
+                        expect(settings).to.exist;
+                        const referenceImagePOVExist =
+                            settings.hasOwnProperty("referenceImagePOV");
+                        const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
+                            "referenceImagePOVFileSize"
+                        );
+                        const lowPowerModeSettingExist =
+                            settings.hasOwnProperty("thermalRecording");
+                        const lowPowerModeSettingExist2 =
+                            settings.thermalRecording &&
+                            settings.thermalRecording.hasOwnProperty("useLowPowerMode");
+                        const syncExists = settings.hasOwnProperty("synced");
+
+                        expect(referenceImagePOVExist).to.be.false;
+                        expect(referenceImagePOVFileSizeExist).to.be.false;
+                        expect(lowPowerModeSettingExist).to.be.true;
+                        expect(lowPowerModeSettingExist2).to.be.true;
+                        expect(syncExists).to.be.true;
+                    });
+                });
             });
           });
         });
       });
     });
-  });
-
-  it("When a device is moved from it's current location, any maskRegions or reference images should be removed from settings", () => {
-    // TODO
-  });
-
-  it("If a device gets the same settings twice in a row, a new DeviceHistory entry should not be created", () => {
-    // TODO
-  });
-
-  it("A user can retrieve a historical reference image for a device at a given point in time.", () => {
-    // TODO
-  });
-
-  it("A user can retrieve historical maskRegions for a device at a given point in time.", () => {
-    // TODO
   });
 });
