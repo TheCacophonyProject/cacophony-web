@@ -15,6 +15,9 @@ async function main() {
   const devices = await getDeviceLocation();
   for (const devHistory of devices) {
     const { DeviceId: deviceId, GroupId: groupId, location } = devHistory;
+    if (deviceId !== 1822) {
+      continue;
+    }
     const earliestDateTimeAtLocation =
       await models.DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
         deviceId,
@@ -30,9 +33,14 @@ async function main() {
       if (rodentQ.length === 0) {
         continue;
       }
-      const latestHumanTaggedRodentDateTime = new Date(
-        rodentQ[0]["recordingDateTime"]
-      ).getTime();
+      let latestHumanTaggedRodentDateTime = 0;
+      for (const rodentTaggedRecording of rodentQ) {
+        const tagTime = new Date(rodentTaggedRecording["updatedAt"]).getTime();
+        if (tagTime > latestHumanTaggedRodentDateTime) {
+          latestHumanTaggedRodentDateTime = tagTime;
+        }
+      }
+
       const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
         deviceId,
         groupId
@@ -41,6 +49,17 @@ async function main() {
         (latestDeviceHistoryEntry.settings &&
           latestDeviceHistoryEntry.settings.ratThresh?.version) ||
         0;
+      console.log(
+        "LATEST RODENT TAG TIME:",
+        latestHumanTaggedRodentDateTime,
+        new Date(latestHumanTaggedRodentDateTime)
+      );
+      console.log(
+        "LATEST Rat thresh time:",
+        latestRatThreshTime,
+        new Date(latestRatThreshTime)
+      );
+      console.log(rodentQ.length);
       if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
         // Update the ratThresh
         const gridData = [...Array(rows)].map((_e) =>
@@ -166,7 +185,7 @@ const quantile = (arr, q, isSorted = false) => {
     return sorted[base];
   }
 };
-function getGridData(u_id: Number, tag, positions, existingGridData) {
+function getGridData(u_id: number, tag: string, positions, existingGridData) {
   const gridData = [...Array(rows)].map((_e) =>
     [...Array(columns)].map((_e) => Array())
   );
@@ -237,7 +256,8 @@ async function getRodentData(
       t.id,
       r."location",
       t.data,
-      tt."what"
+      tt."what",
+      tt."updatedAt"
     from
       "TrackTags" tt
       right join "Tracks" t on

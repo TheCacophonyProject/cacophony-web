@@ -189,7 +189,12 @@ export const getSelfJoinForTagMode = (
   includeFilteredTracks: boolean,
   direction: "asc" | "desc" = "desc"
 ) => {
-  const limit = (tableName: string) => {
+  const limit = (tableName?: string) => {
+    if (!tableName) {
+      return `
+        order by "recordingDateTime" ${direction}
+        limit ${maxResults}`;
+    }
     return `
         order by ${tableName}."recordingDateTime" ${direction}
         limit ${maxResults}`;
@@ -308,12 +313,20 @@ export const getSelfJoinForTagMode = (
       const automaticSql = getRawSql(models, options(true, true));
       const humanSql = getRawSql(models, options(false, false));
       return `
-        select ${recordingIds("automatic_recordings")} 
+        select distinct 
+          coalesce(
+            automatic_recordings.id, 
+            human_recordings.id
+          ) as id,
+	      coalesce (
+	        automatic_recordings."recordingDateTime", 
+	        human_recordings."recordingDateTime"
+          ) as "recordingDateTime" 
         from 
         (${automaticSql}) as automatic_recordings 
-        left join 
+        full join 
         (${humanSql}) as human_recordings 
-        on automatic_recordings.id = human_recordings.id 
+        on human_recordings.id = automatic_recordings.id 
         where (
         automatic_recordings.automatic = true 
         and human_recordings.automatic = false 
@@ -321,7 +334,7 @@ export const getSelfJoinForTagMode = (
         ${whereTaggedWith("human_recordings", taggedWith)}
         ) 
         or human_recordings.automatic is null                  
-        ${limit("automatic_recordings")}       
+        ${limit()}       
       `;
     }
     case TagMode.NoHuman: {

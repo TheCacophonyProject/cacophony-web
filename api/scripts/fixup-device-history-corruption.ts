@@ -68,11 +68,14 @@ const models = await modelsInit();
             prevEntry.location.lat !== entry.location.lat ||
             prevEntry.location.lng !== entry.location.lng
           ) {
-            // Location changed
+            // Location changed, remove location specific device settings
             delete settings.referenceImageInSitu;
             delete settings.referenceImagePOV;
             delete settings.referenceImageInSituFileSize;
             delete settings.referenceImagePOVFileSize;
+            delete settings.maskRegions;
+            delete settings.warp;
+            delete settings.ratThresh;
           }
         }
       }

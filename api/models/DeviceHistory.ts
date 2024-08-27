@@ -153,12 +153,12 @@ export default function (
     newSettings: ApiDeviceHistorySettings,
     setBy: DeviceHistorySetBy
   ): Promise<ApiDeviceHistorySettings> {
-    const currentSettingsEntry: DeviceHistory = await this.latest(
+    const currentSettingsEntry: DeviceHistory = (await this.latest(
       deviceId,
       groupId
-    );
+    )) || { settings: {} };
     const currentSettings: ApiDeviceHistorySettings =
-      currentSettingsEntry?.settings ?? ({} as ApiDeviceHistorySettings);
+      currentSettingsEntry?.settings || ({} as ApiDeviceHistorySettings);
     const { settings, changed } = mergeSettings(
       currentSettings,
       newSettings,
@@ -167,18 +167,31 @@ export default function (
 
     const synced = setBy === "automatic";
     // add to device history ledger
-    if (changed) {
+    if (
+      changed &&
+      (!currentSettings.hasOwnProperty("synced") ||
+        currentSettings.synced ||
+        synced)
+    ) {
       await this.create({
         ...currentSettingsEntry.get({ plain: true }),
-        DeviceId: deviceId,
-        GroupId: groupId,
         fromDateTime: new Date(),
         setBy,
         settings,
       });
-    } else if (synced) {
-      // in place only if the device already had the settings so no change
-      await currentSettingsEntry.update("settings", settings);
+    } else {
+      // in place only if the device already had the settings so no change,
+      // or if the previous settings were not yet applied.
+      await this.update(
+        { settings },
+        {
+          where: {
+            fromDateTime: { [Op.eq]: currentSettingsEntry.fromDateTime },
+            DeviceId: deviceId,
+            GroupId: groupId,
+          },
+        }
+      );
     }
     return settings;
   };
