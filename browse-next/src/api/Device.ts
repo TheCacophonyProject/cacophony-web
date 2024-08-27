@@ -492,7 +492,10 @@ export const getSettingsForDevice = (deviceId: DeviceId, atTime?: Date) => {
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/settings?${queryString}`
   ) as Promise<
-    FetchResult<{ settings: ApiDeviceHistorySettings; location: LatLng }>
+    FetchResult<{
+      settings: ApiDeviceHistorySettings | null;
+      location: LatLng | null;
+    }>
   >;
 };
 
@@ -505,18 +508,15 @@ export const updateDeviceSettings = (
   }) as Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>>;
 };
 
-export const toggleUseLowPowerMode = async (deviceId: DeviceId) => {
+export const setUseLowPowerMode = async (deviceId: DeviceId, on: boolean) => {
   const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
+  if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,
       thermalRecording: {
-        ...currentSettings.thermalRecording,
-        useLowPowerMode: !currentSettings.thermalRecording?.useLowPowerMode,
+        ...currentSettings?.thermalRecording,
+        useLowPowerMode: on,
         updated: new Date().toISOString(),
       },
     };
@@ -597,10 +597,7 @@ export const setCustomRecordingWindows = async (
   customSettings: Omit<WindowsSettings, "updated">
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> => {
   const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (
-    currentSettingsResponse.success &&
-    currentSettingsResponse.result.settings
-  ) {
+  if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
       ...currentSettings,

@@ -1444,7 +1444,7 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
@@ -1463,7 +1463,7 @@ export default function (app: Application, baseUrl: string) {
           }
         );
       } catch (e) {
-        console.error(e);
+        return next(new FatalError(e.message ?? "Could not get settings"));
       }
     }
   );
