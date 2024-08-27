@@ -26,6 +26,10 @@ const emailIsTooShort = computed<boolean>(
   () => projectAdminEmailAddress.value.trim().length < 3
 );
 
+const joinableProjectsLoaded = computed<boolean>(
+  () => !!joinableProjects.value
+);
+
 const joinableProjectsCheckboxOptions = computed<
   { text: string; value: string }[]
 >(
@@ -141,7 +145,7 @@ const getGroupsForAdmin = async () => {
       </div>
       <div
         class="input-group justify-content-end d-flex"
-        v-if="hasJoinableProjects"
+        v-if="!joinableProjectsLoaded"
       >
         <button
           class="btn btn-primary"

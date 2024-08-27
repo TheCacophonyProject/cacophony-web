@@ -90,7 +90,7 @@ describe("New users can sign up and confirm their email address", () => {
     startMailServerStub();
   });
 
-  it("Existing user (with projects) is able to request to join an existing project from main view", () => {
+  it.only("Existing user (with projects) is able to request to join an existing project from main view", () => {
     cy.log("User 1 creates a project");
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
@@ -295,7 +295,7 @@ describe("New users can sign up and confirm their email address", () => {
     });
   });
 
-  it.only("Logged in user with a project invite link is able to accept the invitation", () => {
+  it("Logged in user with a project invite link is able to accept the invitation", () => {
     cy.log("User 1 registers and creates a project");
     const user1 = uniqueName("Bob");
     const password1 = uniqueName("pass");

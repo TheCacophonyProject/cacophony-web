@@ -70,7 +70,9 @@ onMounted(async () => {
 </script>
 <template>
   <div v-if="checkingValidateEmailToken">
-    <b-spinner size="xl" />&nbsp;<span class="h1">Confirming request</span>
+    <b-spinner size="xl" class="me-2" /><span class="h1"
+      >Confirming request</span
+    >
   </div>
   <div v-else-if="alreadyPartOfProject">
     <span>You're already a member of this project</span>

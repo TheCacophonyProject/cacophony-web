@@ -4,7 +4,6 @@ import { uploadFile } from "@commands/fileUpload";
 
 describe("Devices historic settings", () => {
   it("A user can add and retrieve a reference image for a device in a location", () => {
-
     /// When a device is moved from its current location, any maskRegions or reference images should be removed from settings
 
     const user = "Casey";
@@ -131,50 +130,53 @@ describe("Devices historic settings", () => {
                   },
                   user
                 ).then((response) => {
-                  const hasSettings = response.body.settings && Object.keys(response.body.settings).length !== 0;
+                  const hasSettings =
+                    response.body.settings &&
+                    Object.keys(response.body.settings).length !== 0;
                   expect(hasSettings).to.be.false;
                 });
               });
-                cy.log("Upload a new recording 'now' in a new location");
-                cy.testUploadRecording(camera, {
-                    ...TestGetLocation(3),
-                    time: new Date(),
-                    noTracks: true,
-                }).then(() => {
-                    cy.log(
-                        "Make sure the location specific settings have been cleared for the new location, while other settings are preserved"
-                    );
-                    params = new URLSearchParams();
-                    params.append("at-time", new Date().toISOString());
-                    queryString = params.toString();
-                    makeAuthorizedRequest(
-                        {
-                            method: "GET",
-                            url: `${deviceSettingsApiUrl}?${queryString}`,
-                        },
-                        user
-                    ).then((response) => {
-                        const settings = response.body.settings;
-                        expect(settings).to.exist;
-                        const referenceImagePOVExist =
-                            settings.hasOwnProperty("referenceImagePOV");
-                        const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-                            "referenceImagePOVFileSize"
-                        );
-                        const lowPowerModeSettingExist =
-                            settings.hasOwnProperty("thermalRecording");
-                        const lowPowerModeSettingExist2 =
-                            settings.thermalRecording &&
-                            settings.thermalRecording.hasOwnProperty("useLowPowerMode");
-                        const syncExists = settings.hasOwnProperty("synced");
+              cy.log("Upload a new recording 'now' in a new location");
+              cy.testUploadRecording(camera, {
+                ...TestGetLocation(3),
+                time: new Date(),
+                noTracks: true,
+              }).then(() => {
+                cy.log(
+                  "Make sure the location specific settings have been cleared for the new location, while other settings are preserved"
+                );
+                params = new URLSearchParams();
+                params.append("at-time", new Date().toISOString());
+                queryString = params.toString();
+                makeAuthorizedRequest(
+                  {
+                    method: "GET",
+                    url: `${deviceSettingsApiUrl}?${queryString}`,
+                  },
+                  user
+                ).then((response) => {
+                  const settings = response.body.settings;
+                  expect(settings).to.exist;
+                  const referenceImagePOVExist =
+                    settings.hasOwnProperty("referenceImagePOV");
+                  const referenceImagePOVFileSizeExist =
+                    settings.hasOwnProperty("referenceImagePOVFileSize");
+                  const lowPowerModeSettingExist =
+                    settings.hasOwnProperty("thermalRecording");
+                  const lowPowerModeSettingExist2 =
+                    settings.thermalRecording &&
+                    settings.thermalRecording.hasOwnProperty("useLowPowerMode");
+                  const syncExists = settings.hasOwnProperty("synced");
 
-                        expect(referenceImagePOVExist).to.be.false;
-                        expect(referenceImagePOVFileSizeExist).to.be.false;
-                        expect(lowPowerModeSettingExist).to.be.true;
-                        expect(lowPowerModeSettingExist2).to.be.true;
-                        expect(syncExists).to.be.true;
-                    });
+                  expect(referenceImagePOVExist).to.be.false;
+                  expect(referenceImagePOVFileSizeExist).to.be.false;
+                  expect(lowPowerModeSettingExist).to.be.true;
+                  expect(lowPowerModeSettingExist2).to.be.true;
+                  expect(syncExists).to.be.true;
                 });
+
+                // TODO: Could apply/sync changes, and assert that a new entry is created after that for new changes.
+              });
             });
           });
         });

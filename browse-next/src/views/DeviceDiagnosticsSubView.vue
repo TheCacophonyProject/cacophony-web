@@ -107,7 +107,9 @@ const currentWindowsType = computed(() => {
 });
 
 const formatTime = (timeString: string) => {
-  if (!timeString) return "";
+  if (!timeString) {
+    return "";
+  }
   if (timeString[0] === "+" || timeString[0] === "-") {
     return timeString;
   }
