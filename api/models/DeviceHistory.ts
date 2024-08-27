@@ -131,21 +131,21 @@ export default function (
     });
   };
 
-    DeviceHistory.latest = async function (
-        deviceId: DeviceId,
-        groupId: GroupId,
-        atTime = new Date()
-    ): Promise<DeviceHistory | null> {
-        return this.findOne({
-            where: {
-                DeviceId: deviceId,
-                GroupId: groupId,
-                location: { [Op.ne]: null },
-                fromDateTime: { [Op.lte]: atTime },
-            },
-            order: [["fromDateTime", "DESC"]],
-        });
-    };
+  DeviceHistory.latest = async function (
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime = new Date()
+  ): Promise<DeviceHistory | null> {
+    return this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+        location: { [Op.ne]: null },
+        fromDateTime: { [Op.lte]: atTime },
+      },
+      order: [["fromDateTime", "DESC"]],
+    });
+  };
   DeviceHistory.updateDeviceSettings = async function (
     deviceId: DeviceId,
     groupId: GroupId,
@@ -156,11 +156,11 @@ export default function (
       deviceId,
       groupId
     );
-      if (!currentSettingsEntry) {
-          throw Error(
-              `Device may not be registered or setup in group ${groupId}/with location`
-          );
-      }
+    if (!currentSettingsEntry) {
+      throw Error(
+        `Device may not be registered or setup in group ${groupId}/with location`
+      );
+    }
     const currentSettings: ApiDeviceHistorySettings =
       currentSettingsEntry?.settings || ({} as ApiDeviceHistorySettings);
 
