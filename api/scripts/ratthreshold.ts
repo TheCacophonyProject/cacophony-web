@@ -15,9 +15,6 @@ async function main() {
   const devices = await getDeviceLocation();
   for (const devHistory of devices) {
     const { DeviceId: deviceId, GroupId: groupId, location } = devHistory;
-    if (deviceId !== 1822) {
-      continue;
-    }
     const earliestDateTimeAtLocation =
       await models.DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
         deviceId,
@@ -49,17 +46,6 @@ async function main() {
         (latestDeviceHistoryEntry.settings &&
           latestDeviceHistoryEntry.settings.ratThresh?.version) ||
         0;
-      console.log(
-        "LATEST RODENT TAG TIME:",
-        latestHumanTaggedRodentDateTime,
-        new Date(latestHumanTaggedRodentDateTime)
-      );
-      console.log(
-        "LATEST Rat thresh time:",
-        latestRatThreshTime,
-        new Date(latestRatThreshTime)
-      );
-      console.log(rodentQ.length);
       if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
         // Update the ratThresh
         const gridData = [...Array(rows)].map((_e) =>
