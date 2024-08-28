@@ -430,7 +430,7 @@ const helpInfo = ref(true);
 </script>
 <template>
   <div class="d-flex flex-row justify-content-between">
-    <div class="w-100">
+    <div class="w-100 d-flex justify-content-center align-items-center">
       <div
         v-if="loading"
         class="d-flex justify-content-center align-items-center"
@@ -439,7 +439,7 @@ const helpInfo = ref(true);
         <b-spinner />
       </div>
       <div
-        class="d-flex justify-content-center align-items-center flex-column"
+        class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
         v-else-if="!latestReferenceImageURL"
       >
         <b-alert dismissible v-model="helpInfo"
@@ -609,6 +609,11 @@ const helpInfo = ref(true);
   </div>
 </template>
 <style scoped lang="less">
+
+.reference-image {
+  max-width: 640px;
+}
+
 @media screen and (min-width: 640px) {
   .existing-reference-image {
     width: 640px;

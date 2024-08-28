@@ -173,9 +173,89 @@ describe("Devices historic settings", () => {
                   expect(lowPowerModeSettingExist).to.be.true;
                   expect(lowPowerModeSettingExist2).to.be.true;
                   expect(syncExists).to.be.true;
-                });
+                  expect(settings.synced).to.be.false;
 
-                // TODO: Could apply/sync changes, and assert that a new entry is created after that for new changes.
+                  cy.log("Sync settings with device");
+                  const confirmedSettings = { ...settings };
+                  delete confirmedSettings.synced;
+                  makeAuthorizedRequest(
+                    {
+                      method: "POST",
+                      url: deviceSettingsApiUrl,
+                      body: {
+                        settings: confirmedSettings,
+                      },
+                    },
+                    camera
+                  ).then(() => {
+                    params = new URLSearchParams();
+                    params.append("at-time", new Date().toISOString());
+                    queryString = params.toString();
+                    makeAuthorizedRequest(
+                      {
+                        method: "GET",
+                        url: `${deviceSettingsApiUrl}?${queryString}`,
+                      },
+                      user
+                    ).then((response) => {
+                      const settings = response.body.settings;
+                      expect(settings).to.exist;
+                      expect(syncExists).to.be.true;
+                      expect(settings.synced).to.be.true;
+                      cy.log(
+                        "Add new settings and ask for the latest synced settings"
+                      );
+                      makeAuthorizedRequest(
+                        {
+                          method: "POST",
+                          url: `${deviceSettingsApiUrl}`,
+                          body: {
+                            settings: {
+                              thermalRecording: {
+                                useLowPowerMode: false,
+                                updated: new Date().toISOString(),
+                              },
+                            },
+                          },
+                        },
+                        user
+                      ).then(() => {
+                        params = new URLSearchParams();
+                        params.append("at-time", new Date().toISOString());
+                        queryString = params.toString();
+                        makeAuthorizedRequest(
+                          {
+                            method: "GET",
+                            url: `${deviceSettingsApiUrl}?${queryString}`,
+                          },
+                          user
+                        ).then((response) => {
+                          const settings = response.body.settings;
+                          expect(settings).to.exist;
+                          expect(syncExists).to.be.true;
+                          expect(settings.synced).to.be.false;
+                        });
+
+                        params = new URLSearchParams();
+                        params.append("at-time", new Date().toISOString());
+                        params.append("latest-synced", true.toString());
+                        queryString = params.toString();
+                        makeAuthorizedRequest(
+                          {
+                            method: "GET",
+                            url: `${deviceSettingsApiUrl}?${queryString}`,
+                          },
+                          user
+                        ).then((response) => {
+                          const settings = response.body.settings;
+                          expect(settings).to.exist;
+                          expect(syncExists).to.be.true;
+                          expect(settings.synced).to.be.true;
+                        });
+                      });
+                    });
+                  });
+                });
               });
             });
           });

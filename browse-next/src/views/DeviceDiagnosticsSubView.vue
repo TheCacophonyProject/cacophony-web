@@ -1,6 +1,4 @@
 <script lang="ts" setup>
-import Datepicker from "@vuepic/vue-datepicker";
-import "@vuepic/vue-datepicker/dist/main.css";
 import { computed, inject, onBeforeMount, ref, watch } from "vue";
 import {
   type BatteryInfoEvent,
@@ -68,13 +66,7 @@ const deviceConfig = ref<LoadedResource<DeviceConfigDetail>>(null);
 const currentLocationForDevice = ref<LoadedResource<ApiLocationResponse>>(null);
 const lastPowerOffTime = ref<LoadedResource<Date>>(null);
 const lastPowerOnTime = ref<LoadedResource<Date>>(null);
-// Device Settings
-const settings = ref<ApiDeviceHistorySettings | null>(null);
-const showCustomModal = ref(false);
-type Time = { hours: number; minutes: number; seconds: number };
-const customPowerTime = ref<[Time, Time]>();
-const customRecordingWindow = ref<[Time, Time]>();
-
+const settings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
 const saltNodeGroup = ref<LoadedResource<string>>(null);
 const isLoading = (val: Ref<LoadedResource<unknown>>) =>
   computed<boolean>(() => val.value === null);
@@ -82,198 +74,7 @@ const configInfoLoading = isLoading(deviceConfig);
 const versionInfoLoading = isLoading(versionInfo);
 const locationInfoLoading = isLoading(currentLocationForDevice);
 const nodeGroupInfoLoading = isLoading(saltNodeGroup);
-const settingsLoading = isLoading(settings);
-
 const lastUpdateWasUnsuccessful = ref<boolean>(true);
-
-const fields = [
-  { key: "name", label: "Setting" },
-  { key: "label", label: "" },
-  { key: "actions", label: "Actions" },
-];
-
-const currentWindowsType = computed(() => {
-  if (!settings.value || !settings.value.windows) {
-    return "default";
-  }
-  const { startRecording, stopRecording } = settings.value.windows;
-  if (startRecording === "-30m" && stopRecording === "+30m") {
-    return "default";
-  } else if (startRecording === "12:00" && stopRecording === "12:00") {
-    return "24hour";
-  } else {
-    return "custom";
-  }
-});
-
-const formatTime = (timeString: string) => {
-  if (!timeString) {
-    return "";
-  }
-  if (timeString[0] === "+" || timeString[0] === "-") {
-    return timeString;
-  }
-  const [hours, minutes] = timeString.split(":");
-  return `${hours}:${minutes}`;
-};
-
-const formatRecordingWindows = (windows: Omit<WindowsSettings, "updated">) => {
-  if (isTc2Device.value) {
-    return `Start Recording: ${formatTime(
-      windows.startRecording
-    )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
-  } else {
-    return `Power On: ${formatTime(windows.powerOn!)}, Power Off: ${formatTime(
-      windows.powerOff!
-    )}, Start Recording: ${formatTime(
-      windows.startRecording
-    )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
-  }
-};
-
-const defaultWindows = {
-  powerOn: "-30m",
-  powerOff: "+30m",
-  startRecording: "-30m",
-  stopRecording: "+30m",
-};
-const settingsTable = computed(() => {
-  const rows = [
-    {
-      name: "Power Mode",
-      value: settings.value?.thermalRecording?.useLowPowerMode ?? false,
-      label: settings.value?.thermalRecording?.useLowPowerMode ? "Low" : "High",
-    },
-    {
-      name: "Recording Windows",
-      value: settings.value?.windows
-        ? formatRecordingWindows(settings.value.windows)
-        : formatRecordingWindows(defaultWindows),
-      label: settings.value?.windows
-        ? formatRecordingWindows(settings.value.windows)
-        : formatRecordingWindows(defaultWindows),
-    },
-  ];
-
-  return rows;
-});
-
-const fetchSettings = async () => {
-  try {
-    const response = await getSettingsForDevice(deviceId);
-    if (response.success && response.result.settings) {
-      return response.result.settings;
-    }
-  } catch (e) {
-    console.error(e);
-  }
-  return {
-    windows: defaultWindows,
-    thermalRecording: {
-      toggleUseLowPowerMode: false,
-    },
-  };
-};
-
-const handleUseLowPowerMode = async (on: boolean) => {
-  const response = await setUseLowPowerMode(deviceId, on);
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-};
-
-const handleSetDefaultRecordingWindows = async () => {
-  const response = await setDefaultRecordingWindows(
-    deviceId,
-    isTc2Device.value
-  );
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-};
-
-const handleSet24HourRecordingWindows = async () => {
-  const response = await set24HourRecordingWindows(deviceId, isTc2Device.value);
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-};
-const GetWindowSettings = (): Omit<WindowsSettings, "updated"> | null => {
-  if (isTc2Device.value && customRecordingWindow.value) {
-    const [startRecording, stopRecording] = customRecordingWindow.value;
-    return {
-      startRecording: timeObjToTimeStr(startRecording),
-      stopRecording: timeObjToTimeStr(stopRecording),
-      powerOn: settings.value?.windows?.powerOn || "-30m",
-      powerOff: settings.value?.windows?.powerOff || "+30m",
-    };
-  } else if (
-    !isTc2Device.value &&
-    customPowerTime.value &&
-    customRecordingWindow.value
-  ) {
-    const [powerOn, powerOff] = customPowerTime.value;
-    const [startRecording, stopRecording] = customRecordingWindow.value;
-    return {
-      powerOn: timeObjToTimeStr(powerOn),
-      powerOff: timeObjToTimeStr(powerOff),
-      startRecording: timeObjToTimeStr(startRecording),
-      stopRecording: timeObjToTimeStr(stopRecording),
-    };
-  }
-  return null;
-};
-
-const enableCustomRecordingWindows = () => {
-  if (!settings.value || !settings.value.windows) {
-    return;
-  }
-  const windows = settings.value.windows;
-  if (!isTc2Device.value && windows.powerOn && windows.powerOff) {
-    customPowerTime.value = [
-      timeStrToTimeObj(windows.powerOn),
-      timeStrToTimeObj(windows.powerOff),
-    ];
-  }
-  customRecordingWindow.value = [
-    timeStrToTimeObj(windows.startRecording),
-    timeStrToTimeObj(windows.stopRecording),
-  ];
-  showCustomModal.value = true;
-};
-const timeStrToTimeObj = (timeStr: string): Time => {
-  if (!timeStr.includes(":")) {
-    return { hours: 12, minutes: 0, seconds: 0 };
-  }
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  return { hours, minutes, seconds: 0 };
-};
-
-const timeObjToTimeStr = (time: Time): string => {
-  return `${String(time.hours).padStart(2, "0")}:${String(
-    time.minutes
-  ).padStart(2, "0")}`;
-};
-
-const handleOk = (bvModalEvent: { preventDefault: () => void }) => {
-  bvModalEvent.preventDefault();
-  saveCustomRecordingWindows();
-};
-
-const saveCustomRecordingWindows = async () => {
-  const windowsSettings = GetWindowSettings();
-  if (!windowsSettings) {
-    return;
-  }
-  const response = await setCustomRecordingWindows(deviceId, windowsSettings);
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-  showCustomModal.value = false;
-};
-const handleCancel = () => {
-  showCustomModal.value = false;
-};
 const records247 = computed<boolean>(() => {
   // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
   if (deviceConfig.value) {
@@ -669,7 +470,6 @@ const init = async () => {
     const eightWeeksAgo = new Date();
     eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
     loadResource(batteryInfo, () => getBatteryInfo(deviceId, eightWeeksAgo));
-    loadResource(settings, () => fetchSettings());
 
     /*
     const sixMonthsAgo = new Date();
@@ -756,7 +556,6 @@ const powerProfile = computed<DevicePowerProfile>(() => {
   ) {
     return DevicePowerProfile.LowPower;
   }
-
   return DevicePowerProfile.HighPower;
 });
 
@@ -845,75 +644,6 @@ const isTc2Device = computed<boolean>(() => {
         <div v-else>Device does not currently have a known location</div>
       </div>
     </div>
-    <div
-      class="mt-4"
-      v-if="device.type === 'thermal' || device.type === 'hybrid-thermal-audio'"
-    >
-      <h6 class="mt-4">Device Settings:</h6>
-      <span v-if="settingsLoading">
-        <b-spinner small class="me-2" />
-      </span>
-      <div v-else class="device-settings mt-3">
-        <div><b>Synced:</b> {{ settings?.synced ? "Yes" : "No" }}</div>
-        <b-table
-          :items="settingsTable"
-          :fields="fields"
-          striped
-          hover
-          class="settings-table mt-3"
-        >
-          <template #cell(actions)="row">
-            <div class="btn-group" v-if="row.item.name === 'Power Mode'">
-              <b-button
-                @click="() => handleUseLowPowerMode(true)"
-                :variant="
-                  settings?.thermalRecording?.useLowPowerMode ?? false
-                    ? 'primary'
-                    : 'secondary'
-                "
-                :disabled="settings?.thermalRecording?.useLowPowerMode ?? false"
-                >Low Power</b-button
-              >
-              <b-button
-                @click="() => handleUseLowPowerMode(false)"
-                :variant="
-                  !(settings?.thermalRecording?.useLowPowerMode ?? false)
-                    ? 'primary'
-                    : 'secondary'
-                "
-                :disabled="
-                  !settings?.thermalRecording?.useLowPowerMode ?? false
-                "
-                >High Power</b-button
-              >
-            </div>
-            <div v-if="row.item.name === 'Recording Windows'" class="btn-group">
-              <b-button
-                @click="handleSetDefaultRecordingWindows"
-                :variant="
-                  currentWindowsType === 'default' ? 'primary' : 'secondary'
-                "
-                >Default</b-button
-              >
-              <b-button
-                @click="handleSet24HourRecordingWindows"
-                :variant="
-                  currentWindowsType === '24hour' ? 'primary' : 'secondary'
-                "
-                >24 Hours</b-button
-              >
-              <b-button
-                @click="enableCustomRecordingWindows"
-                :variant="
-                  currentWindowsType === 'custom' ? 'primary' : 'secondary'
-                "
-                >Custom</b-button
-              >
-            </div>
-          </template>
-        </b-table>
-      </div>
-    </div>
     <div class="mt-4">
       <h6>Power profile:</h6>
       <span v-if="configInfoLoading">
@@ -998,38 +728,7 @@ const isTc2Device = computed<boolean>(() => {
     </div>
   </div>
   <div v-else class="p-3">Device not found in group.</div>
-  <b-modal
-    v-model="showCustomModal"
-    title="Custom Recording Windows"
-    @ok="handleOk"
-    @cancel="handleCancel"
-  >
-    <b-form @submit.stop.prevent="saveCustomRecordingWindows">
-      <b-form-group
-        v-if="!isTc2Device"
-        label="Power On Time"
-        label-for="power-on-time"
-      >
-        <datepicker
-          v-model="customPowerTime"
-          time-picker
-          range
-          required
-          placeholder="Power On/Off Time"
-        />
-      </b-form-group>
 
-      <b-form-group label="Recording Window" label-for="recording-time">
-        <datepicker
-          v-model="customRecordingWindow"
-          time-picker
-          range
-          required
-          placeholder="Recording Window"
-        />
-      </b-form-group>
-    </b-form>
-  </b-modal>
 </template>
 <style scoped lang="less">
 .map {

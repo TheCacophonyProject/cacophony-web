@@ -546,113 +546,117 @@ watch(
       </button>
     </template>
   </b-modal>
-
-  <div class="d-flex flex-column justify-content-center region-creator">
-    <b-alert dismissible v-model="helpInfo"
-      ><p>
-        <strong
-          >Select multiple points on the image to form a closed shape.</strong
-        >
-      </p>
-      <p>
-        The defined <strong>&ldquo;mask region&rdquo;</strong> will be ignored
-        for motion-detection purposes while this device is recording.<br />This
-        can be useful to help reduce false-positive recordings if you have (for
-        example) moving warmer tree branches over a cold background such as the
-        night sky.
-      </p>
-      <p class="mb-0">
-        Optionally, you can receive an alert notification when an animal is
-        detected <strong><em>entering</em></strong> a masked off region.<br />This
-        is useful if you'd like to know when an animal enters a trap, but you
-        don't want subsequent recordings to be made while the animal is caught.
-      </p></b-alert
-    >
-    <div class="d-flex justify-content-between flex-column flex-md-row">
-      <div
-        class="position-relative canvas-container bg-dark rounded-2 d-flex justify-content-center align-items-center"
-        ref="canvasContainer"
-        @pointerup="addPoint"
-        @pointermove="speculativePoint"
-        @touchstart="(e) => e.preventDefault()"
+  <div
+    class="w-100 d-flex justify-content-center align-items-center justify-content-lg-start align-items-lg-start"
+  >
+    <div class="d-flex flex-column justify-content-center region-creator">
+      <b-alert dismissible v-model="helpInfo"
+        ><p>
+          <strong
+            >Select multiple points on the image to form a closed shape.</strong
+          >
+        </p>
+        <p>
+          The defined <strong>&ldquo;mask region&rdquo;</strong> will be ignored
+          for motion-detection purposes while this device is recording.<br />This
+          can be useful to help reduce false-positive recordings if you have
+          (for example) moving warmer tree branches over a cold background such
+          as the night sky.
+        </p>
+        <p class="mb-0">
+          Optionally, you can receive an alert notification when an animal is
+          detected <strong><em>entering</em></strong> a masked off region.<br />This
+          is useful if you'd like to know when an animal enters a trap, but you
+          don't want subsequent recordings to be made while the animal is
+          caught.
+        </p></b-alert
       >
-        <cptv-single-frame
-          :width="'100%'"
-          :recording="latestStatusRecording"
-          :apron-pixels="8"
-          ref="singleFrameCanvas"
-          :smoothing="false"
-        />
-        <canvas
-          ref="canvas"
-          class="overlay-canvas position-absolute"
-          :width="canvasWidth * devicePixelRatio"
-          :height="canvasHeight * devicePixelRatio"
-        />
+      <div class="d-flex justify-content-between flex-column flex-md-row">
         <div
-          v-if="editMode && points.length === 0"
-          class="click-prompt position-absolute bg-light p-1 rounded-1 opacity-75"
+          class="position-relative canvas-container bg-dark rounded-2 d-flex justify-content-center align-items-center"
+          ref="canvasContainer"
+          @pointerup="addPoint"
+          @pointermove="speculativePoint"
+          @touchstart="(e) => e.preventDefault()"
         >
-          Click to begin adding points
+          <cptv-single-frame
+            :width="'100%'"
+            :recording="latestStatusRecording"
+            :apron-pixels="8"
+            ref="singleFrameCanvas"
+            :smoothing="false"
+          />
+          <canvas
+            ref="canvas"
+            class="overlay-canvas position-absolute"
+            :width="canvasWidth * devicePixelRatio"
+            :height="canvasHeight * devicePixelRatio"
+          />
+          <div
+            v-if="editMode && points.length === 0"
+            class="click-prompt position-absolute bg-light p-1 rounded-1 opacity-75"
+          >
+            Click to begin adding points
+          </div>
         </div>
       </div>
-    </div>
 
-    <card-table :items="regionsTable" compact :break-point="0">
-      <template #alertOnEnter="{ cell }">
-        <font-awesome-icon v-if="cell" icon="check-circle" />
-        <span v-else>-</span>
-      </template>
-      <template #_deleteAction="{ cell }">
-        <div class="d-flex align-items-center justify-content-end">
-          <two-step-action-button
-            :action="() => deleteRegion(cell.value)"
-            :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
-            :confirmation-label="`Delete region '${cell.value}'`"
-            color="#666"
-            alignment="right"
-          >
-            <template #button-content>
-              <font-awesome-icon icon="trash-can" color="#666" />
-            </template>
-          </two-step-action-button>
-        </div>
-      </template>
-      <template #card="{ card: { maskRegion } }">
-        <div class="d-flex justify-content-between align-items-center">
-          <span class="h6 m-0">{{ maskRegion }}</span>
-          <two-step-action-button
-            :action="() => deleteRegion(maskRegion)"
-            :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
-            :confirmation-label="`Delete region '${maskRegion}'`"
-            color="#666"
-            alignment="right"
-          >
-            <template #button-content>
-              <font-awesome-icon icon="trash-can" color="#666" />
-            </template>
-          </two-step-action-button>
-        </div>
-      </template>
-    </card-table>
-    <div class="d-flex flex-column flex-md-row my-2 justify-content-between">
-      <b-button
-        v-if="!editMode"
-        variant="primary"
-        @click="editMode = true"
-        class="mb-2 mb-md-0"
-      >
-        <font-awesome-icon icon="plus" class="me-2" />
-        <span>Add a new mask region</span>
-      </b-button>
-      <b-button
-        v-if="editMode"
-        :disabled="points.length === 0"
-        variant="danger"
-        @click="removePoint"
-      >
-        Undo last point
-      </b-button>
+      <card-table :items="regionsTable" compact :break-point="0">
+        <template #alertOnEnter="{ cell }">
+          <font-awesome-icon v-if="cell" icon="check-circle" />
+          <span v-else>-</span>
+        </template>
+        <template #_deleteAction="{ cell }">
+          <div class="d-flex align-items-center justify-content-end">
+            <two-step-action-button
+              :action="() => deleteRegion(cell.value)"
+              :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
+              :confirmation-label="`Delete region '${cell.value}'`"
+              color="#666"
+              alignment="right"
+            >
+              <template #button-content>
+                <font-awesome-icon icon="trash-can" color="#666" />
+              </template>
+            </two-step-action-button>
+          </div>
+        </template>
+        <template #card="{ card: { maskRegion } }">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="h6 m-0">{{ maskRegion }}</span>
+            <two-step-action-button
+              :action="() => deleteRegion(maskRegion)"
+              :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
+              :confirmation-label="`Delete region '${maskRegion}'`"
+              color="#666"
+              alignment="right"
+            >
+              <template #button-content>
+                <font-awesome-icon icon="trash-can" color="#666" />
+              </template>
+            </two-step-action-button>
+          </div>
+        </template>
+      </card-table>
+      <div class="d-flex flex-column flex-md-row my-2 justify-content-between">
+        <b-button
+          v-if="!editMode"
+          variant="primary"
+          @click="editMode = true"
+          class="mb-2 mb-md-0"
+        >
+          <font-awesome-icon icon="plus" class="me-2" />
+          <span>Add a new mask region</span>
+        </b-button>
+        <b-button
+          v-if="editMode"
+          :disabled="points.length === 0"
+          variant="danger"
+          @click="removePoint"
+        >
+          Undo last point
+        </b-button>
+      </div>
     </div>
   </div>
 </template>

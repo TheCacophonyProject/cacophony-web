@@ -494,7 +494,7 @@ export const getSettingsForDevice = (deviceId: DeviceId, atTime?: Date) => {
   ) as Promise<
     FetchResult<{
       settings: ApiDeviceHistorySettings | null;
-      location: LatLng | null;
+      location: LatLng;
     }>
   >;
 };

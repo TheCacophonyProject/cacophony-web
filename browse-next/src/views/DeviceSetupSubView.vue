@@ -33,6 +33,10 @@ const hasReferencePhoto = computed<boolean>(() => {
   return !!latestReferenceImageURL.value;
 });
 
+const hasRecordingSetup = computed<boolean>(() => {
+  return false;
+});
+
 const hasMaskRegionsDefined = computed<boolean>(() => {
   return (
     !!latestMaskRegions.value &&
@@ -75,13 +79,26 @@ const loading = computed<boolean>(() => {
   </div>
   <div v-else>
     <h6 class="d-none d-md-block mt-md-3">Camera setup checklist</h6>
-    <div class="d-flex flex-lg-row flex-column justify-content-lg-between">
+    <div class="d-flex flex-lg-row flex-column">
       <div
-        class="d-flex py-2 justify-content-around flex-column justify-content-md-start"
+        class="d-flex py-2 justify-content-around flex-column justify-content-md-start checklist me-lg-4"
       >
         <b-button
           variant="light"
           class="checklist-btn"
+          :to="{ name: 'recording-setup' }"
+          :active="activeTabPath.includes('recording-setup')"
+        >
+          <font-awesome-icon
+            :icon="
+              hasRecordingSetup ? ['far', 'circle-check'] : ['far', 'circle']
+            "
+          />
+          Setup recording options</b-button
+        >
+        <b-button
+          variant="light"
+          class="mt-2 checklist-btn"
           :to="{ name: 'reference-photo' }"
           :active="activeTabPath.includes('reference-photo')"
         >
@@ -124,8 +141,8 @@ const loading = computed<boolean>(() => {
   .checklist-btn {
     //max-width: 30svh;
   }
-  .right-column {
-    max-width: 640px;
+  .checklist {
+    min-width: 300px;
   }
 }
 </style>

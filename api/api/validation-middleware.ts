@@ -124,7 +124,7 @@ export const booleanOf = (
       .default(defaultVal)
       .toBoolean()
       .isBoolean()
-      .withMessage(expectedTypeOf("integer"));
+      .withMessage(expectedTypeOf("boolean"));
   }
   return field.toBoolean().isBoolean().withMessage(expectedTypeOf("boolean"));
 };

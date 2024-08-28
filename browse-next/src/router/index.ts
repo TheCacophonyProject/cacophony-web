@@ -224,9 +224,14 @@ const router = createRouter({
             {
               path: "setup",
               name: "device-setup",
-              redirect: { name: "reference-photo" }, // Open the first list item on load
+              redirect: { name: "recording-setup" }, // Open the first list item on load
               component: () => import("@/views/DeviceSetupSubView.vue"),
               children: [
+                {
+                  path: "recording-options",
+                  name: "recording-setup",
+                  component: () => import("@/components/DeviceRecordingSetup.vue"),
+                },
                 {
                   path: "reference",
                   name: "reference-photo",

@@ -1442,14 +1442,28 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("id")),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
       booleanOf(query("only-active"), false),
+      booleanOf(query("latest-synced"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
-        const deviceSettings: DeviceHistory | null =
-          await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+        let deviceSettings: DeviceHistory | null = null;
+        if (request.query["latest-synced"]) {
+          deviceSettings = await models.DeviceHistory.findOne({
+            where: {
+              DeviceId: device.id,
+              GroupId: device.GroupId,
+              location: { [Op.ne]: null },
+              fromDateTime: { [Op.lte]: atTime },
+              "settings.synced": true
+            },
+            order: [["fromDateTime", "DESC"]],
+          });
+        } else {
+          deviceSettings = await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+        }
         const settings = {
           ...(deviceSettings.settings || {}),
         };
