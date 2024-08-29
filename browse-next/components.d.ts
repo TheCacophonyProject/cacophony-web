@@ -40,6 +40,7 @@ declare module 'vue' {
     CptvSingleFrame: typeof import('./src/components/CptvSingleFrame.vue')['default']
     CreateProjectModal: typeof import('./src/components/CreateProjectModal.vue')['default']
     CreateProxyDeviceModal: typeof import('./src/components/CreateProxyDeviceModal.vue')['default']
+    DeviceBatteryLevel: typeof import('./src/components/DeviceBatteryLevel.vue')['default']
     DeviceName: typeof import('./src/components/DeviceName.vue')['default']
     DeviceRecordingSetup: typeof import('./src/components/DeviceRecordingSetup.vue')['default']
     DeviceSetupDefineMask: typeof import('./src/components/DeviceSetupDefineMask.vue')['default']

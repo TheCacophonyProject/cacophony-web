@@ -55,6 +55,7 @@ import {
 } from "@typedefs/api/consts.ts";
 import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
+import { urlNormaliseName } from "@/utils.ts";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -1308,9 +1309,20 @@ const inlineModal = ref<boolean>(false);
                     class="me-2"
                     color="rgba(0, 0, 0, 0.7)"
                   />
-                  <span class="text-truncate" ref="deviceNameSpan">
+                  <router-link
+                    class="text-truncate non-blue-link"
+                    ref="deviceNameSpan"
+                    v-if="recording && recording.deviceId"
+                    :to="{
+                      name: 'device-diagnostics',
+                      params: {
+                        deviceId: recording.deviceId,
+                        deviceName: urlNormaliseName(recording.deviceName),
+                      },
+                    }"
+                  >
                     {{ currentDeviceName }}
-                  </span>
+                  </router-link>
                 </div>
               </div>
               <div class="recording-date-time fs-7 d-flex px-3 mt-1">
@@ -1445,9 +1457,20 @@ const inlineModal = ref<boolean>(false);
                       class="me-2"
                       color="rgba(0, 0, 0, 0.7)"
                     />
-                    <span class="text-truncate">
+                    <router-link
+                      class="text-truncate non-blue-link"
+                      ref="deviceNameSpan"
+                      v-if="recording && recording.deviceId"
+                      :to="{
+                        name: 'device-diagnostics',
+                        params: {
+                          deviceId: recording.deviceId,
+                          deviceName: urlNormaliseName(recording.deviceName),
+                        },
+                      }"
+                    >
                       {{ currentDeviceName }}
-                    </span>
+                    </router-link>
                   </div>
                 </div>
 
@@ -1967,5 +1990,8 @@ const inlineModal = ref<boolean>(false);
 }
 .player-container {
   background: black;
+}
+.non-blue-link {
+  color: inherit;
 }
 </style>

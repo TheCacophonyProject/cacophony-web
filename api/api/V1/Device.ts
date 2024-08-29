@@ -1457,25 +1457,33 @@ export default function (app: Application, baseUrl: string) {
               GroupId: device.GroupId,
               location: { [Op.ne]: null },
               fromDateTime: { [Op.lte]: atTime },
-              "settings.synced": true
+              "settings.synced": true,
             },
             order: [["fromDateTime", "DESC"]],
           });
         } else {
-          deviceSettings = await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+          deviceSettings = await models.DeviceHistory.latest(
+            device.id,
+            device.GroupId,
+            atTime
+          );
         }
-        const settings = {
-          ...(deviceSettings.settings || {}),
-        };
+        if (deviceSettings) {
+          const settings = {
+            ...(deviceSettings.settings || {}),
+          };
 
-        return successResponse(
-          response,
-          "Device settings retrieved successfully",
-          {
-            settings,
-            location: deviceSettings.location,
-          }
-        );
+          return successResponse(
+            response,
+            "Device settings retrieved successfully",
+            {
+              settings,
+              location: deviceSettings.location,
+            }
+          );
+        } else {
+          return next(new UnprocessableError("Could not get settings"));
+        }
       } catch (e) {
         return next(new FatalError(e.message ?? "Could not get settings"));
       }

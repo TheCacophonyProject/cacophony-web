@@ -1,36 +1,18 @@
 <script setup lang="ts">
-import {
-  computed,
-  inject,
-  onBeforeMount,
-  onMounted,
-  ref,
-  type Ref,
-  watch,
-} from "vue";
+import { computed, inject, onBeforeMount, ref, type Ref, watch } from "vue";
 import { selectedProjectDevices } from "@models/provides.ts";
 import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
-  ThermalRecordingSettings,
-  WindowsSettings,
 } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import type { LoadedResource } from "@api/types.ts";
-import {
-  getSettingsForDevice,
-  set24HourRecordingWindows,
-  setCustomRecordingWindows,
-  setDefaultRecordingWindows,
-  setUseLowPowerMode,
-} from "@api/Device.ts";
+import { getSettingsForDevice, updateDeviceSettings } from "@api/Device.ts";
 import Datepicker from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
-const showCustomModal = ref(false);
+import { resourceIsLoading } from "@/helpers/utils.ts";
 type Time = { hours: number; minutes: number; seconds: number };
-const customPowerTime = ref<[Time, Time]>();
-const customRecordingWindow = ref<[Time, Time]>();
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
@@ -38,42 +20,37 @@ const route = useRoute();
 const saltNodeGroup = ref<LoadedResource<string>>(null);
 // Device Settings
 const settings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
-const deviceId = Number(route.params.deviceId) as DeviceId;
+const syncedSettings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
+
+const lastSyncedSettings = computed<LoadedResource<ApiDeviceHistorySettings>>(
+  () => {
+    if (settings.value && settings.value.synced) {
+      return settings.value;
+    } else if (syncedSettings.value) {
+      return syncedSettings.value;
+    }
+    return false;
+  }
+);
+
+const deviceId = computed<DeviceId>(
+  () => Number(route.params.deviceId) as DeviceId
+);
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
       devices.value.find(
-        (device: ApiDeviceResponse) => device.id === deviceId
+        (device: ApiDeviceResponse) => device.id === deviceId.value
       )) ||
     null
   );
 });
-const isLoading = (val: Ref<LoadedResource<unknown>>) =>
-  computed<boolean>(() => val.value === null);
-const settingsLoading = isLoading(settings);
-const nodeGroupInfoLoading = isLoading(saltNodeGroup);
-const fields = [
-  { key: "name", label: "Setting" },
-  { key: "label", label: "" },
-  { key: "actions", label: "Actions" },
-];
 
+const settingsLoading = resourceIsLoading(settings);
+const lastSyncedSettingsLoading = resourceIsLoading(lastSyncedSettings);
+const nodeGroupInfoLoading = resourceIsLoading(saltNodeGroup);
 const isTc2Device = computed<boolean>(() => {
   return (saltNodeGroup.value || "").includes("tc2");
-});
-
-const currentWindowsType = computed(() => {
-  if (!settings.value || !settings.value.windows) {
-    return "default";
-  }
-  const { startRecording, stopRecording } = settings.value.windows;
-  if (startRecording === "-30m" && stopRecording === "+30m") {
-    return "default";
-  } else if (startRecording === "12:00" && stopRecording === "12:00") {
-    return "24hour";
-  } else {
-    return "custom";
-  }
 });
 const defaultWindows = {
   powerOn: "-30m",
@@ -94,20 +71,10 @@ const timeObjToTimeStr = (time: Time): string => {
     time.minutes
   ).padStart(2, "0")}`;
 };
-const formatTime = (timeString: string) => {
-  if (!timeString) {
-    return "";
-  }
-  if (timeString[0] === "+" || timeString[0] === "-") {
-    return timeString;
-  }
-  const [hours, minutes] = timeString.split(":");
-  return `${hours}:${minutes}`;
-};
 
 const fetchSettings = async () => {
-  const response = await getSettingsForDevice(deviceId);
-  if (response.success && response.result.settings) {
+  const response = await getSettingsForDevice(deviceId.value);
+  if (response && response.success && response.result.settings) {
     return response.result.settings;
   }
   return {
@@ -118,175 +85,228 @@ const fetchSettings = async () => {
   };
 };
 
-const formatRecordingWindows = (windows: Omit<WindowsSettings, "updated">) => {
-  if (isTc2Device.value) {
-    return `Start Recording: ${formatTime(
-      windows.startRecording
-    )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
-  } else {
-    return `Power On: ${formatTime(windows.powerOn!)}, Power Off: ${formatTime(
-      windows.powerOff!
-    )}, Start Recording: ${formatTime(
-      windows.startRecording
-    )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
-  }
-};
-const settingsTable = computed(() => {
+const records247 = computed<boolean>(() => {
+  // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
   if (settings.value) {
-    const rows = [
-      {
-        name: "Power Mode",
-        value: settings.value.thermalRecording?.useLowPowerMode ?? false,
-        label: settings.value.thermalRecording?.useLowPowerMode
-          ? "Low"
-          : "High",
-      },
-      {
-        name: "Recording Windows",
-        value: settings.value?.windows
-          ? formatRecordingWindows(settings.value.windows)
-          : formatRecordingWindows(defaultWindows),
-        label: settings.value?.windows
-          ? formatRecordingWindows(settings.value.windows)
-          : formatRecordingWindows(defaultWindows),
-      },
-    ];
-
-    return rows;
+    const windows = (settings.value as ApiDeviceHistorySettings).windows;
+    const start = (windows && windows.startRecording) || "-30m";
+    const end = (windows && windows.stopRecording) || "+30m";
+    if (!start.endsWith("m") || !end.endsWith("m")) {
+      return start === end;
+    }
   }
-  return [];
+  return false;
 });
 
-const handleUseLowPowerMode = async (on: boolean) => {
-  const response = await setUseLowPowerMode(deviceId, on);
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-};
-
-const handleSetDefaultRecordingWindows = async () => {
-  const response = await setDefaultRecordingWindows(
-    deviceId,
-    isTc2Device.value
-  );
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-};
-
-const handleSet24HourRecordingWindows = async () => {
-  const response = await set24HourRecordingWindows(deviceId, isTc2Device.value);
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-};
-const GetWindowSettings = (): Omit<WindowsSettings, "updated"> | null => {
-  if (settings.value && isTc2Device.value && customRecordingWindow.value) {
-    const [startRecording, stopRecording] = customRecordingWindow.value;
-    return {
-      startRecording: timeObjToTimeStr(startRecording),
-      stopRecording: timeObjToTimeStr(stopRecording),
-      powerOn: settings.value.windows?.powerOn || "-30m",
-      powerOff: settings.value.windows?.powerOff || "+30m",
-    };
-  } else if (
-    !isTc2Device.value &&
-    customPowerTime.value &&
-    customRecordingWindow.value
-  ) {
-    const [powerOn, powerOff] = customPowerTime.value;
-    const [startRecording, stopRecording] = customRecordingWindow.value;
-    return {
-      powerOn: timeObjToTimeStr(powerOn),
-      powerOff: timeObjToTimeStr(powerOff),
-      startRecording: timeObjToTimeStr(startRecording),
-      stopRecording: timeObjToTimeStr(stopRecording),
-    };
+const recordingWindow = computed<string | null>(() => {
+  if (records247.value) {
+    return "record 24/7";
+  } else if (settings.value) {
+    const windows = (settings.value as ApiDeviceHistorySettings).windows;
+    const start = (windows && windows.startRecording) || "-30m";
+    const end = (windows && windows.stopRecording) || "+30m";
+    let startTime = "";
+    let endTime = "";
+    if (start.startsWith("+") || start.startsWith("-")) {
+      // Relative start time to sunset
+      const beforeAfter = start.startsWith("-") ? "before" : "after";
+      startTime = `${start.slice(1)}ins ${beforeAfter} sunset`;
+    } else {
+      // Absolute start time
+      startTime = start; // Do am/pm?
+    }
+    if (end.startsWith("+") || end.startsWith("-")) {
+      // Relative end time to sunrise
+      const beforeAfter = end.startsWith("-") ? "before" : "after";
+      endTime = `${end.slice(1)}ins ${beforeAfter} sunrise`;
+    } else {
+      // Absolute end time
+      endTime = end;
+    }
+    return `record from ${startTime} until ${endTime}`;
   }
   return null;
-};
+});
 
-const enableCustomRecordingWindows = () => {
-  if (!settings.value || !settings.value.windows) {
-    return;
-  }
-  const windows = settings.value.windows;
-  if (!isTc2Device.value && windows.powerOn && windows.powerOff) {
-    customPowerTime.value = [
-      timeStrToTimeObj(windows.powerOn),
-      timeStrToTimeObj(windows.powerOff),
-    ];
-  }
-  customRecordingWindow.value = [
-    timeStrToTimeObj(windows.startRecording),
-    timeStrToTimeObj(windows.stopRecording),
-  ];
-  showCustomModal.value = true;
-};
-
-const handleOk = (bvModalEvent: { preventDefault: () => void }) => {
-  bvModalEvent.preventDefault();
-  saveCustomRecordingWindows();
-};
-
-const saveCustomRecordingWindows = async () => {
-  const windowsSettings = GetWindowSettings();
-  if (!windowsSettings) {
-    return;
-  }
-  const response = await setCustomRecordingWindows(deviceId, windowsSettings);
-  if (response.success) {
-    settings.value = response.result.settings;
-  }
-  showCustomModal.value = false;
-};
-const handleCancel = () => {
-  showCustomModal.value = false;
-};
-const loadResource = (
+const loadResource = async (
   target: Ref<LoadedResource<unknown>>,
   loader: () => Promise<unknown | false>
-) => {
-  if (isLoading(target)) {
-    loader().then((result) => (target.value = result));
-  }
+): Promise<void> => {
+  return new Promise((resolve) => {
+    const isLoading = target.value === null;
+    if (isLoading) {
+      loader().then((result) => {
+        target.value = result;
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
 };
-
+const initialised = ref<boolean>(false);
 onBeforeMount(async () => {
   await projectDevicesLoaded();
-  loadResource(settings, () => fetchSettings());
-});
-
-const useLowPowerMode = ref<boolean>(false);
-const savingPowerModeSettings = ref<boolean>(false);
-
-const initialised = ref<boolean>(false);
-onMounted(() => {
+  await loadResource(settings, fetchSettings);
   initialised.value = true;
+  if (settings.value && !settings.value.synced) {
+    // Load last synced settings
+    const response = await getSettingsForDevice(
+      deviceId.value,
+      new Date(),
+      true
+    );
+    if (response && response.success && response.result.settings) {
+      syncedSettings.value = response.result.settings;
+    }
+  }
 });
 
-const persistDeviceSettings = async (
-  deviceSettings: ApiDeviceHistorySettings
-) => {};
-
-watch(useLowPowerMode, async (next) => {
-  if (initialised.value && settings.value) {
-    settings.value.thermalRecording = settings.value.thermalRecording || {
-      useLowPowerMode: false,
+const useLowPowerMode = computed<boolean>({
+  get: () => {
+    return (
+      (settings.value as ApiDeviceHistorySettings)?.thermalRecording
+        ?.useLowPowerMode ?? false
+    );
+  },
+  set: (val: boolean) => {
+    (settings.value as ApiDeviceHistorySettings).thermalRecording = {
+      useLowPowerMode: val,
       updated: new Date().toISOString(),
     };
-    (
-      settings.value.thermalRecording as ThermalRecordingSettings
-    ).useLowPowerMode = next;
-    (settings.value.thermalRecording as ThermalRecordingSettings).updated =
-      new Date().toISOString();
+  },
+});
+const recordingWindowSetting = computed<"default" | "always" | "custom">({
+  get: () => {
+    const s = settings.value as ApiDeviceHistorySettings;
+    if (s && s.windows && s.windows.startRecording && s.windows.stopRecording) {
+      const start = s.windows.startRecording;
+      const stop = s.windows.stopRecording;
+      if (
+        (start.startsWith("+") || start.startsWith("-")) &&
+        (stop.startsWith("+") || stop.startsWith("-"))
+      ) {
+        return "default";
+      } else if (start === stop) {
+        return "always";
+      } else {
+        return "custom";
+      }
+    } else {
+      return "default";
+    }
+  },
+  set: (val: "default" | "always" | "custom") => {
+    if (settings.value) {
+      if (val === "default" && settings.value) {
+        settings.value.windows = {
+          ...defaultWindows,
+          updated: new Date().toISOString(),
+        };
+      } else if (val === "always") {
+        settings.value.windows = {
+          ...(!isTc2Device.value
+            ? {
+                powerOn: "12:00",
+                powerOff: "12:00",
+              }
+            : {}),
+          startRecording: "12:00",
+          stopRecording: "12:00",
+          updated: new Date().toISOString(),
+        };
+      } else {
+        settings.value.windows = {
+          ...(!isTc2Device.value
+            ? {
+                powerOn: "09:00",
+                powerOff: "17:00",
+              }
+            : {}),
+          startRecording: "09:00",
+          stopRecording: "17:00",
+          updated: new Date().toISOString(),
+        };
+      }
+    }
+  },
+});
+const customRecordingWindowStart = computed<Time>({
+  get: () => {
+    if (settings.value) {
+      return timeStrToTimeObj(
+        (settings.value as ApiDeviceHistorySettings).windows?.startRecording ||
+          ""
+      );
+    } else {
+      return { hours: 12, minutes: 0, seconds: 0 };
+    }
+  },
+  set: (val: Time) => {
+    if (settings.value) {
+      settings.value.windows = settings.value.windows || {
+        ...defaultWindows,
+        updated: new Date().toISOString(),
+      };
+      settings.value.windows.startRecording = timeObjToTimeStr(val);
+      settings.value.windows.updated = new Date().toISOString();
+    }
+  },
+});
+
+const customRecordingWindowStop = computed<Time>({
+  get: () => {
+    if (settings.value) {
+      return timeStrToTimeObj(
+        (settings.value as ApiDeviceHistorySettings).windows?.stopRecording ||
+          ""
+      );
+    } else {
+      return { hours: 12, minutes: 0, seconds: 0 };
+    }
+  },
+  set: (val: Time) => {
+    if (settings.value) {
+      settings.value.windows = settings.value.windows || {
+        ...defaultWindows,
+        updated: new Date().toISOString(),
+      };
+      settings.value.windows.stopRecording = timeObjToTimeStr(val);
+      settings.value.windows.updated = new Date().toISOString();
+    }
+  },
+});
+
+const savingPowerModeSettings = ref<boolean>(false);
+const savingRecordingWindowSettings = ref<boolean>(false);
+watch(useLowPowerMode, async () => {
+  if (settings.value && initialised.value) {
     savingPowerModeSettings.value = true;
-    await persistDeviceSettings(settings);
+    await updateDeviceSettings(deviceId.value, settings.value);
     savingPowerModeSettings.value = false;
   }
 });
-const summaryHelpInfo = ref(true);
-const connectedWarningInfo = ref(true);
+watch(recordingWindowSetting, async () => {
+  if (settings.value && initialised.value) {
+    savingRecordingWindowSettings.value = true;
+    await updateDeviceSettings(deviceId.value, settings.value);
+    savingRecordingWindowSettings.value = false;
+  }
+});
+watch(customRecordingWindowStart, async () => {
+  if (settings.value && initialised.value) {
+    savingRecordingWindowSettings.value = true;
+    await updateDeviceSettings(deviceId.value, settings.value);
+    savingRecordingWindowSettings.value = false;
+  }
+});
+watch(customRecordingWindowStop, async () => {
+  if (settings.value && initialised.value) {
+    savingRecordingWindowSettings.value = true;
+    await updateDeviceSettings(deviceId.value, settings.value);
+    savingRecordingWindowSettings.value = false;
+  }
+});
 </script>
 
 <template>
@@ -300,157 +320,130 @@ const connectedWarningInfo = ref(true);
         (device.type === 'thermal' || device.type === 'hybrid-thermal-audio')
       "
     >
-      <b-alert v-model="summaryHelpInfo">
+      <div class="alert alert-info">
         If your device has a connection to the internet, you can
         <strong>setup recording modes remotely</strong>, and when your device
         next comes online it will <strong>synchronise</strong> these settings.
-      </b-alert>
-      <b-alert
-        v-model="connectedWarningInfo"
-        v-if="!device.lastConnectionTime"
-        variant="warning"
-      >
+      </div>
+      <div class="alert alert-warning" v-if="!device.lastConnectionTime">
         <strong>Note: </strong> It looks like your device has never connected to
         the Cacophony Platform in its current location, so remote setup may not
         be available.
-      </b-alert>
+      </div>
+      <div class="h5">Current settings summary</div>
+      <!--      <span v-if="lastSyncedSettingsLoading">-->
+      <!--        <b-spinner small class="me-2" />-->
+      <!--      </span>-->
+      <!--      <div v-else-if="lastSyncedSettings">-->
+      <!--        {{ lastSyncedSettings }}-->
+      <!--      </div>-->
+      <!--      <span v-else>Current settings unknown, </span>-->
+      <!-- TODO: Display last synced settings where possible -->
       <span v-if="settingsLoading">
         <b-spinner small class="me-2" />
       </span>
       <div v-else-if="settings" class="mt-3">
-        <!-- TODO: Show current settings, and when they were last synced -->
-        <!-- If current settings aren't available, we can show settings from events api? -->
-        <div><b>Synced:</b> {{ settings.synced ? "Yes" : "No" }}</div>
-        <div v-if="true || isTc2Device">
-          <div class="h6">Power profile</div>
+        <div>
+          <strong>Synced with remote device:</strong>
+          {{ settings.synced ? "Yes" : "No" }}
+        </div>
+        <span
+          ><span v-if="!settings.synced">Once synced, w</span
+          ><span v-else>W</span>ill {{ recordingWindow }} in
+          <span v-if="useLowPowerMode">low</span> <span v-else>high</span> power
+          mode.</span
+        >
+        <hr />
+        <div v-if="isTc2Device">
+          <div class="h5">Set power profile</div>
           <p>
             <strong><em>Low power mode</em></strong> means that your device will
             only connect to the Cacophony Platform once per day to offload any
-            recordings that it has made.<br />For most users doing passive
-            monitoring, this should be the preferred mode, as it will make the
-            battery last many times longer in the field.<br />You might want to
-            consider disabling this mode if you are tracking an incursion and
-            require <router-link :to="{ name: 'user-project-settings' }">real-time alerts</router-link> of species detected.
+            recordings that it has made.
           </p>
-          <b-form-checkbox switch v-model="useLowPowerMode"
-            >Use low power mode<b-spinner
-              class="ms-1"
-              v-if="savingPowerModeSettings"
-              variant="secondary"
-              small
-          /></b-form-checkbox>
+          <div class="alert alert-light">
+            <b-form-checkbox switch v-model="useLowPowerMode"
+              >Use low power mode<b-spinner
+                class="ms-1"
+                v-if="savingPowerModeSettings"
+                variant="secondary"
+                small
+            /></b-form-checkbox>
+          </div>
+          <p>
+            For most users doing passive monitoring, this should be the
+            preferred mode, as it will make the battery last many times longer
+            in the field.<br />You might want to consider disabling this mode if
+            you are tracking an incursion and require
+            <router-link :to="{ name: 'user-project-settings' }"
+              >real-time alerts</router-link
+            >
+            of species detected.
+          </p>
+          <hr />
         </div>
         <div>
-          <div class="h6">Recording time windows</div>
+          <div class="h5">Set recording time windows</div>
           <p>
-            By default your camera will be actively monitoring and ready to make
-            thermal recordings from 30 minutes before sunset until 30 minutes
-            after sunrise.<br />In this mode the battery life on your device
-            will vary throughout the year as the length of the days change with
-            the seasons. For most users doing monitoring of nocturnal predators,
-            this is the suggested mode.<br />
+            <strong><em>By default</em></strong> your camera will be actively
+            monitoring and ready to make thermal recordings from 30 minutes
+            before sunset until 30 minutes after sunrise.<br />In this mode the
+            battery life on your device will vary throughout the year as the
+            length of the days change with the seasons.
+            <strong
+              >For most users doing monitoring of nocturnal predators, this is
+              the recommended mode.</strong
+            >
+            <br /><em
+              >NOTE: It's important that the location of your device is set
+              correctly so that the correct dusk/dawn window can be
+              calculated.</em
+            >
+          </p>
+          <div class="alert-light alert">
+            <b-form-radio-group stacked v-model="recordingWindowSetting">
+              <b-form-radio value="default"
+                >Ready to record from dusk until dawn (default)</b-form-radio
+              >
+              <b-form-radio value="always">Ready to record 24/7</b-form-radio>
+              <b-form-radio value="custom"
+                >Custom recording window</b-form-radio
+              >
+            </b-form-radio-group>
+
+            <div
+              class="justify-content-between d-flex mt-2"
+              v-if="recordingWindowSetting === 'custom'"
+            >
+              <datepicker
+                class="me-2"
+                v-model="customRecordingWindowStart"
+                time-picker
+                required
+                placeholder="Recording start"
+              />
+              <datepicker
+                v-model="customRecordingWindowStop"
+                time-picker
+                required
+                placeholder="Recording end"
+              />
+            </div>
+          </div>
+
+          <p>
             If your project has different objectives, you can set the camera to
             enter and exit the active 'ready-to-record' state at fixed times
             each day, or you can disable the active window entirely to record
-            24/7. Note that recording during daytime works best under a canopy.
-            Sun moving through the field of view and heating and cooling items
-            in the scene can result in a higher volume of false-triggers.
+            24/7.
+            <em
+              >Recording during daytime works best in shade. Sun moving through
+              the field of view and heating and cooling items in the scene can
+              result in a higher volume of false-triggers.</em
+            >
           </p>
-          <b-form-radio-group buttons>
-            <b-form-radio>Default settings</b-form-radio>
-            <b-form-radio>Record 24/7</b-form-radio>
-            <b-form-radio>Custom recording window</b-form-radio>
-          </b-form-radio-group>
         </div>
-        <div class="h6">Settings summary</div>
-        <!--      <b-table-->
-        <!--        :items="settingsTable"-->
-        <!--        :fields="fields"-->
-        <!--        striped-->
-        <!--        hover-->
-        <!--        class="settings-table mt-3"-->
-        <!--      >-->
-        <!--        <template #cell(actions)="row">-->
-        <!--          <div class="btn-group" v-if="row.item.name === 'Power Mode'">-->
-        <!--            <b-button-->
-        <!--              @click="() => handleUseLowPowerMode(true)"-->
-        <!--              :variant="-->
-        <!--                settings?.thermalRecording?.useLowPowerMode ?? false-->
-        <!--                  ? 'primary'-->
-        <!--                  : 'secondary'-->
-        <!--              "-->
-        <!--              :disabled="settings?.thermalRecording?.useLowPowerMode ?? false"-->
-        <!--              >Low Power</b-button-->
-        <!--            >-->
-        <!--            <b-button-->
-        <!--              @click="() => handleUseLowPowerMode(false)"-->
-        <!--              :variant="-->
-        <!--                !(settings?.thermalRecording?.useLowPowerMode ?? false)-->
-        <!--                  ? 'primary'-->
-        <!--                  : 'secondary'-->
-        <!--              "-->
-        <!--              :disabled="!settings?.thermalRecording?.useLowPowerMode ?? false"-->
-        <!--              >High Power</b-button-->
-        <!--            >-->
-        <!--          </div>-->
-        <!--          <div v-if="row.item.name === 'Recording Windows'" class="btn-group">-->
-        <!--            <b-button-->
-        <!--              @click="handleSetDefaultRecordingWindows"-->
-        <!--              :variant="-->
-        <!--                currentWindowsType === 'default' ? 'primary' : 'secondary'-->
-        <!--              "-->
-        <!--              >Default</b-button-->
-        <!--            >-->
-        <!--            <b-button-->
-        <!--              @click="handleSet24HourRecordingWindows"-->
-        <!--              :variant="-->
-        <!--                currentWindowsType === '24hour' ? 'primary' : 'secondary'-->
-        <!--              "-->
-        <!--              >24 Hours</b-button-->
-        <!--            >-->
-        <!--            <b-button-->
-        <!--              @click="enableCustomRecordingWindows"-->
-        <!--              :variant="-->
-        <!--                currentWindowsType === 'custom' ? 'primary' : 'secondary'-->
-        <!--              "-->
-        <!--              >Custom</b-button-->
-        <!--            >-->
-        <!--          </div>-->
-        <!--        </template>-->
-        <!--      </b-table>-->
       </div>
-      <b-modal
-        v-model="showCustomModal"
-        title="Custom Recording Windows"
-        @ok="handleOk"
-        @cancel="handleCancel"
-      >
-        <b-form @submit.stop.prevent="saveCustomRecordingWindows">
-          <b-form-group
-            v-if="!isTc2Device"
-            label="Power On Time"
-            label-for="power-on-time"
-          >
-            <datepicker
-              v-model="customPowerTime"
-              time-picker
-              range
-              required
-              placeholder="Power On/Off Time"
-            />
-          </b-form-group>
-
-          <b-form-group label="Recording Window" label-for="recording-time">
-            <datepicker
-              v-model="customRecordingWindow"
-              time-picker
-              range
-              required
-              placeholder="Recording Window"
-            />
-          </b-form-group>
-        </b-form>
-      </b-modal>
     </div>
   </div>
 </template>

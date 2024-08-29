@@ -230,7 +230,8 @@ const router = createRouter({
                 {
                   path: "recording-options",
                   name: "recording-setup",
-                  component: () => import("@/components/DeviceRecordingSetup.vue"),
+                  component: () =>
+                    import("@/components/DeviceRecordingSetup.vue"),
                 },
                 {
                   path: "reference",

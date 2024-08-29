@@ -609,7 +609,6 @@ const helpInfo = ref(true);
   </div>
 </template>
 <style scoped lang="less">
-
 .reference-image {
   max-width: 640px;
 }

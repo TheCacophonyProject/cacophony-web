@@ -27,6 +27,7 @@ import {
   deleteDevice,
   getDeviceConfig,
   getDeviceLocationAtTime,
+  getLastKnownDeviceBatteryLevel,
 } from "@api/Device";
 import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
@@ -43,6 +44,7 @@ import {
 import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LoadedResource } from "@api/types.ts";
 import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
+import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -138,34 +140,36 @@ const reloadAllDevices = async () => {
 const findProbablyOnlineDevices = async () => {
   // For each healthy device (which is on standby if not known otherwise)
   // get the recording windows, and show a different icon if they're expected to be online now.
-  const healthyDevices =
-    activeProjectDevices.value?.filter((device) => device.isHealthy) || [];
-  const configPromises = [];
-  for (const device of healthyDevices) {
-    configPromises.push(getDeviceConfig(device.id));
-  }
-  Promise.all(configPromises).then((configs) => {
-    const now = new Date();
-    const poweredOnDevices = [];
-    for (const config of configs) {
-      if (config) {
-        const device = activeProjectDevices.value?.find(
-          (device) => device.id === config.device.id
-        );
-        if (device) {
-          const powerOnTime = deviceScheduledPowerOnTime(device, config);
-          const powerOffTime = deviceScheduledPowerOffTime(device, config);
-          if (powerOnTime && powerOffTime) {
-            const isOn = powerOnTime < now && powerOffTime > now;
-            if (isOn) {
-              poweredOnDevices.push(device);
+  if (activeProjectDevices.value) {
+    const healthyDevices =
+      activeProjectDevices.value.filter((device) => device.isHealthy) || [];
+    const configPromises = [];
+    for (const device of healthyDevices) {
+      configPromises.push(getDeviceConfig(device.id));
+    }
+    Promise.all(configPromises).then((configs) => {
+      const now = new Date();
+      const poweredOnDevices = [];
+      for (const config of configs) {
+        if (config) {
+          const device = (
+            activeProjectDevices.value as ApiDeviceResponse[]
+          ).find((device) => device.id === config.device.id);
+          if (device) {
+            const powerOnTime = deviceScheduledPowerOnTime(device, config);
+            const powerOffTime = deviceScheduledPowerOffTime(device, config);
+            if (powerOnTime && powerOffTime) {
+              const isOn = powerOnTime < now && powerOffTime > now;
+              if (isOn) {
+                poweredOnDevices.push(device);
+              }
             }
           }
         }
       }
-    }
-    currentlyPoweredOnDevices.value = poweredOnDevices;
-  });
+      currentlyPoweredOnDevices.value = poweredOnDevices;
+    });
+  }
 };
 
 onBeforeMount(async () => {
@@ -204,6 +208,23 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
       : "stopped or offline"
     : "-";
 };
+
+const batteryLevelForDevice = async (
+  device: ApiDeviceResponse
+): Promise<"unknown" | number> => {
+  const status = statusForDevice(device);
+  if (status === "online" || status == "standby") {
+    const response = await getLastKnownDeviceBatteryLevel(device.id);
+    if (response !== false) {
+      if (response.battery === null) {
+        return "unknown";
+      }
+      return response.battery;
+    }
+  }
+  return "unknown";
+};
+
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
     case "-":
@@ -223,6 +244,7 @@ interface DeviceTableItem {
   lastSeen: string;
   __active: boolean;
   status: string | boolean;
+  batteryLevel: ApiDeviceResponse;
 
   __id: string;
 
@@ -249,6 +271,7 @@ const tableItems = computed<
             : "never (offline device)"
         ),
         status: statusForDevice(device),
+        batteryLevel: device,
         _deleteAction: {
           value: device,
           cellClasses: ["d-flex", "justify-content-end"],
@@ -602,7 +625,7 @@ const isDevicesRoot = computed(() => {
               >
             </div>
           </template>
-          <template #status="{ cell, row }">
+          <template #status="{ cell }">
             <div class="d-flex align-items-center">
               <span
                 class="d-flex power-status-icon align-items-center justify-content-center"
@@ -612,6 +635,9 @@ const isDevicesRoot = computed(() => {
               </span>
               <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
             </div>
+          </template>
+          <template #batteryLevel="{ cell }">
+            <device-battery-level :device="cell" />
           </template>
           <template #_deleteAction="{ cell }">
             <div
@@ -647,10 +673,18 @@ const isDevicesRoot = computed(() => {
           <template #card="{ card }: { card: DeviceTableItem }">
             <div class="d-flex flex-row">
               <div class="flex-grow-1">
-                <device-name
-                  :name="card.deviceName"
-                  :type="card.__type"
-                /><b-badge class="ms-2" v-if="!card.__active">inactive</b-badge>
+                <div class="d-flex align-items-center">
+                  <device-name
+                    :name="card.deviceName"
+                    :type="card.__type"
+                  /><b-badge class="ms-2" v-if="!card.__active"
+                    >inactive</b-badge
+                  >
+                  <device-battery-level
+                    :device="card.batteryLevel"
+                    class="ms-3"
+                  />
+                </div>
                 <div>Last seen <span v-html="card.lastSeen"></span></div>
 
                 <div class="d-flex align-items-center">

@@ -145,7 +145,12 @@ export interface BatteryInfoEvent {
   batteryType: "unknown" | "lime" | "mains" | "li-ion";
 }
 
-export const getBatteryInfo = (deviceId: DeviceId, startTime: Date) => {
+export const getBatteryInfo = (
+  deviceId: DeviceId,
+  startTime: Date,
+  limit = 300,
+  stopAfterNumResults: number | null = null
+) => {
   // There may be a limit of 100 events, so make sure we get as far back to startTime as possible.
   let untilDateTime = new Date();
   let fromDateTime = new Date(startTime);
@@ -157,14 +162,17 @@ export const getBatteryInfo = (deviceId: DeviceId, startTime: Date) => {
   return new Promise(async (resolve) => {
     let stillHasEvents = true;
     const events: BatteryInfoEvent[] = [];
-    while (stillHasEvents) {
+    while (
+      stillHasEvents &&
+      (stopAfterNumResults === null || events.length !== stopAfterNumResults)
+    ) {
       const params = new URLSearchParams();
       params.append("deviceId", deviceId.toString());
       params.append("only-active", true.toString());
       params.append("startTime", fromDateTime.toISOString());
       params.append("endTime", untilDateTime.toISOString());
       params.append("include-count", false.toString());
-      params.append("limit", String(300));
+      params.append("limit", String(limit));
       params.append("type", "rpiBattery");
       params.append("latest", true.toString());
       const response = (await CacophonyApi.get(
@@ -187,14 +195,17 @@ export const getBatteryInfo = (deviceId: DeviceId, startTime: Date) => {
         events.push(...eventsSubset);
         if (eventsSubset.length === 0) {
           stillHasEvents = false;
-          resolve(events);
         } else {
           untilDateTime = new Date(events[events.length - 1].dateTime);
         }
       } else {
         stillHasEvents = false;
-        resolve(false);
       }
+    }
+    if (events.length) {
+      resolve(events);
+    } else {
+      resolve(false);
     }
   }) as Promise<BatteryInfoEvent[] | false>;
 };
@@ -485,9 +496,16 @@ export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime?: Date) => {
   ) as Promise<FetchResult<ApiMaskRegionsData>>;
 };
 
-export const getSettingsForDevice = (deviceId: DeviceId, atTime?: Date) => {
+export const getSettingsForDevice = (
+  deviceId: DeviceId,
+  atTime?: Date,
+  lastSynced = false
+) => {
   const params = new URLSearchParams();
   params.append("at-time", (atTime || new Date()).toISOString());
+  if (lastSynced) {
+    params.append("latest-synced", true.toString());
+  }
   const queryString = params.toString();
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/settings?${queryString}`
@@ -508,109 +526,6 @@ export const updateDeviceSettings = (
   }) as Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>>;
 };
 
-export const setUseLowPowerMode = async (deviceId: DeviceId, on: boolean) => {
-  const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (currentSettingsResponse.success) {
-    const currentSettings = currentSettingsResponse.result.settings;
-    const newSettings: ApiDeviceHistorySettings = {
-      ...currentSettings,
-      thermalRecording: {
-        ...currentSettings?.thermalRecording,
-        useLowPowerMode: on,
-        updated: new Date().toISOString(),
-      },
-    };
-    return updateDeviceSettings(deviceId, newSettings) as Promise<
-      FetchResult<{ settings: ApiDeviceHistorySettings }>
-    >;
-  } else {
-    throw new Error("Failed to fetch current settings.");
-  }
-};
-
-export const setDefaultRecordingWindows = async (
-  deviceId: DeviceId,
-  isTc2Device: boolean
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> => {
-  const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (currentSettingsResponse.success) {
-    const currentSettings = currentSettingsResponse.result.settings ?? {};
-    const newWindows = isTc2Device
-      ? {
-          startRecording: "-30m",
-          stopRecording: "+30m",
-        }
-      : {
-          powerOff: "+30m",
-          powerOn: "-30m",
-          startRecording: "-30m",
-          stopRecording: "+30m",
-        };
-
-    const newSettings: ApiDeviceHistorySettings = {
-      ...currentSettings,
-      windows: {
-        ...newWindows,
-        updated: new Date().toISOString(),
-      },
-    };
-    return updateDeviceSettings(deviceId, newSettings);
-  } else {
-    throw new Error("Failed to fetch current settings.");
-  }
-};
-
-export const set24HourRecordingWindows = async (
-  deviceId: DeviceId,
-  isTc2Device: boolean
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> => {
-  const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (currentSettingsResponse.success) {
-    const currentSettings = currentSettingsResponse.result.settings;
-    const newWindows = isTc2Device
-      ? {
-          startRecording: "12:00",
-          stopRecording: "12:00",
-        }
-      : {
-          powerOff: "12:00",
-          powerOn: "12:00",
-          startRecording: "12:00",
-          stopRecording: "12:00",
-        };
-
-    const newSettings: ApiDeviceHistorySettings = {
-      ...currentSettings,
-      windows: {
-        ...newWindows,
-        updated: new Date().toISOString(),
-      },
-    };
-    return updateDeviceSettings(deviceId, newSettings);
-  } else {
-    throw new Error("Failed to fetch current settings.");
-  }
-};
-
-export const setCustomRecordingWindows = async (
-  deviceId: DeviceId,
-  customSettings: Omit<WindowsSettings, "updated">
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> => {
-  const currentSettingsResponse = await getSettingsForDevice(deviceId);
-  if (currentSettingsResponse.success) {
-    const currentSettings = currentSettingsResponse.result.settings;
-    const newSettings: ApiDeviceHistorySettings = {
-      ...currentSettings,
-      windows: {
-        ...customSettings,
-        updated: new Date().toISOString(),
-      },
-    };
-    return updateDeviceSettings(deviceId, newSettings);
-  } else {
-    throw new Error("Failed to fetch current settings.");
-  }
-};
 export const updateMaskRegionsForDevice = (
   deviceId: DeviceId,
   maskRegionsData: ApiMaskRegionsData
@@ -661,4 +576,19 @@ export const hasReferenceImageForDeviceAtCurrentLocation = (
       untilDateTime?: IsoFormattedDateString;
     }>
   >;
+};
+
+export const getLastKnownDeviceBatteryLevel = (
+  deviceId: DeviceId
+): Promise<BatteryInfoEvent | false> => {
+  const last25Hours = new Date();
+  last25Hours.setHours(last25Hours.getHours() - 25);
+  return new Promise((resolve) => {
+    getBatteryInfo(deviceId, last25Hours, 1, 1).then((result) => {
+      if (result === false || result.length === 0) {
+        resolve(false);
+      }
+      resolve((result as BatteryInfoEvent[])[0]);
+    });
+  });
 };

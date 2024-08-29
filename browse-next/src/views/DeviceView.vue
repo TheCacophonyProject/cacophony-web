@@ -148,18 +148,6 @@ const _deviceType = computed<string>(() => {
         v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-insights') },
-        ]"
-        title="Insights"
-        :to="{
-          name: 'device-insights',
-        }"
-        >Insights</router-link
-      >
-      <router-link
-        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
-        :class="[
-          ...navLinkClasses,
           { active: activeTabPath.includes('device-setup') },
         ]"
         title="Setup"
@@ -169,17 +157,29 @@ const _deviceType = computed<string>(() => {
         >Setup</router-link
       >
       <router-link
-        v-if="[DeviceType.Audio, DeviceType.Hybrid].includes((device as ApiDeviceResponse).type)"
+        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-schedules') },
+          { active: activeTabPath.includes('device-insights') },
         ]"
-        title="Schedules"
+        title="Insights"
         :to="{
-          name: 'device-schedules',
+          name: 'device-insights',
         }"
-        >Schedules</router-link
+        >Insights</router-link
       >
+      <!--      <router-link-->
+      <!--        v-if="[DeviceType.Audio, DeviceType.Hybrid].includes((device as ApiDeviceResponse).type)"-->
+      <!--        :class="[-->
+      <!--          ...navLinkClasses,-->
+      <!--          { active: activeTabPath.includes('device-schedules') },-->
+      <!--        ]"-->
+      <!--        title="Schedules"-->
+      <!--        :to="{-->
+      <!--          name: 'device-schedules',-->
+      <!--        }"-->
+      <!--        >Schedules</router-link-->
+      <!--      >-->
       <!-- TODO: Specialise this for manual uploads of CPTV and audio files -->
       <router-link
         v-if="(device as ApiDeviceResponse).type === DeviceType.TrailCam"

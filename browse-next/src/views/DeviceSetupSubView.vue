@@ -94,7 +94,7 @@ const loading = computed<boolean>(() => {
               hasRecordingSetup ? ['far', 'circle-check'] : ['far', 'circle']
             "
           />
-          Setup recording options</b-button
+          Recording options</b-button
         >
         <b-button
           variant="light"

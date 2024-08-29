@@ -25,7 +25,6 @@ import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
 import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" assert { type: "json" };
 import {
   extractJwtAuthorizedUser,
-  fetchAdminAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredAlertById,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredGroupById,

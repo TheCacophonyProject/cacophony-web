@@ -9,11 +9,6 @@ import {
   getDeviceLocationAtTime,
   getDeviceNodeGroup,
   getDeviceVersionInfo,
-  getSettingsForDevice,
-  set24HourRecordingWindows,
-  setDefaultRecordingWindows,
-  setCustomRecordingWindows,
-  setUseLowPowerMode,
 } from "@api/Device";
 import { useRoute } from "vue-router";
 import type { Ref } from "vue";
@@ -43,6 +38,8 @@ import type {
 } from "@typedefs/api/device";
 import type { BvTriggerableEvent } from "bootstrap-vue-next/src/BootstrapVue.js";
 import { defaultWindow } from "@vueuse/core";
+import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
+import { resourceIsLoading } from "@/helpers/utils.ts";
 
 const batteryTimeSeries = ref<HTMLDivElement>();
 
@@ -68,12 +65,10 @@ const lastPowerOffTime = ref<LoadedResource<Date>>(null);
 const lastPowerOnTime = ref<LoadedResource<Date>>(null);
 const settings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
 const saltNodeGroup = ref<LoadedResource<string>>(null);
-const isLoading = (val: Ref<LoadedResource<unknown>>) =>
-  computed<boolean>(() => val.value === null);
-const configInfoLoading = isLoading(deviceConfig);
-const versionInfoLoading = isLoading(versionInfo);
-const locationInfoLoading = isLoading(currentLocationForDevice);
-const nodeGroupInfoLoading = isLoading(saltNodeGroup);
+const configInfoLoading = resourceIsLoading(deviceConfig);
+const versionInfoLoading = resourceIsLoading(versionInfo);
+const locationInfoLoading = resourceIsLoading(currentLocationForDevice);
+const nodeGroupInfoLoading = resourceIsLoading(saltNodeGroup);
 const lastUpdateWasUnsuccessful = ref<boolean>(true);
 const records247 = computed<boolean>(() => {
   // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
@@ -450,7 +445,7 @@ const loadResource = (
   target: Ref<LoadedResource<unknown>>,
   loader: () => Promise<unknown | false>
 ) => {
-  if (isLoading(target)) {
+  if (resourceIsLoading(target)) {
     loader().then((result) => (target.value = result));
   }
 };
@@ -684,7 +679,10 @@ const isTc2Device = computed<boolean>(() => {
       <!-- TODO: Is the device currently online?  Duplicate info from devices listing.   -->
     </div>
     <div class="mt-4">
-      <h6>Battery info:</h6>
+      <div class="d-flex align-items-center h6 justify-content-between">
+        <span>Battery info:</span>
+        <device-battery-level :device="device" />
+      </div>
       <div v-if="batteryInfoIsLoading">
         <b-spinner small class="me-2" /> Loading battery info
       </div>
@@ -728,7 +726,6 @@ const isTc2Device = computed<boolean>(() => {
     </div>
   </div>
   <div v-else class="p-3">Device not found in group.</div>
-
 </template>
 <style scoped lang="less">
 .map {
