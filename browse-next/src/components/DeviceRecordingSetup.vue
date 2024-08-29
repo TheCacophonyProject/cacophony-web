@@ -406,15 +406,23 @@ watch(customRecordingWindowStop, async () => {
             >
           </p>
           <div class="alert-light alert">
-            <b-form-radio-group stacked v-model="recordingWindowSetting">
-              <b-form-radio value="default"
-                >Ready to record from dusk until dawn (default)</b-form-radio
-              >
-              <b-form-radio value="always">Ready to record 24/7</b-form-radio>
-              <b-form-radio value="custom"
-                >Custom recording window</b-form-radio
-              >
-            </b-form-radio-group>
+            <div class="d-flex justify-content-between">
+              <b-form-radio-group stacked v-model="recordingWindowSetting">
+                <b-form-radio value="default"
+                  >Ready to record from dusk until dawn (default)</b-form-radio
+                >
+                <b-form-radio value="always">Ready to record 24/7</b-form-radio>
+                <b-form-radio value="custom"
+                  >Custom recording window</b-form-radio
+                >
+              </b-form-radio-group>
+              <b-spinner
+                class="ms-1"
+                v-if="savingRecordingWindowSettings"
+                variant="secondary"
+                small
+              />
+            </div>
 
             <div
               class="justify-content-between d-flex mt-2"
