@@ -8,7 +8,11 @@ import type {
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import type { LoadedResource } from "@api/types.ts";
-import { getSettingsForDevice, updateDeviceSettings } from "@api/Device.ts";
+import {
+  getDeviceNodeGroup,
+  getSettingsForDevice,
+  updateDeviceSettings,
+} from "@api/Device.ts";
 import Datepicker from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
@@ -147,6 +151,7 @@ const loadResource = async (
 const initialised = ref<boolean>(false);
 onBeforeMount(async () => {
   await projectDevicesLoaded();
+  await loadResource(saltNodeGroup, () => getDeviceNodeGroup(deviceId.value));
   await loadResource(settings, fetchSettings);
   initialised.value = true;
   if (settings.value && !settings.value.synced) {
