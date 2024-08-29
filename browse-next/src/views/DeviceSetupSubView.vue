@@ -1,82 +1,40 @@
 <script lang="ts" setup>
-import { provide, type Ref } from "vue";
-import { computed, inject, onMounted, ref } from "vue";
-import {
-  getLatestStatusRecordingForDevice,
-  getMaskRegionsForDevice,
-  getReferenceImageForDeviceAtCurrentLocation,
-} from "@api/Device";
-import { selectedProjectDevices } from "@models/provides";
-import type {
-  ApiDeviceResponse,
-  ApiMaskRegionsData,
-} from "@typedefs/api/device";
+import { computed, inject, type Ref } from "vue";
+import type { ApiMaskRegionsData } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
-import type { DeviceId } from "@typedefs/api/common";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-const devices = inject(selectedProjectDevices) as Ref<
-  ApiDeviceResponse[] | null
->;
+import type { LoadedResource } from "@api/types.ts";
 const route = useRoute();
-const deviceId = Number(route.params.deviceId) as DeviceId;
-const device = computed<ApiDeviceResponse | null>(() => {
-  return (
-    (devices.value &&
-      devices.value.find(
-        (device: ApiDeviceResponse) => device.id === deviceId
-      )) ||
-    null
-  );
-});
-const loading = ref<boolean>(true);
 
-const latestStatusRecording = ref<ApiRecordingResponse | null>(null);
-const latestReferenceImageURL = ref<string | null>(null);
-const latestMaskRegions = ref<ApiMaskRegionsData | null>(null);
+const emit = defineEmits<{
+  (e: "updated-regions", payload: ApiMaskRegionsData): void;
+  (e: "updated-reference-image"): void;
+}>();
 
-provide("latestMaskRegions", latestMaskRegions);
-provide("latestReferenceImageURL", latestReferenceImageURL);
-provide("latestStatusRecording", latestStatusRecording);
-
-onMounted(async () => {
-  if (device.value && device.value.type === "thermal") {
-    const [latestReferenceImage, _, latestStatus] = await Promise.allSettled([
-      getReferenceImageForDeviceAtCurrentLocation(device.value.id),
-      getLatestMaskRegions(),
-      getLatestStatusRecordingForDevice(device.value.id, device.value.groupId),
-    ]);
-    if (
-      latestReferenceImage.status === "fulfilled" &&
-      latestReferenceImage.value.success
-    ) {
-      latestReferenceImageURL.value = URL.createObjectURL(
-        latestReferenceImage.value.result
-      );
-    }
-    if (latestStatus.status === "fulfilled" && latestStatus.value) {
-      latestStatusRecording.value = latestStatus.value;
-    }
-    loading.value = false;
-  }
-});
-
-const getLatestMaskRegions = async () => {
-  if (device.value) {
-    const existingMaskRegions = await getMaskRegionsForDevice(device.value.id);
-    if (existingMaskRegions.success) {
-      latestMaskRegions.value = {
-        maskRegions: existingMaskRegions.result.maskRegions,
-      };
-    }
-  }
-};
+const latestReferenceImageURL = inject("latestReferenceImageURL") as Ref<
+  LoadedResource<string>
+>;
+const latestMaskRegions = inject("latestMaskRegions") as Ref<
+  LoadedResource<ApiMaskRegionsData>
+>;
+const latestStatusRecording = inject("latestStatusRecording") as Ref<
+  LoadedResource<ApiRecordingResponse>
+>;
 
 const updatedMaskRegions = (newMaskRegions: ApiMaskRegionsData) => {
-  latestMaskRegions.value = newMaskRegions;
+  emit("updated-regions", newMaskRegions);
+};
+
+const updatedReferenceImage = () => {
+  emit("updated-reference-image");
 };
 
 const hasReferencePhoto = computed<boolean>(() => {
   return !!latestReferenceImageURL.value;
+});
+
+const hasRecordingSetup = computed<boolean>(() => {
+  return false;
 });
 
 const hasMaskRegionsDefined = computed<boolean>(() => {
@@ -92,6 +50,14 @@ const hasLatestRecordingInLocation = computed<boolean>(() => {
 
 const activeTabPath = computed(() => {
   return route.matched.map((item) => item.name);
+});
+
+const loading = computed<boolean>(() => {
+  return (
+    latestReferenceImageURL.value === null ||
+    latestStatusRecording.value === null ||
+    latestMaskRegions.value === null
+  );
 });
 </script>
 <template>
@@ -113,13 +79,26 @@ const activeTabPath = computed(() => {
   </div>
   <div v-else>
     <h6 class="d-none d-md-block mt-md-3">Camera setup checklist</h6>
-    <div class="d-flex flex-lg-row flex-column justify-content-lg-between">
+    <div class="d-flex flex-lg-row flex-column">
       <div
-        class="d-flex py-2 justify-content-around flex-column justify-content-md-start"
+        class="d-flex py-2 justify-content-around flex-column justify-content-md-start checklist me-lg-4"
       >
         <b-button
           variant="light"
           class="checklist-btn"
+          :to="{ name: 'recording-setup' }"
+          :active="activeTabPath.includes('recording-setup')"
+        >
+          <font-awesome-icon
+            :icon="
+              hasRecordingSetup ? ['far', 'circle-check'] : ['far', 'circle']
+            "
+          />
+          Recording options</b-button
+        >
+        <b-button
+          variant="light"
+          class="mt-2 checklist-btn"
           :to="{ name: 'reference-photo' }"
           :active="activeTabPath.includes('reference-photo')"
         >
@@ -148,6 +127,7 @@ const activeTabPath = computed(() => {
       </div>
       <router-view
         @updated-regions="updatedMaskRegions"
+        @updated-reference-image="updatedReferenceImage"
         class="right-column"
       ></router-view>
     </div>
@@ -161,8 +141,8 @@ const activeTabPath = computed(() => {
   .checklist-btn {
     //max-width: 30svh;
   }
-  .right-column {
-    max-width: 640px;
+  .checklist {
+    min-width: 300px;
   }
 }
 </style>

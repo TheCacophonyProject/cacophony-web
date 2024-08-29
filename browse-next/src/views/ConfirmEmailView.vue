@@ -45,8 +45,6 @@ onBeforeMount(async () => {
       validateToken.value = params.token.replace(/:/g, ".");
     }
 
-    // FIXME - check it's a valid token payload locally.
-
     const validateTokenResponse = await validateEmailConfirmationToken(
       validateToken.value
     );
@@ -117,9 +115,11 @@ onBeforeMount(async () => {
 });
 </script>
 <template>
-  <h1 v-if="checkingValidateEmailToken">
-    <span class="spinner-border-sm spinner-border"></span> Confirming your email
-  </h1>
+  <div v-if="checkingValidateEmailToken">
+    <b-spinner size="xl" class="me-2" /><span class="h1"
+      >Confirming your email</span
+    >
+  </div>
   <div v-else-if="!isValidValidateToken">
     {{ validateError }}
   </div>

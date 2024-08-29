@@ -3,7 +3,7 @@ import "bootstrap-vue-next/dist/bootstrap-vue-next.css";
 import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
-import { createBootstrap, BToast } from "bootstrap-vue-next";
+import { createBootstrap } from "bootstrap-vue-next";
 import FontAwesomeIcon from "./font-awesome-icons";
 import {
   currentSelectedProject,
@@ -15,6 +15,8 @@ import {
   userIsProjectAdmin,
   userProjects,
   userHasProjects,
+  allHistoricLocations,
+  currentUserCredsDev,
 } from "@models/provides";
 import {
   currentSelectedProject as fallibleCurrentSelectedProject,
@@ -26,15 +28,17 @@ import {
   userIsLoggedIn as hasLoggedInUser,
   userHasProjects as hasProjects,
   UserProjects,
+  LocationsForCurrentProject,
+  CurrentUserCredsDev,
 } from "@models/LoggedInUser";
 
 const app = createApp(App);
 app.component("font-awesome-icon", FontAwesomeIcon);
 app.use(router);
 app.use(createBootstrap());
-app.use(BToast);
 
 app.provide(selectedProjectDevices, DevicesForCurrentProject);
+app.provide(allHistoricLocations, LocationsForCurrentProject);
 app.provide(currentSelectedProject, fallibleCurrentSelectedProject);
 app.provide(
   urlNormalisedCurrentSelectedProjectName,
@@ -42,6 +46,7 @@ app.provide(
 );
 app.provide(currentUser, CurrentUser);
 app.provide(currentUserCreds, CurrentUserCreds);
+app.provide(currentUserCredsDev, CurrentUserCredsDev);
 app.provide(userIsProjectAdmin, userIsAdminForCurrentSelectedProject);
 app.provide(userIsLoggedIn, hasLoggedInUser);
 app.provide(userProjects, UserProjects);

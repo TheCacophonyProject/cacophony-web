@@ -21,7 +21,11 @@ import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
-import { ClientError, UnprocessableError } from "../customErrors.js";
+import {
+  ClientError,
+  FatalError,
+  UnprocessableError,
+} from "../customErrors.js";
 import {
   extractJWTInfo,
   extractJwtAuthorisedDevice,
@@ -45,6 +49,7 @@ import {
 } from "../extract-middleware.js";
 import {
   anyOf,
+  booleanOf,
   checkDeviceNameIsUniqueInGroup,
   deprecatedField,
   idOf,
@@ -63,6 +68,7 @@ import type {
   MaskRegion,
 } from "@typedefs/api/device.js";
 import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
+import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" assert { type: "json" };
 import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" assert { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
@@ -77,14 +83,11 @@ import {
 import type { Recording } from "@models/Recording.js";
 import config from "@config";
 import { streamS3Object } from "@api/V1/signedUrl.js";
-import { deleteFile } from "@models/util/util.js";
 import { uploadFileStream } from "@api/V1/util.js";
 import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
-import sequelize from "sequelize";
-import { fetchAuthorizedOptionalDeviceById } from "../extract-middleware.js";
 
 const models = await modelsInit();
 
@@ -112,18 +115,15 @@ export const mapDeviceResponse = (
     if (device.lastRecordingTime) {
       mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
     }
-    if (device.heartbeat && device.nextHeartbeat && device.active) {
-      // NOTE: If the device is inactive, we don't get a health indicator for it.
-      mapped.isHealthy = device.nextHeartbeat.getTime() > Date.now();
-    } else if (device.active && device.kind === "audio") {
-      // TODO: Can we update battery levels for bird monitors to the device, and show some health stats?
-      const twelveHoursAgo = new Date();
-      twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+    if (device.active) {
+      const twentyFiveHoursAgo = new Date();
+      twentyFiveHoursAgo.setHours(twentyFiveHoursAgo.getHours() - 25);
       mapped.isHealthy =
         (device.lastConnectionTime &&
-          device.lastConnectionTime.getTime() > twelveHoursAgo.getTime()) ||
+          device.lastConnectionTime.getTime() > twentyFiveHoursAgo.getTime()) ||
         false;
     }
+
     if (device.location) {
       mapped.location = device.location;
     }
@@ -370,7 +370,11 @@ export default function (app: Application, baseUrl: string) {
   app.delete(
     `${apiUrl}/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("deviceId")), nameOrIdOf(body("group"))]),
+    validateFields([
+      idOf(param("deviceId")),
+      nameOrIdOf(body("group")),
+      booleanOf(body("only-active"), false),
+    ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -570,6 +574,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("at-time").isISO8601().toDate().optional(),
       query("type").optional().isIn(["pov", "in-situ"]),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -579,22 +584,20 @@ export default function (app: Application, baseUrl: string) {
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
       const device = response.locals.device as Device;
-      const deviceHistoryEntry: DeviceHistory =
-        await models.DeviceHistory.findOne({
-          where: {
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            location: { [Op.ne]: null },
-            fromDateTime: { [Op.lte]: atTime },
-          },
-          order: [["fromDateTime", "DESC"]],
-        });
-
+      const deviceHistoryEntry: DeviceHistory | null =
+        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+      if (!deviceHistoryEntry) {
+        return next(
+          new UnprocessableError(
+            "No reference image available for device at time"
+          )
+        );
+      }
       if (device.kind === DeviceType.TrailCam) {
         // NOTE: If the device is a trailcam, try and use the daytime image that closest matches the requested time, if any.
 
         //  The trailcam has been in this location since this time.
-        const fromTime = deviceHistoryEntry?.fromDateTime;
+        const fromTime = deviceHistoryEntry.fromDateTime;
         if (!fromTime) {
           return next(
             new UnprocessableError(
@@ -604,7 +607,7 @@ export default function (app: Application, baseUrl: string) {
         }
         let recording: any;
         // See if this device has a later location
-        const laterDeviceHistoryEntry: DeviceHistory =
+        const laterDeviceHistoryEntry: DeviceHistory | null =
           await models.DeviceHistory.findOne({
             where: [
               {
@@ -628,31 +631,66 @@ export default function (app: Application, baseUrl: string) {
         };
         if (laterDeviceHistoryEntry) {
           payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
-          // Now check if there's a daytime image in that timespan
+          // Now check if there's a daytime image in that timespan, preferably without any tracks,
+          // to avoid there being animals present
+          const options = {
+            type: QueryTypes.SELECT,
+            replacements: {
+              groupId: device.GroupId,
+              deviceId: device.id,
+              atTime: fromTime,
+              untilTime: laterDeviceHistoryEntry.fromDateTime,
+            },
+          };
           recording = await models.sequelize.query(
-            `
+            `          
+          select * from "Recordings"
+          left outer join "Tracks"
+          on "Tracks"."RecordingId" = "Tracks".id
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and "recordingDateTime" < :untilTime
+          and type = 'trailcam-image'
+          and "Tracks".id is null
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          where 
+          limit 1
+          `,
+            options
+          );
+          if (!recording.length) {
+            recording = await models.sequelize.query(
+              `
           select * from "Recordings" 
           where "DeviceId" = :deviceId
           and "GroupId" = :groupId
           and location is not null
           and "recordingDateTime" >= :atTime
           and "recordingDateTime" < :untilTime
+          and type = 'trailcam-image'
           and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
           BETWEEN TIME '9:00' AND TIME '16:00'
           order by "recordingDateTime" desc
           limit 1
           `,
-            {
-              type: QueryTypes.SELECT,
-              replacements: {
-                groupId: device.GroupId,
-                deviceId: device.id,
-                atTime: fromTime,
-                untilTime: laterDeviceHistoryEntry.fromDateTime,
-              },
-            }
-          );
+              options
+            );
+          }
         } else {
+          // Now check if there's a daytime image in that timespan, preferably without any tracks,
+          // to avoid there being animals present
+          const options = {
+            type: QueryTypes.SELECT,
+            replacements: {
+              groupId: device.GroupId,
+              deviceId: device.id,
+              atTime: fromTime,
+            },
+          };
           recording = await models.sequelize.query(
             `
           select * from "Recordings" 
@@ -660,20 +698,31 @@ export default function (app: Application, baseUrl: string) {
           and "GroupId" = :groupId
           and location is not null
           and "recordingDateTime" >= :atTime
+          and type = 'trailcam-image'
           and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
           BETWEEN TIME '9:00' AND TIME '16:00'
           order by "recordingDateTime" desc
           limit 1
       `,
-            {
-              type: QueryTypes.SELECT,
-              replacements: {
-                groupId: device.GroupId,
-                deviceId: device.id,
-                atTime: fromTime,
-              },
-            }
+            options
           );
+          if (!recording.length) {
+            recording = await models.sequelize.query(
+              `
+          select * from "Recordings"         
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and type = 'trailcam-image'        
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          limit 1
+      `,
+              options
+            );
+          }
         }
         if (recording.length) {
           if (checkIfExists) {
@@ -818,6 +867,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
       query("at-time").isISO8601().toDate().optional(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -847,12 +897,12 @@ export default function (app: Application, baseUrl: string) {
         order: [["fromDateTime", "DESC"]],
       });
       if (deviceHistoryEntry && deviceHistoryEntry.Station) {
-        return successResponse(response, "Got station for device at time", {
+        return successResponse(response, "Got location for device at time", {
           location: mapStation(deviceHistoryEntry.Station),
         });
       }
       return next(
-        new UnprocessableError("No station recorded for device at time")
+        new UnprocessableError("No location recorded for device at time")
       );
     }
   );
@@ -866,6 +916,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("from-time").isISO8601().toDate().optional(),
       query("until-time").isISO8601().toDate().optional(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -955,6 +1006,7 @@ export default function (app: Application, baseUrl: string) {
       query("from-time").isISO8601().toDate().optional(),
       query("until-time").isISO8601().toDate().optional(),
       idOf(query("stationId")).optional(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -1059,6 +1111,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -1136,6 +1189,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
       query("type").optional().isIn(["pov", "in-situ"]),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response) => {
@@ -1143,7 +1197,6 @@ export default function (app: Application, baseUrl: string) {
       // If the location hasn't changed, we need to carry this forward whenever we create
       // another device history entry?
       const referenceType = request.query.type || "pov";
-      // TODO: Make some tests for this.
       const atTime = request.query["at-time"] as unknown as Date;
       const device = response.locals.device as Device;
       const previousDeviceHistoryEntry: DeviceHistory =
@@ -1350,16 +1403,7 @@ export default function (app: Application, baseUrl: string) {
       const atTime = request.query["at-time"] as unknown as Date;
       const device = response.locals.device as Device;
       const deviceSettings: DeviceHistory | null =
-        await models.DeviceHistory.findOne({
-          where: {
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            location: { [Op.ne]: null },
-            fromDateTime: { [Op.lte]: atTime },
-          },
-          order: [["fromDateTime", "DESC"]],
-        });
-
+        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
       if (
         deviceSettings &&
         deviceSettings.settings &&
@@ -1397,37 +1441,101 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      booleanOf(query("only-active"), false),
+      booleanOf(query("latest-synced"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
-        const deviceSettings: DeviceHistory | null =
-          await models.DeviceHistory.findOne({
+        let deviceSettings: DeviceHistory | null = null;
+        if (request.query["latest-synced"]) {
+          deviceSettings = await models.DeviceHistory.findOne({
             where: {
               DeviceId: device.id,
               GroupId: device.GroupId,
               location: { [Op.ne]: null },
               fromDateTime: { [Op.lte]: atTime },
+              "settings.synced": true,
             },
             order: [["fromDateTime", "DESC"]],
           });
+        } else {
+          deviceSettings = await models.DeviceHistory.latest(
+            device.id,
+            device.GroupId,
+            atTime
+          );
+        }
+        if (deviceSettings) {
+          const settings = {
+            ...(deviceSettings.settings || {}),
+          };
 
-        if (deviceSettings && deviceSettings.settings) {
           return successResponse(
             response,
             "Device settings retrieved successfully",
-            { settings: deviceSettings.settings }
+            {
+              settings,
+              location: deviceSettings.location,
+            }
           );
         } else {
-          return successResponse(response, "No device settings found");
+          return next(new UnprocessableError("Could not get settings"));
         }
       } catch (e) {
-        console.log(e);
+        return next(new FatalError(e.message ?? "Could not get settings"));
       }
     }
   );
+
+  /**
+   * @api {post} /api/v1/devices/:deviceId/settings Update device settings
+   * @apiName UpdateDeviceSettings
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   *
+   * @apiDescription Updates settings in the DeviceHistory table for a specified device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiDeviceSettingsResponseSuccess}
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/settings`,
+    extractJwtAuthorizedUserOrDevice,
+    validateFields([
+      idOf(param("id")),
+      body("settings").custom(jsonSchemaOf(ApiDeviceHistorySettingsSchema)),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      try {
+        const device = response.locals.device as Device;
+        const newSettings: ApiDeviceHistorySettings = request.body.settings;
+        const setBy = response.locals.requestUser?.id ? "user" : "automatic";
+        const updatedEntry = await models.DeviceHistory.updateDeviceSettings(
+          device.id,
+          device.GroupId,
+          newSettings,
+          setBy
+        );
+        return successResponse(
+          response,
+          "Device settings updated successfully",
+          {
+            settings: updatedEntry,
+          }
+        );
+      } catch (e) {
+        return next(new FatalError("Failed to update device settings."));
+      }
+    }
+  );
+
   /**
    * @api {patch} /api/v1/devices/:deviceId/fix-location Fix a device location at a given time
    * @apiName FixupDeviceLocationAtTimeById
@@ -1844,7 +1952,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(body("scheduleId")),
       idOf(param("deviceId")),
       // Allow adding a schedule to an inactive device by default
-      query("only-active").default(false).isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -1894,8 +2002,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(body("scheduleId")),
       idOf(param("deviceId")),
-      // Allow adding a schedule to an inactive device by default
-      query("only-active").default(false).isBoolean().toBoolean(),
+      // Allow removing a schedule from an inactive device by default
+      booleanOf(query("only-active"), false),
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
@@ -2000,7 +2108,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2096,7 +2204,7 @@ export default function (app: Application, baseUrl: string) {
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       stringOf(query("interval")).default("days"),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2136,7 +2244,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2176,7 +2284,7 @@ export default function (app: Application, baseUrl: string) {
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       stringOf(query("type")).default("audio"),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2219,7 +2327,7 @@ export default function (app: Application, baseUrl: string) {
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       stringOf(query("interval")).default("days"),
       stringOf(query("type")).default("audio"),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2257,6 +2365,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
+      booleanOf(query("only-active")).optional(),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {

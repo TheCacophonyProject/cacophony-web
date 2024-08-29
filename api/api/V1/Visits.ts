@@ -19,39 +19,13 @@ import type { Moment } from "moment";
 import moment from "moment";
 import type { Event } from "@models/Event.js";
 import type { DeviceId, StationId } from "@typedefs/api/common.js";
-
-import Classifications from "@/classifications/classification.json" assert { type: "json" };
-import type { Classification } from "@typedefs/api/trackTag.js";
-
-const flattenNodes = (
-  acc: Record<string, { label: string; display: string; path: string }>,
-  node: Classification,
-  parentPath: string
-) => {
-  for (const child of node.children || []) {
-    acc[child.label] = {
-      label: child.label,
-      display: child.display || child.label,
-      path: `${parentPath}.${child.label}`,
-    };
-    flattenNodes(acc, child, acc[child.label].path);
-  }
-  return acc;
-};
-
-const flatClassifications = (() => {
-  const nodes = flattenNodes({}, Classifications, "all");
-  if (nodes.unknown) {
-    nodes["unidentified"] = nodes["unknown"];
-  }
-  return nodes;
-})();
+import { flatClassifications } from "@/classifications/classifications.js";
 
 let visitID = 1;
 const eventMaxTimeSeconds = 60 * 10;
 const conflictTag = "conflicting tags";
 
-const META_TAGS = ["part", "poor tracking"];
+export const META_TAGS = ["part", "poor tracking"];
 export const UNIDENTIFIED_TAGS = ["unidentified", "unknown"];
 export const NON_ANIMAL_TAGS = [...META_TAGS, ...UNIDENTIFIED_TAGS];
 
@@ -78,7 +52,7 @@ function sortTracks(tracks: Track[]) {
   });
 }
 
-const getCommonAncestorForTags = (tags: string[]): string => {
+export const getCommonAncestorForTags = (tags: string[]): string => {
   // Find common parents of classifications.
   const classes = tags
     .map((tag) => flatClassifications[tag])

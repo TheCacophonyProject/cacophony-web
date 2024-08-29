@@ -80,5 +80,5 @@ export type WrappedFetchResult<T> =
   | WrappedSuccessFetchResult<T>
   | FailureFetchResult;
 
-// NOTE: null means uninitialised, false means a failure occurred, undefined means loading in progress
-export type LoadedResource<T> = null | false | undefined | T;
+// NOTE: null means uninitialised/loading in progress, false means a failure occurred.
+export type LoadedResource<T> = null | false | T;

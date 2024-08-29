@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onMounted, provide, ref, watch } from "vue";
+import {
+  computed,
+  inject,
+  onBeforeMount,
+  onMounted,
+  provide,
+  ref,
+  watch,
+} from "vue";
 import type { Ref, ComputedRef } from "vue";
 import { getAllVisitsForProject } from "@api/Monitoring";
-import { showUnimplementedModal } from "@models/LoggedInUser";
+import {
+  showUnimplementedModal,
+  urlNormalisedCurrentProjectName,
+} from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
@@ -15,7 +26,7 @@ import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import { BSpinner } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
-import { useRoute, useRouter } from "vue-router";
+import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import {
   classifications,
@@ -46,17 +57,34 @@ const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
   null
 );
 
+const visitIsTombstoned = (visit: ApiVisitResponse): boolean => {
+  return visit.hasOwnProperty("tombstoned");
+};
+
 const currentVisitsFilterComputed = computed<
   (visit: ApiVisitResponse) => boolean
 >(() => {
   if (currentVisitsFilter.value === null) {
-    return visitorIsPredator;
+    return (visit) => visitorIsPredator(visit) && !visitIsTombstoned(visit);
   } else {
-    return currentVisitsFilter.value;
+    return (visit) =>
+      (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
+        visit
+      ) &&
+      !visitIsTombstoned(visit) &&
+      visitorIsPredator(visit);
   }
 });
 
+const dashboardVisits = computed<ApiVisitResponse[]>(() => {
+  return ((visitsContext.value || []) as ApiVisitResponse[]).filter(
+    (visit) => visitorIsPredator(visit) && !visitIsTombstoned(visit)
+  );
+});
+
 // TODO: Move to provides/inject
+// FIXME: Any time any visit is mutated (tags change etc, we have to recompute this,
+//  which could be very slow for a large list?
 const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
     return (visitsContext.value as ApiVisitResponse[]).filter(
@@ -105,6 +133,12 @@ const visitHasClassification =
       visit.classification === tag) as boolean;
   };
 
+const visitHasLocation =
+  (location: LocationId) =>
+  (visit: ApiVisitResponse): boolean => {
+    return (visit && visit.stationId === location) as boolean;
+  };
+
 const recordingMode = ref<"Thermal" | "Audio">("Thermal");
 const audioMode = computed<boolean>(() => recordingMode.value === "Audio");
 
@@ -117,15 +151,6 @@ const availableProjects = inject(userProjects) as Ref<
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
-
-const maybeFilteredDashboardVisitsContext = computed<ApiVisitResponse[]>(() => {
-  if (visitsContext.value) {
-    return (visitsContext.value as ApiVisitResponse[]).filter(
-      visitorIsPredator
-    );
-  }
-  return [];
-});
 
 // Two ways we can go about next/prev visit.  We pass the loaded visits through from the parent context,
 // and then move through them as an array index.
@@ -176,7 +201,7 @@ const loadingVisitsProgress = ref<number>(0);
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 const speciesSummary = computed<Record<string, number>>(() => {
-  return maybeFilteredDashboardVisitsContext.value.reduce(
+  return dashboardVisits.value.reduce(
     (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
       if (currentValue.classification) {
         acc[currentValue.classification] =
@@ -235,19 +260,20 @@ watch(timePeriodDays, loadVisits);
 watch(currentProject, reloadDashboard);
 
 const loadedRouteName = ref<string>("");
-onMounted(async () => {
+onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
+  console.log("Loaded route name", loadedRouteName.value);
   if (!classifications.value) {
     await getClassifications();
   }
 });
-// I don't think the underlying data changes?
-//watch(visitsOrRecordings, reloadDashboard);
-//watch(speciesOrStations, reloadDashboard);
 // TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
 const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiLocationResponse[]
 >(() => {
+  const visitLocations = dashboardVisits.value.map(
+    (visit: ApiVisitResponse) => visit.stationId
+  );
   if (locations.value) {
     return (locations.value as ApiLocationResponse[])
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
@@ -267,7 +293,10 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
               new Date(location.lastThermalRecordingTime) > earliestDate.value)
           );
         }
-      });
+      })
+      .filter((location: ApiLocationResponse) =>
+        visitLocations.includes(location.id)
+      );
   }
   return [];
 });
@@ -364,9 +393,19 @@ const showVisitsForTag = (tag: string) => {
   }
 };
 
+const showVisitsForLocation = (location: ApiLocationResponse) => {
+  // set the selected visit to the last visit with the tag,
+  // and set the filter for the context to the tag.
+  currentVisitsFilter.value = visitHasLocation(location.id);
+  if (maybeFilteredVisitsContext.value.length) {
+    selectedVisit.value = maybeFilteredVisitsContext.value[0];
+  }
+};
+
 const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   return (
-    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0
+    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0 &&
+    dashboardVisits.value.length !== 0
   );
 });
 
@@ -376,23 +415,24 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <div class="header-container">
     <section-header>Dashboard</section-header>
     <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <bimodal-switch
-        :modes="['Thermal', 'Audio']"
-        v-model="recordingMode"
-        v-if="currentSelectedProjectHasAudioAndThermal"
-      />
+      <!--      <bimodal-switch-->
+      <!--        class="justify-content-end"-->
+      <!--        :modes="['Thermal', 'Audio']"-->
+      <!--        v-model="recordingMode"-->
+      <!--        v-if="currentSelectedProjectHasAudioAndThermal"-->
+      <!--      />-->
       <div
         class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
       >
         <div class="d-flex flex-row align-items-center justify-content-between">
-          <span>View </span>
-          <select
-            class="form-select form-select-sm text-end"
-            v-model="visitsOrRecordings"
-          >
-            <option>visits</option>
-            <option>recordings</option>
-          </select>
+          <span>Visits&nbsp;</span>
+          <!--          <select-->
+          <!--            class="form-select form-select-sm text-end"-->
+          <!--            v-model="visitsOrRecordings"-->
+          <!--          >-->
+          <!--            <option>visits</option>-->
+          <!--            <option>recordings</option>-->
+          <!--          </select>-->
         </div>
         <div class="d-flex flex-row align-items-center justify-content-between">
           <span> in the last </span>
@@ -405,16 +445,16 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
             <option value="3">3 days</option>
           </select>
         </div>
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span> grouped by </span>
-          <select
-            class="form-select form-select-sm text-end"
-            v-model="speciesOrLocations"
-          >
-            <option>species</option>
-            <option>location</option>
-          </select>
-        </div>
+        <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
+        <!--          <span> grouped by species</span>-->
+        <!--&lt;!&ndash;          <select&ndash;&gt;-->
+        <!--&lt;!&ndash;            class="form-select form-select-sm text-end"&ndash;&gt;-->
+        <!--&lt;!&ndash;            v-model="speciesOrLocations"&ndash;&gt;-->
+        <!--&lt;!&ndash;          >&ndash;&gt;-->
+        <!--&lt;!&ndash;            <option>species</option>&ndash;&gt;-->
+        <!--&lt;!&ndash;            <option>location</option>&ndash;&gt;-->
+        <!--&lt;!&ndash;          </select>&ndash;&gt;-->
+        <!--        </div>-->
       </div>
     </div>
   </div>
@@ -453,48 +493,84 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       class="mb-5 flex-md-fill me-md-3"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-      :visits="maybeFilteredDashboardVisitsContext"
+      :visits="dashboardVisits"
       :start-date="earliestDate"
       :loading="isLoading"
     />
     <visits-breakdown-list
-      :visits="maybeFilteredDashboardVisitsContext"
+      :visits="dashboardVisits"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
       @selected-visit="(visit: ApiVisitResponse) => (selectedVisit = visit)"
       @change-highlighted-location="
-        (loc: LocationId) => (currentlyHighlightedLocation = loc)
+        (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
       "
     />
   </div>
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
     Locations summary
   </h2>
-  <horizontal-overflow-carousel class="mb-5">
+  <horizontal-overflow-carousel
+    v-if="hasVisitsForSelectedTimePeriod"
+    class="mb-5"
+  >
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
-    <b-spinner v-if="isLoading" />
     <div
       class="card-group species-summary flex-sm-nowrap"
-      v-else-if="hasVisitsForSelectedTimePeriod"
+      v-if="!isLoading && hasVisitsForSelectedTimePeriod"
     >
       <location-visit-summary
         v-for="(
-          station, index
+          location, index
         ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-        :location="station"
+        :location="location"
         :active-locations="
           locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
         "
+        @click="showVisitsForLocation(location)"
         :locations="allLocations"
-        :visits="maybeFilteredDashboardVisitsContext"
+        :visits="dashboardVisits"
         :key="index"
       />
     </div>
-    <div v-else>
-      There were no active locations in the last {{ timePeriodDays }} days for
-      this project.
-    </div>
   </horizontal-overflow-carousel>
+  <div
+    v-if="isLoading || !hasVisitsForSelectedTimePeriod"
+    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-end mb-5 mb-sm-0"
+  >
+    <div v-if="isLoading">
+      <b-spinner variant="secondary" />
+    </div>
+    <div v-else class="d-flex justify-content-center flex-column">
+      <div style="text-align: center">
+        <span
+          v-if="
+            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length === 0
+          "
+        >
+          There were no active locations in the last
+          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+          ><span v-else>day</span> for this project.
+        </span>
+        <span v-else>
+          There were no predator visits in any of the active locations in the
+          last
+          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+          ><span v-else>day</span> for this project.
+        </span>
+      </div>
+      <b-button
+        class="mt-3"
+        :to="{
+          name: 'activity',
+          params: {
+            projectName: urlNormalisedCurrentProjectName,
+          },
+        }"
+        >Take me to the latest visits for this project</b-button
+      >
+    </div>
+  </div>
   <inline-view-modal
     @close="selectedVisit = null"
     :fade-in="loadedRouteName === 'dashboard'"

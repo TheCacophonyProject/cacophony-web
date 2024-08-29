@@ -18,16 +18,26 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import {
   activeLocations,
+  allHistoricLocations,
   currentSelectedProject as currentActiveProject,
   latLngForActiveLocations,
+  selectedProjectDevices,
+  urlNormalisedCurrentSelectedProjectName,
 } from "@models/provides";
-import type { SelectedProject } from "@models/LoggedInUser";
+import {
+  projectDevicesLoaded,
+  projectLocationsLoaded,
+  type SelectedProject,
+} from "@models/LoggedInUser";
 import type {
   FetchResult,
   LoadedResource,
   SuccessFetchResult,
 } from "@api/types";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type {
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+} from "@typedefs/api/recording";
 import {
   type BulkRecordingsResponse,
   getAllRecordingsForProjectBetweenTimes,
@@ -73,9 +83,11 @@ import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
   type BulkVisitsResponse,
   getAllVisitsForProjectBetweenTimes,
+  getVisitsForProject,
+  getVisitsForProjectNew,
+  type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
-import { getLocationsForProject } from "@api/Project.ts";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
@@ -92,6 +104,8 @@ import {
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
 import { delayMs } from "@/utils.ts";
 import { tagsForRecording } from "@models/recordingUtils.ts";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import { CurrentViewAbortController } from "@/router";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -109,6 +123,10 @@ const mapBufferWidth = computed<number>(() => {
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
 >;
+
+const fileSafeProjectName = inject(
+  urlNormalisedCurrentSelectedProjectName
+) as ComputedRef<string>;
 
 export interface ActivitySearchParams {
   // relativeDateRange: [Date, Date] | null;
@@ -128,7 +146,27 @@ export interface ActivitySearchParams {
   displayMode: ActivitySearchDisplayMode;
 }
 
-const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
+const locations = inject(allHistoricLocations) as ComputedRef<
+  ApiLocationResponse[]
+>;
+const devices = inject(selectedProjectDevices) as ComputedRef<
+  ApiDeviceResponse[]
+>;
+
+watch(currentProject, async (next, prev) => {
+  if (next && prev && next.groupName !== prev.groupName) {
+    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
+    searchParams.value = initSearchParams();
+    prefilteredChunkedVisits.value = [];
+    chunkedRecordings.value = [];
+    currentQueryCursor.value.fromDateTime = null;
+    currentQueryCursor.value.untilDateTime = null;
+    dateRange.value = [null, null];
+    // FIXME: Maybe need to clear all search params, and reset internal queries such
+    //  that locations and devices and timespans that belong to other projects are removed.
+    await doSearch();
+  }
+});
 
 const arrayContentsAreTheSame = (
   a: LocationQueryValue[],
@@ -180,7 +218,7 @@ const DefaultSearchParams = {
   from: "24-hours-ago",
 };
 
-const searchParams = ref<ActivitySearchParams>({
+const initSearchParams = (): ActivitySearchParams => ({
   devices: "all",
   duration: "any",
   includeFalsePositives: false,
@@ -195,6 +233,8 @@ const searchParams = ref<ActivitySearchParams>({
   locations: ["any"],
   from: "24-hours-ago",
 });
+
+const searchParams = ref<ActivitySearchParams>(initSearchParams());
 
 const now = new Date();
 const oneDayAgo = new Date(new Date().setDate(now.getDate() - 1));
@@ -332,15 +372,14 @@ const deserialiseAndValidateRouteValue = (
       {}
     );
     if (value in knownLabels) {
-      dateRange.value[0] = knownLabels[value][0];
-      dateRange.value[1] = knownLabels[value][1];
+      dateRange.value = [...knownLabels[value]];
       searchParams.value.from = value;
     } else {
       const date = new Date(value);
       if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
         return { replacement: availableDateRanges.value[0].from };
       }
-      dateRange.value[0] = date;
+      dateRange.value = [date, dateRange.value[1]];
       searchParams.value.from = date;
     }
   } else if (key === "until") {
@@ -349,7 +388,7 @@ const deserialiseAndValidateRouteValue = (
     if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
       return { replacement: null };
     }
-    dateRange.value[1] = date;
+    dateRange.value = [dateRange.value[0], date];
     searchParams.value.until = date;
   } else if (key === "locations") {
     value = value || [];
@@ -382,6 +421,16 @@ const deserialiseAndValidateRouteValue = (
     } else {
       console.error("Invalid timespan?", value);
     }
+  } else if (key === "devices") {
+    value = value || [];
+    // Check that the location ids are valid.
+    let ids: number[];
+    if (Array.isArray(value)) {
+      ids = value.map(Number);
+    } else {
+      ids = value.toString().split(",").map(Number);
+    }
+    searchParams.value.devices = ids;
   } else if (key === "tag-mode") {
     // Map the tagged by into searchParams.
     const taggedBy = (value || "").trim() as TagMode;
@@ -405,6 +454,7 @@ const deserialiseAndValidateRouteValue = (
       if (validTags.length) {
         return { replacement: validTags.join(",") };
       } else {
+        searchParams.value.taggedWith = [];
         return { replacement: null };
       }
     }
@@ -426,6 +476,10 @@ const syncSearchQuery = async (
   next: LocationQuery,
   prev: LocationQuery | undefined
 ) => {
+  if (route.name !== "activity") {
+    return;
+  }
+
   if (prev === undefined) {
     prev = DefaultSearchParams as LocationQuery;
   }
@@ -449,6 +503,10 @@ const syncSearchQuery = async (
     // Set the lower time bound first
     deserialiseAndValidateRouteValue("from", next.from);
   }
+  if (next.until) {
+    // Set the upper time bound next
+    deserialiseAndValidateRouteValue("until", next.until);
+  }
 
   for (const [key, val] of Object.entries(diff)) {
     const replacement = deserialiseAndValidateRouteValue(key, val);
@@ -459,6 +517,7 @@ const syncSearchQuery = async (
   if (replacements["tagged-with"]) {
     replacements["tag-mode"] = TagMode.Tagged;
   }
+
   const isDateRange =
     queryValueIsDate(next.from) && queryValueIsDate(next.until);
   if (Object.entries(replacements).length) {
@@ -476,6 +535,7 @@ const syncSearchQuery = async (
       delete query.until;
       delete searchParams.value.until;
     }
+
     await router.replace({
       query,
     });
@@ -486,31 +546,31 @@ const route = useRoute();
 const watchQuery = ref<WatchStopHandle | null>(null);
 
 const loading = ref<boolean>(false);
-onBeforeMount(async () => {
-  loading.value = true;
-  if (currentProject.value) {
-    // TODO: This could be provided for group at a higher level.
-    locations.value = await getLocationsForProject(
-      (currentProject.value as SelectedProject).id.toString(),
-      true
-    );
-    // Validate the current query on load.
-    watchQuery.value = watch(() => route.query, syncSearchQuery, {
-      deep: true,
-      immediate: true,
-    });
-  }
-  loading.value = false;
-});
-onBeforeUnmount(() => {
-  //watchParams();
-  watchQuery.value && watchQuery.value();
+
+const dateRangeInternal = ref<[Date | null, Date | null]>([null, null]);
+const dateRange = computed({
+  get: (): [Date | null, Date | null] => {
+    return [...dateRangeInternal.value] as [Date, Date];
+  },
+  set: (val: [Date | null, Date | null]) => {
+    dateRangeInternal.value = val;
+  },
 });
 
-const dateRange = ref<[Date, Date]>([new Date(), new Date()]);
-// const dateRange = computed<DateRange>(() => {
-//   return [new Date(), new Date()];
-// });
+watch(dateRange, (next, prev) => {
+  if (prev[0] === null && prev[1] === null) {
+    // Initialising date range
+    if (next[0] !== null && next[1] !== null) {
+      currentQueryCursor.value = {
+        untilDateTime: endOfDay(next[1]),
+        fromDateTime: endOfDay(next[1]),
+      };
+    }
+  }
+  if (next[0] !== null && next[1] !== null) {
+    doSearch();
+  }
+});
 
 const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
   return {
@@ -565,7 +625,19 @@ const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
     .filter((item) => !!item) as ApiLocationResponse[];
 });
 
+const selectedDevices = computed<ApiDeviceResponse[] | "all">(() => {
+  if (searchParams.value.devices === "all") {
+    return "all";
+  }
+  return (searchParams.value.devices as DeviceId[]).map((deviceId) =>
+    (devices.value || []).find(({ id }) => id === deviceId)
+  ) as ApiDeviceResponse[];
+});
+
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
+  if (dateRange.value[0] === null || dateRange.value[1] === null) {
+    return [];
+  }
   if (locations.value) {
     return (locations.value as ApiLocationResponse[]).filter((location) => {
       if (location.location.lat === 0 && location.location.lng === 0) {
@@ -577,8 +649,8 @@ const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
       );
       return (
         latestDateForLocation &&
-        latestDateForLocation >= dateRange.value[0] &&
-        new Date(location.activeAt) <= dateRange.value[1]
+        latestDateForLocation >= (dateRange.value[0] as Date) &&
+        new Date(location.activeAt) <= (dateRange.value[1] as Date)
       );
     });
   }
@@ -632,12 +704,53 @@ const minDateForSelectedLocations = computed<Date>(() => {
   }
   return earliest;
 });
-const highlightPoint = (_point: NamedPoint) => {
+
+const maxDateForSelectedLocations = computed<Date>(() => {
+  // Latest active location
+  if (selectedLocations.value.includes("any")) {
+    return new Date(maxDateForProject.value);
+  }
+  let latest = new Date(0);
+  if (selectedLocations.value) {
+    for (const location of selectedLocations.value) {
+      const loc = location as ApiLocationResponse;
+      const lastActiveAudio =
+        (loc.lastActiveAudioTime && new Date(loc.lastActiveAudioTime)) ||
+        new Date(0);
+      const lastActiveThermal =
+        (loc.lastActiveThermalTime && new Date(loc.lastActiveThermalTime)) ||
+        new Date(0);
+      const lastThermalRecording =
+        (loc.lastThermalRecordingTime &&
+          new Date(loc.lastThermalRecordingTime)) ||
+        new Date(0);
+      const lastAudioRecording =
+        (loc.lastAudioRecordingTime && new Date(loc.lastAudioRecordingTime)) ||
+        new Date(0);
+      const activeAt = maxDate(
+        lastActiveAudio,
+        maxDate(
+          lastActiveThermal,
+          maxDate(lastThermalRecording, lastAudioRecording)
+        )
+      );
+      if (activeAt > latest) {
+        latest = activeAt;
+      }
+    }
+  }
+  return latest;
+});
+const highlightPoint = (_point: NamedPoint | null) => {
   // TODO: Could highlight all visible list items that correspond to the highlighted map location?
 };
 const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
   locationsInSelectedTimespan
 );
+
+interface MaybeDeletedRecording extends ApiRecordingResponse {
+  tombstoned?: boolean;
+}
 
 const loadedRecordings = ref<ApiRecordingResponse[]>([]);
 const loadedRecordingIds = ref<RecordingId[]>([]);
@@ -655,26 +768,34 @@ const currentTotalRecordings = computed<number>(() => {
   if (currentQueryCount.value) {
     return currentQueryCount.value as number;
   }
-  return loadedRecordings.value.length;
+  return filteredLoadedRecordings.value.length;
 });
 const canExpandSearchBackFurther = computed<boolean>(() => {
   return (
-    currentQueryCursor.value.fromDateTime.getTime() !==
-    minDateForSelectedLocations.value.getTime()
+    currentQueryCursor.value.fromDateTime !== null &&
+    Math.floor(currentQueryCursor.value.fromDateTime.getTime() / 1000) >
+      Math.floor(minDateForSelectedLocations.value.getTime() / 1000)
   );
 });
-const updatedRecording = (recording: ApiRecordingResponse) => {
+const updatedRecording = (
+  recording: ApiRecordingResponse,
+  recordingWasDeleted = false
+) => {
   const loadedRecording = loadedRecordings.value.find(
     ({ id }) => id === recording.id
   );
   if (loadedRecording) {
-    loadedRecording.tracks = recording.tracks;
-    loadedRecording.tags = recording.tags;
+    if (recordingWasDeleted) {
+      (loadedRecording as MaybeDeletedRecording).tombstoned = true;
+    } else {
+      loadedRecording.tracks = recording.tracks;
+      loadedRecording.tags = recording.tags;
+    }
   }
 };
 
 const currentlySelectedVisit = ref<ApiVisitResponse | null>(null);
-const chunkedVisits = ref<ApiVisitResponse[]>([]);
+
 //const visitsContext = ref<ApiVisitResponse[] | null>(null);
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -687,26 +808,51 @@ const chunkedRecordings = ref<
   }[]
 >([]);
 
-interface RecordingQueryCursor {
-  fromDateTime: Date;
-  untilDateTime: Date;
-}
+const prefilteredChunkedVisits = ref<ApiVisitResponse[]>([]);
+const chunkedVisits = computed<ApiVisitResponse[]>(() => {
+  return prefilteredChunkedVisits.value.filter(
+    (visit) => !visit.hasOwnProperty("tombstoned")
+  );
+});
+const filteredLoadedRecordings = computed<ApiRecordingResponse[]>(() => {
+  return loadedRecordings.value.filter(
+    (rec) => !rec.hasOwnProperty("tombstoned")
+  );
+});
 
+interface RecordingQueryCursor {
+  fromDateTime: Date | null;
+  untilDateTime: Date | null;
+}
+const endOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+const startOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
 const currentQueryHash = ref<string>("");
 const currentQueryCursor = ref<RecordingQueryCursor>({
-  fromDateTime: new Date(),
-  untilDateTime: new Date(),
+  fromDateTime: null,
+  untilDateTime: null,
 });
 const currentQueryCount = ref<LoadedResource<number>>(null);
 const currentQueryLoaded = ref<number>(0);
 const completedCurrentQuery = ref<boolean>(false);
 
 let needsObserverUpdate = false;
-watch(loadedRecordings.value, () => {
-  needsObserverUpdate = true;
+watch(filteredLoadedRecordings, (next, prev) => {
+  if (next && prev && next.length !== prev.length) {
+    needsObserverUpdate = true;
+  }
 });
-watch(chunkedVisits.value, () => {
-  needsObserverUpdate = true;
+watch(chunkedVisits, (next, prev) => {
+  if (next && prev && next.length !== prev.length) {
+    needsObserverUpdate = true;
+  }
 });
 
 let currentObserver: { stop: () => void } | null;
@@ -759,9 +905,9 @@ onUpdated(() => {
             for (const intersection of intersections) {
               if (intersection.isIntersecting) {
                 console.log("load more");
-                doSearch();
                 currentObserver && currentObserver.stop();
                 currentObserver = null;
+                doSearch();
                 break;
               }
             }
@@ -777,12 +923,11 @@ onUpdated(() => {
 
 const getCurrentQueryHash = (): string => {
   // Keep track of the recordingState/cursor using a hash of the query,
-  const fromDateTime = dateRange.value[0];
-  const untilDateTime = dateRange.value[1];
+  const untilDateTime = endOfDay(dateRange.value[1] as Date);
   return JSON.stringify({
     ...getCurrentQuery(),
     displayMode: displayMode.value,
-    fromDateTime,
+    //fromDateTime,
     untilDateTime,
   });
 };
@@ -801,7 +946,7 @@ interface RecordingQueryBase {
   includeFilteredFalsePositivesAndNones: boolean;
 }
 const getCurrentQuery = (): QueryRecordingsOptions => {
-  console.log("Search params", searchParams.value);
+  // console.log("Search params", searchParams.value);
   const query: QueryRecordingsOptions = {
     types:
       searchParams.value.recordingMode === "cameras"
@@ -811,14 +956,22 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
             ConcreteRecordingType.TrailCamImage,
           ]
         : [ConcreteRecordingType.Audio],
-    includeFilteredFalsePositivesAndNones:
-      searchParams.value.includeFalsePositives ||
-      searchParams.value.tagMode === TagMode.UnTagged,
   };
+  if (searchParams.value.displayMode === "recordings") {
+    query.includeFilteredFalsePositivesAndNones =
+      searchParams.value.includeFalsePositives ||
+      searchParams.value.tagMode === TagMode.UnTagged;
+  }
   const isAnyLocation = selectedLocations.value.includes("any");
   if (!isAnyLocation) {
     query.locations = selectedLocations.value.map(
       (loc) => (loc as ApiLocationResponse).id
+    );
+  }
+  const isAllDevices = selectedDevices.value === "all";
+  if (!isAllDevices) {
+    query.devices = (selectedDevices.value as ApiDeviceResponse[]).map(
+      (device) => (device as ApiDeviceResponse).id
     );
   }
   const taggedWithAny = searchParams.value.taggedWith.includes("any");
@@ -836,7 +989,7 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
     query.labelledWith = searchParams.value.labelledWith;
   }
 
-  // Hack in support for Megadetector "animal" into our heirarchy:
+  // Hack in support for Megadetector "animal" into our hierarchy:
   if (query.taggedWith?.includes("animal") && query.subClassTags) {
     const animalChildren = [
       "mammal",
@@ -924,7 +1077,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
 const appendVisitsChunkedByDay = (visits: ApiVisitResponse[]) => {
   for (const visit of visits) {
     // TODO: May need to optimise this as the list gets long?
-    chunkedVisits.value.push(visit);
+    prefilteredChunkedVisits.value.push(visit);
   }
 };
 
@@ -942,8 +1095,8 @@ const resetQuery = (
   while (chunkedRecordings.value.length) {
     chunkedRecordings.value.pop();
   }
-  while (chunkedVisits.value.length) {
-    chunkedVisits.value.pop();
+  while (prefilteredChunkedVisits.value.length) {
+    prefilteredChunkedVisits.value.pop();
   }
   currentQueryHash.value = newQueryHash;
   currentQueryLoaded.value = 0;
@@ -952,8 +1105,8 @@ const resetQuery = (
   // TODO Also, make it abortable if we change queries.
   currentQueryCount.value = undefined;
   currentQueryCursor.value = {
-    fromDateTime,
-    untilDateTime,
+    fromDateTime: new Date(fromDateTime),
+    untilDateTime: new Date(untilDateTime),
   };
 };
 
@@ -966,79 +1119,142 @@ const inRecordingsMode = computed<boolean>(
 const inVisitsMode = computed<boolean>(
   () => displayMode.value === ActivitySearchDisplayMode.Visits
 );
+
+const maxDate = (a: Date, b: Date): Date => {
+  if (a > b) {
+    return a;
+  }
+  return b;
+};
+
+const minDate = (a: Date, b: Date): Date => {
+  if (a < b) {
+    return a;
+  }
+  return b;
+};
+
+const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
+  if (searchParams.value.recordingMode === "cameras") {
+    return [
+      ConcreteRecordingType.ThermalRaw,
+      ConcreteRecordingType.TrailCamVideo,
+      ConcreteRecordingType.TrailCamImage,
+    ];
+  } else {
+    return [ConcreteRecordingType.Audio];
+  }
+});
+
+const firstLoad = ref<boolean>(true);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   // NOTE: We try to load at most one month at a time.
+  let succeededWithoutAbort = true;
   if (currentProject.value) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
-    const query = getCurrentQuery();
-    const queryHash = getCurrentQueryHash();
-    const isNewQuery = queryHash !== currentQueryHash.value;
+    if (fromDateTime === null && untilDateTime === null) {
+      // Date range not yet defined
+      return;
+    }
+    let queryHash = getCurrentQueryHash();
+    let query = getCurrentQuery();
     const project = currentProject.value as SelectedProject;
+    let isNewQuery;
+    if (firstLoad.value) {
+      firstLoad.value = false;
+      queryHash = getCurrentQueryHash();
+      query = getCurrentQuery();
+      isNewQuery = true;
+    } else {
+      isNewQuery = queryHash !== currentQueryHash.value;
+    }
+    if (
+      (currentQueryCursor.value.fromDateTime as Date) < (fromDateTime as Date)
+    ) {
+      // We need to narrow the already loaded search range
+      isNewQuery = true;
+    }
 
-    console.log(isNewQuery ? "Using new query" : "Using existing query", query);
+    let earliestRecord = null;
+    if (inRecordingsMode.value) {
+      if (filteredLoadedRecordings.value.length) {
+        earliestRecord = new Date(
+          filteredLoadedRecordings.value[
+            filteredLoadedRecordings.value.length - 1
+          ].recordingDateTime
+        );
+      }
+    } else {
+      // Visits
+    }
+    if (earliestRecord !== null && earliestRecord < (fromDateTime as Date)) {
+      isNewQuery = true;
+    }
 
     if (isNewQuery) {
-      resetQuery(queryHash, fromDateTime, untilDateTime);
-      // if (inRecordingsMode.value) {
-      //   // Load total recording count for query lazily, so we
-      //   // don't lock the main rendering query.
-      //   queryRecordingsInProjectNew(project.id, {
-      //     ...query,
-      //     limit: 1,
-      //     countAll: true,
-      //     fromDateTime,
-      //     untilDateTime,
-      //   }).then((response) => {
-      //     if (response.success) {
-      //       currentQueryCount.value = response.result.count;
-      //     } else {
-      //       currentQueryCount.value = null;
-      //     }
-      //   });
-      // } else {
-      //   currentQueryCount.value = null;
-      // }
+      resetQuery(
+        queryHash,
+        endOfDay(untilDateTime as Date),
+        endOfDay(untilDateTime as Date)
+      );
     }
-    // TODO: Make this add the count to the first query, rather than doing two queries?
-    const hasNotLoadedAllOfQueryTimeRange =
-      currentQueryCursor.value.fromDateTime <
-      currentQueryCursor.value.untilDateTime;
+
+    const aa = new Date(currentQueryCursor.value.fromDateTime as Date);
+    const bb = new Date(fromDateTime as Date);
+    aa.setMilliseconds(0);
+    bb.setMilliseconds(0);
+    const hasNotLoadedAllOfQueryTimeRange = aa > bb;
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
       const itemHeight = inRecordingsMode.value ? 80 : 160;
       const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
-      let response: FetchResult<BulkRecordingsResponse> | BulkVisitsResponse;
+      let response:
+        | FetchResult<BulkRecordingsResponse>
+        | FetchResult<VisitsQueryResult>;
       if (inRecordingsMode.value) {
+        // NOTE: Not sure we need to ever get the total count for this query for the
+        //  purposes of this UI?
+        CurrentViewAbortController.newView();
         response = await queryRecordingsInProjectNew(project.id, {
           ...query,
-          countAll: isNewQuery,
           limit: twoPagesWorth,
-          fromDateTime: currentQueryCursor.value.fromDateTime,
-          untilDateTime: currentQueryCursor.value.untilDateTime,
+          fromDateTime: dateRange.value[0],
+          untilDateTime: currentQueryCursor.value.untilDateTime as Date,
+          queryIsTimeSensitive: true,
+          types: typesForRecordingMode.value as (
+            | RecordingType.TrailCamImage
+            | RecordingType.TrailCamVideo
+            | RecordingType.ThermalRaw
+            | RecordingType.Audio
+          )[],
         });
-        if (response.success && response.result.count) {
+        if (response && response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
         }
       } else {
         // Else visits
-        console.log(
-          "Requesting",
-          DateTime.fromJSDate(
-            currentQueryCursor.value.fromDateTime as Date
-          ).toLocaleString(),
-          DateTime.fromJSDate(
-            currentQueryCursor.value.untilDateTime as Date
-          ).toLocaleString()
-        );
-        console.log(`Load ${twoPagesWorth} days of visits`, query.types);
-        response = await getAllVisitsForProjectBetweenTimes(
+        // TODO: This needs to have a limit
+        // Make it the lesser of the current date range or 2 pages worth of days.
+        //const pageSize = 100;
+        CurrentViewAbortController.newView();
+        response = await getVisitsForProject(
           project.id,
-          currentQueryCursor.value.fromDateTime,
-          currentQueryCursor.value.untilDateTime,
+          dateRange.value[0] as Date,
+          minDate(
+            currentQueryCursor.value.untilDateTime as Date,
+            endOfDay(maxDateForSelectedLocations.value)
+          ),
+          //pageSize,
           query.locations,
-          query.types
+          query.types as
+            | (
+                | RecordingType.ThermalRaw
+                | RecordingType.TrailCamImage
+                | RecordingType.TrailCamVideo
+              )[]
+            | undefined
         );
       }
       if (response && response.success) {
@@ -1047,16 +1263,11 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         if (inRecordingsMode.value) {
           const recordingsResponse = response as unknown as SuccessFetchResult<{
             recordings: ApiRecordingResponse[];
-            count: number;
           }>;
-          console.log("Recordings", recordingsResponse);
-          // debugger;
-          // loadedFewerItemsThanRequested =
-          //   recordingsResponse.result.recordings.length < 100;
+          console.log("Got response", recordingsResponse);
           const recordings = recordingsResponse.result.recordings;
           loadedRecordings.value.push(...recordings);
-          loadedFewerItemsThanRequested =
-            loadedRecordings.value.length < recordingsResponse.result.count;
+          loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
           loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
           appendRecordingsChunkedByDay(recordings);
           currentQueryLoaded.value += recordings.length;
@@ -1064,15 +1275,14 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             gotUntilDate = new Date(
               recordings[recordings.length - 1].recordingDateTime
             );
-            console.log("Got until date", gotUntilDate);
           }
         } else if (inVisitsMode.value) {
-          const visitsResponse = response as BulkVisitsResponse;
+          const visitsResponse = response.result as VisitsQueryResult;
           const visits = visitsResponse.visits as ApiVisitResponse[];
-          loadedFewerItemsThanRequested = !visitsResponse.all;
+          loadedFewerItemsThanRequested =
+            visitsResponse.params.pagesEstimate > 1;
 
           if (visits.length !== 0) {
-            // Set current time to 8.02am Fri 31st March for incomplete visits
             let lastVisit = visits[visits.length - 1];
             gotUntilDate = new Date(lastVisit.timeStart);
             if (lastVisit.incomplete) {
@@ -1081,25 +1291,30 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               if (visits.length) {
                 lastVisit = visits[visits.length - 1];
                 gotUntilDate = new Date(lastVisit.timeStart);
+              } else {
+                gotUntilDate = undefined;
               }
             }
           }
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
           appendVisitsChunkedByDay(visits);
+          console.log("appending visits", visits.length);
+          if (visits.length === 0) {
+            //debugger;
+          }
         }
         if (gotUntilDate) {
           // Increment the cursor.
           // NOTE: Not sure if this offsetting is necessary?
           gotUntilDate.setMilliseconds(gotUntilDate.getMilliseconds() - 1);
           currentQueryCursor.value.untilDateTime = gotUntilDate;
-
+          const reachedMinDateForSelectedLocations =
+            (currentQueryCursor.value.fromDateTime as Date).getTime() ===
+            minDateForSelectedLocations.value.getTime();
           if (loadedFewerItemsThanRequested) {
-            const reachedMinDateForSelectedLocations =
-              currentQueryCursor.value.fromDateTime.getTime() ===
-              minDateForSelectedLocations.value.getTime();
             if (reachedMinDateForSelectedLocations) {
-              console.log("!!! stopping any observers");
+              console.log("Stopping observer");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1110,32 +1325,46 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
                 currentQueryCursor.value.untilDateTime as Date
               );
             }
-            completedCurrentQuery.value = true;
           }
         } else {
-          console.log("Completed current query range");
-          currentQueryCursor.value.fromDateTime = new Date(
-            currentQueryCursor.value.untilDateTime as Date
-          );
+          if (
+            dateRange.value[0] &&
+            dateRange.value[0].getTime() <=
+              minDateForSelectedLocations.value.getTime()
+          ) {
+            currentQueryCursor.value.fromDateTime = new Date(
+              minDateForSelectedLocations.value
+            );
+          } else {
+            currentQueryCursor.value.fromDateTime = new Date(
+              currentQueryCursor.value.untilDateTime as Date
+            );
+          }
           completedCurrentQuery.value = true;
         }
+      } else {
+        succeededWithoutAbort = false;
       }
     }
   }
+  return succeededWithoutAbort;
 };
 
 const searching = ref<boolean>(false);
 const exporting = ref<boolean>(false);
 const exportProgress = ref<number>(0);
+const exportStartTime = ref<number>(0);
+const exportTime = ref<number>(0);
 const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100
 );
 const doSearch = async () => {
-  showOffcanvasSearch.value = false;
   searching.value = true;
   await getClassifications();
-  await getRecordingsOrVisitsForCurrentQuery();
-  searching.value = false;
+  const success = await getRecordingsOrVisitsForCurrentQuery();
+  if (success) {
+    searching.value = false;
+  }
 };
 
 const download = (url: string, filename: string) => {
@@ -1223,42 +1452,71 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
       "Local time",
       "Duration",
       "Classification",
+      "Labels",
     ],
   ];
+  const isAudioMode =
+    searchParams.value.recordingMode === ActivitySearchRecordingMode.Audio;
+  if (isAudioMode) {
+    csv[0].push("Cacophony Index");
+  }
   for (const recording of data) {
     const location = (locations.value || []).find(
       ({ id }) => id === recording.stationId
     );
-    if (location) {
-      const tags = tagsForRecording(recording);
-      const displays = [];
-      for (const tag of tags) {
-        const display = displayLabelForClassificationLabel(
-          tag.what,
-          tag.automatic && !tag.human
-        );
-        displays.push(upperFirst(display));
-      }
 
-      csv.push([
-        recording.stationName || "",
-        `${recording.location?.lat}, ${recording.location?.lng}`,
-        recording.deviceName,
-        recording.recordingDateTime,
-        dayAndTimeAtLocation(recording.recordingDateTime, location.location),
-        formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
-        displays.join(", "),
-      ]);
+    const tags = tagsForRecording(recording);
+    const displays = [];
+    const labels = recording.tags.map((tag) => tag.detail);
+    for (const tag of tags) {
+      const display = displayLabelForClassificationLabel(
+        tag.what,
+        tag.automatic && !tag.human
+      );
+      displays.push(
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+      );
     }
+    const row = [
+      recording.stationName || "unknown",
+      (recording.location &&
+        `${recording.location?.lat}, ${recording.location?.lng}`) ||
+        "unknown",
+      recording.deviceName,
+      recording.recordingDateTime,
+      (location &&
+        dayAndTimeAtLocation(recording.recordingDateTime, location.location)) ||
+        "unknown",
+      formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
+      displays.join(", "),
+      labels.join(", "),
+    ];
+    if (isAudioMode) {
+      row.push(
+        ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
+          .map((index: { index_percent: number }) => index.index_percent)
+          .join(", ")
+      );
+    }
+    csv.push(row);
   }
   return arrayToCsv(csv);
 };
 
+const exportTimeElapsed = computed<number>(
+  () => exportTime.value - exportStartTime.value
+);
+
 const doExport = async () => {
   exportProgress.value = 0;
   exporting.value = true;
+  exportStartTime.value = performance.now();
   await getClassifications();
-  if (currentProject.value) {
+  if (
+    currentProject.value &&
+    dateRange.value[0] !== null &&
+    dateRange.value[1] !== null
+  ) {
     const fromDateTime = dateRange.value[0];
     const untilDateTime = dateRange.value[1];
     const query = getCurrentQuery();
@@ -1271,9 +1529,16 @@ const doExport = async () => {
         fromDateTime,
         untilDateTime,
         query.locations,
-        query.types,
+        query.types as
+          | (
+              | RecordingType.TrailCamVideo
+              | RecordingType.ThermalRaw
+              | RecordingType.TrailCamImage
+            )[]
+          | undefined,
         (progress) => {
           exportProgress.value = progress;
+          exportTime.value = performance.now();
         }
       );
       const csvFileData = createVisitsCsv(
@@ -1283,7 +1548,7 @@ const doExport = async () => {
         URL.createObjectURL(
           new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
         ),
-        `visits-export.csv`
+        `${fileSafeProjectName.value}-visits-export.csv`
       );
     } else if (inRecordingsMode.value) {
       query.fromDateTime = fromDateTime;
@@ -1291,8 +1556,8 @@ const doExport = async () => {
       const recordings = await getAllRecordingsForProjectBetweenTimes(
         project.id,
         query,
-        (progress) => {
-          exportProgress.value = progress;
+        () => {
+          exportTime.value = performance.now();
         }
       );
       const csvFileData = createRecordingsCsv(recordings);
@@ -1300,7 +1565,7 @@ const doExport = async () => {
         URL.createObjectURL(
           new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
         ),
-        `recordings-export.csv`
+        `${fileSafeProjectName.value}-recordings-export.csv`
       );
     }
   }
@@ -1312,14 +1577,21 @@ const fromDateMinusIncrement = computed<Date>(() => {
   // What was the selected increment?  One day? One month?  One year?
   // Use that initial increment to expand search backwards in time by that amount.
   //const currentInc =
-
-  const fromDateTime = new Date(dateRange.value[0]);
+  const fromDateTime = new Date(dateRange.value[0] as Date);
   const setBackFourWeeks = fromDateTime.setDate(fromDateTime.getDate() - 28);
   const from = Math.max(
     minDateForSelectedLocations.value.getTime(),
     new Date(setBackFourWeeks).getTime()
   );
   return new Date(from);
+});
+
+const atMinimumTimeForSelectedLocations = computed<boolean>(() => {
+  return (
+    !!currentQueryCursor.value.fromDateTime &&
+    Math.floor(minDateForSelectedLocations.value.getTime() / 1000) ===
+      Math.floor(currentQueryCursor.value.fromDateTime.getTime() / 1000)
+  );
 });
 
 const relativeTimeIncrementInPast = computed<string>(() => {
@@ -1329,9 +1601,15 @@ const relativeTimeIncrementInPast = computed<string>(() => {
   ) {
     return "the earliest available date for this selection";
   }
+  const oneYear = 1000 * 60 * 60 * 24 * 365;
+  if (Date.now() - fromDateMinusIncrement.value.getTime() > oneYear) {
+    return DateTime.fromJSDate(fromDateMinusIncrement.value).toRelative({
+      unit: "months",
+    }) as string;
+  }
   return DateTime.fromJSDate(fromDateMinusIncrement.value).toRelative({
     round: true,
-    padding: 1000 * 60 * 60 * 24 * 14,
+    padding: 1000 * 60 * 60 * 24 * 14, //
   }) as string;
 });
 
@@ -1359,7 +1637,7 @@ const adjustTimespanBackwards = async () => {
     searchParams.value.from = fromDateMinusIncrement.value;
   } else {
     searchParams.value.from = fromDateMinusIncrement.value;
-    searchParams.value.until = dateRange.value[1];
+    searchParams.value.until = dateRange.value[1] as Date;
     //
     // const initialSelectedDateRangeUntil = new Date(selectedDateRange.value[1]);
     customAutomaticallySet.value = true;
@@ -1380,14 +1658,16 @@ const adjustTimespanBackwards = async () => {
     // }
   }
   // console.log("Cursor was", JSON.stringify(currentQueryCursor.value, null, '\t'));
-  currentQueryCursor.value.fromDateTime = fromDateMinusIncrement.value;
+  //currentQueryCursor.value.fromDateTime = fromDateMinusIncrement.value;
+  dateRange.value = [fromDateMinusIncrement.value, dateRange.value[1]];
   // Reset the key, so that we continue the current search
-  currentQueryHash.value = getCurrentQueryHash();
+  //currentQueryHash.value = getCurrentQueryHash();
   //console.log("Cursor is now", JSON.stringify(currentQueryCursor.value, null, '\t'));
 
   // TODO - When we expand a search, we need to issue another count request for the span added, so we
   // can update the total.
-  await doSearch();
+  // console.log("adjustTimespanBackwards");
+  // await doSearch();
 };
 
 // FIXME: Handle recording closing etc, restoring route.
@@ -1441,9 +1721,14 @@ const closedModal = () => {
   currentlySelectedVisit.value = null;
 };
 
+const filteredLoadedRecordingIds = computed<RecordingId[]>(() => {
+  return (filteredLoadedRecordings.value || []).map(({ id }) => id);
+});
+
 provide(activeLocations, locationsInSelectedTimespan);
 provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
-provide("loadedRecordingIds", loadedRecordingIds);
+provide("loadedRecordingIds", filteredLoadedRecordingIds);
+provide("loadedRecordings", loadedRecordings);
 provide("currentRecordingCount", currentTotalRecordings);
 provide("canLoadMoreRecordingsInPast", canLoadMoreRecordingsInPast);
 provide("updatedRecording", updatedRecording);
@@ -1478,6 +1763,36 @@ const toggleOffcanvasSearch = () => {
 const shouldShowSearchControlsInline = computed<boolean>(
   () => windowWidth.value >= 768
 );
+
+const localDateString = (d: Date): string => {
+  return DateTime.fromJSDate(d).toLocaleString({
+    weekday: "short",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+onBeforeMount(async () => {
+  loading.value = true;
+  if (currentProject.value) {
+    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
+    console.log("Got locations, validate query", locations.value);
+    // Validate the current query on load.
+    watchQuery.value = watch(() => route.query, syncSearchQuery, {
+      deep: true,
+      immediate: true,
+    });
+  }
+  loading.value = false;
+});
+onBeforeUnmount(() => {
+  //watchParams();
+  watchQuery.value && watchQuery.value();
+});
 </script>
 <template>
   <section-header>Activity</section-header>
@@ -1493,7 +1808,7 @@ const shouldShowSearchControlsInline = computed<boolean>(
     v-if="loading"
     class="d-flex justify-content-center align-items-center centered-overlay"
   >
-    <b-spinner />
+    <b-spinner variant="secondary" />
   </div>
   <div v-else-if="!projectHasLocationsWithRecordings">
     This project has no activity yet.
@@ -1512,7 +1827,6 @@ const shouldShowSearchControlsInline = computed<boolean>(
           <font-awesome-icon icon="sliders" />
         </b-button>
       </div>
-      <!--   TODO: Close button should be < inline and custom.   -->
       <b-offcanvas
         v-if="!shouldShowSearchControlsInline"
         v-model="showOffcanvasSearch"
@@ -1530,6 +1844,9 @@ const shouldShowSearchControlsInline = computed<boolean>(
           @search-requested="doSearch"
           @export-requested="doExport"
         />
+        <div class="d-flex flex-column mt-3">
+          <b-button @click="showOffcanvasSearch = false">Search</b-button>
+        </div>
       </b-offcanvas>
       <div class="search-controls" v-if="shouldShowSearchControlsInline">
         <activity-search-parameters
@@ -1551,16 +1868,10 @@ const shouldShowSearchControlsInline = computed<boolean>(
         <activity-search-description
           :locations-in-selected-timespan="locationsInSelectedTimespan"
           :selected-locations="selectedLocations"
+          :selected-devices="selectedDevices"
           :available-date-ranges="availableDateRanges"
           :search-params="searchParams"
         />
-        <!--        <div v-if="currentQueryCount === undefined">-->
-        <!--          Loading totals...-->
-        <!--          <b-spinner />-->
-        <!--        </div>-->
-        <!--        <div v-else-if="currentQueryCount || currentQueryCount === 0">-->
-        <!--          Loaded {{ currentQueryLoaded }} / Total {{ currentQueryCount }}-->
-        <!--        </div>-->
         <div class="search-items-container">
           <recordings-list
             v-if="inRecordingsMode"
@@ -1585,9 +1896,9 @@ const shouldShowSearchControlsInline = computed<boolean>(
         </div>
         <div
           v-if="searching"
-          class="d-flex justify-content-center flex-columns align-items-center"
+          class="d-flex justify-content-center flex-columns align-items-center flex-fill"
         >
-          <b-spinner />
+          <b-spinner variant="secondary" />
         </div>
         <div
           v-else-if="completedCurrentQuery && canExpandSearchBackFurther"
@@ -1605,8 +1916,30 @@ const shouldShowSearchControlsInline = computed<boolean>(
             {{ relativeTimeIncrementInPast }}
           </button>
         </div>
-        <div v-else-if="loadedRecordings.length">
-          No results before this time.
+        <div
+          v-else-if="atMinimumTimeForSelectedLocations"
+          class="d-flex justify-content-center"
+        >
+          <span class="text-center mb-2"
+            >No results for the selected locations before this time.</span
+          >
+        </div>
+        <div
+          v-else-if="
+            (searchParams.displayMode === 'recordings' &&
+              filteredLoadedRecordings.length) ||
+            (searchParams.displayMode === 'visits' && chunkedVisits.length)
+          "
+          class="d-flex justify-content-center"
+        >
+          <span class="text-center mb-2"
+            >No results before this time for the current search.</span
+          >
+        </div>
+        <div v-else class="d-flex justify-content-center">
+          <span class="text-center mb-2"
+            >No results for the current search.</span
+          >
         </div>
       </div>
     </div>
@@ -1645,10 +1978,24 @@ const shouldShowSearchControlsInline = computed<boolean>(
     <activity-search-description
       :locations-in-selected-timespan="locationsInSelectedTimespan"
       :selected-locations="selectedLocations"
+      :selected-devices="selectedDevices"
       :available-date-ranges="availableDateRanges"
       :search-params="searchParams"
     />
-    <b-progress :value="exportProgressZeroOneHundred" />
+    <div v-if="inVisitsMode">
+      <b-progress :value="exportProgressZeroOneHundred" />
+      <span class="mt-1"
+        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
+        elapsed</span
+      >
+    </div>
+    <div class="d-flex align-content-center align-items-center" v-else>
+      <b-spinner variant="secondary" class="me-3" />
+      <span class="mt-1"
+        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
+        elapsed</span
+      >
+    </div>
   </b-modal>
 </template>
 <style lang="less" scoped>

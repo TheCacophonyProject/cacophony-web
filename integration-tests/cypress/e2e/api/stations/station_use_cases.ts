@@ -4,17 +4,20 @@ import {
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { TestGetLocation } from "@commands/api/station";
-import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
-import { TestCreateExpectedDevice } from "@commands/api/device";
+import {
+  TestCreateExpectedDevice,
+  TestCreateExpectedHistoryEntry,
+} from "@commands/api/device";
 import { getCreds } from "@commands/server";
 import { EXCLUDE_IDS, NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
-import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
+import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+
 let count = 0;
 let group: string;
 const baseGroup: string = "station_use_case_group";
@@ -64,8 +67,8 @@ describe("Stations: use cases", () => {
     // User adds a new recoding in the corrected location
     // -> recording assigned to the manual station
     // -> DeviceHistory is unchanged
-    // -> Station has lastThermalRecordingztime updated --- NOT TESTED
-    // Another week later User adds a new recording in a new loaction
+    // -> Station has lastThermalRecordingTime updated --- NOT TESTED
+    // Another week later User adds a new recording in a new location
     // -> recording assigned to a new station in new location
     // -> additional deviceHistory entry created for new location, new station and new recording's time
     const deviceName = "new-device-3";
@@ -132,6 +135,10 @@ describe("Stations: use cases", () => {
       const expectedInitialDevice = TestCreateExpectedDevice(
         deviceName,
         group,
+        false,
+        DeviceType.Unknown,
+        true,
+        true,
         false
       );
       cy.apiDeviceInGroupCheck(
@@ -407,6 +414,10 @@ describe("Stations: use cases", () => {
       const expectedInitialDevice = TestCreateExpectedDevice(
         deviceName,
         group,
+        false,
+        DeviceType.Unknown,
+        true,
+        true,
         false
       );
       cy.apiDeviceInGroupCheck(
@@ -799,6 +810,10 @@ describe("Stations: use cases", () => {
       const expectedInitialDevice = TestCreateExpectedDevice(
         deviceName,
         group,
+        false,
+        DeviceType.Unknown,
+        true,
+        true,
         false
       );
       cy.apiDeviceInGroupCheck(

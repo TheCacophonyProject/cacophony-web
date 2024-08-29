@@ -19,7 +19,10 @@ import {
 } from "@models/visitsUtils";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
-import { getRecordingById } from "@api/Recording";
+import {
+  getRecordingById,
+  deleteRecording as apiDeleteRecording,
+} from "@api/Recording";
 import type {
   ApiVisitResponse,
   VisitRecordingTag,
@@ -37,7 +40,6 @@ import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
-import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
 import { API_ROOT } from "@api/root";
 import {
@@ -53,6 +55,7 @@ import {
 } from "@typedefs/api/consts.ts";
 import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
+import { urlNormaliseName } from "@/utils.ts";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -64,7 +67,12 @@ const currentUserCreds = inject(
 ) as Ref<LoggedInUserAuth | null>;
 
 const route = useRoute();
-const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
+const emit = defineEmits<{
+  (e: "close"): void;
+  (e: "start-blocking-work"): void;
+  (e: "end-blocking-work"): void;
+  (e: "recording-updated", recordingId: RecordingId, action: string): void;
+}>();
 const inlineModalEl = ref<HTMLDivElement>();
 
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
@@ -83,6 +91,9 @@ const loadedRecordingIds = inject(
   "loadedRecordingIds",
   computed(() => [])
 ) as ComputedRef<RecordingId[]>;
+const loadedRecordings = inject("loadedRecordings") as Ref<
+  ApiRecordingResponse[]
+>;
 const canLoadMoreRecordingsInPast = inject(
   "canLoadMoreRecordingsInPast",
   ref(false)
@@ -92,7 +103,7 @@ const requestLoadMoreRecordingsInPast = inject(
   () => {
     //
   }
-) as () => void;
+) as () => Promise<void>;
 const currentRecordingCount = inject(
   "currentRecordingCount",
   ref(0)
@@ -103,10 +114,10 @@ const canExpandCurrentQueryIntoPast = inject(
 ) as ComputedRef<boolean>;
 const updatedRecording = inject(
   "updatedRecording",
-  (recording: ApiRecordingResponse) => {
+  (recording: ApiRecordingResponse, recordingWasDeleted = false) => {
     //
   }
-) as (recording: ApiRecordingResponse) => void;
+) as (recording: ApiRecordingResponse, recordingWasDeleted?: boolean) => void;
 
 const recordingIds = ref(
   (() => {
@@ -309,32 +320,32 @@ const hasPreviousVisit = computed<boolean>(() => {
   return previousVisit.value !== null;
 });
 
-const gotoNextRecordingOrVisit = () => {
+const gotoNextRecordingOrVisit = async () => {
   if (hasNextRecording.value) {
-    gotoNextRecording();
+    return gotoNextRecording();
   } else if (isInVisitContext.value) {
-    gotoNextVisit();
+    return gotoNextVisit();
   }
 };
 
-const gotoNextRecording = () => {
+const gotoNextRecording = async () => {
   if (nextRecordingId.value) {
-    gotoRecording(nextRecordingId.value as RecordingId);
+    return gotoRecording(nextRecordingId.value as RecordingId);
   }
 };
 
-const gotoNextVisit = () => {
+const gotoNextVisit = async () => {
   if (nextVisit.value) {
     selectedVisit.value = nextVisit.value;
-    gotoVisit(selectedVisit.value as ApiVisitResponse, true);
+    return gotoVisit(selectedVisit.value as ApiVisitResponse, true);
   }
 };
 
-const gotoPreviousRecordingOrVisit = () => {
+const gotoPreviousRecordingOrVisit = async () => {
   if (hasPreviousRecording.value) {
-    gotoPreviousRecording();
+    return gotoPreviousRecording();
   } else if (isInVisitContext.value) {
-    gotoPreviousVisit();
+    return gotoPreviousVisit();
   }
 };
 
@@ -351,7 +362,7 @@ const gotoRecording = async (recordingId: RecordingId) => {
   }
   delete params.trackId;
   delete params.detail;
-  await router.push({
+  return router.push({
     name: route.name as string,
     params,
     query: route.query,
@@ -376,29 +387,29 @@ const gotoVisit = async (visit: ApiVisitResponse, startOfVisit: boolean) => {
   }
   delete params.trackId;
   delete params.detail;
-  await router.push({
+  return router.push({
     name: route.name as string,
     params,
     query: route.query,
   });
 };
 
-const gotoPreviousRecording = () => {
+const gotoPreviousRecording = async () => {
   if (previousRecordingId.value) {
     if (
       previousRecordingIndex.value === allRecordingIds.value.length - 5 &&
       canLoadMoreRecordingsInPast.value
     ) {
-      requestLoadMoreRecordingsInPast();
+      await requestLoadMoreRecordingsInPast();
     }
-    gotoRecording(previousRecordingId.value as RecordingId);
+    return gotoRecording(previousRecordingId.value as RecordingId);
   }
 };
 
-const gotoPreviousVisit = () => {
+const gotoPreviousVisit = async () => {
   if (previousVisit.value) {
     selectedVisit.value = previousVisit.value;
-    gotoVisit(selectedVisit.value as ApiVisitResponse, false);
+    return gotoVisit(selectedVisit.value as ApiVisitResponse, false);
   }
 };
 
@@ -422,10 +433,21 @@ const visitForRecording = computed<string>(() => {
     if (humanTagCounts.length) {
       let bestHumanTagCount = 0;
       let bestHumanTag;
-      for (const [tag, count] of humanTagCounts) {
+      // If there's anything human tagged that's not false-positive or unidentified, use that first.
+      for (const [tag, count] of humanTagCounts.filter(
+        ([tag, _]) => !["false-positive", "unidentified"].includes(tag)
+      )) {
         if (count > bestHumanTagCount) {
           bestHumanTagCount = count;
           bestHumanTag = tag;
+        }
+      }
+      if (!bestHumanTag) {
+        for (const [tag, count] of humanTagCounts) {
+          if (count > bestHumanTagCount) {
+            bestHumanTagCount = count;
+            bestHumanTag = tag;
+          }
         }
       }
       return (
@@ -500,63 +522,7 @@ const recalculateCurrentVisit = async (
           targetTrack.isAITagged = false;
           targetTrack.tag = addedTag.what;
         }
-
-        // Now, recalculate the visit:
-        // If there are any human tags, pick the most numerous one as the classification,
-        // Unless it is a false-positive or similar, but only if there is another animal tag
-        const humanTags: Record<string, number> = {};
-        for (const recording of targetVisit.recordings) {
-          for (const track of recording.tracks) {
-            if (!track.isAITagged && track.tag !== null) {
-              humanTags[track.tag as string] =
-                humanTags[track.tag as string] || 0;
-              humanTags[track.tag as string] += 1;
-            }
-          }
-        }
-
-        const hasNonFalsePositiveTag =
-          Object.keys(humanTags).filter(
-            (tag) => !negativeThingTags.includes(tag)
-          ).length !== 0;
-        const humanTagCounts = Object.entries(humanTags);
-        if (humanTagCounts.length) {
-          let bestHumanTagCount = 0;
-          let bestHumanTag;
-          for (const [tag, count] of humanTagCounts) {
-            if (
-              (hasNonFalsePositiveTag && !negativeThingTags.includes(tag)) ||
-              !hasNonFalsePositiveTag
-            ) {
-              if (count > bestHumanTagCount) {
-                bestHumanTagCount = count;
-                bestHumanTag = tag;
-              }
-            }
-          }
-          targetVisit.classification = bestHumanTag;
-          targetVisit.classFromUserTag = true;
-        } else {
-          // If there are no human tags, pick the most pre-calculated AI one.
-          targetVisit.classification = targetVisit.classificationAi;
-          targetVisit.classFromUserTag = false;
-        }
-        const params = {
-          ...route.params,
-          visitLabel: targetVisit.classification,
-        };
-        await router.replace({
-          name: route.name as string,
-          params,
-          query: route.query,
-        });
-        console.warn(
-          "recalculate visit",
-          targetVisit,
-          track,
-          addedTag,
-          removedTag
-        );
+        await mutateCurrentVisit(targetVisit);
       } else {
         console.warn("failed to find target track in visit");
       }
@@ -564,6 +530,56 @@ const recalculateCurrentVisit = async (
       console.warn("failed to find visit context to update");
     }
   }
+};
+
+const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
+  // Now, recalculate the visit:
+  // If there are any human tags, pick the most numerous one as the classification,
+  // Unless it is a false-positive or similar, but only if there is another animal tag
+  const humanTags: Record<string, number> = {};
+  for (const recording of targetVisit.recordings) {
+    for (const track of recording.tracks) {
+      if (!track.isAITagged && track.tag !== null) {
+        humanTags[track.tag as string] = humanTags[track.tag as string] || 0;
+        humanTags[track.tag as string] += 1;
+      }
+    }
+  }
+
+  const hasNonFalsePositiveTag =
+    Object.keys(humanTags).filter((tag) => !negativeThingTags.includes(tag))
+      .length !== 0;
+  const humanTagCounts = Object.entries(humanTags);
+  if (humanTagCounts.length) {
+    let bestHumanTagCount = 0;
+    let bestHumanTag;
+    for (const [tag, count] of humanTagCounts) {
+      if (
+        (hasNonFalsePositiveTag && !negativeThingTags.includes(tag)) ||
+        !hasNonFalsePositiveTag
+      ) {
+        if (count > bestHumanTagCount) {
+          bestHumanTagCount = count;
+          bestHumanTag = tag;
+        }
+      }
+    }
+    targetVisit.classification = bestHumanTag;
+    targetVisit.classFromUserTag = true;
+  } else {
+    // If there are no human tags, pick the most pre-calculated AI one.
+    targetVisit.classification = targetVisit.classificationAi;
+    targetVisit.classFromUserTag = false;
+  }
+  const params = {
+    ...route.params,
+    visitLabel: targetVisit.classification,
+  };
+  await router.replace({
+    name: route.name as string,
+    params,
+    query: route.query,
+  });
 };
 
 const trackTagChanged = async ({
@@ -1058,9 +1074,9 @@ const requestedDownload = async () => {
       : "application/octet-stream";
     download(
       URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
-      `recording_${recordingId}${new Date(
-        rec.recordingDateTime
-      ).toLocaleString()}.${getExtensionForMimeType(mimeType)}`
+      `recording-${recordingId}-${DateTime.fromJSDate(
+        new Date(rec.recordingDateTime)
+      ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`
     );
   }
 };
@@ -1084,27 +1100,77 @@ const recordingType = computed<RecordingType | null>(() => {
   return null;
 });
 
+interface MaybeDeletedRecording extends ApiRecordingResponse {
+  tombstoned?: boolean;
+}
+interface MaybeDeletedVisit extends ApiVisitResponse {
+  tombstoned?: boolean;
+}
+
 const deleteRecording = async () => {
   if (recording.value) {
-    // TODO:
-    // this.$emit("recording-updated", { id: recordingId, action: "deleted" });
-    //const deleteResponse = await apiDeleteRecording(recording.value.id);
+    const recordingIdToDelete = recording.value.id;
+    const deleteResponse = await apiDeleteRecording(recording.value.id);
+    if (deleteResponse.success) {
+      const hasNextRec = hasNextRecording.value;
+      const hasNextVis = hasNextVisit.value;
+      const hasPrevRec = hasPreviousRecording.value;
+      const hasPrevVis = hasPreviousVisit.value;
 
-    // TODO: Change the current context to remove the recording, recalc visit etc.
-    showUnimplementedModal.value = true;
-    // if (
-    //   hasNextRecording.value ||
-    //   hasNextVisit.value ||
-    //   hasPreviousRecording.value ||
-    //   hasPreviousVisit.value
-    // ) {
-    //   if (hasNextRecording.value || hasNextVisit.value) {
-    //     await gotoNextRecordingOrVisit();
-    //   } else {
-    //     await gotoPreviousRecordingOrVisit();
-    //   }
-    // }
-    console.log("Delete recording");
+      if (hasNextRec || hasNextVis || hasPrevRec || hasPrevVis) {
+        if (hasNextRec || hasNextVis) {
+          await gotoNextRecordingOrVisit();
+        } else {
+          await gotoPreviousRecordingOrVisit();
+        }
+      } else {
+        // Close the modal if there are no other recordings to move to.
+        emit("close");
+      }
+      if (isInVisitContext.value) {
+        const ids = (
+          (route.params.recordingIds &&
+            (route.params.recordingIds as string).split(",").map(Number)) ||
+          []
+        ).filter((id) => id !== recordingIdToDelete);
+        const params = {
+          ...route.params,
+          recordingIds: ids.map((id) => String(id)).join(","),
+        };
+        await router.replace({
+          name: route.name as string,
+          params,
+          query: route.query,
+        });
+      }
+      if (isInVisitContext.value) {
+        // Remove from visits context, then recalc current visit.
+        // Find the visit:
+        const targetVisit =
+          visitsContext.value &&
+          (visitsContext.value as ApiVisitResponse[]).find((visit) =>
+            visit.recordings.find(({ recId }) => recId === recordingIdToDelete)
+          );
+        if (targetVisit) {
+          const targetVisitRecordingIndex = targetVisit.recordings.findIndex(
+            ({ recId }) => recId === recordingIdToDelete
+          );
+          targetVisit.recordings.splice(targetVisitRecordingIndex, 1);
+          if (targetVisit.recordings.length !== 0) {
+            await mutateCurrentVisit(targetVisit);
+          } else {
+            (targetVisit as MaybeDeletedVisit).tombstoned = true;
+          }
+        }
+      } else {
+        const targetRecording = (loadedRecordings.value || []).find(
+          (rec) => rec.id === recordingIdToDelete
+        );
+        if (targetRecording) {
+          (targetRecording as MaybeDeletedRecording).tombstoned = true;
+        }
+      }
+    }
   }
 };
 const inlineModal = ref<boolean>(false);
@@ -1180,10 +1246,14 @@ const inlineModal = ref<boolean>(false);
             :display-header-info="showHeaderInfo"
             :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
             @export-completed="exportCompleted"
-            @request-next-recording="gotoNextRecordingOrVisit"
-            @request-prev-recording="gotoPreviousRecordingOrVisit"
-            @request-next-visit="gotoNextVisit"
-            @request-prev-visit="gotoPreviousVisit"
+            @request-next-recording="
+              async () => await gotoNextRecordingOrVisit()
+            "
+            @request-prev-recording="
+              async () => await gotoPreviousRecordingOrVisit()
+            "
+            @request-next-visit="async () => await gotoNextVisit()"
+            @request-prev-visit="async () => await gotoPreviousVisit()"
             @request-header-info-display="requestedHeaderInfoDisplay"
             @dismiss-header-info="dismissHeaderInfo"
             @track-selected="selectedTrackWrap"
@@ -1239,9 +1309,20 @@ const inlineModal = ref<boolean>(false);
                     class="me-2"
                     color="rgba(0, 0, 0, 0.7)"
                   />
-                  <span class="text-truncate" ref="deviceNameSpan">
+                  <router-link
+                    class="text-truncate non-blue-link"
+                    ref="deviceNameSpan"
+                    v-if="recording && recording.deviceId"
+                    :to="{
+                      name: 'device-diagnostics',
+                      params: {
+                        deviceId: recording.deviceId,
+                        deviceName: urlNormaliseName(recording.deviceName),
+                      },
+                    }"
+                  >
                     {{ currentDeviceName }}
-                  </span>
+                  </router-link>
                 </div>
               </div>
               <div class="recording-date-time fs-7 d-flex px-3 mt-1">
@@ -1317,6 +1398,7 @@ const inlineModal = ref<boolean>(false);
             >
           </ul>
           <div class="tags-overflow" v-if="!isMobileView">
+            <!-- RecordingViewTracks -->
             <router-view
               :recording="recording"
               @track-tag-changed="trackTagChanged"
@@ -1375,9 +1457,20 @@ const inlineModal = ref<boolean>(false);
                       class="me-2"
                       color="rgba(0, 0, 0, 0.7)"
                     />
-                    <span class="text-truncate">
+                    <router-link
+                      class="text-truncate non-blue-link"
+                      ref="deviceNameSpan"
+                      v-if="recording && recording.deviceId"
+                      :to="{
+                        name: 'device-diagnostics',
+                        params: {
+                          deviceId: recording.deviceId,
+                          deviceName: urlNormaliseName(recording.deviceName),
+                        },
+                      }"
+                    >
                       {{ currentDeviceName }}
-                    </span>
+                    </router-link>
                   </div>
                 </div>
 
@@ -1629,7 +1722,7 @@ const inlineModal = ref<boolean>(false);
             type="button"
             class="btn d-flex d-md-none align-items-center btn-hi"
             :disabled="!hasNextRecording && !hasNextVisit"
-            @click.prevent="gotoNextRecordingOrVisit"
+            @click.prevent="async () => await gotoNextRecordingOrVisit()"
           >
             <span class="px-1">
               <svg
@@ -1897,5 +1990,8 @@ const inlineModal = ref<boolean>(false);
 }
 .player-container {
   background: black;
+}
+.non-blue-link {
+  color: inherit;
 }
 </style>

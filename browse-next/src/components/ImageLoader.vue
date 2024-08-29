@@ -31,6 +31,9 @@ const handleImageError = (e: ErrorEvent) => {
   image.value?.classList.remove("uncached");
   image.value?.removeEventListener("load", handleImageLoaded);
   image.value?.removeEventListener("error", handleImageError);
+  if (image.value) {
+    image.value.alt = "";
+  }
   emit("image-not-found");
 };
 
@@ -41,6 +44,13 @@ const handleImageLoaded = (e: Event) => {
   image.value?.removeEventListener("load", handleImageLoaded);
   image.value?.removeEventListener("error", handleImageError);
 };
+
+watch(
+  () => props.src,
+  () => {
+    initImageLoadHandlers();
+  }
+);
 
 const image = ref<HTMLImageElement>();
 const elementIsVisible = ref(false);
@@ -113,7 +123,7 @@ onMounted(() => {
       :class="$attrs['class']"
       v-if="loading"
     >
-      <b-spinner small />
+      <b-spinner variant="secondary" small />
     </div>
   </div>
 </template>
@@ -122,6 +132,7 @@ img {
   background: transparent;
   position: relative;
   color: unset;
+  overflow: hidden;
   &.uncached {
     transition: opacity ease-in 0.3s;
   }
@@ -136,7 +147,7 @@ img {
     border-radius: 4px;
     position: absolute;
     content: "";
-    background: #666;
+    background: #ddd;
     width: 100%;
     height: 100%;
     left: 0;

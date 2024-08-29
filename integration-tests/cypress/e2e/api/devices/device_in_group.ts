@@ -29,6 +29,7 @@ describe("Device in group", () => {
         type: DeviceType.Unknown,
         admin: true,
         active: true,
+        isHealthy: false,
       };
       expectedDeviceInGroupUserView = {
         id: getCreds(camera).id,
@@ -39,6 +40,7 @@ describe("Device in group", () => {
         type: DeviceType.Unknown,
         admin: false,
         active: true,
+        isHealthy: false,
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);

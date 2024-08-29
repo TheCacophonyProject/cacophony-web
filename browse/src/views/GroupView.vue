@@ -344,7 +344,7 @@ export default defineComponent({
         type: "video",
         device: [],
         group: [this.groupId],
-        perPage: 100,
+        perPage: 50,
         page: 1,
       };
     },

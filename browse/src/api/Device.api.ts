@@ -2,8 +2,12 @@ import CacophonyApi from "./CacophonyApi";
 import * as querystring from "querystring";
 import { shouldViewAsSuperUser } from "@/utils";
 import recording, { FetchResult } from "./Recording.api";
-import { ApiDeviceResponse } from "@typedefs/api/device";
-import { DeviceId, ScheduleId } from "@typedefs/api/common";
+import {
+  ApiDeviceHistorySettings,
+  ApiDeviceResponse,
+  WindowsSettings,
+} from "@typedefs/api/device";
+import { DeviceId, LatLng, ScheduleId } from "@typedefs/api/common";
 import { ApiGroupUserResponse } from "@typedefs/api/group";
 
 export interface DeviceInfo {
@@ -204,7 +208,12 @@ export const DeviceEventTypes = [
   "test",
   "throttle",
   "versionData",
-] as const;
+  "throttle",
+  "rpiBattery",
+  "rtc-ntp-drift",
+  "attiny-firmware-update",
+  "tempHumidity",
+].sort();
 
 type IsoFormattedString = string;
 
@@ -254,6 +263,106 @@ async function getType(
   return "UnknownDeviceType";
 }
 
+async function getDeviceSettings(
+  deviceId: DeviceId
+): Promise<
+  FetchResult<{ settings: ApiDeviceHistorySettings; location: LatLng }>
+> {
+  return CacophonyApi.get(`/api/v1/devices/${deviceId}/settings`);
+}
+
+async function updateDeviceSettings(
+  deviceId: DeviceId,
+  settings: ApiDeviceHistorySettings
+): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
+  return CacophonyApi.post(`/api/v1/devices/${deviceId}/settings`, {
+    settings,
+  });
+}
+
+async function toggleUseLowPowerMode(
+  deviceId: DeviceId
+): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
+  const currentSettingsResponse = await getDeviceSettings(deviceId);
+  if (currentSettingsResponse.success) {
+    const currentSettings = currentSettingsResponse.result.settings;
+    const newSettings: ApiDeviceHistorySettings = {
+      ...currentSettings,
+      thermalRecording: {
+        ...currentSettings.thermalRecording,
+        useLowPowerMode: !currentSettings.thermalRecording?.useLowPowerMode,
+        updated: new Date().toISOString(),
+      },
+    };
+    return updateDeviceSettings(deviceId, newSettings);
+  } else {
+    throw new Error("Failed to fetch current settings.");
+  }
+}
+
+async function setDefaultRecordingWindows(
+  deviceId: DeviceId
+): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
+  const currentSettingsResponse = await getDeviceSettings(deviceId);
+  if (currentSettingsResponse.success) {
+    const currentSettings = currentSettingsResponse.result.settings;
+    const newSettings: ApiDeviceHistorySettings = {
+      ...currentSettings,
+      windows: {
+        powerOff: "+30m",
+        powerOn: "-30m",
+        startRecording: "-30m",
+        stopRecording: "+30m",
+        updated: new Date().toISOString(),
+      },
+    };
+    return updateDeviceSettings(deviceId, newSettings);
+  } else {
+    throw new Error("Failed to fetch current settings.");
+  }
+}
+
+async function set24HourRecordingWindows(
+  deviceId: DeviceId
+): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
+  const currentSettingsResponse = await getDeviceSettings(deviceId);
+  if (currentSettingsResponse.success) {
+    const currentSettings = currentSettingsResponse.result.settings;
+    const newSettings: ApiDeviceHistorySettings = {
+      ...currentSettings,
+      windows: {
+        powerOff: "12:00",
+        powerOn: "12:00",
+        startRecording: "12:00",
+        stopRecording: "12:00",
+        updated: new Date().toISOString(),
+      },
+    };
+    return updateDeviceSettings(deviceId, newSettings);
+  } else {
+    throw new Error("Failed to fetch current settings.");
+  }
+}
+
+async function setCustomRecordingWindows(
+  deviceId: DeviceId,
+  customSettings: Omit<WindowsSettings, "updated">
+): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
+  const currentSettingsResponse = await getDeviceSettings(deviceId);
+  if (currentSettingsResponse.success) {
+    const currentSettings = currentSettingsResponse.result.settings;
+    const newSettings: ApiDeviceHistorySettings = {
+      ...currentSettings,
+      windows: {
+        ...customSettings,
+        updated: new Date().toISOString(),
+      },
+    };
+    return updateDeviceSettings(deviceId, newSettings);
+  } else {
+    throw new Error("Failed to fetch current settings.");
+  }
+}
 export default {
   getDevices,
   getDevice,
@@ -269,4 +378,10 @@ export default {
   getDeviceSpeciesCount,
   getDeviceSpeciesCountBulk,
   getDeviceDaysActive,
+  updateDeviceSettings,
+  getDeviceSettings,
+  toggleUseLowPowerMode,
+  setDefaultRecordingWindows,
+  set24HourRecordingWindows,
+  setCustomRecordingWindows,
 };

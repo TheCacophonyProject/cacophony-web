@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import { body, param } from "express-validator";
+import { body, param, query } from "express-validator";
 import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -28,7 +28,7 @@ import {
   fetchUnauthorizedRequiredScheduleById,
   parseJSONField,
 } from "@api/extract-middleware.js";
-import { idOf } from "../validation-middleware.js";
+import { booleanOf, idOf } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json" assert { type: "json" };
 import type {
@@ -174,7 +174,10 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("deviceId"))]),
+    validateFields([
+      idOf(param("deviceId")),
+      booleanOf(query("only-active"), false),
+    ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request: Request, response: Response, next: NextFunction) => {
       await fetchUnauthorizedRequiredScheduleById(

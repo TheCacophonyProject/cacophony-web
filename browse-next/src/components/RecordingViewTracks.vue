@@ -5,32 +5,43 @@ import type {
 } from "@typedefs/api/recording";
 import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
 import { TagColours } from "@/consts";
-import type { Ref } from "vue";
+import { type ComputedRef, onBeforeMount, type Ref } from "vue";
 import { computed, inject, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type {
   ApiTrackDataRequest,
   ApiTrackResponse,
 } from "@typedefs/api/track";
-import { type TrackId, type TrackTagId } from "@typedefs/api/common";
+import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   addRecordingLabel,
   createDummyTrack,
   removeTrackTag,
   replaceTrackTag,
 } from "@api/Recording";
-import type { LoggedInUser } from "@models/LoggedInUser";
-import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
+import {
+  type LoggedInUser,
+  persistUserProjectSettings,
+  type SelectedProject,
+} from "@models/LoggedInUser";
+import type {
+  ApiHumanTrackTagResponse,
+  TrackTagData,
+} from "@typedefs/api/trackTag";
 import {
   displayLabelForClassificationLabel,
   getPathForLabel,
 } from "@api/Classifications";
-import { currentUser as currentUserInfo } from "@models/provides";
+import {
+  currentSelectedProject as currentActiveProject,
+  currentUser as currentUserInfo,
+} from "@models/provides";
 import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.ts";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 
 const route = useRoute();
 const router = useRouter();
@@ -70,6 +81,39 @@ watch(
     currentTrack.value = getTrackById(Number(nextTrackId));
   }
 );
+
+const showFalseTriggers = ref<boolean>(false);
+
+const currentProject = inject(currentActiveProject) as ComputedRef<
+  SelectedProject | false
+>;
+const userProjectSettings = computed<ApiProjectUserSettings>(() => {
+  return (
+    (currentProject.value as SelectedProject).userSettings || {
+      displayMode: "visits",
+      tags: [],
+      notificationPreferences: {},
+    }
+  );
+});
+
+const savingFalseTriggerSettings = ref<boolean>(false);
+const initialised = ref<boolean>(false);
+const loadDateTime = ref<Date>(new Date());
+onBeforeMount(() => {
+  showFalseTriggers.value =
+    userProjectSettings.value.showFalseTriggers || false;
+});
+
+watch(showFalseTriggers, async (next) => {
+  if (initialised.value) {
+    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+    settings.showFalseTriggers = next;
+    savingFalseTriggerSettings.value = true;
+    await persistUserProjectSettings(settings);
+    savingFalseTriggerSettings.value = false;
+  }
+});
 
 const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
   // NOTE: If there's no tracks on a recording, we can create a dummy one, which can be added
@@ -134,6 +178,7 @@ onMounted(() => {
       automatically: false,
     });
   }
+  initialised.value = true;
 });
 
 const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
@@ -155,8 +200,8 @@ const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
   }
 };
 
-const selectedTrack = (trackId: TrackId) => {
-  if (trackId !== currentTrackId.value) {
+const selectedTrack = (trackId: TrackId, forceReplay = false) => {
+  if (trackId !== currentTrackId.value || forceReplay) {
     const track = getTrackById(trackId);
     if (track) {
       // Change track.
@@ -292,6 +337,7 @@ const addOrRemoveUserTag = async ({
           userName: currentUser.value?.userName,
           automatic: false,
           confidence: 0.85,
+          createdAt: new Date().toISOString(),
         };
         track.tags.push(interimTag);
         const newTagResponse = await replaceTrackTag(
@@ -313,7 +359,6 @@ const addOrRemoveUserTag = async ({
         }
       }
     }
-    cloneLocalTracks(props.recording.tracks);
     if (trackWasCreated) {
       emit("track-selected", { trackId, automatically: false });
     }
@@ -367,8 +412,76 @@ const removeTag = async ({
 };
 
 const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
+const recordingTracksPossiblyFiltered = computed<ApiTrackResponse[]>(() => {
+  if (!showFalseTriggers.value) {
+    return recordingTracksLocal.value.filter((track) => {
+      const userTags = track.tags.filter((tag) => !tag.automatic);
+      const userHasNonFalseTriggerTags = userTags.some(
+        (tag) => tag.what !== "false-positive"
+      );
+      const userHasFalseTriggerTags = userTags.some(
+        (tag) => tag.what === "false-positive"
+      );
+      if (userHasNonFalseTriggerTags) {
+        return true;
+      }
+      const userFalseTrigger =
+        userHasFalseTriggerTags && !userHasNonFalseTriggerTags;
+      if (userFalseTrigger) {
+        //If the track was just marked as false-positive by the user, keep it visible for now
+        if (
+          userTags.some(
+            (tag) =>
+              tag.what === "false-positive" &&
+              tag.createdAt &&
+              new Date(tag.createdAt) > loadDateTime.value
+          )
+        ) {
+          return true;
+        }
+        return false;
+      }
+      return !track.tags.some(
+        (tag) =>
+          tag.automatic &&
+          tag.what === "false-positive" &&
+          tag.data &&
+          (tag.data as TrackTagData).name === "Master"
+      );
+    });
+  }
+  return recordingTracksLocal.value;
+});
 
-// FIXME - replace with b-accordion component.
+const numFalseTriggers = computed<number>(() => {
+  let falseTriggerCount = 0;
+  for (const track of recordingTracksLocal.value) {
+    const userTags = track.tags.filter((tag) => !tag.automatic);
+    const userFalseTrigger =
+      userTags.some((tag) => tag.what === "false-positive") &&
+      !userTags.some((tag) => tag.what !== "false-positive");
+    if (userFalseTrigger) {
+      falseTriggerCount++;
+      continue;
+    }
+    if (
+      track.tags.some(
+        (tag) =>
+          tag.automatic &&
+          tag.what === "false-positive" &&
+          tag.data &&
+          (tag.data as TrackTagData).name === "Master"
+      ) &&
+      !userTags.length
+    ) {
+      falseTriggerCount++;
+    }
+  }
+  return falseTriggerCount;
+});
+const recordingHasFalseTriggers = computed<boolean>(() => {
+  return numFalseTriggers.value !== 0;
+});
 </script>
 <template>
   <div
@@ -390,8 +503,23 @@ const recordingTracksLocal = ref<ApiTrackResponse[]>([]);
     "
     class="accordion"
   >
+    <div v-if="recordingHasFalseTriggers" class="p-2">
+      <b-form-checkbox switch v-model="showFalseTriggers"
+        ><span class="fs-7"
+          >Show<span v-if="showFalseTriggers">ing</span> {{ numFalseTriggers }}
+          <span v-if="!showFalseTriggers">hidden</span> False Trigger<span
+            v-if="numFalseTriggers !== 1"
+            >s</span
+          ></span
+        ><b-spinner
+          class="ms-1"
+          v-if="savingFalseTriggerSettings"
+          variant="secondary"
+          small
+      /></b-form-checkbox>
+    </div>
     <track-tagger-row
-      v-for="(track, index) in recordingTracksLocal"
+      v-for="(track, index) in recordingTracksPossiblyFiltered"
       :key="index"
       :index="index"
       :processing-state="recording.processingState"

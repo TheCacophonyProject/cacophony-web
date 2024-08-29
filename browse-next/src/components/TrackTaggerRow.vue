@@ -10,7 +10,7 @@ import type {
 import type { Ref } from "vue";
 import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
 import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
-import { persistUserGroupSettings } from "@models/LoggedInUser";
+import { persistUserProjectSettings } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
@@ -25,7 +25,7 @@ import type {
   GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { useRoute } from "vue-router";
-import type { ApiGroupUserSettings } from "@typedefs/api/group";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
 import { DEFAULT_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
@@ -47,7 +47,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "expanded-changed", trackId: TrackId, expanded: boolean): void;
-  (e: "selected-track", trackId: TrackId): void;
+  (e: "selected-track", trackId: TrackId, forceReplay?: boolean): void;
   (
     e: "add-or-remove-user-tag",
     payload: { trackId: TrackId; tag: string }
@@ -121,6 +121,8 @@ const expanded = computed<boolean>(() => {
   );
 });
 
+const expandedOnce = ref<boolean>(false);
+
 const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
@@ -128,6 +130,7 @@ const handleExpansion = (isExpanding: boolean) => {
         (trackDetails.value as HTMLDivElement).scrollHeight
       }px`;
     }
+    expandedOnce.value = true;
   } else {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = "0";
@@ -356,6 +359,9 @@ const confirmAiSuggestedTag = () => {
     });
   }
 };
+const replaySelectedTrack = () => {
+  emit("selected-track", props.track.id, true);
+};
 
 const rejectAiSuggestedTag = () => {
   expandedInternal.value = true;
@@ -364,21 +370,21 @@ const rejectAiSuggestedTag = () => {
 
 const pinCustomTag = async (classification: Classification) => {
   if (currentSelectedProject.value) {
-    const userGroupSettings: ApiGroupUserSettings = currentSelectedProject.value
-      .userSettings || {
+    const userProjectSettings: ApiProjectUserSettings = currentSelectedProject
+      .value.userSettings || {
       displayMode: "visits",
       tags: [],
     };
-    const tags = userGroupSettings.tags || [];
+    const tags = userProjectSettings.tags || [];
     if (tags.includes(classification.label)) {
-      userGroupSettings.tags = tags.filter(
+      userProjectSettings.tags = tags.filter(
         (tag) => tag !== classification.label
       );
     } else {
-      userGroupSettings.tags = userGroupSettings.tags || [];
-      userGroupSettings.tags.push(classification.label);
+      userProjectSettings.tags = userProjectSettings.tags || [];
+      userProjectSettings.tags.push(classification.label);
     }
-    await persistUserGroupSettings(userGroupSettings);
+    await persistUserProjectSettings(userProjectSettings);
   }
 };
 
@@ -426,7 +432,7 @@ onMounted(async () => {
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="masterTag"
-          >{{ masterTag.what }}</span
+          >{{ displayLabelForClassificationLabel(masterTag.what) }}</span
         >
       </div>
       <span v-else-if="hasUserTag" class="d-flex flex-column">
@@ -451,11 +457,13 @@ onMounted(async () => {
               consensusUserTag
           "
           >{{ consensusUserTag }}
-          <span class="strikethrough">{{ masterTag?.what }}</span></span
+          <span class="strikethrough">{{
+            displayLabelForClassificationLabel(masterTag.what)
+          }}</span></span
         >
         <!-- Controversial tag, should be automatically flagged for review. -->
         <span
-          class="classification text-capitalize d-inline-block fw-bold"
+          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
           v-else-if="
             !consensusUserTag &&
             masterTag &&
@@ -466,7 +474,9 @@ onMounted(async () => {
               .map((tag) => displayLabelForClassificationLabel(tag))
               .join(", ")
           }}
-          <span class="strikethrough">{{ masterTag?.what }}</span></span
+          <span class="strikethrough conflicting-tags">{{
+            displayLabelForClassificationLabel(masterTag.what)
+          }}</span></span
         >
         <span
           class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
@@ -531,11 +541,21 @@ onMounted(async () => {
       </button>
     </div>
     <div v-else>
+      <button
+        type="button"
+        aria-label="Replay track"
+        class="btn"
+        @click.stop.prevent="replaySelectedTrack"
+      >
+        <span class="visually-hidden">Replay track</span>
+        <font-awesome-icon icon="rotate-right" color="#666" />
+      </button>
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>
         <font-awesome-icon
           icon="chevron-right"
           :rotation="expanded ? 270 : 90"
+          color="#666"
         />
       </button>
     </div>
@@ -567,6 +587,7 @@ onMounted(async () => {
           ><font-awesome-icon icon="thumbtack" />
         </span>
         <tag-image
+          v-if="expandedOnce"
           :tag="tag.label"
           width="24"
           height="24"
@@ -790,6 +811,9 @@ onMounted(async () => {
 .strikethrough {
   text-decoration: line-through;
   color: rgba(126, 42, 42, 0.75);
+  &.conflicting-tags {
+    color: #666;
+  }
 }
 .conflicting-tags {
   color: darkred;

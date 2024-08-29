@@ -1,10 +1,9 @@
 import process from "process";
-import { program } from "commander";
-import pkg from "pg";
-const { Client } = pkg;
-import * as config from "../config.js";
-let Config;
-
+import type { DeviceId, GroupId } from "@typedefs/api/common.js";
+import modelsInit from "@models/index.js";
+import { QueryTypes } from "sequelize";
+import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
+const models = await modelsInit();
 const HEIGHT = 120;
 const WIDTH = 160;
 const BOX_DIM = 10;
@@ -13,83 +12,91 @@ const rows = Math.ceil(HEIGHT / BOX_DIM);
 const columns = Math.ceil(WIDTH / BOX_DIM);
 
 async function main() {
-  program
-    .option("--config <path>", "Configuration file", "./config/app.js")
-    .parse(process.argv);
-  const options = program.opts();
-  Config = {
-    ...config.default,
-    ...(await config.default.loadConfig(options.config)),
-  };
-  console.log("Connecting to db");
-  const pgClient = await pgConnect();
-  const devices = await getDeviceLocation(pgClient);
-  for (const devHistory of devices.rows) {
-    const rodentQ = await getRodentData(
-      pgClient,
-      devHistory["DeviceId"],
-      devHistory["location"],
-      devHistory["fromDateTime"]
-    );
-    // byDevice = {}
-    let currentDevice = null;
-    if (rodentQ.rows.length == 0) {
-      continue;
-    }
-
-    const gridData = [...Array(rows)].map((e) =>
-      [...Array(columns)].map((e) => Array())
-    );
-    // get x ,y values for each track
-    for (const rodentRec of rodentQ.rows) {
-      const positions = rodentRec["data"]["positions"].filter(
-        (x) => x["mass"] > 0 && !x["blank"]
+  const devices = await getDeviceLocation();
+  for (const devHistory of devices) {
+    const { DeviceId: deviceId, GroupId: groupId, location } = devHistory;
+    const earliestDateTimeAtLocation =
+      await models.DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
+        deviceId,
+        groupId
       );
-      if (!currentDevice) {
-        currentDevice = {
-          uuid: rodentRec["uuid"],
-          location: rodentRec["location"],
-          trackData: getGridData(
-            rodentRec["id"],
-            rodentRec["what"],
-            positions,
-            gridData
-          ),
-        };
-      } else {
-        // merge data
-        getGridData(
-          rodentRec["id"],
-          rodentRec["what"],
-          positions,
-          currentDevice.trackData
+    if (earliestDateTimeAtLocation) {
+      const rodentQ = await getRodentData(
+        deviceId,
+        location,
+        earliestDateTimeAtLocation
+      );
+      let currentDevice = null;
+      if (rodentQ.length === 0) {
+        continue;
+      }
+      let latestHumanTaggedRodentDateTime = 0;
+      for (const rodentTaggedRecording of rodentQ) {
+        const tagTime = new Date(rodentTaggedRecording["updatedAt"]).getTime();
+        if (tagTime > latestHumanTaggedRodentDateTime) {
+          latestHumanTaggedRodentDateTime = tagTime;
+        }
+      }
+
+      const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
+        deviceId,
+        groupId
+      );
+      const latestRatThreshTime =
+        (latestDeviceHistoryEntry.settings &&
+          latestDeviceHistoryEntry.settings.ratThresh?.version) ||
+        0;
+      if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
+        // Update the ratThresh
+        const gridData = [...Array(rows)].map((_e) =>
+          [...Array(columns)].map((_e) => Array())
+        );
+        // get x, y values for each track
+        for (const rodentRec of rodentQ) {
+          const positions = rodentRec["data"]["positions"].filter(
+            (x) => x["mass"] > 0 && !x["blank"]
+          );
+          if (!currentDevice) {
+            currentDevice = {
+              uuid: rodentRec["uuid"],
+              location: rodentRec["location"],
+              trackData: getGridData(
+                rodentRec["id"],
+                rodentRec["what"],
+                positions,
+                gridData
+              ),
+            };
+          } else {
+            // merge data
+            getGridData(
+              rodentRec["id"],
+              rodentRec["what"],
+              positions,
+              currentDevice.trackData
+            );
+          }
+        }
+
+        const thresholds = getThresholds(currentDevice.trackData);
+        let setBy: DeviceHistorySetBy = "user";
+        if (latestDeviceHistoryEntry.settings?.synced) {
+          setBy = "automatic";
+        }
+        await models.DeviceHistory.updateDeviceSettings(
+          deviceId,
+          groupId,
+          {
+            ratThresh: {
+              gridSize: BOX_DIM,
+              version: latestHumanTaggedRodentDateTime, // This should be the date of the latest rodent data.
+              thresholds,
+            },
+          },
+          setBy
         );
       }
     }
-
-    const thresholds = getThresholds(currentDevice.trackData);
-    let settings = devHistory["settings"];
-    if (!settings) {
-      settings = {};
-    }
-    settings["ratThresh"] = {
-      gridSize: BOX_DIM,
-      version: Date.now(),
-      thresholds: thresholds,
-    };
-    devHistory["settings"] = settings;
-    console.log(
-      "Updating device History",
-      devHistory["uuid"],
-      " with ",
-      devHistory["settings"]
-    );
-    await updateDeviceHistory(
-      pgClient,
-      devHistory["uuid"],
-      devHistory["fromDateTime"],
-      devHistory["settings"]
-    );
   }
 }
 const MEDIAN_THRESH = 1.8;
@@ -97,7 +104,7 @@ const MINPOINTS = 2;
 // calculate median of all data before hand if new point is above a certain percentage of previous median, this change indicates a mouse vs rat
 // only bother using data we dont know about i.e. tagged as rodent
 function getThresholds(gridData) {
-  const thresholds = [...Array(rows)].map((e) => [...Array(columns)]);
+  const thresholds = [...Array(rows)].map((_e) => [...Array(columns)]);
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < columns; x++) {
       thresholds[y][x] = null;
@@ -164,9 +171,9 @@ const quantile = (arr, q, isSorted = false) => {
     return sorted[base];
   }
 };
-function getGridData(u_id, tag, positions, existingGridData) {
-  const gridData = [...Array(rows)].map((e) =>
-    [...Array(columns)].map((e) => Array())
+function getGridData(u_id: number, tag: string, positions, existingGridData) {
+  const gridData = [...Array(rows)].map((_e) =>
+    [...Array(columns)].map((_e) => Array())
   );
 
   for (const p of positions) {
@@ -196,79 +203,70 @@ function getGridData(u_id, tag, positions, existingGridData) {
   return existingGridData;
 }
 
-function overlap_rect(region, grid) {
-  const x_overlap = overlap(
-    [region["x"], region["x"] + region["width"]],
-    [grid[0], grid[0] + grid[2]]
-  );
-  const y_overlap = overlap(
-    [region["y"], region["y"] + region["height"]],
-    [grid[1], grid[1] + grid[3]]
-  );
-  return x_overlap > 0 && y_overlap > 0;
+interface DeviceHistoryItem {
+  GroupId: GroupId;
+  DeviceId: DeviceId;
+  location: { type: "Point"; coordinates: [number, number] };
+}
+async function getDeviceLocation(): Promise<DeviceHistoryItem[]> {
+  return models.sequelize.query(
+    `
+    select distinct on
+      (dh."uuid") dh."DeviceId",
+      dh."GroupId",
+      dh."uuid",
+      dh."location",
+      dh."fromDateTime"
+    from
+      "DeviceHistory" dh
+    where dh."location" is not null
+    order by
+      dh."uuid" ,
+      dh."fromDateTime" desc
+  `,
+    { type: QueryTypes.SELECT }
+  ) as Promise<DeviceHistoryItem[]>;
 }
 
-function overlap(first, second) {
-  return (
-    first[1] -
-    first[0] +
-    (second[1] - second[0]) -
-    (Math.max(first[1], second[1]) - Math.min(first[0], second[0]))
+async function getRodentData(
+  deviceId: DeviceId,
+  location: { type: "Point"; coordinates: [number, number] },
+  fromDateTime: Date
+) {
+  const locQuery = `ST_Y(r."location") = ${location.coordinates[1]} and ST_X(r."location") = ${location.coordinates[0]}`;
+  return await models.sequelize.query(
+    `
+    select
+      r."recordingDateTime",
+      r."DeviceId",
+      t.id,
+      r."location",
+      t.data,
+      tt."what",
+      tt."updatedAt"
+    from
+      "TrackTags" tt
+      right join "Tracks" t on
+      tt."TrackId" = t.id
+      right join "Recordings" r on
+      t."RecordingId" = r.id
+    where
+      r."DeviceId" = '${deviceId}'
+      and ${locQuery}
+      and r."recordingDateTime" > '${fromDateTime.toISOString()}'
+      and tt.automatic = false
+      and tt.path <@'all.mammal.rodent'
+    order by
+      r."DeviceId",
+      r."recordingDateTime" desc
+    `,
+    { type: QueryTypes.SELECT }
   );
-}
-
-async function updateDeviceHistory(client, uuid, fromDateTime, settings) {
-  const res = await client.query(
-    `update "DeviceHistory" set "settings" = $1 where "uuid"= $2 and "fromDateTime"= $3`,
-    [settings, uuid, fromDateTime]
-  );
-}
-
-async function getDeviceLocation(client) {
-  const res = await client.query(
-    `select distinct on (dh."uuid") dh."DeviceId",dh."uuid", dh."location",dh."fromDateTime" from "DeviceHistory" dh  order by dh."uuid" ,dh."fromDateTime"  desc`
-  );
-  return res;
-}
-async function getRodentData(client, deviceId, location, fromDateTime) {
-  let locQuery = "";
-  if (location) {
-    locQuery = `r."location"='${location}'`;
-  } else {
-    locQuery = `r."location" is null`;
-  }
-  const res = await client.query(
-    `select r."recordingDateTime",
-r."DeviceId" ,t.id,r."location" ,t.data,tt."what"
-from
-	"TrackTags" tt
-right join "Tracks" t on
-	tt."TrackId" = t.id
-right join "Recordings" r on t."RecordingId"  = r.id
-where
-r."DeviceId"='${deviceId}' and ${locQuery} and r."recordingDateTime" > '${fromDateTime.toISOString()}' and
-tt.automatic =false and
-	tt.path <@'all.mammal.rodent' order by r."DeviceId",r."recordingDateTime" desc`
-  );
-  return res;
-}
-
-async function pgConnect() {
-  const dbconf = Config.database;
-  const client = new Client({
-    host: dbconf.host,
-    port: dbconf.port,
-    user: dbconf.username,
-    password: dbconf.password,
-    database: dbconf.database,
-  });
-  await client.connect();
-  return client;
 }
 
 main()
   .catch((err) => {
-    console.log(err);
+    console.trace(err);
   })
   .then(() => {
     process.exit(0);

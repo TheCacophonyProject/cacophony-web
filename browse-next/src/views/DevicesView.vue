@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { getDevicesForProject } from "@api/Project";
-import type { SelectedProject } from "@models/LoggedInUser";
+import {
+  DevicesForCurrentProject,
+  type SelectedProject,
+  urlNormalisedCurrentProjectName,
+} from "@models/LoggedInUser";
 import type {
   CardTableItem,
   CardTableRow,
@@ -15,11 +19,16 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils";
 import type { DeviceId, LatLng } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
-import type { DeviceType } from "@typedefs/api/consts";
+import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
 import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { deleteDevice, getDeviceConfig } from "@api/Device";
+import {
+  deleteDevice,
+  getDeviceConfig,
+  getDeviceLocationAtTime,
+  getLastKnownDeviceBatteryLevel,
+} from "@api/Device";
 import { useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
@@ -32,21 +41,39 @@ import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
+import type { ApiStationResponse } from "@typedefs/api/station";
+import type { LoadedResource } from "@api/types.ts";
+import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
+import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 
-const projectDevices = inject(selectedProjectDevices) as Ref<
-  ApiDeviceResponse[] | null
+const activeProjectDevices = inject(selectedProjectDevices) as Ref<
+  LoadedResource<ApiDeviceResponse[]>
 >;
+const allProjectDevices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
 const route = useRoute();
 const router = useRouter();
 const devices = computed<ApiDeviceResponse[]>(() => {
-  if (projectDevices.value) {
-    return projectDevices.value;
+  if (allProjectDevices.value !== null) {
+    if (showInactiveDevices.value) {
+      return allProjectDevices.value as ApiDeviceResponse[];
+    }
+    return (allProjectDevices.value as ApiDeviceResponse[]).filter(
+      (device) => device.active
+    );
+  }
+  if (activeProjectDevices.value && !showInactiveDevices.value) {
+    return activeProjectDevices.value;
   }
   return [];
 });
-const loadingDevices = ref<boolean>(false);
+const loadingDevices = computed<boolean>(() => {
+  if (showInactiveDevices.value) {
+    return allProjectDevices.value === null;
+  }
+  return activeProjectDevices.value === null;
+});
 const currentlyPoweredOnDevices = ref<ApiDeviceResponse[]>([]);
 
 const noWrap = (str: string) => str.replace(/ /g, "&nbsp;");
@@ -85,21 +112,27 @@ watch(route, async (next) => {
   ) {
     showInactiveDevicesInternal.value = showInactiveDevices.value;
     showInactiveDevicesInternalCheck.value = showInactiveDevices.value;
-    await loadDevices();
+    if (
+      allProjectDevices.value === null &&
+      activeProjectDevices.value !== null
+    ) {
+      allProjectDevices.value = [...(activeProjectDevices.value || [])];
+    }
+    await reloadAllDevices();
   }
 });
 
-const loadDevices = async () => {
-  console.warn("RELOAD DEVICES");
-  loadingDevices.value = true;
+const reloadAllDevices = async () => {
   const devicesResponse = await getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
-    showInactiveDevicesInternal.value
+    true
   );
   if (devicesResponse) {
-    projectDevices.value = devicesResponse;
+    allProjectDevices.value = devicesResponse;
+    DevicesForCurrentProject.value = devicesResponse.filter(
+      (device) => device.active
+    );
   }
-  loadingDevices.value = false;
   showCreateProxyDevicePrompt.value = false;
   const _ = findProbablyOnlineDevices();
 };
@@ -107,43 +140,49 @@ const loadDevices = async () => {
 const findProbablyOnlineDevices = async () => {
   // For each healthy device (which is on standby if not known otherwise)
   // get the recording windows, and show a different icon if they're expected to be online now.
-  const healthyDevices =
-    projectDevices.value?.filter((device) => device.isHealthy) || [];
-  const configPromises = [];
-  for (const device of healthyDevices) {
-    configPromises.push(getDeviceConfig(device.id));
-  }
-  Promise.all(configPromises).then((configs) => {
-    const now = new Date();
-    const poweredOnDevices = [];
-    for (const config of configs) {
-      if (config) {
-        const device = projectDevices.value?.find(
-          (device) => device.id === config.device.id
-        );
-        if (device) {
-          const powerOnTime = deviceScheduledPowerOnTime(device, config);
-          const powerOffTime = deviceScheduledPowerOffTime(device, config);
-          if (powerOnTime && powerOffTime) {
-            const isOn = powerOnTime < now && powerOffTime > now;
-            if (isOn) {
-              poweredOnDevices.push(device);
+  if (activeProjectDevices.value) {
+    const healthyDevices =
+      activeProjectDevices.value.filter((device) => device.isHealthy) || [];
+    const configPromises = [];
+    for (const device of healthyDevices) {
+      configPromises.push(getDeviceConfig(device.id));
+    }
+    Promise.all(configPromises).then((configs) => {
+      const now = new Date();
+      const poweredOnDevices = [];
+      for (const config of configs) {
+        if (config) {
+          const device = (
+            activeProjectDevices.value as ApiDeviceResponse[]
+          ).find((device) => device.id === config.device.id);
+          if (device) {
+            const powerOnTime = deviceScheduledPowerOnTime(device, config);
+            const powerOffTime = deviceScheduledPowerOffTime(device, config);
+            if (powerOnTime && powerOffTime) {
+              const isOn = powerOnTime < now && powerOffTime > now;
+              if (isOn) {
+                poweredOnDevices.push(device);
+              }
             }
           }
         }
       }
-    }
-    currentlyPoweredOnDevices.value = poweredOnDevices;
-  });
+      currentlyPoweredOnDevices.value = poweredOnDevices;
+    });
+  }
 };
 
-onMounted(async () => {
-  if (showInactiveDevices.value) {
-    // Inactive devices are not provided by default
-    await loadDevices();
-  } else {
-    await projectDevicesLoaded();
+onBeforeMount(async () => {
+  if (route.name === "devices") {
+    if (showInactiveDevices.value) {
+      // Inactive devices are not provided by default
+      await reloadAllDevices();
+    } else {
+      await projectDevicesLoaded();
+    }
     const _ = findProbablyOnlineDevices();
+  } else if (selectedDevice.value) {
+    await getSelectedDeviceLocation();
   }
 });
 
@@ -154,28 +193,45 @@ onMounted(async () => {
 
 // Maybe just popup modals?  Upload modal.  Info modal
 
-type DeviceStatus = "online" | "standby" | "stopped" | "-";
+type DeviceStatus = "online" | "standby" | "stopped or offline" | "-";
 const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
     (poweredDevice) => poweredDevice.id === device.id
   );
-  const status =
-    device.hasOwnProperty("isHealthy") && device.active
-      ? device.isHealthy
-        ? isPoweredOn
-          ? "online"
-          : "standby"
-        : "stopped"
-      : "-";
-  return status;
+  return device.hasOwnProperty("isHealthy") &&
+    device.active &&
+    device.type !== DeviceType.TrailCam
+    ? device.isHealthy
+      ? isPoweredOn
+        ? "online"
+        : "standby"
+      : "stopped or offline"
+    : "-";
 };
+
+const batteryLevelForDevice = async (
+  device: ApiDeviceResponse
+): Promise<"unknown" | number> => {
+  const status = statusForDevice(device);
+  if (status === "online" || status == "standby") {
+    const response = await getLastKnownDeviceBatteryLevel(device.id);
+    if (response !== false) {
+      if (response.battery === null) {
+        return "unknown";
+      }
+      return response.battery;
+    }
+  }
+  return "unknown";
+};
+
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
     case "-":
       return "#666";
     case "standby":
       return "#e7bc0b";
-    case "stopped":
+    case "stopped or offline":
       return "#be0000";
     case "online":
       return "#6dbd4b";
@@ -188,6 +244,7 @@ interface DeviceTableItem {
   lastSeen: string;
   __active: boolean;
   status: string | boolean;
+  batteryLevel: ApiDeviceResponse;
 
   __id: string;
 
@@ -204,17 +261,6 @@ const tableItems = computed<
   return devices.value
     .filter((device) => showInactiveDevicesInternal.value || device.active)
     .map((device: ApiDeviceResponse) => {
-      const isPoweredOn = currentlyPoweredOnDevices.value.some(
-        (poweredDevice) => poweredDevice.id === device.id
-      );
-      const status =
-        device.hasOwnProperty("isHealthy") && device.active
-          ? device.isHealthy
-            ? isPoweredOn
-              ? "online"
-              : "standby"
-            : "stopped"
-          : "-";
       return {
         deviceName: device.deviceName, // Use device name with icon like we do currently?
         lastSeen: noWrap(
@@ -224,7 +270,8 @@ const tableItems = computed<
               ).toRelative() as string)
             : "never (offline device)"
         ),
-        status,
+        status: statusForDevice(device),
+        batteryLevel: device,
         _deleteAction: {
           value: device,
           cellClasses: ["d-flex", "justify-content-end"],
@@ -374,7 +421,7 @@ const someDevicesHaveKnownLocations = computed<boolean>(() =>
 
 const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
   await deleteDevice(selectedProject.value.id, deviceId);
-  await loadDevices();
+  await reloadAllDevices();
 };
 
 const deleteConfirmationLabelForDevice = (
@@ -395,6 +442,20 @@ const selectedDevice = computed<ApiDeviceResponse | null>(() => {
   }
   return null;
 });
+const deviceLocation = ref<LoadedResource<ApiStationResponse>>(null);
+const getSelectedDeviceLocation = async () => {
+  if (selectedDevice.value?.location) {
+    deviceLocation.value = await getDeviceLocationAtTime(
+      selectedDevice.value.id
+    );
+  }
+};
+
+watch(selectedDevice, async (next) => {
+  if (next) {
+    await getSelectedDeviceLocation();
+  }
+});
 
 const selectTableDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
   const device = devices.value.find(({ id }) => id === Number(deviceId));
@@ -414,17 +475,85 @@ const openSelectedDevice = async (device: ApiDeviceResponse) => {
   });
 };
 
+const selectedDeviceLatestRecordingDateTime = computed<Date | null>(() => {
+  if (selectedDevice.value && deviceLocation.value) {
+    return latestRecordingTimeForDeviceAtLocation(
+      selectedDevice.value,
+      deviceLocation.value
+    );
+  }
+  return null;
+});
+
+const selectedDeviceActiveFrom = computed<Date | null>(() => {
+  if (selectedDevice.value && deviceLocation.value) {
+    return new Date(deviceLocation.value.activeAt);
+  }
+  return null;
+});
+
+const deviceRecordingMode = computed<"cameras" | "audio">(() => {
+  if (selectedDevice.value && selectedDevice.value.type === DeviceType.Audio) {
+    return "audio";
+  }
+  return "cameras";
+});
+
 const isDevicesRoot = computed(() => {
   return route.name === "devices";
 });
 </script>
 <template>
-  <section-header>
-    <device-name
+  <section-header class="justify-content-between align-items-center">
+    <div
       v-if="selectedDevice"
-      :name="(selectedDevice as ApiDeviceResponse).deviceName"
-      :type="(selectedDevice as ApiDeviceResponse).type"
-    />
+      class="d-flex justify-content-between align-items-center flex-grow-1"
+    >
+      <b-button
+        class="ps-0 py-0 d-none d-md-flex"
+        variant="link"
+        :to="{
+          name: 'devices',
+          params: {
+            projectName: urlNormalisedCurrentProjectName,
+          },
+        }"
+      >
+        <font-awesome-icon icon="arrow-left" size="lg" color="#333" />
+      </b-button>
+      <div
+        class="d-flex flex-grow-1 justify-content-between align-items-center"
+      >
+        <device-name
+          :name="(selectedDevice as ApiDeviceResponse).deviceName"
+          :type="(selectedDevice as ApiDeviceResponse).type"
+        >
+          <b-button
+            class="ms-4 align-items-center d-none d-md-flex"
+            variant="outline-secondary"
+            v-if="deviceLocation"
+            :to="{
+          name: 'activity',
+          query: {
+            devices: [selectedDevice.id],
+            locations: [deviceLocation.id],
+            until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
+            from: (selectedDeviceActiveFrom as Date).toISOString(),
+            'display-mode': 'recordings',
+            'recording-mode': deviceRecordingMode
+          },
+        }"
+            ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
+            <font-awesome-icon
+              icon="arrow-turn-down"
+              :rotation="270"
+              size="xs"
+              class="ps-1"
+            />
+          </b-button>
+        </device-name>
+      </div>
+    </div>
     <span v-else>Devices</span>
   </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->
@@ -440,7 +569,7 @@ const isDevicesRoot = computed(() => {
   <!--  </ul>-->
 
   <div v-if="isDevicesRoot">
-    <b-spinner v-if="!projectDevices" />
+    <b-spinner v-if="loadingDevices" />
     <div v-else>
       <div v-if="devices.length">
         <!-- active-points was devicesSeenInThePast24Hours -->
@@ -496,7 +625,7 @@ const isDevicesRoot = computed(() => {
               >
             </div>
           </template>
-          <template #status="{ cell, row }">
+          <template #status="{ cell }">
             <div class="d-flex align-items-center">
               <span
                 class="d-flex power-status-icon align-items-center justify-content-center"
@@ -506,6 +635,9 @@ const isDevicesRoot = computed(() => {
               </span>
               <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
             </div>
+          </template>
+          <template #batteryLevel="{ cell }">
+            <device-battery-level :device="cell" />
           </template>
           <template #_deleteAction="{ cell }">
             <div
@@ -541,10 +673,18 @@ const isDevicesRoot = computed(() => {
           <template #card="{ card }: { card: DeviceTableItem }">
             <div class="d-flex flex-row">
               <div class="flex-grow-1">
-                <device-name
-                  :name="card.deviceName"
-                  :type="card.__type"
-                /><b-badge class="ms-2" v-if="!card.__active">inactive</b-badge>
+                <div class="d-flex align-items-center">
+                  <device-name
+                    :name="card.deviceName"
+                    :type="card.__type"
+                  /><b-badge class="ms-2" v-if="!card.__active"
+                    >inactive</b-badge
+                  >
+                  <device-battery-level
+                    :device="card.batteryLevel"
+                    class="ms-3"
+                  />
+                </div>
                 <div>Last seen <span v-html="card.lastSeen"></span></div>
 
                 <div class="d-flex align-items-center">
@@ -621,7 +761,7 @@ const isDevicesRoot = computed(() => {
     <create-proxy-device-modal
       v-model="showCreateProxyDevicePrompt"
       id="create-proxy-device-modal"
-      @proxy-device-created="loadDevices"
+      @proxy-device-created="reloadAllDevices"
     />
   </div>
   <router-view v-else></router-view>

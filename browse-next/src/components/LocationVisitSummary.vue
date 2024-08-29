@@ -5,7 +5,7 @@ import { computed, inject } from "vue";
 import type { Ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
-import { visitsByStation, visitsCountBySpecies } from "@models/visitsUtils";
+import { visitsByLocation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import type { StationId as LocationId } from "@typedefs/api/common";
@@ -33,8 +33,8 @@ const visitCount = computed<number>(() => visitsForLocation.value.length);
 const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
   // The summary bars get scaled by this amount.
   let max = 0;
-  for (const stationVisits of Object.values(visitsByStation(props.visits))) {
-    const visitsCount = visitsCountBySpecies(stationVisits);
+  for (const locationVisits of Object.values(visitsByLocation(props.visits))) {
+    const visitsCount = visitsCountBySpecies(locationVisits);
     max = Math.max(...visitsCount.map(([_label, _path, count]) => count), max);
   }
   return max;
@@ -62,11 +62,11 @@ const activeLocationsForMap = computed<NamedPoint[]>(() => {
   }
   return [];
 });
-const thisLocationPoint: NamedPoint = {
+const thisLocationPoint = computed<NamedPoint>(() => ({
   name: props.location.name,
   project: props.location.groupName,
   location: props.location.location as LatLng,
-};
+}));
 
 const speciesSummary = computed<[string, string, number][]>(() =>
   visitsCountBySpecies(visitsForLocation.value)
@@ -90,12 +90,13 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 </script>
 
 <template>
-  <div class="location-visit-summary mb-3 mb-sm-0">
+  <div class="location-visit-summary mb-3 mb-sm-0" v-if="visitCount !== 0">
     <div class="map-container">
       <map-with-points
         :highlighted-point="highlightedPoint"
         :points="locationsForMap"
         :active-points="activeLocationsForMap"
+        :center-on-highlighted="false"
         :is-interactive="false"
         :zoom="false"
         :can-change-base-map="false"
@@ -159,6 +160,16 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
     &:not(:first-child) {
       margin-left: 19px;
     }
+  }
+
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.2s ease-in-out;
+  &:hover {
+    background-color: #ececec;
+    border-bottom: 4px solid #999;
   }
 }
 .visit-species-breakdown {

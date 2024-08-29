@@ -22,12 +22,28 @@ import type { MonitoringParams } from "./monitoringPage.js";
 import { calculateMonitoringPageCriteria } from "./monitoringPage.js";
 import { generateVisits } from "./monitoringVisit.js";
 import { successResponse } from "./responseUtil.js";
-import { query } from "express-validator";
-import { extractJwtAuthorizedUser } from "../extract-middleware.js";
+import { param, query } from "express-validator";
+import { format as sqlFormat } from "sql-formatter";
+import {
+  extractJwtAuthorizedUser,
+  fetchAuthorizedRequiredGroupById,
+  fetchUnauthorizedOptionalGroupByNameOrId,
+  fetchUnauthorizedRequiredGroupById,
+} from "../extract-middleware.js";
 import modelsInit from "@models/index.js";
 import { ClientError } from "@api/customErrors.js";
 import type { GroupId, StationId } from "@typedefs/api/common.js";
 import { RecordingType } from "@typedefs/api/consts.js";
+import { format } from "util";
+import { idOf } from "@api/validation-middleware.js";
+import logger from "@log";
+import { asyncLocalStorage } from "@/Globals.js";
+import { sqlDebugOutput } from "@api/V1/recordingsBulkQueryUtil.js";
+import { Recording } from "@models/Recording.js";
+import { mapDeviceResponse } from "@api/V1/Device.js";
+import { mapRecordingResponse } from "@api/V1/Recording.js";
+import type { MonitoringPageCriteria2 } from "@api/V1/monitoringUtil.js";
+import { generateVisits2 } from "@api/V1/monitoringUtil.js";
 
 const models = await modelsInit();
 
@@ -183,7 +199,6 @@ export default function (app: Application, baseUrl: string) {
         | RecordingType.TrailCamImage
         | RecordingType.ThermalRaw
         | RecordingType.TrailCamVideo
-        | RecordingType.Audio
       )[]) || [RecordingType.ThermalRaw];
       // TODO: Default to thermalRaw for existing api calls, and new api calls can pass through the recording types they want visits
       //  calculated over.
@@ -231,6 +246,134 @@ export default function (app: Application, baseUrl: string) {
         params: searchDetails,
         visits,
       });
+    }
+  );
+
+  app.get(
+    `${apiUrl}/for-project/:projectId`,
+    // Validate session
+    extractJwtAuthorizedUser,
+    validateFields([
+      query("debug").optional(),
+      idOf(param("projectId")),
+      query("locations")
+        .optional()
+        .toArray()
+        .isArray({ min: 1 })
+        .custom(isIntArray)
+        .withMessage(
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+        ),
+      query("from").optional().isISO8601().toDate(), // TODO: Defaults
+      query("until").optional().isISO8601().toDate(),
+      query("types")
+        .optional()
+        .toArray()
+        .isArray({ min: 1 })
+        .custom((value: any[]) => {
+          const allowedTypes = [
+            RecordingType.ThermalRaw,
+            RecordingType.TrailCamImage,
+            RecordingType.TrailCamVideo,
+            "thermal",
+          ];
+          const invalidTypes = value.filter(
+            (type) => !allowedTypes.includes(type)
+          );
+          if (invalidTypes.length) {
+            throw new Error(
+              format(
+                "Invalid recording type(s) '%s'.",
+                invalidTypes.join("', '")
+              )
+            );
+          }
+          return true;
+        }),
+      query("view-mode").optional(),
+    ]),
+    fetchAuthorizedRequiredGroupById(param("projectId")),
+    //fetchUnauthorizedRequiredGroupById(param("projectId")),
+    async (request: Request, response: Response, _next: NextFunction) => {
+      const query = request.query;
+      const types = (
+        (query["types"] as string[]) || [RecordingType.ThermalRaw]
+      ).map((x) => {
+        if (x === "thermal") {
+          return "thermalRaw";
+        }
+        return x;
+      }) as (
+        | RecordingType.ThermalRaw
+        | RecordingType.TrailCamImage
+        | RecordingType.TrailCamVideo
+      )[];
+
+      const stationIds: StationId[] =
+        ((request.query.locations as string[]) || []).map(Number) || [];
+      const groupId = response.locals.group.id;
+
+      const sqlPasses: string[] = [];
+      const sqlTimings: number[] = [];
+      const now = performance.now();
+
+      const loggingFn =
+        (sqlPasses: string[], sqlTimings: number[]) =>
+        (message: string, time: number) => {
+          const store = asyncLocalStorage.getStore() as Map<string, number>;
+          const dbQueryCount = store?.get("queryCount") as number;
+          const dbQueryTime = store?.get("queryTime") as number;
+          store?.set("queryCount", dbQueryCount + 1);
+          store?.set("queryTime", dbQueryTime + time);
+          if (query.debug) {
+            sqlPasses.push(
+              sqlFormat(message.replace("Executed (default): ", ""), {
+                language: "postgresql",
+              })
+            );
+            sqlTimings.push(time);
+          }
+        };
+      const logging = loggingFn(sqlPasses, sqlTimings);
+      const searchDetails = {
+        group: groupId,
+        searchFrom: (request.query.from as unknown as Date) || new Date(0),
+        searchUntil: (request.query.until as unknown as Date) || new Date(),
+        stations: stationIds,
+        types,
+      };
+
+      // Get recordings in timespan up to a limit.
+      // Recordings can be still processing, and we mark the visits they're part of accordingly in the UI.
+      // Cluster those recordings by station in time windows.
+      // For each cluster, calculate one or more canonical tags.  If more than one
+      // differing human tag for a cluster, split into separate clusters with the ambiguous tags
+      // copied to each cluster. (are the clusters still coherent as visits at this point? – take timespan
+      // into account when splitting).
+      // Truncate any probable incomplete clusters at the end – the start of the next request will
+      // be calculated as an offset from the earliest cluster of this one.
+
+      const visits = await generateVisits2(searchDetails, logging);
+      //const actualRecordings = visits.map((r: Recording[][]) => r.length);
+      console.log(visits);
+      const sequelizeTime = performance.now() - now;
+      if (!query.debug) {
+        return successResponse(response, "Completed query.", {
+          params: searchDetails,
+          visits,
+        });
+      } else {
+        return response.status(200).send(
+          sqlDebugOutput(
+            query,
+            (Array.isArray(visits) && visits.length) || 0,
+            sqlTimings,
+            sqlPasses,
+            sequelizeTime
+            //visits
+          )
+        );
+      }
     }
   );
 }

@@ -1,19 +1,19 @@
-import type { StoppedDevice } from "@/emails/htmlEmailUtils.js";
 import { embedImage } from "@/emails/htmlEmailUtils.js";
 import {
   createEmailWithTemplate,
   urlNormaliseName,
 } from "@/emails/htmlEmailUtils.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
-import fs from "fs/promises";
 import { sendEmail } from "@/emails/sendEmail.js";
 import config from "@config";
 import logger from "@/logging.js";
-
 import path from "path";
 import { fileURLToPath } from "url";
+import type { DeviceId, StationId } from "@typedefs/api/common.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+import type { GroupedServiceErrors } from "@/scripts/report-service-errors.js";
+import { flatClassifications } from "@/classifications/classifications.js";
 
 const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
   const attachments: EmailImageAttachment[] = [];
@@ -26,6 +26,16 @@ const commonInterpolants = (origin: string) => {
     cacophonyBrowseUrl: `https://${origin}`,
     cacophonyDisplayUrl: "browse.cacophony.org.nz",
   };
+};
+
+const getPermissions = (permissions: { owner?: boolean; admin?: boolean }) => {
+  const madeOwner = typeof permissions.owner === "boolean" && permissions.owner;
+  const removedOwner =
+    typeof permissions.owner === "boolean" && !permissions.owner;
+  const madeAdmin = typeof permissions.admin === "boolean" && permissions.admin;
+  const removedAdmin =
+    typeof permissions.admin === "boolean" && !permissions.admin;
+  return { madeAdmin, madeOwner, removedAdmin, removedOwner };
 };
 // const emailSettingsUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/settings`;
 // const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseGroupName(groupName)}/station/${urlNormaliseGroupName(stationName)}`;
@@ -207,16 +217,6 @@ export const sendGroupInviteNewMemberEmail = async (
   );
 };
 
-const getPermissions = (permissions: { owner?: boolean; admin?: boolean }) => {
-  const madeOwner = typeof permissions.owner === "boolean" && permissions.owner;
-  const removedOwner =
-    typeof permissions.owner === "boolean" && !permissions.owner;
-  const madeAdmin = typeof permissions.admin === "boolean" && permissions.admin;
-  const removedAdmin =
-    typeof permissions.admin === "boolean" && !permissions.admin;
-  return { madeAdmin, madeOwner, removedAdmin, removedOwner };
-};
-
 export const sendAddedToGroupNotificationEmail = async (
   origin: string,
   userEmailAddress: string,
@@ -362,24 +362,84 @@ export const sendGroupMembershipRequestEmail = async (
 export const sendStoppedDevicesReportEmail = async (
   origin: string,
   groupName: string,
-  stoppedDevices: StoppedDevice[],
-  userEmailAddress: string
+  stoppedDevicesList: string[],
+  recipients: { email: string; emailConfirmed: boolean }[]
 ) => {
+  const sendPromises = [];
+  const confirmedEmailUsers = recipients
+    .filter(({ emailConfirmed }) => emailConfirmed)
+    .map(({ email }) => email);
+  const unconfirmedEmailUsers = recipients
+    .filter(({ emailConfirmed }) => !emailConfirmed)
+    .map(({ email }) => email);
+
   const common = commonInterpolants(origin);
-  // TODO User group settings
   const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
   )}/my-settings`;
-  const { text, html } = await createEmailWithTemplate(
-    "stopped-devices-report.html",
-    { emailSettingsUrl, groupName, stoppedDevices, ...common }
-  );
-  return await sendEmail(
-    html,
-    text,
-    userEmailAddress,
-    "Daily device health check for Cacophony Monitoring",
-    await commonAttachments()
+  let confirmedEmailTemplate;
+  let unconfirmedEmailTemplate;
+  if (confirmedEmailUsers.length !== 0) {
+    confirmedEmailTemplate = await createEmailWithTemplate(
+      "stopped-devices-report.html",
+      {
+        emailSettingsUrl,
+        confirmedEmailUsers: true,
+        unconfirmedEmailUsers: false,
+        groupName,
+        stoppedDevicesList,
+        ...common,
+      }
+    );
+  }
+  if (unconfirmedEmailUsers.length !== 0) {
+    unconfirmedEmailTemplate = await createEmailWithTemplate(
+      "stopped-devices-report.html",
+      {
+        emailSettingsUrl,
+        confirmedEmailUsers: false,
+        unconfirmedEmailUsers: true,
+        groupName,
+        stoppedDevicesList,
+        ...common,
+      }
+    );
+  }
+  let sentAdminCopy = false;
+  const attachments = await commonAttachments();
+  for (const recipient of confirmedEmailUsers) {
+    sendPromises.push(
+      sendEmail(
+        confirmedEmailTemplate.html,
+        confirmedEmailTemplate.text,
+        recipient,
+        `💔 Possible stopped or offline device${
+          stoppedDevicesList.length > 1 ? "s" : ""
+        } in '${groupName}'`,
+        attachments,
+        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
+      )
+    );
+    sentAdminCopy = true;
+  }
+  // TODO: When we've completely switched to browse-next, remove this
+  for (const recipient of unconfirmedEmailUsers) {
+    sendPromises.push(
+      sendEmail(
+        unconfirmedEmailTemplate.html,
+        unconfirmedEmailTemplate.text,
+        recipient,
+        `💔 Possible stopped or offline device${
+          stoppedDevicesList.length > 1 ? "s" : ""
+        } in '${groupName}'`,
+        attachments,
+        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
+      )
+    );
+    sentAdminCopy = true;
+  }
+  return (await Promise.allSettled(sendPromises)).map(
+    (p) => p.status === "fulfilled"
   );
 };
 
@@ -388,108 +448,66 @@ export const sendAnimalAlertEmail = async (
   groupName: string,
   deviceName: string,
   stationName: string,
+  stationId: StationId,
+  recordingDateTime: Date,
   classification: string,
+  matchedClassification: string,
   recordingId: number,
   trackId: number,
   userEmailAddress: string,
-  recipientTimeZoneOffset: number
+  deviceTimezone: string | null,
+  thumbnail?: Buffer
 ) => {
   const common = commonInterpolants(origin);
-  const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
     groupName
-  )}/my-settings`;
-  const targetSpecies =
+  )}`;
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+  const targetTag =
     classification.charAt(0).toUpperCase() + classification.slice(1);
-  const cacophonyBrowseUrl = config.server.browse_url;
-  const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(stationName)}`;
-  const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(
-    stationName
-  )}/recording/${recordingId}/track/${trackId}`;
-
+  const matchedTag =
+    matchedClassification.charAt(0).toUpperCase() +
+    matchedClassification.slice(1);
+  const stationUrl = stationId
+    ? `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
+    : "";
+  const recordingUrl = `${projectRoot}/recording/${recordingId}/tracks/${trackId}`;
+  const recordingTime = recordingDateTime.toLocaleDateString("en-NZ", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+    timeZone: deviceTimezone || "Pacific/Auckland",
+  });
   const { text, html } = await createEmailWithTemplate("animal-alert.html", {
-    targetSpecies:
-      targetSpecies.charAt(0).toUpperCase() + targetSpecies.slice(1),
+    targetTag,
+    matchedTag,
     emailSettingsUrl,
     groupName,
+    deviceName,
     recordingUrl,
+    recordingTime,
     stationUrl,
+    stationName,
     ...common,
   });
-  // FIXME - fetch actual thumbnail
+  const thumb: EmailImageAttachment[] = thumbnail
+    ? [
+        {
+          buffer: thumbnail,
+          mimeType: "image/png",
+          cid: "thumbnail",
+        },
+      ]
+    : [];
   return await sendEmail(
     html,
     text,
     userEmailAddress,
-    `🎯 ${targetSpecies} alert at '${stationName}'`,
-    [
-      ...(await commonAttachments()),
-      {
-        buffer: await fs.readFile(
-          `${__dirname}/templates/image-attachments/test-thumb.png`
-        ),
-        mimeType: "image/png",
-        cid: "thumbnail",
-      },
-    ]
-  );
-};
-
-export const sendAnimalAlertEmailForEvent = async (
-  origin: string,
-  groupName: string,
-  deviceName: string,
-  stationName: string,
-  classification: string,
-  recordingId: number,
-  trackId: number,
-  userEmailAddress: string,
-  recipientTimeZoneOffset: number
-) => {
-  const common = commonInterpolants(origin);
-  const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/my-settings`;
-  const targetSpecies =
-    classification.charAt(0).toUpperCase() + classification.slice(1);
-  const cacophonyBrowseUrl = config.server.browse_url;
-  const stationUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(stationName)}`;
-  const recordingUrl = `${cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
-  )}/station/${urlNormaliseName(
-    stationName
-  )}/recording/${recordingId}/track/${trackId}`;
-
-  const { text, html } = await createEmailWithTemplate("animal-alert.html", {
-    targetSpecies:
-      targetSpecies.charAt(0).toUpperCase() + targetSpecies.slice(1),
-    emailSettingsUrl,
-    groupName,
-    recordingUrl,
-    stationUrl,
-    ...common,
-  });
-  // FIXME - fetch actual thumbnail
-  return await sendEmail(
-    html,
-    text,
-    userEmailAddress,
-    `🎯 ${targetSpecies} alert at '${stationName}'`,
-    [
-      ...(await commonAttachments()),
-      {
-        buffer: await fs.readFile(
-          `${__dirname}/templates/image-attachments/test-thumb.png`
-        ),
-        mimeType: "image/png",
-        cid: "thumbnail",
-      },
-    ]
+    `🎯 ${targetTag} alert at '${stationName}'`,
+    [...(await commonAttachments()), ...thumb]
   );
 };
 
@@ -571,5 +589,184 @@ export const sendPlatformUsageEmail = async (
     recipientEmailAddress,
     "📈 Cacophony Monitoring Platform usage report",
     [...(await commonAttachments()), ...imageAttachments]
+  );
+};
+
+export const sendDailyServiceErrorsEmail = async (
+  origin: string,
+  recipientEmailAddress: string,
+  from: Date,
+  until: Date,
+  serviceErrors: Record<string, GroupedServiceErrors[]>,
+  devicesFailingSaltUpdate: Record<string, { id: DeviceId; name: string }[]>,
+  imageAttachments: EmailImageAttachment[] = []
+) => {
+  const common = commonInterpolants(origin);
+  const dateFormat = new Intl.DateTimeFormat("en-NZ", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+  });
+  const fromDate = dateFormat.format(from);
+  const untilDate = dateFormat.format(until);
+  const errors = [];
+  // NOTE: A bit of data munging here to accommodate limitations with how mustache can iterate over collections.
+  for (const [unit, unitErrors] of Object.entries(serviceErrors)) {
+    const unitErrorsByVersion = [];
+    for (const err of unitErrors) {
+      unitErrorsByVersion.push({
+        unit: err.unit,
+        errors: Object.entries(err.errors)
+          .map(([version, errors]) => ({
+            unit: err.unit,
+            version,
+            errors: errors
+              .map((e) => ({
+                from: dateFormat.format(e.from),
+                until: dateFormat.format(e.until),
+                devices: e.devices,
+                count: `${e.count} instance${e.count !== 1 ? "s" : ""}`,
+                c: e.count,
+                logging: e.log.map(({ line, level }, index) => {
+                  let l = "";
+                  if (level === "info" && index !== e.log.length - 1) {
+                    l = "color: #01b601 !important";
+                  } else if (level === "warn") {
+                    l = "color: orange !important";
+                  } else {
+                    l = "color: red !important; font-weight: bold;";
+                  }
+                  return {
+                    line,
+                    level: l,
+                  };
+                }),
+              }))
+              .sort((a, b) => b.c - a.c),
+          }))
+          .sort(
+            (a, b) =>
+              b.errors.reduce((acc, item) => item.c + acc, 0) -
+              a.errors.reduce((acc, item) => item.c + acc, 0)
+          ),
+      });
+    }
+    unitErrorsByVersion.sort((a, b) => {
+      return a.errors.length - b.errors.length;
+    });
+    errors.push({
+      unit,
+      unitErrorsByVersion,
+    });
+  }
+  const failingDevices = [];
+  for (const [unit, devices] of Object.entries(devicesFailingSaltUpdate)) {
+    failingDevices.push({
+      unit,
+      devices,
+    });
+  }
+  const { text, html } = await createEmailWithTemplate(
+    "service-errors-report.html",
+    {
+      serviceErrors: errors,
+      failingDevices,
+      fromDate,
+      untilDate,
+      ...common,
+    }
+  );
+  return await sendEmail(
+    html,
+    text,
+    recipientEmailAddress,
+    "🧨💥 Service Errors in the last 24 hours",
+    [...(await commonAttachments()), ...imageAttachments]
+  );
+};
+
+export const sendProjectActivityDigestEmail = async (
+  origin: string,
+  frequency: "Daily" | "Weekly",
+  projectName: string,
+  recipients: { email: string; userName: string }[],
+  visitsInfo: {
+    species: string;
+    speciesDisplayName: string;
+    count: number;
+    hasIcon?: boolean;
+  }[]
+) => {
+  const common = commonInterpolants(origin);
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    projectName
+  )}`;
+  const emailFrequency = frequency.toLowerCase();
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+  const timespan = frequency === "Weekly" ? "1-week-ago" : "24-hours-ago";
+  const activityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=any&from=${timespan}&tag-mode=any`;
+  const imageAttachments = [...(await commonAttachments())];
+  for (const species of visitsInfo) {
+    let iconExists = await embedImage(
+      species.species,
+      imageAttachments,
+      `classification-icons/${species.species}.svg`,
+      false
+    );
+    if (!iconExists) {
+      // Fallback to path parent icons.
+      const classificationPath = (
+        (flatClassifications[species.species] &&
+          flatClassifications[species.species].path) ||
+        ""
+      ).split(".");
+      while (classificationPath.length !== 0) {
+        const pathPart = classificationPath.pop();
+        iconExists = await embedImage(
+          pathPart,
+          imageAttachments,
+          `classification-icons/${pathPart}.svg`,
+          false
+        );
+        if (iconExists) {
+          break;
+        }
+      }
+    }
+    species.hasIcon = iconExists !== false;
+  }
+  const { text, html } = await createEmailWithTemplate(
+    "project-activity-digest.html",
+    {
+      emailSettingsUrl,
+      projectName,
+      emailFrequency,
+      visitsInfo,
+      hasVisitsInPeriod: visitsInfo.length !== 0,
+      hasNoVisitsInPeriod: visitsInfo.length === 0,
+      activityUrl,
+      ...common,
+    }
+  );
+
+  // TODO: How much info should we try to cram into these reports?
+  const recipientPromises = [];
+  for (const recipient of recipients) {
+    recipientPromises.push(
+      sendEmail(
+        html,
+        text,
+        `${recipient.userName} <${recipient.email}>`,
+        `📊 ${frequency} activity report for '${projectName}'`,
+        imageAttachments
+      )
+    );
+  }
+  return (await Promise.allSettled(recipientPromises)).every(
+    (success) => success.status === "fulfilled"
   );
 };

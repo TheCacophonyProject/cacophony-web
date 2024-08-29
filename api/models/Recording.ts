@@ -850,7 +850,8 @@ from (
     const noArchived = { archivedAt: null };
     const onlyMasterModel = options.filterModel
       ? {
-          [Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
+          //[Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
+          [Op.or]: { used: true },
         }
       : {};
     if (hideFiltered) {
@@ -964,6 +965,7 @@ from (
       offset,
       attributes: Recording.queryGetAttributes,
     };
+
     if (!includeAttributes) {
       const recursiveDelete = (obj: any) => {
         for (const key in obj) {

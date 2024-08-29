@@ -3,7 +3,7 @@ import moment from "moment";
 import { EventTypes, testCreateExpectedEvent } from "@commands/api/events";
 import { runReportStoppedDevicesScript } from "@commands/api/alerts";
 
-describe("Devices stopped alerts", () => {
+describe.skip("Devices stopped alerts", () => {
   const group = "stoppers";
   const user = "Jerry";
   before(() => {

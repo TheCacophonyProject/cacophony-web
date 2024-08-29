@@ -36,7 +36,7 @@
         <b-navbar-nav class="ml-auto align-items-center">
           <b-nav-item :href="browseNextUrl" target="_blank">
             <b-btn variant="outline-primary" size="sm">
-              Preview our new beta version
+              Check out our new version
             </b-btn>
           </b-nav-item>
           <b-nav-item to="/groups">

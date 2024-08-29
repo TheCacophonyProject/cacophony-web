@@ -39,7 +39,7 @@ const invitePendingUser = async () => {
     permissions.value.includes("admin"),
     permissions.value.includes("owner")
   );
-  if (inviteResponse.success) {
+  if (inviteResponse && inviteResponse.success) {
     inviteSent.value = true;
     emit("invited");
   } else {

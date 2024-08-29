@@ -50,6 +50,7 @@ import {
   extractOptionalJWTInfo,
   fetchAdminAuthorizedRequiredGroupById,
   fetchAdminAuthorizedRequiredGroups,
+  fetchAuthorizedRequiredGroups,
   fetchUnauthorizedOptionalUserByEmailOrId,
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
@@ -613,6 +614,27 @@ export default function (app: Application, baseUrl: string) {
         .map(({ id, groupName }) => ({ id, groupName, admin: false }))
         .filter(({ pending }) => pending === undefined);
       return successResponse(response, "Got groups for admin user", {
+        groups,
+      });
+    }
+  );
+
+  app.get(
+    `${apiUrl}/groups-for-user/:emailAddress`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([param("emailAddress").isEmail()]),
+    fetchUnauthorizedRequiredUserByEmailOrId(param("emailAddress")),
+    (request: Request, response: Response, next: NextFunction) => {
+      // This is a little bit hacky, but is safe in this context.
+      response.locals.requestUser = response.locals.user;
+      return next();
+    },
+    fetchAuthorizedRequiredGroups,
+    async (request: Request, response: Response) => {
+      const groups: ApiGroupResponse[] = response.locals.groups
+        .map(({ id, groupName }) => ({ id, groupName, admin: false }))
+        .filter(({ pending }) => pending === undefined);
+      return successResponse(response, "Got groups for user", {
         groups,
       });
     }

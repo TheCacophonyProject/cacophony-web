@@ -1,10 +1,7 @@
 <script lang="ts" setup>
-import type { Ref } from "vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
-import {
-  getReferenceImageForDeviceAtCurrentLocation,
-  updateReferenceImageForDeviceAtCurrentLocation,
-} from "@api/Device";
+import { type Ref } from "vue";
+import { computed, inject, ref, watch } from "vue";
+import { updateReferenceImageForDeviceAtCurrentLocation } from "@api/Device";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
@@ -14,11 +11,16 @@ import { drawSkewedImage } from "@/components/skew-image";
 import { useElementSize } from "@vueuse/core";
 import { encode } from "@jsquash/webp";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type { LoadedResource } from "@api/types.ts";
+
+const emit = defineEmits<{
+  (e: "updated-reference-image"): void;
+}>();
 
 const skewContainer = ref<HTMLDivElement>();
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
-const loading = ref<boolean>(true);
+
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
@@ -33,26 +35,23 @@ const device = computed<ApiDeviceResponse | null>(() => {
     null
   );
 });
-const latestReferenceImageURL = ref<string | null>(null);
 const referenceImage = ref<ImageBitmap | null>(null);
 const referenceImageSkew = ref<HTMLCanvasElement>();
 const singleFrameCanvas = ref<HTMLDivElement>();
-const latestStatusRecording: Ref<ApiRecordingResponse> = inject(
-  "latestStatusRecording"
-);
-const { width: singleFrameCanvasWidth } = useElementSize(singleFrameCanvas);
-onMounted(async () => {
-  if (device.value && device.value.type === "thermal") {
-    const latestReferenceImage =
-      await getReferenceImageForDeviceAtCurrentLocation(device.value.id);
-    if (latestReferenceImage.success) {
-      latestReferenceImageURL.value = URL.createObjectURL(
-        latestReferenceImage.result
-      );
-    }
-    loading.value = false;
-  }
+const latestStatusRecording = inject("latestStatusRecording") as Ref<
+  LoadedResource<ApiRecordingResponse>
+>;
+const latestReferenceImageURL = inject("latestReferenceImageURL") as Ref<
+  LoadedResource<string>
+>;
+const loading = computed<boolean>(() => {
+  return (
+    latestStatusRecording.value === null ||
+    latestReferenceImageURL.value === null
+  );
 });
+
+const { width: singleFrameCanvasWidth } = useElementSize(singleFrameCanvas);
 const replaceExistingReferenceImage = async () => {
   latestReferenceImageURL.value = null;
 };
@@ -421,14 +420,7 @@ const saveReferenceImage = async () => {
       webp
     );
     if (response.success) {
-      const referenceImage = await getReferenceImageForDeviceAtCurrentLocation(
-        device.value!.id
-      );
-      if (referenceImage.success) {
-        latestReferenceImageURL.value = URL.createObjectURL(
-          referenceImage.result
-        );
-      }
+      emit("updated-reference-image");
     }
   }
 };
@@ -438,7 +430,7 @@ const helpInfo = ref(true);
 </script>
 <template>
   <div class="d-flex flex-row justify-content-between">
-    <div class="w-100">
+    <div class="w-100 d-flex justify-content-center align-items-center">
       <div
         v-if="loading"
         class="d-flex justify-content-center align-items-center"
@@ -447,7 +439,7 @@ const helpInfo = ref(true);
         <b-spinner />
       </div>
       <div
-        class="d-flex justify-content-center align-items-center flex-column"
+        class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
         v-else-if="!latestReferenceImageURL"
       >
         <b-alert dismissible v-model="helpInfo"
@@ -617,6 +609,10 @@ const helpInfo = ref(true);
   </div>
 </template>
 <style scoped lang="less">
+.reference-image {
+  max-width: 640px;
+}
+
 @media screen and (min-width: 640px) {
   .existing-reference-image {
     width: 640px;

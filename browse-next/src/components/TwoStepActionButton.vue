@@ -72,7 +72,7 @@ const offset = computed<
   if (props.alignment === "right") {
     return { alignmentAxis: -5, crossAxis: 0, mainAxis: 7 };
   } else if (props.alignment === "centered") {
-    return { alignmentAxis: -5, crossAxis: 0, mainAxis: 0 };
+    return { alignmentAxis: -5, crossAxis: 0, mainAxis: 14 };
   }
   return { alignmentAxis: 50, crossAxis: 60, mainAxis: 7 };
 });

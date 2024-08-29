@@ -64,6 +64,7 @@ import type {
   ApiGroupResponse,
   ApiGroupSettings,
   ApiGroupUserResponse,
+  ApiGroupUserSettings,
 } from "@typedefs/api/group.js";
 import type { ApiDeviceResponse } from "@typedefs/api/device.js";
 import type {
@@ -200,6 +201,11 @@ interface ApiScheduleConfigs {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiGroupSettingsBody {
   settings: ApiGroupSettings;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiGroupUserSettingsBody {
+  settings: ApiGroupUserSettings;
 }
 
 // NOTE: In theory someone could choose one of these as their group name,
@@ -972,13 +978,15 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetStationsForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view stations that belong
-   * to a group.q
+   * to a group.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer|String} groupIdOrName Group name or group id
    * @apiQuery {Boolean} [only-active=false] Returns both retired and active stations by default.  Set true to only
    * return currently active stations.
+   * @apiQuery {Boolean} [with-recordings=false] Returns automatic stations without recordings by default.  Set true to only
+   * return automatic stations with recordings (stations can have no recordings if they were deleted).
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations Array of ApiStationResponse[] showing details of stations in group
@@ -1003,6 +1011,7 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
       query("view-mode").optional().equals("user"),
       query("only-active").default(false).isBoolean().toBoolean(),
+      query("with-recordings").default(false).isBoolean().toBoolean(),
     ]),
     // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
@@ -1024,7 +1033,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer|String} groupIdOrName Group name or group ID.
-   * @apiBody {apibody::apigroupsettings} settings New user-specific settings data, according to the `ApiGroupUserSettingsSchema`.
+   * @apiInterface {apiBody::ApiGroupUserSettingsBody} settings New user-specific settings data, according to the `ApiGroupUserSettingsSchema`.
    *
    * @apiSuccess {String} message Success message indicating settings update for the user.
    * @apiUse V1ResponseError
@@ -1071,7 +1080,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Integer|String} groupIdOrName Group name or group ID.
-   * @apiBody {apibody::apigroupsettings} settings Group settings to update.
+   * @apiInterface {apiBody::ApiGroupSettingsBody} settings Group settings to update.
    *
    * @apiSuccess {String} message Success message indicating settings update.
    * @apiUse V1ResponseError

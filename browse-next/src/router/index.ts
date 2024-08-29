@@ -22,19 +22,25 @@ import {
   userHasProjects,
   userIsAdminForCurrentSelectedProject,
   userIsLoggedIn,
+  LocationsForCurrentProject,
+  currentUserIsSuperUser,
+  NonUserProjects,
+  isViewingAsSuperUser,
 } from "@/models/LoggedInUser";
 import { getEUAVersion } from "@api/User";
-import { getDevicesForProject, getProjects } from "@api/Project";
-import { nextTick, reactive } from "vue";
+import { getDevicesForProject, getLocationsForProject } from "@api/Project";
+import { nextTick } from "vue";
 import { decodeJWT, urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DeviceType } from "@typedefs/api/consts.ts";
+import type { LoadedResource } from "@api/types.ts";
 
 // Allows us to abort all pending fetch requests when switching between major views.
 export const CurrentViewAbortController = {
   newView() {
     this.controller && this.controller.abort();
-    this.controller = new AbortController();
     this.controller = new AbortController();
   },
   controller: new AbortController(),
@@ -218,9 +224,15 @@ const router = createRouter({
             {
               path: "setup",
               name: "device-setup",
-              redirect: { name: "reference-photo" }, // Open the first list item on load
+              redirect: { name: "recording-setup" }, // Open the first list item on load
               component: () => import("@/views/DeviceSetupSubView.vue"),
               children: [
+                {
+                  path: "recording-options",
+                  name: "recording-setup",
+                  component: () =>
+                    import("@/components/DeviceRecordingSetup.vue"),
+                },
                 {
                   path: "reference",
                   name: "reference-photo",
@@ -245,6 +257,11 @@ const router = createRouter({
               name: "device-uploads",
               component: () => import("@/views/DeviceUploadsSubView.vue"),
             },
+            // {
+            //   path: "events",
+            //   name: "device-events",
+            //   component: () => import("@/views/DeviceEventsSubView.vue"),
+            // },
             {
               path: "insights",
               name: "device-insights",
@@ -449,7 +466,7 @@ router.afterEach(async (to) => {
 router.beforeEach(async (to, from, next) => {
   if (to.name === "sign-out") {
     userIsLoggedIn.value = false;
-    await forgetUserOnCurrentDevice();
+    forgetUserOnCurrentDevice();
     return next({
       name: "sign-in",
     });
@@ -476,7 +493,7 @@ router.beforeEach(async (to, from, next) => {
   }
   // TODO: Match groupName, and set currentSelectedGroup.
   // NOTE: Check for a logged in user here.
-  if (!userIsLoggedIn.value) {
+  if (!userIsLoggedIn.value && (to.meta.requiresLogin || to.path === "/")) {
     isResumingSession.value = true;
     //console.log("--- Trying to resume saved session");
     const [_, euaResponse] = await Promise.all([
@@ -494,6 +511,7 @@ router.beforeEach(async (to, from, next) => {
       !currentSelectedProject.value &&
       !isFetchingProjects.value
     ) {
+      // console.log("User is logged in, refresh projects (2)");
       const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
@@ -510,11 +528,15 @@ router.beforeEach(async (to, from, next) => {
     if (userIsLoggedIn.value) {
       console.warn("Resumed session");
     } else {
-      console.warn("Failed to resume session or no session to resume");
+      console.warn(
+        "Failed to resume session or no session to resume",
+        to.fullPath
+      );
       if (to.meta.requiresLogin || to.path === "/") {
         console.warn("Redirect to sign-in");
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
       } else {
+        isResumingSession.value = false;
         return next();
       }
     }
@@ -559,22 +581,18 @@ router.beforeEach(async (to, from, next) => {
       .shift();
     if (userIsLoggedIn.value && !UserProjects.value) {
       // Grab the users' groups, and select the first one.
-      isFetchingProjects.value = true;
-      // console.warn("Fetching user groups");
-      const NO_ABORT = false;
-      const projectsResponse = await getProjects(NO_ABORT);
-      if (projectsResponse.success) {
-        UserProjects.value = reactive(projectsResponse.result.groups);
-        // console.warn(
-        //   "Fetched user groups",
-        //   currentSelectedGroup.value,
-        //   JSON.stringify(UserGroups.value)
-        // );
-      }
-      isFetchingProjects.value = false;
+      // console.log(
+      //   "User is logged in, refresh projects",
+      //   userIsLoggedIn.value,
+      //   CurrentUser.value
+      // );
+      const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-out" });
-      } else if (UserProjects.value && UserProjects.value?.length === 0) {
+      } else if (
+        UserProjects.value !== null &&
+        (UserProjects.value || []).length === 0
+      ) {
         if (to.name !== "setup" && to.name !== "confirm-email") {
           return next({ name: "setup" });
         } else {
@@ -584,11 +602,23 @@ router.beforeEach(async (to, from, next) => {
     }
     if (potentialProjectName) {
       potentialProjectName = urlNormaliseName(potentialProjectName);
-      const matchedProject = (
+      let matchedProject = (
         (UserProjects.value as ApiGroupResponse[]) || []
       ).find(
         ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName
       );
+      if (!matchedProject && currentUserIsSuperUser.value) {
+        matchedProject = (
+          (NonUserProjects.value as ApiGroupResponse[]) || []
+        ).find(
+          ({ groupName }) =>
+            urlNormaliseName(groupName) === potentialProjectName
+        );
+      }
+
+      // TODO: In super-user mode, match on a different set of groups.  I guess we should maybe store all those
+      //  groups globally the first time they're requested?
+
       // console.warn("Found match", matchedGroup);
       /*
       if (currentSelectedGroup.value) {
@@ -613,18 +643,34 @@ router.beforeEach(async (to, from, next) => {
         });
 
         if (currentSelectedProject.value) {
-          // Get the devices for the current group.
-          if (!DevicesForCurrentProject.value || switchedProject) {
-            const devices = await getDevicesForProject(
-              currentSelectedProject.value.id,
-              false,
-              true
-            );
-            if (devices) {
-              DevicesForCurrentProject.value = devices;
-            }
+          // Get the devices and locations for the current group.
+          if (
+            !DevicesForCurrentProject.value ||
+            !LocationsForCurrentProject.value ||
+            switchedProject
+          ) {
+            LocationsForCurrentProject.value = null;
+            DevicesForCurrentProject.value = null;
+            const [devices, locations] = await Promise.all([
+              getDevicesForProject(
+                currentSelectedProject.value.id,
+                false,
+                true
+              ),
+              getLocationsForProject(
+                currentSelectedProject.value.id.toString(),
+                true
+              ),
+            ]);
+            DevicesForCurrentProject.value = devices as LoadedResource<
+              ApiDeviceResponse[]
+            >;
+            LocationsForCurrentProject.value = locations as LoadedResource<
+              ApiLocationResponse[]
+            >;
           }
         } else {
+          LocationsForCurrentProject.value = null;
           DevicesForCurrentProject.value = null;
         }
       } else {
@@ -643,7 +689,8 @@ router.beforeEach(async (to, from, next) => {
 
   if (
     to.meta.requiresGroupAdmin &&
-    !userIsAdminForCurrentSelectedProject.value
+    !userIsAdminForCurrentSelectedProject.value &&
+    !isViewingAsSuperUser.value
   ) {
     console.error("Trying to access admin only route");
     return next({
@@ -673,7 +720,7 @@ router.beforeEach(async (to, from, next) => {
     return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
   }
 
-  if (!from.meta.requiresLogin && to.query.nextUrl) {
+  if (from.meta.requiresLogin && to.query.nextUrl && userIsLoggedIn.value) {
     // We just logged in.
     return next({
       path: to.query.nextUrl as string,

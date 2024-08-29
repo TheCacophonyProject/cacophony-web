@@ -10,12 +10,18 @@ import {
   queryValueIsDate,
 } from "@/components/activitySearchUtils.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
-import { flatClassifications } from "@api/Classifications.ts";
+import {
+  displayLabelForClassificationLabel,
+  flatClassifications,
+} from "@api/Classifications.ts";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import DeviceName from "@/components/DeviceName.vue";
 const COOL = "cool";
 const FLAG = "requires review";
 const props = defineProps<{
   searchParams: ActivitySearchParams;
   selectedLocations: ("any" | ApiLocationResponse)[];
+  selectedDevices: "all" | ApiDeviceResponse[];
   locationsInSelectedTimespan: ApiLocationResponse[];
   availableDateRanges: { range: [Date, Date]; from: string; label: string }[];
 }>();
@@ -40,15 +46,15 @@ const hasFlagged = computed<boolean>(
 
 const timespan = computed<string>(() => {
   const { searchParams, availableDateRanges } = props;
-  let timespan = "";
+  let timespan: string;
   if (
     queryValueIsDate(searchParams.from) &&
     queryValueIsDate(searchParams.until)
   ) {
     const from = new Date(searchParams.from as string | Date);
     const until = new Date(searchParams.until as string | Date);
-    let fromString = "";
-    let untilString = "";
+    let fromString: string;
+    let untilString: string;
     if (
       from.getFullYear() === until.getFullYear() &&
       from.getFullYear() === new Date().getFullYear()
@@ -150,6 +156,24 @@ const otherLabels = computed<string[]>(
         >
       </span>
     </span>
+    <span
+      v-if="
+        selectedDevices &&
+        selectedDevices !== 'all' &&
+        searchParams.displayMode === ActivitySearchDisplayMode.Recordings
+      "
+    >
+      for
+      <strong v-for="(device, index) in selectedDevices" :key="index">
+        <device-name :name="device.deviceName" :type="device.type" />
+        <span
+          v-if="
+            selectedDevices.length > 1 && index < selectedDevices.length - 1
+          "
+          >,
+        </span>
+      </strong>
+    </span>
     <span>&nbsp;</span>
     <span>{{ timespan }}</span>
     <span
@@ -170,7 +194,9 @@ const otherLabels = computed<string[]>(
         </span>
         <span :key="index" v-for="(tag, index) in searchParams.taggedWith">
           <strong class="fw-semibold"
-            ><span class="text-capitalize">{{ tag }}</span></strong
+            ><span class="text-capitalize">{{
+              displayLabelForClassificationLabel(tag)
+            }}</span></strong
           ><span v-if="index === searchParams.taggedWith.length - 2"> or </span
           ><span
             v-else-if="

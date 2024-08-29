@@ -19,11 +19,11 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       project, change the default tags that users of this project see when
       tagging tracks.
     </p>
-    <p>
-      If I'm the only user, and there are no devices, and no recordings, then we
-      should show the setup screen
-    </p>
-    <p>TODO: Would be nice to have the option of renaming the project here?</p>
+    <!--    <p>-->
+    <!--      If I'm the only user, and there are no devices, and no recordings, then we-->
+    <!--      should show the setup screen-->
+    <!--    </p>-->
+    <!--    <p>TODO: Would be nice to have the option of renaming the project here?</p>-->
   </div>
   <overflowing-tab-list>
     <router-link

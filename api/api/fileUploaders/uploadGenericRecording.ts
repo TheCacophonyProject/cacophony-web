@@ -565,6 +565,20 @@ export const uploadGenericRecording =
           lastConnectionTime: new Date(),
           active: true,
         };
+      } else if (
+        !fromDevice &&
+        (recordingTemplate.recordingDateTime >
+          recordingDevice.lastConnectionTime ||
+          !recordingDevice.lastConnectionTime)
+      ) {
+        // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
+        // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
+        // which indicates that this device is now "offline".
+        // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
+        recordingDeviceUpdatePayload = {
+          lastConnectionTime: null,
+          active: true,
+        };
       }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
@@ -751,9 +765,12 @@ const maybeUpdateLastRecordingTimesForStation = async (
       resolve();
     }
   );
+
   if (station) {
     recordingData.StationId = station.id;
-    {
+
+    // Only update our times for non-status recordings
+    if (recordingData.duration >= 3) {
       // Update station lastRecordingTimes if needed.
       if (
         recordingData.type === RecordingType.Audio &&
@@ -819,18 +836,25 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     uploadingDevice.lastRecordingTime < recording.recordingDateTime
   ) {
     updateDevicePayload.location = recording.location;
-    updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
-    if (
-      cameraTypes.includes(recording.type) &&
-      (!uploadingGroup.lastThermalRecordingTime ||
-        uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
-    ) {
+    if (recording.duration >= 3) {
+      updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
+    }
+  }
+
+  if (
+    cameraTypes.includes(recording.type) &&
+    (!uploadingGroup.lastThermalRecordingTime ||
+      uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
+  ) {
+    if (recording.duration >= 3) {
       updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
-    } else if (
-      recording.type === RecordingType.Audio &&
-      (!uploadingGroup.lastAudioRecordingTime ||
-        uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
-    ) {
+    }
+  } else if (
+    recording.type === RecordingType.Audio &&
+    (!uploadingGroup.lastAudioRecordingTime ||
+      uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
+  ) {
+    if (recording.duration >= 3) {
       updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
     }
   }
@@ -840,7 +864,7 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     return new Promise((resolve, _reject) => {
       Promise.all([
         uploadingDevice.update(updateDevicePayload),
-        uploadingGroup.update(updateDevicePayload),
+        uploadingGroup.update(updateGroupPayload),
       ]).then(() => resolve());
     });
   } else if (hasDeviceUpdate) {

@@ -1,0 +1,6 @@
+# cron.d/cacophony-project-activity-digests
+#
+# every monday @ 9.10am
+10 9 * * 1 root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader ./scripts/project-activity-digest.js weekly) 2>&1 | logger --tag project-activity-digest
+# every day @ 9.10am
+10 9 * * * root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader ./scripts/project-activity-digest.js daily) 2>&1 | logger --tag project-activity-digest

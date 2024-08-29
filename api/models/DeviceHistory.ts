@@ -13,7 +13,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type Sequelize from "sequelize";
+import Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type {
   DeviceId,
@@ -23,6 +23,7 @@ import type {
 } from "@typedefs/api/common.js";
 import { locationField } from "@models/util/util.js";
 import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
+import { Op } from "sequelize";
 
 export type DeviceHistorySetBy =
   | "automatic"
@@ -45,7 +46,24 @@ export interface DeviceHistory
   settings?: ApiDeviceHistorySettings;
 }
 
-export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {}
+export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {
+  updateDeviceSettings(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    newSettings: ApiDeviceHistorySettings,
+    setBy: DeviceHistorySetBy
+  ): Promise<ApiDeviceHistorySettings>;
+  latest(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime?: Date
+  ): Promise<DeviceHistory | null>;
+  getEarliestFromDateTimeForDeviceAtCurrentLocation(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime?: Date
+  ): Promise<Date | null>;
+}
 
 export default function (
   sequelize: Sequelize.Sequelize,
@@ -113,5 +131,157 @@ export default function (
     });
   };
 
+  DeviceHistory.latest = async function (
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime = new Date()
+  ): Promise<DeviceHistory | null> {
+    return this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+        location: { [Op.ne]: null },
+        fromDateTime: { [Op.lte]: atTime },
+      },
+      order: [["fromDateTime", "DESC"]],
+    });
+  };
+  DeviceHistory.updateDeviceSettings = async function (
+    deviceId: DeviceId,
+    groupId: GroupId,
+    newSettings: ApiDeviceHistorySettings,
+    setBy: DeviceHistorySetBy
+  ): Promise<ApiDeviceHistorySettings> {
+    const currentSettingsEntry: DeviceHistory = await this.latest(
+      deviceId,
+      groupId
+    );
+    if (!currentSettingsEntry) {
+      throw Error(
+        `Device may not be registered or setup in group ${groupId}/with location`
+      );
+    }
+    const currentSettings: ApiDeviceHistorySettings =
+      currentSettingsEntry?.settings || ({} as ApiDeviceHistorySettings);
+
+    const { settings, changed } = mergeSettings(
+      currentSettings,
+      newSettings,
+      setBy
+    );
+
+    const synced = setBy === "automatic";
+    // add to device history ledger
+    if (
+      changed &&
+      (!currentSettings.hasOwnProperty("synced") ||
+        currentSettings.synced ||
+        synced)
+    ) {
+      await this.create({
+        ...currentSettingsEntry.get({ plain: true }),
+        fromDateTime: new Date(),
+        setBy,
+        settings,
+      });
+    } else {
+      // in place only if the device already had the settings so no change,
+      // or if the previous settings were not yet applied.
+      await this.update(
+        { settings },
+        {
+          where: {
+            fromDateTime: { [Op.eq]: currentSettingsEntry.fromDateTime },
+            DeviceId: deviceId,
+            GroupId: groupId,
+          },
+        }
+      );
+    }
+    return settings;
+  };
+
+  DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation =
+    async function (
+      deviceId: DeviceId,
+      groupId: GroupId,
+      atTime = new Date()
+    ): Promise<Date | null> {
+      const currentSettingsEntry: DeviceHistory = await this.latest(
+        deviceId,
+        groupId,
+        atTime
+      );
+      if (currentSettingsEntry) {
+        const earliestEntry = await this.findOne({
+          where: [
+            {
+              DeviceId: deviceId,
+              GroupId: groupId,
+              fromDateTime: { [Op.lt]: atTime },
+            },
+            sequelize.where(Sequelize.fn("ST_X", Sequelize.col("location")), {
+              [Op.eq]: currentSettingsEntry.location.lng,
+            }),
+            sequelize.where(Sequelize.fn("ST_Y", Sequelize.col("location")), {
+              [Op.eq]: currentSettingsEntry.location.lat,
+            }),
+          ] as any,
+          order: [["fromDateTime", "ASC"]],
+        });
+        if (earliestEntry) {
+          return earliestEntry.fromDateTime;
+        }
+        return currentSettingsEntry.fromDateTime;
+      }
+      return null;
+    };
+
   return DeviceHistory;
+}
+// Function to merge settings using "Last Write Wins"
+function mergeSettings(
+  currentSettings: ApiDeviceHistorySettings,
+  incomingSettings: ApiDeviceHistorySettings,
+  setBy: DeviceHistorySetBy
+): { settings: ApiDeviceHistorySettings; changed: boolean } {
+  const mergedSettings: ApiDeviceHistorySettings = { ...currentSettings };
+
+  let changed = false;
+  for (const key in incomingSettings) {
+    if (incomingSettings.hasOwnProperty(key)) {
+      const incomingValue = incomingSettings[key];
+
+      // If the current settings do not have this key, add it
+      if (!currentSettings.hasOwnProperty(key)) {
+        mergedSettings[key] = incomingValue;
+        changed = true;
+        continue;
+      }
+
+      const currentSetting = currentSettings[key];
+
+      if (incomingValue.updated && currentSetting.updated) {
+        const currentUpdated = new Date(currentSetting.updated);
+        const incomingUpdated = new Date(incomingValue.updated);
+
+        if (incomingUpdated > currentUpdated) {
+          mergedSettings[key] = incomingValue;
+          if (incomingValue !== currentSetting) {
+            changed = true;
+          }
+        }
+      } else {
+        mergedSettings[key] = incomingValue;
+        if (incomingValue !== currentSetting) {
+          changed = true;
+        }
+      }
+    }
+  }
+
+  // Set synced based on setBy
+  mergedSettings.synced = setBy === "automatic";
+
+  return { settings: mergedSettings, changed };
 }

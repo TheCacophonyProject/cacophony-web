@@ -304,11 +304,10 @@ const updateUserEmailAddress = async () => {
     </b-form>
   </b-modal>
 
-  <h6>Things that could appear here:</h6>
-  <ul>
-    <li>Reset/change my password</li>
-    <li>Review the End User Agreement?</li>
-    <li>Show release info/changelog?</li>
-    <li>Global transactional email settings</li>
-  </ul>
+  <!--  <h6>Things that could appear here:</h6>-->
+  <!--  <ul>-->
+  <!--    <li>Review the End User Agreement?</li>-->
+  <!--    <li>Show release info/changelog?</li>-->
+  <!--    <li>Global transactional email settings</li>-->
+  <!--  </ul>-->
 </template>

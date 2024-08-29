@@ -18,7 +18,7 @@ export interface VisitsQueryResult {
   params: MonitoringPageCriteria;
 }
 export type ProgressUpdater = (progress: number) => void;
-export const getVisitsForProject = async (
+export const getVisitsForProjectNew = async (
   projectId: ProjectId,
   fromDate: Date,
   untilDate: Date,
@@ -28,6 +28,40 @@ export const getVisitsForProject = async (
     | RecordingType.TrailCamImage
     | RecordingType.ThermalRaw
     | RecordingType.Audio
+  )[]
+) => {
+  const params = new URLSearchParams();
+  params.append("from", fromDate.toISOString());
+  params.append("until", untilDate.toISOString());
+  if (locations && locations.length) {
+    for (const location of locations) {
+      params.append("locations", location.toString());
+    }
+  }
+  if (types && types.length) {
+    for (const type of types) {
+      params.append("types", type);
+    }
+  }
+  //params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
+  //params.append("page-size", pageSize.toString()); // 100 recordings per page of visits, which is the max
+  if (!shouldViewAsSuperUser.value) {
+    params.append("view-mode", "user");
+  }
+  return (await CacophonyApi.get(
+    `/api/v1/monitoring/for-project/${projectId}?${params}`
+  )) as FetchResult<VisitsQueryResult>;
+};
+
+export const getVisitsForProject = async (
+  projectId: ProjectId,
+  fromDate: Date,
+  untilDate: Date,
+  locations?: LocationId[],
+  types?: (
+    | RecordingType.TrailCamVideo
+    | RecordingType.TrailCamImage
+    | RecordingType.ThermalRaw
   )[]
 ) => {
   const params = new URLSearchParams();
@@ -43,12 +77,14 @@ export const getVisitsForProject = async (
     params.append("types", types.toString());
   }
   params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
-  params.append("page-size", "100"); // 100 recordings per page of visits, which is the max
+  params.append("page-size", "50"); // 100 recordings per page of visits, which is the max
   if (!shouldViewAsSuperUser.value) {
     params.append("view-mode", "user");
   }
+  const ABORTABLE = true;
   return (await CacophonyApi.get(
-    `/api/v1/monitoring/page?${params}`
+    `/api/v1/monitoring/page?${params}`,
+    ABORTABLE
   )) as FetchResult<VisitsQueryResult>;
 };
 
@@ -112,6 +148,7 @@ export const getAllVisitsForProject = async (
         untilDate = new Date(pageFrom);
       }
     } else if (response && !response.success) {
+      debugger;
       break;
     }
   }
@@ -142,7 +179,6 @@ export const getAllVisitsForProjectBetweenTimes = async (
     | RecordingType.TrailCamImage
     | RecordingType.TrailCamVideo
     | RecordingType.ThermalRaw
-    | RecordingType.Audio
   )[],
   progressUpdaterFn?: ProgressUpdater // progress updates caller with how far through the request it is [0, 1]
 ): Promise<BulkVisitsResponse> => {
@@ -151,7 +187,6 @@ export const getAllVisitsForProjectBetweenTimes = async (
   let requestNumber = 0;
   let untilDate = new Date(untilDateTime);
   let numPagesEstimate = 0;
-
   // FIXME: This should really respect the fromDate/untilDate that we pass it - we'll lazily load more visits
   //  as needed by page visibility etc.  All we really want to do is make sure we load up to the end of the last visit,
   //  so there are no incomplete visits in the list.

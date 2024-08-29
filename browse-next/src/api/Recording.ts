@@ -96,12 +96,13 @@ export interface QueryRecordingsOptions {
   locations?: LocationId[];
   taggedWith?: string[];
   labelledWith?: string[];
-  fromDateTime?: Date;
-  untilDateTime?: Date;
+  fromDateTime?: Date | null;
+  untilDateTime?: Date | null;
   limit?: number;
   tagMode?: TagMode;
-  includeFilteredFalsePositivesAndNones: boolean;
+  includeFilteredFalsePositivesAndNones?: boolean;
   subClassTags?: boolean;
+  queryIsTimeSensitive?: boolean;
 
   durationMinSecs?: number;
   durationMaxSecs?: number;
@@ -112,8 +113,6 @@ export interface QueryRecordingsOptions {
     | RecordingType.ThermalRaw
     | RecordingType.Audio
   )[];
-
-  countAll?: boolean;
 }
 
 export interface BulkRecordingsResponse {
@@ -148,14 +147,19 @@ export const queryRecordingsInProjectNew = (
       params.append("locations", locationId.toString());
     }
   }
+  if (options.types) {
+    for (const type of options.types) {
+      params.append("types", type);
+    }
+  }
   if (options.fromDateTime) {
     params.append("from", options.fromDateTime.toISOString());
   }
   if (options.untilDateTime) {
     params.append("until", options.untilDateTime.toISOString());
   }
-  if (options.countAll) {
-    params.append("with-total-count", true.toString());
+  if (options.limit) {
+    params.append("max-results", options.limit.toString());
   }
   // Do we want this, or do we want to show processing recordings?
   // params.append("processingState", RecordingProcessingState.Finished);
@@ -173,13 +177,20 @@ export const queryRecordingsInProjectNew = (
   if (!options.subClassTags) {
     params.append("sub-class-tags", false.toString());
   }
+  if (options.queryIsTimeSensitive) {
+    // For the front-end, we want to return early with any results to appear responsive.
+    // For exports, we don't care as much.
+    params.append("time-sensitive", true.toString());
+  }
   console.log("API params", params.toString());
 
   // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
   //  or we need to hold onto the pagination value.
   //return unwrapLoadedResource(
+  const ABORTABLE = true;
   return CacophonyApi.get(
-    `/api/v1/recordings/for-project/${projectId}?${params}`
+    `/api/v1/recordings/for-project/${projectId}?${params}`,
+    ABORTABLE
   ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
   //"rows"
   //);
@@ -242,34 +253,28 @@ export const getRecordingsForLocationsAndDevicesInProject = (
 export const getAllRecordingsForProjectBetweenTimes = async (
   projectId: ProjectId,
   query: QueryRecordingsOptions,
-  progressUpdater: (progress: number) => void
+  progressUpdater: () => void
 ): Promise<ApiRecordingResponse[]> => {
-  query.limit = 100;
+  query.limit = 1000;
   const recordings = [];
   let moreRecordingsToLoad = true;
-
-  const countResponse = await queryRecordingsInProjectNew(projectId, {
-    ...query,
-    limit: 1,
-    countAll: true,
-  });
-  if (countResponse.success) {
-    const countEstimate = countResponse.result.count as number;
-    while (moreRecordingsToLoad) {
-      const response = await queryRecordingsInProjectNew(projectId, query);
-      if (response.success) {
-        const result = response.result;
-        moreRecordingsToLoad = result.count === query.limit;
-        recordings.push(...result.recordings);
-        if (recordings.length) {
-          //debugger;
-          query.untilDateTime = new Date(
-            recordings[recordings.length - 1].recordingDateTime
-          );
-          query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
-        }
-        progressUpdater(recordings.length / countEstimate);
+  while (moreRecordingsToLoad) {
+    const response = await queryRecordingsInProjectNew(projectId, {
+      ...query,
+      queryIsTimeSensitive: false,
+    });
+    if (response.success) {
+      const result = response.result;
+      recordings.push(...result.recordings);
+      moreRecordingsToLoad = result.recordings.length !== 0;
+      // TODO: Show progress bar based on a linear interpolation of start vs end time.
+      if (recordings.length) {
+        query.untilDateTime = new Date(
+          recordings[recordings.length - 1].recordingDateTime
+        );
+        query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
       }
+      progressUpdater();
     }
   }
   return recordings;

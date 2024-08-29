@@ -4,13 +4,57 @@
     :items="locations"
     @entered-item="enteredTableItem"
     @left-item="leftTableItem"
-    :highlighted-item="highlightedItem"
+    :max-card-width="2000"
   >
     <template #card="{ card }">
-      <span>
-        {{ card.name }}
-      </span>
-      <div v-html="activeBetween(card as ApiLocationResponse)" />
+      <div>
+        <strong>
+          {{ card.name }}
+        </strong>
+        <div v-html="activeBetween(card as ApiLocationResponse)" />
+      </div>
+      <div class="d-flex mt-2">
+        <b-button
+          class="align-items-center justify-content-between d-flex"
+          variant="light"
+          :to="{
+            name: 'activity',
+            query: {
+              locations: [card.id],
+              'display-mode': 'visits',
+              from: new Date(card.activeAt).toISOString(),
+              until: (lastActiveLocationTime(card) || new Date()).toISOString(),
+            },
+          }"
+          ><span class="me-2">Visits</span>
+          <font-awesome-icon
+            icon="arrow-turn-down"
+            :rotation="270"
+            size="xs"
+            class="ps-1"
+          />
+        </b-button>
+        <b-button
+          class="align-items-center justify-content-between d-flex ms-2"
+          variant="light"
+          :to="{
+            name: 'activity',
+            query: {
+              locations: [card.id],
+              'display-mode': 'recordings',
+              from: new Date(card.activeAt).toISOString(),
+              until: (lastActiveLocationTime(card) || new Date()).toISOString(),
+            },
+          }"
+          ><span class="me-2">Recordings</span>
+          <font-awesome-icon
+            icon="arrow-turn-down"
+            :rotation="270"
+            size="xs"
+            class="ps-1"
+          />
+        </b-button>
+      </div>
     </template>
   </card-table>
 </template>

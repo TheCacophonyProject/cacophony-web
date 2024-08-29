@@ -35,7 +35,6 @@ interface ApiUpdateGlobalPermissionRequestBody {
 }
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/admin`;
-
   {
     /**
      * @api {patch} /api/v1/admin/global-permission/:userEmailOrId Update user global permissions

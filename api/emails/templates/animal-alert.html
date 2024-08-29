@@ -2,15 +2,17 @@
   <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
     <br>
     <div style="font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#DF4726;padding-right:24px">
-      Possum alert at <a style="color: inherit" href="{{ stationUrl }}">'{{ stationName }}'</a>
+      {{ matchedTag }} alert at <a style="color: inherit" href="{{ stationUrl }}">'{{ stationName }}'</a>
     </div>
     <br>
     <div style="text-align: center;">
-    <img width="64" height="64" style="border-radius: 5px; background: blue;width:128px;height:128px;" src="cid:thumbnail" />
+    <a href="{{ recordingUrl }}" style="border: 0 !important; text-decoration: none !important;">
+      <img alt="alert thumbnail for {{ matchedTag }}" width="128" height="128" style="border-radius: 5px; background: blue;width:128px !important;height:128px !important;" src="cid:thumbnail" />
+    </a>
     </div>
     <br>
     <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333 !important">
-      Your thermal camera <strong>'{{ deviceName }}'</strong> identified a <strong>{{ targetSpecies }}</strong> at <strong>{{ recordingTime }}</strong>.
+      Your thermal camera <strong>'{{ deviceName }}'</strong> identified a <strong>{{ matchedTag }}</strong> at <strong>{{ recordingTime }}</strong>.
       <br><br>
       <a href="{{ recordingUrl }}" style="background-color: #2f67f6;border:none;border-radius:3px;color:#ffffff;cursor:auto;padding:15px 25px;display: inline-block;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
           View the full recording
@@ -27,7 +29,7 @@
   <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
     <br><br>
 
-    You are receiving this email because you are subscribed to automated alerts for classifications of '{{ targetSpecies }}' for devices in the <strong>'{{ groupName }}'</strong> group. Update your <a href="{{ emailSettingsUrl }}" style="color:#aaaaaa">email alert preferences</a>.
+    You are receiving this email because you are subscribed to automated alerts for classifications of '{{ targetTag }}' for devices in the <strong>'{{ groupName }}'</strong> project. Update your <a href="{{ emailSettingsUrl }}" style="color:#aaaaaa">email alert preferences</a>.
     <br><br>
 
     <strong>The Cacophony Project.</strong><br>

@@ -24,6 +24,11 @@ export interface NetworkConnectionErrorSignal {
   control: boolean;
 }
 
+const nonLoggedInRoutes = [
+  "/api/v1/users/authenticate",
+  "/api/v1/users/validate-reset-token",
+];
+
 const getScreenOrientation = (): string => {
   if (window.screen.orientation) {
     return window.screen.orientation?.type;
@@ -37,69 +42,139 @@ const getScreenOrientation = (): string => {
   return "unknown screen orientation";
 };
 
-export const maybeRefreshStaleCredentials = async () => {
+export const maybeRefreshStaleCredentials = async (dev = false) => {
   // NOTE: Check if we need to refresh our apiToken using our refreshToken before making this request.
-  const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-credentials"
-  );
-  if (rememberedCredentials) {
-    try {
-      const currentUserCreds = JSON.parse(
-        rememberedCredentials
-      ) as LoggedInUserAuth;
-      const apiToken = decodeJWT(
-        (currentUserCreds as LoggedInUserAuth).apiToken
-      );
-      const now = new Date();
-      if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
-        if (!currentUserCreds.refreshingToken) {
-          setLoggedInUserCreds({
-            ...currentUserCreds,
-            refreshingToken: true,
-          });
-          const response = await window.fetch(
-            `${API_ROOT}/api/v1/users/refresh-session-token`,
-            {
-              body: JSON.stringify({
-                refreshToken: currentUserCreds.refreshToken,
-              }),
-              headers: {
-                "Content-Type": "application/json; charset=utf-8",
-              },
-              method: "POST",
-            }
-          );
-          const result = await response.json();
-          const refreshedUserResult = {
-            result,
-            status: response.status,
-            success: response.ok,
-          };
-          if (refreshedUserResult.success) {
-            const refreshedUser = refreshedUserResult.result;
+  if (!dev) {
+    const rememberedCredentials = window.localStorage.getItem(
+      "saved-login-credentials"
+    );
+    if (rememberedCredentials) {
+      try {
+        const currentUserCreds = JSON.parse(
+          rememberedCredentials
+        ) as LoggedInUserAuth;
+        const apiToken = decodeJWT(
+          (currentUserCreds as LoggedInUserAuth).apiToken
+        );
+        const now = new Date();
+        if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
+          if (!currentUserCreds.refreshingToken) {
             setLoggedInUserCreds({
               ...currentUserCreds,
-              apiToken: refreshedUser.token,
-              refreshToken: refreshedUser.refreshToken,
-              refreshingToken: false,
+              refreshingToken: true,
             });
-            refreshLocallyStoredUser(refreshedUser.userData);
+            const response = await window.fetch(
+              `${API_ROOT}/api/v1/users/refresh-session-token`,
+              {
+                body: JSON.stringify({
+                  refreshToken: currentUserCreds.refreshToken,
+                }),
+                headers: {
+                  "Content-Type": "application/json; charset=utf-8",
+                },
+                method: "POST",
+              }
+            );
+            const result = await response.json();
+            const refreshedUserResult = {
+              result,
+              status: response.status,
+              success: response.ok,
+            };
+            if (refreshedUserResult.success) {
+              const refreshedUser = refreshedUserResult.result;
+              setLoggedInUserCreds({
+                ...currentUserCreds,
+                apiToken: refreshedUser.token,
+                refreshToken: refreshedUser.refreshToken,
+                refreshingToken: false,
+              });
+              refreshLocallyStoredUser(refreshedUser.userData);
+            } else {
+              // Refresh token wasn't found, so prompt login again
+              forgetUserOnCurrentDevice();
+            }
           } else {
-            // Refresh token wasn't found, so prompt login again
-            forgetUserOnCurrentDevice();
+            await delayMs(10).promise;
+            await maybeRefreshStaleCredentials();
           }
-        } else {
-          await delayMs(10).promise;
-          await maybeRefreshStaleCredentials();
         }
+      } catch (e) {
+        // Logout
+        forgetUserOnCurrentDevice();
       }
-    } catch (e) {
+    } else {
       // Logout
       forgetUserOnCurrentDevice();
     }
   } else {
-    // Logout
-    forgetUserOnCurrentDevice();
+    const rememberedCredentials = window.localStorage.getItem(
+      "saved-login-credentials-dev"
+    );
+    if (rememberedCredentials) {
+      try {
+        const currentUserCreds = JSON.parse(
+          rememberedCredentials
+        ) as LoggedInUserAuth;
+        const apiToken = decodeJWT(
+          (currentUserCreds as LoggedInUserAuth).apiToken
+        );
+        const now = new Date();
+        if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
+          if (!currentUserCreds.refreshingToken) {
+            setLoggedInUserCreds(
+              {
+                ...currentUserCreds,
+                refreshingToken: true,
+              },
+              true
+            );
+            const response = await window.fetch(
+              `https://api.cacophony.org.nz/api/v1/users/refresh-session-token`,
+              {
+                body: JSON.stringify({
+                  refreshToken: currentUserCreds.refreshToken,
+                }),
+                headers: {
+                  "Content-Type": "application/json; charset=utf-8",
+                },
+                method: "POST",
+              }
+            );
+            const result = await response.json();
+            const refreshedUserResult = {
+              result,
+              status: response.status,
+              success: response.ok,
+            };
+            if (refreshedUserResult.success) {
+              const refreshedUser = refreshedUserResult.result;
+              setLoggedInUserCreds(
+                {
+                  ...currentUserCreds,
+                  apiToken: refreshedUser.token,
+                  refreshToken: refreshedUser.refreshToken,
+                  refreshingToken: false,
+                },
+                true
+              );
+            } else {
+              // Refresh token wasn't found, so prompt login again
+              forgetUserOnCurrentDevice();
+            }
+          } else {
+            await delayMs(10).promise;
+            await maybeRefreshStaleCredentials();
+          }
+        }
+      } catch (e) {
+        // Logout
+        forgetUserOnCurrentDevice();
+      }
+    } else {
+      // Logout
+      forgetUserOnCurrentDevice();
+    }
   }
 };
 
@@ -160,7 +235,7 @@ export async function fetch<T>(
       window.devicePixelRatio
     } - ${getScreenOrientation()}`;
   }
-  let response;
+  let response: Response;
   try {
     response = await window.fetch(url, request);
     networkConnectionError.retryInterval = INITIAL_RETRY_INTERVAL;
@@ -204,7 +279,7 @@ export async function fetch<T>(
   }
   if (
     response.status === HttpStatusCode.AuthorizationError &&
-    !response.url.endsWith("/api/v1/users/authenticate")
+    !nonLoggedInRoutes.some((route) => response.url.endsWith(route))
   ) {
     {
       const isJSON = (
@@ -216,7 +291,7 @@ export async function fetch<T>(
       );
       if (isJSON) {
         const _result = await response.json();
-        debugger;
+        // debugger;
       }
     }
 

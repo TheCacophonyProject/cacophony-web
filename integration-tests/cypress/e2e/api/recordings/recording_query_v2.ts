@@ -18,6 +18,7 @@ import {
 } from "@commands/api/recording-tests";
 import {
   ApiAudioRecordingResponse,
+  ApiRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import {
@@ -120,7 +121,7 @@ describe("Recordings query using improved query API", () => {
   const track4 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track4.start_s = 2;
   track4.end_s = 5;
-  track4.predictions = [];
+  //track4.predictions = [];
   const track5 = JSON.parse(JSON.stringify(TEMPLATE_AUDIO_TRACK));
   track5.start_s = 10;
   track5.end_s = 20;
@@ -154,6 +155,12 @@ describe("Recordings query using improved query API", () => {
   recording4.recordingDateTime = "2021-01-01T00:00:00.000Z";
   recording4.location = TestGetLocationArray(1);
   recording4.metadata.tracks[0] = track4;
+
+  const recording5 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
+  recording5.duration = 40;
+  recording5.recordingDateTime = "2021-01-01T00:00:00.000Z";
+  recording5.location = TestGetLocationArray(1);
+  delete recording5.metadata.tracks;
 
   before(() => {
     //Create group1 with admin and 2 devices
@@ -306,9 +313,10 @@ describe("Recordings query using improved query API", () => {
               expectedRecording4.processingState =
                 RecordingProcessingState.Finished;
 
-              cy.testUserTagRecording(id, 0, groupAdmin, "possum").then(() => {
-                expectedRecording4.tracks[0].tags = [
-                  {
+              cy.testUserAddTagRecording(id, 0, groupAdmin, "possum").then(
+                () => {
+                  expectedRecording4.tracks[0].tags[0].confidence = 0.97;
+                  expectedRecording4.tracks[0].tags.push({
                     what: "possum",
                     automatic: false,
                     confidence: 0.7,
@@ -316,28 +324,33 @@ describe("Recordings query using improved query API", () => {
                     id: -1,
                     userName: getTestName(groupAdmin),
                     userId: getCreds(groupAdmin).id,
-                  },
-                ];
-                cy.apiRecordingsQueryV2Check(
-                  groupAdmin,
-                  getCreds(group1).id,
-                  new URLSearchParams({
-                    from: expectedRecording4.recordingDateTime,
-                    until: incrementDate(expectedRecording4.recordingDateTime),
-                  }),
-                  [expectedRecording4],
-                  EXCLUDE_PARAMS
-                ).then((body) => {
-                  group1Recordings.push(body.recordings[0]);
-                });
-              });
+                  });
+                  cy.apiRecordingsQueryV2Check(
+                    groupAdmin,
+                    getCreds(group1).id,
+                    new URLSearchParams({
+                      from: expectedRecording4.recordingDateTime,
+                      until: incrementDate(
+                        expectedRecording4.recordingDateTime
+                      ),
+                    }),
+                    [expectedRecording4],
+                    EXCLUDE_PARAMS
+                  ).then((body) => {
+                    group1Recordings.push(body.recordings[0]);
+                  });
+                }
+              );
             })
         );
     });
 
     createGroup2.then(() => {
       // SETUP group2
-      // Add 8 recordings.  3 Should be filtered out as false-positives.
+      // Add 9 recordings.  3 Should be filtered out as false-positives.
+
+      // Recording with no tracks
+      cy.apiRecordingAddWithTracks(group2Device1);
 
       // Recording with no tracks, but a label of 'cool'
       cy.apiRecordingAddWithTracks(group2Device1).then((id) =>
@@ -374,7 +387,7 @@ describe("Recordings query using improved query API", () => {
 
       // Recording with 1 track but no tags, then tagged by user
       cy.apiRecordingAddWithTracks(group2Device1, []).then((id) => {
-        cy.testUserAddTagRecording(id, 0, group2Admin, "mustelid");
+        cy.testUserAddTagRecording(id, 0, group2Admin, "weasel");
       });
 
       // Recording with 1 track tagged as false-positive, then tagged by user
@@ -383,6 +396,30 @@ describe("Recordings query using improved query API", () => {
           cy.testUserAddTagRecording(id, 0, group2Admin, "possum");
         }
       );
+
+      // Recording with 1 non-false-positive track, corrected by user.
+      cy.apiRecordingAddWithTracks(group2Device1, [["dog"]]).then((id) => {
+        cy.testUserAddTagRecording(id, 0, group2Admin, "rodent");
+      });
+
+      // Recording with 1 non-false-positive track, confirmed by user.
+      cy.apiRecordingAddWithTracks(group2Device1, [["pig"]]).then((id) => {
+        cy.testUserAddTagRecording(id, 0, group2Admin, "pig");
+      });
+
+      // Recording with 1 non-false-positive track, turned to false-positive by user.
+      cy.apiRecordingAddWithTracks(group2Device1, [["deer"]]).then((id) => {
+        cy.testUserAddTagRecording(id, 0, group2Admin, "false-positive");
+      });
+
+      // Recording with 1 non-false-positive track, confirmed by user, then deleted.
+      cy.apiRecordingAddWithTracks(group2Device1, [["rabbit"]]).then((id) => {
+        cy.testUserAddTagRecording(id, 0, group2Admin, "rabbit").then(() => {
+          cy.apiRecordingDelete(group2Admin, id.toString(), 200, {
+            useRawRecordingId: true,
+          });
+        });
+      });
     });
   });
 
@@ -390,50 +427,45 @@ describe("Recordings query using improved query API", () => {
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
       getCreds(group1).id,
-      new URLSearchParams({
-        "with-total-count": true.toString(),
-      }),
+      new URLSearchParams({}),
       undefined,
       [],
       200,
-      { count: 3 }
+      { "num-results": 3 }
     );
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
       getCreds(group1).id,
       new URLSearchParams({
-        "with-total-count": true.toString(),
         "include-false-positives": true.toString(),
       }),
       undefined,
       [],
       200,
-      { count: 4 }
+      { "num-results": 4 }
     );
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
       getCreds(group1).id,
       new URLSearchParams({
-        "with-total-count": true.toString(),
         "tag-mode": TagMode.Any,
       }),
       undefined,
       [],
       200,
-      { count: 3 }
+      { "num-results": 3 }
     );
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
       getCreds(group1).id,
       new URLSearchParams({
-        "with-total-count": true.toString(),
         "tag-mode": TagMode.Any,
         "include-false-positives": true.toString(),
       }),
       undefined,
       [],
       200,
-      { count: 4 }
+      { "num-results": 4 }
     );
   });
 
@@ -459,12 +491,11 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams({
           locations: String(group1Recordings[0].stationId),
           types: "thermal",
-          "with-total-count": true.toString(),
         }),
         undefined,
         [],
         200,
-        { count: 2 }
+        { "num-results": 2 }
       );
     }
     {
@@ -476,25 +507,23 @@ describe("Recordings query using improved query API", () => {
         getCreds(group1).id,
         new URLSearchParams({
           locations: String(group1Recordings[0].stationId),
-          "with-total-count": true.toString(),
         }),
         undefined,
         [],
         200,
-        { count: 2 }
+        { "num-results": 2 }
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
         getCreds(group1).id,
         new URLSearchParams({
           locations: String(group1Recordings[0].stationId),
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
         }),
         undefined,
         [],
         200,
-        { count: 3 }
+        { "num-results": 3 }
       );
     }
     {
@@ -507,13 +536,12 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams({
           locations: String(group1Recordings[0].stationId),
           from: "2021-05-17T20:13:17.248Z",
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
         }),
         undefined,
         [],
         200,
-        { count: 2 }
+        { "num-results": 2 }
       );
     }
     {
@@ -527,13 +555,12 @@ describe("Recordings query using improved query API", () => {
           locations: String(group1Recordings[0].stationId),
           from: "2021-05-17T20:13:17.248Z",
           until: "2021-06-17T20:13:17.248Z",
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
         }),
         undefined,
         [],
         200,
-        { count: 0 }
+        { "num-results": 0 }
       );
     }
     {
@@ -546,13 +573,12 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams({
           locations: String(group1Recordings[0].stationId),
           until: "2021-06-17T20:13:17.248Z",
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
         }),
         undefined,
         [],
         200,
-        { count: 1 }
+        { "num-results": 1 }
       );
     }
   });
@@ -583,17 +609,37 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams([
           ["devices", getCreds(group1Device1).id.toString()],
           ["devices", getCreds(group1Device2).id.toString()],
-          ["with-total-count", true.toString()],
           ["include-false-positives", true.toString()],
         ]),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 4,
+          "num-results": 4,
         }
       );
     }
+  });
+
+  it("Tracks tagged by user should become the canonical tag for the track when searching tagged recordings", () => {
+    cy.log(
+      "Check that recordings tagged by AI as cat and subsequently corrected by a " +
+        "human don't come up when searching for recordings tagged with cat."
+    );
+    cy.apiRecordingsQueryV2Check(
+      groupAdmin,
+      getCreds(group1).id,
+      new URLSearchParams({
+        types: "thermal",
+        "tagged-with": "cat",
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 1,
+      }
+    );
   });
 
   it("Group member can view recordings filtered by tag and label", () => {
@@ -608,13 +654,12 @@ describe("Recordings query using improved query API", () => {
           types: "thermal",
           "tagged-with": "cat",
           "labelled-with": "cool",
-          "with-total-count": true.toString(),
         }),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 0,
+          "num-results": 0,
         }
       );
 
@@ -641,13 +686,12 @@ describe("Recordings query using improved query API", () => {
             types: "thermal",
             "tagged-with": "cat",
             "labelled-with": "cool",
-            "with-total-count": true.toString(),
           }),
           undefined,
           EXCLUDE_PARAMS,
           200,
           {
-            count: 1,
+            "num-results": 1,
           }
         );
       });
@@ -663,13 +707,12 @@ describe("Recordings query using improved query API", () => {
           types: "thermal",
           "tagged-with": "possum",
           "labelled-with": "requires review",
-          "with-total-count": true.toString(),
         }),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 0,
+          "num-results": 0,
         }
       );
 
@@ -695,13 +738,12 @@ describe("Recordings query using improved query API", () => {
             types: "thermal",
             "tagged-with": "possum",
             "labelled-with": "requires review",
-            "with-total-count": true.toString(),
           }),
           undefined,
           EXCLUDE_PARAMS,
           200,
           {
-            count: 1,
+            "num-results": 1,
           }
         );
       });
@@ -712,13 +754,12 @@ describe("Recordings query using improved query API", () => {
         getCreds(group1).id,
         new URLSearchParams({
           "labelled-with": "requires review",
-          "with-total-count": true.toString(),
         }),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 1,
+          "num-results": 1,
         }
       );
     }
@@ -729,13 +770,12 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams([
           ["labelled-with", "requires review"],
           ["labelled-with", "cool"],
-          ["with-total-count", true.toString()],
         ]),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 2,
+          "num-results": 2,
         }
       );
     }
@@ -747,13 +787,12 @@ describe("Recordings query using improved query API", () => {
           ["tagged-with", "cat"],
           ["labelled-with", "requires review"],
           ["labelled-with", "cool"],
-          ["with-total-count", true.toString()],
         ]),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 1,
+          "num-results": 1,
         }
       );
     }
@@ -806,14 +845,13 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams({
           types: "thermal",
           "tagged-with": "mammal",
-          "with-total-count": true.toString(),
           "sub-class-tags": false.toString(),
         }),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 0,
+          "num-results": 0,
         }
       );
     }
@@ -824,7 +862,6 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams({
           types: "thermal",
           "tagged-with": "cat",
-          "with-total-count": true.toString(),
           "sub-class-tags": false.toString(),
         }),
         [expectedRecording1],
@@ -865,14 +902,13 @@ describe("Recordings query using improved query API", () => {
         groupAdmin,
         getCreds(group1).id,
         new URLSearchParams({
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
         }),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 4,
+          "num-results": 4,
         }
       );
     }
@@ -881,7 +917,6 @@ describe("Recordings query using improved query API", () => {
         groupAdmin,
         getCreds(group1).id,
         new URLSearchParams({
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
           types: RecordingType.Audio,
         }),
@@ -889,7 +924,7 @@ describe("Recordings query using improved query API", () => {
         EXCLUDE_PARAMS,
         200,
         {
-          count: 1,
+          "num-results": 1,
         }
       );
     }
@@ -898,7 +933,6 @@ describe("Recordings query using improved query API", () => {
         groupAdmin,
         getCreds(group1).id,
         new URLSearchParams({
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
           types: RecordingType.ThermalRaw,
         }),
@@ -906,7 +940,7 @@ describe("Recordings query using improved query API", () => {
         EXCLUDE_PARAMS,
         200,
         {
-          count: 3,
+          "num-results": 3,
         }
       );
     }
@@ -915,7 +949,6 @@ describe("Recordings query using improved query API", () => {
         groupAdmin,
         getCreds(group1).id,
         new URLSearchParams([
-          ["with-total-count", true.toString()],
           ["include-false-positives", true.toString()],
           ["types", RecordingType.ThermalRaw],
           ["types", RecordingType.Audio],
@@ -924,7 +957,7 @@ describe("Recordings query using improved query API", () => {
         EXCLUDE_PARAMS,
         200,
         {
-          count: 4,
+          "num-results": 4,
         }
       );
     }
@@ -939,14 +972,13 @@ describe("Recordings query using improved query API", () => {
         new URLSearchParams({
           locations: group1Recordings[1].stationId.toString(),
           devices: getCreds(group1Device2).id.toString(),
-          "with-total-count": true.toString(),
           "include-false-positives": true.toString(),
         }),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 0,
+          "num-results": 0,
         }
       );
     }
@@ -959,14 +991,13 @@ describe("Recordings query using improved query API", () => {
           ["locations", group1Recordings[1].stationId.toString()],
           ["locations", group1Recordings[0].stationId.toString()],
           ["devices", getCreds(group1Device2).id.toString()],
-          ["with-total-count", true.toString()],
           ["include-false-positives", true.toString()],
         ]),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 2,
+          "num-results": 2,
         }
       );
     }
@@ -979,14 +1010,13 @@ describe("Recordings query using improved query API", () => {
           ["locations", group1Recordings[1].stationId.toString()],
           ["locations", group1Recordings[0].stationId.toString()],
           ["devices", getCreds(group1Device1).id.toString()],
-          ["with-total-count", true.toString()],
           ["include-false-positives", true.toString()],
         ]),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 2,
+          "num-results": 2,
         }
       );
     }
@@ -999,14 +1029,13 @@ describe("Recordings query using improved query API", () => {
           ["locations", "123456789"],
           ["locations", "987654321"],
           ["devices", getCreds(group1Device1).id.toString()],
-          ["with-total-count", true.toString()],
           ["include-false-positives", true.toString()],
         ]),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 0,
+          "num-results": 0,
         }
       );
     }
@@ -1020,14 +1049,13 @@ describe("Recordings query using improved query API", () => {
           ["locations", group1Recordings[0].stationId.toString()],
           ["devices", "123456789"],
           ["devices", "987654321"],
-          ["with-total-count", true.toString()],
           ["include-false-positives", true.toString()],
         ]),
         undefined,
         EXCLUDE_PARAMS,
         200,
         {
-          count: 0,
+          "num-results": 0,
         }
       );
     }
@@ -1036,14 +1064,12 @@ describe("Recordings query using improved query API", () => {
     cy.apiRecordingsQueryV2Check(
       group2Admin,
       getCreds(group2).id,
-      new URLSearchParams({
-        "with-total-count": true.toString(),
-      }),
+      new URLSearchParams({}),
       undefined,
       EXCLUDE_PARAMS,
       200,
       {
-        count: 4,
+        "num-results": 6,
       }
     );
 
@@ -1051,14 +1077,13 @@ describe("Recordings query using improved query API", () => {
       group2Admin,
       getCreds(group2).id,
       new URLSearchParams({
-        "with-total-count": true.toString(),
         "include-false-positives": true.toString(),
       }),
       undefined,
       EXCLUDE_PARAMS,
       200,
       {
-        count: 8,
+        "num-results": 12,
       }
     );
   });
@@ -1068,14 +1093,13 @@ describe("Recordings query using improved query API", () => {
       group2Admin,
       getCreds(group2).id,
       new URLSearchParams({
-        "with-total-count": true.toString(),
         "tag-mode": TagMode.UnTagged,
       }),
       undefined,
       EXCLUDE_PARAMS,
       200,
       {
-        count: 2,
+        "num-results": 3,
       }
     );
   });
@@ -1084,7 +1108,6 @@ describe("Recordings query using improved query API", () => {
       group2Admin,
       getCreds(group2).id,
       new URLSearchParams({
-        "with-total-count": true.toString(),
         "tag-mode": TagMode.UnTagged,
         "labelled-with": "cool",
       }),
@@ -1092,7 +1115,7 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        count: 1,
+        "num-results": 1,
       }
     );
   });
@@ -1102,18 +1125,284 @@ describe("Recordings query using improved query API", () => {
       group2Admin,
       getCreds(group2).id,
       new URLSearchParams({
-        "with-total-count": true.toString(),
         "tagged-with": "false-positive",
       }),
       undefined,
       EXCLUDE_PARAMS,
       200,
       {
-        count: 1,
+        "num-results": 3,
       }
     );
   });
 
-  // Not sure if we want this, front-end can just ask for more?
-  it.skip("Group member can get back an exact number of recordings? (limit)", () => {});
+  it("Group member can view recordings only untagged by a human", () => {
+    // Should pick up automatic tags, and untagged tracks, and recordings without tracks
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.NoHuman,
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 2,
+      }
+    );
+  });
+
+  it("Group member can view recordings only untagged by a human, including filtered tracks", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.NoHuman,
+        "include-false-positives": true.toString(),
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 7,
+      }
+    );
+  });
+
+  it("Group member can view recordings tagged only by AI", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.AutomaticOnly,
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 2,
+      }
+    );
+  });
+
+  it("Group member can view recordings tagged only by AI that have a specific tag", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.AutomaticOnly,
+        "tagged-with": "cat",
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 2,
+      }
+    );
+  });
+
+  it("Group member can view recordings tagged by both AI and a human", () => {
+    // NOTE: By default we don't count if the AI and/or the human tagged a track as false-positive
+    // The AI and human tags must agree.
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.AutomaticHumanUrlSafe,
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 1,
+      }
+    );
+  });
+
+  it("Group member can view deleted recordings", () => {
+    // NOTE: By default we don't count if the AI and/or the human tagged a track as false-positive
+    // The AI and human tags must agree.
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.AutomaticHumanUrlSafe,
+        "include-deleted": true.toString(),
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 2,
+      }
+    );
+  });
+
+  it("Group member can view recordings tagged by only a human", () => {
+    // NOTE: Even if there is an AI false-positive tag and a human tag, we're counting
+    //  that as human-only
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.HumanOnly,
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 2,
+      }
+    );
+  });
+
+  it("Group member can view recordings tagged only by a human that have a specific tag", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.HumanOnly,
+        "tagged-with": "mustelid",
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 1,
+      }
+    );
+  });
+
+  it("Group member can't view recordings tagged only by a human whose tags are ancestors of a specific tag if subclass-tags is false", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.HumanOnly,
+        "tagged-with": "mustelid",
+        "sub-class-tags": false.toString(),
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 0,
+      }
+    );
+  });
+
+  it("Group member can view recordings that have an AI tag", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.AutomaticallyTagged,
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 5,
+      }
+    );
+  });
+
+  it("Group member can view recordings that have a human tag", () => {
+    // Even if there is a human tag correcting this, a non-false-positive AI
+    // tag should still be searchable.
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.HumanTagged,
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 4,
+      }
+    );
+  });
+
+  it("Group member can view recordings tagged by a human that have a specific tag", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.HumanTagged,
+        "tagged-with": "possum",
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 1,
+      }
+    );
+  });
+
+  it("Group member can view recordings tagged by AI that have a specific tag", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "tag-mode": TagMode.AutomaticallyTagged,
+        "tagged-with": "cat",
+      }),
+      undefined,
+      EXCLUDE_PARAMS,
+      200,
+      {
+        "num-results": 2,
+      }
+    );
+  });
+
+  it("Group member can limit number of results", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "max-results": "1",
+      }),
+      undefined,
+      [],
+      200,
+      {
+        "num-results": 1,
+      }
+    );
+  });
+
+  it("Group member can query recordings with a supplied processing state", () => {
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "processing-state": RecordingProcessingState.Finished,
+      }),
+      undefined,
+      [],
+      200,
+      {
+        "num-results": 6,
+      }
+    );
+    cy.apiRecordingsQueryV2Check(
+      group2Admin,
+      getCreds(group2).id,
+      new URLSearchParams({
+        "processing-state": RecordingProcessingState.Analyse,
+      }),
+      undefined,
+      [],
+      200,
+      {
+        "num-results": 0,
+      }
+    );
+  });
 });

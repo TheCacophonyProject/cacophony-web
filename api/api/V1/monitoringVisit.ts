@@ -27,7 +27,7 @@ const MAX_MINS_AFTER_TIME = 70;
 
 type TagName = string;
 
-class Visit {
+export class Visit {
   rawRecordings?: Recording[];
   classification?: string;
   classificationAi?: string;
@@ -454,7 +454,6 @@ async function getRecordings(
 ) {
   const types = [];
   const allowedTypes = [
-    RecordingType.Audio,
     RecordingType.ThermalRaw,
     RecordingType.TrailCamImage,
     RecordingType.TrailCamVideo,

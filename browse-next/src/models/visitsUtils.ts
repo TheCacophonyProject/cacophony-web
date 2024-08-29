@@ -48,7 +48,7 @@ const tagPrecedence = [
   }
 })();
 
-export const visitsByStation = (
+export const visitsByLocation = (
   visits: ApiVisitResponse[]
 ): Record<number, ApiVisitResponse[]> =>
   visits.reduce((acc, visit) => {
@@ -162,6 +162,7 @@ export const visitsByNightAtLocation = (
   location: LatLng
 ): [DateTime, ApiVisitResponse[]][] => {
   const zone = timezoneForLatLng(location);
+  console.log("Recalc visitsByNightAtLocation", visits.length);
   const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
   for (const visit of visits) {
     // If the visit is after sunset, and before sunrise, it goes to the current day
@@ -305,5 +306,18 @@ export const dayAndTimeAtLocation = (
     hour: "numeric",
     minute: "2-digit",
     hourCycle: "h12",
+  });
+};
+
+export const intlFormatForLocation = (location: LatLng) => {
+  return new Intl.DateTimeFormat("en-NZ", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+    timeZone: timezoneForLatLng(location),
   });
 };

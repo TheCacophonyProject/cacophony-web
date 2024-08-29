@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import type { Ref } from "vue";
+import { type ComputedRef, inject, type Ref } from "vue";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   CptvFrame,
@@ -42,14 +42,33 @@ import {
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
-import type { LoggedInUserAuth } from "@models/LoggedInUser";
-import { CurrentUserCreds } from "@models/LoggedInUser";
+import type { LoggedInUserAuth, SelectedProject } from "@models/LoggedInUser";
 import { maybeRefreshStaleCredentials } from "@api/fetch";
 import { type CancelableDelay, delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
 import { getReferenceImageForDeviceAtTime } from "@api/Device.ts";
+import {
+  currentSelectedProject as currentActiveProject,
+  currentUserCreds,
+  currentUserCredsDev,
+} from "@models/provides.ts";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+
+const currentProject = inject(currentActiveProject) as ComputedRef<
+  SelectedProject | false
+>;
+const userProjectSettings = computed<ApiProjectUserSettings>(() => {
+  return (
+    (currentProject.value as SelectedProject).userSettings || {
+      displayMode: "visits",
+      tags: [],
+      notificationPreferences: {},
+      showFalseTriggers: false,
+    }
+  );
+});
 
 const { pixelRatio } = useDevicePixelRatio();
 const props = withDefaults(
@@ -480,7 +499,10 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       if (await cptvDecoder.hasStreamError()) {
         streamLoadError.value = await cptvDecoder.getStreamError();
         await cptvDecoder.free();
+      }
+      if (frames.length !== 0) {
         totalFrames.value = frames.length;
+        console.log("total frames", totalFrames.value);
       }
       break;
     }
@@ -802,16 +824,21 @@ const elapsedTime = computed<string>(() => {
 });
 
 const headerInfo = computed(() => formatHeaderInfo(header.value));
-
+const loadDateTime = ref<Date>(new Date());
 const getAuthoritativeTagForTrack = (
   trackTags: ApiTrackTagResponse[]
-): [string, boolean] | null => {
+): [string, boolean, boolean] | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
     // FIXME - There can be more than one conflicting user tag...
 
     // TODO: Add an option to also include the AI guess, plus the confidence at each frame.
-    return [userTags[0].what, false];
+    return [
+      userTags[0].what,
+      false,
+      !!userTags[0].createdAt &&
+        new Date(userTags[0].createdAt) > loadDateTime.value,
+    ];
   } else {
     const tag = trackTags.find(
       (tag) =>
@@ -820,7 +847,7 @@ const getAuthoritativeTagForTrack = (
           tag.data.name &&
           tag.data.name === "Master")
     )?.what;
-    return (tag && [tag, true]) || null;
+    return (tag && [tag, true, false]) || null;
   }
 };
 
@@ -852,14 +879,19 @@ const tracksIntermediate = computed<IntermediateTrack[]>(() => {
   return (
     props.recording?.tracks.map(({ positions, tags, id }) => {
       let what = null;
+      let justTaggedFalseTrigger = false;
       if (tags) {
         const authTag = getAuthoritativeTagForTrack(tags);
         if (authTag) {
           what = authTag[0];
+          if (what === "false-positive" && authTag[2]) {
+            justTaggedFalseTrigger = true;
+          }
         }
       }
       return {
         what,
+        justTaggedFalseTrigger,
         positions: getPositions(
           positions as ApiTrackPosition[],
           timeAdjustmentForBackgroundFrame.value,
@@ -868,6 +900,11 @@ const tracksIntermediate = computed<IntermediateTrack[]>(() => {
         id,
       };
     }) || []
+  ).filter(
+    (track) =>
+      userProjectSettings.value.showFalseTriggers ||
+      (!userProjectSettings.value.showFalseTriggers &&
+        (track.what !== "false-positive" || track.justTaggedFalseTrigger))
   );
 });
 
@@ -995,7 +1032,6 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       return;
     }
     // Make sure everything is loaded to ensure that we have final min/max numbers for normalisation
-    //await ensureEntireFileIsLoaded();
     await makeSureWeHaveTheFrame(100000);
 
     if (await cptvDecoder.hasStreamError()) {
@@ -1019,13 +1055,19 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     const numTotalFrames = totalFrames.value || 0;
     let startFrame = 0;
     let onePastLastFrame = numTotalFrames;
+    let options: TrackExportOption[];
+    if (useExportOptions.length) {
+      options = useExportOptions;
+    } else {
+      options = trackExportOptions.value;
+    }
     if (
-      trackExportOptions.value.filter((track) => track.includeInExportTime)
-        .length !== 0
+      options.filter((track) => track.includeInExportTime).length !== 0 &&
+      props.exportRequested === "advanced"
     ) {
       startFrame = numTotalFrames;
       onePastLastFrame = 0;
-      for (const { includeInExportTime, trackId } of trackExportOptions.value) {
+      for (const { includeInExportTime, trackId } of options) {
         if (includeInExportTime) {
           const track = (props.recording as ApiRecordingResponse).tracks.find(
             (track) => track.id === trackId
@@ -1089,7 +1131,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         timeSinceLastFFCSeconds,
         true,
         frameNum,
-        props.recording?.tracks || [],
+        tracksIntermediate.value,
         props.canSelectTracks,
         props.currentTrack,
         motionPathMode.value ? motionPaths.value : [],
@@ -1119,13 +1161,25 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       isExporting.value = false;
       return;
     }
-    const recordingIdSuffix = `recording_${props.recordingId}__`;
+    const recordingIdSuffix = `recording-${props.recordingId}-`;
     trackExportOptions.value = exportOptions.value;
+
+    let date: DateTime = DateTime.fromJSDate(
+      new Date((header.value as CptvHeader).timestamp / 1000)
+    );
+    if (props.recording && props.recording.location) {
+      const zone = timezoneForLatLng(props.recording.location);
+      date = DateTime.fromJSDate(
+        new Date((header.value as CptvHeader).timestamp / 1000),
+        {
+          zone,
+        }
+      );
+    }
+
     download(
       URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
-      `${recordingIdSuffix}${new Date(
-        (header.value as CptvHeader).timestamp / 1000
-      ).toLocaleString()}`
+      `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`
     );
     isExporting.value = false;
     emit("export-completed");
@@ -1225,7 +1279,7 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
         secondsSinceLastFFC.value,
         false,
         frameNumToRender,
-        props.recording?.tracks || [],
+        tracksIntermediate.value,
         props.canSelectTracks,
         props.currentTrack,
         motionPathMode.value ? motionPaths.value : [],
@@ -1304,10 +1358,13 @@ watch(frameNum, () => {
   // If there's only one possible track for this frame, set it to selected.
   const frameTracks =
     tracksByFrame.value[frameNum.value] || ([] as [TrackId, TrackBox][]);
-  if (props.currentTrack && props.canSelectTracks && frameTracks.length === 1) {
+  if (props.canSelectTracks && frameTracks.length === 1) {
     const trackId = frameTracks[0][0];
     // If the track is the only track at this time offset, make it the selected track.
-    if (props.currentTrack.id !== trackId) {
+    if (
+      !props.currentTrack ||
+      (props.currentTrack && props.currentTrack.id !== trackId)
+    ) {
       emit("track-selected", { trackId, automatically: true });
     }
   }
@@ -1689,6 +1746,15 @@ watch(
   }
 );
 
+const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
+const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
+const creds = computed<LoggedInUserAuth | null>(() => {
+  if (import.meta.env.DEV) {
+    return devCreds.value;
+  }
+  return prodCreds.value;
+});
+
 const currentRecordingType = ref<"cptv" | "image">("cptv");
 let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
@@ -1719,11 +1785,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   // Our api token could be out of date
   await maybeRefreshStaleCredentials();
   loadTimeout && loadTimeout.cancel();
-  if (CurrentUserCreds.value) {
+  if (creds.value) {
     loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
       nextRecordingId,
       props.cptvSize || 0,
-      (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+      (creds.value as LoggedInUserAuth).apiToken
     );
   }
 
@@ -2405,7 +2471,7 @@ watch(
   .video-canvas {
     width: 100%;
     height: 100%;
-    max-width: 100vh;
+    //max-width: 100vh;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     &.smoothed {

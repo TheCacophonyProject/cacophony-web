@@ -30,7 +30,11 @@ const currentProjectName = computed<string>(() => {
       >
         <font-awesome-icon icon="bars" />
       </button>
-      <h2 class="m-0 ms-1 mb-sm-4 ms-sm-0"><slot></slot></h2>
+      <h2
+        class="m-0 ms-1 mb-sm-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
+      >
+        <slot></slot>
+      </h2>
     </div>
   </div>
 </template>

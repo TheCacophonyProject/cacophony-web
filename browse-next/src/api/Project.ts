@@ -28,12 +28,18 @@ export const saveProjectSettings = (
   settings: ApiProjectSettings
 ) => CacophonyApi.patch(`/api/v1/groups/${id}/group-settings`, { settings });
 
-export const getProjects = (abortable: boolean) => {
+export const getCurrentUserProjects = (abortable: boolean) => {
   const params = new URLSearchParams();
   if (!shouldViewAsSuperUser.value) {
     params.append("view-mode", "user");
   }
   return CacophonyApi.get(`/api/v1/groups?${params}`, abortable) as Promise<
+    FetchResult<{ groups: ApiProjectResponse[] }>
+  >;
+};
+
+export const getAllProjects = (abortable: boolean) => {
+  return CacophonyApi.get(`/api/v1/groups`, abortable) as Promise<
     FetchResult<{ groups: ApiProjectResponse[] }>
   >;
 };
@@ -135,9 +141,6 @@ export const getDevicesForProject = (
   NO_ABORT = false
 ): Promise<LoadedResource<ApiDeviceResponse[]>> => {
   const params = new URLSearchParams();
-  if (!shouldViewAsSuperUser.value) {
-    params.append("view-mode", "user");
-  }
   params.append(
     "only-active",
     activeAndInactive ? false.toString() : true.toString()
@@ -153,15 +156,17 @@ export const getDevicesForProject = (
 
 export const getLocationsForProject = (
   projectNameOrId: string,
-  activeAndInactive = false
+  activeAndInactive = false, // Only active locations by default (non-retired)
+  withRecordings = true // Only locations with recordings - locations with all recordings deleted won't show.
 ): Promise<LoadedResource<ApiLocationResponse[]>> => {
   const params = new URLSearchParams();
-  if (!shouldViewAsSuperUser.value) {
-    params.append("view-mode", "user");
-  }
   params.append(
     "only-active",
     activeAndInactive ? false.toString() : true.toString()
+  );
+  params.append(
+    "with-recordings",
+    withRecordings ? false.toString() : true.toString()
   );
   return unwrapLoadedResource(
     CacophonyApi.get(

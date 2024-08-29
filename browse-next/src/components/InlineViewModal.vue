@@ -5,6 +5,7 @@ import { useRoute, useRouter } from "vue-router";
 import type { RouteRecordName } from "vue-router";
 import { BModal } from "bootstrap-vue-next";
 import { urlNormalisedCurrentSelectedProjectName } from "@models/provides";
+import type { RecordingId } from "@typedefs/api/common";
 const route = useRoute();
 const router = useRouter();
 const emit = defineEmits(["close", "shown"]);
@@ -35,6 +36,7 @@ const closedModal = () => {
     params,
     query: route.query,
   });
+  console.log("Closed modal");
   emit("close");
 };
 const modal = ref<typeof BModal | null>(null);
@@ -59,9 +61,14 @@ watch(route, (next) => {
 
 const noFadeInternal = ref<boolean>(!props.fadeIn);
 const onShown = () => {
-  noFadeInternal.value = false;
+  setTimeout(() => {
+    noFadeInternal.value = false;
+  }, 100);
   emit("shown");
 };
+
+// eslint-disable-next-line @typescript-eslint/no-empty-function
+const updatedRecording = (recordingId: RecordingId, action: string) => {};
 
 const isBusy = ref<boolean>(false);
 </script>
@@ -99,6 +106,7 @@ const isBusy = ref<boolean>(false);
         @close="show = false"
         @start-blocking-work="isBusy = true"
         @end-blocking-work="isBusy = false"
+        @recording-updated="updatedRecording"
       />
     </b-modal>
   </router-view>

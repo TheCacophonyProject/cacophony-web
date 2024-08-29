@@ -506,6 +506,7 @@ export const fetchModel =
       id2 = extractValFromRequest(request, secondary) as string;
     }
     response.locals.onlyActive = true; // Default to only showing active devices.
+    response.locals.withRecordings = false; // Default to showing stations without any recordings.
     if (
       ("onlyActive" in request.query &&
         Boolean(request.query.onlyActive) === false) ||
@@ -513,6 +514,12 @@ export const fetchModel =
         Boolean(request.query["only-active"]) === false)
     ) {
       response.locals.onlyActive = false;
+    }
+    if (
+      "with-recordings" in request.query &&
+      Boolean(request.query["with-recordings"]) === true
+    ) {
+      response.locals.withRecordings = true;
     }
     if ("deleted" in request.query) {
       response.locals.deleted = Boolean(request.query.deleted);
@@ -727,6 +734,24 @@ const getStations =
       (getStationsOptions as any).where =
         (getStationsOptions as any).where || {};
       (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
+    }
+    if (context.withRecordings) {
+      (getStationsOptions as any).where =
+        (getStationsOptions as any).where || {};
+      (getStationsOptions as any).where[Op.and] = [
+        {
+          [Op.or]: [
+            {
+              lastThermalRecordingTime: { [Op.ne]: null },
+              lastAudioRecordingTime: { [Op.ne]: null },
+              automatic: true,
+            },
+            {
+              automatic: false,
+            },
+          ],
+        },
+      ];
     }
 
     return models.Station.findAll({
@@ -1148,7 +1173,11 @@ const getRecordings =
   };
 
 const getDevice =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    forRequestUser: boolean = false,
+    asAdmin: boolean = false,
+    forDevice: boolean = false
+  ) =>
   (
     deviceNameOrId: string,
     groupNameOrId?: string,
@@ -1233,12 +1262,13 @@ const getDevice =
             ],
           };
         }
-      } else {
+      } else if (!forDevice) {
         return Promise.resolve(
           new ClientError("No authorizing user specified")
         );
       }
-    } else {
+    }
+    if (!getDeviceOptions) {
       getDeviceOptions = {
         where: deviceWhere,
         attributes: deviceAttributes,
@@ -1251,6 +1281,7 @@ const getDevice =
         ],
       };
     }
+
     // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
@@ -1460,6 +1491,7 @@ const getUnauthorizedGenericModelById =
 
 const getDeviceUnauthenticated = getDevice();
 const getDeviceForRequestUser = getDevice(true);
+const getDeviceForUserOrDevice = getDevice(true, false, true);
 
 const getDeviceForRequestUserAsAdmin = getDevice(true, true);
 const getDevicesForRequestUser = getDevices(true, false);
@@ -1544,7 +1576,7 @@ export const fetchAuthorizedRequiredDeviceById = (deviceId: ValidationChain) =>
     models.Device,
     false,
     true,
-    getDeviceForRequestUser,
+    getDeviceForUserOrDevice,
     deviceId
   );
 
@@ -1706,7 +1738,7 @@ export const fetchUnauthorizedRequiredUserByResetToken =
     try {
       resetInfo = getDecodedToken(token);
     } catch (e) {
-      return next(new AuthenticationError(`Reset token expired`));
+      return next(e);
     }
     response.locals.resetInfo = resetInfo;
     const user = await models.User.findByPk(response.locals.resetInfo.id);

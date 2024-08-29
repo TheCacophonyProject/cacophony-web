@@ -35,7 +35,6 @@ export interface MonitoringParams {
   pageSize: number;
   types?: (
     | RecordingType.ThermalRaw
-    | RecordingType.Audio
     | RecordingType.TrailCamVideo
     | RecordingType.TrailCamImage
   )[];

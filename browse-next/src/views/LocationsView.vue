@@ -31,7 +31,18 @@ onMounted(async () => {
 const locationsForMap = computed<NamedPoint[]>(() => {
   if (locations.value) {
     return (locations.value as ApiLocationResponse[])
-      .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
+      .filter((location) => {
+        const {
+          location: loc,
+          lastThermalRecordingTime,
+          lastAudioRecordingTime,
+        } = location;
+        return (
+          loc.lng !== 0 &&
+          loc.lat !== 0 &&
+          (!!lastThermalRecordingTime || !!lastAudioRecordingTime)
+        );
+      })
       .map(({ name, groupName, location }) => ({
         name,
         project: groupName,
@@ -168,10 +179,10 @@ const projectHasLocations = computed<boolean>(() => {
   <div>
     <section-header>Locations</section-header>
     <div
-      class="justify-content-center align-items-center d-flex flex-fill"
+      class="justify-content-center align-content-center d-flex flex-fill"
       v-if="loadingLocations"
     >
-      <h1 class="h3"><b-spinner /> Loading locations...</h1>
+      <b-spinner size="xl" /> <span class="h3 ms-3">Loading locations...</span>
       <!--      TODO - Maybe use bootstrap 'placeholder' elements -->
     </div>
     <div
@@ -198,6 +209,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
 
         <h6 v-if="locationsActiveInLastMonth.length">Active in past month</h6>
@@ -207,6 +219,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
 
         <h6 v-if="locationsActiveInLastYear.length">Active in past year</h6>
@@ -216,6 +229,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
 
         <h6 v-if="locationsNotActiveInLastYear.length">
@@ -227,6 +241,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
         <h6 v-if="retiredLocations.length">Retired</h6>
         <locations-overview-table
@@ -235,6 +250,7 @@ const projectHasLocations = computed<boolean>(() => {
           :highlighted-item="locationForHighlightedPoint"
           @entered-item="enteredTableItem"
           @left-item="leftTableItem"
+          class="mb-4"
         />
       </div>
       <map-with-points

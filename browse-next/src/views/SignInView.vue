@@ -167,7 +167,10 @@ const signInFormIsFilledAndValid = computed<boolean>(
       </button>
     </b-form>
     <div class="alternate-action-links d-flex justify-content-between my-2">
-      <router-link :to="{ name: 'forgot-password' }" class="small"
+      <router-link
+        :to="{ name: 'forgot-password' }"
+        class="small"
+        data-cy="forgotten password link"
         >Forgot password?</router-link
       >
       <router-link :to="{ name: 'register' }" class="small"

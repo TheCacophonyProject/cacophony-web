@@ -729,7 +729,8 @@ export function TestCreateExpectedDevice(
   hasDeviceConnected: boolean = false,
   type: DeviceType = DeviceType.Unknown,
   admin: boolean = true,
-  active: boolean = true
+  active: boolean = true,
+  isHealthy: boolean = true
 ) {
   const expectedDevice: ApiDeviceResponse = {
     id: getCreds(deviceName).id,
@@ -737,9 +738,10 @@ export function TestCreateExpectedDevice(
     deviceName: getTestName(deviceName),
     groupName: getTestName(groupName),
     groupId: getCreds(groupName).id,
-    type: type,
-    admin: admin,
-    active: active,
+    type,
+    admin,
+    active,
+    isHealthy,
   };
   if (hasDeviceConnected == true) {
     expectedDevice.lastConnectionTime = NOT_NULL_STRING;

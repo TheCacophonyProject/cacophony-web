@@ -24,6 +24,7 @@ import {
   isSmallScreen,
   showUnimplementedModal,
   DevicesForCurrentProject,
+  isViewingAsSuperUser,
 } from "@/models/LoggedInUser";
 import type { SelectedProject, LoggedInUser } from "@/models/LoggedInUser";
 import {
@@ -195,7 +196,9 @@ onMounted(() => {
       class="d-flex flex-column align-items-center justify-content-center user-select-none"
     >
       <b-spinner variant="secondary" />
-      <span class="h3 d-block mt-3"> Signing in...</span>
+      <span class="h3 d-block mt-3"
+        ><span v-if="isLoggingInAutomatically">Signing in...</span></span
+      >
     </div>
   </main>
   <main
@@ -246,6 +249,7 @@ onMounted(() => {
           <button
             class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
             v-if="userHasMultipleProjects"
+            data-cy="switch project button"
             @click="() => (showSwitchProject.enabled = true)"
           >
             {{ selectedProject.groupName }}
@@ -275,13 +279,17 @@ onMounted(() => {
             <b-dropdown-item-button
               @click.stop.prevent="creatingNewProject.enabled = true"
             >
-              Create a new project
+              <span data-cy="create new project button"
+                >Create a new project</span
+              >
             </b-dropdown-item-button>
             <b-dropdown-item-button
               data-cy="join existing project button"
               @click.stop.prevent="joiningNewProject.enabled = true"
             >
-              Join an existing project
+              <span data-cy="join existing project button"
+                >Join an existing project</span
+              >
             </b-dropdown-item-button>
           </b-dropdown>
         </div>
@@ -375,7 +383,7 @@ onMounted(() => {
                 >
                   <path
                     d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
-                    fill="#d9001b"
+                    fill="darkred"
                   />
                 </svg>
               </span>
@@ -404,7 +412,7 @@ onMounted(() => {
         <!--            <span>Report</span>-->
         <!--          </router-link>-->
         <!--        </li>-->
-        <li class="nav-item">
+        <li class="nav-item" v-if="!isViewingAsSuperUser">
           <router-link
             :to="{
               name: 'user-project-settings',
@@ -424,7 +432,10 @@ onMounted(() => {
             <span>My&nbsp;preferences</span>
           </router-link>
         </li>
-        <li class="nav-item" v-if="userIsAdminForCurrentSelectedProject">
+        <li
+          class="nav-item"
+          v-if="userIsAdminForCurrentSelectedProject || isViewingAsSuperUser"
+        >
           <router-link
             :to="{
               name: 'project-settings',
@@ -485,11 +496,15 @@ onMounted(() => {
       class="nav-bg"
       :class="{ visible: showSideNavBg, hidden: hideNavBg }"
     ></div>
-    <section id="main-content" :class="{ 'offset-content': isWideScreen }">
-      <div class="container-xxl py-0">
+    <section
+      id="main-content"
+      :class="{ 'offset-content': isWideScreen }"
+      class="d-flex"
+    >
+      <div class="container-xxl py-0 d-flex flex-fill flex-column">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
-        <div class="d-flex flex-column router-view">
+        <div class="d-flex flex-column router-view flex-fill">
           <router-view />
         </div>
       </div>
@@ -819,3 +834,4 @@ main {
 }
 </style>
 <style src="vue-multiselect/dist/vue-multiselect.css"></style>
+<style src="@vueform/multiselect/themes/default.css"></style>

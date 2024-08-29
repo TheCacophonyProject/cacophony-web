@@ -35,6 +35,7 @@ import {
 import type { ActivitySearchParams } from "@views/ActivitySearchView.vue";
 import { type LocationQuery, useRoute, useRouter } from "vue-router";
 import { useElementBounding } from "@vueuse/core";
+import { urlNormaliseName } from "@/utils.ts";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -571,6 +572,13 @@ const getCurrentQuery = (): LocationQuery => {
   } else {
     delete query["labelled-with"];
   }
+  if (query["display-mode"] === "visits") {
+    delete query["tag-mode"];
+    delete query["labelled-with"];
+    delete query["no-false-positives"];
+    delete query["include-descendant-tags"];
+    delete query["recording-mode"];
+  }
   return query;
 };
 const updateDateRouteComponent = async (
@@ -602,13 +610,24 @@ const updateDateRouteComponent = async (
         delete query.until;
       }
     } else {
-      query.from = combinedDateRange.value[0].toISOString();
-      query.until = combinedDateRange.value[1].toISOString();
+      query.from = startOfDay(combinedDateRange.value[0]).toISOString();
+      query.until = endOfDay(combinedDateRange.value[1]).toISOString();
     }
     await router.replace({
       query,
     });
   }
+};
+
+const endOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+const startOfDay = (d: Date): Date => {
+  const date = new Date(d);
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
 const updateRoute = async (
@@ -701,6 +720,7 @@ const syncParams = (
   } else {
     selectedTags.value = [];
   }
+  showUntaggedOnly.value = tagMode.value === TagMode.UnTagged;
   if (next.labelledWith && next.labelledWith.length) {
     starredLabel.value = next.labelledWith.includes(COOL);
     flaggedLabel.value = next.labelledWith.includes(FLAG);
@@ -741,7 +761,7 @@ const syncParams = (
       const from = new Date(next.from).getTime();
       const until = new Date(next.until).getTime();
       const min = minDateForProject.value.getTime();
-      const max = maxDateForProject.value.getTime();
+      const max = endOfDay(new Date()).getTime(); //maxDateForProject.value.getTime();
       const constrainedFrom = Math.min(Math.max(from, min), max);
       const constrainedUntil = Math.min(Math.max(until, min), max);
       const constrainedRange =
@@ -789,8 +809,16 @@ const hasAdvancedFiltersSet = computed<boolean>(() => {
 onBeforeMount(() => {
   watchProps.value = watch(props.params, syncParams, {
     deep: true,
-    immediate: true,
+    immediate: false,
   });
+  if (
+    currentProject.value &&
+    urlNormaliseName(currentProject.value.groupName) ===
+      route.params.projectName
+  ) {
+    syncParams(props.params, undefined);
+  }
+
   watchRecordingMode.value = watch(recordingMode, updateRoute);
   watchDisplayMode.value = watch(displayMode, updateRoute);
   watchCombinedDateRange.value = watch(
@@ -868,37 +896,37 @@ const scrolledToStickyPosition = computed<boolean>(() => {
 
 <template>
   <div ref="searchParamsContainer">
-    <div
-      class="btn-group btn-group-sm d-flex mb-2"
-      role="group"
-      aria-label="Toggle between camera and bird monitor results"
-      v-if="projectHasAudioAndThermal"
-    >
-      <input
-        type="radio"
-        class="btn-check"
-        name="recording-mode"
-        id="recording-mode-cameras"
-        autocomplete="off"
-        v-model="recordingMode"
-        value="cameras"
-      />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"
-        >Cameras</label
-      >
-      <input
-        type="radio"
-        class="btn-check"
-        name="recording-mode"
-        id="recording-mode-audio"
-        autocomplete="off"
-        v-model="recordingMode"
-        value="audio"
-      />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"
-        >Bird Monitors</label
-      >
-    </div>
+    <!--    <div-->
+    <!--      class="btn-group btn-group-sm d-flex mb-2"-->
+    <!--      role="group"-->
+    <!--      aria-label="Toggle between camera and bird monitor results"-->
+    <!--      v-if="projectHasAudioAndThermal"-->
+    <!--    >-->
+    <!--      <input-->
+    <!--        type="radio"-->
+    <!--        class="btn-check"-->
+    <!--        name="recording-mode"-->
+    <!--        id="recording-mode-cameras"-->
+    <!--        autocomplete="off"-->
+    <!--        v-model="recordingMode"-->
+    <!--        value="cameras"-->
+    <!--      />-->
+    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"-->
+    <!--        >Cameras</label-->
+    <!--      >-->
+    <!--      <input-->
+    <!--        type="radio"-->
+    <!--        class="btn-check"-->
+    <!--        name="recording-mode"-->
+    <!--        id="recording-mode-audio"-->
+    <!--        autocomplete="off"-->
+    <!--        v-model="recordingMode"-->
+    <!--        value="audio"-->
+    <!--      />-->
+    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"-->
+    <!--        >Bird Monitors</label-->
+    <!--      >-->
+    <!--    </div>-->
     <div
       class="btn-group d-flex"
       :class="{ 'btn-group-sm': scrolledToStickyPosition }"
@@ -1003,7 +1031,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       tooltip
       custom-class="tag-info-popover"
       placement="right-start"
-      container="body"
+      teleport-to="body"
       :target="falsePositiveInfoParent"
     >
       Include recordings that are only tagged as false trigger, or which have no
@@ -1060,7 +1088,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         </div>
         <b-popover
           click
-          container="body"
+          teleport-to="body"
           variant="secondary"
           v-model="toggleSubspeciesHelp"
           tooltip
@@ -1111,16 +1139,16 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       />
     </div>
   </div>
-  <b-button
-    variant="secondary"
-    class="w-100 mt-3"
-    :size="scrolledToStickyPosition ? 'sm' : 'md'"
-    :disabled="!searchIsValid || searching"
-    @click="emit('search-requested')"
-  >
-    <b-spinner v-if="searching" small />
-    Search
-  </b-button>
+  <!--  <b-button-->
+  <!--    variant="secondary"-->
+  <!--    class="w-100 mt-3"-->
+  <!--    :size="scrolledToStickyPosition ? 'sm' : 'md'"-->
+  <!--    :disabled="!searchIsValid || searching"-->
+  <!--    @click="emit('search-requested')"-->
+  <!--  >-->
+  <!--    <b-spinner v-if="searching" small />-->
+  <!--    Search-->
+  <!--  </b-button>-->
   <b-button
     variant="link"
     :size="scrolledToStickyPosition ? 'sm' : 'md'"

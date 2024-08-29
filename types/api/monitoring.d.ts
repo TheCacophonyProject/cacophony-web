@@ -24,7 +24,6 @@ export interface MonitoringPageCriteria {
   searchUntil?: Date;
   types?: (
     | RecordingType.ThermalRaw
-    | RecordingType.Audio
     | RecordingType.TrailCamVideo
     | RecordingType.TrailCamImage
   )[];

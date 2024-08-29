@@ -1,0 +1,82 @@
+<tr>
+  <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+    <br>
+    <div style="font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#333333;padding-right:24px">
+      🚨 Service Errors 🚨
+    </div>
+    <div style="font-family:Helvetica, Arial, sans-serif;font-size:18px;line-height:20px;text-align:left;margin-bottom:24px;color:#333333 !important;">{{ fromDate }} &ndash; {{ untilDate }}</div>
+    <br>
+    <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333 !important;">
+      {{^serviceErrors}}
+      There were no service errors in the past 24 hours.<br>
+      {{/serviceErrors}}
+      {{#serviceErrors}}
+        <div style="font-family:Helvetica, Arial, sans-serif;font-size:20px;line-height:40px;text-align:left;margin-bottom: 10px;font-weight: bold;color:#111111 !important;">⚠️ Salt node-group: {{unit}}</div>
+        {{#unitErrorsByVersion}}
+        <div class="service-unit" style="padding-bottom: 24px;">
+          {{#errors}}
+            <div class="unit-and-version" style="background: #ececec;font-size: 16px;padding: 12px;margin-bottom: 24px;font-family:Helvetica, Arial, sans-serif;text-align:left;color:#111111 !important;">
+              <div style="margin-bottom: 12px;"><strong>Service: </strong>{{unit}}.service</div>
+              <div><strong>Version:</strong> {{version}}</div>
+            </div>
+            {{#errors}}
+            <div class="error-event" style="border-left: 4px solid black;padding-left: 12px;margin-bottom: 24px;">
+              <div style="font-family:Helvetica, Arial, sans-serif;font-size:16px;line-height:16px;margin-bottom: 12px;text-align:left;color:#111111 !important;"><strong>{{count}} of this error event</strong></div>
+              <div style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:14px;margin-bottom:16px;text-align:left;color:#111111 !important;">{{from}} &ndash; {{until}}</div>
+              <div style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:14px;margin-bottom: 12px;text-align:left;color:#111111 !important;"><strong>Devices affected:</strong></div>
+              <div style="margin-bottom: 10px;">
+                {{#devices}}
+                <span class="devices-affected" style="display: inline-block;background: #ececec;color: #111 !important;padding: 4px;margin-bottom: 6px;margin-right: 6px;font-weight: bold;font-size: 14px;">
+                  <strong class="device-name" style="padding-right: 5px;">{{name}}</strong>
+                  <span class="device-id" style="padding: 2px 4px;background: white;font-weight: normal;color: #111 !important;">#{{id}}</span>
+                </span>
+                {{/devices}}
+              </div>
+              <div style="font-size: 11px; background-color: black !important; color: yellowgreen; border-radius: 3px; padding: 3px;">
+                <ol style="margin: 0;padding: 0;padding-left: 20px;">
+                {{#logging}}
+                  <li style="{{level}}"><code style="display: block;">{{line}}</code></li>
+                {{/logging}}
+                </ol>
+              </div>
+            </div>
+            {{/errors}}
+          {{/errors}}
+        </div>
+        {{/unitErrorsByVersion}}
+      {{/serviceErrors}}
+      <div style="margin-top: 30px;font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#333333;padding-right:24px">☢️ Devices currently failing salt update ☢️</div>
+      {{^failingDevices}}
+      None
+      {{/failingDevices}}
+      {{#failingDevices}}
+        <div style="font-family:Helvetica, Arial, sans-serif;font-size:20px;line-height:40px;text-align:left;margin-bottom: 10px;font-weight: bold;color:#111111 !important;">⚠️ Salt node-group: {{unit}}</div>
+        <div style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:14px;margin-bottom: 12px;text-align:left;color:#111111 !important;"><strong>Devices affected:</strong></div>
+        <div style="margin-bottom: 10px;">
+          {{#devices}}
+          <span class="devices-affected" style="display: inline-block;background: #ececec;color: #111 !important;padding: 4px;margin-bottom: 6px;margin-right: 6px;font-weight: bold;font-size: 14px;">
+            <strong class="device-name" style="padding-right: 5px;">{{name}}</strong>
+            <span class="device-id" style="padding: 2px 4px;background: white;font-weight: normal;color: #111 !important;">#{{id}}</span>
+          </span>
+          {{/devices}}
+        </div>
+      {{/failingDevices}}
+
+      <br><br>
+      &ndash; The Cacophony Team.
+      <br><br>
+    </div>
+  </td>
+</tr>
+<tr>
+  <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
+    <br><br>
+
+    <strong>The Cacophony Project.</strong><br>
+    <span class="ios-footer">
+New Zealand.<br>
+</span>
+    <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+    <br><br>
+  </td>
+</tr>

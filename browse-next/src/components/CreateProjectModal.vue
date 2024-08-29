@@ -14,7 +14,9 @@ import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
 
 const newProjectName = formFieldInputText();
-const isValidProjectName = computed<boolean>(() => newProjectName.value !== "");
+const isValidProjectName = computed<boolean>(
+  () => newProjectName.value !== "" && newProjectName.value.length > 2
+);
 const needsValidationAndIsValidProjectName = computed<FormInputValidationState>(
   () => (newProjectName.touched ? isValidProjectName.value : undefined)
 );
@@ -86,9 +88,8 @@ const createNewProject = async () => {
         <span v-if="newProjectName.value.trim().length === 0">
           Project name cannot be blank
         </span>
-        <span v-else-if="newProjectName.value.trim().length <= 8">
-          Project name must be at least 8 characters // TODO - project name
-          regex (include macrons)
+        <span v-else-if="newProjectName.value.trim().length < 3">
+          Project name must be at least 3 characters
         </span>
       </b-form-invalid-feedback>
     </b-form>

@@ -16,8 +16,18 @@ const projectAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
 const projectChosen = ref<string>("");
 const joinableProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
+const hasJoinableProjects = computed<boolean>(
+  () => !!joinableProjects.value && joinableProjects.value.length !== 0
+);
+const hasMultipleJoinableProjects = computed<boolean>(
+  () => !!joinableProjects.value && joinableProjects.value.length > 1
+);
 const emailIsTooShort = computed<boolean>(
   () => projectAdminEmailAddress.value.trim().length < 3
+);
+
+const joinableProjectsLoaded = computed<boolean>(
+  () => !!joinableProjects.value
 );
 
 const joinableProjectsCheckboxOptions = computed<
@@ -120,7 +130,7 @@ const getGroupsForAdmin = async () => {
         <b-form-input
           type="email"
           v-model="projectAdminEmailAddress.value"
-          @blur="groupAdminEmailAddress.touched = true"
+          @blur="projectAdminEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="project admin email address"
           placeholder="project admin email address"
@@ -135,7 +145,7 @@ const getGroupsForAdmin = async () => {
       </div>
       <div
         class="input-group justify-content-end d-flex"
-        v-if="!joinableProjects"
+        v-if="!joinableProjectsLoaded"
       >
         <button
           class="btn btn-primary"
@@ -146,12 +156,12 @@ const getGroupsForAdmin = async () => {
           Next
         </button>
       </div>
-      <div v-else-if="joinableProjects && joinableProjects.length === 0">
+      <div v-else-if="!hasJoinableProjects">
         <p>
           This user is not the administrator of any projects that you can join.
         </p>
       </div>
-      <div v-else-if="joinableProjects && joinableProjects.length > 1">
+      <div v-else-if="hasMultipleJoinableProjects">
         <p>Select the project you'd like to join.</p>
         <div>
           <b-form-radio-group
