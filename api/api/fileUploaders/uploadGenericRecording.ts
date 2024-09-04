@@ -40,6 +40,7 @@ import {
 import type { Station } from "@models/Station.js";
 import type { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
+import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -594,6 +595,7 @@ export const uploadGenericRecording =
         recordingTemplate.save(),
         maybeUpdateLastRecordingTimesForStation(
           recordingTemplate,
+          fromDevice,
           stationToAssignToRecording
         ),
         maybeUpdateLastRecordingTimesForDeviceAndGroup(
@@ -758,6 +760,7 @@ const assignGroupAndStationToRecording = async (
 
 const maybeUpdateLastRecordingTimesForStation = async (
   recordingData: Recording,
+  isDeviceUpload: boolean,
   station?: Station
 ): Promise<void | Station> => {
   let stationUpdatePromise: Promise<void | Station> = new Promise(
@@ -769,6 +772,8 @@ const maybeUpdateLastRecordingTimesForStation = async (
   if (station) {
     recordingData.StationId = station.id;
 
+    // Update lastActiveTimes
+
     // Only update our times for non-status recordings
     if (recordingData.duration >= 3) {
       // Update station lastRecordingTimes if needed.
@@ -778,6 +783,9 @@ const maybeUpdateLastRecordingTimesForStation = async (
           recordingData.recordingDateTime > station.lastAudioRecordingTime)
       ) {
         station.lastAudioRecordingTime = recordingData.recordingDateTime;
+        if (isDeviceUpload) {
+          station.lastActiveThermalTime = new Date();
+        }
         stationUpdatePromise = station.save();
       } else if (
         cameraTypes.includes(recordingData.type) &&
@@ -785,6 +793,9 @@ const maybeUpdateLastRecordingTimesForStation = async (
           recordingData.recordingDateTime > station.lastThermalRecordingTime)
       ) {
         station.lastThermalRecordingTime = recordingData.recordingDateTime;
+        if (isDeviceUpload) {
+          station.lastActiveThermalTime = new Date();
+        }
         stationUpdatePromise = station.save();
       }
     }
