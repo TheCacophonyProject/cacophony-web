@@ -1617,8 +1617,9 @@ const inlineModal = ref<boolean>(false);
                 ></span
               >
               <span class="fs-9"
-                >{{ (previousRecordingIndex as number) + 1 }}/
-                {{ currentRecordingCount || allRecordingIds.length }}</span
+                >{{ (previousRecordingIndex as number) + 1 }}/{{
+                  currentRecordingCount || allRecordingIds.length
+                }}</span
               >
             </span>
             <span class="px-1">

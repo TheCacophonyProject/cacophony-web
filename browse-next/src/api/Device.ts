@@ -13,7 +13,6 @@ import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
-  WindowsSettings,
 } from "@typedefs/api/device";
 import type { ScheduleId } from "@typedefs/api/common";
 import type {

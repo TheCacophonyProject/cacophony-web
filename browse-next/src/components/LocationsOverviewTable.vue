@@ -13,7 +13,7 @@
         </strong>
         <div v-html="activeBetween(card as ApiLocationResponse)" />
       </div>
-      <div class="d-flex mt-2">
+      <div class="d-flex mt-2 mb-1">
         <b-button
           class="align-items-center justify-content-between d-flex"
           variant="light"
@@ -64,17 +64,43 @@ import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/st
 import CardTable from "@/components/CardTable.vue";
 import { lastActiveLocationTime } from "@/utils";
 import { DateTime } from "luxon";
+
+const oneMinute = 1000 * 60;
+const oneHour = oneMinute * 60;
+const oneDay = oneHour * 24;
+const oneWeek = oneDay * 7;
+const oneMonth = oneWeek * 4.3;
+const threeMonths = oneMonth * 3;
+const sixMonths = oneMonth * 6;
+const oneYear = oneDay * 365;
+const twoYears = oneYear * 2;
+const getRelativeUnits = (date: Date) => {
+  const now = new Date().getTime();
+  const elapsed = now - date.getTime();
+  if (elapsed > oneYear && elapsed < twoYears) {
+    return { unit: "months" };
+  }
+  return undefined;
+};
 const noWrap = (str: string) => str.replace(/ /g, "&nbsp;");
 const lastSeenAt = (location: ApiLocationResponse): string => {
   const lastTime = lastActiveLocationTime(location);
+  const relativeUnits = (lastTime && getRelativeUnits(lastTime)) || undefined;
   return noWrap(
     lastTime
-      ? (DateTime.fromJSDate(lastTime).toRelative() as string)
+      ? (DateTime.fromJSDate(lastTime).toRelative(relativeUnits) as string)
       : "never (empty location)"
   );
 };
 
 const activeBetween = (station: ApiLocationResponse): string => {
+  const startRelUnits = noWrap(
+    DateTime.fromJSDate(new Date(station.activeAt)).toRelative() || ""
+  );
+  const endRelUnits = lastSeenAt(station);
+  if (startRelUnits === endRelUnits) {
+    return `Over ${startRelUnits}`;
+  }
   return `${DateTime.fromJSDate(
     new Date(station.activeAt)
   ).toRelative()} &ndash; ${lastSeenAt(station)}`;
