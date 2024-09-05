@@ -26,6 +26,7 @@ declare module 'vue' {
     BFormRadio: typeof import('bootstrap-vue-next')['BFormRadio']
     BFormRadioGroup: typeof import('bootstrap-vue-next')['BFormRadioGroup']
     BFormSelect: typeof import('bootstrap-vue-next')['BFormSelect']
+    BFormTag: typeof import('bootstrap-vue-next')['BFormTag']
     BimodalSwitch: typeof import('./src/components/BimodalSwitch.vue')['default']
     BLink: typeof import('bootstrap-vue-next')['BLink']
     BlockingUserActionRequiredModal: typeof import('./src/components/BlockingUserActionRequiredModal.vue')['default']

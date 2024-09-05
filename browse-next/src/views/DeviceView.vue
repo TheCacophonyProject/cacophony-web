@@ -6,7 +6,11 @@ import type {
 } from "@typedefs/api/device";
 import { provide, type Ref } from "vue";
 import { computed, inject, onBeforeMount, ref } from "vue";
-import { projectDevicesLoaded, userProjectsLoaded } from "@models/LoggedInUser";
+import {
+  currentUserIsSuperUser,
+  projectDevicesLoaded,
+  userProjectsLoaded,
+} from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
@@ -120,18 +124,18 @@ const _deviceType = computed<string>(() => {
 <template>
   <div class="device-view d-flex flex-column">
     <overflowing-tab-list v-if="!deviceLoading">
-      <!--      <router-link-->
-      <!--        v-if="currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"-->
-      <!--        :class="[-->
-      <!--          ...navLinkClasses,-->
-      <!--          { active: activeTabPath.includes('device-events') },-->
-      <!--        ]"-->
-      <!--        title="Events"-->
-      <!--        :to="{-->
-      <!--          name: 'device-events',-->
-      <!--        }"-->
-      <!--        >Events</router-link-->
-      <!--      >-->
+      <router-link
+        v-if="currentUserIsSuperUser && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
+        :class="[
+          ...navLinkClasses,
+          { active: activeTabPath.includes('device-events') },
+        ]"
+        title="Events"
+        :to="{
+          name: 'device-events',
+        }"
+        >Events</router-link
+      >
       <router-link
         v-if="[DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
         :class="[

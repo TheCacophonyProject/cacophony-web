@@ -70,10 +70,20 @@ export const getDeviceLocationAtTime = (deviceId: DeviceId, date?: Date) => {
 export interface EventApiParams {
   limit?: number;
   offset?: number;
-  type?: DeviceEventType | DeviceEventType[];
+  type?: DeviceEventType | DeviceEventType[] | string | string[];
   endTime?: IsoFormattedString; // Or in the format YYYY-MM-DD hh:mm:ss
   startTime?: IsoFormattedString;
 }
+
+export const getKnownEventTypes = () =>
+  CacophonyApi.get(`/api/v1/events/event-types`) as Promise<
+    FetchResult<{ eventTypes: string[] }>
+  >;
+
+export const getKnownEventTypesForDeviceInLastMonth = (deviceId: DeviceId) =>
+  CacophonyApi.get(
+    `/api/v1/events/event-types/for-device/${deviceId}`
+  ) as Promise<FetchResult<{ eventTypes: string[] }>>;
 
 export const getLatestEventsByDeviceId = (
   deviceId: number,
@@ -86,7 +96,13 @@ export const getLatestEventsByDeviceId = (
   params.append("include-count", false.toString());
   if (eventParams) {
     for (const [key, val] of Object.entries(eventParams)) {
-      params.append(key, val.toString());
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          params.append(key, item.toString());
+        }
+      } else {
+        params.append(key, val.toString());
+      }
     }
   }
   return CacophonyApi.get(`/api/v1/events?${params}`) as Promise<
