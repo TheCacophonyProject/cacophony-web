@@ -11,7 +11,10 @@ import type { NamedPoint } from "@models/mapUtils";
 import { lastActiveLocationTime, locationsAreEqual } from "@/utils";
 import LocationsOverviewTable from "@/components/LocationsOverviewTable.vue";
 import { currentSelectedProject } from "@models/provides";
-import type { SelectedProject } from "@models/LoggedInUser";
+import {
+  LocationsForCurrentProject,
+  type SelectedProject,
+} from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
 import { BPopover } from "bootstrap-vue-next";
@@ -214,10 +217,17 @@ const hideRenameHint = () => {
   (popOverHint.value as PopOverElement).hide();
 };
 
-const updateLocationName = (payload: { newName: string; id: LocationId }) => {
+const updateLocationName = async (payload: {
+  newName: string;
+  id: LocationId;
+}) => {
   const location = (locations.value || []).find(({ id }) => id === payload.id);
   if (location) {
     location.name = payload.newName;
+    LocationsForCurrentProject.value = (await getLocationsForProject(
+      selectedProject.value.id.toString(),
+      true
+    )) as LoadedResource<ApiLocationResponse[]>;
   }
 };
 </script>
@@ -278,6 +288,7 @@ const updateLocationName = (payload: { newName: string; id: LocationId }) => {
             @left-item="leftTableItem"
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
+            @updated-location-name="updateLocationName"
             class="mb-4"
           />
 
@@ -290,6 +301,7 @@ const updateLocationName = (payload: { newName: string; id: LocationId }) => {
             @left-item="leftTableItem"
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
+            @updated-location-name="updateLocationName"
             class="mb-4"
           />
 
@@ -317,6 +329,7 @@ const updateLocationName = (payload: { newName: string; id: LocationId }) => {
             @left-item="leftTableItem"
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
+            @updated-location-name="updateLocationName"
             class="mb-4"
           />
           <h6 v-if="retiredLocations.length">Retired</h6>
@@ -328,6 +341,7 @@ const updateLocationName = (payload: { newName: string; id: LocationId }) => {
             @left-item="leftTableItem"
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
+            @updated-location-name="updateLocationName"
             class="mb-4"
           />
         </div>
