@@ -86,7 +86,7 @@ const loadSomeEvents = async (filterByEvents?: string[]) => {
     };
     if (filterByEvents && filterByEvents.length) {
       params.type = filterByEvents;
-    } else if (selectedEventTypes.value.length) {
+    } else if (selectedEventTypes.value.length && !filterByEvents) {
       params.type = selectedEventTypes.value;
     }
     const response = await getLatestEventsByDeviceId(deviceId.value, params);
@@ -132,6 +132,7 @@ const reloadEvents = async (newEvents?: string[]) => {
   currentObserver = null;
   loadedDeviceEvents.value = [];
   loadedBackUntilDateTime.value = new Date();
+  console.log(newEvents);
   await loadSomeEvents(newEvents);
 };
 
