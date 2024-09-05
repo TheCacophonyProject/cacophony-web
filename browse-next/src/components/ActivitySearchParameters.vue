@@ -263,7 +263,7 @@ const maybeSelectDatePicker = (value: [Date, Date] | string) => {
   if (value === "custom" && !props.customSet) {
     nextTick(() => {
       if (dateRangePicker.value) {
-        (dateRangePicker.value as DatePickerMethods).openMenu();
+        dateRangePicker.value.openMenu();
       }
     });
   } else if (props.customSet) {

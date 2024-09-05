@@ -2,6 +2,7 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, inject, onMounted, ref } from "vue";
 import type { Ref } from "vue";
+import type { StationId as LocationId } from "@typedefs/api/common";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { getLocationsForProject } from "@api/Project";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -13,6 +14,7 @@ import { currentSelectedProject } from "@models/provides";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
+import { BPopover } from "bootstrap-vue-next";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
@@ -21,13 +23,17 @@ const loadingLocations = ref(false);
 onMounted(async () => {
   loadingLocations.value = true;
   if (selectedProject.value) {
-    locations.value = await getLocationsForProject(
-      selectedProject.value.id.toString(),
-      true
-    );
+    await loadLocations();
   }
   loadingLocations.value = false;
 });
+
+const loadLocations = async () => {
+  locations.value = await getLocationsForProject(
+    selectedProject.value.id.toString(),
+    true
+  );
+};
 
 const locationsForMap = computed<NamedPoint[]>(() => {
   if (locations.value) {
@@ -193,10 +199,47 @@ const mapBufferWidth = computed<number>(() => {
   const right = windowWidth.value - locationContainerRight.value;
   return Math.max(0, mapWidthPx.value - right);
 });
+interface PopOverElement {
+  show: () => void;
+  hide: () => void;
+}
+const popOverHint = ref<PopOverElement>();
+const renameHintParent = ref<HTMLSpanElement | null>(null);
+
+const showRenameHint = (el: HTMLSpanElement) => {
+  renameHintParent.value = el;
+  (popOverHint.value as PopOverElement).show();
+};
+const hideRenameHint = () => {
+  (popOverHint.value as PopOverElement).hide();
+};
+
+const updateLocationName = (payload: { newName: string; id: LocationId }) => {
+  const location = (locations.value || []).find(({ id }) => id === payload.id);
+  if (location) {
+    location.name = payload.newName;
+  }
+};
 </script>
 <template>
   <div>
     <section-header>Locations</section-header>
+    <b-popover
+      ref="popOverHint"
+      variant="secondary"
+      noninteractive
+      manual
+      tooltip
+      no-fade
+      :delay="{ show: 0, hide: 0 }"
+      @hidden="renameHintParent = null"
+      custom-class="tag-info-popover"
+      placement="auto"
+      :target="renameHintParent"
+    >
+      This location was automatically named. Rename it to a meaningful name for
+      your project.
+    </b-popover>
     <div
       class="d-flex flex-fill justify-content-between"
       ref="locationsContainer"
@@ -233,6 +276,8 @@ const mapBufferWidth = computed<number>(() => {
             :highlighted-item="locationForHighlightedPoint"
             @entered-item="enteredTableItem"
             @left-item="leftTableItem"
+            @show-rename-hint="showRenameHint"
+            @hide-rename-hint="hideRenameHint"
             class="mb-4"
           />
 
@@ -243,6 +288,8 @@ const mapBufferWidth = computed<number>(() => {
             :highlighted-item="locationForHighlightedPoint"
             @entered-item="enteredTableItem"
             @left-item="leftTableItem"
+            @show-rename-hint="showRenameHint"
+            @hide-rename-hint="hideRenameHint"
             class="mb-4"
           />
 
@@ -253,6 +300,9 @@ const mapBufferWidth = computed<number>(() => {
             :highlighted-item="locationForHighlightedPoint"
             @entered-item="enteredTableItem"
             @left-item="leftTableItem"
+            @show-rename-hint="showRenameHint"
+            @hide-rename-hint="hideRenameHint"
+            @updated-location-name="updateLocationName"
             class="mb-4"
           />
 
@@ -265,6 +315,8 @@ const mapBufferWidth = computed<number>(() => {
             :highlighted-item="locationForHighlightedPoint"
             @entered-item="enteredTableItem"
             @left-item="leftTableItem"
+            @show-rename-hint="showRenameHint"
+            @hide-rename-hint="hideRenameHint"
             class="mb-4"
           />
           <h6 v-if="retiredLocations.length">Retired</h6>
@@ -274,6 +326,8 @@ const mapBufferWidth = computed<number>(() => {
             :highlighted-item="locationForHighlightedPoint"
             @entered-item="enteredTableItem"
             @left-item="leftTableItem"
+            @show-rename-hint="showRenameHint"
+            @hide-rename-hint="hideRenameHint"
             class="mb-4"
           />
         </div>

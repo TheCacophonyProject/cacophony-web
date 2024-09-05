@@ -1,69 +1,11 @@
-<template>
-  <card-table
-    compact
-    :items="locations"
-    @entered-item="enteredTableItem"
-    @left-item="leftTableItem"
-    :max-card-width="2000"
-  >
-    <template #card="{ card }">
-      <div>
-        <strong>
-          {{ card.name }}
-        </strong>
-        <div v-html="activeBetween(card as ApiLocationResponse)" />
-      </div>
-      <div class="d-flex mt-2 mb-1">
-        <b-button
-          class="align-items-center justify-content-between d-flex"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [card.id],
-              'display-mode': 'visits',
-              from: new Date(card.activeAt).toISOString(),
-              until: (lastActiveLocationTime(card) || new Date()).toISOString(),
-            },
-          }"
-          ><span class="me-2">Visits</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
-        </b-button>
-        <b-button
-          class="align-items-center justify-content-between d-flex ms-2"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [card.id],
-              'display-mode': 'recordings',
-              from: new Date(card.activeAt).toISOString(),
-              until: (lastActiveLocationTime(card) || new Date()).toISOString(),
-            },
-          }"
-          ><span class="me-2">Recordings</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
-        </b-button>
-      </div>
-    </template>
-  </card-table>
-</template>
-
 <script setup lang="ts">
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import CardTable from "@/components/CardTable.vue";
 import { lastActiveLocationTime } from "@/utils";
-import { DateTime } from "luxon";
+import { DateTime, type ToRelativeOptions } from "luxon";
+import { ref } from "vue";
+import type { StationId as LocationId } from "@typedefs/api/common";
+import RenameableLocationName from "@/components/RenameableLocationName.vue";
 
 const oneMinute = 1000 * 60;
 const oneHour = oneMinute * 60;
@@ -74,7 +16,7 @@ const threeMonths = oneMonth * 3;
 const sixMonths = oneMonth * 6;
 const oneYear = oneDay * 365;
 const twoYears = oneYear * 2;
-const getRelativeUnits = (date: Date) => {
+const getRelativeUnits = (date: Date): ToRelativeOptions | undefined => {
   const now = new Date().getTime();
   const elapsed = now - date.getTime();
   if (elapsed > oneYear && elapsed < twoYears) {
@@ -106,17 +48,19 @@ const activeBetween = (station: ApiLocationResponse): string => {
   ).toRelative()} &ndash; ${lastSeenAt(station)}`;
 };
 
-const _props = withDefaults(
-  defineProps<{
-    locations: ApiLocationResponse[];
-    highlightedItem: ApiLocationResponse | null;
-  }>(),
-  { highlightedItem: null }
-);
-
+const { locations, highlightedItem = null } = defineProps<{
+  locations: ApiLocationResponse[];
+  highlightedItem: ApiLocationResponse | null;
+}>();
 const emit = defineEmits<{
   (e: "entered-item", payload: ApiLocationResponse): void;
   (e: "left-item", payload: ApiLocationResponse): void;
+  (e: "show-rename-hint", el: HTMLSpanElement): void;
+  (e: "hide-rename-hint"): void;
+  (
+    e: "updated-location-name",
+    payload: { newName: string; id: LocationId }
+  ): void;
 }>();
 const enteredTableItem = (item: ApiLocationResponse) => {
   emit("entered-item", item);
@@ -125,6 +69,95 @@ const enteredTableItem = (item: ApiLocationResponse) => {
 const leftTableItem = (item: ApiLocationResponse) => {
   emit("left-item", item);
 };
-</script>
 
-<style scoped lang="less"></style>
+const showRenameHint = (e: HTMLSpanElement) => {
+  emit("show-rename-hint", e);
+};
+const hideRenameHint = () => {
+  emit("hide-rename-hint");
+};
+const changedLocationName = (payload: { newName: string; id: LocationId }) => {
+  emit("updated-location-name", payload);
+};
+</script>
+<template>
+  <card-table
+    compact
+    :items="locations"
+    @entered-item="enteredTableItem"
+    @left-item="leftTableItem"
+    :max-card-width="2000"
+  >
+    <template #card="{ card: location }: { card: ApiLocationResponse }">
+      <div>
+        <renameable-location-name
+          :location="location"
+          @hide-rename-hint="hideRenameHint"
+          @show-rename-hint="showRenameHint"
+          @changed-location-name="changedLocationName"
+        />
+        <div v-html="activeBetween(location)" />
+      </div>
+      <div class="d-flex mt-2 mb-1">
+        <b-button
+          class="align-items-center justify-content-between d-flex"
+          variant="light"
+          :to="{
+            name: 'activity',
+            query: {
+              locations: [location.id],
+              'display-mode': 'visits',
+              from: new Date(location.activeAt).toISOString(),
+              until: (
+                lastActiveLocationTime(location) || new Date()
+              ).toISOString(),
+            },
+          }"
+          ><span class="me-2">Visits</span>
+          <font-awesome-icon
+            icon="arrow-turn-down"
+            :rotation="270"
+            size="xs"
+            class="ps-1"
+          />
+        </b-button>
+        <b-button
+          class="align-items-center justify-content-between d-flex ms-2"
+          variant="light"
+          :to="{
+            name: 'activity',
+            query: {
+              locations: [location.id],
+              'display-mode': 'recordings',
+              from: new Date(location.activeAt).toISOString(),
+              until: (
+                lastActiveLocationTime(location) || new Date()
+              ).toISOString(),
+            },
+          }"
+          ><span class="me-2">Recordings</span>
+          <font-awesome-icon
+            icon="arrow-turn-down"
+            :rotation="270"
+            size="xs"
+            class="ps-1"
+          />
+        </b-button>
+      </div>
+    </template>
+  </card-table>
+</template>
+
+<style scoped lang="less">
+[contenteditable="true"].single-line {
+  white-space: nowrap;
+  overflow: hidden;
+}
+[contenteditable="true"].single-line br {
+  display: none;
+}
+[contenteditable="true"].single-line * {
+  display: inline;
+  white-space: nowrap;
+}
+</style>

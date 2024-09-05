@@ -92,13 +92,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
       @submit.stop.prevent="submitLogin"
       novalidate
     >
-      <b-alert
-        v-model="hasError"
-        variant="danger"
-        dismissible
-        class="text-center"
-        @dismissed="hasError = false"
-      >
+      <b-alert v-model="hasError" variant="danger" class="text-center">
         {{ signInErrorMessage }}
       </b-alert>
       <div class="mb-3">
@@ -107,6 +101,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
           v-model="userEmailAddress.value"
           @blur="userEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
+          @input="hasError = false"
           aria-label="email address"
           placeholder="email address"
           data-cy="email address"
@@ -123,6 +118,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
             :type="showPassword ? 'text' : 'password'"
             v-model="userPassword.value"
             @blur="userPassword.touched = true"
+            @input="hasError = false"
             :state="needsValidationAndIsValidPassword"
             aria-label="password"
             placeholder="password"
