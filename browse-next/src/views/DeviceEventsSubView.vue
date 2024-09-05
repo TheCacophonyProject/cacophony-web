@@ -243,13 +243,13 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
         </div>
       </div>
       <div
-        class="p-2 container"
+        class="container"
         v-if="Object.keys(event.EventDetail.details).length"
       >
         <div
           v-for="([key, val], index) in Object.entries(
             event.EventDetail.details
-          )"
+          ).filter(([_, vv], i) => !!vv)"
           :key="index"
           class="row"
         >
@@ -257,7 +257,23 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
             <strong class="text-capitalize">{{ key }}:</strong>
           </div>
           <div class="col" v-if="!Array.isArray(val)">
-            <span>{{ val }}</span>
+            <div
+              v-if="val && typeof val === 'object' && Object.keys(val as Object).length !== 0"
+            >
+              <div
+                class="row"
+                v-for="([k, v], idx) in Object.entries(val as Object)"
+                :key="idx"
+              >
+                <div class="col">
+                  <strong class="text-capitalize">{{ k }}:</strong>
+                </div>
+                <div class="col">
+                  {{ v }}
+                </div>
+              </div>
+            </div>
+            <span v-else>{{ val }}</span>
           </div>
           <div class="col" v-else>
             <div class="row" v-for="(item, idx) in val" :key="idx">
@@ -279,8 +295,14 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
 <style scoped lang="less">
 .event-item {
   background: #cecece;
+  //&:nth-child(even) {
+  //  background: #e1e1e1;
+  //}
+}
+.row {
+  background: #e1e1e1;
   &:nth-child(even) {
-    background: #e1e1e1;
+    background: #cecece;
   }
 }
 .event-title {
@@ -289,5 +311,8 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
 .filters {
   background: #f6f6f6;
   border-bottom: 1px solid #ccc;
+}
+.container > .row:not(:last-child) {
+  border-bottom: 1px solid #bbb;
 }
 </style>
