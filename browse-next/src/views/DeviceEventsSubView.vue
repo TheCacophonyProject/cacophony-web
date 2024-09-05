@@ -132,7 +132,6 @@ const reloadEvents = async (newEvents?: string[]) => {
   currentObserver = null;
   loadedDeviceEvents.value = [];
   loadedBackUntilDateTime.value = new Date();
-  console.log(newEvents);
   await loadSomeEvents(newEvents);
 };
 

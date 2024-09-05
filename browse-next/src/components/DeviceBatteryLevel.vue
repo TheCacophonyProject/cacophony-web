@@ -45,16 +45,22 @@ const loadInfo = async () => {
     //   batteryType: "lime",
     //   battery: Math.round(Math.random() * 100),
     // };
-    (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap[
-      `__${props.device.id}`
-    ] = batteryLevelInfo.value;
+    if (batteryLevelInfo.value !== null) {
+      (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap[
+        `__${props.device.id}`
+      ] = batteryLevelInfo.value;
+    }
   }
 };
-onBeforeMount(loadInfo);
+onBeforeMount(() => {
+  console.log("Loading battery info before mount");
+  loadInfo();
+});
 watch(
   () => props.device.id,
   (next, prev) => {
     if (next !== prev) {
+      console.log("Loading battery on device change");
       loadInfo();
     }
   }

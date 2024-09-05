@@ -214,6 +214,10 @@ export const getBatteryInfo = (
           untilDateTime = new Date(events[events.length - 1].dateTime);
         }
       } else {
+        if (!response) {
+          // We aborted the request
+          resolve(null);
+        }
         stillHasEvents = false;
       }
     }
@@ -222,7 +226,7 @@ export const getBatteryInfo = (
     } else {
       resolve(false);
     }
-  }) as Promise<BatteryInfoEvent[] | false>;
+  }) as Promise<BatteryInfoEvent[] | false | null>;
 };
 
 export const getEarliestEventAfterTime = (
@@ -595,12 +599,14 @@ export const hasReferenceImageForDeviceAtCurrentLocation = (
 
 export const getLastKnownDeviceBatteryLevel = (
   deviceId: DeviceId
-): Promise<BatteryInfoEvent | false> => {
+): Promise<BatteryInfoEvent | false | null> => {
   const last25Hours = new Date();
   last25Hours.setHours(last25Hours.getHours() - 25);
   return new Promise((resolve) => {
     getBatteryInfo(deviceId, last25Hours, 1, 1).then((result) => {
-      if (result === false || result.length === 0) {
+      if (result === null) {
+        resolve(null);
+      } else if (result === false || result.length === 0) {
         resolve(false);
       }
       resolve((result as BatteryInfoEvent[])[0]);
