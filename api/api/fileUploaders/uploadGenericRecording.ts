@@ -494,6 +494,16 @@ export const uploadGenericRecording =
           return;
         }
       }
+      // NOTE: Temporary until we get audio files with embedded location metadata:
+      if (
+        data.type === RecordingType.Audio &&
+        !data.location &&
+        recordingDevice &&
+        recordingDevice.location
+      ) {
+        data.location = recordingDevice.location;
+      }
+
       const recordingTemplate = createRecording(
         models,
         data,

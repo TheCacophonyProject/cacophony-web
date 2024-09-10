@@ -131,21 +131,23 @@ const loadAllProjects = async () => {
 
 const allNonUserProjects = computed<ApiProjectResponse[]>(() => {
   if (allProjects.value) {
-    return allProjects.value
-      .filter(
-        (project) =>
-          !sortedUserProjects.value.map((p) => p.id).includes(project.id)
-      )
-      .map((project) => {
-        return {
-          ...project,
-          latestRecordingTime: getLatestRecordingTime(project),
-        };
-      })
-      .sort(
-        (a, b) =>
-          b.latestRecordingTime.getTime() - a.latestRecordingTime.getTime()
-      );
+    return (
+      allProjects.value
+        // .filter(
+        //   (project) =>
+        //     !sortedUserProjects.value.map((p) => p.id).includes(project.id)
+        // )
+        .map((project) => {
+          return {
+            ...project,
+            latestRecordingTime: getLatestRecordingTime(project),
+          };
+        })
+        .sort(
+          (a, b) =>
+            b.latestRecordingTime.getTime() - a.latestRecordingTime.getTime()
+        )
+    );
   }
   return [];
 });

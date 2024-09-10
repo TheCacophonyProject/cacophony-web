@@ -53,14 +53,12 @@ const loadInfo = async () => {
   }
 };
 onBeforeMount(() => {
-  console.log("Loading battery info before mount");
   loadInfo();
 });
 watch(
   () => props.device.id,
   (next, prev) => {
     if (next !== prev) {
-      console.log("Loading battery on device change");
       loadInfo();
     }
   }

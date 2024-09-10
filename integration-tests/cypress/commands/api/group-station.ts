@@ -105,7 +105,7 @@ Cypress.Commands.add(
     groupIdOrName: string,
     stationName: string,
     expectedStation: ApiStationResponse,
-    excludeCheckOn: any = [],
+    excludeCheckOn: any = [".lastActiveThermalTime"],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
@@ -168,7 +168,10 @@ Cypress.Commands.add(
     userName: string,
     groupIdOrName: string,
     expectedStations: ApiStationResponse[],
-    excludeCheckOn: any = [],
+    excludeCheckOn: any = [
+      ".lastActiveThermalTime",
+      "[].lastActiveThermalTime",
+    ],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {

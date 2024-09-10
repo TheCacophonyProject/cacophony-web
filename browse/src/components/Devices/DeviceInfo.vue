@@ -67,7 +67,8 @@
       </div>
       <p>
         Current released software versions are listed
-        <a href="https://github.com/TheCacophonyProject/saltops#branch-prod"
+        <a
+          href="https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json"
           >here</a
         >.
       </p>

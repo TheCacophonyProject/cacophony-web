@@ -260,6 +260,17 @@ export const getDeviceVersionInfo = (deviceId: DeviceId) => {
   }) as Promise<Record<string, string> | false>;
 };
 
+export const getDeviceLatestVersionInfo = async () => {
+  return unwrapLoadedResource(
+    CacophonyApi.get(`/api/v1/devices/latest-software-versions`) as Promise<
+      FetchResult<{
+        versions: Record<string, Record<string, Record<string, string>>>;
+      }>
+    >,
+    "versions"
+  ) as Promise<Record<string, Record<string, Record<string, string>>>>;
+};
+
 export const getLocationHistory = (
   deviceId: DeviceId
 ): Promise<

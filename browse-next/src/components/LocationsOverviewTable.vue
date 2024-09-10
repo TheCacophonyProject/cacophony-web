@@ -148,16 +148,4 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
   </card-table>
 </template>
 
-<style scoped lang="less">
-[contenteditable="true"].single-line {
-  white-space: nowrap;
-  overflow: hidden;
-}
-[contenteditable="true"].single-line br {
-  display: none;
-}
-[contenteditable="true"].single-line * {
-  display: inline;
-  white-space: nowrap;
-}
-</style>
+<style scoped lang="less"></style>

@@ -9,6 +9,7 @@
     "lint": "./node_modules/.bin/eslint ./ --ext .vue,.ts --fix --ignore-path .gitignore --ignore-pattern '*.d.ts'"
   },
   "dependencies": {
+    "@floating-ui/vue": "^1.1.4",
     "@fortawesome/fontawesome-svg-core": "^6.3.0",
     "@fortawesome/free-regular-svg-icons": "^6.3.0",
     "@fortawesome/free-solid-svg-icons": "^6.3.0",

@@ -22,6 +22,7 @@ const templateExpectedStation = {
   name: NOT_NULL_STRING,
   id: NOT_NULL,
   lastThermalRecordingTime: NOT_NULL_STRING,
+  // lastActiveThermalTime: NOT_NULL_STRING,
   createdAt: NOT_NULL_STRING,
   updatedAt: NOT_NULL_STRING,
   activeAt: NOT_NULL_STRING,
