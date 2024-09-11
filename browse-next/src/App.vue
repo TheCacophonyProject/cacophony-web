@@ -287,7 +287,7 @@ onMounted(() => {
               data-cy="join existing project button"
               @click.stop.prevent="joiningNewProject.enabled = true"
             >
-              <span data-cy="join existing project button"
+              <span
                 >Join an existing project</span
               >
             </b-dropdown-item-button>
