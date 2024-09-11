@@ -257,6 +257,11 @@ const router = createRouter({
               name: "device-uploads",
               component: () => import("@/views/DeviceUploadsSubView.vue"),
             },
+            // {
+            //   path: "events",
+            //   name: "device-events",
+            //   component: () => import("@/views/DeviceEventsSubView.vue"),
+            // },
             {
               path: "events",
               name: "device-events",
