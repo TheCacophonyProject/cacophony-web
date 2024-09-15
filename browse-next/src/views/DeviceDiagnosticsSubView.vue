@@ -815,6 +815,39 @@ const hoveredPointValue = computed<number>(() => {
           >
           <span v-else>{{ versionInfo.version }}</span>
         </template>
+        <template
+          #card="{
+            card,
+          }: {
+            card: {
+              package: string,
+              version: { version: string, latestVersion: string },
+            },
+          }"
+        >
+          <div class="d-flex justify-content-between">
+            <span class="text-capitalize"><strong>Package:</strong></span>
+            <span class="text-nowrap">{{ card.package }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-capitalize"><strong>Version:</strong></span>
+            <span
+              v-if="
+                card.version.version.replace(/~/g, '-') ===
+                card.version.latestVersion
+              "
+              >{{ card.version.version }}</span
+            >
+            <span v-else-if="card.version.latestVersion !== 'not found'"
+              ><span class="outdated-version">{{ card.version.version }}</span
+              >&nbsp;
+              <em class="latest-version"
+                >({{ card.version.latestVersion }} is latest)</em
+              ></span
+            >
+            <span v-else>{{ card.version.version }}</span>
+          </div>
+        </template>
       </card-table>
       <div v-else>Version info not available.</div>
     </div>
