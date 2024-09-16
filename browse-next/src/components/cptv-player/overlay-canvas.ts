@@ -32,17 +32,19 @@ export const drawBottomRightOverlayLabel = (
     const bottomPadding = 10;
     const sidePadding = 10;
     const labelWidth = overlayContext.measureText(label).width * scale;
+    const canvasWidth = overlayContext.canvas.width;
+    const canvasHeight = overlayContext.canvas.height;
     overlayContext.strokeText(
       label,
-      (overlayContext.canvas.width - (labelWidth + sidePadding * scale)) /
+      (canvasWidth - (labelWidth + sidePadding * scale)) /
         scale,
-      (overlayContext.canvas.height - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale
     );
     overlayContext.fillText(
       label,
-      (overlayContext.canvas.width - (labelWidth + sidePadding * scale)) /
+      (canvasWidth - (labelWidth + sidePadding * scale)) /
         scale,
-      (overlayContext.canvas.height - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale
     );
   }
 };
@@ -56,28 +58,30 @@ export const drawBottomLeftOverlayLabel = (
     setLabelFontStyle(overlayContext);
     const bottomPadding = 10;
     const sidePadding = 10;
+    const canvasHeight = overlayContext.canvas.height;
     overlayContext.strokeText(
       label,
       sidePadding,
-      (overlayContext.canvas.height - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale
     );
     overlayContext.fillText(
       label,
       sidePadding,
-      (overlayContext.canvas.height - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale
     );
   }
 };
 
 export const clearOverlay = (
-  overlayContext: CanvasRenderingContext2D | null
+  overlayContext: CanvasRenderingContext2D | null,
+  pixelRatio: number = 1.0
 ): boolean => {
   if (overlayContext) {
     overlayContext.clearRect(
       0,
       0,
-      overlayContext.canvas.width,
-      overlayContext.canvas.height
+      Math.max(640, overlayContext.canvas.width * pixelRatio),
+      Math.max(480, overlayContext.canvas.height * pixelRatio)
     );
     return true;
   }
@@ -106,9 +110,14 @@ export const drawRectWithText = (
   const [left, top, right, bottom] = dims.map((x) => x * scale * pixelRatio);
   const rectWidth = right - left;
   const rectHeight = bottom - top;
-  const contextHeight = restrictedHeight || context.canvas.height;
+  const canvasHeight = Math.max(480, context.canvas.height);
+  const canvasWidth = Math.max(640, context.canvas.width);
+  if (restrictedHeight) {
+    restrictedHeight = Math.max(480, restrictedHeight);
+  }
+  const contextHeight = restrictedHeight || canvasHeight;
   const yOffset = restrictedHeight
-    ? (context.canvas.height - restrictedHeight) * 0.5
+    ? (canvasHeight - restrictedHeight) * 0.5
     : 0;
   const x =
     Math.max(halfOutlineWidth, Math.round(left) - halfOutlineWidth) /
@@ -121,8 +130,8 @@ export const drawRectWithText = (
     ) / deviceRatio;
   const width =
     Math.min(
-      context.canvas.width - (x + halfOutlineWidth),
-      Math.round(Math.min(context.canvas.width - left, Math.round(rectWidth)))
+      canvasWidth - (x + halfOutlineWidth),
+      Math.round(Math.min(canvasWidth - left, Math.round(rectWidth)))
     ) / deviceRatio;
   const height =
     Math.min(
@@ -146,11 +155,11 @@ export const drawRectWithText = (
       const textWidth = context.measureText(text).width * deviceRatio;
       const marginX = 2 * deviceRatio;
       const marginTop = 2 * deviceRatio;
-      let textX = Math.min(context.canvas.width, right) - (textWidth + marginX);
+      let textX = Math.min(canvasWidth, right) - (textWidth + marginX);
       let textY = yOffset + bottom + textHeight + marginTop;
       //debugger;
       // Make sure the text doesn't get clipped off if the box is near the frame edges
-      if (textY + textHeight > contextHeight + yOffset) {
+      if (textY + textHeight > context.canvas.height + yOffset) {
         textY = yOffset + top - textHeight;
       }
       if (textX < 0) {
@@ -185,7 +194,7 @@ export const renderOverlay = (
   if (context) {
     if (!isExporting) {
       // Clear if we are drawing on the live overlay, but not if we're drawing for export
-      clearOverlay(context);
+      clearOverlay(context, pixelRatio);
     }
     const frameTracks =
       tracksByFrame[frameNum] || ([] as [TrackId, TrackBox][]);

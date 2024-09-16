@@ -1542,7 +1542,7 @@ const toggleBackground = async (): Promise<void> => {
         0
       );
       cancelAnimationFrame(animationFrame.value);
-      if (clearOverlay(overlayContext.value)) {
+      if (clearOverlay(overlayContext.value, pixelRatio.value)) {
         drawBottomLeftOverlayLabel(
           "Background frame",
           overlayContext.value,
