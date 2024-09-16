@@ -75,7 +75,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
 </script>
 
 <template>
-  <div class="d-flex align-items-center justify-content-between flex-fill">
+  <div class="d-flex align-items-start justify-content-between flex-fill">
     <div class="d-flex align-items-center flex-fill">
       <b-input
         v-if="editingLocationName"
@@ -88,7 +88,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         @keyup.enter="saveLocationName"
         @keyup.esc="exitEditMode"
       />
-      <strong v-else>{{ location.name }}</strong>
+      <strong v-else class="location-name" :class="{ 'needs-rename': !!location.needsRename }">{{ location.name }}</strong>
       <b-spinner small v-if="savingLocation" class="ms-3" />
     </div>
     <div>
@@ -111,7 +111,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
             class="me-1"
             :color="'#e39768'"
           />
-          <span class="me-2">should rename</span>
+          <span class="me-2">Rename</span>
           <font-awesome-icon icon="pencil" size="sm" color="#666" />
         </span>
         <font-awesome-icon v-else icon="pencil" size="sm" color="#bbb" />
@@ -128,4 +128,11 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
   >
 </template>
 
-<style scoped lang="scss"></style>
+<style scoped lang="less">
+@media screen and (max-width: 575px) {
+  .location-name.needs-rename {
+    max-width: 230px;
+  }
+}
+
+</style>

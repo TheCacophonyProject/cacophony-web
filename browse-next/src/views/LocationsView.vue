@@ -188,7 +188,7 @@ const projectHasLocations = computed<boolean>(() => {
 });
 
 const mapWidthPx = computed<number>(() => {
-  if (windowWidth.value >= 890) {
+  if (windowWidth.value >= 1066) {
     return 500;
   } else if (windowWidth.value >= 768) {
     return 250;

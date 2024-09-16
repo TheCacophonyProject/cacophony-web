@@ -2012,6 +2012,7 @@ onBeforeUnmount(() => {
   height: calc(100svh - 90px);
 }
 .search-results-inner {
+  max-width: calc(100svw - 48px);
   @media screen and (min-width: 992px) {
     max-width: 430px;
     width: 430px;

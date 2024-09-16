@@ -197,7 +197,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
 
 <template>
   <div class="d-flex flex-column">
-    <div class="filters sticky-top py-3 d-flex align-items-center">
+    <div class="filters sticky-sm-top py-3 d-flex align-items-center">
       <div class="me-2">Filter&nbsp;events&nbsp;</div>
       <multiselect
         v-model="selectedEventTypes"
@@ -310,6 +310,14 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
 .filters {
   background: #f6f6f6;
   border-bottom: 1px solid #ccc;
+
+}
+
+@media screen and (max-width: 575px) {
+  .filters {
+    position: sticky;
+    top: 50px;
+  }
 }
 .container > .row:not(:last-child) {
   border-bottom: 1px solid #bbb;
