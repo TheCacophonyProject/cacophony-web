@@ -1,0 +1,97 @@
+name: Node CI and Release
+
+on:
+  push:
+    branches: 
+      - '**'
+    tags:
+      - '*'
+  pull_request:
+    branches: 
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+        ports:
+          - 2375:2375
+        env:
+          DOCKER_TLS_CERTDIR: ""
+
+    env:
+      IS_CI_ENV: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+        run: echo $DOCKERHUB_TOKEN | docker login --username $DOCKERHUB_USER --password-stdin
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install global npm packages
+        run: npm install -g --loglevel=error npm apidoc@0.50.0 eslint prettier
+
+      - name: Update apt packages
+        run: sudo apt update
+
+      - name: Run linting checks
+        run: |
+          cd types && npm install --loglevel=error && npm run lint && cd ..
+          cd browse && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin && npm run lint && cd ..
+          cd api && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin github:TheCacophonyProject/apidoc-plugin-ts#v1.1.0 && npm run lint && cd ..
+          cd integration-tests && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests && npm run lint && cd ..
+
+      - name: Set up Docker environment
+        run: |
+          docker-compose build
+          docker-compose up --force-recreate &> dockerstart.log &
+          node ./api/waitForApi.js || { docker ps; docker-compose logs; exit 1; }
+
+      - name: Apply migration undo and redo to test undo migration
+        run: |
+          docker-compose exec server /app/api/node_modules/.bin/sequelize db:migrate:undo --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
+          docker-compose exec server /app/api/node_modules/.bin/sequelize db:migrate --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
+
+      - name: Run Cypress tests
+        run: |
+          cd integration-tests
+          cp cypress.config.ts.TEMPLATE cypress.config.ts
+          npm install --loglevel=error
+          npm run release
+          cd ..
+
+      - name: Generate API docs
+        run: |
+          cd api
+          npm update --loglevel=error apidoc-plugin-ts
+          npm run apidoc
+
+      - name: Prepare for deployment
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=${GITHUB_REF#refs/tags/v}
+          mkdir /tmp/nfpm
+          curl -sL https://github.com/goreleaser/nfpm/releases/download/v0.9.5/nfpm_0.9.5_Linux_x86_64.tar.gz | tar -C /tmp/nfpm -xzf -
+          export PATH=/tmp/nfpm:$PATH
+          npm install -g json
+          _release/build.sh ${version}
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "dist/*.deb"
+          allowUpdates: true
