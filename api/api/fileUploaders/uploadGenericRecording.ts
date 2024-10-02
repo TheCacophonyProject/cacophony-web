@@ -652,14 +652,29 @@ export const uploadGenericRecording =
           recordingDevice.lastConnectionTime ||
           !recordingDevice.lastConnectionTime)
       ) {
+        let shouldSetActive = false;
+        if (!recordingDevice.active) {
+          // Check if the device has been re-assigned to another group:
+          const activeDevice = models.Device.findOne({
+            where: {
+              saltId: recordingDevice.saltId,
+              active: true,
+            },
+          });
+          if (!activeDevice) {
+            shouldSetActive = true;
+          }
+        }
         // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
         // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
         // which indicates that this device is now "offline".
         // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
         recordingDeviceUpdatePayload = {
           lastConnectionTime: null,
-          active: true,
         };
+        if (shouldSetActive) {
+          (recordingDeviceUpdatePayload as any).active = true;
+        }
       }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
