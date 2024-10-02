@@ -11,7 +11,7 @@ import {
   TEMPLATE_AUDIO_RECORDING_RESPONSE_TC2,
   TEMPLATE_AUDIO_RECORDING_TC2,
 } from "@commands/dataTemplate";
-import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
+import { RecordingType } from "@typedefs/api/consts";
 
 describe("Recordings - audio recording parameter tests", () => {
   const templateExpectedRecording: ApiAudioRecordingResponse = JSON.parse(
@@ -33,7 +33,7 @@ describe("Recordings - audio recording parameter tests", () => {
   it("Can upload an audio recording and use embedded metadata", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiAudioRecordingResponse;
-    recording1.duration = 20;
+    recording1.duration = 20.000912;
     recording1.location = [-43.601032, 172.71317];
     cy.log("Add recording as device");
     cy.apiRecordingAdd(
