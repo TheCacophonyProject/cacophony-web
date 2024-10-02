@@ -201,7 +201,7 @@ interface RecordingFileUploadResult {
   isCorrupt: boolean;
   sha1Hash: string;
   fileLength: number;
-  embeddedMetadata?: CptvHeader;
+  embeddedMetadata?: CptvHeader | Record<string, any>;
   fileName?: string;
 }
 
@@ -247,7 +247,8 @@ const processFilePart = async (
   const sha1Hash = crypto.createHash("sha1");
   console.assert(!!part.filename, "NO FILENAME");
 
-  // NOTE: thermal-uploader calls the filename 'file'
+  // NOTE: thermal-uploader calls the filename 'file',
+  //  so we need to check for m4a metadata as well as trying to parse as a CPTV file.
   const mightBeCptvFile =
     !("filename" in part) ||
     (part.filename &&
@@ -331,7 +332,7 @@ const processFilePart = async (
   if (mightBeTc2AudioFile && (!mightBeCptvFile || !wasValidCptvFile)) {
     const metadata = await tryReadingM4aMetadata(m4aDecodeStream);
     if (typeof metadata === "string") {
-      log.warn("Failed parsing m4a metadata %s", embeddedMetadata);
+      log.warn("Failed parsing m4a metadata: %s", metadata);
       wasValidM4aFile = false;
       // Probably wasn't a valid .aac file?
       isCorrupt = true;
@@ -373,7 +374,9 @@ const processFilePart = async (
     fileLength: length,
   };
   if (embeddedMetadata && typeof embeddedMetadata !== "string") {
-    payload.embeddedMetadata = embeddedMetadata as CptvHeader;
+    payload.embeddedMetadata = embeddedMetadata as
+      | CptvHeader
+      | Record<string, any>;
   }
   if (part.filename) {
     payload.fileName = part.filename;

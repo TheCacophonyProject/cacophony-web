@@ -3,7 +3,7 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import path from "path";
 export const tryReadingM4aMetadata = async (
-  stream
+  stream: ReadableStream
 ): Promise<Record<string, any> | string> => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -31,10 +31,10 @@ export const tryReadingM4aMetadata = async (
       result.deviceId = parseInt(result.deviceId);
     }
     if (result.locAccuracy) {
-      result.locAccuracy = parseInt(result.locAccuracy);
+      result.locAccuracy = parseFloat(result.locAccuracy);
     }
     if (result.duration) {
-      result.duration = parseInt(result.duration);
+      result.duration = parseFloat(result.duration);
     }
   }
   readerContext.free();
