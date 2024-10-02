@@ -1133,7 +1133,7 @@ describe("Recordings - processing tests", () => {
           newField: "newValue",
           newField2: "newValue2",
           algorithm: 99999,
-          totalFrames: 5,
+          totalFrames: 4,
           previewSecs: null,
         } as any;
 

@@ -41,6 +41,7 @@ import type { Station } from "@models/Station.js";
 import type { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
+import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -215,6 +216,26 @@ const mapPartName = (partKey: string, partName: string): string => {
   }
   return partKey;
 };
+
+function appendToArrayBuffer(originalBuffer, newData) {
+  // Create a new ArrayBuffer with the size of the original plus the new data
+  const newBuffer = new ArrayBuffer(
+    originalBuffer.byteLength + newData.byteLength
+  );
+
+  // Create typed arrays to work with the data
+  const originalView = new Uint8Array(originalBuffer);
+  const newView = new Uint8Array(newBuffer);
+  const additionalView = new Uint8Array(newData);
+
+  // Copy the original data to the new buffer
+  newView.set(originalView, 0);
+  // Copy the new data to the new buffer
+  newView.set(additionalView, originalView.length);
+
+  return newBuffer; // Return the new ArrayBuffer
+}
+
 const processFilePart = async (
   partKey: string,
   part: MultipartFormPart,
@@ -231,6 +252,14 @@ const processFilePart = async (
     !("filename" in part) ||
     (part.filename &&
       (part.filename.endsWith(".cptv") || part.filename === "file"));
+
+  const mightBeTc2AudioFile =
+    !("filename" in part) ||
+    (part.filename &&
+      (part.filename.endsWith(".aac") || part.filename === "file"));
+  let wasValidCptvFile = true;
+  let wasValidM4aFile = true;
+
   const transform = new TransformStream({
     transform(chunk, controller) {
       if (canceledRequest.canceled) {
@@ -242,33 +271,44 @@ const processFilePart = async (
     },
   });
   let uploaderStream;
-  let decodeStream;
-  if (mightBeCptvFile) {
+  let cptvDecodeStream;
+  let m4aDecodeStream;
+  if (mightBeCptvFile && mightBeTc2AudioFile) {
     const stream = Readable.toWeb(part);
-    [uploaderStream, decodeStream] = stream.pipeThrough(transform).tee();
+    const [u, d] = stream.pipeThrough(transform).tee();
+    uploaderStream = u;
+    [cptvDecodeStream, m4aDecodeStream] = d.tee();
+  } else if (mightBeCptvFile && !mightBeTc2AudioFile) {
+    const stream = Readable.toWeb(part);
+    [uploaderStream, cptvDecodeStream] = stream.pipeThrough(transform).tee();
+  } else if (mightBeTc2AudioFile && !mightBeCptvFile) {
+    const stream = Readable.toWeb(part);
+    [uploaderStream, m4aDecodeStream] = stream.pipeThrough(transform).tee();
   } else {
     uploaderStream = Readable.toWeb(part).pipeThrough(transform);
   }
   // TODO: If there are multiple file uploads, and *any* fail or are prematurely aborted, we need to exit early.
   // Upload part, while piping it through a transform that performs sha1 + checks length.
   const upload = uploadStream(partKey, uploaderStream);
-
   // Special treatment for "file" part, since that is the "raw" file.
   // NOTE: Maybe validate stream, depending on upload recording type.
   //  If there have been recordings from this device previously, we can get the
   //  expected type from the device kind.
   let isCorrupt = false;
-  let embeddedMetadata: CptvHeader | string;
+  let embeddedMetadata: CptvHeader | string | Record<string, any>;
+  let cptvStreamError = "";
+
   if (mightBeCptvFile) {
     // If the device is a known thermal camera, we can validate the cptv file, and potentially
     // exit early if it is found to be corrupt.
     const decoder = new CptvDecoder();
-    embeddedMetadata = await decoder.getStreamMetadata(decodeStream);
+    embeddedMetadata = await decoder.getStreamMetadata(cptvDecodeStream);
     if (!canceledRequest.canceled) {
       if (typeof embeddedMetadata === "string") {
-        log.error("Stream error %s", embeddedMetadata);
+        cptvStreamError = embeddedMetadata;
         // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
         isCorrupt = true;
+        wasValidCptvFile = false;
         // TODO: The file could be corrupt, but we could still get a valid CPTV header out.
         //  test this case.
         const header = await decoder.getHeader();
@@ -287,7 +327,34 @@ const processFilePart = async (
       });
     }
     await decoder.close();
-  } else {
+  }
+  if (mightBeTc2AudioFile && (!mightBeCptvFile || !wasValidCptvFile)) {
+    const metadata = await tryReadingM4aMetadata(m4aDecodeStream);
+    if (typeof metadata === "string") {
+      log.warn("Failed parsing m4a metadata %s", embeddedMetadata);
+      wasValidM4aFile = false;
+      // Probably wasn't a valid .aac file?
+      isCorrupt = true;
+    } else if (typeof metadata === "object") {
+      embeddedMetadata = metadata as Record<string, string>;
+      isCorrupt = false;
+    }
+    if (!canceledRequest.canceled) {
+      await upload.done().catch((error) => {
+        if (error.name !== "AbortError") {
+          log.error("Upload error: %s", error.toString());
+          part.emit(
+            "error",
+            new UnprocessableError(`Upload error: '${part.name}'`)
+          );
+        }
+      });
+    }
+  }
+  if (mightBeCptvFile && !wasValidCptvFile && !wasValidM4aFile) {
+    log.error("Stream error %s", cptvStreamError);
+  }
+  if (!mightBeCptvFile && !mightBeTc2AudioFile) {
     await upload.done().catch((error) => {
       if (error.name !== "AbortError") {
         log.error("DONE? %s", error.toString());

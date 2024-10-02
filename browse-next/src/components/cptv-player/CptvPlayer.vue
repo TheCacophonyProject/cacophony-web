@@ -480,7 +480,7 @@ const hasBackgroundFrame = computed<boolean>(() => {
 });
 
 const addFrame = (frame: CptvFrame) => {
-  if (frame.meta.isBackgroundFrame) {
+  if (frame.isBackgroundFrame) {
     backgroundFrame.value = frame;
   } else {
     frames.push(frame);
@@ -502,12 +502,8 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
       }
       if (frames.length !== 0) {
         totalFrames.value = frames.length;
-        console.log("total frames", totalFrames.value);
       }
       break;
-    }
-    if (!totalFrames.value) {
-      totalFrames.value = await cptvDecoder.getTotalFrames();
     }
     addFrame(frame);
   }
@@ -529,7 +525,7 @@ const setCurrentFrameAndRender = (
     frameData = frames[Math.min(frames.length - 1, frameNumToRender)];
   }
   if (frameData) {
-    frameHeader.value = frameData.meta;
+    frameHeader.value = frameData as CptvFrameHeader;
     if (cNum !== frameNumToRender) {
       cNum = frameNumToRender;
     }
@@ -675,7 +671,7 @@ const renderFrame = (
       // #1284559 maybe not working?
       const range = max - min;
       const colourMapToUse = colourMap.value[1];
-      const fd = frameData.data;
+      const fd = frameData.imageData;
       const frameBufferView = new Uint32Array(frameBuffer.buffer);
       const len = frameBufferView.length;
       for (let i = 0; i < len; i++) {
@@ -691,8 +687,8 @@ const renderFrame = (
         const [min, max] = minMaxForFrame(backgroundFrame.value as CptvFrame);
         const range = max - min;
         const colourMapToUse = colourMap.value[1];
-        const fd = frameData.data;
-        const bg = (backgroundFrame.value as CptvFrame).data;
+        const fd = frameData.imageData;
+        const bg = (backgroundFrame.value as CptvFrame).imageData;
         const threshold = 45; // Should be scaled by range.
         const frameBufferView = new Uint32Array(frameBuffer.buffer);
         const len = frameBufferView.length;
@@ -779,7 +775,7 @@ const totalPlayableFrames = computed<number>(() => {
     const totalFrames = (header.value as CptvHeader).totalFrames;
     return (totalFrames || 0) - backgroundAdjust;
   } else {
-    if (totalFrames.value !== null) {
+    if (totalFrames.value !== null && totalFrames.value !== undefined) {
       const backgroundAdjust = header.value?.hasBackgroundFrame ? 1 : 0;
       return totalFrames.value - backgroundAdjust;
     }
@@ -1087,11 +1083,11 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     let frameNum = startFrame;
     while (frameNum < onePastLastFrame) {
       const frameData = frames[frameNum];
-      const frameHeader = frameData.meta;
+      const frameHeader = frameData;
       const [min, max] = minMaxForFrame(frameData);
       renderFrameIntoFrameBuffer(
         frameBuffer,
-        frameData.data,
+        frameData.imageData,
         colourMap.value[1],
         min,
         max
@@ -1530,7 +1526,7 @@ const toggleBackground = async (): Promise<void> => {
       const [min, max] = minMaxForFrame(background);
       renderFrameIntoFrameBuffer(
         frameBuffer,
-        background.data,
+        background.imageData,
         colourMap.value[1],
         min,
         max
@@ -1620,7 +1616,7 @@ const moveOverOverlayCanvas = (event: MouseEvent) => {
       // Map the x,y into canvas size
       const frameData = currentVisibleFrame.value;
       valueUnderCursor.value = `(${pX}, ${pY}) ${
-        frameData.data[pY * (header.value as CptvHeader).width + pX]
+        frameData.imageData[pY * (header.value as CptvHeader).width + pX]
       }`;
       if (valueTooltip.value) {
         const thisTooltip = valueTooltip.value as HTMLSpanElement;
@@ -2130,7 +2126,7 @@ watch(
         <div
           class="reveal-handle d-flex align-items-center justify-content-center"
           ref="revealHandle"
-          @touchstart="(e) => e.preventDefault()"
+          @touchstart="(e: TouchEvent) => e.preventDefault()"
           @pointerdown="grabRevealHandle"
           @pointerup="releaseRevealHandle"
           @pointermove="moveRevealHandle"

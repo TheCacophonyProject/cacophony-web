@@ -24,7 +24,7 @@
     "chart.js": "^3.6.2",
     "chroma-js": "^2.4.2",
     "colormap": "^2.3.2",
-    "cptv-player-vue": "github:TheCacophonyProject/cptv-player-vue#v1.4.1",
+    "cptv-player-vue": "github:TheCacophonyProject/cptv-player-vue#v1.5.0",
     "cross-fetch": "^3.0.6",
     "csvtojson": "^2.0.10",
     "highcharts": "^9.1.1",

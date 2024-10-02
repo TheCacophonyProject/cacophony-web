@@ -36,14 +36,12 @@ export const drawBottomRightOverlayLabel = (
     const canvasHeight = overlayContext.canvas.height;
     overlayContext.strokeText(
       label,
-      (canvasWidth - (labelWidth + sidePadding * scale)) /
-        scale,
+      (canvasWidth - (labelWidth + sidePadding * scale)) / scale,
       (canvasHeight - bottomPadding * scale) / scale
     );
     overlayContext.fillText(
       label,
-      (canvasWidth - (labelWidth + sidePadding * scale)) /
-        scale,
+      (canvasWidth - (labelWidth + sidePadding * scale)) / scale,
       (canvasHeight - bottomPadding * scale) / scale
     );
   }

@@ -110,6 +110,7 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
       minValue,
       maxValue,
     } = header;
+    console.log(header);
     const headerInfo: Record<
       string,
       string | boolean | number | Record<string, number | string>
@@ -121,19 +122,19 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
       "preview seconds": previewSecs || 0,
     };
     if (deviceName) {
-      headerInfo["device name"] = deviceName;
+      headerInfo["device name"] = deviceName.inner;
     }
     if (deviceId) {
       headerInfo["device ID"] = deviceId;
     }
     if (brand && model) {
-      headerInfo["sensor"] = `${brand} ${model}`;
+      headerInfo["sensor"] = `${brand.inner} ${model.inner}`;
     }
     if (serialNumber) {
       headerInfo["serial"] = `#${serialNumber}`;
     }
     if (firmwareVersion) {
-      headerInfo["firmware"] = firmwareVersion;
+      headerInfo["firmware"] = firmwareVersion.inner;
     }
     if (minValue !== undefined) {
       headerInfo["min value"] = minValue;
@@ -142,7 +143,7 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
       headerInfo["max value"] = maxValue;
     }
     if (motionConfig) {
-      headerInfo["motion config"] = motionConfig
+      headerInfo["motion config"] = motionConfig.inner
         .split("\n")
         .reduce((acc: Record<string, number | string>, item: string) => {
           const parts = item.split(": ");

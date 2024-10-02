@@ -88,7 +88,12 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         @keyup.enter="saveLocationName"
         @keyup.esc="exitEditMode"
       />
-      <strong v-else class="location-name" :class="{ 'needs-rename': !!location.needsRename }">{{ location.name }}</strong>
+      <strong
+        v-else
+        class="location-name"
+        :class="{ 'needs-rename': !!location.needsRename }"
+        >{{ location.name }}</strong
+      >
       <b-spinner small v-if="savingLocation" class="ms-3" />
     </div>
     <div>
@@ -134,5 +139,4 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
     max-width: 230px;
   }
 }
-
 </style>

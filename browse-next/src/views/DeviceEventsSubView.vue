@@ -310,7 +310,6 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
 .filters {
   background: #f6f6f6;
   border-bottom: 1px solid #ccc;
-
 }
 
 @media screen and (max-width: 575px) {

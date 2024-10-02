@@ -259,7 +259,7 @@ describe("Recordings - parameter tests", () => {
         null,
         recording1
       );
-      expectedRecording1.duration = 0.555555555555556;
+      expectedRecording1.duration = 0.4444444444444444;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording35",
@@ -987,7 +987,7 @@ describe("Recordings - parameter tests", () => {
       );
       expectedRecording4.additionalMetadata = {
         previewSecs: 5,
-        totalFrames: 5,
+        totalFrames: 4,
       };
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
