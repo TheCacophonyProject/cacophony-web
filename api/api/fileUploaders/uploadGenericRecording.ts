@@ -332,7 +332,7 @@ const processFilePart = async (
   if (mightBeTc2AudioFile && (!mightBeCptvFile || !wasValidCptvFile)) {
     const metadata = await tryReadingM4aMetadata(m4aDecodeStream);
     if (typeof metadata === "string") {
-      log.warn("Failed parsing m4a metadata: %s", metadata);
+      log.warning("Failed parsing m4a metadata: %s", metadata);
       wasValidM4aFile = false;
       // Probably wasn't a valid .aac file?
       isCorrupt = true;
