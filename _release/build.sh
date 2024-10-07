@@ -72,6 +72,7 @@ echo "Installing dependencies"
 npm install
 echo "Running build with webpack"
 npm run release
+ls
 echo "Cleaning up node_modules"
 rm -rf node_modules
 
