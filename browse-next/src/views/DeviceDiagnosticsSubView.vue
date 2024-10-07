@@ -870,4 +870,6 @@ const hoveredPointValue = computed<number>(() => {
   color: #777;
 }
 </style>
-<style src="chartist/dist/index.css" lang="css"></style>
+<style lang="css">
+@import url('chartist/dist/index.css');
+</style>

@@ -831,4 +831,6 @@ main {
   padding: 10px;
 }
 </style>
-<style src="@vueform/multiselect/themes/default.css"></style>
+<style lang="css">
+@import url('@vueform/multiselect/themes/default.css');
+</style>

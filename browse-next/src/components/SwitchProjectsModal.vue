@@ -516,4 +516,6 @@ watch(userToFilterProjects, (userId) => {
     </div>
   </b-modal>
 </template>
-<style src="@vueform/multiselect/themes/default.css"></style>
+<style lang="css">
+@import url('@vueform/multiselect/themes/default.css');
+</style>

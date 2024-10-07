@@ -17,6 +17,7 @@ const fetchJsonWithMethod = async (
     headers: {
       "Content-Type": "application/json; charset=utf-8",
     },
+    // eslint-disable-next-line no-undef
   } as RequestInit;
   if (body) {
     payload.body = JSON.stringify(body);
