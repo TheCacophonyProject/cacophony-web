@@ -32,14 +32,14 @@ cd ${build_dir}
 echo "Building Cacophony Browse-Next"
 cd browse-next
 npm version --no-git-tag-version ${version}
-rm -rf node_modules
+echo "Installing dependencies"
 npm install
 npm run build
 rm -rf node_modules
 
 echo "Installing shared type definitions"
 cd ../types
-rm -rf node_modules
+echo "Installing dependencies"
 npm install
 echo "Compiling TypeScript..."
 ./node_modules/.bin/tsc
@@ -49,8 +49,6 @@ cd ..
 
 echo "Installing dependencies for build..."
 cd api
-
-rm -rf node_modules
 npm install
 
 echo "Compiling TypeScript..."
@@ -59,10 +57,8 @@ echo "Compiling TypeScript..."
 echo "Creating API docs..."
 npm update apidoc-plugin-ts
 npm run apidoc
-
 echo "Removing external dependencies..."
 rm -rf node_modules
-
 echo "Removing TypeScript files..."
 find -name '*.ts' -print0 | xargs -0 rm
 
@@ -72,9 +68,11 @@ find -name '*.ts' -print0 | xargs -0 rm
 echo "Building Cacophony Browse"
 cd ../browse
 npm version --no-git-tag-version ${version}
-rm -rf node_modules
+echo "Installing dependencies"
 npm install
+echo "Running build with webpack"
 npm run release
+echo "Cleaning up node_modules"
 rm -rf node_modules
 
 cd ../types
