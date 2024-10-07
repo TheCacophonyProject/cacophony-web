@@ -127,6 +127,7 @@ class CptvDecoderInterface {
       };
       this.response = await fetch(
         `${apiRoot}/api/v1/recordings/raw/${id}`,
+          // eslint-disable-next-line no-undef
         request as RequestInit
       );
       if (this.response.status === 200) {

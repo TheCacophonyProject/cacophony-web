@@ -1688,12 +1688,36 @@ watch(
         recId,
         tracks,
       }));
+      const visitClassification = visit.classification || "";
+      let firstRec = visit.recordings[0];
+      let firstTrack =
+        (firstRec.tracks &&
+          firstRec.tracks.length !== 0 &&
+          firstRec.tracks[0]) ||
+        undefined;
+      if (visitClassification !== "") {
+        // Make sure we set the first recording as one that contains the visit classification.
+        const firstRecordingWithVisitClassification = visit.recordings.find(
+          (rec) =>
+            rec.tracks.some(
+              (track) =>
+                track.tag === visit.classification ||
+                (!track.tag && track.aiTag === visit.classification)
+            )
+        );
+        if (firstRecordingWithVisitClassification) {
+          firstRec = firstRecordingWithVisitClassification;
+          firstTrack = firstRec.tracks.find(
+            (track) =>
+              track.tag === visit.classification ||
+              (!track.tag && track.aiTag === visit.classification)
+          );
+        }
+      }
       const params: Record<string, string> = {
         visitLabel: visit.classification || "",
-        currentRecordingId: recordingIds[0].recId.toString(),
-        trackId: (recordingIds[0].tracks &&
-          recordingIds[0].tracks.length &&
-          recordingIds[0].tracks[0].id.toString()) as string,
+        currentRecordingId: firstRec.recId.toString(),
+        trackId: (firstTrack && firstTrack.id.toString()) as string,
       };
       if (recordingIds.length) {
         params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
