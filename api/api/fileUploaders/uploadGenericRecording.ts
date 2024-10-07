@@ -298,6 +298,7 @@ const processFilePart = async (
   let isCorrupt = false;
   let embeddedMetadata: CptvHeader | string | Record<string, any>;
   let cptvStreamError = "";
+  let uploaded = false;
 
   if (mightBeCptvFile) {
     // If the device is a known thermal camera, we can validate the cptv file, and potentially
@@ -326,6 +327,7 @@ const processFilePart = async (
           );
         }
       });
+      uploaded = true;
     }
     await decoder.close();
   }
@@ -335,12 +337,12 @@ const processFilePart = async (
       log.warning("Failed parsing m4a metadata: %s", metadata);
       wasValidM4aFile = false;
       // Probably wasn't a valid .aac file?
-      isCorrupt = true;
+      // isCorrupt = true;
     } else if (typeof metadata === "object") {
       embeddedMetadata = metadata as Record<string, string>;
       isCorrupt = false;
     }
-    if (!canceledRequest.canceled) {
+    if (!canceledRequest.canceled && !uploaded) {
       await upload.done().catch((error) => {
         if (error.name !== "AbortError") {
           log.error("Upload error: %s", error.toString());
@@ -350,12 +352,13 @@ const processFilePart = async (
           );
         }
       });
+      uploaded = true;
     }
   }
   if (mightBeCptvFile && !wasValidCptvFile && !wasValidM4aFile) {
     log.error("Stream error %s", cptvStreamError);
   }
-  if (!mightBeCptvFile && !mightBeTc2AudioFile) {
+  if (!mightBeCptvFile && !mightBeTc2AudioFile && !uploaded) {
     await upload.done().catch((error) => {
       if (error.name !== "AbortError") {
         log.error("DONE? %s", error.toString());
@@ -366,6 +369,7 @@ const processFilePart = async (
       }
     });
   }
+
   const payload: RecordingFileUploadResult = {
     partName: part.name,
     isCorrupt,

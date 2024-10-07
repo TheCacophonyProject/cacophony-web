@@ -79,6 +79,39 @@ describe("Recordings - audio recording parameter tests", () => {
     );
   });
 
+  it("Can upload an audio recording - as if from tc2 device", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    let expectedRecording1: ApiAudioRecordingResponse;
+
+    cy.log("Add recording as device");
+    cy.apiRecordingAdd(
+      "rarDevice1",
+      recording1,
+      "60sec-audio.m4a",
+      "rarRecording1",
+      200,
+      {},
+      "file" //
+    ).then(() => {
+      expectedRecording1 = TestCreateExpectedRecordingData(
+        templateExpectedRecording,
+        "rarRecording1",
+        "rarDevice1",
+        "rarGroup",
+        null,
+        recording1
+      );
+      cy.log("Check recording can be viewed correctly");
+      cy.apiRecordingCheck(
+        "rarGroupAdmin",
+        "rarRecording1",
+        expectedRecording1,
+        EXCLUDE_IDS
+      );
+      cy.apiRecordingDownloadCheck("rarGroupAdmin", "rarRecording1");
+    });
+  });
+
   it("Duration handled correctly", () => {
     cy.log("Uses supplied duration");
     const recording2 = TestCreateRecordingData(templateRecording);

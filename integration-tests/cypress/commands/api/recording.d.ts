@@ -142,7 +142,8 @@ declare namespace Cypress {
       fileName?: string | { filename: string; key: string }[],
       recordingName?: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
+      useFileName?: string
     ): Cypress.Chainable<RecordingId>;
 
     /**
@@ -164,6 +165,8 @@ declare namespace Cypress {
       statusCode?: number
     ): any;
 
+    apiRecordingGetFile(userName: string, recordingNameOrId: RecordingId): any;
+
     /** Get a single recording using api/v1/recordings/{id}
      * Verify that the recording data matched the expectedRecording
      * Optionally: check for a non-200 statusCode
@@ -179,6 +182,8 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
+    apiRecordingDownloadCheck(userName: string, recordingNameOrId: string): any;
 
     /** Get a single recording that needs tagging using api/v1/recordings/needs-tag
      * Verify that the recording data matches (one of) the expectedRecordings

@@ -284,7 +284,8 @@ Cypress.Commands.add(
     fileName: string | { filename: string; key: string }[] = "invalid.cptv",
     recordingName: string = "recording1",
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
+    filenameToUse?: string
   ) => {
     logTestDescription(
       `Upload recording ${recordingName}  to '${deviceName}'`,
@@ -300,7 +301,8 @@ Cypress.Commands.add(
       data.type,
       data,
       "@addRecording",
-      statusCode
+      statusCode,
+      filenameToUse
     ).then((p) => {
       const x = p as unknown as {
         recordingId: RecordingId;
@@ -432,6 +434,24 @@ Cypress.Commands.add(
       {
         method: "GET",
         url,
+      },
+      userName,
+      statusCode
+    ).then((response) => {
+      cy.wrap(response);
+    });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingGetFile",
+  (userName: string, recordingId: RecordingId, statusCode: number = 200) => {
+    const url = v1ApiPath(`recordings/raw/${recordingId}`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "GET",
+        url,
+        encoding: null,
       },
       userName,
       statusCode
@@ -585,6 +605,31 @@ Cypress.Commands.add(
         );
       }
     });
+  }
+);
+
+Cypress.Commands.add(
+  "apiRecordingDownloadCheck",
+  (userName: string, recordingNameOrId: string) => {
+    logTestDescription(
+      `Check downloaded recording hash for ${recordingNameOrId} `,
+      {
+        recordingName: recordingNameOrId,
+      }
+    );
+    const recordingId: RecordingId = getCreds(recordingNameOrId).id;
+    cy.apiRecordingGet(userName, recordingId as RecordingId, 200).then(
+      (response) => {
+        expect(response.body.rawSize).to.exist;
+        expect(response.body.downloadRawJWT).to.exist;
+        const rawSize = response.body.rawSize;
+        cy.apiRecordingGetFile(userName, recordingId as RecordingId).then(
+          (response) => {
+            expect(response.body.byteLength).to.equal(rawSize);
+          }
+        );
+      }
+    );
   }
 );
 
