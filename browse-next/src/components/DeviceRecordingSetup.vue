@@ -4,11 +4,13 @@ import { selectedProjectDevices } from "@models/provides.ts";
 import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
+  AudioModes,
 } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import type { LoadedResource } from "@api/types.ts";
 import {
+  getDeviceModel,
   getDeviceNodeGroup,
   getSettingsForDevice,
   updateDeviceSettings,
@@ -21,7 +23,7 @@ const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
 const route = useRoute();
-const saltNodeGroup = ref<LoadedResource<string>>(null);
+const deviceModel = ref<LoadedResource<"tc2" | "pi">>(null);
 // Device Settings
 const settings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
 const syncedSettings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
@@ -52,9 +54,9 @@ const device = computed<ApiDeviceResponse | null>(() => {
 
 const settingsLoading = resourceIsLoading(settings);
 const lastSyncedSettingsLoading = resourceIsLoading(lastSyncedSettings);
-const nodeGroupInfoLoading = resourceIsLoading(saltNodeGroup);
+const nodeGroupInfoLoading = resourceIsLoading(deviceModel);
 const isTc2Device = computed<boolean>(() => {
-  return (saltNodeGroup.value || "").includes("tc2");
+  return deviceModel.value === "tc2";
 });
 const defaultWindows = {
   powerOn: "-30m",
@@ -78,6 +80,7 @@ const timeObjToTimeStr = (time: Time): string => {
 
 const fetchSettings = async () => {
   const response = await getSettingsForDevice(deviceId.value);
+  debugger;
   if (response && response.success && response.result.settings) {
     return response.result.settings;
   }
@@ -151,8 +154,8 @@ const loadResource = async (
 const initialised = ref<boolean>(false);
 onBeforeMount(async () => {
   await projectDevicesLoaded();
-  await loadResource(saltNodeGroup, () => getDeviceNodeGroup(deviceId.value));
   await loadResource(settings, fetchSettings);
+  await loadResource(deviceModel, () => getDeviceModel(deviceId.value));
   initialised.value = true;
   if (settings.value && !settings.value.synced) {
     // Load last synced settings
@@ -282,6 +285,236 @@ const customRecordingWindowStop = computed<Time>({
   },
 });
 
+const audioModeOptions = [
+  { value: "Disabled", text: "Disabled" },
+  { value: "AudioOnly", text: "Audio Only" },
+  { value: "AudioAndThermal", text: "Audio and Thermal" },
+  { value: "AudioOrThermal", text: "Audio or Thermal" },
+];
+
+// Computed property for Audio Mode
+const audioMode = computed<AudioModes>({
+  get: () => {
+    return (
+      (settings.value as ApiDeviceHistorySettings)?.audioRecording?.audioMode ??
+      "Disabled"
+    );
+  },
+  set: (val: AudioModes) => {
+    if (settings.value) {
+      (settings.value as ApiDeviceHistorySettings).audioRecording = {
+        ...(settings.value as ApiDeviceHistorySettings).audioRecording,
+        audioMode: val,
+        updated: new Date().toISOString(),
+      };
+    }
+  },
+});
+const audioModeExplanation = computed<string>(() => {
+  switch (audioMode.value) {
+    case "AudioOnly":
+      return "Records audio in a 24-hour window and disables thermal recording.";
+    case "AudioOrThermal":
+      return "Records audio outside of the thermal recording window.";
+    case "AudioAndThermal":
+      return "Records audio in a 24-hour window; however, the camera cannot record during the 1 minute of audio recording.";
+    default:
+      return "";
+  }
+});
+// Helper functions
+function timeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function timeToPercentage(timeStr: string): number {
+  const totalMinutes = timeToMinutes(timeStr);
+  return (totalMinutes / (24 * 60)) * 100;
+}
+
+function calculateTimePercentagePoints(
+  startTime: string,
+  endTime: string
+): Array<{ left: string; width: string }> {
+  if (startTime === "12:00" && endTime === "12:00")
+    return [{ left: "0%", width: "100%" }];
+  const startPercentage = timeToPercentage(startTime);
+  const endPercentage = timeToPercentage(endTime);
+
+  if (startPercentage <= endPercentage) {
+    return [
+      {
+        left: `${startPercentage}%`,
+        width: `${endPercentage - startPercentage}%`,
+      },
+    ];
+  } else {
+    return [
+      { left: `${startPercentage}%`, width: `${100 - startPercentage}%` },
+      { left: `0%`, width: `${endPercentage}%` },
+    ];
+  }
+}
+
+// Computed property for Thermal Bar Styles
+const thermalBarStyles = computed(() => {
+  if (audioMode.value === "AudioOnly") {
+    return [];
+  }
+  debugger;
+
+  const setting = settings.value ? settings.value : undefined;
+  const windows = setting?.windows;
+  const startRecording = windows?.startRecording || "-30m";
+  const stopRecording = windows?.stopRecording || "+30m";
+
+  // Handle relative times (cannot accurately represent without actual sunset/sunrise times)
+  if (
+    startRecording.startsWith("+") ||
+    startRecording.startsWith("-") ||
+    stopRecording.startsWith("+") ||
+    stopRecording.startsWith("-")
+  ) {
+    // Default to full night time (e.g., 18:00 to 06:00)
+    return [
+      { left: "0%", width: "33%" },
+      {
+        left: "66%", // Approximate 18:00
+        width: "33%", // From 18:00 to 06:00
+      },
+    ];
+  }
+
+  const thermalRanges = calculateTimePercentagePoints(
+    startRecording,
+    stopRecording
+  );
+
+  return thermalRanges.map((range) => ({
+    left: range.left,
+    width: range.width,
+  }));
+});
+
+// Computed property for Audio Bar Styles
+const audioBarStyles = computed(() => {
+  if (audioMode.value === "Disabled") {
+    return [];
+  }
+
+  if (
+    audioMode.value === "AudioOnly" ||
+    audioMode.value === "AudioAndThermal"
+  ) {
+    return [
+      {
+        left: "0%",
+        width: "100%",
+      },
+    ];
+  }
+
+  if (audioMode.value === "AudioOrThermal") {
+    const windows = (settings.value ? settings.value : {})?.windows;
+    const startRecording = windows?.startRecording || "-30m";
+    const stopRecording = windows?.stopRecording || "+30m";
+
+    // Handle relative times (cannot accurately represent without actual sunset/sunrise times)
+    if (
+      startRecording.startsWith("+") ||
+      startRecording.startsWith("-") ||
+      stopRecording.startsWith("+") ||
+      stopRecording.startsWith("-")
+    ) {
+      // Default to daytime (outside of night time)
+      return [
+        {
+          left: "33%",
+          width: "33%", // From 00:00 to 18:00
+        },
+      ];
+    }
+    debugger;
+
+    const thermalRanges = calculateTimePercentagePoints(
+      startRecording,
+      stopRecording
+    );
+
+    // Audio ranges are inverse of thermal ranges
+    const audioRanges: Array<{ left: string; width: string }> = [];
+
+    if (thermalRanges.length === 1) {
+      const thermalStart = parseFloat(thermalRanges[0].left);
+      const thermalWidth = parseFloat(thermalRanges[0].width);
+
+      // Before thermal recording window
+      if (thermalStart > 0) {
+        audioRanges.push({
+          left: "0%",
+          width: `${thermalStart}%`,
+        });
+      }
+
+      // After thermal recording window
+      const afterThermalStart = thermalStart + thermalWidth;
+      if (afterThermalStart < 100) {
+        audioRanges.push({
+          left: `${afterThermalStart}%`,
+          width: `${100 - afterThermalStart}%`,
+        });
+      }
+    } else if (thermalRanges.length === 2) {
+      // Thermal ranges cross midnight
+      const firstThermalRangeEnd =
+        parseFloat(thermalRanges[0].left) + parseFloat(thermalRanges[0].width);
+
+      const secondThermalRangeStart = parseFloat(thermalRanges[1].left);
+
+      // Audio range between thermal ranges
+      if (firstThermalRangeEnd < secondThermalRangeStart) {
+        audioRanges.push({
+          left: `${firstThermalRangeEnd}%`,
+          width: `${secondThermalRangeStart - firstThermalRangeEnd}%`,
+        });
+      }
+    }
+
+    return audioRanges;
+  }
+
+  return [];
+});
+
+// Computed property for Audio Seed
+const audioSeed = computed<number>({
+  get: () => {
+    return (
+      (settings.value as ApiDeviceHistorySettings)?.audioRecording?.audioSeed ??
+      0
+    );
+  },
+  set: (val: number) => {
+    if (settings.value) {
+      (settings.value as ApiDeviceHistorySettings).audioRecording = {
+        ...((settings.value as ApiDeviceHistorySettings).audioRecording || {}),
+        audioSeed: val,
+        updated: new Date().toISOString(),
+      };
+    }
+  },
+});
+const savingAudioSettings = ref<boolean>(false);
+
+watch([audioMode, audioSeed], async () => {
+  if (settings.value && initialised.value) {
+    savingAudioSettings.value = true;
+    await updateDeviceSettings(deviceId.value, settings.value);
+    savingAudioSettings.value = false;
+  }
+});
+
 const savingPowerModeSettings = ref<boolean>(false);
 const savingRecordingWindowSettings = ref<boolean>(false);
 watch(useLowPowerMode, async () => {
@@ -352,12 +585,22 @@ watch(customRecordingWindowStop, async () => {
           <strong>Synced with remote device:</strong>
           {{ settings.synced ? "Yes" : "No" }}
         </div>
-        <span
-          ><span v-if="!settings.synced">Once synced, w</span
-          ><span v-else>W</span>ill {{ recordingWindow }} in
-          <span v-if="useLowPowerMode">low</span> <span v-else>high</span> power
-          mode.</span
-        >
+        <span>
+          <span v-if="!settings.synced">Once synced, w</span>
+          <span v-else>W</span>ill {{ recordingWindow }} in
+          <span v-if="useLowPowerMode">low</span>
+          <span v-else>high</span> power mode
+          <span v-if="audioMode !== 'Disabled'">
+            and
+            <span v-if="audioMode === 'AudioOnly'">audio only</span>
+            <span v-else-if="audioMode === 'AudioAndThermal'"
+              >audio and thermal</span
+            >
+            <span v-else-if="audioMode === 'AudioOrThermal'"
+              >audio or thermal</span
+            > </span
+          >.
+        </span>
         <hr />
         <div v-if="isTc2Device">
           <div class="h5">Set power profile</div>
@@ -385,6 +628,79 @@ watch(customRecordingWindowStop, async () => {
             >
             of species detected.
           </p>
+          <hr />
+        </div>
+        <div v-if="isTc2Device">
+          <div class="h5">Set Audio Recording Settings</div>
+          <p>
+            Audio recordings are made 32 times a day for one minute at random
+            intervals.
+          </p>
+          <div class="alert-light alert">
+            <b-form-group label="Audio Mode">
+              <b-form-select
+                v-model="audioMode"
+                :options="audioModeOptions"
+                :disabled="savingAudioSettings"
+              ></b-form-select>
+            </b-form-group>
+            <div class="d-flex justify-content-end">
+              <b-spinner
+                class="ms-2"
+                v-if="savingAudioSettings"
+                variant="secondary"
+                small
+              />
+            </div>
+            <div class="pt-2">{{ audioModeExplanation }}</div>
+          </div>
+          <div v-if="audioMode !== 'Disabled' || recordingWindow" class="mt-4">
+            <div class="d-flex align-items-center">
+              <div :style="{ width: '12%' }"></div>
+              <div class="d-flex w-100 justify-content-between text-muted">
+                <div>00:00</div>
+                <div>12:00</div>
+                <div>24:00</div>
+              </div>
+            </div>
+            <div class="d-flex flex-column mt-2">
+              <div class="d-flex align-items-center mb-2">
+                <h6 class="text-muted mb-0 py-1" :style="{ width: '12%' }">
+                  Thermal:
+                </h6>
+                <div
+                  class="position-relative flex-fill rounded bg-light p-0"
+                  :style="{ height: '1em' }"
+                >
+                  <!-- Thermal Recording Windows -->
+                  <div
+                    v-if="audioMode !== 'AudioOnly'"
+                    v-for="(style, index) in thermalBarStyles"
+                    :key="'thermal-' + index"
+                    class="position-absolute h-100 bg-success p-0"
+                    :style="style"
+                  ></div>
+                </div>
+              </div>
+              <div class="d-flex align-items-center">
+                <h6 class="text-muted mb-0 py-1" :style="{ width: '12%' }">
+                  Audio:
+                </h6>
+                <div
+                  class="position-relative flex-fill rounded bg-light"
+                  :style="{ height: '1em' }"
+                >
+                  <!-- Audio Recording Windows -->
+                  <div
+                    v-for="(style, index) in audioBarStyles"
+                    :key="'audio-' + index"
+                    class="position-absolute h-100 bg-primary"
+                    :style="style"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
           <hr />
         </div>
         <div>
@@ -456,6 +772,7 @@ watch(customRecordingWindowStop, async () => {
             >
           </p>
         </div>
+        <hr />
       </div>
     </div>
   </div>
@@ -467,5 +784,5 @@ watch(customRecordingWindowStop, async () => {
 }
 </style>
 <style lang="css">
-@import url('@vuepic/vue-datepicker/dist/main.css');
+@import url("@vuepic/vue-datepicker/dist/main.css");
 </style>

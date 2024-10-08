@@ -1549,7 +1549,10 @@ export default function (app: Application, baseUrl: string) {
           }
         );
       } catch (e) {
-        return next(new FatalError("Failed to update device settings."));
+        console.log(e);
+        return next(
+          new FatalError(`Failed to update device settings: ${e.message}`)
+        );
       }
     }
   );
