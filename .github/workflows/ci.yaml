@@ -28,10 +28,10 @@ jobs:
 
       - name: Run linting checks
         run: |
-          cd types && npm install --loglevel=error && npm run lint && cd ..
-          cd browse && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin && npm run lint && cd ..
-          cd api && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin github:TheCacophonyProject/apidoc-plugin-ts#v1.1.0 && npm run lint && cd ..
-          cd integration-tests && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests && npm run lint && cd ..
+          cd types && npm ci --loglevel=error && npm run lint && cd ..
+          cd browse && npm ci --loglevel=error && npm run lint && cd ..
+          cd api && npm ci --loglevel=error && npm run lint && cd ..
+          cd integration-tests && npm ci --loglevel=error && npm run lint && cd ..
 
   test:
     runs-on: ubuntu-20.04
@@ -89,7 +89,7 @@ jobs:
           BATCH: ${{ matrix.batch }}
         run: |
           cd integration-tests        
-          npm install --loglevel=error
+          npm ci --loglevel=error
           npm run $BATCH
 
   build:

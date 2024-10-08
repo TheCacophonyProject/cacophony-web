@@ -33,14 +33,14 @@ echo "Building Cacophony Browse-Next"
 cd browse-next
 npm version --no-git-tag-version ${version}
 echo "Installing dependencies"
-npm install
+npm ci
 npm run build
 rm -rf node_modules
 
 echo "Installing shared type definitions"
 cd ../types
 echo "Installing dependencies"
-npm install
+npm ci
 echo "Compiling TypeScript..."
 ./node_modules/.bin/tsc
 npm run generate-schemas
@@ -49,7 +49,7 @@ cd ..
 
 echo "Installing dependencies for build..."
 cd api
-npm install
+npm ci
 
 echo "Compiling TypeScript..."
 ./node_modules/.bin/tsc
@@ -69,7 +69,7 @@ echo "Building Cacophony Browse"
 cd ../browse
 npm version --no-git-tag-version ${version}
 echo "Installing dependencies"
-npm install
+npm ci
 echo "Running build with webpack"
 npm run release
 echo "Cleaning up node_modules"
