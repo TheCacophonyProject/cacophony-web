@@ -31,7 +31,7 @@ jobs:
           cd api && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin github:TheCacophonyProject/apidoc-plugin-ts#v1.1.0 && npm run lint && cd ..
           cd integration-tests && npm install --loglevel=error @typescript-eslint/parser @typescript-eslint/eslint-plugin eslint-plugin-cypress eslint-plugin-no-only-tests && npm run lint && cd ..
 
-  test:
+  test-batch-1:
     runs-on: ubuntu-20.04
 
     services:
@@ -67,8 +67,6 @@ jobs:
         with:
           node-version: 18
 
-#      - name: Update apt packages
-#        run: sudo apt update
       - name: Set up Docker environment
         run: |
           docker-compose build
@@ -82,10 +80,62 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          cd integration-tests
-          cp cypress.config.ts.TEMPLATE cypress.config.ts
+          cd integration-tests    
           npm install --loglevel=error
-          npm run release      
+          npm run ci-batch-1
+
+  test-batch-2:
+    runs-on: ubuntu-20.04
+
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+        ports:
+          - 2375:2375
+        env:
+          DOCKER_TLS_CERTDIR: ""
+
+    env:
+      IS_CI_ENV: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version  # Verify installation
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Set up Docker environment
+        run: |
+          docker-compose build
+          docker-compose up --force-recreate &> dockerstart.log &
+          node ./api/waitForApi.js || { docker ps; docker-compose logs; exit 1; }
+
+      - name: Apply migration undo and redo to test undo migration
+        run: |
+          docker-compose exec server /app/api/node_modules/.bin/sequelize db:migrate:undo --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
+          docker-compose exec server /app/api/node_modules/.bin/sequelize db:migrate --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
+
+      - name: Run Cypress tests
+        run: |
+          cd integration-tests        
+          npm install --loglevel=error
+          npm run ci-batch-2   
 
   build:
     runs-on: ubuntu-20.04
