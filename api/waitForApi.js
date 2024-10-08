@@ -24,7 +24,7 @@ const apiServerIsUp = async (url) => {
   const fiveMinutesFromNow = new Date(
     now.setMinutes(now.getMinutes() + waitMins)
   );
-  console.log(`Waiting up to ${waitMins} minutes for API sever...`);
+  console.log(`Waiting up to ${waitMins} minutes for API server...`);
 
   while (new Date() < fiveMinutesFromNow) {
     let up = false;

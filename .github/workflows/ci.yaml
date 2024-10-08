@@ -80,8 +80,7 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          cd integration-tests
-          pwd
+          cd integration-tests        
           npm install --loglevel=error
           npm run ci-batch-1
 
