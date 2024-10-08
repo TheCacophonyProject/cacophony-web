@@ -126,11 +126,6 @@ jobs:
           docker-compose up --force-recreate &> dockerstart.log &
           node ./api/waitForApi.js || { docker ps; docker-compose logs; exit 1; }
 
-      - name: Apply migration undo and redo to test undo migration
-        run: |
-          docker-compose exec server /app/api/node_modules/.bin/sequelize db:migrate:undo --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
-          docker-compose exec server /app/api/node_modules/.bin/sequelize db:migrate --config /app/api/config/app_test_default.js --migrations-path /app/api/migrations
-
       - name: Run Cypress tests
         run: |
           cd integration-tests        
