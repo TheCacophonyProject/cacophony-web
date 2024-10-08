@@ -80,7 +80,8 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          cd integration-tests    
+          cd integration-tests
+          pwd
           npm install --loglevel=error
           npm run ci-batch-1
 
@@ -128,11 +129,12 @@ jobs:
 
       - name: Run Cypress tests
         run: |
-          cd integration-tests        
+          cd integration-tests                
           npm install --loglevel=error
           npm run ci-batch-2   
 
   build:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-20.04
     env:
       IS_CI_ENV: true
@@ -155,7 +157,6 @@ jobs:
           npm run apidoc
 
       - name: Prepare for deployment
-        if: startsWith(github.ref, 'refs/tags/')
         run: |
           version=${GITHUB_REF#refs/tags/v}
           mkdir /tmp/nfpm
@@ -165,7 +166,6 @@ jobs:
           _release/build.sh ${version}
 
       - name: Upload release assets
-        if: startsWith(github.ref, 'refs/tags/')
         uses: ncipollo/release-action@v1
         with:
           artifacts: "dist/*.deb"
