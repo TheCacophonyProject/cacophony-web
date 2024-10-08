@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";

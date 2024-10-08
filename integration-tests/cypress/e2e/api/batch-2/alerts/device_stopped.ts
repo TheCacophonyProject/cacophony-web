@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import moment from "moment";
 import { EventTypes, testCreateExpectedEvent } from "@commands/api/events";
 import { runReportStoppedDevicesScript } from "@commands/api/alerts";

@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { checkRecording } from "@commands/api/recording-tests";
 
 describe("Monitoring : pagings", () => {

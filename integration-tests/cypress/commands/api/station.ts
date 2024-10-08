@@ -1,6 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { ApiStationData } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getTestName } from "../names";
@@ -252,7 +249,7 @@ Cypress.Commands.add(
     stationIdOrName: string,
     retirementDate: string = new Date().toISOString(),
     additionalChecks: any = {}
-  ): any => {
+  ) => {
     let stationId: string;
     //Get station ID from name (unless we're asked not to)
     if (additionalChecks["useRawStationId"] === true) {

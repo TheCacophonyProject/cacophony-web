@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { getTestEmail, getTestName } from "@commands/names";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import {

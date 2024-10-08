@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { checkResponse } from "@commands/server";
 import { getNewIdentity } from "@commands/names";
 import { ApiAlertCondition } from "@typedefs/api/alerts";

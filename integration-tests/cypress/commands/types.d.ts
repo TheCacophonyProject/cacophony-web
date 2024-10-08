@@ -1,7 +1,7 @@
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { CacophonyIndex } from "@typedefs/api/recording";
-import { LatLng } from "@typedefs/api/common";
+import { LatLng, TrackId } from "@typedefs/api/common";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
@@ -477,16 +477,24 @@ export interface ApiRecordingTrackData {
 
 //from api/v1/recordings (post)
 export interface ApiTrackSet {
+  id?: TrackId;
+  tracker_version?: number;
+  num_frames?: number;
   positions?: any;
   start_s: number;
   end_s: number;
+  frame_start?: number;
+  frame_end?: number;
   minFreq?: number;
   maxFreq?: number;
-  predictions: {
-    model_id: number;
-    confident_tag?: string;
-    confidence?: number;
-  }[];
+  predictions: (
+    | {
+        model_id: number;
+        confident_tag?: string;
+        confidence?: number;
+      }
+    | any
+  )[];
   all_class_confidences?: any;
   automatic?: boolean;
 }

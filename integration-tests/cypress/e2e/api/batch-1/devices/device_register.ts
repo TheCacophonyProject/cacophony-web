@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import { DeviceHistoryEntry } from "@commands/types";

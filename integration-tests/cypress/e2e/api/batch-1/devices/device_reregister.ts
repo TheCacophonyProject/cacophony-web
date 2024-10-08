@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { NOT_NULL_STRING } from "@commands/constants";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";

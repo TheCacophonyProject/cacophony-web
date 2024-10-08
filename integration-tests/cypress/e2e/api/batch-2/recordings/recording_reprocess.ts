@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
 
 import { getCreds } from "@commands/server";

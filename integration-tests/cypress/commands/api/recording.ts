@@ -1,11 +1,7 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { uploadFile } from "../fileUpload";
 import { getTestName } from "../names";
 import {
   v1ApiPath,
-  processingApiPath,
   getCreds,
   makeAuthorizedRequestWithStatus,
   saveIdOnly,
@@ -20,7 +16,7 @@ import {
   ApiRecordingNeedsTagReturned,
   ApiRecordingColumns,
 } from "../types";
-import { ApiRecordingColumnNames, NOT_NULL } from "../constants";
+import { ApiRecordingColumnNames } from "../constants";
 import {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
@@ -28,10 +24,8 @@ import {
 } from "@typedefs/api/recording";
 import { HttpStatusCode } from "@typedefs/api/consts";
 import { RecordingId } from "@typedefs/api/common";
-import { ApiTrackResponse } from "@typedefs/api/track";
 import {
   TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
   TEMPLATE_TRACK,
 } from "@commands/dataTemplate";
 import { TestCreateRecordingData } from "@commands/api/recording-tests";

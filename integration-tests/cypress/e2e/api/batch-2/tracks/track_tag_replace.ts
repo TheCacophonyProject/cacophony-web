@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { NOT_NULL_STRING, NOT_NULL } from "@commands/constants";
 
 import { ApiRecordingSet } from "@commands/types";

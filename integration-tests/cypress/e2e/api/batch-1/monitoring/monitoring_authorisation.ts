@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { logTestDescription, NO_LOG_MESSAGE } from "@commands/descriptions";
 import { checkRecording } from "@commands/api/recording-tests";
 import { StationId } from "@typedefs/api/common";

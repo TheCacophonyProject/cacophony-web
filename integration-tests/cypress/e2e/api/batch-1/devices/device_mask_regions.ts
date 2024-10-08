@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { getCreds, makeAuthorizedRequest, v1ApiPath } from "@commands/server";
 import { TestGetLocation } from "@commands/api/station";
 import { ApiMaskRegionsData } from "@typedefs/api/device";

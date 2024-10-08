@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { TestGetLocation } from "@commands/api/station";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 import { checkRecording } from "@commands/api/recording-tests";

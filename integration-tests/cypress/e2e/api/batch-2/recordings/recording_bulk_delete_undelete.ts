@@ -1,5 +1,4 @@
 import { TEMPLATE_AUDIO_RECORDING } from "@commands/dataTemplate";
-/// <reference path="../../../support/index.d.ts" />
 import { EXCLUDE_IDS_ARRAY } from "@commands/constants";
 
 import {

@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import {

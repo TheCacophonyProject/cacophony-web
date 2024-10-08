@@ -1,12 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 declare namespace Cypress {
-  // Avoiding redefinition in this namespace
-  type TestThermalRecordingInfoAlias =
-    import("../types").TestThermalRecordingInfo;
-  type RecordingIdAlias = import("@typedefs/api/common").RecordingId;
-
   interface Chainable {
     /**
      * Upload a single recording to for a particular camera using pre-rolled test metadata
