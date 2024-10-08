@@ -359,7 +359,7 @@ const isStillProcessing = computed<boolean>(() => {
             <b-spinner
               v-if="classification === 'unclassified'"
               small
-              variant="secondary"
+              variant="light"
               class="mx-1"
             />
             <span :class="{ 'me-1': classification === 'unclassified' }">{{

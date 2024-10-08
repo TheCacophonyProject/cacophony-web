@@ -52,7 +52,7 @@ const props = withDefaults(
   { recording: null }
 );
 
-// eslint-disable-next-line no-undef
+ 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
 const currentTrack = ref<ApiTrackResponse | null>(null);

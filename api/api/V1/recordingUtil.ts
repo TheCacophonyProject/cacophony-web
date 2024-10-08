@@ -254,8 +254,13 @@ export async function getCPTVFrames(
     const totalFrames = header.totalFrames || null;
     let numFrames = 0;
     while (!finished) {
-      const frame: CptvFrame | null = await decoder.getNextFrame();
-      if (frame && frame.meta.isBackgroundFrame) {
+      const frame: CptvFrame | null | string = await decoder.getNextFrame();
+      if (typeof frame === "string") {
+        log.warning("CPTV Error '%s'", frame);
+        await decoder.close();
+        return;
+      }
+      if (frame && frame.isBackgroundFrame) {
         // Skip over background frame without incrementing counter.
         continue;
       }
@@ -425,10 +430,8 @@ async function createThumbnail(
   thumbnail: TrackFramePosition,
   colourPalette: string = THUMBNAIL_PALETTE
 ): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
-  const frameMeta = frame.meta.imageData;
-  const resX = frameMeta.width;
-  const resY = frameMeta.height;
-
+  const resX = 160;
+  const resY = 120;
   // // padding already in region so probably dont need
   // let padding = Math.max(2,Math.floor(thumbnail.height * 0.2), Math.floor(thumbnail.width *0.2));
   // padding = Math.floor(padding / 2)
@@ -445,7 +448,7 @@ async function createThumbnail(
   for (let i = 0; i < size; i++) {
     frameStart = (i + thumbnail.y) * resX + thumbnail.x;
     for (let offset = 0; offset < thumbnail.width; offset++) {
-      const pixel = frame.data[frameStart + offset];
+      const pixel = frame.imageData[frameStart + offset];
       if (!min) {
         min = pixel;
         max = pixel;
@@ -464,7 +467,7 @@ async function createThumbnail(
   for (let i = 0; i < size; i++) {
     frameStart = (i + thumbnail.y) * resX + thumbnail.x;
     for (let offset = 0; offset < thumbnail.width; offset++) {
-      let pixel = frame.data[frameStart + offset];
+      let pixel = frame.imageData[frameStart + offset];
       pixel = (255 * (pixel - min)) / (max - min);
       thumbnailData[thumbIndex] = pixel;
       thumbIndex++;

@@ -1,16 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 declare namespace Cypress {
-  type ApiDeviceResponse = import("@typedefs/api/device").ApiDeviceResponse;
-  type LatLng = import("@typedefs/api/common").LatLng;
-  type ApiGroupsUserRelationshipResponse =
-    import("@typedefs/api/group").ApiGroupUserResponse;
-  type DeviceType = import("@typedefs/api/consts").DeviceType;
-  type DeviceHistoryEntry = import("@commands/types").DeviceHistoryEntry;
-  type DeviceId = import("@typedefs/api/common").DeviceId;
-  type ApiMaskRegionsData = import("@typedefs/api/device").ApiMaskRegionsData;
-
   interface Chainable {
     /**
      * create a device in the given group

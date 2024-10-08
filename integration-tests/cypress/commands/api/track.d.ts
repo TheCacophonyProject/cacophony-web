@@ -1,10 +1,4 @@
-/// <reference types="../types" />
-
 declare namespace Cypress {
-  type ApiTrackDataRequest = import("@typedefs/api/track").ApiTrackDataRequest;
-  type ApiTrackResponse = import("@typedefs/api/track").ApiTrackResponse;
-  type ApiTrackTagRequest = import("@typedefs/api/trackTag").ApiTrackTagRequest;
-
   interface Chainable {
     /**
      * Add a track to a recording.
@@ -49,7 +43,7 @@ declare namespace Cypress {
     /**
      * Retrieve and check a single track from a recording.
      * Calls /recording/:id/tracks/:trackId (GET)
-     * Verfiy that the tracks data matched the expectedtracks
+     * Verify that the tracks data matched the expectedtracks
      * Optionally: Exclude checks on specific values by specifying them in excludeChecksOn
      * Optionally check for a non-200 return statusCode
      * By default recording ID is looked up by name using recordingNameOrId

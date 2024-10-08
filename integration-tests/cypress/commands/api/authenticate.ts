@@ -1,6 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { ApiAuthenticateAccess } from "@commands/types";
 import { getTestEmail, getTestName } from "../names";
 import {

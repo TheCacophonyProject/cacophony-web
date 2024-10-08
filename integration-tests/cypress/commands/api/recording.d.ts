@@ -1,24 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 declare namespace Cypress {
-  type ApiRecordingSet = import("../types").ApiRecordingSet;
-  type ApiRecordingReturned = import("../types").ApiRecordingReturned;
-  type ApiRecordingColumns = import("../types").ApiRecordingColumns;
-  type ApiRecordingNeedsTagReturned =
-    import("../types").ApiRecordingNeedsTagReturned;
-  type ApiRecordingDataMetadata = import("../types").ApiRecordingDataMetadata;
-  type Interception = import("cypress/types/net-stubbing").Interception;
-  type ApiRecordingResponse =
-    import("@typedefs/api/recording").ApiRecordingResponse;
-  type TestThermalRecordingInfo = import("../types").TestThermalRecordingInfo;
-  type RecordingId = number;
-
-  type ApiAudioRecordingResponse =
-    import("@typedefs/api/recording").ApiAudioRecordingResponse;
-  type ApiThermalRecordingResponse =
-    import("@typedefs/api/recording").ApiThermalRecordingResponse;
-
   interface Chainable {
     /** Check the values returned by /api/fileProcessing (get)
      * specify type and processingState (state)
@@ -142,7 +122,8 @@ declare namespace Cypress {
       fileName?: string | { filename: string; key: string }[],
       recordingName?: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
+      useFileName?: string
     ): Cypress.Chainable<RecordingId>;
 
     /**
@@ -164,6 +145,8 @@ declare namespace Cypress {
       statusCode?: number
     ): any;
 
+    apiRecordingGetFile(userName: string, recordingNameOrId: RecordingId): any;
+
     /** Get a single recording using api/v1/recordings/{id}
      * Verify that the recording data matched the expectedRecording
      * Optionally: check for a non-200 statusCode
@@ -179,6 +162,8 @@ declare namespace Cypress {
       statusCode?: number,
       additionalChecks?: any
     ): any;
+
+    apiRecordingDownloadCheck(userName: string, recordingNameOrId: string): any;
 
     /** Get a single recording that needs tagging using api/v1/recordings/needs-tag
      * Verify that the recording data matches (one of) the expectedRecordings

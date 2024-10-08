@@ -466,4 +466,6 @@ watch(customRecordingWindowStop, async () => {
   max-width: 640px;
 }
 </style>
-<style src="@vuepic/vue-datepicker/dist/main.css"></style>
+<style lang="css">
+@import url('@vuepic/vue-datepicker/dist/main.css');
+</style>

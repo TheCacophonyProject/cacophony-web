@@ -1,8 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { getCreds } from "./server";
-import { Interception } from "cypress/types/net-stubbing";
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingSet } from "@commands/types";
 import { RecordingId } from "@typedefs/api/common";
@@ -48,7 +44,8 @@ export function uploadFile(
   fileType: RecordingType | string,
   data: ApiRecordingSet | Record<string, string | string[] | number>,
   waitOn: string,
-  statusCode: number = 200
+  statusCode: number = 200,
+  fileNameToUse?: string
 ): Cypress.Chainable<
   Promise<{
     recordingId: RecordingId;
@@ -66,7 +63,7 @@ export function uploadFile(
     const formData = new FormData();
     formData.set("data", JSON.stringify(data));
     if (!Array.isArray(blob)) {
-      formData.set("file", blob, fileName as string); //adding a file to the form
+      formData.set("file", blob, fileNameToUse || (fileName as string)); //adding a file to the form
     } else {
       for (const item of blob) {
         formData.set(item.key, item.fileBlob, item.filename);

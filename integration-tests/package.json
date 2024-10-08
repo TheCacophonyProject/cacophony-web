@@ -5,10 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "node ./node_modules/.bin/cypress open",
-    "performance": "node ./node_modules/.bin/cypress open --config-file cypress-performance.json",
     "browse": "node ./node_modules/.bin/cypress open --config-file cypress-browse.config.ts",
-    "release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD",
-    "performance:release": "node ./node_modules/.bin/cypress run $CYPRESS_RECORD --config-file cypress-performance.json",
+    "release": "node ./node_modules/.bin/cypress run",
+    "ci-batch-1": "node ./node_modules/.bin/cypress run --config-file cypress-api-batch-1.config.ts",
+    "ci-batch-2": "node ./node_modules/.bin/cypress run --config-file cypress-api-batch-2.config.ts",
     "lint": "eslint ./ --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
     "lint:fix": "eslint ./ --fix --ext .ts && npx prettier --write './**/*.ts'"
   },

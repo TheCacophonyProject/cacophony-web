@@ -727,7 +727,7 @@ export const sendProjectActivityDigestEmail = async (
       while (classificationPath.length !== 0) {
         const pathPart = classificationPath.pop();
         iconExists = await embedImage(
-          pathPart,
+          species.species,
           imageAttachments,
           `classification-icons/${pathPart}.svg`,
           false

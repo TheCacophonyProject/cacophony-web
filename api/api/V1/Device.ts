@@ -88,6 +88,7 @@ import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
+import logger from "@log";
 
 const models = await modelsInit();
 
@@ -456,6 +457,23 @@ export default function (app: Application, baseUrl: string) {
           response.locals.devices,
           response.locals.viewAsSuperUser
         ),
+      });
+    }
+  );
+
+  app.get(
+    `${apiUrl}/latest-software-versions`,
+    extractJwtAuthorizedUser,
+    async function (request: Request, response: Response) {
+      const result = await (
+        await fetch(
+          "https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json"
+        )
+      ).json();
+      logger.info("!!!!");
+      console.log(result);
+      return successResponse(response, "Got latest software versions.", {
+        versions: result,
       });
     }
   );

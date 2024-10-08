@@ -197,6 +197,7 @@ export const networkConnectionError = reactive<NetworkConnectionErrorSignal>({
  */
 export async function fetch<T>(
   url: string,
+  // eslint-disable-next-line no-undef
   request: RequestInit = {},
   abortable = true
 ): Promise<FetchResult<T> | void> {

@@ -93,20 +93,20 @@ const loadRecording = async () => {
     );
     if (result === true) {
       let frame = await cptvDecoder.getNextFrame();
-      if (frame?.meta.isBackgroundFrame) {
+      if (frame?.isBackgroundFrame) {
         frame = await cptvDecoder.getNextFrame();
       }
       if (frame) {
         let max = Number.MIN_SAFE_INTEGER;
         let min = Number.MAX_SAFE_INTEGER;
-        for (const px of frame.data) {
+        for (const px of frame.imageData) {
           max = Math.max(px, max);
           min = Math.min(px, min);
         }
         const buffer = new Uint8ClampedArray(160 * 120 * 4);
         renderFrameIntoFrameBuffer(
           buffer,
-          frame.data,
+          frame.imageData,
           defaultPalette.value[1],
           min,
           max

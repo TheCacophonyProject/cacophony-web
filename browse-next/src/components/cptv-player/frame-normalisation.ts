@@ -1,37 +1,38 @@
 import type { CptvFrame } from "@/components/cptv-player/cptv-decoder/decoder";
 import type {
   FrameNum,
-  TrackBox,
   Rectangle,
+  TrackBox,
 } from "@/components/cptv-player/cptv-player-types";
 
 let minValue = Number.MIN_VALUE;
 let maxValue = Number.MAX_VALUE;
 
-export const minMaxForFrame = ({ meta }: CptvFrame): [number, number] => {
-  if (meta.isBackgroundFrame) {
+export const minMaxForFrame = (frame: CptvFrame): [number, number] => {
+  if (frame.isBackgroundFrame) {
     return [minValue, maxValue];
   }
-  const lastFfcTimeMs = meta.lastFfcTimeMs || 1000000;
-  const timeSinceLastFFC = (meta.timeOnMs - lastFfcTimeMs) / 1000;
+  const lastFfcTimeMs = frame.lastFfcTimeMs || 1000000;
+  const timeSinceLastFFC = (frame.timeOnMs - lastFfcTimeMs) / 1000;
   if (timeSinceLastFFC < 5) {
     // Use frame local min/max
-    return [meta.imageData.min, meta.imageData.max];
+    return [Math.min(...frame.imageData), Math.max(...frame.imageData)];
   }
   return [minValue, maxValue];
 };
 
 export const minMaxForTrackBox = (
   trackBox: TrackBox,
-  { meta, data }: CptvFrame
+  frame: CptvFrame
 ): [number, number] => {
-  if (meta.isBackgroundFrame) {
+  if (frame.isBackgroundFrame) {
     return [minValue, maxValue];
   }
-  const { width } = meta.imageData;
+  const width = 160;
   const [left, top, right, bottom] = trackBox.rect;
   let min = Number.MAX_VALUE;
   let max = Number.MIN_VALUE;
+  const data = frame.imageData;
   for (let y = top; y < bottom; y++) {
     for (let x = left; x < right; x++) {
       const index = y * width + x;
@@ -46,16 +47,12 @@ export const minMaxForTrackBox = (
 export const accumulateMinMaxForFrame = (frame: CptvFrame) => {
   // We keep a running tally of min/max values across the clip for
   // normalisation purposes.
-  const frameMinValue = frame.meta.imageData.min;
-  const frameMaxValue = frame.meta.imageData.max;
+  const frameMinValue = Math.min(...frame.imageData);
+  const frameMaxValue = Math.max(...frame.imageData);
   // Values within 5 seconds of an FFC event do not contribute to this.
   const withinFfcTimeout =
-    frame.meta.lastFfcTimeMs &&
-    frame.meta.timeOnMs - frame.meta.lastFfcTimeMs < 5000;
-  if (
-    frameMinValue !== 0 &&
-    (frame.meta.isBackgroundFrame || !withinFfcTimeout)
-  ) {
+    frame.lastFfcTimeMs && frame.timeOnMs - frame.lastFfcTimeMs < 5000;
+  if (frameMinValue !== 0 && (frame.isBackgroundFrame || !withinFfcTimeout)) {
     // If the minimum value is zero, it's probably a glitched frame.
     minValue = Math.min(minValue, frameMinValue);
     maxValue = Math.max(maxValue, frameMaxValue);
@@ -81,8 +78,8 @@ export const minMaxForTracks = (
   // Usage: maybe just pass in the background frame here, and all the tracks?
   let min = Number.MAX_VALUE;
   let max = Number.MIN_VALUE;
-  const { meta, data } = frameToCheck;
-  const { width } = meta.imageData;
+  const data = frameToCheck.imageData;
+  const width = 160;
   //debugger;
   for (const track of trackBoxes) {
     for (const [_, rect] of track) {
@@ -107,11 +104,12 @@ export const minMaxForTrack = (
   let min = Number.MAX_VALUE;
   let max = Number.MIN_VALUE;
   for (let i = 0; i < framesToCheck.length; i++) {
-    const { meta, data } = framesToCheck[i];
-    if (meta.isBackgroundFrame) {
+    const frame = framesToCheck[i];
+    if (frame.isBackgroundFrame) {
       continue;
     }
-    const { width } = meta.imageData;
+    const data = frame.imageData;
+    const width = 160;
     const trackBox = trackBoxes[i];
     const [left, top, right, bottom] = trackBox.rect;
     for (let y = top; y < bottom; y++) {

@@ -839,7 +839,7 @@ const currentQueryCursor = ref<RecordingQueryCursor>({
   fromDateTime: null,
   untilDateTime: null,
 });
-const currentQueryCount = ref<LoadedResource<number>>(null);
+const currentQueryCount = ref<LoadedResource<number | undefined>>(null);
 const currentQueryLoaded = ref<number>(0);
 const completedCurrentQuery = ref<boolean>(false);
 
@@ -888,13 +888,11 @@ onUpdated(() => {
       }
     }
     if (nearLast) {
-      console.log("Check if we need to load more");
       // Check if it's already visible.
       const bounds = nearLast.getBoundingClientRect();
       if (bounds.top >= 0 && bounds.top <= windowHeight.value) {
         // FIXME - shouldn't do this automatically, (extend search)
         if (canExpandSearchBackFurther.value) {
-          console.log("load more (2)");
           nextTick(() => doSearch());
         }
       } else {
@@ -904,7 +902,6 @@ onUpdated(() => {
           (intersections: IntersectionObserverEntry[]) => {
             for (const intersection of intersections) {
               if (intersection.isIntersecting) {
-                console.log("load more");
                 currentObserver && currentObserver.stop();
                 currentObserver = null;
                 doSearch();
@@ -1264,7 +1261,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           const recordingsResponse = response as unknown as SuccessFetchResult<{
             recordings: ApiRecordingResponse[];
           }>;
-          console.log("Got response", recordingsResponse);
           const recordings = recordingsResponse.result.recordings;
           loadedRecordings.value.push(...recordings);
           loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
@@ -1299,7 +1295,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
           appendVisitsChunkedByDay(visits);
-          console.log("appending visits", visits.length);
           if (visits.length === 0) {
             //debugger;
           }
@@ -1314,7 +1309,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             minDateForSelectedLocations.value.getTime();
           if (loadedFewerItemsThanRequested) {
             if (reachedMinDateForSelectedLocations) {
-              console.log("Stopping observer");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1672,7 +1666,6 @@ const adjustTimespanBackwards = async () => {
 
 // FIXME: Handle recording closing etc, restoring route.
 const selectedRecording = async (recordingId: RecordingId) => {
-  console.log("Selected recording", recordingId);
   await router.push({
     name: "activity-recording",
     params: {
@@ -1695,12 +1688,36 @@ watch(
         recId,
         tracks,
       }));
+      const visitClassification = visit.classification || "";
+      let firstRec = visit.recordings[0];
+      let firstTrack =
+        (firstRec.tracks &&
+          firstRec.tracks.length !== 0 &&
+          firstRec.tracks[0]) ||
+        undefined;
+      if (visitClassification !== "") {
+        // Make sure we set the first recording as one that contains the visit classification.
+        const firstRecordingWithVisitClassification = visit.recordings.find(
+          (rec) =>
+            rec.tracks.some(
+              (track) =>
+                track.tag === visit.classification ||
+                (!track.tag && track.aiTag === visit.classification)
+            )
+        );
+        if (firstRecordingWithVisitClassification) {
+          firstRec = firstRecordingWithVisitClassification;
+          firstTrack = firstRec.tracks.find(
+            (track) =>
+              track.tag === visit.classification ||
+              (!track.tag && track.aiTag === visit.classification)
+          );
+        }
+      }
       const params: Record<string, string> = {
         visitLabel: visit.classification || "",
-        currentRecordingId: recordingIds[0].recId.toString(),
-        trackId: (recordingIds[0].tracks &&
-          recordingIds[0].tracks.length &&
-          recordingIds[0].tracks[0].id.toString()) as string,
+        currentRecordingId: firstRec.recId.toString(),
+        trackId: (firstTrack && firstTrack.id.toString()) as string,
       };
       if (recordingIds.length) {
         params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
@@ -1780,7 +1797,6 @@ onBeforeMount(async () => {
   loading.value = true;
   if (currentProject.value) {
     await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
-    console.log("Got locations, validate query", locations.value);
     // Validate the current query on load.
     watchQuery.value = watch(() => route.query, syncSearchQuery, {
       deep: true,
@@ -2012,6 +2028,7 @@ onBeforeUnmount(() => {
   height: calc(100svh - 90px);
 }
 .search-results-inner {
+  max-width: calc(100svw - 48px);
   @media screen and (min-width: 992px) {
     max-width: 430px;
     width: 430px;

@@ -263,6 +263,11 @@ const router = createRouter({
             //   component: () => import("@/views/DeviceEventsSubView.vue"),
             // },
             {
+              path: "events",
+              name: "device-events",
+              component: () => import("@/views/DeviceEventsSubView.vue"),
+            },
+            {
               path: "insights",
               name: "device-insights",
               component: () => import("@/views/DeviceInsightsSubView.vue"),

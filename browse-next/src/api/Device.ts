@@ -13,7 +13,6 @@ import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
-  WindowsSettings,
 } from "@typedefs/api/device";
 import type { ScheduleId } from "@typedefs/api/common";
 import type {
@@ -71,10 +70,20 @@ export const getDeviceLocationAtTime = (deviceId: DeviceId, date?: Date) => {
 export interface EventApiParams {
   limit?: number;
   offset?: number;
-  type?: DeviceEventType | DeviceEventType[];
+  type?: DeviceEventType | DeviceEventType[] | string | string[];
   endTime?: IsoFormattedString; // Or in the format YYYY-MM-DD hh:mm:ss
   startTime?: IsoFormattedString;
 }
+
+export const getKnownEventTypes = () =>
+  CacophonyApi.get(`/api/v1/events/event-types`) as Promise<
+    FetchResult<{ eventTypes: string[] }>
+  >;
+
+export const getKnownEventTypesForDeviceInLastMonth = (deviceId: DeviceId) =>
+  CacophonyApi.get(
+    `/api/v1/events/event-types/for-device/${deviceId}`
+  ) as Promise<FetchResult<{ eventTypes: string[] }>>;
 
 export const getLatestEventsByDeviceId = (
   deviceId: number,
@@ -87,7 +96,13 @@ export const getLatestEventsByDeviceId = (
   params.append("include-count", false.toString());
   if (eventParams) {
     for (const [key, val] of Object.entries(eventParams)) {
-      params.append(key, val.toString());
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          params.append(key, item.toString());
+        }
+      } else {
+        params.append(key, val.toString());
+      }
     }
   }
   return CacophonyApi.get(`/api/v1/events?${params}`) as Promise<
@@ -199,6 +214,10 @@ export const getBatteryInfo = (
           untilDateTime = new Date(events[events.length - 1].dateTime);
         }
       } else {
+        if (!response) {
+          // We aborted the request
+          resolve(null);
+        }
         stillHasEvents = false;
       }
     }
@@ -207,7 +226,7 @@ export const getBatteryInfo = (
     } else {
       resolve(false);
     }
-  }) as Promise<BatteryInfoEvent[] | false>;
+  }) as Promise<BatteryInfoEvent[] | false | null>;
 };
 
 export const getEarliestEventAfterTime = (
@@ -239,6 +258,17 @@ export const getDeviceVersionInfo = (deviceId: DeviceId) => {
       }
     });
   }) as Promise<Record<string, string> | false>;
+};
+
+export const getDeviceLatestVersionInfo = async () => {
+  return unwrapLoadedResource(
+    CacophonyApi.get(`/api/v1/devices/latest-software-versions`) as Promise<
+      FetchResult<{
+        versions: Record<string, Record<string, Record<string, string>>>;
+      }>
+    >,
+    "versions"
+  ) as Promise<Record<string, Record<string, Record<string, string>>>>;
 };
 
 export const getLocationHistory = (
@@ -580,12 +610,14 @@ export const hasReferenceImageForDeviceAtCurrentLocation = (
 
 export const getLastKnownDeviceBatteryLevel = (
   deviceId: DeviceId
-): Promise<BatteryInfoEvent | false> => {
+): Promise<BatteryInfoEvent | false | null> => {
   const last25Hours = new Date();
   last25Hours.setHours(last25Hours.getHours() - 25);
   return new Promise((resolve) => {
     getBatteryInfo(deviceId, last25Hours, 1, 1).then((result) => {
-      if (result === false || result.length === 0) {
+      if (result === null) {
+        resolve(null);
+      } else if (result === false || result.length === 0) {
         resolve(false);
       }
       resolve((result as BatteryInfoEvent[])[0]);

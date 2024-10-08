@@ -112,7 +112,7 @@ export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
   cacophonyIndex?: CacophonyIndex[];
   type: RecordingType.Audio;
   fileMimeType?: string;
-  additionalMetadata?: ApiAudioRecordingMetadataResponse;
+  additionalMetadata?: ApiAudioRecordingMetadataResponse | any;
 }
 
 export interface ApiRecordingProcessingJob {

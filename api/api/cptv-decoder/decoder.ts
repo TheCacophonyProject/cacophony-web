@@ -118,16 +118,6 @@ export class CptvDecoder {
   }
 
   /**
-   * If the file stream has completed, this gives the total number
-   * of playable frames in the file (including any background frame).
-   */
-  async getTotalFrames(): Promise<number | null> {
-    const type = "getTotalFrames";
-    this.decoder && this.decoder.postMessage({ type });
-    return (await this.waitForMessage(type)) as number | null;
-  }
-
-  /**
    * Get the header for the CPTV file as JSON.
    * Optional fields will always be present, but set to `undefined`
    */
@@ -135,15 +125,6 @@ export class CptvDecoder {
     const type = "getHeader";
     this.decoder && this.decoder.postMessage({ type });
     return (await this.waitForMessage(type)) as CptvHeader;
-  }
-
-  /**
-   * Stream load progress from 0..1
-   */
-  async getLoadProgress(): Promise<number> {
-    const type = "getLoadProgress";
-    this.decoder && this.decoder.postMessage({ type });
-    return (await this.waitForMessage(type)) as number;
   }
 
   /**
@@ -192,19 +173,23 @@ export class CptvDecoder {
   }
 }
 
+interface CptvString {
+  inner: string;
+}
+
 export interface CptvHeader {
   timestamp: number;
   width: number;
   height: number;
   compression: number;
-  deviceName: string;
+  deviceName: CptvString;
   fps: number;
-  brand: string | null;
-  model: string | null;
+  brand: CptvString | null;
+  model: CptvString | null;
   deviceId: number | null;
   serialNumber: number | null;
-  firmwareVersion: string | null;
-  motionConfig: string | null;
+  firmwareVersion: CptvString | null;
+  motionConfig: CptvString | null;
   previewSecs: number | null;
   latitude: number | null;
   longitude: number | null;
@@ -229,28 +214,11 @@ export interface CptvFrameHeader {
   lastFfcTempC: number | null;
   frameTempC: number | null;
   isBackgroundFrame: boolean;
-  imageData: {
-    width: number;
-    height: number;
-    /**
-     * Minimum value for this frame
-     */
-    min: number;
-    /**
-     * Maximum value for this frame
-     */
-    max: number;
-  };
 }
 
-export interface CptvFrame {
+export interface CptvFrame extends CptvFrameHeader {
   /**
    * Raw u16 data of `width` * `height` length where width and height can be found in the CptvHeader
    */
-  data: Uint16Array;
-
-  /**
-   * Frame header
-   */
-  meta: CptvFrameHeader;
+  imageData: Uint16Array;
 }
