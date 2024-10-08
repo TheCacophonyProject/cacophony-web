@@ -1,6 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { checkRecording } from "./recording-tests";
 import { ApiStationData } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";

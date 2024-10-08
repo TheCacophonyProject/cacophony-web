@@ -1,11 +1,9 @@
-/// <reference path="../../../support/index.d.ts" />
-
-import { getTestName } from "@/commands/names";
+import { getTestName } from "@commands/names";
 import {
   ApiEventErrorSimilar,
   ApiEventError,
   ApiEventErrorCategory,
-} from "@/commands/types";
+} from "@commands/types";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
 //

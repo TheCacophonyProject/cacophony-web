@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import {
   ApiGroupReturned,
   ApiGroupUserRelation,
@@ -43,7 +41,7 @@ describe("Groups - add, get group", () => {
         };
         expectedGroupAdminUser = {
           id: getCreds("gaGroupAdmin").id,
-          username: getTestName("gaGroupAdmin"),
+          userName: getTestName("gaGroupAdmin"),
           GroupUsers: {
             admin: true,
             createdAt: "",
@@ -54,7 +52,7 @@ describe("Groups - add, get group", () => {
         };
         expectedGroupAdminGroupUser = {
           id: getCreds("gaGroupAdmin").id,
-          username: getTestName("gaGroupAdmin"),
+          userName: getTestName("gaGroupAdmin"),
           admin: true,
         };
       }
@@ -78,7 +76,7 @@ describe("Groups - add, get group", () => {
     ).then(() => {
       expectedGroupMemberUser = {
         id: getCreds("gaGroupMember").id,
-        username: getTestName("gaGroupMember"),
+        userName: getTestName("gaGroupMember"),
         GroupUsers: {
           admin: false,
           createdAt: "",
@@ -89,7 +87,7 @@ describe("Groups - add, get group", () => {
       };
       expectedGroupMemberGroupUser = {
         id: getCreds("gaGroupMember").id,
-        username: getTestName("gaGroupMember"),
+        userName: getTestName("gaGroupMember"),
         admin: false,
       };
     });

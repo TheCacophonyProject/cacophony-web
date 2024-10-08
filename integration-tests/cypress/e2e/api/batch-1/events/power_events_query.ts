@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-//
 // This test set verifies correct retrieval of power events
 // For generation of power events and alerts please see alerts/device_stopped.ts
 //

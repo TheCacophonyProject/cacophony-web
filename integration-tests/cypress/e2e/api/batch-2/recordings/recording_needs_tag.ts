@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { ApiRecordingNeedsTagReturned, ApiRecordingSet } from "@commands/types";
 
 import { getCreds } from "@commands/server";

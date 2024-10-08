@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { EXCLUDE_IDS } from "@commands/constants";
 
 import { ApiLocation, ApiRecordingSet } from "@commands/types";

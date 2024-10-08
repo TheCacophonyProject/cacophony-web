@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestEmail, getTestName } from "@commands/names";

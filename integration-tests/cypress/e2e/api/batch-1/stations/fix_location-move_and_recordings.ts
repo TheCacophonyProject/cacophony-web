@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { TestGetLocation } from "@commands/api/station";
 import { ApiStationResponse } from "@typedefs/api/station";
 import {

@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { testRunOnApi } from "@commands/server";
 
 describe("Teardown test data", () => {

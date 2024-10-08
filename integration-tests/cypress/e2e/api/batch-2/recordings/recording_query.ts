@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { EXCLUDE_IDS_ARRAY } from "@commands/constants";
 import {
   TEMPLATE_AUDIO_RECORDING_RESPONSE,

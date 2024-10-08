@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 describe("Monitoring : Errors and validation", () => {
   before(() => {});
 

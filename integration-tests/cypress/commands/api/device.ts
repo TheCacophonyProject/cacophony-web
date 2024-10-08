@@ -1,5 +1,3 @@
-/// <reference types="cypress" />
-
 import { getTestName } from "../names";
 import {
   v1ApiPath,
@@ -10,7 +8,6 @@ import {
   sortArrayOn,
   checkTreeStructuresAreEqualExcept,
   checkMessages,
-  makeAuthorizedRequest,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { ApiDevicesDevice, DeviceHistoryEntry, TestNameAndId } from "../types";

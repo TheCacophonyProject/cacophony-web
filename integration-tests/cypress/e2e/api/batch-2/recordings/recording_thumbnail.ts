@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { ApiRecordingSet, ApiRecordingForProcessing } from "@commands/types";
 
 import {

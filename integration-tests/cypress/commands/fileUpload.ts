@@ -1,8 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { getCreds } from "./server";
-import { Interception } from "cypress/types/net-stubbing";
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 import { ApiRecordingSet } from "@commands/types";
 import { RecordingId } from "@typedefs/api/common";

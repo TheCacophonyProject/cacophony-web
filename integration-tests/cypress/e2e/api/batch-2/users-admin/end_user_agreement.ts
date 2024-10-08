@@ -1,4 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
 import { LATEST_END_USER_AGREEMENT } from "@commands/constants";
 
 describe("User: end user agreement", () => {

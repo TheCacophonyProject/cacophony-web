@@ -1,5 +1,3 @@
-/// <reference path="../../../support/index.d.ts" />
-
 import { addSeconds, checkRecording } from "@commands/api/recording-tests";
 
 describe("Monitoring : times and recording groupings", () => {
