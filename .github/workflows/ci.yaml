@@ -17,12 +17,14 @@ jobs:
       IS_CI_ENV: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Run linting checks
         run: |
@@ -50,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -65,9 +67,11 @@ jobs:
           docker-compose --version  # Verify installation
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Set up Docker environment
         run: |
@@ -95,15 +99,17 @@ jobs:
       IS_CI_ENV: true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
       - name: Install global npm packages
-        run: npm install -g --loglevel=error npm apidoc@0.50.0
+        run: npm install -g --loglevel=error npm json apidoc@0.50.0
 
       - name: Generate API docs
         run: |
@@ -116,8 +122,7 @@ jobs:
           version=${GITHUB_REF#refs/tags/v}
           mkdir /tmp/nfpm
           curl -sL https://github.com/goreleaser/nfpm/releases/download/v0.9.5/nfpm_0.9.5_Linux_x86_64.tar.gz | tar -C /tmp/nfpm -xzf -
-          export PATH=/tmp/nfpm:$PATH
-          npm install -g json
+          export PATH=/tmp/nfpm:$PATH  
           _release/build.sh ${version}
 
       - name: Upload release assets
