@@ -682,7 +682,19 @@ router.beforeEach(async (to, from, next) => {
               projectName: urlNormalisedCurrentProjectName.value,
             },
           });
-        } else {
+        } else if (
+          to.name &&
+          ![
+            "confirm-email",
+            "accept-project-invite",
+            "confirm-project-membership-request",
+            "user-settings",
+            "setup",
+            "end-user-agreement",
+            "register",
+            "register-with-token",
+          ].includes(to.name as string)
+        ) {
           // Unknown project name, redirect to dashboard of first project match
           if (UserProjects.value && UserProjects.value.length) {
             return next({
@@ -696,6 +708,17 @@ router.beforeEach(async (to, from, next) => {
           }
         }
       }
+      // else {
+      //   if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
+      //     // Group in url not found, redirect to our last selected group.
+      //     return next({
+      //       name: "dashboard",
+      //       params: {
+      //         projectName: urlNormalisedCurrentProjectName.value,
+      //       },
+      //     });
+      //   }
+      // }
     }
   }
 
