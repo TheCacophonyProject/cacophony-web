@@ -2,6 +2,7 @@ import {
   createRouter,
   createWebHistory,
   type RouteLocationRaw,
+  type RouteRecordRaw,
 } from "vue-router";
 import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
@@ -159,7 +160,7 @@ const router = createRouter({
       meta: { title: ":projectName Dashboard", requiresLogin: true },
       component: () => import("@/views/DashboardView.vue"),
       beforeEnter: cancelPendingRequests,
-      children: recordingModalChildren("dashboard"),
+      children: recordingModalChildren("dashboard") as RouteRecordRaw[],
     },
     {
       path: "/:projectName/locations",
@@ -177,7 +178,7 @@ const router = createRouter({
       meta: { requiresLogin: true, title: "Activity in :projectName" },
       component: () => import("@/views/ActivitySearchView.vue"),
       beforeEnter: cancelPendingRequests,
-      children: recordingModalChildren("activity"),
+      children: recordingModalChildren("activity") as RouteRecordRaw[],
     },
     {
       path: "/:projectName/devices/:all?",
@@ -476,10 +477,6 @@ router.beforeEach(async (to, from, next) => {
       name: "sign-in",
     });
   }
-
-  if (to.name === "dashboard") {
-    // debugger;
-  }
   let jwtToken;
   if (to.params.token) {
     // Process a JWT token
@@ -516,7 +513,7 @@ router.beforeEach(async (to, from, next) => {
       !currentSelectedProject.value &&
       !isFetchingProjects.value
     ) {
-      // console.log("User is logged in, refresh projects (2)");
+      console.log("User is logged in, refresh projects (2)");
       const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
@@ -639,14 +636,12 @@ router.beforeEach(async (to, from, next) => {
           DevicesForCurrentGroup.value = null;
         }
        */
-
       if (matchedProject) {
         // Don't persist the admin property in user settings, since that could change
         const switchedProject = switchCurrentProject({
           groupName: matchedProject.groupName,
           id: matchedProject.id,
         });
-
         if (currentSelectedProject.value) {
           // Get the devices and locations for the current group.
           if (
@@ -678,7 +673,7 @@ router.beforeEach(async (to, from, next) => {
           LocationsForCurrentProject.value = null;
           DevicesForCurrentProject.value = null;
         }
-      } else {
+      } else if (userIsLoggedIn.value) {
         if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
           // Group in url not found, redirect to our last selected group.
           return next({
@@ -687,6 +682,18 @@ router.beforeEach(async (to, from, next) => {
               projectName: urlNormalisedCurrentProjectName.value,
             },
           });
+        } else {
+          // Unknown project name, redirect to dashboard of first project match
+          if (UserProjects.value && UserProjects.value.length) {
+            return next({
+              name: "dashboard",
+              params: {
+                projectName: urlNormalisedCurrentProjectName.value,
+              },
+            });
+          } else {
+            return next({ name: "sign-out" });
+          }
         }
       }
     }
@@ -742,7 +749,7 @@ router.beforeEach(async (to, from, next) => {
     });
   } else {
     pinSideNav.value = false;
-    console.warn(`Navigating to '${String(to.name)}'`, to.fullPath);
+    console.warn(`Navigating to '${String(to.name)}'`, to.fullPath, to);
     return next();
   }
 });

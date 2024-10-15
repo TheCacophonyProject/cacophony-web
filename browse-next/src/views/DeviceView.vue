@@ -11,17 +11,24 @@ import {
   projectDevicesLoaded,
   userProjectsLoaded,
 } from "@models/LoggedInUser";
-import type { DeviceId } from "@typedefs/api/common";
+import type {
+  DeviceId,
+  LatLng,
+  StationId as LocationId,
+} from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import OverflowingTabList from "@/components/OverflowingTabList.vue";
 import type { LoadedResource } from "@api/types.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {
+  getDeviceById,
   getLatestStatusRecordingForDevice,
   getMaskRegionsForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
 } from "@api/Device.ts";
+import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import type { DateTime } from "luxon";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
@@ -32,13 +39,13 @@ const projectDevices = inject(selectedProjectDevices) as Ref<
 const latestStatusRecording = ref<LoadedResource<ApiRecordingResponse>>(null);
 const latestReferenceImageURL = ref<LoadedResource<string>>(null);
 const latestMaskRegions = ref<LoadedResource<ApiMaskRegionsData>>(null);
-
+const deviceLoading = ref<boolean>(false);
+const device = ref<ApiDeviceResponse | null>(null);
 provide("latestStatusRecording", latestStatusRecording);
 provide("latestMaskRegions", latestMaskRegions);
 provide("latestReferenceImageURL", latestReferenceImageURL);
 
-const deviceLoading = ref<boolean>(false);
-const device = ref<ApiDeviceResponse | null>(null);
+provide("device", device);
 const loadDevice = async (deviceId: DeviceId) => {
   deviceLoading.value = true;
   await Promise.all([userProjectsLoaded(), projectDevicesLoaded()]);
@@ -49,7 +56,11 @@ const loadDevice = async (deviceId: DeviceId) => {
     if (targetDevice) {
       device.value = targetDevice;
     } else {
-      // TODO: Device not found
+      // Device could be inactive, so try loading it by id
+      const deviceResponse = await getDeviceById(deviceId, true);
+      if (deviceResponse.success) {
+        device.value = deviceResponse.result.device;
+      }
     }
   }
 
@@ -62,7 +73,7 @@ const loadDevice = async (deviceId: DeviceId) => {
 
 const loadReferenceImage = (deviceId: DeviceId) => {
   latestReferenceImageURL.value = null;
-  getReferenceImageForDeviceAtCurrentLocation(deviceId).then(
+  getReferenceImageForDeviceAtCurrentLocation(deviceId, true).then(
     ({ result, success }) => {
       if (success) {
         latestReferenceImageURL.value = URL.createObjectURL(result);
@@ -77,6 +88,7 @@ onBeforeMount(async () => {
   await loadDevice(Number(route.params.deviceId) as DeviceId);
   if (
     device.value &&
+    device.value.active &&
     [DeviceType.Thermal, DeviceType.Hybrid].includes(device.value.type)
   ) {
     //  TODO: Latest status recording should match current location.
@@ -86,15 +98,17 @@ onBeforeMount(async () => {
       device.value.groupId
     ).then((result) => (latestStatusRecording.value = result));
     loadReferenceImage(device.value.id);
-    getMaskRegionsForDevice(device.value.id).then(({ success, result }) => {
-      if (success) {
-        latestMaskRegions.value = {
-          maskRegions: result.maskRegions,
-        };
-      } else {
-        latestMaskRegions.value = false;
+    getMaskRegionsForDevice(device.value.id, true).then(
+      ({ success, result }) => {
+        if (success) {
+          latestMaskRegions.value = {
+            maskRegions: result.maskRegions,
+          };
+        } else {
+          latestMaskRegions.value = false;
+        }
       }
-    });
+    );
   }
 });
 
@@ -137,7 +151,7 @@ const _deviceType = computed<string>(() => {
       <!--        >Events</router-link-->
       <!--      >-->
       <router-link
-        v-if="currentUserIsSuperUser && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
+        v-if="currentUserIsSuperUser && device?.active && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-events') },
@@ -149,7 +163,7 @@ const _deviceType = computed<string>(() => {
         >Events</router-link
       >
       <router-link
-        v-if="[DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
+        v-if="device?.active && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-diagnostics') },
@@ -161,7 +175,7 @@ const _deviceType = computed<string>(() => {
         >Diagnostics</router-link
       >
       <router-link
-        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
+        v-if="device?.active && [DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-setup') },
@@ -173,7 +187,7 @@ const _deviceType = computed<string>(() => {
         >Setup</router-link
       >
       <router-link
-        v-if="[DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
+        v-if="device?.active && [DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-insights') },

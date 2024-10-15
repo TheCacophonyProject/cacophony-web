@@ -9,6 +9,7 @@ import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 describe("Device register", () => {
   const camsGroup = "cams";
   const otherCams = "other cams";
+  const adminUser = "Anita";
 
   const KEEP_DEVICE_NAME = false;
   const GENERATE_UNIQUE_NAME = true;
@@ -17,9 +18,9 @@ describe("Device register", () => {
   const LOG = true;
 
   before(() => {
-    cy.testCreateUserGroupAndDevice("Anita", camsGroup, "gotya");
+    cy.testCreateUserGroupAndDevice(adminUser, camsGroup, "gotya");
     cy.apiDeviceAdd("defaultcam", camsGroup);
-    cy.apiGroupAdd("Anita", otherCams, true);
+    cy.apiGroupAdd(adminUser, otherCams, true);
   });
 
   it("Adding device created valid deviceHistory entry", () => {
@@ -35,7 +36,7 @@ describe("Device register", () => {
         );
       expectedHistory.saltId = 1234567;
 
-      cy.apiDeviceHistoryCheck("Anita", "aNewDevice", [expectedHistory]);
+      cy.apiDeviceHistoryCheck(adminUser, "aNewDevice", [expectedHistory]);
     });
   });
 
@@ -140,7 +141,7 @@ describe("Device register", () => {
 
     //Test with Salt Id = device id by default
     cy.apiDeviceInGroupCheck(
-      "Anita",
+      adminUser,
       "defaultcam",
       camsGroup,
       null,
@@ -193,9 +194,5 @@ describe("Device register", () => {
       LOG,
       HttpStatusCode.Forbidden
     );
-  });
-
-  it.skip("Correctly handles missing parameters in register device", () => {
-    //TODO: write this (helper apiDeviceAdd does not yet support missing params)
   });
 });

@@ -17,8 +17,8 @@ import type { DeviceId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
 import type { DeviceConfigDetail } from "@typedefs/api/event";
-import { selectedProjectDevices } from "@models/provides";
 import {
+  LocationsForCurrentProject,
   projectDevicesLoaded,
   projectLocationsLoaded,
 } from "@models/LoggedInUser";
@@ -44,20 +44,9 @@ import { resourceIsLoading } from "@/helpers/utils.ts";
 
 const batteryTimeSeries = ref<HTMLDivElement>();
 
-const devices = inject(selectedProjectDevices) as Ref<
-  ApiDeviceResponse[] | null
->;
+const device = inject("device") as Ref<ApiDeviceResponse | null>;
 const route = useRoute();
 const deviceId = Number(route.params.deviceId) as DeviceId;
-const device = computed<ApiDeviceResponse | null>(() => {
-  return (
-    (devices.value &&
-      (devices.value as ApiDeviceResponse[]).find(
-        (device: ApiDeviceResponse) => device.id === deviceId
-      )) ||
-    null
-  );
-});
 
 const versionInfo = ref<LoadedResource<Record<string, string>>>(null);
 const latestVersionInfo =
@@ -472,15 +461,32 @@ const loadResource = (
   }
 };
 
+const deviceLoaded = async () => {
+  // This gets loaded in the route handler, so won't be hot-reloaded?
+  if (device.value !== null) {
+    return true;
+  } else {
+    return new Promise((resolve, reject) => {
+      watch(device, (next) => {
+        if (next) {
+          resolve(true);
+        } else {
+          reject();
+        }
+      });
+    });
+  }
+};
+
 const init = async () => {
   await Promise.all([projectDevicesLoaded(), projectLocationsLoaded()]);
-
+  await deviceLoaded();
   if (device.value) {
     loadResource(deviceConfig, () => getDeviceConfig(deviceId));
     loadResource(versionInfo, () => getDeviceVersionInfo(deviceId));
 
     loadResource(currentLocationForDevice, () =>
-      getDeviceLocationAtTime(deviceId)
+      getDeviceLocationAtTime(deviceId, true)
     );
     loadResource(lastPowerOffTime, () => getDeviceLastPoweredOff(deviceId));
     loadResource(lastPowerOnTime, () => getDeviceLastPoweredOn(deviceId));
@@ -608,7 +614,7 @@ const hoveredPointValue = computed<number>(() => {
 });
 </script>
 <template>
-  <div v-if="device" class="mt-3">
+  <div v-if="device && device.active" class="mt-3">
     <div class="d-flex justify-content-between flex-md-row flex-column">
       <div v-if="device.type === 'thermal'">
         <h6 v-if="latestStatusRecording">
@@ -852,6 +858,13 @@ const hoveredPointValue = computed<number>(() => {
       <div v-else>Version info not available.</div>
     </div>
   </div>
+  <div v-else-if="device && !device.active" class="p-3">
+    <p>
+      This device is not currently active.<br />
+      This means that it was either retired, or moved to another project.
+    </p>
+    <p>You can still view historical recording data for this device.</p>
+  </div>
   <div v-else class="p-3">Device not found in group.</div>
 </template>
 <style scoped lang="less">
@@ -871,5 +884,5 @@ const hoveredPointValue = computed<number>(() => {
 }
 </style>
 <style lang="css">
-@import url('chartist/dist/index.css');
+@import url("chartist/dist/index.css");
 </style>

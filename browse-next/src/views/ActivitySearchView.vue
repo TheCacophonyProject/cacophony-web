@@ -103,9 +103,14 @@ import {
 } from "@api/Classifications.ts";
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
 import { delayMs } from "@/utils.ts";
-import { tagsForRecording } from "@models/recordingUtils.ts";
+import {
+  aiTagsForRecording,
+  canonicalTagsForRecording,
+  humanTagsForRecording,
+} from "@models/recordingUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { CurrentViewAbortController } from "@/router";
+import { getDevicesForProject } from "@api/Project.ts";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -149,13 +154,12 @@ export interface ActivitySearchParams {
 const locations = inject(allHistoricLocations) as ComputedRef<
   ApiLocationResponse[]
 >;
-const devices = inject(selectedProjectDevices) as ComputedRef<
-  ApiDeviceResponse[]
->;
+const devices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 
 watch(currentProject, async (next, prev) => {
   if (next && prev && next.groupName !== prev.groupName) {
     await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
+    await loadActiveAndInactiveDevices();
     searchParams.value = initSearchParams();
     prefilteredChunkedVisits.value = [];
     chunkedRecordings.value = [];
@@ -520,6 +524,7 @@ const syncSearchQuery = async (
 
   const isDateRange =
     queryValueIsDate(next.from) && queryValueIsDate(next.until);
+  await loadActiveAndInactiveDevices();
   if (Object.entries(replacements).length) {
     const query: LocationQuery = {
       ...DefaultSearchParams,
@@ -535,7 +540,6 @@ const syncSearchQuery = async (
       delete query.until;
       delete searchParams.value.until;
     }
-
     await router.replace({
       query,
     });
@@ -629,9 +633,11 @@ const selectedDevices = computed<ApiDeviceResponse[] | "all">(() => {
   if (searchParams.value.devices === "all") {
     return "all";
   }
-  return (searchParams.value.devices as DeviceId[]).map((deviceId) =>
-    (devices.value || []).find(({ id }) => id === deviceId)
-  ) as ApiDeviceResponse[];
+  return (
+    (searchParams.value.devices as DeviceId[]).map((deviceId) =>
+      (devices.value || []).find(({ id }) => id === deviceId)
+    ) as ApiDeviceResponse[]
+  ).filter((device) => !!device);
 });
 
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
@@ -1355,6 +1361,7 @@ const exportProgressZeroOneHundred = computed<number>(
 const doSearch = async () => {
   searching.value = true;
   await getClassifications();
+  await loadActiveAndInactiveDevices();
   const success = await getRecordingsOrVisitsForCurrentQuery();
   if (success) {
     searching.value = false;
@@ -1445,7 +1452,9 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
       "Time",
       "Local time",
       "Duration",
-      "Classification",
+      "Canonical classification",
+      "Human classification",
+      "AI classification",
       "Labels",
     ],
   ];
@@ -1459,15 +1468,40 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
       ({ id }) => id === recording.stationId
     );
 
-    const tags = tagsForRecording(recording);
-    const displays = [];
+    const canonicalTags = canonicalTagsForRecording(recording);
+    const aiTags = aiTagsForRecording(recording);
+    const humanTags = humanTagsForRecording(recording);
+    const displaysCanonical = [];
+    const displaysAI = [];
+    const displaysHuman = [];
     const labels = recording.tags.map((tag) => tag.detail);
-    for (const tag of tags) {
+    for (const tag of canonicalTags) {
       const display = displayLabelForClassificationLabel(
         tag.what,
-        tag.automatic && !tag.human
+        tag.automatic && !tag.human,
+        isAudioMode
       );
-      displays.push(
+      displaysCanonical.push(
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+      );
+    }
+    for (const tag of aiTags) {
+      const display = displayLabelForClassificationLabel(
+        tag.what,
+        tag.automatic && !tag.human,
+        isAudioMode
+      );
+      displaysAI.push(
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+      );
+    }
+    for (const tag of humanTags) {
+      const display = displayLabelForClassificationLabel(
+        tag.what,
+        tag.automatic && !tag.human,
+        isAudioMode
+      );
+      displaysHuman.push(
         `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
       );
     }
@@ -1482,7 +1516,9 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
         dayAndTimeAtLocation(recording.recordingDateTime, location.location)) ||
         "unknown",
       formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
-      displays.join(", "),
+      displaysCanonical.join(", "),
+      displaysHuman.join(", "),
+      displaysAI.join(", "),
       labels.join(", "),
     ];
     if (isAudioMode) {
@@ -1793,10 +1829,24 @@ const localDateString = (d: Date): string => {
   });
 };
 
+const loadActiveAndInactiveDevices = async () => {
+  if (!devices.value && currentProject.value) {
+    devices.value = await getDevicesForProject(
+      currentProject.value.id,
+      true,
+      true
+    );
+  }
+};
+
 onBeforeMount(async () => {
   loading.value = true;
   if (currentProject.value) {
-    await Promise.all([projectLocationsLoaded(), projectDevicesLoaded()]);
+    await Promise.all([
+      projectLocationsLoaded(),
+      loadActiveAndInactiveDevices(),
+    ]);
+    await loadActiveAndInactiveDevices();
     // Validate the current query on load.
     watchQuery.value = watch(() => route.query, syncSearchQuery, {
       deep: true,

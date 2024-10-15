@@ -523,6 +523,7 @@ export interface TestThermalRecordingInfo {
   time?: Date | string;
   duration?: number;
   model?: string;
+  type?: RecordingType;
   tracks?: ApiTrackSet[];
   noTracks?: boolean; // by default there will normally be one track, set to true if you don't want tracks
   minsLater?: number; // minutes that later that the recording is taken
