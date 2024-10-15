@@ -826,7 +826,19 @@ order by hour;
           await models.DeviceHistory.create(newDeviceHistoryEntry, {
             transaction: t,
           });
-          if (shouldDeleteExistingDevice) {
+          // NOTE: Special case: If the device is moving out of the `new` group,
+          //  we delete the old device and all its recordings
+          const group = await models.Group.findByPk(this.GroupId, {
+            transaction: t,
+          });
+          if (group && group.groupName === "new") {
+            // Delete every recording properly
+            await models.Recording.update(
+              { deletedAt: new Date() },
+              { where: { DeviceId: this.id }, transaction: t }
+            );
+            await this.destroy({ transaction: t });
+          } else if (shouldDeleteExistingDevice) {
             await this.destroy({ transaction: t });
           }
         }
