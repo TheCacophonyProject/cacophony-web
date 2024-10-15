@@ -1,7 +1,7 @@
 import { getTestName } from "@commands/names";
 import { makeAuthorizedRequest, v1ApiPath, getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType } from "@typedefs/api/consts";
+import { DeviceType, RecordingType } from "@typedefs/api/consts";
 
 describe("Devices list", () => {
   const superuser = getCreds("superuser")["email"];
@@ -69,6 +69,12 @@ describe("Devices list", () => {
 
     //reregistered device
     cy.testCreateUserGroupAndDevice(user3, group3, camera3);
+    cy.log("Add a recording so that old device isn't deleted when renamed");
+    cy.apiRecordingAdd(
+      camera3,
+      { type: RecordingType.ThermalRaw },
+      "oneframe.cptv"
+    );
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
       expectedDevice3AdminView = {
         id: getCreds(camera3).id,

@@ -2,7 +2,11 @@ import { NOT_NULL_STRING } from "@commands/constants";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+import {
+  DeviceType,
+  HttpStatusCode,
+  RecordingType,
+} from "@typedefs/api/consts";
 import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
@@ -38,6 +42,13 @@ describe("Device reregister", () => {
         groupId: getCreds("RR_group1").id,
       };
     });
+    cy.log("Add a recording so that old device isn't deleted when renamed");
+    cy.apiRecordingAdd(
+      "RR_cam1",
+      { type: RecordingType.ThermalRaw },
+      "oneframe.cptv",
+      "raRecording1"
+    );
 
     //re-register camera & store device details
     cy.apiDeviceReregister("RR_cam1", "RR_cam1b", "RR_group1").then(() => {
@@ -129,6 +140,14 @@ describe("Device reregister", () => {
     cy.log("create second group");
     cy.testCreateUserAndGroup("RR_user2b", "RR_group2b");
 
+    cy.log("Add a recording so that old device isn't deleted when renamed");
+    cy.apiRecordingAdd(
+      "RR_cam2",
+      { type: RecordingType.ThermalRaw },
+      "oneframe.cptv",
+      "raRecording1"
+    );
+
     cy.log("re-register camera to 2nd group & store device details");
     cy.apiDeviceReregister("RR_cam2", "RR_cam2", "RR_group2b").then(() => {
       expectedDevice2b = {
@@ -166,6 +185,14 @@ describe("Device reregister", () => {
           groupId: getCreds("RR_group3").id,
         };
       }
+    );
+
+    cy.log("Add a recording so that old device isn't deleted when renamed");
+    cy.apiRecordingAdd(
+      "RR_cam3",
+      { type: RecordingType.ThermalRaw },
+      "oneframe.cptv",
+      "raRecording1"
     );
 
     cy.log("create second group");
