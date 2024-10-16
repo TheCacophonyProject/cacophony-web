@@ -53,7 +53,7 @@ const loadInfo = async () => {
   }
 };
 onBeforeMount(() => {
-  if (props.device.active) {
+  if (props.device.active && props.device.isHealthy) {
     loadInfo();
   } else {
     batteryLevelInfo.value = false;
@@ -63,7 +63,7 @@ watch(
   () => props.device.id,
   (next, prev) => {
     if (next !== prev) {
-      if (props.device.active) {
+      if (props.device.active && props.device.isHealthy) {
         loadInfo();
       } else {
         batteryLevelInfo.value = false;
