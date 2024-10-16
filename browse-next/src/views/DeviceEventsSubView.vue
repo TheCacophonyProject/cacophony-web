@@ -21,9 +21,13 @@ const route = useRoute();
 const deviceId = computed<DeviceId>(
   () => Number(route.params.deviceId) as DeviceId
 );
-const loadedDeviceEvents = ref<DeviceEvent[]>([]);
+const loadedDeviceEvents = ref<LoadedResource<DeviceEvent[]>>(null);
 const deviceEvents = computed<DeviceEvent[]>(() => {
-  return loadedDeviceEvents.value;
+  return loadedDeviceEvents.value || [];
+});
+
+onBeforeMount(() => {
+  loadedDeviceEvents.value = null;
 });
 
 const oneMonthAgo = new Date();
@@ -95,6 +99,9 @@ const loadSomeEvents = async (filterByEvents?: string[]) => {
         const earliestEvent =
           response.result.rows[response.result.rows.length - 1];
         loadedBackUntilDateTime.value = new Date(earliestEvent.dateTime);
+        if (!loadedDeviceEvents.value) {
+          loadedDeviceEvents.value = [];
+        }
         loadedDeviceEvents.value.push(...response.result.rows);
         needsObserverUpdate = true;
       } else {
@@ -208,79 +215,87 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
         @change="reloadEvents"
       ></multiselect>
     </div>
-    <div
-      v-for="(event, index) in deviceEvents"
-      :key="index"
-      class="event-item my-2 rounded-1 d-flex flex-column"
-    >
-      <div class="d-flex flex-column">
-        <div
-          class="d-flex justify-content-between flex-fill event-title p-2 rounded-top-1 bg-secondary"
-        >
-          <div class="me-2 text-capitalize">
-            <strong>{{ homogeniseLabel(event.EventDetail.type) }}</strong>
-          </div>
-          <div>
-            <span>{{
-              DateTime.fromISO(event.dateTime).toLocaleString({
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "numeric",
-              })
-            }}</span>
-          </div>
-        </div>
-        <div class="p-2">
-          <span
-            ><strong>Logged</strong>
-            {{ DateTime.fromISO(event.dateTime).toRelative() }},
-            <strong>uploaded</strong>
-            {{ lagTimeForUpload(event) }}</span
-          >
-        </div>
-      </div>
+    <div v-if="loadedDeviceEvents && deviceEvents.length">
       <div
-        class="container"
-        v-if="Object.keys(event.EventDetail.details).length"
+        v-for="(event, index) in deviceEvents"
+        :key="index"
+        class="event-item my-2 rounded-1 d-flex flex-column"
       >
-        <div
-          v-for="([key, val], index) in Object.entries(
-            event.EventDetail.details
-          ).filter(([_, vv], i) => !!vv)"
-          :key="index"
-          class="row"
-        >
-          <div class="col">
-            <strong class="text-capitalize">{{ key }}:</strong>
+        <div class="d-flex flex-column">
+          <div
+            class="d-flex justify-content-between flex-fill event-title p-2 rounded-top-1 bg-secondary"
+          >
+            <div class="me-2 text-capitalize">
+              <strong>{{ homogeniseLabel(event.EventDetail.type) }}</strong>
+            </div>
+            <div>
+              <span>{{
+                DateTime.fromISO(event.dateTime).toLocaleString({
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "numeric",
+                })
+              }}</span>
+            </div>
           </div>
-          <div class="col" v-if="!Array.isArray(val)">
-            <div
-              v-if="val && typeof val === 'object' && Object.keys(val as Object).length !== 0"
+          <div class="p-2">
+            <span
+              ><strong>Logged</strong>
+              {{ DateTime.fromISO(event.dateTime).toRelative() }},
+              <strong>uploaded</strong>
+              {{ lagTimeForUpload(event) }}</span
             >
+          </div>
+        </div>
+        <div
+          class="container"
+          v-if="Object.keys(event.EventDetail.details).length"
+        >
+          <div
+            v-for="([key, val], index) in Object.entries(
+              event.EventDetail.details
+            ).filter(([_, vv], i) => !!vv)"
+            :key="index"
+            class="row"
+          >
+            <div class="col">
+              <strong class="text-capitalize">{{ key }}:</strong>
+            </div>
+            <div class="col" v-if="!Array.isArray(val)">
               <div
-                class="row"
-                v-for="([k, v], idx) in Object.entries(val as Object)"
-                :key="idx"
+                v-if="val && typeof val === 'object' && Object.keys(val as Object).length !== 0"
               >
-                <div class="col">
-                  <strong class="text-capitalize">{{ k }}:</strong>
-                </div>
-                <div class="col">
-                  {{ v }}
+                <div
+                  class="row"
+                  v-for="([k, v], idx) in Object.entries(val as Object)"
+                  :key="idx"
+                >
+                  <div class="col">
+                    <strong class="text-capitalize">{{ k }}:</strong>
+                  </div>
+                  <div class="col">
+                    {{ v }}
+                  </div>
                 </div>
               </div>
+              <span v-else>{{ val }}</span>
             </div>
-            <span v-else>{{ val }}</span>
-          </div>
-          <div class="col" v-else>
-            <div class="row" v-for="(item, idx) in val" :key="idx">
-              <div class="col">{{ item }}</div>
+            <div class="col" v-else>
+              <div class="row" v-for="(item, idx) in val" :key="idx">
+                <div class="col">{{ item }}</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
+    <div
+      v-else-if="loadedDeviceEvents !== null && !loadingEvents"
+      class="d-flex justify-content-center align-items-center py-3"
+    >
+      <span>No events found for device in the last month</span>
     </div>
     <div
       v-if="loadingEvents"
