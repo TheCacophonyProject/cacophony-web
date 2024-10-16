@@ -1,11 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
 declare namespace Cypress {
-  // @ts-ignore
-  type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
-  // @ts-ignore
-  type ApiStationData = import("../types").ApiStationData;
-  type StationIdAlias = import("@typedefs/api/common").StationId;
   interface Chainable {
     /**
      * POST to api/v1/groups/<groupidorname>/station to add a single station
@@ -22,7 +15,7 @@ declare namespace Cypress {
       untilDate?: string,
       statusCode?: number,
       additionalChecks?: any
-    ): Cypress.Chainable<StationIdAlias>;
+    ): Cypress.Chainable<StationId>;
 
     /**
      * Call api/v1/groups/<groupidorname>/station and check that returned values match expectedS  tation

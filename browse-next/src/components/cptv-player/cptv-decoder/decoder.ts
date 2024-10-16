@@ -57,22 +57,6 @@ export class CptvDecoder {
 
   /**
    * Initialises a new player and associated stream reader.
-   * @param url (String)
-   * @param size (Number)
-   * @returns True on success, or an error string on failure (String | Boolean)
-   */
-  async initWithCptvUrlAndKnownSize(
-    url: string,
-    size: number
-  ): Promise<string | boolean> {
-    await this.init();
-    const type = "initWithUrlAndSize";
-    decoder && decoder.postMessage({ type, url, size });
-    return (await this.waitForMessage(type)) as string | boolean;
-  }
-
-  /**
-   * Initialises a new player and associated stream reader.
    * @param id (Number)
    * @param apiToken (String)
    * @param size (Number)
@@ -103,18 +87,6 @@ export class CptvDecoder {
   }
 
   /**
-   * Initialises a new player and associated stream reader.
-   * @param url (String)
-   * @returns True on success, or an error string on failure (String | Boolean)
-   */
-  async initWithCptvUrl(url: string): Promise<string | boolean> {
-    await this.init();
-    const type = "initWithUrl";
-    decoder && decoder.postMessage({ type, url });
-    return (await this.waitForMessage(type)) as string | boolean;
-  }
-
-  /**
    * Initialise a new player with an already loaded local file.
    * @param fileBytes (Uint8Array)
    * @returns True on success, or an error string on failure (String | Boolean)
@@ -129,30 +101,6 @@ export class CptvDecoder {
   }
 
   /**
-   * Get the header and duration of a remote CPTV file given by url.
-   * This function reads and consumes the entire file, without decoding actual frames.
-   * @param url (String)
-   */
-  async getStreamMetadata(url: string): Promise<CptvHeader> {
-    await this.init();
-    const type = "getStreamMetadata";
-    decoder && decoder.postMessage({ type, url });
-    return (await this.waitForMessage(type)) as CptvHeader;
-  }
-
-  /**
-   * Get the header and duration in seconds for an already loaded byte array
-   * This function reads and consumes the entire file, without decoding actual frames.
-   * @param fileBytes (Uint8Array)
-   */
-  async getBytesMetadata(fileBytes: Uint8Array): Promise<CptvHeader> {
-    await this.init();
-    const type = "getBytesMetadata";
-    decoder && decoder.postMessage({ type, arrayBuffer: fileBytes });
-    return (await this.waitForMessage(type)) as CptvHeader;
-  }
-
-  /**
    * Get the next frame in the sequence, if there is one.
    */
   async getNextFrame(): Promise<CptvFrame | null> {
@@ -162,32 +110,13 @@ export class CptvDecoder {
   }
 
   /**
-   * If the file stream has completed, this gives the total number
-   * of playable frames in the file (including any background frame).
-   */
-  async getTotalFrames(): Promise<number | null> {
-    const type = "getTotalFrames";
-    decoder && decoder.postMessage({ type });
-    return (await this.waitForMessage(type)) as number | null;
-  }
-
-  /**
    * Get the header for the CPTV file as JSON.
    * Optional fields will always be present, but set to `undefined`
    */
-  async getHeader(): Promise<CptvHeader> {
+  async getHeader(): Promise<CptvHeader | string> {
     const type = "getHeader";
     decoder && decoder.postMessage({ type });
-    return (await this.waitForMessage(type)) as CptvHeader;
-  }
-
-  /**
-   * Stream load progress from 0..1
-   */
-  async getLoadProgress(): Promise<number> {
-    const type = "getLoadProgress";
-    decoder && decoder.postMessage({ type });
-    return (await this.waitForMessage(type)) as number;
+    return (await this.waitForMessage(type)) as CptvHeader | string;
   }
 
   /**
@@ -236,19 +165,23 @@ export class CptvDecoder {
   }
 }
 
+interface CptvString {
+  inner: string;
+}
+
 export interface CptvHeader {
   timestamp: number;
   width: number;
   height: number;
   compression: number;
-  deviceName: string;
+  deviceName: CptvString;
   fps: number;
-  brand: string | null;
-  model: string | null;
+  brand: CptvString | null;
+  model: CptvString | null;
   deviceId: number | null;
   serialNumber: number | null;
-  firmwareVersion: string | null;
-  motionConfig: string | null;
+  firmwareVersion: CptvString | null;
+  motionConfig: CptvString | null;
   previewSecs: number | null;
   latitude: number | null;
   longitude: number | null;
@@ -273,29 +206,11 @@ export interface CptvFrameHeader {
   lastFfcTempC: number | null;
   frameTempC: number | null;
   isBackgroundFrame: boolean;
-  bitWidth: number;
-  imageData: {
-    width: number;
-    height: number;
-    /**
-     * Minimum value for this frame
-     */
-    min: number;
-    /**
-     * Maximum value for this frame
-     */
-    max: number;
-  };
 }
 
-export interface CptvFrame {
+export interface CptvFrame extends CptvFrameHeader {
   /**
    * Raw u16 data of `width` * `height` length where width and height can be found in the CptvHeader
    */
-  data: Uint16Array;
-
-  /**
-   * Frame header
-   */
-  meta: CptvFrameHeader;
+  imageData: Uint16Array;
 }

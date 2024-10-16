@@ -45,17 +45,29 @@ const loadInfo = async () => {
     //   batteryType: "lime",
     //   battery: Math.round(Math.random() * 100),
     // };
-    (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap[
-      `__${props.device.id}`
-    ] = batteryLevelInfo.value;
+    if (batteryLevelInfo.value !== null) {
+      (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap[
+        `__${props.device.id}`
+      ] = batteryLevelInfo.value;
+    }
   }
 };
-onBeforeMount(loadInfo);
+onBeforeMount(() => {
+  if (props.device.active && props.device.isHealthy) {
+    loadInfo();
+  } else {
+    batteryLevelInfo.value = false;
+  }
+});
 watch(
   () => props.device.id,
   (next, prev) => {
     if (next !== prev) {
-      loadInfo();
+      if (props.device.active && props.device.isHealthy) {
+        loadInfo();
+      } else {
+        batteryLevelInfo.value = false;
+      }
     }
   }
 );

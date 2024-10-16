@@ -1,11 +1,4 @@
-/// <reference types="cypress" />
-
 declare namespace Cypress {
-  type TestComparablePowerEvent = import("../types").TestComparablePowerEvent;
-  type ApiEventDetail = import("../types").ApiEventDetail;
-  type ApiEventReturned = import("../types").ApiEventReturned;
-  type ApiEventErrorCategory = import("../types").ApiEventErrorCategory;
-  type ApiPowerEventReturned = import("../types").ApiPowerEventReturned;
   interface Chainable {
     /**
      * Record a event for this device using device's credentials

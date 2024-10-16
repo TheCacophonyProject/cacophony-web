@@ -287,9 +287,7 @@ onMounted(() => {
               data-cy="join existing project button"
               @click.stop.prevent="joiningNewProject.enabled = true"
             >
-              <span data-cy="join existing project button"
-                >Join an existing project</span
-              >
+              <span>Join an existing project</span>
             </b-dropdown-item-button>
           </b-dropdown>
         </div>
@@ -833,5 +831,6 @@ main {
   padding: 10px;
 }
 </style>
-<style src="vue-multiselect/dist/vue-multiselect.css"></style>
-<style src="@vueform/multiselect/themes/default.css"></style>
+<style lang="css">
+@import url('@vueform/multiselect/themes/default.css');
+</style>

@@ -440,11 +440,19 @@ export default function (app: Application, baseUrl: string) {
         newName &&
         otherActiveStationsInTimeWindow.find(({ name }) => name === newName)
       ) {
-        return next(
-          new ClientError(
-            `An active station with the name ${newName} already exists between ${activeAt.toISOString()} and ${retiredAt.toISOString()}`
-          )
-        );
+        if (activeAt && retiredAt) {
+          return next(
+            new ClientError(
+              `An active station with the name '${newName}' already exists between ${activeAt.toISOString()} and ${retiredAt.toISOString()}`
+            )
+          );
+        } else {
+          return next(
+            new ClientError(
+              `An active station with the name '${newName}' already exists.`
+            )
+          );
+        }
       }
 
       if (positionUpdated) {

@@ -16,6 +16,7 @@ import {
 import Datepicker from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
+import { DeviceType } from "@typedefs/api/consts.ts";
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -321,8 +322,7 @@ watch(customRecordingWindowStop, async () => {
     <div
       class="mt-4 mt-lg-0 settings-config w-100 justify-content-center align-items-center"
       v-if="
-        device &&
-        (device.type === 'thermal' || device.type === 'hybrid-thermal-audio')
+        device && [DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)
       "
     >
       <div class="alert alert-info">
@@ -466,4 +466,6 @@ watch(customRecordingWindowStop, async () => {
   max-width: 640px;
 }
 </style>
-<style src="@vuepic/vue-datepicker/dist/main.css"></style>
+<style lang="css">
+@import url("@vuepic/vue-datepicker/dist/main.css");
+</style>

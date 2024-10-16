@@ -6,6 +6,7 @@
         "moduleResolution": "node",
         "allowSyntheticDefaultImports": true,
         "baseUrl": ".",
+        "typeRoots": ["./cypress/support", "./cypress/commands"],
         "paths": {
             "@typedefs/*":  ["../types/*"],
             "@commands/*": ["./cypress/commands/*"],
@@ -13,8 +14,12 @@
             "@/*": ["./cypress/*"],
         }
     },
+    "references": [
+        { "path": "./support/" }
+    ],
     "include": [
         "**/*.ts",
+        "**/*.d.ts",
         "../types/**/*.ts"
     ]
 }

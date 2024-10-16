@@ -1,6 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 import { logTestDescription } from "./descriptions";
 
