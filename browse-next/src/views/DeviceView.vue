@@ -73,7 +73,7 @@ const loadDevice = async (deviceId: DeviceId) => {
 
 const loadReferenceImage = (deviceId: DeviceId) => {
   latestReferenceImageURL.value = null;
-  getReferenceImageForDeviceAtCurrentLocation(deviceId, true).then(
+  getReferenceImageForDeviceAtCurrentLocation(deviceId).then(
     ({ result, success }) => {
       if (success) {
         latestReferenceImageURL.value = URL.createObjectURL(result);

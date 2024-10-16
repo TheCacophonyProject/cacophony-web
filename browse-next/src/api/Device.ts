@@ -349,11 +349,11 @@ export const getLatestStatusRecordingForDevice = (
         `/api/v1/recordings/for-project/${projectId}/${optionalQueryString(
           params
         )}`
-      ) as Promise<FetchResult<{ rows: ApiRecordingResponse[] }>>
+      ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>
     ).then((response) => {
       if (response.success) {
-        if (response.result.rows.length) {
-          resolve(response.result.rows[0]);
+        if (response.result.recordings.length) {
+          resolve(response.result.recordings[0]);
         } else {
           if (use2SecondRecordings) {
             // 2 Second recording may not be available, get the latest regular recording:
@@ -523,13 +523,9 @@ export const updateReferenceImageForDeviceAtCurrentLocation = (
 };
 
 export const getReferenceImageForDeviceAtCurrentLocation = (
-  deviceId: DeviceId,
-  activeAndInactive = false
+  deviceId: DeviceId
 ) => {
   const params = new URLSearchParams();
-  if (!activeAndInactive) {
-    params.append("only-active", true.toString());
-  }
   return CacophonyApi.get(
     `/api/v1/devices/${deviceId}/reference-image${optionalQueryString(params)}`
   ) as Promise<FetchResult<Blob>>;
