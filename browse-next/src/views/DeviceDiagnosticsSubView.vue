@@ -616,7 +616,7 @@ const hoveredPointValue = computed<number>(() => {
 <template>
   <div v-if="device && device.active" class="mt-3">
     <div class="d-flex justify-content-between flex-md-row flex-column">
-      <div v-if="device.type === 'thermal'">
+      <div v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
         <h6 v-if="latestStatusRecording">
           Camera view from
           {{
