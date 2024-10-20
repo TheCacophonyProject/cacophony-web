@@ -120,6 +120,8 @@ const loadRecording = async () => {
           );
           frameData.value = new ImageData(buffer, 160, 120);
           renderFrame();
+        } else {
+          break;
         }
       }
     }
