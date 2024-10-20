@@ -13,6 +13,7 @@ export const getFirstPass = (
   models: ModelsDictionary,
   projectId: GroupId,
   minDuration: number,
+  statusRecordingsOnly: boolean,
   includeDeletedRecordings: boolean,
   types: RecordingType[],
   processingState: RecordingProcessingState | undefined,
@@ -57,7 +58,9 @@ export const getFirstPass = (
         : {}),
       GroupId: projectId,
       ...(types.includes(RecordingType.Audio) ? { redacted: false } : {}),
-      duration: { [Op.gte]: minDuration },
+      duration: statusRecordingsOnly
+        ? { [Op.and]: [{ [Op.lt]: 2.5 }, { [Op.gt]: 0.0 }] }
+        : { [Op.gte]: minDuration },
       [Op.and]: [
         ...(tagMode === TagMode.UnTagged
           ? [
@@ -468,6 +471,7 @@ export const queryRecordingsInProject = async (
   models: ModelsDictionary,
   projectId: GroupId,
   minDuration: number,
+  statusRecordingsOnly: boolean,
   includeDeletedRecordings: boolean,
   types: RecordingType[],
   processingState: RecordingProcessingState | undefined,
@@ -491,6 +495,7 @@ export const queryRecordingsInProject = async (
       models,
       projectId,
       minDuration,
+      statusRecordingsOnly,
       includeDeletedRecordings,
       types,
       processingState,

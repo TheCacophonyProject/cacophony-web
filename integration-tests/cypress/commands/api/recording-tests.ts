@@ -1,6 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { getTestName } from "../names";
 import {
   convertToDate,

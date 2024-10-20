@@ -1,7 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-/// <reference types="../types" />
-
 import { v1ApiPath, getCreds, convertToDate } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { stripBackName } from "../names";

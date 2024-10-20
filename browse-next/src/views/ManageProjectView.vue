@@ -15,9 +15,8 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
   <section-header>Manage project</section-header>
   <div class="px-3 p-md-0">
     <p>
-      Administrate project to add or remove users who have access to this
-      project, change the default tags that users of this project see when
-      tagging tracks.
+      Add or remove users who have access to this project, change the default
+      tags that users of this project see when tagging tracks.
     </p>
     <!--    <p>-->
     <!--      If I'm the only user, and there are no devices, and no recordings, then we-->

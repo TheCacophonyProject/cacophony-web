@@ -1,8 +1,8 @@
 import { parentPort } from "worker_threads";
-import type { CptvFrameHeader, CptvHeader } from "./decoder.js";
-import type { CptvPlayerContext as PlayerContext } from "./decoder/decoder.js";
+import type { CptvFrame, CptvFrameHeader, CptvHeader } from "./decoder.js";
+import type { CptvDecoderContext as DecoderContext } from "./decoder/cptv_decoder.js";
 const context = parentPort;
-import init, { CptvPlayerContext } from "./decoder/decoder.js";
+import init, { CptvDecoderContext } from "./decoder/cptv_decoder.js";
 import { readFileSync } from "fs";
 import type { ReadableStream } from "stream/web";
 import { fileURLToPath } from "url";
@@ -79,7 +79,7 @@ class CptvDecoderInterface {
   private prevFrameHeader: CptvFrameHeader | null = null;
   private response: Response | null = null;
   private reader: ReadableStreamDefaultReader | null = null;
-  private playerContext: PlayerContext | null = null;
+  private playerContext: DecoderContext | null = null;
   private expectedSize = 0;
   private inited = false;
   private currentContentType = "application/x-cptv";
@@ -118,10 +118,12 @@ class CptvDecoderInterface {
       // eslint-disable-next-line no-undef
       const __dirname = path.dirname(__filename);
       const wasm = readFileSync(
-        path.join(__dirname, "./decoder/decoder_bg.wasm")
+        path.join(__dirname, "./decoder/cptv_decoder_bg.wasm")
       );
-      const _wasmInstance = await init(wasm);
-      this.playerContext = await CptvPlayerContext.newWithStream(this.reader);
+      await init(wasm);
+      this.playerContext = CptvDecoderContext.newWithReadableStream(
+        this.reader
+      );
       this.inited = true;
       result = true;
     } catch (e) {
@@ -148,11 +150,13 @@ class CptvDecoderInterface {
         // eslint-disable-next-line no-undef
         const __dirname = path.dirname(__filename);
         wasmBytes = readFileSync(
-          path.join(__dirname, "./decoder/decoder_bg.wasm")
+          path.join(__dirname, "./decoder/cptv_decoder_bg.wasm")
         );
       }
-      const _wasmInstance = await init(wasmBytes);
-      this.playerContext = await CptvPlayerContext.newWithStream(this.reader);
+      await init(wasmBytes);
+      this.playerContext = CptvDecoderContext.newWithReadableStream(
+        this.reader
+      );
       this.inited = true;
       result = true;
     } catch (e) {
@@ -179,69 +183,36 @@ class CptvDecoderInterface {
     const unlocker = new Unlocker();
     await this.lockIsUncontended(unlocker);
     this.locked = true;
+    let frameData: CptvFrame | null | string = null;
     if (this.hasValidContext()) {
-      try {
-        await (this.playerContext as PlayerContext).fetchNextFrame();
-      } catch (e: unknown) {
-        this.streamError = e as string | null;
+      frameData = await (this.playerContext as DecoderContext).nextFrameOwned();
+      if (typeof frameData === "string") {
+        this.streamError = frameData as string;
+      } else {
+        this.streamError = null;
       }
-    } else {
-      console.warn("Fetch next failed");
     }
     unlocker.unlock();
     this.locked = false;
     if (this.hasStreamError()) {
       return null;
     }
-    if (this.hasValidContext()) {
-      const frameData = (this.playerContext as PlayerContext).getNextFrame();
-      const frameHeader = (
-        this.playerContext as PlayerContext
-      ).getFrameHeader();
-      // NOTE(jon): Work around a bug where the mlx sensor doesn't report timeOn times, just hardcodes 60000
-      if (frameHeader && frameHeader.imageData.width !== 32) {
-        const sameFrameAsPrev =
-          frameHeader &&
-          this.prevFrameHeader &&
-          frameHeader.timeOnMs === this.prevFrameHeader.timeOnMs;
-        if (sameFrameAsPrev && this.getTotalFrames() === null) {
-          this.prevFrameHeader = frameHeader;
-          return null; //await this.fetchNextFrame();
-        }
-        this.prevFrameHeader = frameHeader;
-      }
-      if (frameData.length === 0) {
+    if (frameData && typeof frameData === "object") {
+      const sameFrameAsPrev =
+        frameData &&
+        this.prevFrameHeader &&
+        frameData.timeOnMs === this.prevFrameHeader.timeOnMs;
+      if (sameFrameAsPrev) {
+        this.prevFrameHeader = frameData;
         return null;
       }
-      this.framesRead++;
-      return { data: new Uint16Array(frameData), meta: frameHeader };
+      this.prevFrameHeader = frameData;
     }
-    return null;
-  }
-
-  async countTotalFrames(): Promise<number | null> {
-    if (!this.reader) {
-      console.warn(
-        "You need to initialise the player with the url of a CPTV file"
-      );
-      return 0;
+    if (!frameData) {
+      return null;
     }
-    if (this.hasValidContext()) {
-      const unlocker = new Unlocker();
-      await this.lockIsUncontended(unlocker);
-      this.locked = true;
-      try {
-        await (this.playerContext as PlayerContext).countTotalFrames();
-      } catch (e) {
-        this.streamError = e as string;
-      }
-      // We can't call any other methods that read frame data on this stream,
-      // since we've exhausted it and thrown away the data after scanning for the info we want.
-      this.consumed = true;
-      unlocker.unlock();
-      this.locked = false;
-    }
-    return this.getTotalFrames();
+    this.framesRead++;
+    return frameData;
   }
 
   async getMetadata(): Promise<
@@ -255,7 +226,19 @@ class CptvDecoderInterface {
       if ((header as CptvHeader).totalFrames) {
         totalFrameCount = (header as CptvHeader).totalFrames;
       } else {
-        totalFrameCount = await this.countTotalFrames();
+        let frame: CptvFrame | null;
+        let num = 0;
+        while (
+          (frame = await (this.playerContext as DecoderContext).nextFrame())
+        ) {
+          if (!frame.isBackgroundFrame) {
+            num++;
+          }
+        }
+        totalFrameCount = num;
+      }
+      if (this.hasStreamError()) {
+        return this.streamError;
       }
       const duration = (1 / (header as CptvHeader).fps) * totalFrameCount;
       return {
@@ -295,49 +278,47 @@ class CptvDecoderInterface {
     });
   }
 
-  async getHeader(): Promise<CptvHeader | string> {
+  async getHeader() {
     if (!this.reader) {
       return "You need to initialise the player with the url of a CPTV file";
     }
+    let header: CptvHeader | string;
     if (this.hasValidContext()) {
       const unlocker = new Unlocker();
       await this.lockIsUncontended(unlocker);
-      this.locked = true;
-      await (this.playerContext as PlayerContext).fetchHeader();
-      const header = (this.playerContext as PlayerContext).getHeader();
-      if (header === "Unable to parse header") {
-        this.streamError = header;
+      if (this.playerContext) {
+        this.locked = true;
+
+        header = await (this.playerContext as DecoderContext).getHeader();
+
+        if (typeof header === "string") {
+          this.streamError = header;
+          console.warn(this.streamError);
+        }
+
+        unlocker.unlock();
+        this.locked = false;
+        if (typeof header === "object") {
+          const h: any = { ...header };
+          h.deviceName = h.deviceName.inner;
+          if (h.brand) {
+            h.brand = h.brand.inner;
+          }
+          if (h.model) {
+            h.model = h.model.inner;
+          }
+          if (h.firmwareVersion) {
+            h.firmwareVersion = h.firmwareVersion.inner;
+          }
+          if (h.motionConfig) {
+            h.motionConfig = h.motionConfig.inner;
+          }
+          return h;
+        }
+        return null;
       }
-      unlocker.unlock();
-      this.locked = false;
-      return header;
     }
     return this.streamError;
-  }
-
-  getTotalFrames() {
-    if (this.streamError) {
-      return this.framesRead;
-    }
-    if (
-      !this.locked &&
-      this.inited &&
-      this.hasValidContext() &&
-      (this.playerContext as PlayerContext).streamComplete()
-    ) {
-      return (this.playerContext as PlayerContext).totalFrames();
-    }
-    return null;
-  }
-
-  getLoadProgress(): number | null {
-    if (this.locked || !this.hasValidContext()) {
-      return null;
-    }
-    // This doesn't actually tell us how much has downloaded, just how much has been lazily read.
-    return (
-      (this.playerContext as PlayerContext).bytesLoaded() / this.expectedSize
-    );
   }
 
   hasStreamError(): boolean {
@@ -376,18 +357,6 @@ context.addListener("message", async (data) => {
       {
         const frame = await player.fetchNextFrame();
         context.postMessage({ type: data.type, data: frame });
-      }
-      break;
-    case "getTotalFrames":
-      {
-        const totalFrames = player.getTotalFrames();
-        context.postMessage({ type: data.type, data: totalFrames });
-      }
-      break;
-    case "getLoadProgress":
-      {
-        const progress = player.getLoadProgress();
-        context.postMessage({ type: data.type, data: progress });
       }
       break;
     case "getHeader":

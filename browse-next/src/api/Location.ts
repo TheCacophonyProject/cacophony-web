@@ -49,3 +49,11 @@ export const createNewLocationForProject = async (
     });
   });
 };
+
+export const changeLocationName = (newName: string, locationId: LocationId) => {
+  return CacophonyApi.patch(`/api/v1/stations/${locationId}`, {
+    "station-updates": {
+      name: newName,
+    },
+  }) as Promise<FetchResult<unknown>>;
+};

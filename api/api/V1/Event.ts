@@ -50,6 +50,7 @@ import { HttpStatusCode } from "@typedefs/api/consts.js";
 import util from "@api/V1/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import config from "@config";
+import { QueryTypes } from "sequelize";
 
 const models = await modelsInit();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -602,6 +603,65 @@ export default function (app: Application, baseUrl: string) {
       });
       return successResponse(response, "Completed query.", {
         events,
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/events/event-types Return distinct known event-types.
+   * @apiName GetKnownEventTypes
+   * @apiGroup Events
+   * @apiDescription Get all known event types
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/event-types`,
+    extractJwtAuthorizedUser,
+    async (_request: Request, response: Response) => {
+      const eventTypes = await models.sequelize.query(
+        `select distinct type from "DetailSnapshots"`,
+        { type: QueryTypes.SELECT }
+      );
+      return successResponse(response, "Got event types", {
+        eventTypes: (eventTypes as { type: string }[]).map(({ type }) => type),
+      });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/events/event-types/for-device/:deviceId Return distinct known event-types for a given device.
+   * @apiName GetKnownRecentEventTypesForDevice
+   * @apiGroup Events
+   * @apiDescription Get known event types for a device in the last month
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/event-types/for-device/:deviceId`,
+    extractJwtAuthorizedUser,
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async (_request: Request, response: Response) => {
+      const eventTypes = await models.sequelize.query(
+        `
+      select distinct 
+        type 
+        from "DetailSnapshots" ds 
+          inner join "Events" e
+        on ds.id = e."EventDetailId"
+        where e."DeviceId" = ${response.locals.device.id}
+        and e."dateTime" > now() - interval '1 month' 
+      `,
+        { type: QueryTypes.SELECT }
+      );
+      return successResponse(response, "Got event types", {
+        eventTypes: (eventTypes as { type: string }[]).map(({ type }) => type),
       });
     }
   );

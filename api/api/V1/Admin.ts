@@ -33,6 +33,7 @@ import { SuperUsers } from "@/Globals.js";
 interface ApiUpdateGlobalPermissionRequestBody {
   permission: UserGlobalPermission; // Permission to apply for user
 }
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/admin`;
   {

@@ -53,6 +53,22 @@ export const TEMPLATE_AUDIO_RECORDING: ApiRecordingSet = {
   processingState: RecordingProcessingState.Finished,
 };
 
+export const TEMPLATE_AUDIO_RECORDING_TC2: ApiRecordingSet = {
+  type: RecordingType.Audio,
+  fileHash: null,
+  duration: 60,
+  recordingDateTime: "2024-10-02T01:47:11.101Z",
+  location: [-43.53345, 172.64745],
+  cacophonyIndex: [
+    { end_s: 20, begin_s: 0, index_percent: 80.8 },
+    { end_s: 40, begin_s: 20, index_percent: 77.1 },
+    { end_s: 60, begin_s: 40, index_percent: 71.6 },
+  ],
+  additionalMetadata: null,
+  version: null,
+  processingState: RecordingProcessingState.Analyse,
+};
+
 export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   id: NOT_NULL,
   type: RecordingType.Audio,
@@ -128,6 +144,31 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE: ApiAudioRecordingResponse = {
   },
   redacted: false,
 };
+
+export const TEMPLATE_AUDIO_RECORDING_RESPONSE_TC2: ApiAudioRecordingResponse =
+  {
+    deviceId: 2023,
+    deviceName: "mattb-s5",
+    duration: 60,
+    groupId: 389,
+    groupName: "mattb-audio",
+    stationId: NOT_NULL,
+    stationName: NOT_NULL_STRING,
+    id: 204771,
+    location: {
+      lat: -43.53345,
+      lng: 172.64745,
+    },
+    version: "1.8.1",
+    rawMimeType: "",
+    processing: false,
+    processingState: RecordingProcessingState.Analyse,
+    recordingDateTime: "2024-10-02T01:47:11.101Z",
+    tags: [],
+    tracks: [],
+    type: RecordingType.Audio,
+    redacted: false,
+  };
 
 //THERMAL RECORDINGS
 
@@ -263,11 +304,11 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     id: 892972,
     rawMimeType: "application/x-cptv",
     processingState: RecordingProcessingState.Finished,
-    duration: 0.5555555555555556,
+    duration: 0.4444444444444444,
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: { lat: -45.29115, lng: 169.30845 },
     type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 5 },
+    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 4 },
     //additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
     stationId: NOT_NULL,
@@ -287,7 +328,7 @@ export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
   additionalMetadata: {
     algorithm: 31143,
     previewSecs: 5,
-    totalFrames: 5,
+    totalFrames: 4,
   },
   metadata: {
     tracks: [TEMPLATE_TRACK],

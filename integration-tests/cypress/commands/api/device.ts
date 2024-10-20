@@ -1,5 +1,3 @@
-/// <reference types="cypress" />
-
 import { getTestName } from "../names";
 import {
   v1ApiPath,
@@ -231,6 +229,51 @@ Cypress.Commands.add(
   }
 );
 
+Cypress.Commands.add(
+  "apiDeviceReregisterAuthorized",
+  (
+    oldName: string,
+    newName: string,
+    newGroup: string,
+    adminUserName: string,
+    password: string | null = null,
+    statusCode: number = 200
+  ) => {
+    logTestDescription(
+      `Reregister camera '${newName}' in group '${newGroup}'`,
+      {
+        camera: newName,
+        group: newGroup,
+      },
+      true
+    );
+    const uniqueName = getTestName(newName);
+    if (password === null) {
+      password = "p" + getTestName(uniqueName);
+    }
+
+    const data = {
+      newName: uniqueName,
+      newPassword: password,
+      newGroup: getTestName(newGroup),
+      authorizedToken: getCreds(adminUserName).jwt,
+    };
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath("devices/reregister-authorized"),
+        body: data,
+      },
+      oldName,
+      statusCode
+    ).then((response) => {
+      const id = response.body.id;
+      saveCreds(response, newName, id);
+    });
+  }
+);
+
 function createDevice(
   deviceName: string,
   groupName: string,
@@ -374,17 +417,22 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiDevice",
-  (userName: string, deviceName: string, statusCode: number = 200) => {
+  (
+    userName: string,
+    deviceName: string,
+    activeAndInactive: boolean = false,
+    statusCode: number = 200
+  ) => {
     logTestDescription(`Get device ${deviceName} for ${userName}`, {
       deviceName,
       userName,
     });
-    const fullUrl = v1ApiPath("devices/" + getCreds(deviceName).id);
-
     return makeAuthorizedRequestWithStatus(
       {
         method: "GET",
-        url: fullUrl,
+        url: v1ApiPath(`devices/${getCreds(deviceName).id}`, {
+          "only-active": !activeAndInactive,
+        }),
       },
       userName,
       statusCode
@@ -720,6 +768,24 @@ Cypress.Commands.add(
       }
       cy.wrap(response);
     });
+  }
+);
+
+Cypress.Commands.add(
+  "apiDeviceDeleteOrSetInactive",
+  (userName: string, deviceName: string, groupName: string) => {
+    const device = getCreds(deviceName);
+    const group = getCreds(groupName);
+    makeAuthorizedRequest(
+      {
+        method: "DELETE",
+        url: v1ApiPath(`devices/${device.id}`),
+        body: {
+          group: group.id,
+        },
+      },
+      userName
+    );
   }
 );
 
