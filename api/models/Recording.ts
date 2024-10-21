@@ -401,14 +401,14 @@ export default function (
                 },
                 processingState: state,
                 processing: true,
-                processingFailedCount: { [Op.lt]: MaxProcessingRetries },
+                processingFailedCount: { [Op.lt]: 1 },
               },
               [Op.and]: {
                 processingFailedCount: { [Op.lte]: MaxProcessingRetries },
 
                 //retry a failed recording
                 currentStateStartTime: {
-                  [Op.lt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
+                  [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
                 },
                 processingState: `${state}.failed`,
               },
