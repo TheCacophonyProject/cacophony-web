@@ -230,7 +230,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   setStation: (station: Station) => Promise<void>;
 
   getNextState: () => RecordingProcessingState;
-
+  isFailed: () => boolean;
   Station?: Station;
   Group?: Group;
   Tags?: Tag[];
@@ -387,18 +387,32 @@ export default function (
     const where = {
       type: type,
       deletedAt: { [Op.eq]: null },
-      processingState: state,
       [Op.or]: [
         {
+          processingState: state,
           processing: { [Op.or]: [null, false] },
         },
         {
           [Op.and]: {
-            processing: true,
-            currentStateStartTime: {
-              [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
+            [Op.or]: {
+              [Op.and]: {
+                currentStateStartTime: {
+                  [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
+                },
+                processingState: state,
+                processing: true,
+                processingFailedCount: { [Op.lt]: MaxProcessingRetries },
+              },
+              [Op.and]: {
+                processingFailedCount: { [Op.lte]: MaxProcessingRetries },
+
+                //retry a failed recording
+                currentStateStartTime: {
+                  [Op.lt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
+                },
+                processingState: `${state}.failed`,
+              },
             },
-            processingFailedCount: { [Op.lt]: MaxProcessingRetries },
           },
         },
       ],
@@ -444,6 +458,7 @@ export default function (
           ],
           order: [
             ["processing", "DESC NULLS FIRST"],
+            ["processingFailedCount", "ASC NULLS FIRST"], //only do these after all others
             Sequelize.literal(`"hasAlert" DESC`),
             Sequelize.literal(
               `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`
@@ -464,6 +479,13 @@ export default function (
         if (!recording.processingStartTime) {
           recording.processingStartTime = now.toISOString();
         }
+        if (recording.isFailed()) {
+          recording.processingState = recording.processingState.replace(
+            ".failed",
+            ""
+          );
+        }
+
         if (recording.processing) {
           recording.processingFailedCount += 1;
         }
@@ -643,6 +665,10 @@ from (
   //------------------
   // INSTANCE METHODS
   //------------------
+  Recording.prototype.isFailed = function (): boolean {
+    return this.processingState.endsWith(".failed");
+  };
+
   Recording.prototype.getNextState = function (): RecordingProcessingState {
     const jobs = Recording.processingStates[this.type];
     let nextState;

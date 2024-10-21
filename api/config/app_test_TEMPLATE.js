@@ -46,7 +46,7 @@ export const smtpDetails = {
     pass: "thesecretpassword",
   },
   platformUsageEmail: "usage@example.com",
-  serviceErrorsEmail: "service-errors@example.com"
+  serviceErrorsEmail: "service-errors@example.com",
 };
 
 // List of devices to ignore when making the service error report.
@@ -68,5 +68,5 @@ export default {
   development: database,
   deviceErrorIgnoreList,
   cacophonyUserIds,
-  cacophonyGroupIds
+  cacophonyGroupIds,
 };
