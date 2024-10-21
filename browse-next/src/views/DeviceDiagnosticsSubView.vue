@@ -317,10 +317,12 @@ const initBatteryInfoTimeSeries = () => {
     //     y: item.battery,
     //   }));
 
-    const batteryAll = interpolatedBatteryInfo.value.map((item) => ({
-      x: new Date(item.dateTime),
-      y: item.battery,
-    }));
+    const batteryAll = interpolatedBatteryInfo.value
+      .filter((item) => item.battery !== null)
+      .map((item) => ({
+        x: new Date(item.dateTime),
+        y: item.battery,
+      }));
     if (batteryAll.length) {
       // Break up the voltage into times when it's on each kind of battery?
       const chart = new LineChart(
