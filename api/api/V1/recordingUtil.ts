@@ -1926,7 +1926,9 @@ export async function sendAlerts(
     string,
     { count: number; tracks: { track: Track; trackTag: TrackTag }[] }
   > = {};
-  const excludedTags = [...NON_ANIMAL_TAGS, "false-positive"];
+  let excludedTags = [...NON_ANIMAL_TAGS, "false-positive"];
+  // NOTE: We are explicitly allowing unidentified tags to alert.
+  excludedTags = excludedTags.filter((tag) => tag !== "unidentified");
   for (const track of recording.Tracks) {
     for (const trackTag of track.TrackTags.filter(
       (tag) => !excludedTags.includes(tag.what)

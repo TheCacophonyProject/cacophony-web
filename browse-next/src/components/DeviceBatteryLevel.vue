@@ -53,13 +53,21 @@ const loadInfo = async () => {
   }
 };
 onBeforeMount(() => {
-  loadInfo();
+  if (props.device.active && props.device.isHealthy) {
+    loadInfo();
+  } else {
+    batteryLevelInfo.value = false;
+  }
 });
 watch(
   () => props.device.id,
   (next, prev) => {
     if (next !== prev) {
-      loadInfo();
+      if (props.device.active && props.device.isHealthy) {
+        loadInfo();
+      } else {
+        batteryLevelInfo.value = false;
+      }
     }
   }
 );

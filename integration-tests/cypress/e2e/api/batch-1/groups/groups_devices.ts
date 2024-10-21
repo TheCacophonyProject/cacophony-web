@@ -3,7 +3,11 @@ import { getCreds } from "@commands/server";
 
 import { NOT_NULL_STRING } from "@commands/constants";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+import {
+  DeviceType,
+  HttpStatusCode,
+  RecordingType,
+} from "@typedefs/api/consts";
 
 describe("Groups - get devices for group", () => {
   const NOT_ADMIN = false;
@@ -126,6 +130,12 @@ describe("Groups - get devices for group", () => {
     });
 
     cy.log("Reregister the camera, making the old camera inactive");
+    cy.apiRecordingAdd(
+      "gdCam4a",
+      { type: RecordingType.ThermalRaw },
+      "oneframe.cptv",
+      "raRecording1"
+    );
     cy.apiDeviceReregister("gdCam4a", "gdCam4b", "gdGroup4").then(() => {
       expectedGroupDevice4b = {
         id: getCreds("gdCam4b").id,
@@ -135,7 +145,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         lastConnectionTime: NOT_NULL_STRING,
         isHealthy: true,
       };
@@ -147,7 +157,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         lastConnectionTime: NOT_NULL_STRING,
         isHealthy: true,
       };

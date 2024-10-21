@@ -42,6 +42,7 @@ import type { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
+import logger from "@log";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -645,11 +646,26 @@ export const uploadGenericRecording =
       }
       let recordingDeviceUpdatePayload = {};
       if (fromDevice) {
+        let shouldSetActive = false;
+        if (!recordingDevice.active) {
+          // Check if the device has been re-assigned to another group:
+          const activeDevice = await models.Device.findOne({
+            where: {
+              saltId: recordingDevice.saltId,
+              active: true,
+            },
+          });
+          if (!activeDevice) {
+            shouldSetActive = true;
+          }
+        }
         // Set the device active and update its connection time.
         recordingDeviceUpdatePayload = {
           lastConnectionTime: new Date(),
-          active: true,
         };
+        if (shouldSetActive) {
+          (recordingDeviceUpdatePayload as any).active = true;
+        }
       } else if (
         !fromDevice &&
         (recordingTemplate.recordingDateTime >
@@ -659,7 +675,7 @@ export const uploadGenericRecording =
         let shouldSetActive = false;
         if (!recordingDevice.active) {
           // Check if the device has been re-assigned to another group:
-          const activeDevice = models.Device.findOne({
+          const activeDevice = await models.Device.findOne({
             where: {
               saltId: recordingDevice.saltId,
               active: true,

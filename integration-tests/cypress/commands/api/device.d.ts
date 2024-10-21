@@ -15,6 +15,15 @@ declare namespace Cypress {
     ): Cypress.Chainable<DeviceId>;
 
     /**
+     * Set an active device inactive.  Returns `true` on success
+     */
+    apiDeviceDeleteOrSetInactive(
+      userName: string,
+      deviceName: string,
+      groupName: string
+    ): Cypress.Chainable<boolean>;
+
+    /**
      * Upate a device's station (deviceHistory) at a given time
      * optionally check for non-200 statusCode
      * By default deviceId and stationId are looked up from
@@ -65,6 +74,21 @@ declare namespace Cypress {
     ): any;
 
     /**
+     * register a device under a new group or name
+     * optionally check for an error response (statusCode!=200OK)
+     * optionally supply a password (autogenerate if not)
+     * optionally check for non-200 statusCode
+     */
+    apiDeviceReregisterAuthorized(
+      oldName: string,
+      newName: string,
+      newGroup: string,
+      adminUserName: string,
+      newPassword?: string,
+      statusCode?: number
+    ): any;
+
+    /**
      * Retrieve devices list from /devices
      * compare with expected device details (JSON equivalent to that returned by API)
      * pass optional params (params) to API call
@@ -88,10 +112,14 @@ declare namespace Cypress {
     ): any;
 
     /**
-     * Retrieve device details using name and groupname from /device/XX/in-group/YY
-     * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+     * Retrieve device details using id
      */
-    apiDevice(userName: string, deviceName: string, statusCode?: number): any;
+    apiDevice(
+      userName: string,
+      deviceName: string,
+      activeAndInactive?: boolean,
+      statusCode?: number
+    ): Cypress.Chainable<Cypress.Response>;
 
     /**
      * Retrieve device details using name and groupname from /device/XX/in-group/YY
@@ -102,7 +130,6 @@ declare namespace Cypress {
       deviceName: string,
       groupName: string | null,
       groupId: number | null,
-      expectedDevices: ApiDeviceResponse,
       params?: any,
       statusCode?: number
     ): any;

@@ -42,15 +42,30 @@ export const deleteDevice = (
     group: projectNameOrId,
   }) as Promise<FetchResult<{ id: DeviceId }>>;
 
-export const getDeviceById = (deviceId: DeviceId) =>
-  CacophonyApi.get(`/api/v1/devices/${deviceId}`) as Promise<
-    FetchResult<{ device: ApiDeviceResponse }>
-  >;
+export const getDeviceById = (
+  deviceId: DeviceId,
+  activeAndInactive = false
+) => {
+  const params = new URLSearchParams();
+  if (activeAndInactive) {
+    params.append("only-active", false.toString());
+  }
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}${optionalQueryString(params)}`
+  ) as Promise<FetchResult<{ device: ApiDeviceResponse }>>;
+};
 
-export const getDeviceLocationAtTime = (deviceId: DeviceId, date?: Date) => {
+export const getDeviceLocationAtTime = (
+  deviceId: DeviceId,
+  activeAndInactiveDevices: boolean = false,
+  date?: Date
+) => {
   const params = new URLSearchParams();
   if (date) {
     params.append("at-time", date.toISOString());
+  }
+  if (activeAndInactiveDevices) {
+    params.append("only-active", false.toString());
   }
   return new Promise((resolve) => {
     (
@@ -355,23 +370,22 @@ export const getLatestStatusRecordingForDevice = (
 ) => {
   return new Promise((resolve) => {
     const params = new URLSearchParams();
-    params.append("limit", "1");
-    params.append("type", "thermalRaw");
-    params.append("countAll", false.toString());
-    const where = {
-      duration: use2SecondRecordings ? { $gte: 2, $lte: 3 } : { $gte: 2 },
-      GroupId: projectId,
-      DeviceId: deviceId,
-    };
-    params.append("where", JSON.stringify(where));
+    params.append("max-results", "1");
+    params.append("types", "thermal");
+    params.append("include-false-positives", true.toString());
+    if (use2SecondRecordings) {
+      params.append("status-recordings", true.toString());
+    }
     (
-      CacophonyApi.get(`/api/v1/recordings?${params}`) as Promise<
-        FetchResult<{ rows: ApiRecordingResponse[] }>
-      >
+      CacophonyApi.get(
+        `/api/v1/recordings/for-project/${projectId}/${optionalQueryString(
+          params
+        )}`
+      ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>
     ).then((response) => {
       if (response.success) {
-        if (response.result.rows.length) {
-          resolve(response.result.rows[0]);
+        if (response.result.recordings.length) {
+          resolve(response.result.recordings[0]);
         } else {
           if (use2SecondRecordings) {
             // 2 Second recording may not be available, get the latest regular recording:
@@ -543,14 +557,22 @@ export const updateReferenceImageForDeviceAtCurrentLocation = (
 export const getReferenceImageForDeviceAtCurrentLocation = (
   deviceId: DeviceId
 ) => {
+  const params = new URLSearchParams();
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image`
+    `/api/v1/devices/${deviceId}/reference-image${optionalQueryString(params)}`
   ) as Promise<FetchResult<Blob>>;
 };
 
-export const getMaskRegionsForDevice = (deviceId: DeviceId, atTime?: Date) => {
+export const getMaskRegionsForDevice = (
+  deviceId: DeviceId,
+  activeAndInactive = true,
+  atTime?: Date
+) => {
   const params = new URLSearchParams();
   params.append("at-time", (atTime || new Date()).toISOString());
+  if (!activeAndInactive) {
+    params.append("only-active", true.toString());
+  }
   const queryString = params.toString();
 
   return CacophonyApi.get(
@@ -600,24 +622,34 @@ export const updateMaskRegionsForDevice = (
 
 export const getReferenceImageForDeviceAtTime = (
   deviceId: DeviceId,
-  atTime: Date
+  atTime: Date,
+  activeAndInactive: boolean = false
 ) => {
   const params = new URLSearchParams();
   params.append("at-time", atTime.toISOString());
+  if (!activeAndInactive) {
+    params.append("only-active", true.toString());
+  }
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image?${params}`
+    `/api/v1/devices/${deviceId}/reference-image?${optionalQueryString(params)}`
   ) as Promise<FetchResult<Blob>>;
 };
 
 export const hasReferenceImageForDeviceAtTime = (
   deviceId: DeviceId,
-  atTime: Date
+  atTime: Date,
+  activeAndInactive: boolean = false
 ) => {
   const params = new URLSearchParams();
   params.append("at-time", atTime.toISOString());
+  if (!activeAndInactive) {
+    params.append("only-active", true.toString());
+  }
   // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image/exists?${params}`
+    `/api/v1/devices/${deviceId}/reference-image/exists?${optionalQueryString(
+      params
+    )}`
   ) as Promise<
     FetchResult<{
       fromDateTime: IsoFormattedDateString;
@@ -627,11 +659,18 @@ export const hasReferenceImageForDeviceAtTime = (
 };
 
 export const hasReferenceImageForDeviceAtCurrentLocation = (
-  deviceId: DeviceId
+  deviceId: DeviceId,
+  activeAndInactive: boolean = false
 ) => {
+  const params = new URLSearchParams();
+  if (!activeAndInactive) {
+    params.append("only-active", true.toString());
+  }
   // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image/exists`
+    `/api/v1/devices/${deviceId}/reference-image/exists${optionalQueryString(
+      params
+    )}`
   ) as Promise<
     FetchResult<{
       fromDateTime: IsoFormattedDateString;

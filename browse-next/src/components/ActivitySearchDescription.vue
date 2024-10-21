@@ -126,7 +126,9 @@ const otherLabels = computed<string[]>(
         ? upperFirst(searchParams.displayMode)
         : ` ${searchParams.displayMode}`
     }}</strong>
-    <span v-if="selectedLocations.includes('any')">
+    <span
+      v-if="selectedLocations.length === 0 || selectedLocations.includes('any')"
+    >
       <span v-if="locationsInSelectedTimespan.length === 1">
         at
         <strong class="fw-semibold">{{
