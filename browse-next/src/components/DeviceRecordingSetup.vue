@@ -381,7 +381,7 @@ const thermalBarStyles = computed(() => {
       { left: "0%", width: "33%" },
       {
         left: "66%", // Approximate 18:00
-        width: "33%", // From 18:00 to 06:00
+        width: "34%", // From 18:00 to 06:00
       },
     ];
   }
@@ -656,7 +656,7 @@ watch(customRecordingWindowStop, async () => {
           </div>
           <div v-if="audioMode !== 'Disabled' || recordingWindow" class="mt-4">
             <div class="d-flex align-items-center">
-              <div :style="{ width: '12%' }"></div>
+              <div :style="{ width: '71px' }"></div>
               <div class="d-flex w-100 justify-content-between text-muted">
                 <div>00:00</div>
                 <div>12:00</div>
@@ -665,7 +665,7 @@ watch(customRecordingWindowStop, async () => {
             </div>
             <div class="d-flex flex-column mt-2">
               <div class="d-flex align-items-center mb-2">
-                <h6 class="text-muted mb-0 py-1" :style="{ width: '12%' }">
+                <h6 class="text-muted mb-0 py-1" :style="{ width: '71px' }">
                   Thermal:
                 </h6>
                 <div
@@ -683,7 +683,7 @@ watch(customRecordingWindowStop, async () => {
                 </div>
               </div>
               <div class="d-flex align-items-center">
-                <h6 class="text-muted mb-0 py-1" :style="{ width: '12%' }">
+                <h6 class="text-muted mb-0 py-1" :style="{ width: '71px' }">
                   Audio:
                 </h6>
                 <div
