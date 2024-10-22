@@ -90,7 +90,17 @@
               <div
                 v-for="tag in track.displayTags"
                 :key="tag.id"
-                class="capitalize text-white d-flex align-items-center p-0 pl-2 pr-2 mr-1 rounded"
+                class="
+                  capitalize
+                  text-white
+                  d-flex
+                  align-items-center
+                  p-0
+                  pl-2
+                  pr-2
+                  mr-1
+                  rounded
+                "
                 :class="{
                   ['ai-tag']:
                     tag.class === 'denied' || tag.class === 'automatic',
