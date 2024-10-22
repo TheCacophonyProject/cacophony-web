@@ -471,8 +471,6 @@ export default function (app: Application, baseUrl: string) {
           "https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json"
         )
       ).json();
-      logger.info("!!!!");
-      console.log(result);
       return successResponse(response, "Got latest software versions.", {
         versions: result,
       });
