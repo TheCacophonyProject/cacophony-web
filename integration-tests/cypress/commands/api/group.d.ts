@@ -1,17 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
 declare namespace Cypress {
-  type ApiGroupReturned = import("../types").ApiGroupReturned;
-  type ApiDeviceIdAndName = import("../types").ApiDeviceIdAndName;
-  type ApiGroupsDevice = import("../types").ApiGroupsDevice;
-  type ApiStationDataAlias = import("../types").ApiStationData;
-  type ApiStationDataReturned = import("../types").ApiStationDataReturned;
-  type ApiDeviceResponseAlias =
-    import("@typedefs/api/device").ApiDeviceResponse;
-  type ApiGroupUserRelationshipResponse =
-    import("@typedefs/api/group").ApiGroupUserResponse;
-
   interface Chainable {
     /**
      * create a group for the given user (who has already been referenced in the test)

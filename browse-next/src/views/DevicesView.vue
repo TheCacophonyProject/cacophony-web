@@ -56,7 +56,7 @@ const route = useRoute();
 const router = useRouter();
 const devices = computed<ApiDeviceResponse[]>(() => {
   if (allProjectDevices.value !== null) {
-    if (showInactiveDevices.value) {
+    if (showInactiveDevices.value || route.name !== "devices") {
       return allProjectDevices.value as ApiDeviceResponse[];
     }
     return (allProjectDevices.value as ApiDeviceResponse[]).filter(
@@ -182,6 +182,12 @@ onBeforeMount(async () => {
     }
     const _ = findProbablyOnlineDevices();
   } else if (selectedDevice.value) {
+    if (!selectedDevice.value.active) {
+      await reloadAllDevices();
+    }
+    await getSelectedDeviceLocation();
+  } else {
+    await reloadAllDevices();
     await getSelectedDeviceLocation();
   }
 });
@@ -446,7 +452,8 @@ const deviceLocation = ref<LoadedResource<ApiStationResponse>>(null);
 const getSelectedDeviceLocation = async () => {
   if (selectedDevice.value?.location) {
     deviceLocation.value = await getDeviceLocationAtTime(
-      selectedDevice.value.id
+      selectedDevice.value.id,
+      true
     );
   }
 };
@@ -536,7 +543,7 @@ const isDevicesRoot = computed(() => {
           name: 'activity',
           query: {
             devices: [selectedDevice.id],
-            locations: [deviceLocation.id],
+            //locations: [deviceLocation.id],
             until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
             from: (selectedDeviceActiveFrom as Date).toISOString(),
             'display-mode': 'recordings',

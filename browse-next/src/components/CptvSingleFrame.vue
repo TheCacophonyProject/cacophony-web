@@ -92,27 +92,35 @@ const loadRecording = async () => {
       creds.value.apiToken
     );
     if (result === true) {
-      let frame = await cptvDecoder.getNextFrame();
-      if (frame?.meta.isBackgroundFrame) {
+      let gotGoodFrame = false;
+      let frame;
+
+      while (!gotGoodFrame) {
         frame = await cptvDecoder.getNextFrame();
-      }
-      if (frame) {
-        let max = Number.MIN_SAFE_INTEGER;
-        let min = Number.MAX_SAFE_INTEGER;
-        for (const px of frame.data) {
-          max = Math.max(px, max);
-          min = Math.min(px, min);
+        if (frame?.isBackgroundFrame) {
+          continue;
         }
-        const buffer = new Uint8ClampedArray(160 * 120 * 4);
-        renderFrameIntoFrameBuffer(
-          buffer,
-          frame.data,
-          defaultPalette.value[1],
-          min,
-          max
-        );
-        frameData.value = new ImageData(buffer, 160, 120);
-        renderFrame();
+        if (frame) {
+          let max = Number.MIN_SAFE_INTEGER;
+          let min = Number.MAX_SAFE_INTEGER;
+          for (const px of frame.imageData) {
+            max = Math.max(px, max);
+            min = Math.min(px, min);
+          }
+          if (max - min > 0) {
+            gotGoodFrame = true;
+          }
+          const buffer = new Uint8ClampedArray(160 * 120 * 4);
+          renderFrameIntoFrameBuffer(
+            buffer,
+            frame.imageData,
+            defaultPalette.value[1],
+            min,
+            max
+          );
+          frameData.value = new ImageData(buffer, 160, 120);
+          renderFrame();
+        }
       }
     }
     await cptvDecoder.close();

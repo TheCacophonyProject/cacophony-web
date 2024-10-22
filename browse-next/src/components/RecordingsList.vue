@@ -128,7 +128,7 @@
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"
                   :class="tag.path.split('.')"
                   :key="tag.what"
-                  v-for="tag in tagsForRecording(item.data)"
+                  v-for="tag in canonicalTagsForRecording(item.data)"
                   ><span class="me-1">{{
                     displayLabelForClassificationLabel(
                       tag.what,
@@ -234,7 +234,10 @@ import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.ts";
-import { type TagItem, tagsForRecording } from "@models/recordingUtils.ts";
+import {
+  type TagItem,
+  canonicalTagsForRecording,
+} from "@models/recordingUtils.ts";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiTrackTag, ApiTrackTagResponse } from "@typedefs/api/trackTag";
 

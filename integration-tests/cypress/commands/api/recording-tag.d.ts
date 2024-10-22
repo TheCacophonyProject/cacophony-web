@@ -1,9 +1,4 @@
-/// <reference types="../types" />
-
 declare namespace Cypress {
-  type ApiRecordingTagRequest =
-    import("@typedefs/api/tag").ApiRecordingTagRequest;
-
   interface Chainable {
     /**
      * Add a tag to a recording.

@@ -1,6 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import {
   v1ApiPath,
   getCreds,

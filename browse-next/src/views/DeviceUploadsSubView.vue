@@ -800,4 +800,6 @@ const clearUploadQueue = () => {
   white-space: unset !important;
 }
 </style>
-<style src="@vueform/multiselect/themes/default.css"></style>
+<style lang="css">
+@import url('@vueform/multiselect/themes/default.css');
+</style>

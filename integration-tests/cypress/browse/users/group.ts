@@ -1,5 +1,4 @@
-/// <reference path="../../support/index.d.ts" />
-import { getTestName } from "../../commands/names";
+import { getTestName } from "@commands/names";
 
 describe("Group Admin Pages", () => {
   const Anna = "Anna";

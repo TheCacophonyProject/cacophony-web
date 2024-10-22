@@ -1,4 +1,3 @@
-// @ts-ignore
 import { randomBytes } from "crypto";
 
 //suffix to add to ids making them unique within each test run

@@ -2463,6 +2463,7 @@ export default (app: Application, baseUrl: string) => {
       query("sub-class-tags").default(true).isBoolean().toBoolean(),
       query("include-deleted").default(false).isBoolean().toBoolean(),
       query("time-sensitive").default(false).isBoolean().toBoolean(),
+      query("status-recordings").default(false).isBoolean().toBoolean(),
       query("tag-mode")
         .default(TagMode.Any)
         .isString()
@@ -2553,6 +2554,9 @@ export default (app: Application, baseUrl: string) => {
         const includeDeletedRecordings = query[
           "include-deleted"
         ] as unknown as boolean;
+        const statusRecordingsOnly = query[
+          "status-recordings"
+        ] as unknown as boolean;
         const locations = ((query.locations || []) as string[]).map(Number);
         const devices = ((query.devices || []) as string[]).map(Number);
         const minDuration = query.duration as unknown as number;
@@ -2631,6 +2635,7 @@ export default (app: Application, baseUrl: string) => {
             models,
             projectId,
             minDuration,
+            statusRecordingsOnly,
             includeDeletedRecordings,
             types,
             processingState,
@@ -2662,6 +2667,7 @@ export default (app: Application, baseUrl: string) => {
             models,
             projectId,
             minDuration,
+            statusRecordingsOnly,
             includeDeletedRecordings,
             types,
             processingState,
@@ -2696,11 +2702,13 @@ export default (app: Application, baseUrl: string) => {
           dateTimeMinusThreeMonths(untilDateTime)
         );
         let timeLimitReached = false;
+
         while (accumulatedRecordingIds.length < requestedLimit) {
           const recordings = await queryRecordingsInProject(
             models,
             projectId,
             minDuration,
+            statusRecordingsOnly,
             includeDeletedRecordings,
             types,
             processingState,
