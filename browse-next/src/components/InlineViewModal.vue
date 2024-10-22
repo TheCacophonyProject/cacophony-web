@@ -67,7 +67,6 @@ const onShown = () => {
   emit("shown");
 };
 
-
 const updatedRecording = (recordingId: RecordingId, action: string) => {};
 
 const isBusy = ref<boolean>(false);

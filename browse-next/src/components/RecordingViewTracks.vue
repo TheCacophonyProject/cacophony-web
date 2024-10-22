@@ -52,7 +52,6 @@ const props = withDefaults(
   { recording: null }
 );
 
- 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
 const currentTrack = ref<ApiTrackResponse | null>(null);
