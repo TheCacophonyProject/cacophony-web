@@ -5,13 +5,11 @@ import type { DeviceId, StationId } from "@typedefs/api/common";
 // TODO: Should this selection context be a single blob of state per group, and get wiped out when groups change?
 //  Should we try to reconstruct it from url state?
 
- 
 interface SelectedVisitsContext {
   visits: ApiVisitResponse[];
   stations: StationId[] | "all";
 }
 
- 
 interface SelectedRecordingsContext {
   recordings: ApiRecordingResponse[];
   devices: DeviceId[] | "all";

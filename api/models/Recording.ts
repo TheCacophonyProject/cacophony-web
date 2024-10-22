@@ -393,27 +393,25 @@ export default function (
           processing: { [Op.or]: [null, false] },
         },
         {
-          [Op.and]: {
-            [Op.or]: {
-              [Op.and]: {
-                currentStateStartTime: {
-                  [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
-                },
-                processingState: state,
-                processing: true,
-                processingFailedCount: { [Op.lt]: 1 },
+          [Op.or]: [
+            {
+              currentStateStartTime: {
+                [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
               },
-              [Op.and]: {
-                processingFailedCount: { [Op.lte]: MaxProcessingRetries },
-
-                //retry a failed recording
-                currentStateStartTime: {
-                  [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
-                },
-                processingState: `${state}.failed`,
-              },
+              processingState: state,
+              processing: true,
+              processingFailedCount: { [Op.lt]: MaxProcessingRetries },
             },
-          },
+
+            {
+              processingFailedCount: { [Op.lte]: MaxProcessingRetries },
+              //retry a failed recording
+              currentStateStartTime: {
+                [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
+              },
+              processingState: `${state}.failed`,
+            },
+          ],
         },
       ],
     };
