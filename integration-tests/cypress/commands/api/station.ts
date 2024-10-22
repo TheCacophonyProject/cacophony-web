@@ -1,6 +1,3 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 import { ApiStationData } from "../types";
 import { ApiStationResponse } from "@typedefs/api/station";
 import { getTestName } from "../names";
@@ -22,7 +19,7 @@ Cypress.Commands.add(
   (
     userName: string,
     expectedStations: ApiStationResponse[],
-    excludeCheckOn: any = [],
+    excludeCheckOn: any = ["lastActiveThermalTime", "[].lastActiveThermalTime"],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
@@ -80,7 +77,7 @@ Cypress.Commands.add(
     userName: string,
     stationIdOrName: string,
     expectedStation: ApiStationResponse,
-    excludeCheckOn: any = [],
+    excludeCheckOn: any = [".lastActiveThermalTime"],
     statusCode: number = 200,
     additionalChecks: any = {}
   ) => {
@@ -252,7 +249,7 @@ Cypress.Commands.add(
     stationIdOrName: string,
     retirementDate: string = new Date().toISOString(),
     additionalChecks: any = {}
-  ): any => {
+  ) => {
     let stationId: string;
     //Get station ID from name (unless we're asked not to)
     if (additionalChecks["useRawStationId"] === true) {

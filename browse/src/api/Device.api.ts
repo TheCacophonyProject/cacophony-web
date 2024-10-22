@@ -263,12 +263,25 @@ async function getType(
   return "UnknownDeviceType";
 }
 
-async function getDeviceSettings(
-  deviceId: DeviceId
-): Promise<
-  FetchResult<{ settings: ApiDeviceHistorySettings; location: LatLng }>
-> {
-  return CacophonyApi.get(`/api/v1/devices/${deviceId}/settings`);
+function getSettingsForDevice(
+  deviceId: DeviceId,
+  atTime?: Date,
+  lastSynced = false
+) {
+  const params = new URLSearchParams();
+  params.append("at-time", (atTime || new Date()).toISOString());
+  if (lastSynced) {
+    params.append("latest-synced", true.toString());
+  }
+  const queryString = params.toString();
+  return CacophonyApi.get(
+    `/api/v1/devices/${deviceId}/settings?${queryString}`
+  ) as Promise<
+    FetchResult<{
+      settings: ApiDeviceHistorySettings | null;
+      location: LatLng;
+    }>
+  >;
 }
 
 async function updateDeviceSettings(
@@ -280,10 +293,8 @@ async function updateDeviceSettings(
   });
 }
 
-async function toggleUseLowPowerMode(
-  deviceId: DeviceId
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
-  const currentSettingsResponse = await getDeviceSettings(deviceId);
+async function toggleUseLowPowerMode(deviceId: DeviceId) {
+  const currentSettingsResponse = await getSettingsForDevice(deviceId);
   if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
@@ -300,10 +311,8 @@ async function toggleUseLowPowerMode(
   }
 }
 
-async function setDefaultRecordingWindows(
-  deviceId: DeviceId
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
-  const currentSettingsResponse = await getDeviceSettings(deviceId);
+async function setDefaultRecordingWindows(deviceId: DeviceId) {
+  const currentSettingsResponse = await getSettingsForDevice(deviceId);
   if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
@@ -322,10 +331,8 @@ async function setDefaultRecordingWindows(
   }
 }
 
-async function set24HourRecordingWindows(
-  deviceId: DeviceId
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
-  const currentSettingsResponse = await getDeviceSettings(deviceId);
+async function set24HourRecordingWindows(deviceId: DeviceId) {
+  const currentSettingsResponse = await getSettingsForDevice(deviceId);
   if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
@@ -347,8 +354,8 @@ async function set24HourRecordingWindows(
 async function setCustomRecordingWindows(
   deviceId: DeviceId,
   customSettings: Omit<WindowsSettings, "updated">
-): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
-  const currentSettingsResponse = await getDeviceSettings(deviceId);
+) {
+  const currentSettingsResponse = await getSettingsForDevice(deviceId);
   if (currentSettingsResponse.success) {
     const currentSettings = currentSettingsResponse.result.settings;
     const newSettings: ApiDeviceHistorySettings = {
@@ -363,6 +370,43 @@ async function setCustomRecordingWindows(
     throw new Error("Failed to fetch current settings.");
   }
 }
+
+const getLatestEventsByDeviceId = (
+  deviceId: number,
+  eventParams?: EventApiParams
+) => {
+  const params = new URLSearchParams();
+  params.append("deviceId", deviceId.toString());
+  params.append("latest", true.toString());
+  params.append("only-active", false.toString());
+  params.append("include-count", false.toString());
+  if (eventParams) {
+    for (const [key, val] of Object.entries(eventParams)) {
+      params.append(key, val.toString());
+    }
+  }
+  return CacophonyApi.get(`/api/v1/events?${params}`) as Promise<
+    FetchResult<{ rows: DeviceEvent[] }>
+  >;
+};
+
+const getDeviceNodeGroup = (deviceId: DeviceId) => {
+  return new Promise((resolve) => {
+    getLatestEventsByDeviceId(deviceId, {
+      type: "salt-update",
+      limit: 1,
+    }).then((response) => {
+      if (response.success && response.result.rows.length) {
+        resolve(
+          response.result.rows[0].EventDetail.details.nodegroup ||
+            "unknown channel"
+        );
+      } else {
+        resolve(false);
+      }
+    });
+  }) as Promise<string | false>;
+};
 export default {
   getDevices,
   getDevice,
@@ -379,9 +423,11 @@ export default {
   getDeviceSpeciesCountBulk,
   getDeviceDaysActive,
   updateDeviceSettings,
-  getDeviceSettings,
+  getSettingsForDevice,
   toggleUseLowPowerMode,
   setDefaultRecordingWindows,
   set24HourRecordingWindows,
   setCustomRecordingWindows,
+  getDeviceNodeGroup,
+  getLatestEventsByDeviceId,
 };

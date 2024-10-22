@@ -1066,6 +1066,7 @@ const requestedDownload = async () => {
     const recordingId = rec.id;
     const downloadedFileResponse = await window.fetch(
       `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
+        // eslint-disable-next-line no-undef
       request as RequestInit
     );
     const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
@@ -1617,8 +1618,9 @@ const inlineModal = ref<boolean>(false);
                 ></span
               >
               <span class="fs-9"
-                >{{ (previousRecordingIndex as number) + 1 }}/
-                {{ currentRecordingCount || allRecordingIds.length }}</span
+                >{{ (previousRecordingIndex as number) + 1 }}/{{
+                  currentRecordingCount || allRecordingIds.length
+                }}</span
               >
             </span>
             <span class="px-1">

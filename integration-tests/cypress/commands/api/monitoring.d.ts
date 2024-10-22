@@ -1,9 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 declare namespace Cypress {
-  type TestVisitSearchParams = import("../types").TestVisitSearchParams;
-  type TestComparableVisit = import("../types").TestComparableVisit;
   interface Chainable {
     /**
      * check the visits returned match the listed visits specified. Only the specified information will be checked.

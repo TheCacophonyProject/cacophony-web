@@ -12,6 +12,7 @@ declare module "vue" {
     BAlert: typeof import("bootstrap-vue-next")["BAlert"];
     BBadge: typeof import("bootstrap-vue-next")["BBadge"];
     BButton: typeof import("bootstrap-vue-next")["BButton"];
+    BButtonGroup: typeof import("bootstrap-vue-next")["BButtonGroup"];
     BDropdown: typeof import("bootstrap-vue-next")["BDropdown"];
     BDropdownDivider: typeof import("bootstrap-vue-next")["BDropdownDivider"];
     BDropdownGroup: typeof import("bootstrap-vue-next")["BDropdownGroup"];
@@ -27,6 +28,7 @@ declare module "vue" {
     BFormRadioGroup: typeof import("bootstrap-vue-next")["BFormRadioGroup"];
     BFormSelect: typeof import("bootstrap-vue-next")["BFormSelect"];
     BimodalSwitch: typeof import("./src/components/BimodalSwitch.vue")["default"];
+    BInput: typeof import("bootstrap-vue-next")["BInput"];
     BLink: typeof import("bootstrap-vue-next")["BLink"];
     BlockingUserActionRequiredModal: typeof import("./src/components/BlockingUserActionRequiredModal.vue")["default"];
     BModal: typeof import("bootstrap-vue-next")["BModal"];
@@ -34,7 +36,6 @@ declare module "vue" {
     BPopover: typeof import("bootstrap-vue-next")["BPopover"];
     BProgress: typeof import("bootstrap-vue-next")["BProgress"];
     BSpinner: typeof import("bootstrap-vue-next")["BSpinner"];
-    BTable: typeof import("bootstrap-vue-next")["BTable"];
     CardTable: typeof import("./src/components/CardTable.vue")["default"];
     CptvPlayer: typeof import("./src/components/cptv-player/CptvPlayer.vue")["default"];
     CptvSingleFrame: typeof import("./src/components/CptvSingleFrame.vue")["default"];
@@ -67,13 +68,13 @@ declare module "vue" {
     RecordingViewActionButtons: typeof import("./src/components/RecordingViewActionButtons.vue")["default"];
     RecordingViewLabels: typeof import("./src/components/RecordingViewLabels.vue")["default"];
     RecordingViewTracks: typeof import("./src/components/RecordingViewTracks.vue")["default"];
+    RenameableLocationName: typeof import("./src/components/RenameableLocationName.vue")["default"];
     RouterLink: typeof import("vue-router")["RouterLink"];
     RouterView: typeof import("vue-router")["RouterView"];
     ScrubberWrapper: typeof import("./src/components/ScrubberWrapper.vue")["default"];
     SectionHeader: typeof import("./src/components/SectionHeader.vue")["default"];
     SwitchProjectsModal: typeof import("./src/components/SwitchProjectsModal.vue")["default"];
     TagImage: typeof import("./src/components/TagImage.vue")["default"];
-    Temp: typeof import("./src/components/Temp.vue")["default"];
     TracksScrubber: typeof import("./src/components/TracksScrubber.vue")["default"];
     TrackTaggerRow: typeof import("./src/components/TrackTaggerRow.vue")["default"];
     TwoStepActionButton: typeof import("./src/components/TwoStepActionButton.vue")["default"];

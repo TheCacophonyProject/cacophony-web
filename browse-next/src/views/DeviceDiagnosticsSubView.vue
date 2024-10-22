@@ -6,6 +6,7 @@ import {
   getDeviceConfig,
   getDeviceLastPoweredOff,
   getDeviceLastPoweredOn,
+  getDeviceLatestVersionInfo,
   getDeviceLocationAtTime,
   getDeviceNodeGroup,
   getDeviceVersionInfo,
@@ -16,8 +17,8 @@ import type { DeviceId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
 import type { DeviceConfigDetail } from "@typedefs/api/event";
-import { selectedProjectDevices } from "@models/provides";
 import {
+  LocationsForCurrentProject,
   projectDevicesLoaded,
   projectLocationsLoaded,
 } from "@models/LoggedInUser";
@@ -34,31 +35,25 @@ import { DeviceType } from "@typedefs/api/consts.ts";
 import type {
   ApiDeviceResponse,
   ApiDeviceHistorySettings,
-  WindowsSettings,
 } from "@typedefs/api/device";
-import type { BvTriggerableEvent } from "bootstrap-vue-next/src/BootstrapVue.js";
-import { defaultWindow } from "@vueuse/core";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import { resourceIsLoading } from "@/helpers/utils.ts";
+// import { BPopover } from "bootstrap-vue-next";
+//
+// import { useFloating, offset, flip, shift } from "@floating-ui/vue";
 
 const batteryTimeSeries = ref<HTMLDivElement>();
 
-const devices = inject(selectedProjectDevices) as Ref<
-  ApiDeviceResponse[] | null
->;
+const device = inject("device") as Ref<ApiDeviceResponse | null>;
 const route = useRoute();
 const deviceId = Number(route.params.deviceId) as DeviceId;
-const device = computed<ApiDeviceResponse | null>(() => {
-  return (
-    (devices.value &&
-      (devices.value as ApiDeviceResponse[]).find(
-        (device: ApiDeviceResponse) => device.id === deviceId
-      )) ||
-    null
-  );
-});
 
 const versionInfo = ref<LoadedResource<Record<string, string>>>(null);
+const latestVersionInfo =
+  ref<LoadedResource<Record<string, Record<string, Record<string, string>>>>>(
+    null
+  );
+
 const deviceConfig = ref<LoadedResource<DeviceConfigDetail>>(null);
 const currentLocationForDevice = ref<LoadedResource<ApiLocationResponse>>(null);
 const lastPowerOffTime = ref<LoadedResource<Date>>(null);
@@ -67,6 +62,7 @@ const settings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
 const saltNodeGroup = ref<LoadedResource<string>>(null);
 const configInfoLoading = resourceIsLoading(deviceConfig);
 const versionInfoLoading = resourceIsLoading(versionInfo);
+const latestVersionInfoLoading = resourceIsLoading(versionInfo);
 const locationInfoLoading = resourceIsLoading(currentLocationForDevice);
 const nodeGroupInfoLoading = resourceIsLoading(saltNodeGroup);
 const lastUpdateWasUnsuccessful = ref<boolean>(true);
@@ -321,13 +317,15 @@ const initBatteryInfoTimeSeries = () => {
     //     y: item.battery,
     //   }));
 
-    const batteryAll = interpolatedBatteryInfo.value.map((item) => ({
-      x: new Date(item.dateTime),
-      y: item.battery,
-    }));
+    const batteryAll = interpolatedBatteryInfo.value
+      .filter((item) => item.battery !== null)
+      .map((item) => ({
+        x: new Date(item.dateTime),
+        y: item.battery,
+      }));
     if (batteryAll.length) {
       // Break up the voltage into times when it's on each kind of battery?
-      new LineChart(
+      const chart = new LineChart(
         batteryTimeSeries.value as HTMLDivElement,
         {
           series: [
@@ -365,6 +363,21 @@ const initBatteryInfoTimeSeries = () => {
           },
         }
       );
+      // chart.on("created", (val) => {
+      //   console.log("Created chart", val);
+      //   chartEl.value = val.svg._node as SVGElement;
+      //   const points = document.getElementsByClassName("ct-point");
+      //   for (const point of points) {
+      //     (point as SVGLineElement).addEventListener(
+      //       "mouseover",
+      //       (e: MouseEvent) => {
+      //         console.log("over", e);
+      //         hoveredDataPoint.value = e.target as SVGLineElement;
+      //         hover.value = { x: e.offsetY, y: e.offsetX };
+      //       }
+      //     );
+      //   }
+      // });
     }
   }
 };
@@ -450,14 +463,32 @@ const loadResource = (
   }
 };
 
+const deviceLoaded = async () => {
+  // This gets loaded in the route handler, so won't be hot-reloaded?
+  if (device.value !== null) {
+    return true;
+  } else {
+    return new Promise((resolve, reject) => {
+      watch(device, (next) => {
+        if (next) {
+          resolve(true);
+        } else {
+          reject();
+        }
+      });
+    });
+  }
+};
+
 const init = async () => {
   await Promise.all([projectDevicesLoaded(), projectLocationsLoaded()]);
-
+  await deviceLoaded();
   if (device.value) {
     loadResource(deviceConfig, () => getDeviceConfig(deviceId));
     loadResource(versionInfo, () => getDeviceVersionInfo(deviceId));
+
     loadResource(currentLocationForDevice, () =>
-      getDeviceLocationAtTime(deviceId)
+      getDeviceLocationAtTime(deviceId, true)
     );
     loadResource(lastPowerOffTime, () => getDeviceLastPoweredOff(deviceId));
     loadResource(lastPowerOnTime, () => getDeviceLastPoweredOn(deviceId));
@@ -465,7 +496,7 @@ const init = async () => {
     const eightWeeksAgo = new Date();
     eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
     loadResource(batteryInfo, () => getBatteryInfo(deviceId, eightWeeksAgo));
-
+    loadResource(latestVersionInfo, () => getDeviceLatestVersionInfo());
     /*
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -506,12 +537,27 @@ const init = async () => {
 
 onBeforeMount(init);
 
-const versionInfoTable = computed<CardTableRows<string>>(() =>
-  Object.entries(versionInfo.value || []).map(([software, version]) => ({
-    package: software,
-    version,
-  }))
-);
+const getLatestVersion = (packageName: string, channel: string): string => {
+  const model = channel.includes("tc2") ? "tc2" : "pi";
+  const branch = model === "pi" ? channel.split("-")[0] : channel.split("-")[1];
+  if (latestVersionInfo.value) {
+    return latestVersionInfo.value[branch][model][packageName] || "not found";
+  }
+  return "unknown";
+};
+
+const versionInfoTable = computed<
+  CardTableRows<string | { version: string; latestVersion: string }>
+>(() => {
+  const channel = saltNodeGroup.value;
+  return Object.entries(versionInfo.value || []).map(([software, version]) => {
+    const latestVersion = getLatestVersion(software, channel as string);
+    return {
+      package: software,
+      version: { version, latestVersion },
+    };
+  });
+});
 
 const deviceLocationPoints = computed<NamedPoint[]>(() => {
   if (currentLocationForDevice.value && device.value) {
@@ -557,11 +603,22 @@ const powerProfile = computed<DevicePowerProfile>(() => {
 const isTc2Device = computed<boolean>(() => {
   return (saltNodeGroup.value || "").includes("tc2");
 });
+const hover = ref<{ x: number; y: number }>({ x: 0, y: 0 });
+const hoveredDataPoint = ref<SVGLineElement | null>(null);
+const chartEl = ref<SVGElement>();
+const hoveredPointValue = computed<number>(() => {
+  if (hoveredDataPoint.value) {
+    return Number(
+      hoveredDataPoint.value.getAttribute("ct:value")?.split(",")[1]
+    );
+  }
+  return 0;
+});
 </script>
 <template>
-  <div v-if="device" class="mt-3">
+  <div v-if="device && device.active" class="mt-3">
     <div class="d-flex justify-content-between flex-md-row flex-column">
-      <div v-if="device.type === 'thermal'">
+      <div v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
         <h6 v-if="latestStatusRecording">
           Camera view from
           {{
@@ -679,6 +736,23 @@ const isTc2Device = computed<boolean>(() => {
       <!-- TODO: Is the device currently online?  Duplicate info from devices listing.   -->
     </div>
     <div class="mt-4">
+      <!--      <b-popover-->
+      <!--        ref="popOverHint"-->
+      <!--        variant="light"-->
+      <!--        tooltip-->
+      <!--        no-fade-->
+      <!--        :delay="{ show: 0, hide: 0 }"-->
+      <!--        @hidden="hoveredDataPoint = null"-->
+      <!--        custom-class="tag-info-popover"-->
+      <!--        :floating-middleware="[-->
+      <!--          offset({ mainAxis: hover.x, alignmentAxis: hover.y }),-->
+      <!--        ]"-->
+      <!--        placement="auto-start"-->
+      <!--        teleport-to="body"-->
+      <!--        :target="chartEl as unknown as HTMLElement"-->
+      <!--      >-->
+      <!--        {{ hoveredPointValue }}-->
+      <!--      </b-popover>-->
       <div class="d-flex align-items-center h6 justify-content-between">
         <span>Battery info:</span>
         <device-battery-level :device="device" />
@@ -711,7 +785,11 @@ const isTc2Device = computed<boolean>(() => {
       <h6>Software package versions:</h6>
       <!--      <div>Last successful update at ???</div>-->
       <!--      <div v-if="lastUpdateWasUnsuccessful">Last update at ??? failed</div>-->
-      <div v-if="versionInfoLoading">
+      <div
+        v-if="
+          versionInfoLoading || latestVersionInfoLoading || nodeGroupInfoLoading
+        "
+      >
         <b-spinner small class="me-2" />
         Loading version info
       </div>
@@ -721,9 +799,73 @@ const isTc2Device = computed<boolean>(() => {
         :items="versionInfoTable"
         :sort-dimensions="{ package: true }"
         default-sort="package"
-      />
+      >
+        <template
+          #version="{
+            cell: versionInfo,
+          }: {
+            cell: { version: string, latestVersion: string },
+          }"
+        >
+          <span
+            v-if="
+              versionInfo.version.replace(/~/g, '-') ===
+              versionInfo.latestVersion
+            "
+            >{{ versionInfo.version }}</span
+          >
+          <span v-else-if="versionInfo.latestVersion !== 'not found'"
+            ><span class="outdated-version">{{ versionInfo.version }}</span
+            >&nbsp;
+            <em class="latest-version"
+              >({{ versionInfo.latestVersion }} is latest)</em
+            ></span
+          >
+          <span v-else>{{ versionInfo.version }}</span>
+        </template>
+        <template
+          #card="{
+            card,
+          }: {
+            card: {
+              package: string,
+              version: { version: string, latestVersion: string },
+            },
+          }"
+        >
+          <div class="d-flex justify-content-between">
+            <span class="text-capitalize"><strong>Package:</strong></span>
+            <span class="text-nowrap">{{ card.package }}</span>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-capitalize"><strong>Version:</strong></span>
+            <span
+              v-if="
+                card.version.version.replace(/~/g, '-') ===
+                card.version.latestVersion
+              "
+              >{{ card.version.version }}</span
+            >
+            <span v-else-if="card.version.latestVersion !== 'not found'"
+              ><span class="outdated-version">{{ card.version.version }}</span
+              >&nbsp;
+              <em class="latest-version"
+                >({{ card.version.latestVersion }} is latest)</em
+              ></span
+            >
+            <span v-else>{{ card.version.version }}</span>
+          </div>
+        </template>
+      </card-table>
       <div v-else>Version info not available.</div>
     </div>
+  </div>
+  <div v-else-if="device && !device.active" class="p-3">
+    <p>
+      This device is not currently active.<br />
+      This means that it was either retired, or moved to another project.
+    </p>
+    <p>You can still view historical recording data for this device.</p>
   </div>
   <div v-else class="p-3">Device not found in group.</div>
 </template>
@@ -735,5 +877,14 @@ const isTc2Device = computed<boolean>(() => {
 .battery-info-time-series {
   // min-height?
 }
+.outdated-version {
+  color: darkred;
+  font-weight: bold;
+}
+.latest-version {
+  color: #777;
+}
 </style>
-<style src="chartist/dist/index.css" lang="css"></style>
+<style lang="css">
+@import url("chartist/dist/index.css");
+</style>

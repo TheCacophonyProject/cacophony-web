@@ -88,6 +88,7 @@ import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
+import logger from "@log";
 
 const models = await modelsInit();
 
@@ -387,6 +388,7 @@ export default function (app: Application, baseUrl: string) {
         },
       });
       if (hasRecording) {
+        logger.info("Setting device %s with recordings inactive", deviceId);
         await response.locals.device.update({
           active: false,
         });
@@ -460,6 +462,21 @@ export default function (app: Application, baseUrl: string) {
     }
   );
 
+  app.get(
+    `${apiUrl}/latest-software-versions`,
+    extractJwtAuthorizedUser,
+    async function (request: Request, response: Response) {
+      const result = await (
+        await fetch(
+          "https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json"
+        )
+      ).json();
+      return successResponse(response, "Got latest software versions.", {
+        versions: result,
+      });
+    }
+  );
+
   /**
    * @api {get} /api/v1/devices/:deviceId Get a single device by its unique id
    * @apiName GetDeviceById
@@ -508,8 +525,8 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       deprecatedField(query("where")), // Sidekick
       anyOf(
-        query("onlyActive").optional().isBoolean().toBoolean(),
-        query("only-active").optional().isBoolean().toBoolean()
+        query("onlyActive").default(false).isBoolean().toBoolean(),
+        query("only-active").default(false).isBoolean().toBoolean()
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -532,8 +549,8 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       deprecatedField(query("where")), // Sidekick
       anyOf(
-        query("onlyActive").optional().isBoolean().toBoolean(),
-        query("only-active").optional().isBoolean().toBoolean()
+        query("onlyActive").default(false).isBoolean().toBoolean(),
+        query("only-active").default(false).isBoolean().toBoolean()
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -1289,6 +1306,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       body("maskRegions").custom(jsonSchemaOf(MaskRegionsSchema)),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -1397,6 +1415,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -1510,6 +1529,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       body("settings").custom(jsonSchemaOf(ApiDeviceHistorySettingsSchema)),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -1563,6 +1583,7 @@ export default function (app: Application, baseUrl: string) {
       body("setStationAtTime").custom(
         jsonSchemaOf(ApiDeviceLocationFixupSchema)
       ),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAdminAuthorizedRequiredDeviceById(param("id")),
     parseJSONField(body("setStationAtTime")),
@@ -1835,7 +1856,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
       nameOf(param("deviceName")),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
@@ -1907,7 +1928,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(query("deviceId")),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
       query("view-mode").optional().equals("user"),
     ]),
     // Should this require admin access to the device?
@@ -1921,7 +1942,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
-      query("only-active").optional().isBoolean().toBoolean(),
+      booleanOf(query("only-active"), false),
       query("view-mode").optional().equals("user"),
     ]),
     // Should this require admin access to the device?
@@ -2055,8 +2076,9 @@ export default function (app: Application, baseUrl: string) {
       nameOf(body("newGroup")),
       validNameOf(body("newName")),
       validPasswordOf(body("newPassword")),
-      // NOTE: Reregister only works on currently active devices
+      // NOTE: Re-register only works on currently active devices
     ]),
+    // FIXME: Should you really be allowed to move a device into a group you aren't an admin of?
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
       const requestDevice: Device = await models.Device.findByPk(
@@ -2142,30 +2164,49 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/reregister-authorized`,
+    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedUserFromBody("authorizedToken"),
     validateFields([
       nameOf(body("newGroup")),
       validNameOf(body("newName")),
       validPasswordOf(body("newPassword")),
       body("authorizedToken").exists(),
     ]),
-    extractJwtAuthorisedDevice,
-    extractJwtAuthorizedUserFromBody("authorizedToken"),
     fetchAuthorizedRequiredGroupByNameOrId(body("newGroup")),
-    async function (request: Request, response: Response, next: NextFunction) {
+    async (request: Request, response: Response, next: NextFunction) => {
+      // The user should be the admin of both groups
       const requestDevice: Device = await models.Device.findByPk(
         response.locals.requestDevice.id
       );
-      const newDevice = await requestDevice.reRegister(
+      if (!requestDevice) {
+        return next(
+          new ClientError(
+            `device not found: ${response.locals.requestDevice.id}`
+          )
+        );
+      }
+      response.locals.requestDevice = requestDevice;
+      response.locals.destGroup = response.locals.group;
+      if (response.locals.group.id !== response.locals.requestDevice.GroupId) {
+        await fetchAdminAuthorizedRequiredGroupByNameOrId(
+          requestDevice.GroupId
+        )(request, response, next);
+      } else {
+        return next();
+      }
+    },
+    async function (request: Request, response: Response, next: NextFunction) {
+      const newDevice = await response.locals.requestDevice.reRegister(
         models,
         request.body.newName,
-        response.locals.group,
+        response.locals.destGroup,
         request.body.newPassword,
         true
       );
       if (newDevice === false) {
         return next(
           new ClientError(
-            `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`
+            `already a device in group '${response.locals.destGroup.groupName}' with the name '${request.body.newName}'`
           )
         );
       }
@@ -2365,7 +2406,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      booleanOf(query("only-active")).optional(),
+      booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
@@ -2421,7 +2462,10 @@ export default function (app: Application, baseUrl: string) {
     app.get(
       `${apiUrl}/:deviceId/history`,
       extractJwtAuthorizedUser,
-      validateFields([idOf(param("deviceId"))]),
+      validateFields([
+        idOf(param("deviceId")),
+        booleanOf(query("only-active"), false),
+      ]),
       fetchAuthorizedRequiredDeviceById(param("deviceId")),
       async function (request: Request, response: Response) {
         const history = await models.DeviceHistory.findAll({

@@ -165,18 +165,49 @@ watch(
   (visit: ApiVisitResponse | null, prevVisit: ApiVisitResponse | null) => {
     if (visit && !prevVisit) {
       // Set route so that modal shows up
-      const recordingIds = visit.recordings.map(({ recId }) => recId);
-      const params = {
-        visitLabel: visit.classification,
-        currentRecordingId: recordingIds[0].toString(),
+
+      const recordingIds = visit.recordings.map(({ recId, tracks }) => ({
+        recId,
+        tracks,
+      }));
+      const visitClassification = visit.classification || "";
+      let firstRec = visit.recordings[0];
+      let firstTrack =
+        (firstRec.tracks &&
+          firstRec.tracks.length !== 0 &&
+          firstRec.tracks[0]) ||
+        undefined;
+      if (visitClassification !== "") {
+        // Make sure we set the first recording as one that contains the visit classification.
+        const firstRecordingWithVisitClassification = visit.recordings.find(
+          (rec) =>
+            rec.tracks.some(
+              (track) =>
+                track.tag === visit.classification ||
+                (!track.tag && track.aiTag === visit.classification)
+            )
+        );
+        if (firstRecordingWithVisitClassification) {
+          firstRec = firstRecordingWithVisitClassification;
+          firstTrack = firstRec.tracks.find(
+            (track) =>
+              track.tag === visit.classification ||
+              (!track.tag && track.aiTag === visit.classification)
+          );
+        }
+      }
+      const params: Record<string, string> = {
+        visitLabel: visit.classification || "",
+        currentRecordingId: firstRec.recId.toString(),
+        trackId: (firstTrack && firstTrack.id.toString()) as string,
       };
-      if (recordingIds.length > 1) {
-        (params as Record<string, string>).recordingIds =
-          recordingIds.join(",");
+      if (recordingIds.length) {
+        params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
       }
       router.push({
         name: "dashboard-visit",
         params,
+        query: route.query,
       });
     } else if (!visit && prevVisit) {
       // We've stopped having a selected visit modal

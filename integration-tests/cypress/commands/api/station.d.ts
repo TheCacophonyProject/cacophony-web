@@ -1,10 +1,4 @@
-// load the global Cypress types
-/// <reference types="cypress" />
-
 declare namespace Cypress {
-  // @ts-ignore
-  type ApiStationData = import("../types").ApiStationData;
-  type ApiStationResponse = import("@typedefs/api/station").ApiStationResponse;
   interface Chainable {
     /**
      * GET to api/v1/stations to retrieve all stations for current user
@@ -64,7 +58,7 @@ declare namespace Cypress {
      * Optionally check for fail response (statusCode!=200)
      * By default deleteRecordings is passed as true.
      * By default stationId is looked up from name in stationIdOrName.
-     * Optionally: use the raw stationId provided (additionalChecks["useRawSta  tionId"]=true)
+     * Optionally: use the raw stationId provided (additionalChecks["useRawStationId"]=true)
      * Optionally: check for returned additionalChecks["messages"]
      * Optionally: check for returned additionalChecks["warnings"]
      */

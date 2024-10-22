@@ -1645,7 +1645,7 @@ export const fetchAuthorizedRequiredGroupByNameOrId = (
   );
 
 export const fetchAdminAuthorizedRequiredGroupByNameOrId = (
-  groupNameOrId: ValidationChain
+  groupNameOrId: ValidationChain | number
 ) =>
   fetchRequiredModel(
     models.Group,

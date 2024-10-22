@@ -123,10 +123,12 @@ const lastTwentyFourHours: [Date, Date] = [oneDayAgo, now];
 const dateRangePicker = ref<typeof Datepicker>();
 
 // Initialise this to a zero range
-const selectedDateRange = ref<[Date, Date] | "custom">([now, now]);
+interface DateRangeOption { label: string; value: [Date, Date] | "custom", urlLabel: string };
+
+const selectedDateRange = ref<DateRangeOption>({ value: [now, now], label: "Now", urlLabel: "now" });
 const customDateRange = ref<[Date, Date] | null>(null);
 const combinedDateRange = computed<[Date, Date]>(() => {
-  if (selectedDateRange.value === "custom") {
+  if (selectedDateRange.value.value === "custom") {
     if (customDateRange.value !== null) {
       // FIXME: Timezones for project when you're viewing from outside the projects timezone
       // Make custom range be from beginning of start date til end of end date.
@@ -158,7 +160,7 @@ const combinedDateRange = computed<[Date, Date]>(() => {
     }
     return [new Date(), new Date()];
   } else {
-    return selectedDateRange.value as [Date, Date];
+    return selectedDateRange.value.value as [Date, Date];
   }
 });
 
@@ -259,11 +261,11 @@ const maxDateForSelectedLocations = computed<Date>(() => {
   return latest;
 });
 
-const maybeSelectDatePicker = (value: [Date, Date] | string) => {
-  if (value === "custom" && !props.customSet) {
+const maybeSelectDatePicker = (value: { label: string; value: [Date, Date] | string, urlLabel: string }) => {
+  if (value.value === "custom" && !props.customSet) {
     nextTick(() => {
       if (dateRangePicker.value) {
-        (dateRangePicker.value as DatePickerMethods).openMenu();
+        dateRangePicker.value.openMenu();
       }
     });
   } else if (props.customSet) {
@@ -310,7 +312,7 @@ watch(
       combinedDateRange.value[1] > maxDateForProject.value
     ) {
       console.warn("Should adjust range");
-      selectedDateRange.value = commonDateRanges.value[0].value;
+      selectedDateRange.value = commonDateRanges.value[0];
       customDateRange.value = null;
     }
   }
@@ -747,13 +749,13 @@ const syncParams = (
     );
   }
   if (foundRange) {
-    selectedDateRange.value = foundRange.value;
+    selectedDateRange.value = foundRange;
   } else if (next.from && !next.until) {
     // Try to match to the common date ranges and pick an option.
-    selectedDateRange.value = commonDateRanges.value[0].value;
+    selectedDateRange.value = commonDateRanges.value[0];
     updateDateRouteComponent(combinedDateRange.value, [now, now]);
   } else if (next.from && next.until) {
-    selectedDateRange.value = "custom";
+    selectedDateRange.value = commonDateRanges.value[commonDateRanges.value.length - 1];
     // Validate the custom range being passed, constrain it to the min/max
     const areValidDates =
       queryValueIsDate(next.from) && queryValueIsDate(next.until);
@@ -778,7 +780,7 @@ const syncParams = (
         updateDateRouteComponent(combinedDateRange.value, [now, now]);
       }
     } else {
-      selectedDateRange.value = commonDateRanges.value[0].value;
+      selectedDateRange.value = commonDateRanges.value[0];
     }
   }
 };
@@ -967,8 +969,9 @@ const scrolledToStickyPosition = computed<boolean>(() => {
     <multiselect
       v-model="selectedDateRange"
       :options="commonDateRanges"
-      value-prop="value"
+      value-prop="label"
       label="label"
+      :object="true"
       :searchable="false"
       :can-clear="false"
       :can-deselect="false"
@@ -977,7 +980,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
     />
     <!--  TODO: Should this be using min/maxDateForSelectedLocations?    -->
     <datepicker
-      v-if="selectedDateRange === 'custom'"
+      v-if="selectedDateRange.value === 'custom'"
       ref="dateRangePicker"
       class="mt-2"
       range
@@ -1214,5 +1217,9 @@ const scrolledToStickyPosition = computed<boolean>(() => {
   border-color: var(--bs-secondary);
 }
 </style>
-<style src="@vueform/multiselect/themes/default.css"></style>
-<style src="@vuepic/vue-datepicker/dist/main.css"></style>
+<style lang="css">
+@import url('@vueform/multiselect/themes/default.css');
+</style>
+<style lang="css">
+@import url('@vuepic/vue-datepicker/dist/main.css');
+</style>

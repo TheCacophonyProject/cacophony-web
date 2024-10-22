@@ -1,4 +1,4 @@
-/// <reference path="../../support/index.d.ts" />
+import { RecordingType } from "@typedefs/api/consts";
 
 context("Users can see footage from their cameras", () => {
   const username = "integration";
@@ -29,7 +29,7 @@ context("Users can see footage from their cameras", () => {
 
   it("A camera can trigger and upload a new recording", () => {
     cy.apiSignInAs(username);
-    cy.apiRecordingAdd(camera, {});
+    cy.apiRecordingAdd(camera, { type: RecordingType.ThermalRaw });
     // for video to be uploaded
     cy.wait(3 * 1000);
     cy.testCheckDeviceHasRecordings(username, camera, 1);
