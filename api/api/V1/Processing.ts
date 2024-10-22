@@ -220,6 +220,7 @@ export default function (app: Application, baseUrl: string) {
           recording.processingEndTime = new Date().toISOString();
         }
         recording.processingState = recording.getNextState();
+        recording.processingFailedCount = 0;
         // Process extra data from file processing
 
         // FIXME Is fieldUpdates ever set by current processing?
@@ -243,6 +244,7 @@ export default function (app: Application, baseUrl: string) {
         // The current stage failed
         recording.processingState =
           `${recording.processingState}.failed` as RecordingProcessingState;
+        recording.processingFailedCount += 1;
         recording.jobKey = null;
         recording.processing = false;
         recording.processingEndTime = new Date().toISOString(); // Still set processingEndTime, since we might want to know how long it took to fail.
@@ -316,6 +318,8 @@ export default function (app: Application, baseUrl: string) {
             nextJob == models.Recording.finishedState(recording.type);
           recording.processingState = nextJob;
           recording.processingEndTime = new Date().toISOString();
+          recording.processingFailedCount = 0;
+
           // Process extra data from file processing
           if (result && result.fieldUpdates) {
             // TODO(jon): if the previous step was tracking, here would be the best time to consolidate tracks - however,
@@ -415,7 +419,9 @@ export default function (app: Application, baseUrl: string) {
       } else {
         recording.processingState =
           `${recording.processingState}.failed` as RecordingProcessingState;
+        recording.processingFailedCount += 1;
         await recording.save();
+
         // FIXME, should this be an error response?
         return successResponse(response, "Processing failed.");
       }

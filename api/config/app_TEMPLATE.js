@@ -46,7 +46,7 @@ export const smtpDetails = {
   tls: false, //default is true.  False used for smtp-tester
   fromName: "Cacophony Reporting",
   platformUsageEmail: "usage@example.com",
-  serviceErrorsEmail: "service-errors@example.com"
+  serviceErrorsEmail: "service-errors@example.com",
   //
   // service: "gmail",
   // auth: {
@@ -81,5 +81,5 @@ export default {
   influx,
   deviceErrorIgnoreList,
   cacophonyUserIds,
-  cacophonyGroupIds
+  cacophonyGroupIds,
 };

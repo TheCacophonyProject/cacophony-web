@@ -1066,7 +1066,7 @@ const requestedDownload = async () => {
     const recordingId = rec.id;
     const downloadedFileResponse = await window.fetch(
       `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
-        // eslint-disable-next-line no-undef
+      // eslint-disable-next-line no-undef
       request as RequestInit
     );
     const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();

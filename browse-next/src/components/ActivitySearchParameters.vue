@@ -123,9 +123,17 @@ const lastTwentyFourHours: [Date, Date] = [oneDayAgo, now];
 const dateRangePicker = ref<typeof Datepicker>();
 
 // Initialise this to a zero range
-interface DateRangeOption { label: string; value: [Date, Date] | "custom", urlLabel: string };
+interface DateRangeOption {
+  label: string;
+  value: [Date, Date] | "custom";
+  urlLabel: string;
+}
 
-const selectedDateRange = ref<DateRangeOption>({ value: [now, now], label: "Now", urlLabel: "now" });
+const selectedDateRange = ref<DateRangeOption>({
+  value: [now, now],
+  label: "Now",
+  urlLabel: "now",
+});
 const customDateRange = ref<[Date, Date] | null>(null);
 const combinedDateRange = computed<[Date, Date]>(() => {
   if (selectedDateRange.value.value === "custom") {
@@ -261,7 +269,11 @@ const maxDateForSelectedLocations = computed<Date>(() => {
   return latest;
 });
 
-const maybeSelectDatePicker = (value: { label: string; value: [Date, Date] | string, urlLabel: string }) => {
+const maybeSelectDatePicker = (value: {
+  label: string;
+  value: [Date, Date] | string;
+  urlLabel: string;
+}) => {
   if (value.value === "custom" && !props.customSet) {
     nextTick(() => {
       if (dateRangePicker.value) {
@@ -755,7 +767,8 @@ const syncParams = (
     selectedDateRange.value = commonDateRanges.value[0];
     updateDateRouteComponent(combinedDateRange.value, [now, now]);
   } else if (next.from && next.until) {
-    selectedDateRange.value = commonDateRanges.value[commonDateRanges.value.length - 1];
+    selectedDateRange.value =
+      commonDateRanges.value[commonDateRanges.value.length - 1];
     // Validate the custom range being passed, constrain it to the min/max
     const areValidDates =
       queryValueIsDate(next.from) && queryValueIsDate(next.until);
@@ -1218,8 +1231,8 @@ const scrolledToStickyPosition = computed<boolean>(() => {
 }
 </style>
 <style lang="css">
-@import url('@vueform/multiselect/themes/default.css');
+@import url("@vueform/multiselect/themes/default.css");
 </style>
 <style lang="css">
-@import url('@vuepic/vue-datepicker/dist/main.css');
+@import url("@vuepic/vue-datepicker/dist/main.css");
 </style>
