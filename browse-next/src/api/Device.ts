@@ -341,6 +341,7 @@ export const getLatestStatusRecordingForDevice = (
     params.append("max-results", "1");
     params.append("types", "thermal");
     params.append("include-false-positives", true.toString());
+    params.append("devices", deviceId.toString());
     if (use2SecondRecordings) {
       params.append("status-recordings", true.toString());
     }
