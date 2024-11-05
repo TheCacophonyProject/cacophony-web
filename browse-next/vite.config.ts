@@ -12,7 +12,6 @@ import { BootstrapVueNextResolver } from "unplugin-vue-components/resolvers";
 export default defineConfig({
   envDir: ".",
   plugins: [
-    vue({ reactivityTransform: true }),
     Components({
       resolvers: [BootstrapVueNextResolver()],
     }),
@@ -21,6 +20,13 @@ export default defineConfig({
     eslintPlugin({
       failOnError: false,
       exclude: ["**/consts.ts", "**/node_modules/**", "**/*.js"],
+    }),
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag) => tag === "spectastiq-viewer",
+        },
+      },
     }),
   ],
   resolve: {
