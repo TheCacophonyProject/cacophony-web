@@ -506,6 +506,10 @@ const deviceRecordingMode = computed<"cameras" | "audio">(() => {
   return "cameras";
 });
 
+const cacophonyEpoch = new Date();
+cacophonyEpoch.setFullYear(2010, 0, 0);
+cacophonyEpoch.setHours(0, 0, 0);
+
 const isDevicesRoot = computed(() => {
   return route.name === "devices";
 });
@@ -538,14 +542,13 @@ const isDevicesRoot = computed(() => {
           <b-button
             class="ms-4 align-items-center d-none d-md-flex"
             variant="outline-secondary"
-            v-if="deviceLocation"
             :to="{
           name: 'activity',
           query: {
             devices: [selectedDevice.id],
             //locations: [deviceLocation.id],
-            until: (selectedDeviceLatestRecordingDateTime as Date).toISOString(),
-            from: (selectedDeviceActiveFrom as Date).toISOString(),
+            until: ((selectedDeviceLatestRecordingDateTime || new Date()) as Date).toISOString(),
+            from: ((selectedDeviceActiveFrom || cacophonyEpoch) as Date).toISOString(),
             'display-mode': 'recordings',
             'recording-mode': deviceRecordingMode
           },

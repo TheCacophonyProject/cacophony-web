@@ -1356,6 +1356,9 @@ export function signedToken(
 export const guessMimeType = (type, filename): string => {
   const mimeType = mime.getType(filename);
   if (mimeType) {
+    if (mimeType === "audio/x-aac") {
+      return "audio/mp4";
+    }
     return mimeType;
   }
   switch (type) {

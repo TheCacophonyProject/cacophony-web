@@ -149,6 +149,12 @@ const checkS3Connection = async (): Promise<void> => {
       "Access-Control-Allow-Headers",
       "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control"
     );
+
+    // NOTE: We've seen an instance where the HOST request header is rewritten by the client, which would otherwise break
+    //  some things.  If the host is unknown, default to browse-next.
+    if (!request.headers.host.includes("cacophony.org.nz")) {
+      request.headers.host = "https://browse-next.cacophony.org.nz";
+    }
     next();
   });
   await initialiseApi(app);
