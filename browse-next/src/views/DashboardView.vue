@@ -368,27 +368,15 @@ const isLoading = computed<boolean>(
   () => locations.value === null || visitsContext.value === null
 );
 
-const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
-  if (currentProject.value && availableProjects.value) {
-    const project = (availableProjects.value as ApiProjectResponse[]).find(
-      ({ id }) => id === (currentProject.value as SelectedProject).id
-    );
-    return project || null;
-  }
-  return null;
-});
-
 const currentSelectedProjectHasAudio = computed<boolean>(() => {
   return (
-    !!currentSelectedProject.value &&
-    "lastAudioRecordingTime" in currentSelectedProject.value
+    !!currentProject.value && "lastAudioRecordingTime" in currentProject.value
   );
 });
 
 const currentSelectedProjectHasCameras = computed<boolean>(() => {
   return (
-    !!currentSelectedProject.value &&
-    "lastThermalRecordingTime" in currentSelectedProject.value
+    !!currentProject.value && "lastThermalRecordingTime" in currentProject.value
   );
 });
 
@@ -446,12 +434,12 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <div class="header-container">
     <section-header>Dashboard</section-header>
     <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <!--      <bimodal-switch-->
-      <!--        class="justify-content-end"-->
-      <!--        :modes="['Thermal', 'Audio']"-->
-      <!--        v-model="recordingMode"-->
-      <!--        v-if="currentSelectedProjectHasAudioAndThermal"-->
-      <!--      />-->
+      <bimodal-switch
+        class="justify-content-end"
+        :modes="['Thermal', 'Audio']"
+        v-model="recordingMode"
+        v-if="currentSelectedProjectHasAudioAndThermal"
+      />
       <div
         class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
       >
