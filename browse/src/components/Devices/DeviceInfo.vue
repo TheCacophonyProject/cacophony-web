@@ -133,6 +133,34 @@
               >
             </p>
           </div>
+          <hr />
+          <div v-if="isTc2Device">
+            <div>
+              <h5>Set Audio Recording Settings</h5>
+              <p>
+                Audio recordings are made 32 times a day for one minute at
+                random intervals.
+              </p>
+              <div>
+                <b-form-group label="Audio Mode">
+                  <b-form-select
+                    v-model="audioMode"
+                    :options="audioModeOptions"
+                    :disabled="savingAudioSettings"
+                  ></b-form-select>
+                </b-form-group>
+                <div class="d-flex justify-content-end">
+                  <b-spinner
+                    class="ms-2"
+                    v-if="savingAudioSettings"
+                    variant="secondary"
+                    small
+                  />
+                </div>
+                <div class="pb-16">{{ audioModeExplanation }}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </b-col>
       <b-col>
@@ -181,6 +209,7 @@ import {
 import DeviceApi from "@/api/Device.api";
 import {
   ApiDeviceHistorySettings,
+  AudioModes,
   WindowsSettings,
 } from "@typedefs/api/device";
 
@@ -205,6 +234,7 @@ export default defineComponent({
     ];
 
     const showCustomModal = ref(false);
+
     const fetchSettings = async () => {
       try {
         const response = await DeviceApi.getSettingsForDevice(props.deviceId);
@@ -330,9 +360,9 @@ export default defineComponent({
       return rows;
     });
 
-    const saltNodeGroup = ref<string>(null);
+    const deviceModel = ref<"pi" | "tc2">();
     const isTc2Device = computed<boolean>(() => {
-      return (saltNodeGroup.value || "").includes("tc2");
+      return deviceModel.value === "tc2";
     });
     const defaultWindows = {
       powerOn: "-30m",
@@ -340,6 +370,44 @@ export default defineComponent({
       startRecording: "-30m",
       stopRecording: "+30m",
     };
+    const savingAudioSettings = ref<boolean>(false);
+    const audioMode = computed<AudioModes>({
+      get: () => {
+        return settings.value?.audioRecording?.audioMode ?? "Disabled";
+      },
+      set: async (val: AudioModes) => {
+        if (settings.value) {
+          settings.value.audioRecording = {
+            ...settings.value.audioRecording,
+            audioMode: val,
+            updated: new Date().toISOString(),
+          };
+          savingAudioSettings.value = true;
+          await DeviceApi.updateDeviceSettings(props.deviceId, settings.value);
+          savingAudioSettings.value = false;
+        }
+      },
+    });
+    const audioModeExplanation = computed<string>(() => {
+      debugger;
+      switch (audioMode.value) {
+        case "AudioOnly":
+          return "Records audio in a 24-hour window and disables thermal recording.";
+        case "AudioOrThermal":
+          return "Records audio outside of the thermal recording window.";
+        case "AudioAndThermal":
+          return "Records audio in a 24-hour window; however, the camera cannot record during the 1 minute of audio recording.";
+        default:
+          return "";
+      }
+    });
+    // Audio Mode Options
+    const audioModeOptions = [
+      { value: "Disabled", text: "Disabled" },
+      { value: "AudioOnly", text: "Audio Only" },
+      { value: "AudioAndThermal", text: "Audio and Thermal" },
+      { value: "AudioOrThermal", text: "Audio or Thermal" },
+    ];
     const recordingWindowSetting = computed<"default" | "always" | "custom">({
       get: () => {
         const s = settings.value as ApiDeviceHistorySettings;
@@ -500,17 +568,32 @@ export default defineComponent({
     });
     const initialized = ref<boolean>(false);
 
+    watch(
+      () => audioMode.value,
+      async () => {
+        if (settings.value) {
+          savingAudioSettings.value = true;
+          await DeviceApi.updateDeviceSettings(props.deviceId, settings.value);
+          savingAudioSettings.value = false;
+        }
+      }
+    );
+
     onMounted(async () => {
       await fetchSettings();
       initialized.value = true;
-      const nodeGroupRes = await DeviceApi.getDeviceNodeGroup(props.deviceId);
-      if (nodeGroupRes) {
-        saltNodeGroup.value = nodeGroupRes;
+      const res = await DeviceApi.getDeviceModel(props.deviceId);
+      if (res) {
+        deviceModel.value = res;
       }
     });
 
     return {
       isTc2Device,
+      savingAudioSettings,
+      audioMode,
+      audioModeExplanation,
+      audioModeOptions,
       settings,
       currentWindowsType,
       fields,

@@ -59,6 +59,17 @@ export type ThermalRecordingSettings = {
   useLowPowerMode: boolean;
 } & SettingsBase;
 
+export type AudioModes =
+  | "Disabled"
+  | "AudioOnly"
+  | "AudioAndThermal"
+  | "AudioOrThermal";
+
+export type AudioRecordingSettings = {
+  audioMode?: AudioModes;
+  audioSeed?: number;
+} & SettingsBase;
+
 export type WindowsSettings = {
   startRecording: string;
   stopRecording: string;
@@ -82,6 +93,7 @@ export interface ApiDeviceHistorySettings {
   maskRegions?: MaskRegions;
   ratThresh?: any;
   thermalRecording?: ThermalRecordingSettings;
+  audioRecording?: AudioRecordingSettings;
   windows?: WindowsSettings;
   synced?: boolean;
 }

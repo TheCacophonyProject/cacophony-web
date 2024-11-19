@@ -288,6 +288,7 @@ async function updateDeviceSettings(
   deviceId: DeviceId,
   settings: ApiDeviceHistorySettings
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
+  debugger;
   return CacophonyApi.post(`/api/v1/devices/${deviceId}/settings`, {
     settings,
   });
@@ -407,6 +408,38 @@ const getDeviceNodeGroup = (deviceId: DeviceId) => {
     });
   }) as Promise<string | false>;
 };
+
+export const getDeviceModel = async (deviceId: DeviceId) => {
+  try {
+    const nodegroup = await getDeviceNodeGroup(deviceId);
+    if (nodegroup) {
+      const model = nodegroup.includes("tc2")
+        ? "tc2"
+        : nodegroup.includes("pi")
+        ? "pi"
+        : null;
+      if (model !== null) {
+        return model;
+      }
+    }
+    const model = await getLatestEventsByDeviceId(deviceId, {
+      type: "versionData",
+      limit: 1,
+    }).then((response) => {
+      if (response.success && response.result.rows.length) {
+        return response.result.rows[0].EventDetail.details["tc2-agent"]
+          ? "tc2"
+          : "pi";
+      } else {
+        return null;
+      }
+    });
+    return model;
+  } catch (e) {
+    return null;
+  }
+};
+
 export default {
   getDevices,
   getDevice,
@@ -429,5 +462,6 @@ export default {
   set24HourRecordingWindows,
   setCustomRecordingWindows,
   getDeviceNodeGroup,
+  getDeviceModel,
   getLatestEventsByDeviceId,
 };
