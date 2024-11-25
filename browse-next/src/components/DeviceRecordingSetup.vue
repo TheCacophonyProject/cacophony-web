@@ -667,10 +667,10 @@ watch(customRecordingWindowStop, async () => {
                 <div
                   class="position-relative flex-fill rounded bg-light p-0"
                   :style="{ height: '1em' }"
+                  v-if="audioMode !== 'AudioOnly'"
                 >
                   <!-- Thermal Recording Windows -->
                   <div
-                    v-if="audioMode !== 'AudioOnly'"
                     v-for="(style, index) in thermalBarStyles"
                     :key="'thermal-' + index"
                     class="position-absolute h-100 bg-success p-0"

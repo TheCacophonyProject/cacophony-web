@@ -8,13 +8,13 @@ import type {
   GroupId as ProjectId,
   IsoFormattedDateString,
   LatLng,
+  ScheduleId,
 } from "@typedefs/api/common";
 import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
 } from "@typedefs/api/device";
-import type { ScheduleId } from "@typedefs/api/common";
 import type {
   DeviceConfigDetail,
   DeviceEvent,
@@ -24,6 +24,7 @@ import type { DeviceEventType } from "@typedefs/api/consts";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
+
 export const createProxyDevice = (
   projectNameOrId: string,
   deviceName: string
@@ -678,7 +679,7 @@ export const getDeviceModel = async (deviceId: DeviceId) => {
         return model;
       }
     }
-    const model = await getLatestEventsByDeviceId(deviceId, {
+    return await getLatestEventsByDeviceId(deviceId, {
       type: "versionData",
       limit: 1,
     }).then((response) => {
@@ -690,7 +691,6 @@ export const getDeviceModel = async (deviceId: DeviceId) => {
         return null;
       }
     });
-    return model;
   } catch (e) {
     return null;
   }
