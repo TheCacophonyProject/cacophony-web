@@ -238,7 +238,6 @@ export default defineComponent({
     const fetchSettings = async () => {
       try {
         const response = await DeviceApi.getSettingsForDevice(props.deviceId);
-        debugger;
         if (response.success) {
           settings.value = response.result.settings;
         }

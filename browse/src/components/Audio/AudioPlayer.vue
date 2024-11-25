@@ -212,7 +212,7 @@ import {
   onBeforeUnmount,
   ref,
 } from "@vue/composition-api";
-import WaveSurfer from "wavesurfer.js";
+import WaveSurfer, { WaveSurferOptions } from "wavesurfer.js";
 import SpectrogramPlugin, {
   SpectrogramPluginOptions,
 } from "wavesurfer.js/dist/plugins/spectrogram";
@@ -831,32 +831,60 @@ export default defineComponent({
     function convertRectangleToSVG(rect: Rectangle): Rectangle {
       const { x, y, height, width } = rect;
 
-      // Scale y and height
-      const scalingFactor = defaultSampleRate / props.sampleRate;
-      const scaledY = y * scalingFactor;
-      const scaledHeight = height * scalingFactor;
+      // Calculate the sample rate ratio
+      const sampleRateRatio = props.sampleRate / defaultSampleRate;
 
-      // Convert origin
-      const newScaledY = 1 - (scaledY + scaledHeight);
+      // Scale y and height to match the spectrogram's frequency range
+      const scaledY = y / sampleRateRatio;
+      const scaledHeight = height / sampleRateRatio;
 
-      return { x, y: newScaledY, height: scaledHeight, width };
+      // Invert y-axis for SVG coordinate system
+      const newY = 1 - (scaledY + scaledHeight);
+
+      return { x, y: newY, height: scaledHeight, width };
     }
 
-    // Convert SVG rectangle back to original coordinate system with a bottom-left origin
     function convertSVGToRectangle(rect: Rectangle): Rectangle {
       const { x, y, height, width } = rect;
 
-      // Convert origin
-      const reversedScaledY = 1 - (y + height);
+      // Invert y-axis back to original coordinate system
+      const invertedY = 1 - (y + height);
+
+      // Calculate the sample rate ratio
+      const sampleRateRatio = props.sampleRate / defaultSampleRate;
 
       // Scale y and height back to original
-      const scalingFactor = props.sampleRate / defaultSampleRate;
-      const originalY = reversedScaledY * scalingFactor;
-      const originalHeight = height * scalingFactor;
+      const originalY = invertedY * sampleRateRatio;
+      const originalHeight = height * sampleRateRatio;
 
       return { x, y: originalY, height: originalHeight, width };
     }
 
+    const calculateRectPosition = (track: AudioTrack): Rectangle => {
+      const pos = track.positions[track.positions.length - 1];
+      const svgRect = convertRectangleToSVG(pos);
+      return svgRect;
+    };
+    const adjustTrackPositions = () => {
+      props.tracks.forEach((track) => {
+        if (!track.deleted) {
+          const rect = document.getElementById(`track_${track.id.toString()}`);
+          if (rect) {
+            const { x, y, width, height } = calculateRectPosition(track);
+            rect.setAttribute("x", (x * spectrogram.value.width).toString());
+            rect.setAttribute("y", (y * spectrogram.value.height).toString());
+            rect.setAttribute(
+              "width",
+              (width * spectrogram.value.width).toString()
+            );
+            rect.setAttribute(
+              "height",
+              (height * spectrogram.value.height).toString()
+            );
+          }
+        }
+      });
+    };
     const saveTrackChanges = () => {
       const track = props.selectedTrack;
       if (!track) {
@@ -998,19 +1026,24 @@ export default defineComponent({
     const secondsToTimeString = (seconds: number) => {
       const minutes = Math.floor(seconds / 60);
       const secondsLeft = Math.floor(seconds % 60);
+      console.log("seconds", seconds, minutes, secondsLeft);
       return `${minutes}:${secondsLeft < 10 ? "0" : ""}${secondsLeft}`;
     };
     const setPlayerTime = (currTime: number) => {
       const curr = secondsToTimeString(currTime);
-      if (currTime.toFixed(1) === actualTime.value.toFixed(1)) {
+      const total = secondsToTimeString(player.value.getDuration());
+      if (
+        currTime.toFixed(1) === actualTime.value.toFixed(1) &&
+        curr !== total
+      ) {
         //  Added to smooth out the time display
         return;
       }
       actualTime.value = currTime;
-      const total = secondsToTimeString(player.value.getDuration());
       const percent = (currTime / player.value.getDuration()) * 100;
       // round to nearest 25%, 0.25, 0.5, 0.75, 1, 1.25
       const roundedPercent = Math.round(percent / 0.001) * 0.001;
+      console.log("percent", roundedPercent, percent, curr);
       setTime({ curr, total });
       const progressBar = document.getElementById(
         "loader-progress"
@@ -1177,13 +1210,49 @@ export default defineComponent({
 
     const SpectrogramSettings: SpectrogramPluginOptions = {
       labels: true,
+      height: 512,
       container: "#spectrogram",
       colorMap: ColorMap({
         colormap: props.colour,
-        nshades: 256,
+        nshades: 512,
         format: "float",
       }),
       fftSamples: isMobile ? 512 : 1024,
+    };
+
+    const windowSize = ref({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+    const handleResize = debounce(() => {
+      windowSize.value = {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      };
+      updateSpectrogramSize();
+    }, 100);
+
+    const updateSpectrogramSize = () => {
+      if (
+        spectrogram.value &&
+        spectrogram.value.width &&
+        spectrogram.value.height
+      ) {
+        const spectrogramWidth = spectrogram.value.width;
+        const spectrogramHeight = spectrogram.value.height;
+
+        if (overlay.value) {
+          overlay.value.setAttribute(
+            "viewBox",
+            `0 0 ${spectrogramWidth} ${spectrogramHeight}`
+          );
+        }
+
+        adjustTrackPositions();
+      } else {
+        // Retry after a short delay if dimensions are not yet available
+        setTimeout(updateSpectrogramSize, 50);
+      }
     };
 
     onMounted(async () => {
@@ -1216,6 +1285,7 @@ export default defineComponent({
         cursorWidth: 1,
         sampleRate: props.sampleRate,
         media: audio,
+        backend: "WebAudio",
         plugins: [SpectrogramPlugin.create(SpectrogramSettings)],
       };
       // set showLabels
@@ -1327,9 +1397,7 @@ export default defineComponent({
         setVolume({ volume: 0.5, muted: false });
       }
 
-      player.value = WaveSurfer.create({
-        ...waveSurferOptions,
-      });
+      player.value = WaveSurfer.create(waveSurferOptions);
       player.value.on("finish", () => {
         setIsPlaying(false);
       });
@@ -1351,7 +1419,7 @@ export default defineComponent({
           }
         }
       });
-
+      window.addEventListener("resize", handleResize);
       const attachSpectrogramOverlay = () => {
         const canvas = document.querySelector(
           "#spectrogram canvas:nth-child(2)"
@@ -1541,32 +1609,29 @@ export default defineComponent({
         isLoading.value = false;
         attachSpectrogramOverlay();
         // Move canvas image to SVG & clean up
-        overlay.value.appendChild(tempTrack.value.rect);
-        requestAnimationFrame(() =>
-          addTracksToOverlay([...props.tracks.values()])
-        );
         if (isPlaying.value) {
           playAt(0);
         }
         setPlayerTime(player.value.getDuration());
         setPlayerTime(0);
         // Due to spectrogram plugin, we need to wait for the canvas to be rendered
-        //player.value.on("redraw", () => {
-        //  attachSpectrogramOverlay();
-        if (props.selectedTrack) {
-          if (props.selectedTrack.id === -1) {
-            // remove previous
-            const previousRect = overlay.value.querySelector(
-              "#new_track"
-            ) as SVGRectElement;
-            if (previousRect) {
-              overlay.value.removeChild(previousRect);
+        overlay.value.appendChild(tempTrack.value.rect);
+        player.value.on("redraw", () => {
+          //  attachSpectrogramOverlay();
+          if (props.selectedTrack) {
+            if (props.selectedTrack.id === -1) {
+              // remove previous
+              const previousRect = overlay.value.querySelector(
+                "#new_track"
+              ) as SVGRectElement;
+              if (previousRect) {
+                overlay.value.removeChild(previousRect);
+              }
+              const rect = createRectFromTrack(props.selectedTrack);
+              overlay.value.appendChild(rect);
             }
-            const rect = createRectFromTrack(props.selectedTrack);
-            overlay.value.appendChild(rect);
           }
-        }
-        //});
+        });
       };
 
       // Get indicator by id player-bar-loader-indicator
@@ -1581,14 +1646,20 @@ export default defineComponent({
           );
         }
       });
-      player.value.on("ready", initPlayer);
+      player.value.on("ready", () => {
+        initPlayer();
+        requestAnimationFrame(() => {
+          addTracksToOverlay([...props.tracks.values()]);
+          updateSpectrogramSize();
+        });
+      });
       player.value.on("loading", () => {
         isLoading.value = true;
       });
       if ((window as any).WaveSurferOfflineAudioContext) {
         (window as any).WaveSurferOfflineAudioContext = null;
       }
-      player.value.loadBlob(props.buffer);
+      player.value.load(props.url);
       watch(
         showLabels,
         (val) => {
@@ -1606,6 +1677,7 @@ export default defineComponent({
     onBeforeUnmount(() => {
       player.value.destroy();
       player.value.empty();
+      window.removeEventListener("resize", handleResize);
     });
     return {
       player,
