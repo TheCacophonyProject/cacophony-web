@@ -39,7 +39,7 @@ export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
 
   /**
-   * @api {get} /api/v1/reprocess/retry/:id Retry processing a single recording which is in a failed state
+   * @api {get} /api/v1/reprocess/retryFailed/:id Retry processing a single recording which is in a failed state
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to retry
@@ -51,24 +51,24 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:id`,
+    `${apiUrl}/retryFailed/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     async (request: Request, response: Response, next) => {
-      if (!response.locals.recordings.isFailed()) {
+      if (!response.locals.recording.isFailed()) {
         return next(
           new BadRequestError(
-            `Recording is not in a failed state '${response.locals.recordings.processingState}'`
+            `Recording is not in a failed state '${response.locals.recording.processingState}'`
           )
         );
       }
-      if (await response.locals.recording.retryProcessing()) {
+      if (await response.locals.recording.retryFailed()) {
         return successResponse(response, "Recording reprocessed");
       } else {
         return next(
           new BadRequestError(
-            `Could not retry processing of recordings ${response.locals.recordings.id}`
+            `Could not retry processing of recordings ${response.locals.recording.id}`
           )
         );
       }
@@ -80,7 +80,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to reprocess
-   * @apiDescription Marks a recording for reprocessing and archives existing tracks
+   * @apiDescription Marks a recording for reprocessing (tracking), and archives existing tracks.
+   * Used if tracking algorithms have changed
    *
    * @apiUse V1UserAuthorizationHeader
    *

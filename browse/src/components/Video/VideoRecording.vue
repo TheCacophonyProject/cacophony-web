@@ -329,7 +329,7 @@ export default {
   },
   methods: {
     async reprocess() {
-      const { success } = await api.recording.retryProcessing(this.recordingId);
+      const { success } = await api.recording.retryFailed(this.recordingId);
       if (success) {
         this.$emit("recording-updated", {
           id: this.recordingId,
