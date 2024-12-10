@@ -51,7 +51,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/retryFailed/:id`,
+    `${apiUrl}/retry-failed/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredRecordingById(param("id")),
