@@ -39,7 +39,7 @@ export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
 
   /**
-   * @api {get} /api/v1/reprocess/retryFailed/:id Retry processing a single recording which is in a failed state
+   * @api {get} /api/v1/reprocess/retry-failed/:id Retry processing a single recording which is in a failed state
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to retry
