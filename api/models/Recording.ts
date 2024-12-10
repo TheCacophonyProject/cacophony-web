@@ -209,7 +209,7 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   getGroup: () => Promise<Group>;
 
   getActiveTracksTagsAndTagger: () => Promise<any>;
-
+  retryProcessing: () => Promise<Recording>;
   reprocess: () => Promise<Recording>;
   filterData: (options: any) => void;
   // NOTE: Implicitly created by sequelize associations (along with other
@@ -786,6 +786,16 @@ from (
       lng: reducePrecision(latLng.lng),
     };
   }
+
+  // retry processing this recording
+  Recording.prototype.retryProcessing = async function () {
+    if (!this.processingState.endsWith(".failed")) {
+      return null;
+    }
+    await this.update({
+      processingState: this.processingState.replace(".failed", ""),
+    });
+  };
 
   // reprocess a recording and set all active tracks to archived
   Recording.prototype.reprocess = async function () {
