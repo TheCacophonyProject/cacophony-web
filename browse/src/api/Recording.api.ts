@@ -546,8 +546,8 @@ function deleteRecordingTag(
   return CacophonyApi.delete(`${apiPath}/${id}/tags/${tagId}`);
 }
 
-function reprocess(id: RecordingId): Promise<FetchResult<void>> {
-  return CacophonyApi.get(`/api/v1/reprocess/${id}`);
+function retryFailed(id: RecordingId): Promise<FetchResult<void>> {
+  return CacophonyApi.get(`/api/v1/reprocess/retry-failed/${id}`);
 }
 
 function thumbnail(id: RecordingId): string {
@@ -641,7 +641,7 @@ export default {
   deleteTrack,
   undeleteTrack,
   updateTrack,
-  reprocess,
+  retryFailed,
   addTrackTag,
   deleteTrackTag,
   replaceTrackTag,

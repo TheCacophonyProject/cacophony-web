@@ -28,7 +28,7 @@ import {
 import { idOf } from "../validation-middleware.js";
 import { successResponse } from "./responseUtil.js";
 import type { NextFunction } from "express-serve-static-core";
-import { ClientError } from "../customErrors.js";
+import { ClientError, BadRequestError } from "../customErrors.js";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
 import lodash from "lodash";
 import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" assert { type: "json" };
@@ -39,11 +39,49 @@ export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
 
   /**
+   * @api {get} /api/v1/reprocess/retry-failed/:id Retry processing a single recording which is in a failed state
+   * @apiName Reprocess
+   * @apiGroup Recordings
+   * @apiParam {Integer} id of recording to retry
+   * @apiDescription Retries processing a recording thats in a failed state
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/retry-failed/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("id"))]),
+    fetchAuthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response, next) => {
+      if (!response.locals.recording.isFailed()) {
+        return next(
+          new BadRequestError(
+            `Recording is not in a failed state '${response.locals.recording.processingState}'`
+          )
+        );
+      }
+      if (await response.locals.recording.retryFailed()) {
+        return successResponse(response, "Recording reprocessed");
+      } else {
+        return next(
+          new BadRequestError(
+            `Could not retry processing of recordings ${response.locals.recording.id}`
+          )
+        );
+      }
+    }
+  );
+
+  /**
    * @api {get} /api/v1/reprocess/:id Reprocess a single recording
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to reprocess
-   * @apiDescription Marks a recording for reprocessing and archives existing tracks
+   * @apiDescription Marks a recording for reprocessing (tracking), and archives existing tracks.
+   * Used if tracking algorithms have changed
    *
    * @apiUse V1UserAuthorizationHeader
    *

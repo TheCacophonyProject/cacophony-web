@@ -62,7 +62,7 @@ async function measureProcessingWaitTime(influx, pgClient) {
   const res = await pgQuery(
     pgClient,
     `select "createdAt" from "Recordings"
-    where "processingState" in ('analyse', 'tracking') and "deletedAt" is null
+    where "processingState" in ('analyse', 'tracking') and "deletedAt" is null and "processingFailedCount" = 0
     order by "createdAt" asc limit 1`
   );
 
