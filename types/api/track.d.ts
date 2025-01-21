@@ -26,6 +26,7 @@ export interface ApiTrackResponse {
   filtered?: boolean;
   minFreq?: number;
   maxFreq?: number;
+  tracking_score?: number;
 }
 
 export interface ApiTrackRequest {
