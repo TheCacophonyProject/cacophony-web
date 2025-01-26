@@ -575,6 +575,9 @@ const getCurrentQuery = (): LocationQuery => {
   } else {
     delete query["labelled-with"];
   }
+  if (query["recording-mode"] === ActivitySearchRecordingMode.Audio) {
+    query["display-mode"] = ActivitySearchDisplayMode.Recordings;
+  }
   if (query["display-mode"] === "visits") {
     delete query["tag-mode"];
     delete query["labelled-with"];

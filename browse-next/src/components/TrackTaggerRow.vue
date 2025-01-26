@@ -43,6 +43,7 @@ const props = defineProps<{
   color: { foreground: string; background: string };
   selected: boolean;
   processingState: RecordingProcessingState;
+  isAudioRecording: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -81,7 +82,6 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
     if (masterTag.value) {
       tags.unshift(masterTag.value);
     }
-
     // NOTE: Delete button gives admins the ability to remove track tags created by other users,
     //  but not AI tags
     return tags.map((tag: ApiTrackTagResponse) => {
@@ -97,7 +97,9 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
           "&nbsp;"
         ),
         confidence: tag.automatic
-          ? Math.round(100 * tag.confidence).toString() + "%"
+          ? Math.round(
+              (props.isAudioRecording ? 1 : 100) * tag.confidence
+            ).toString() + "%"
           : "",
       };
       if (userIsGroupAdmin.value) {
@@ -141,7 +143,14 @@ const handleExpansion = (isExpanding: boolean) => {
 };
 
 watch(expanded, handleExpansion);
-
+watch(
+  () => props.selected,
+  (next) => {
+    if (next) {
+      show();
+    }
+  }
+);
 const resizeElementToContents = (el: HTMLElement) => {
   if (el.childNodes.length && expandedInternal.value) {
     const top = el.getBoundingClientRect().top;
@@ -405,6 +414,18 @@ const processingIsAnalysing = computed<boolean>(
   () => props.processingState === RecordingProcessingState.Analyse
 );
 
+const row = ref<HTMLDivElement>();
+const show = () => {
+  if (row.value) {
+    row.value.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  // setTimeout(() => {
+  //   if (row.value) {
+  //     row.value.scrollIntoView({ block: "center", behavior: "smooth" });
+  //   }
+  // }, 200);
+};
+
 onMounted(async () => {
   if (!classifications.value) {
     await getClassifications();
@@ -415,6 +436,7 @@ onMounted(async () => {
 <template>
   <div
     class="track p-2 fs-8 d-flex align-items-center justify-content-between"
+    ref="row"
     :class="{ selected }"
     @click="selectAndMaybeToggleExpanded"
   >

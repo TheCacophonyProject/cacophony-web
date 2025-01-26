@@ -82,6 +82,9 @@ import {
   faArrowTurnUp,
   faArrowLeft,
   faPlug,
+  faVolumeMute,
+  faVolumeUp,
+  faSquarePlus as faSquarePlusSolid,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -95,6 +98,7 @@ import {
   faFileVideo,
   faCircle,
   faCircleCheck,
+  faSquarePlus,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -188,7 +192,11 @@ library.add(
   faArrowTurnDown,
   faArrowTurnUp,
   faArrowLeft,
-  faPlug
+  faPlug,
+  faVolumeMute,
+  faVolumeUp,
+  faSquarePlus,
+  faSquarePlusSolid
 );
 
 export default FontAwesomeIcon;

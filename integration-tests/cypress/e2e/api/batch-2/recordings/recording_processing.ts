@@ -1407,7 +1407,7 @@ describe("Recordings - processing tests", () => {
       });
     });
 
-    it.only("Stale recording reprocessed automatically if processing time >30 minutes", () => {
+    it("Stale recording reprocessed automatically if processing time >30 minutes", () => {
       cy.log(
         "Add recording with processing=true, processinmgState='analyse' and processingStartTime=30.minutes.ago"
       );

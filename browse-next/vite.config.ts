@@ -1,12 +1,29 @@
 import { fileURLToPath, URL } from "url";
 
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot, Connect } from "vite";
 import vue from "@vitejs/plugin-vue";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
 import eslintPlugin from "vite-plugin-eslint";
 import Components from "unplugin-vue-components/vite";
 import { BootstrapVueNextResolver } from "unplugin-vue-components/resolvers";
+
+function crossOriginIsolationMiddleware(_: any, response: any, next: any) {
+  response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  response.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  next();
+}
+
+const crossOriginIsolation = {
+  name: "cross-origin-isolation",
+  configureServer: (server: any) => {
+    server.middlewares.use(crossOriginIsolationMiddleware);
+  },
+  configurePreviewServer: (server: any) => {
+    server.middlewares.use(crossOriginIsolationMiddleware);
+  },
+};
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -21,6 +38,7 @@ export default defineConfig({
       failOnError: false,
       exclude: ["**/consts.ts", "**/node_modules/**", "**/*.js"],
     }),
+    crossOriginIsolation,
     vue({
       template: {
         compilerOptions: {
@@ -50,5 +68,15 @@ export default defineConfig({
   },
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: "false",
+  },
+  server: {
+    fs: {
+      allow: [
+        // search up for workspace root
+        searchForWorkspaceRoot(process.cwd()),
+        // your custom rules
+        "/Users/jon/Dev/Personal/spectastiq",
+      ],
+    },
   },
 });

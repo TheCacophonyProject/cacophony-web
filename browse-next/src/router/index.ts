@@ -513,7 +513,7 @@ router.beforeEach(async (to, from, next) => {
       !currentSelectedProject.value &&
       !isFetchingProjects.value
     ) {
-      console.log("User is logged in, refresh projects (2)");
+      //console.log("User is logged in, refresh projects (2)");
       const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });

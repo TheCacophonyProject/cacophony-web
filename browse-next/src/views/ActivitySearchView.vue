@@ -215,12 +215,61 @@ const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
   return diff;
 };
 
-const DefaultSearchParams = {
-  "display-mode": ActivitySearchDisplayMode.Visits,
-  "recording-mode": ActivitySearchRecordingMode.Cameras,
-  locations: "any",
-  from: "24-hours-ago",
+const defaultSearchParams = computed(() => {
+  const hasCameraRecordings = locations.value.some((location) =>
+    locationHasCameraRecordings(location)
+  );
+  const hasAudioRecordings = locations.value.some((location) =>
+    locationHasAudioRecordings(location)
+  );
+  if (hasAudioRecordings && !hasCameraRecordings) {
+    return {
+      "display-mode": ActivitySearchDisplayMode.Recordings,
+      "recording-mode": ActivitySearchRecordingMode.Audio,
+      locations: "any",
+      from: "24-hours-ago",
+    };
+  }
+  return {
+    "display-mode": ActivitySearchDisplayMode.Visits,
+    "recording-mode": ActivitySearchRecordingMode.Cameras,
+    locations: "any",
+    from: "24-hours-ago",
+  };
+});
+
+const locationHasAudioRecordings = (location: ApiLocationResponse) => {
+  return !!location.lastAudioRecordingTime;
 };
+const locationHasCameraRecordings = (location: ApiLocationResponse) => {
+  return !!location.lastThermalRecordingTime;
+};
+
+const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
+  if (
+    locations.value.some((location) => locationHasCameraRecordings(location))
+  ) {
+    return ActivitySearchDisplayMode.Visits;
+  } else if (
+    locations.value.some((location) => locationHasAudioRecordings(location))
+  ) {
+    return ActivitySearchDisplayMode.Recordings;
+  }
+  return ActivitySearchDisplayMode.Visits;
+});
+
+const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
+  if (
+    locations.value.some((location) => locationHasCameraRecordings(location))
+  ) {
+    return ActivitySearchRecordingMode.Cameras;
+  } else if (
+    locations.value.some((location) => locationHasAudioRecordings(location))
+  ) {
+    return ActivitySearchRecordingMode.Audio;
+  }
+  return ActivitySearchRecordingMode.Cameras;
+});
 
 const initSearchParams = (): ActivitySearchParams => ({
   devices: "all",
@@ -232,8 +281,8 @@ const initSearchParams = (): ActivitySearchParams => ({
   taggedWith: ["any"],
   subClassTags: true,
   until: undefined,
-  displayMode: ActivitySearchDisplayMode.Visits,
-  recordingMode: ActivitySearchRecordingMode.Cameras,
+  displayMode: defaultDisplayMode.value,
+  recordingMode: defaultRecordingMode.value,
   locations: ["any"],
   from: "24-hours-ago",
 });
@@ -346,7 +395,7 @@ const deserialiseAndValidateRouteValue = (
         } else {
           // Replace with default value
           return {
-            replacement: ActivitySearchDisplayMode.Visits,
+            replacement: defaultDisplayMode.value,
           };
         }
         break;
@@ -361,7 +410,7 @@ const deserialiseAndValidateRouteValue = (
         } else {
           // Replace with default value
           return {
-            replacement: ActivitySearchRecordingMode.Cameras,
+            replacement: defaultRecordingMode.value,
           };
         }
         break;
@@ -485,7 +534,7 @@ const syncSearchQuery = async (
   }
 
   if (prev === undefined) {
-    prev = DefaultSearchParams as LocationQuery;
+    prev = defaultSearchParams.value as LocationQuery;
   }
   // IMPORTANT: We need to make sure the dateRange is set correctly first.
   // But to get the dateRange, we need to have validated that any locations passed in
@@ -527,7 +576,7 @@ const syncSearchQuery = async (
   await loadActiveAndInactiveDevices();
   if (Object.entries(replacements).length) {
     const query: LocationQuery = {
-      ...DefaultSearchParams,
+      ...defaultSearchParams.value,
       ...route.query,
       ...replacements,
     };
@@ -588,12 +637,13 @@ const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
 
 const locationHasRecordings = (location: ApiLocationResponse) => {
   if (searchParams.value.recordingMode === "audio") {
-    return !!location.lastAudioRecordingTime;
+    return locationHasAudioRecordings(location);
   } else if (searchParams.value.recordingMode === "cameras") {
-    return !!location.lastThermalRecordingTime;
+    return locationHasCameraRecordings(location);
   }
-  return !!(
-    location.lastAudioRecordingTime || location.lastThermalRecordingTime
+  return (
+    locationHasCameraRecordings(location) ||
+    locationHasAudioRecordings(location)
   );
 };
 
@@ -1948,6 +1998,7 @@ onBeforeUnmount(() => {
             @selected-recording="selectedRecording"
             :currently-selected-recording-id="currentlySelectedRecording"
             :canonical-location="canonicalLatLngForActiveLocations"
+            :devices="devices"
           />
           <visits-breakdown-list
             v-else-if="inVisitsMode"

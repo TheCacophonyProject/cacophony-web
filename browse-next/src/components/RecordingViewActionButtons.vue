@@ -17,28 +17,25 @@ const props = withDefaults(
   }>(),
   { recording: null }
 );
-const currentRecordingType = ref<"cptv" | "image">("cptv");
 
 const currentProject = inject(currentSelectedProject) as ComputedRef<
   SelectedProject | false
 >;
 
-watch(
-  () => props.recording,
-  (nextRecording) => {
-    if (nextRecording) {
-      switch (nextRecording.type) {
-        case RecordingType.TrailCamVideo:
-        case RecordingType.TrailCamImage:
-          currentRecordingType.value = "image";
-          break;
-        default:
-          currentRecordingType.value = "cptv";
-          break;
-      }
+const currentRecordingType = computed<"cptv" | "image" | "audio">(() => {
+  if (props.recording) {
+    switch (props.recording.type) {
+      case RecordingType.TrailCamVideo:
+      case RecordingType.TrailCamImage:
+        return "image";
+      case RecordingType.ThermalRaw:
+        return "cptv";
+      case RecordingType.Audio:
+        return "audio";
     }
   }
-);
+  return "cptv";
+});
 
 const emit = defineEmits<{
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
@@ -202,7 +199,9 @@ const notImplemented = () => {
       </b-dropdown-item-button>
     </b-dropdown>
     <button
-      v-else-if="currentRecordingType === 'image'"
+      v-else-if="
+        currentRecordingType === 'image' || currentRecordingType === 'audio'
+      "
       type="button"
       class="btn btn-square btn-hi"
       :disabled="!recordingReady"

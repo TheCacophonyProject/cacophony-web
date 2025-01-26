@@ -5,9 +5,18 @@ import type {
 } from "@typedefs/api/recording";
 import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
 import { TagColours } from "@/consts";
-import { type ComputedRef, onBeforeMount, type Ref } from "vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {
+  computed,
+  type ComputedRef,
+  inject,
+  onBeforeMount,
+  onMounted,
+  type Ref,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
+import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import type {
   ApiTrackDataRequest,
   ApiTrackResponse,
@@ -188,7 +197,7 @@ const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
   await router.replace({
     ...route,
     params,
-  });
+  } as RouteLocationRaw);
   if (expanded) {
     // Select and play the track?
     const track = getTrackById(trackId);
@@ -522,6 +531,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       :key="index"
       :index="index"
       :processing-state="recording.processingState"
+      :is-audio-recording="recording.type === RecordingType.Audio"
       @expanded-changed="expandedItemChanged"
       @selected-track="selectedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"

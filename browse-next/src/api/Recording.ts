@@ -320,3 +320,11 @@ export const uploadRecording = (
     true
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
 };
+
+export const getRawRecording = async (recordingId: RecordingId) => {
+  const ABORTABLE = true;
+  return CacophonyApi.get(
+    `/api/v1/recordings/raw/${recordingId}`,
+    ABORTABLE
+  ) as Promise<FetchResult<Blob>>;
+};

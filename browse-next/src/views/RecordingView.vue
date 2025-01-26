@@ -20,8 +20,8 @@ import {
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
 import {
-  getRecordingById,
   deleteRecording as apiDeleteRecording,
+  getRecordingById,
 } from "@api/Recording";
 import type {
   ApiVisitResponse,
@@ -35,8 +35,6 @@ import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { useElementSize, useMediaQuery } from "@vueuse/core";
-import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
-import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
@@ -56,6 +54,7 @@ import {
 import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
 import { urlNormaliseName } from "@/utils.ts";
+import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -804,6 +803,17 @@ const loadRecording = async () => {
   }
 };
 
+const deselectedTrack = async () => {
+  await nextTick(() => {
+    userSelectedTrack.value = undefined;
+  });
+  await router.replace({
+    name: route.name as string,
+    params: {},
+    query: route.query,
+  });
+};
+
 const selectedTrackWrap = (payload: {
   trackId: TrackId;
   automatically: boolean;
@@ -962,6 +972,9 @@ const activeTabName = computed(() => {
 const desktop = useMediaQuery("(min-width: 1040px)");
 const isMobileView = computed<boolean>(() => {
   return !desktop.value;
+
+  // ||
+  //   (!!recordingType.value && recordingType.value === RecordingType.Audio)
 });
 
 const recordingViewContext: string = (route.meta as Record<string, string>)
@@ -974,8 +987,10 @@ const playerHeight = useElementSize(playerContainer);
 watch(playerHeight.height, (newHeight) => {
   if (recordingInfo.value) {
     const recordingInfoEl = recordingInfo.value as HTMLDivElement;
-    if (desktop.value) {
+    if (desktop.value && recordingType.value !== RecordingType.Audio) {
       recordingInfoEl.style.maxHeight = `${newHeight}px`;
+    } else if (desktop.value && recordingType.value === RecordingType.Audio) {
+      recordingInfoEl.removeAttribute("style");
     } else {
       recordingInfoEl.style.maxHeight = "auto";
     }
@@ -1175,8 +1190,6 @@ const deleteRecording = async () => {
   }
 };
 const inlineModal = ref<boolean>(false);
-
-// TODO: When we scroll down, can we keep the player at the top of the screen for a while, but reduce the height of it?
 </script>
 <template>
   <div
@@ -1212,6 +1225,10 @@ const inlineModal = ref<boolean>(false);
             "
             >Trailcam image</span
           >
+          <span
+            v-else-if="recordingType && recordingType === RecordingType.Audio"
+            >Audio recording</span
+          >
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
           <span class="recording-header-label fw-bold text-capitalize">{{
@@ -1233,280 +1250,566 @@ const inlineModal = ref<boolean>(false);
         <font-awesome-icon icon="xmark" />
       </button>
     </header>
-    <div class="player-overflow flex-grow-1">
-      <div class="player-and-tagging d-flex">
-        <div class="player-container" ref="playerContainer">
-          <cptv-player
-            :recording="recording as ApiRecordingResponse"
-            :recording-id="currentRecordingId"
-            :current-track="currentTrack"
-            :has-next="hasNextRecording || hasNextVisit"
-            :has-prev="hasPreviousRecording || hasPreviousVisit"
-            :user-selected-track="userSelectedTrack"
-            :export-requested="exportRequested"
-            :display-header-info="showHeaderInfo"
-            :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
-            @export-completed="exportCompleted"
-            @request-next-recording="
-              async () => await gotoNextRecordingOrVisit()
-            "
-            @request-prev-recording="
-              async () => await gotoPreviousRecordingOrVisit()
-            "
-            @request-next-visit="async () => await gotoNextVisit()"
-            @request-prev-visit="async () => await gotoPreviousVisit()"
-            @request-header-info-display="requestedHeaderInfoDisplay"
-            @dismiss-header-info="dismissHeaderInfo"
-            @track-selected="selectedTrackWrap"
+    <div v-if="recordingType !== RecordingType.Audio">
+      <div class="player-container" ref="playerContainer">
+        <cptv-player
+          :recording="recording as ApiRecordingResponse"
+          :recording-id="currentRecordingId"
+          :current-track="currentTrack"
+          :has-next="hasNextRecording || hasNextVisit"
+          :has-prev="hasPreviousRecording || hasPreviousVisit"
+          :user-selected-track="userSelectedTrack"
+          :export-requested="exportRequested"
+          :display-header-info="showHeaderInfo"
+          :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
+          @export-completed="exportCompleted"
+          @request-next-recording="async () => await gotoNextRecordingOrVisit()"
+          @request-prev-recording="
+            async () => await gotoPreviousRecordingOrVisit()
+          "
+          @request-next-visit="async () => await gotoNextVisit()"
+          @request-prev-visit="async () => await gotoPreviousVisit()"
+          @request-header-info-display="requestedHeaderInfoDisplay"
+          @dismiss-header-info="dismissHeaderInfo"
+          @track-selected="selectedTrackWrap"
+        />
+      </div>
+      <div class="recording-info d-flex flex-column" ref="recordingInfo">
+        <!-- Desktop view only -->
+        <div
+          class="recording-station-info d-inline-flex mb-3"
+          v-if="!isMobileView"
+        >
+          <map-with-points
+            class="recording-location-map"
+            :points="mapPointForRecording"
+            :active-points="mapPointForRecording"
+            :highlighted-point="null"
+            :is-interactive="false"
+            :markers-are-interactive="false"
+            :has-attribution="false"
+            :can-change-base-map="false"
+            :zoom="false"
+            :radius="30"
           />
-        </div>
-        <div class="recording-info d-flex flex-column" ref="recordingInfo">
-          <!-- Desktop view only -->
-          <div
-            class="recording-station-info d-inline-flex mb-3"
-            v-if="!isMobileView"
-          >
-            <map-with-points
-              class="recording-location-map"
-              :points="mapPointForRecording"
-              :active-points="mapPointForRecording"
-              :highlighted-point="null"
-              :is-interactive="false"
-              :markers-are-interactive="false"
-              :has-attribution="false"
-              :can-change-base-map="false"
-              :zoom="false"
-              :radius="30"
-            />
-            <div class="recording-details d-flex flex-column flex-fill">
-              <div
-                class="fw-bolder"
-                :class="{
-                  'recording-details-hover':
-                    stationNameIsTruncated || deviceNameIsTruncated,
-                }"
-              >
-                <div
-                  class="station-name pt-3 px-3 text-truncate d-inline-flex"
-                  :class="{ 'is-truncated': stationNameIsTruncated }"
-                >
-                  <font-awesome-icon
-                    icon="map-marker-alt"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />
-                  <span class="text-truncate" ref="stationNameSpan">
-                    {{ currentLocationName }}
-                  </span>
-                </div>
-                <div
-                  class="device-name pt-3 pe-2 text-truncate d-inline-flex"
-                  :class="{ 'is-truncated': deviceNameIsTruncated }"
-                >
-                  <font-awesome-icon
-                    icon="microchip"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />
-                  <router-link
-                    class="text-truncate non-blue-link"
-                    ref="deviceNameSpan"
-                    v-if="recording && recording.deviceId"
-                    :to="{
-                      name: 'device-diagnostics',
-                      params: {
-                        deviceId: recording.deviceId,
-                        deviceName: urlNormaliseName(recording.deviceName),
-                      },
-                    }"
-                  >
-                    {{ currentDeviceName }}
-                  </router-link>
-                </div>
-              </div>
-              <div class="recording-date-time fs-7 d-flex px-3 mt-1">
-                <div>
-                  <font-awesome-icon
-                    :icon="['far', 'calendar']"
-                    size="sm"
-                    class="me-1"
-                    color="rgba(0, 0, 0, 0.5)"
-                  />
-                  <span v-html="recordingDate" />
-                </div>
-                <div class="ms-4">
-                  <font-awesome-icon
-                    :icon="['far', 'clock']"
-                    size="sm"
-                    class="me-1"
-                    color="rgba(0, 0, 0, 0.5)"
-                  />
-                  <span v-html="recordingStartTime" />
-                </div>
-              </div>
-              <recording-view-action-buttons
-                :recording="recording"
-                @added-recording-label="addedRecordingLabel"
-                @removed-recording-label="removedRecordingLabel"
-                @requested-export="requestedExport"
-                @requested-advanced-export="requestedAdvancedExport"
-                @requested-download="requestedDownload"
-                @delete-recording="deleteRecording"
-              />
-            </div>
-          </div>
-          <ul
-            class="nav nav-tabs justify-content-md-center justify-content-evenly"
-            v-if="!isMobileView"
-          >
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-tracks` },
-              ]"
-              title="Tracks"
-              :to="{
-                name: `${recordingViewContext}-tracks`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-              }"
-              >Tracks
-              <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-                >({{ tracks.length }})</span
-              ></router-link
-            >
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-labels` },
-              ]"
-              title="Labels"
-              :to="{
-                name: `${recordingViewContext}-labels`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-              }"
-              >Labels
-              <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-                >({{ tags.length }})</span
-              ></router-link
-            >
-          </ul>
-          <div class="tags-overflow" v-if="!isMobileView">
-            <!-- RecordingViewTracks -->
-            <router-view
-              :recording="recording"
-              @track-tag-changed="trackTagChanged"
-              @track-selected="selectedTrackWrapped"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-            />
-          </div>
-          <!-- Mobile view only -->
-          <recording-view-tracks
-            v-if="isMobileView"
-            :recording="recording"
-            class="recording-tracks"
-            @track-tag-changed="trackTagChanged"
-            @track-selected="selectedTrackWrap"
-            @added-recording-label="addedRecordingLabel"
-          />
-          <div
-            class="recording-info-mobile p-3 flex-grow-1"
-            v-if="isMobileView"
-          >
+          <div class="recording-details d-flex flex-column flex-fill">
             <div
-              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
+              class="fw-bolder"
+              :class="{
+                'recording-details-hover':
+                  stationNameIsTruncated || deviceNameIsTruncated,
+              }"
             >
-              <map-with-points
-                class="recording-location-map"
-                :points="mapPointForRecording"
-                :active-points="mapPointForRecording"
-                :highlighted-point="null"
-                :is-interactive="false"
-                :markers-are-interactive="false"
-                :has-attribution="false"
-                :can-change-base-map="false"
-                :zoom="false"
-                :radius="30"
-              />
               <div
-                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
+                class="station-name pt-3 px-3 text-truncate d-inline-flex"
+                :class="{ 'is-truncated': stationNameIsTruncated }"
               >
-                <div class="fw-bolder d-flex">
-                  <div class="station-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
-                  </div>
-                  <div class="device-name pe-2 text-truncate">
-                    <font-awesome-icon
-                      icon="microchip"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <router-link
-                      class="text-truncate non-blue-link"
-                      ref="deviceNameSpan"
-                      v-if="recording && recording.deviceId"
-                      :to="{
-                        name: 'device-diagnostics',
-                        params: {
-                          deviceId: recording.deviceId,
-                          deviceName: urlNormaliseName(recording.deviceName),
-                        },
-                      }"
-                    >
-                      {{ currentDeviceName }}
-                    </router-link>
-                  </div>
-                </div>
-
-                <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
-                  <div>
-                    <font-awesome-icon
-                      :icon="['far', 'calendar']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingDate" />
-                  </div>
-                  <div class="ms-4">
-                    <font-awesome-icon
-                      :icon="['far', 'clock']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingStartTime" />
-                  </div>
-                </div>
+                <font-awesome-icon
+                  icon="map-marker-alt"
+                  size="xs"
+                  class="me-2"
+                  color="rgba(0, 0, 0, 0.7)"
+                />
+                <span class="text-truncate" ref="stationNameSpan">
+                  {{ currentLocationName }}
+                </span>
+              </div>
+              <div
+                class="device-name pt-3 pe-2 text-truncate d-inline-flex"
+                :class="{ 'is-truncated': deviceNameIsTruncated }"
+              >
+                <font-awesome-icon
+                  icon="microchip"
+                  size="xs"
+                  class="me-2"
+                  color="rgba(0, 0, 0, 0.7)"
+                />
+                <router-link
+                  class="text-truncate non-blue-link"
+                  ref="deviceNameSpan"
+                  v-if="recording && recording.deviceId"
+                  :to="{
+                    name: 'device-diagnostics',
+                    params: {
+                      deviceId: recording.deviceId,
+                      deviceName: urlNormaliseName(recording.deviceName),
+                    },
+                  }"
+                >
+                  {{ currentDeviceName }}
+                </router-link>
               </div>
             </div>
-            <recording-view-labels
-              :recording="recording as ApiRecordingResponse"
+            <div class="recording-date-time fs-7 d-flex px-3 mt-1">
+              <div>
+                <font-awesome-icon
+                  :icon="['far', 'calendar']"
+                  size="sm"
+                  class="me-1"
+                  color="rgba(0, 0, 0, 0.5)"
+                />
+                <span v-html="recordingDate" />
+              </div>
+              <div class="ms-4">
+                <font-awesome-icon
+                  :icon="['far', 'clock']"
+                  size="sm"
+                  class="me-1"
+                  color="rgba(0, 0, 0, 0.5)"
+                />
+                <span v-html="recordingStartTime" />
+              </div>
+            </div>
+            <recording-view-action-buttons
+              v-if="recording"
+              :recording="recording"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
+              @requested-export="requestedExport"
+              @requested-advanced-export="requestedAdvancedExport"
+              @requested-download="requestedDownload"
+              @delete-recording="deleteRecording"
             />
           </div>
         </div>
+        <ul
+          class="nav nav-tabs justify-content-md-center justify-content-evenly"
+          v-if="!isMobileView"
+        >
+          <router-link
+            :class="[
+              ...navLinkClasses,
+              { active: activeTabName === `${recordingViewContext}-tracks` },
+            ]"
+            title="Tracks"
+            :to="{
+              name: `${recordingViewContext}-tracks`,
+              params: {
+                ...route.params,
+                trackId: currentTrack?.id || tracks[0]?.id,
+              },
+            }"
+            >Tracks
+            <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
+              >({{ tracks.length }})</span
+            ></router-link
+          >
+          <router-link
+            :class="[
+              ...navLinkClasses,
+              { active: activeTabName === `${recordingViewContext}-labels` },
+            ]"
+            title="Labels"
+            :to="{
+              name: `${recordingViewContext}-labels`,
+              params: {
+                ...route.params,
+                trackId: currentTrack?.id || tracks[0]?.id,
+              },
+            }"
+            >Labels
+            <span v-if="activeTabName !== `${recordingViewContext}-labels`"
+              >({{ tags.length }})</span
+            ></router-link
+          >
+        </ul>
+      </div>
+      <div
+        class="flex-grow-1 overflow-auto"
+        :class="{
+          'recording-type-audio': recordingType === RecordingType.Audio,
+        }"
+      >
+        <!--        &lt;!&ndash; Mobile view only &ndash;&gt;-->
+        <!--        <recording-view-tracks-->
+        <!--          v-if="isMobileView && recording"-->
+        <!--          :recording="recording"-->
+        <!--          class="recording-tracks"-->
+        <!--          @track-tag-changed="trackTagChanged"-->
+        <!--          @track-selected="selectedTrackWrap"-->
+        <!--          @added-recording-label="addedRecordingLabel"-->
+        <!--        />-->
+        <!--        <div class="recording-info-mobile p-3 flex-grow-1" v-if="isMobileView">-->
+        <!--          <div-->
+        <!--            class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"-->
+        <!--          >-->
+        <!--            <map-with-points-->
+        <!--              class="recording-location-map"-->
+        <!--              :points="mapPointForRecording"-->
+        <!--              :active-points="mapPointForRecording"-->
+        <!--              :highlighted-point="null"-->
+        <!--              :is-interactive="false"-->
+        <!--              :markers-are-interactive="false"-->
+        <!--              :has-attribution="false"-->
+        <!--              :can-change-base-map="false"-->
+        <!--              :zoom="false"-->
+        <!--              :radius="30"-->
+        <!--            />-->
+        <!--            <div-->
+        <!--              class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"-->
+        <!--            >-->
+        <!--              <div class="fw-bolder d-flex">-->
+        <!--                <div class="station-name pe-3 text-truncate">-->
+        <!--                  <font-awesome-icon-->
+        <!--                    icon="map-marker-alt"-->
+        <!--                    size="xs"-->
+        <!--                    class="me-2"-->
+        <!--                    color="rgba(0, 0, 0, 0.7)"-->
+        <!--                  />-->
+        <!--                  <span class="text-truncate">-->
+        <!--                    {{ currentLocationName }}-->
+        <!--                  </span>-->
+        <!--                </div>-->
+        <!--                <div class="device-name pe-2 text-truncate">-->
+        <!--                  <font-awesome-icon-->
+        <!--                    icon="microchip"-->
+        <!--                    size="xs"-->
+        <!--                    class="me-2"-->
+        <!--                    color="rgba(0, 0, 0, 0.7)"-->
+        <!--                  />-->
+        <!--                  <router-link-->
+        <!--                    class="text-truncate non-blue-link"-->
+        <!--                    ref="deviceNameSpan"-->
+        <!--                    v-if="recording && recording.deviceId"-->
+        <!--                    :to="{-->
+        <!--                      name: 'device-diagnostics',-->
+        <!--                      params: {-->
+        <!--                        deviceId: recording.deviceId,-->
+        <!--                        deviceName: urlNormaliseName(recording.deviceName),-->
+        <!--                      },-->
+        <!--                    }"-->
+        <!--                  >-->
+        <!--                    {{ currentDeviceName }}-->
+        <!--                  </router-link>-->
+        <!--                </div>-->
+        <!--              </div>-->
+        <!--              <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">-->
+        <!--                <div>-->
+        <!--                  <font-awesome-icon-->
+        <!--                    :icon="['far', 'calendar']"-->
+        <!--                    size="sm"-->
+        <!--                    class="me-1"-->
+        <!--                    color="rgba(0, 0, 0, 0.5)"-->
+        <!--                  />-->
+        <!--                  <span v-html="recordingDate" />-->
+        <!--                </div>-->
+        <!--                <div class="ms-4">-->
+        <!--                  <font-awesome-icon-->
+        <!--                    :icon="['far', 'clock']"-->
+        <!--                    size="sm"-->
+        <!--                    class="me-1"-->
+        <!--                    color="rgba(0, 0, 0, 0.5)"-->
+        <!--                  />-->
+        <!--                  <span v-html="recordingStartTime" />-->
+        <!--                </div>-->
+        <!--              </div>-->
+        <!--            </div>-->
+        <!--          </div>-->
+        <!--          <recording-view-labels-->
+        <!--            :recording="recording as ApiRecordingResponse"-->
+        <!--            @added-recording-label="addedRecordingLabel"-->
+        <!--            @removed-recording-label="removedRecordingLabel"-->
+        <!--            v-if="isMobileView"-->
+        <!--          />-->
+
+        <router-view
+          :recording="recording"
+          @track-tag-changed="trackTagChanged"
+          @track-selected="selectedTrackWrapped"
+          @added-recording-label="addedRecordingLabel"
+          @removed-recording-label="removedRecordingLabel"
+        />
       </div>
     </div>
+    <div
+      class="player-container"
+      ref="playerContainer"
+      v-if="recordingType === RecordingType.Audio"
+    >
+      <cptv-player
+        v-if="recordingType !== RecordingType.Audio && recordingType !== null"
+        :recording="recording as ApiRecordingResponse"
+        :recording-id="currentRecordingId"
+        :current-track="currentTrack"
+        :has-next="hasNextRecording || hasNextVisit"
+        :has-prev="hasPreviousRecording || hasPreviousVisit"
+        :user-selected-track="userSelectedTrack"
+        :export-requested="exportRequested"
+        :display-header-info="showHeaderInfo"
+        :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
+        @export-completed="exportCompleted"
+        @request-next-recording="async () => await gotoNextRecordingOrVisit()"
+        @request-prev-recording="
+          async () => await gotoPreviousRecordingOrVisit()
+        "
+        @request-next-visit="async () => await gotoNextVisit()"
+        @request-prev-visit="async () => await gotoPreviousVisit()"
+        @request-header-info-display="requestedHeaderInfoDisplay"
+        @dismiss-header-info="dismissHeaderInfo"
+        @track-selected="selectedTrackWrap"
+      />
+      <spectrogram-viewer
+        v-if="recording && recordingType === RecordingType.Audio"
+        :recording="recording"
+        @track-selected="selectedTrackWrap"
+        @track-deselected="deselectedTrack"
+        :current-track="currentTrack"
+      />
+    </div>
+    <div
+      class="recording-info d-flex flex-column"
+      ref="recordingInfo"
+      v-if="recordingType === RecordingType.Audio"
+    >
+      <!-- Desktop view only -->
+      <div
+        class="recording-station-info d-inline-flex"
+        :class="{ 'mb-3': recordingType !== RecordingType.Audio }"
+        v-if="!isMobileView"
+      >
+        <map-with-points
+          class="recording-location-map"
+          :points="mapPointForRecording"
+          :active-points="mapPointForRecording"
+          :highlighted-point="null"
+          :is-interactive="false"
+          :markers-are-interactive="false"
+          :has-attribution="false"
+          :can-change-base-map="false"
+          :zoom="false"
+          :radius="30"
+        />
+        <div class="recording-details d-flex flex-column flex-fill">
+          <div
+            class="fw-bolder"
+            :class="{
+              'recording-details-hover':
+                stationNameIsTruncated || deviceNameIsTruncated,
+            }"
+          >
+            <div
+              class="station-name pt-3 px-3 text-truncate d-inline-flex"
+              :class="{ 'is-truncated': stationNameIsTruncated }"
+            >
+              <font-awesome-icon
+                icon="map-marker-alt"
+                size="xs"
+                class="me-2"
+                color="rgba(0, 0, 0, 0.7)"
+              />
+              <span class="text-truncate" ref="stationNameSpan">
+                {{ currentLocationName }}
+              </span>
+            </div>
+            <div
+              class="device-name pt-3 pe-2 text-truncate d-inline-flex"
+              :class="{ 'is-truncated': deviceNameIsTruncated }"
+            >
+              <font-awesome-icon
+                icon="microchip"
+                size="xs"
+                class="me-2"
+                color="rgba(0, 0, 0, 0.7)"
+              />
+              <router-link
+                class="text-truncate non-blue-link"
+                ref="deviceNameSpan"
+                v-if="recording && recording.deviceId"
+                :to="{
+                  name: 'device-diagnostics',
+                  params: {
+                    deviceId: recording.deviceId,
+                    deviceName: urlNormaliseName(recording.deviceName),
+                  },
+                }"
+              >
+                {{ currentDeviceName }}
+              </router-link>
+            </div>
+          </div>
+          <div class="recording-date-time fs-7 d-flex px-3 mt-1">
+            <div>
+              <font-awesome-icon
+                :icon="['far', 'calendar']"
+                size="sm"
+                class="me-1"
+                color="rgba(0, 0, 0, 0.5)"
+              />
+              <span v-html="recordingDate" />
+            </div>
+            <div class="ms-4">
+              <font-awesome-icon
+                :icon="['far', 'clock']"
+                size="sm"
+                class="me-1"
+                color="rgba(0, 0, 0, 0.5)"
+              />
+              <span v-html="recordingStartTime" />
+            </div>
+          </div>
+          <recording-view-action-buttons
+            v-if="recording"
+            :recording="recording"
+            @added-recording-label="addedRecordingLabel"
+            @removed-recording-label="removedRecordingLabel"
+            @requested-export="requestedExport"
+            @requested-advanced-export="requestedAdvancedExport"
+            @requested-download="requestedDownload"
+            @delete-recording="deleteRecording"
+          />
+        </div>
+      </div>
+      <ul
+        class="nav nav-tabs justify-content-md-center justify-content-evenly"
+        v-if="!isMobileView"
+      >
+        <router-link
+          :class="[
+            ...navLinkClasses,
+            { active: activeTabName === `${recordingViewContext}-tracks` },
+          ]"
+          title="Tracks"
+          :to="{
+            name: `${recordingViewContext}-tracks`,
+            params: {
+              ...route.params,
+              trackId: currentTrack?.id || tracks[0]?.id,
+            },
+          }"
+          >Tracks
+          <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
+            >({{ tracks.length }})</span
+          ></router-link
+        >
+        <router-link
+          :class="[
+            ...navLinkClasses,
+            { active: activeTabName === `${recordingViewContext}-labels` },
+          ]"
+          title="Labels"
+          :to="{
+            name: `${recordingViewContext}-labels`,
+            params: {
+              ...route.params,
+              trackId: currentTrack?.id || tracks[0]?.id,
+            },
+          }"
+          >Labels
+          <span v-if="activeTabName !== `${recordingViewContext}-labels`"
+            >({{ tags.length }})</span
+          ></router-link
+        >
+      </ul>
+    </div>
+    <div
+      v-if="recordingType === RecordingType.Audio"
+      class="flex-grow-1 overflow-auto"
+      :class="{
+        'recording-type-audio': recordingType === RecordingType.Audio,
+      }"
+    >
+      <router-view
+        v-if="!isMobileView"
+        :recording="recording"
+        @track-tag-changed="trackTagChanged"
+        @track-selected="selectedTrackWrapped"
+        @added-recording-label="addedRecordingLabel"
+        @removed-recording-label="removedRecordingLabel"
+      />
+      <recording-view-tracks
+        v-if="isMobileView && recording"
+        :recording="recording"
+        class="recording-tracks"
+        @track-tag-changed="trackTagChanged"
+        @track-selected="selectedTrackWrap"
+        @added-recording-label="addedRecordingLabel"
+      />
+      <div class="recording-info-mobile p-3 flex-grow-1" v-if="isMobileView">
+        <div
+          class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
+        >
+          <map-with-points
+            class="recording-location-map"
+            :points="mapPointForRecording"
+            :active-points="mapPointForRecording"
+            :highlighted-point="null"
+            :is-interactive="false"
+            :markers-are-interactive="false"
+            :has-attribution="false"
+            :can-change-base-map="false"
+            :zoom="false"
+            :radius="30"
+          />
+          <div
+            class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
+          >
+            <div class="fw-bolder d-flex">
+              <div class="station-name pe-3 text-truncate">
+                <font-awesome-icon
+                  icon="map-marker-alt"
+                  size="xs"
+                  class="me-2"
+                  color="rgba(0, 0, 0, 0.7)"
+                />
+                <span class="text-truncate">
+                  {{ currentLocationName }}
+                </span>
+              </div>
+              <div class="device-name pe-2 text-truncate">
+                <font-awesome-icon
+                  icon="microchip"
+                  size="xs"
+                  class="me-2"
+                  color="rgba(0, 0, 0, 0.7)"
+                />
+                <router-link
+                  class="text-truncate non-blue-link"
+                  ref="deviceNameSpan"
+                  v-if="recording && recording.deviceId"
+                  :to="{
+                    name: 'device-diagnostics',
+                    params: {
+                      deviceId: recording.deviceId,
+                      deviceName: urlNormaliseName(recording.deviceName),
+                    },
+                  }"
+                >
+                  {{ currentDeviceName }}
+                </router-link>
+              </div>
+            </div>
+            <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
+              <div>
+                <font-awesome-icon
+                  :icon="['far', 'calendar']"
+                  size="sm"
+                  class="me-1"
+                  color="rgba(0, 0, 0, 0.5)"
+                />
+                <span v-html="recordingDate" />
+              </div>
+              <div class="ms-4">
+                <font-awesome-icon
+                  :icon="['far', 'clock']"
+                  size="sm"
+                  class="me-1"
+                  color="rgba(0, 0, 0, 0.5)"
+                />
+                <span v-html="recordingStartTime" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <recording-view-labels
+          :recording="recording as ApiRecordingResponse"
+          @added-recording-label="addedRecordingLabel"
+          @removed-recording-label="removedRecordingLabel"
+          v-if="isMobileView"
+        />
+      </div>
+    </div>
+
+    <!-- Mobile view only -->
     <footer class="recording-view-footer">
       <div class="visit-progress">
         <div
@@ -1771,10 +2074,27 @@ const inlineModal = ref<boolean>(false);
   }
   background: #f6f6f6;
 }
+.player-overflow.recording-type-audio {
+  overflow-y: auto;
+  background: #f6f6f6;
+}
 .tags-overflow {
   @media screen and (min-width: 1041px) {
     overflow-y: scroll;
-    height: 100%;
+    @headerHeight: 64px;
+    @playerHeight: 426px;
+    @locationInfoHeight: 120px;
+    @tabsHeight: 38.5px;
+    @footerHeight: 55px;
+    flex: 1;
+    //max-height: calc(
+    //  100svh -
+    //    (
+    //      @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
+    //        @footerHeight
+    //    )
+    //);
+    //height: 100%;
   }
 }
 .footer-nav {
@@ -1949,6 +2269,9 @@ const inlineModal = ref<boolean>(false);
     flex-direction: column;
   }
 }
+.player-and-tagging.recording-type-audio {
+  flex-direction: column;
+}
 .recording-view {
   @media screen and (max-width: 1040px) {
     background: white;
@@ -1958,6 +2281,14 @@ const inlineModal = ref<boolean>(false);
     left: 0;
     right: 0;
   }
+}
+.recording-view:has(.recording-type-audio) {
+  background: white;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
 
 .dimmed {

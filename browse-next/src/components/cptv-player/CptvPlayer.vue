@@ -175,7 +175,7 @@ const emit = defineEmits<{
   (e: "request-next-visit"): void;
   (
     e: "track-selected",
-    { trackId, automatically }: { trackId: TrackId; automatically: boolean }
+    payload: { trackId: TrackId; automatically: boolean }
   ): void;
   (e: "ready-to-play", header: CptvHeader): void;
   (e: "export-completed"): void;
