@@ -89,6 +89,8 @@ import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
 import logger from "@log";
+import { tryToMatchLocationToStationInGroup } from "@/models/util/locationUtils.js";
+import { deleteFile } from "@/models/util/util.js";
 
 const models = await modelsInit();
 
@@ -216,6 +218,11 @@ interface ApiDeviceSettingsResponseSuccess {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+interface ApiDeviceTypeResponseSuccess {
+  type: DeviceType;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiDeviceUsersResponseSuccess {
   users: ApiGroupUserResponse[];
 }
@@ -256,6 +263,7 @@ export default function (app: Application, baseUrl: string) {
         deviceName: request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
+        kind: request.body.deviceType,
       });
       let saltId;
       if (request.body.saltId) {
@@ -563,304 +571,6 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
-
-  /**
-   * @api {get} /api/v1/devices/:deviceId/reference-image Get the reference image (if any) for a device
-   * @apiName GetDeviceReferenceImageAtTime
-   * @apiGroup Device
-   * @apiParam {Integer} deviceId Id of the device
-   * @apiParam {String} exists If set to 'exists' returns whether the device has a reference image at the given time.
-   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
-   * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
-   *
-   * @apiDescription Returns a reference image for a device (if any has been set) at a given point in time, or now,
-   * if no date time is specified
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess binary data of reference image
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:id/reference-image/:exists?`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("id")),
-      param("exists").optional(),
-      query("view-mode").optional().equals("user"),
-      query("at-time").isISO8601().toDate().optional(),
-      query("type").optional().isIn(["pov", "in-situ"]),
-      booleanOf(query("only-active"), false),
-    ]),
-    fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      const checkIfExists = request.params.exists === "exists";
-      const atTime =
-        (request.query["at-time"] &&
-          (request.query["at-time"] as unknown as Date)) ||
-        new Date();
-      const device = response.locals.device as Device;
-      const deviceHistoryEntry: DeviceHistory | null =
-        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
-      if (!deviceHistoryEntry) {
-        return next(
-          new UnprocessableError(
-            "No reference image available for device at time"
-          )
-        );
-      }
-      if (device.kind === DeviceType.TrailCam) {
-        // NOTE: If the device is a trailcam, try and use the daytime image that closest matches the requested time, if any.
-
-        //  The trailcam has been in this location since this time.
-        const fromTime = deviceHistoryEntry.fromDateTime;
-        if (!fromTime) {
-          return next(
-            new UnprocessableError(
-              "No reference image available for device at time"
-            )
-          );
-        }
-        let recording: any;
-        // See if this device has a later location
-        const laterDeviceHistoryEntry: DeviceHistory | null =
-          await models.DeviceHistory.findOne({
-            where: [
-              {
-                DeviceId: device.id,
-                GroupId: device.GroupId,
-                fromDateTime: { [Op.gt]: fromTime },
-              },
-              models.sequelize.where(
-                Sequelize.fn("ST_X", Sequelize.col("location")),
-                { [Op.ne]: deviceHistoryEntry.location.lng }
-              ),
-              models.sequelize.where(
-                Sequelize.fn("ST_Y", Sequelize.col("location")),
-                { [Op.ne]: deviceHistoryEntry.location.lat }
-              ),
-            ] as any,
-            order: [["fromDateTime", "ASC"]],
-          });
-        const payload: { fromDateTime: Date; untilDateTime?: Date } = {
-          fromDateTime: fromTime,
-        };
-        if (laterDeviceHistoryEntry) {
-          payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
-          // Now check if there's a daytime image in that timespan, preferably without any tracks,
-          // to avoid there being animals present
-          const options = {
-            type: QueryTypes.SELECT,
-            replacements: {
-              groupId: device.GroupId,
-              deviceId: device.id,
-              atTime: fromTime,
-              untilTime: laterDeviceHistoryEntry.fromDateTime,
-            },
-          };
-          recording = await models.sequelize.query(
-            `          
-          select * from "Recordings"
-          left outer join "Tracks"
-          on "Tracks"."RecordingId" = "Tracks".id
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and "recordingDateTime" < :untilTime
-          and type = 'trailcam-image'
-          and "Tracks".id is null
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          where 
-          limit 1
-          `,
-            options
-          );
-          if (!recording.length) {
-            recording = await models.sequelize.query(
-              `
-          select * from "Recordings" 
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and "recordingDateTime" < :untilTime
-          and type = 'trailcam-image'
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-          `,
-              options
-            );
-          }
-        } else {
-          // Now check if there's a daytime image in that timespan, preferably without any tracks,
-          // to avoid there being animals present
-          const options = {
-            type: QueryTypes.SELECT,
-            replacements: {
-              groupId: device.GroupId,
-              deviceId: device.id,
-              atTime: fromTime,
-            },
-          };
-          recording = await models.sequelize.query(
-            `
-          select * from "Recordings" 
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and type = 'trailcam-image'
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-      `,
-            options
-          );
-          if (!recording.length) {
-            recording = await models.sequelize.query(
-              `
-          select * from "Recordings"         
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and type = 'trailcam-image'        
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-      `,
-              options
-            );
-          }
-        }
-        if (recording.length) {
-          if (checkIfExists) {
-            return successResponse(
-              response,
-              "Reference image exists at supplied time",
-              payload
-            );
-          } else {
-            // Actually return the image.
-            const mimeType = "image/webp"; // Or something better
-            const time = fromTime
-              ?.toISOString()
-              .replace(/:/g, "_")
-              .replace(".", "_");
-            const filename = `device-${device.id}-reference-image@${time}.webp`;
-            // Get reference image for device at time if any.
-            return streamS3Object(
-              request,
-              response,
-              recording[0].fileKey,
-              filename,
-              mimeType,
-              response.locals.requestUser.id,
-              device.GroupId,
-              recording[0].fileSize
-            );
-          }
-        } else {
-          return next(
-            new UnprocessableError(
-              "No reference image available for device at time"
-            )
-          );
-        }
-      } else if (
-        [DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)
-      ) {
-        const kind = request.query.type || "pov";
-        let referenceImage;
-        let referenceImageFileSize;
-        if (kind === "pov") {
-          referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
-          referenceImageFileSize =
-            deviceHistoryEntry?.settings?.referenceImagePOVFileSize;
-        } else {
-          referenceImage = deviceHistoryEntry?.settings?.referenceImageInSitu;
-          referenceImageFileSize =
-            deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
-        }
-        const fromTime = deviceHistoryEntry?.fromDateTime;
-        if (referenceImage && fromTime && referenceImageFileSize) {
-          if (checkIfExists) {
-            // We want to return the earliest time after creation that this reference image is valid for too, so that the client only
-            // needs to query this API occasionally.
-            const laterDeviceHistoryEntry: DeviceHistory =
-              await models.DeviceHistory.findOne({
-                where: [
-                  {
-                    DeviceId: device.id,
-                    GroupId: device.GroupId,
-                    fromDateTime: { [Op.gt]: fromTime },
-                  },
-                  models.sequelize.where(
-                    Sequelize.fn("ST_X", Sequelize.col("location")),
-                    { [Op.ne]: deviceHistoryEntry.location.lng }
-                  ),
-                  models.sequelize.where(
-                    Sequelize.fn("ST_Y", Sequelize.col("location")),
-                    { [Op.ne]: deviceHistoryEntry.location.lat }
-                  ),
-                ] as any,
-                order: [["fromDateTime", "ASC"]],
-              });
-            const payload: { fromDateTime: Date; untilDateTime?: Date } = {
-              fromDateTime: fromTime,
-            };
-            if (laterDeviceHistoryEntry) {
-              payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
-            }
-            return successResponse(
-              response,
-              "Reference image exists at supplied time",
-              payload
-            );
-          } else {
-            // Get reference image for device at time if any, and return it
-            const mimeType = "image/webp"; // Or something better
-            const time = fromTime
-              ?.toISOString()
-              .replace(/:/g, "_")
-              .replace(".", "_");
-            const filename = `device-${device.id}-reference-image@${time}.webp`;
-            // Get reference image for device at time if any.
-            return streamS3Object(
-              request,
-              response,
-              referenceImage,
-              filename,
-              mimeType,
-              response.locals.requestUser.id,
-              device.GroupId,
-              referenceImageFileSize
-            );
-          }
-        }
-        return next(
-          new UnprocessableError(
-            "No reference image available for device at time"
-          )
-        );
-      } else {
-        return next(
-          new UnprocessableError(
-            `Reference images not supported for ${device.kind} devices.`
-          )
-        );
-      }
-    }
-  );
-
   /**
    * @api {get} /api/v1/devices/:deviceId/location Get the location for a device at a given time
    * @apiName GetDeviceLocationAtTime
@@ -1179,6 +889,330 @@ export default function (app: Application, baseUrl: string) {
       });
     }
   );
+  const ALLOWED_MIME_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+  ] as const;
+  const MIME_TO_EXTENSION: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+
+  // Helper to get file extension from MIME type
+  const getExtension = (mimeType: string) =>
+    MIME_TO_EXTENSION[mimeType] || "webp";
+  /**
+   * @api {get} /api/v1/devices/:deviceId/reference-image Get the reference image (if any) for a device
+   * @apiName GetDeviceReferenceImageAtTime
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiParam {String} exists If set to 'exists' returns whether the device has a reference image at the given time.
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
+   * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
+   *
+   * @apiDescription Returns a reference image for a device (if any has been set) at a given point in time, or now,
+   * if no date time is specified
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess binary data of reference image
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/reference-image/:exists?`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      param("exists").optional(),
+      query("view-mode").optional().equals("user"),
+      query("at-time").isISO8601().toDate().optional(),
+      query("type").optional().isIn(["pov", "in-situ"]),
+      booleanOf(query("only-active"), false),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const checkIfExists = request.params.exists === "exists";
+      const atTime =
+        (request.query["at-time"] &&
+          (request.query["at-time"] as unknown as Date)) ||
+        new Date();
+      const device = response.locals.device as Device;
+      const deviceHistoryEntry: DeviceHistory | null =
+        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+      if (!deviceHistoryEntry) {
+        return next(
+          new UnprocessableError(
+            "No reference image available for device at time"
+          )
+        );
+      }
+      if (device.kind === DeviceType.TrailCam) {
+        // NOTE: If the device is a trailcam, try and use the daytime image that closest matches the requested time, if any.
+
+        //  The trailcam has been in this location since this time.
+        const fromTime = deviceHistoryEntry.fromDateTime;
+        if (!fromTime) {
+          return next(
+            new UnprocessableError(
+              "No reference image available for device at time"
+            )
+          );
+        }
+        let recording: any;
+        // See if this device has a later location
+        const laterDeviceHistoryEntry: DeviceHistory | null =
+          await models.DeviceHistory.findOne({
+            where: [
+              {
+                DeviceId: device.id,
+                GroupId: device.GroupId,
+                fromDateTime: { [Op.gt]: fromTime },
+              },
+              models.sequelize.where(
+                Sequelize.fn("ST_X", Sequelize.col("location")),
+                { [Op.ne]: deviceHistoryEntry.location.lng }
+              ),
+              models.sequelize.where(
+                Sequelize.fn("ST_Y", Sequelize.col("location")),
+                { [Op.ne]: deviceHistoryEntry.location.lat }
+              ),
+            ] as any,
+            order: [["fromDateTime", "ASC"]],
+          });
+        const payload: { fromDateTime: Date; untilDateTime?: Date } = {
+          fromDateTime: fromTime,
+        };
+        if (laterDeviceHistoryEntry) {
+          payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
+          // Now check if there's a daytime image in that timespan, preferably without any tracks,
+          // to avoid there being animals present
+          const options = {
+            type: QueryTypes.SELECT,
+            replacements: {
+              groupId: device.GroupId,
+              deviceId: device.id,
+              atTime: fromTime,
+              untilTime: laterDeviceHistoryEntry.fromDateTime,
+            },
+          };
+          recording = await models.sequelize.query(
+            `          
+          select * from "Recordings"
+          left outer join "Tracks"
+          on "Tracks"."RecordingId" = "Tracks".id
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and "recordingDateTime" < :untilTime
+          and type = 'trailcam-image'
+          and "Tracks".id is null
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          where 
+          limit 1
+          `,
+            options
+          );
+          if (!recording.length) {
+            recording = await models.sequelize.query(
+              `
+          select * from "Recordings" 
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and "recordingDateTime" < :untilTime
+          and type = 'trailcam-image'
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          limit 1
+          `,
+              options
+            );
+          }
+        } else {
+          // Now check if there's a daytime image in that timespan, preferably without any tracks,
+          // to avoid there being animals present
+          const options = {
+            type: QueryTypes.SELECT,
+            replacements: {
+              groupId: device.GroupId,
+              deviceId: device.id,
+              atTime: fromTime,
+            },
+          };
+          recording = await models.sequelize.query(
+            `
+          select * from "Recordings" 
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and type = 'trailcam-image'
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          limit 1
+      `,
+            options
+          );
+          if (!recording.length) {
+            recording = await models.sequelize.query(
+              `
+          select * from "Recordings"         
+          where "DeviceId" = :deviceId
+          and "GroupId" = :groupId
+          and location is not null
+          and "recordingDateTime" >= :atTime
+          and type = 'trailcam-image'        
+          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
+          BETWEEN TIME '9:00' AND TIME '16:00'
+          order by "recordingDateTime" desc
+          limit 1
+      `,
+              options
+            );
+          }
+        }
+        if (recording.length) {
+          if (checkIfExists) {
+            return successResponse(
+              response,
+              "Reference image exists at supplied time",
+              payload
+            );
+          } else {
+            // Actually return the image.
+            const mimeType = "image/webp"; // Or something better
+            const time = fromTime
+              ?.toISOString()
+              .replace(/:/g, "_")
+              .replace(".", "_");
+            const filename = `device-${device.id}-reference-image@${time}.webp`;
+            // Get reference image for device at time if any.
+            return streamS3Object(
+              request,
+              response,
+              recording[0].fileKey,
+              filename,
+              mimeType,
+              response.locals.requestUser.id,
+              device.GroupId,
+              recording[0].fileSize
+            );
+          }
+        } else {
+          return next(
+            new UnprocessableError(
+              "No reference image available for device at time"
+            )
+          );
+        }
+      } else if (
+        [DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)
+      ) {
+        const kind = request.query.type || "pov";
+        let referenceImage;
+        let referenceImageFileSize;
+        if (kind === "pov") {
+          referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
+          referenceImageFileSize =
+            deviceHistoryEntry?.settings?.referenceImagePOVFileSize;
+        } else {
+          referenceImage = deviceHistoryEntry?.settings?.referenceImageInSitu;
+          referenceImageFileSize =
+            deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
+        }
+        const fromTime = deviceHistoryEntry?.fromDateTime;
+        if (referenceImage && fromTime && referenceImageFileSize) {
+          if (checkIfExists) {
+            // We want to return the earliest time after creation that this reference image is valid for too, so that the client only
+            // needs to query this API occasionally.
+            const laterDeviceHistoryEntry: DeviceHistory =
+              await models.DeviceHistory.findOne({
+                where: [
+                  {
+                    DeviceId: device.id,
+                    GroupId: device.GroupId,
+                    fromDateTime: { [Op.gt]: fromTime },
+                  },
+                  models.sequelize.where(
+                    Sequelize.fn("ST_X", Sequelize.col("location")),
+                    { [Op.ne]: deviceHistoryEntry.location.lng }
+                  ),
+                  models.sequelize.where(
+                    Sequelize.fn("ST_Y", Sequelize.col("location")),
+                    { [Op.ne]: deviceHistoryEntry.location.lat }
+                  ),
+                ] as any,
+                order: [["fromDateTime", "ASC"]],
+              });
+            const payload: { fromDateTime: Date; untilDateTime?: Date } = {
+              fromDateTime: fromTime,
+            };
+            if (laterDeviceHistoryEntry) {
+              payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
+            }
+            return successResponse(
+              response,
+              "Reference image exists at supplied time",
+              payload
+            );
+          } else {
+            // Get reference image for device at time if any, and return it
+            const time = fromTime
+              ?.toISOString()
+              .replace(/:/g, "_")
+              .replace(".", "_");
+            const kind = request.query.type || "pov";
+            const mimeType =
+              kind === "pov"
+                ? deviceHistoryEntry?.settings?.referenceImagePOVMimeType
+                : deviceHistoryEntry?.settings?.referenceImageInSituMimeType;
+
+            const validatedMimeType =
+              mimeType && ALLOWED_MIME_TYPES.includes(mimeType as any)
+                ? mimeType
+                : "image/webp";
+
+            const filename = `device-${
+              device.id
+            }-reference-image@${time}.${getExtension(validatedMimeType)}`;
+            // Get reference image for device at time if any.
+            return streamS3Object(
+              request,
+              response,
+              referenceImage,
+              filename,
+              validatedMimeType,
+              response.locals.requestUser.id,
+              device.GroupId,
+              referenceImageFileSize
+            );
+          }
+        }
+        return next(
+          new UnprocessableError(
+            "No reference image available for device at time"
+          )
+        );
+      } else {
+        return next(
+          new UnprocessableError(
+            `Reference images not supported for ${device.kind} devices.`
+          )
+        );
+      }
+    }
+  );
 
   /**
    * @api {post} /api/v1/devices/:deviceId/reference-image Set the reference image for a device
@@ -1204,12 +1238,25 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
-      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      query("at-time").default(new Date()),
       query("type").optional().isIn(["pov", "in-situ"]),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (request: Request, response: Response, next: NextFunction) => {
+      let contentType = request.get("Content-Type");
+      if (!ALLOWED_MIME_TYPES.includes(contentType as any)) {
+        contentType = "image/webp";
+      }
+      if (!contentType) {
+        return next(
+          new FatalError(
+            `Unsupported image type. Allowed types: ${ALLOWED_MIME_TYPES.join(
+              ", "
+            )}`
+          )
+        );
+      }
       // Set the reference image.
       // If the location hasn't changed, we need to carry this forward whenever we create
       // another device history entry?
@@ -1222,15 +1269,13 @@ export default function (app: Application, baseUrl: string) {
             DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
-            fromDateTime: { [Op.lt]: atTime },
           },
           order: [["fromDateTime", "DESC"]],
         });
       if (!previousDeviceHistoryEntry) {
         // We can't add an image, because we don't have a device location.
-        return successResponse(
-          response,
-          "No location for device to tag with reference"
+        return next(
+          new UnprocessableError("No location for device to tag with reference")
         );
       }
 
@@ -1241,16 +1286,21 @@ export default function (app: Application, baseUrl: string) {
         !!previousSettings.referenceImagePOV ||
         !!previousSettings.referenceImageInSitu;
 
+      // Upload with validated content type
       const { key, size } = await uploadFileStream(request as any, "ref");
+
+      // Store MIME type in settings
       const newSettings =
         referenceType === "pov"
           ? {
-              referenceImagePOVFileSize: size,
               referenceImagePOV: key,
+              referenceImagePOVFileSize: size,
+              referenceImagePOVMimeType: contentType,
             }
           : {
-              referenceImageInSituFileSize: size,
               referenceImageInSitu: key,
+              referenceImageInSituFileSize: size,
+              referenceImageInSituMimeType: contentType,
             };
 
       if (hadPreviousReferenceImage) {
@@ -1286,6 +1336,92 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+   * @api {delete} /api/v1/devices/:deviceId/reference-image Delete reference image
+   * @apiName DeleteDeviceReferenceImage
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId ID of the device
+   * @apiQuery {String} [at-time] ISO8601 date for which reference image should be deleted
+   * @apiQuery {String} [type] Image type ('pov' or 'in-situ')
+   *
+   * @apiDescription Deletes the reference image for a device at a specific time.
+   * If no time specified, deletes the current reference image.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.delete(
+    `${apiUrl}/:id/reference-image`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("at-time").optional().isISO8601().toDate(),
+      query("type").optional().isIn(["pov", "in-situ"]),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      try {
+        const atTime =
+          (request.query["at-time"] as unknown as Date) ?? new Date();
+        const referenceType = request.query.type ?? "pov";
+        const device = response.locals.device as Device;
+
+        // Find relevant device history entry
+        const deviceHistoryEntry = await models.DeviceHistory.findOne({
+          where: {
+            DeviceId: device.id,
+            GroupId: device.GroupId,
+            fromDateTime: { [Op.lte]: atTime },
+          },
+          order: [["fromDateTime", "DESC"]],
+        });
+
+        if (!deviceHistoryEntry) {
+          return successResponse(response, "No reference to delete");
+        }
+
+        const settings = deviceHistoryEntry.settings || {};
+        const imageKey =
+          referenceType === "pov"
+            ? settings.referenceImagePOV
+            : settings.referenceImageInSitu;
+
+        if (!imageKey) {
+          return successResponse(response, "No reference image to delete");
+        }
+
+        // Delete from S3
+        await deleteFile(imageKey);
+
+        // Update device history entry
+        const updatedSettings = { ...settings };
+        if (referenceType === "pov") {
+          delete updatedSettings.referenceImagePOV;
+          delete updatedSettings.referenceImagePOVFileSize;
+          delete updatedSettings.referenceImagePOVMimeType;
+        } else {
+          delete updatedSettings.referenceImageInSitu;
+          delete updatedSettings.referenceImageInSituFileSize;
+          delete updatedSettings.referenceImageInSituMimeType;
+        }
+
+        await models.DeviceHistory.create({
+          ...deviceHistoryEntry.get({ plain: true }),
+          settings: updatedSettings,
+          fromDateTime: new Date(),
+        });
+
+        return successResponse(
+          response,
+          "Reference image deleted successfully"
+        );
+      } catch (error) {
+        next(new FatalError("Failed to delete reference image"));
+      }
+    }
+  );
+
+  /**
    * @api {post} /api/v1/devices/:deviceId/mask-regions Set mask regions for a device
    * @apiName SetDeviceMaskRegions
    * @apiGroup Device
@@ -1299,7 +1435,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccess {String} message Success message
    * @apiUse V1ResponseError
    */
-
   app.post(
     `${apiUrl}/:id/mask-regions`,
     extractJwtAuthorizedUser,
@@ -1515,7 +1650,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
    *
-   * @apiDescription Updates settings in the DeviceHistory table for a specified device.
+   * @apiDescription Updates settings, location, and device type in the DeviceHistory and Device tables for a specified device.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1528,30 +1663,127 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
-      body("settings").custom(jsonSchemaOf(ApiDeviceHistorySettingsSchema)),
+      body("settings")
+        .optional()
+        .custom(jsonSchemaOf(ApiDeviceHistorySettingsSchema)),
+      body("location")
+        .optional()
+        .isObject()
+        .withMessage("Location must be an object with lat and lng"),
+      body("location.lat")
+        .optional()
+        .isFloat({ min: -90, max: 90 })
+        .withMessage("Latitude must be a valid number"),
+      body("location.lng")
+        .optional()
+        .isFloat({ min: -180, max: 180 })
+        .withMessage("Longitude must be a valid number"),
+      body("type")
+        .optional()
+        .isIn(Object.values(DeviceType))
+        .withMessage("Invalid device type"),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const device = response.locals.device as Device;
-        const newSettings: ApiDeviceHistorySettings = request.body.settings;
+        const newSettings: ApiDeviceHistorySettings | undefined =
+          request.body.settings;
+        const newLocation = request.body.location;
+        const newKind = request.body.type;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
-        const updatedEntry = await models.DeviceHistory.updateDeviceSettings(
-          device.id,
-          device.GroupId,
-          newSettings,
-          setBy
-        );
-        return successResponse(
-          response,
-          "Device settings updated successfully",
-          {
-            settings: updatedEntry,
-          }
-        );
+
+        // Update device location and create DeviceHistory entry if new location is provided
+        if (newLocation) {
+          device.location = newLocation;
+          await device.save();
+
+          const station = await tryToMatchLocationToStationInGroup(
+            models,
+            newLocation,
+            device.GroupId,
+            new Date()
+          );
+
+          await models.DeviceHistory.create({
+            DeviceId: device.id,
+            GroupId: device.GroupId,
+            location: newLocation,
+            fromDateTime: new Date(),
+            setBy: setBy,
+            deviceName: device.deviceName,
+            saltId: device.saltId,
+            uuid: device.uuid,
+            stationId: station?.id,
+          });
+        }
+
+        // Update device type (kind) if provided
+        if (newKind && device.kind !== newKind) {
+          device.kind = newKind;
+          await device.save();
+        }
+
+        // Update device settings if provided
+        let updatedEntry;
+        if (newSettings) {
+          updatedEntry = await models.DeviceHistory.updateDeviceSettings(
+            device.id,
+            device.GroupId,
+            newSettings,
+            setBy
+          );
+        } else {
+          // Fetch the latest settings entry if no new settings are provided
+          updatedEntry = await models.DeviceHistory.latest(
+            device.id,
+            device.GroupId
+          );
+        }
+
+        return successResponse(response, "Device updated successfully", {
+          settings: updatedEntry,
+          ...(newLocation && { location: newLocation }),
+          ...(newKind && { kind: newKind }),
+        });
       } catch (e) {
-        return next(new FatalError("Failed to update device settings."));
+        return next(new FatalError(`Failed to update device1: ${e.message}`));
+      }
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/devices/:deviceId/type Get device type
+   * @apiName GetDeviceType
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   *
+   * @apiDescription Get the type of device
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiDeviceTypeResponseSuccess}
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:id/type`,
+    extractJwtAuthorizedUserOrDevice,
+    validateFields([idOf(param("id"))]),
+    async (request: Request, response: Response, next: NextFunction) => {
+      try {
+        const device = await models.Device.findByPk(request.params.id);
+        if (!device) return next(new UnprocessableError("Device not found"));
+
+        // Add logic to detect device type from device properties
+        const detectedType = device.kind;
+
+        return successResponse(response, "Device type retrieved", {
+          type: detectedType,
+        });
+      } catch (e) {
+        return;
       }
     }
   );

@@ -683,6 +683,8 @@ export const maybeUpdateDeviceHistory = async (
         delete settings.referenceImageInSitu;
         delete settings.referenceImagePOVFileSize;
         delete settings.referenceImageInSituFileSize;
+        delete settings.referenceImagePOVMimeType;
+        delete settings.referenceImageInSituMimeType;
         delete settings.ratThresh;
         delete settings.maskRegions;
         delete settings.warp;

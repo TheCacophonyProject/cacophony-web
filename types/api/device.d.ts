@@ -80,8 +80,10 @@ export type WindowsSettings = {
 export interface ApiDeviceHistorySettings {
   referenceImagePOV?: string; // S3 Key for a device reference image
   referenceImagePOVFileSize?: number;
+  referenceImagePOVMimeType?: string;
   referenceImageInSitu?: string; // S3 Key for a device reference image
   referenceImageInSituFileSize?: number;
+  referenceImageInSituMimeType?: string;
   warp?: {
     dimensions?: { width: number; height: number };
     origin: [number, number];
