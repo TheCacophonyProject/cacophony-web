@@ -16,7 +16,7 @@ export default [
   // config parsers
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,jsx,tsx}"],
-    ignores: ["node_modules", "dist", "eslint.config.mjs", "*.d.ts", "public"]
+    ignores: ["node_modules", "dist", "eslint.config.mjs", "*.d.ts", "public"],
   },
   {
     files: ["*.vue", "**/*.vue"],
@@ -24,15 +24,15 @@ export default [
     languageOptions: {
       parserOptions: {
         parser: "@typescript-eslint/parser",
-        sourceType: "module"
-      }
+        sourceType: "module",
+      },
     },
   },
   // config envs
   {
     languageOptions: {
-      globals: { ...globals.browser, ...globals.node }
-    }
+      globals: { ...globals.browser, ...globals.node },
+    },
   },
   // syntax rules
   jsLint.configs.recommended,
@@ -54,6 +54,7 @@ export default [
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-non-null-assertion": ["off"],
       "vue/no-setup-props-destructure": ["off"],
+      "vue/no-deprecated-slot-attribute": ["off"],
       "@typescript-eslint/no-unused-expressions": ["off"],
       "@typescript-eslint/no-unused-vars": [
         "off",
@@ -62,13 +63,14 @@ export default [
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
           caughtErrorsIgnorePattern: "^_",
-        }],
+        },
+      ],
       "vue/no-unused-vars": [
         "warn",
         {
           ignorePattern: "^_",
         },
       ],
-    }
-  }
+    },
+  },
 ];
