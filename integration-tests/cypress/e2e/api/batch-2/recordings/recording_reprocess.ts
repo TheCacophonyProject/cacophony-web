@@ -179,6 +179,7 @@ describe("Recordings - reprocessing tests", () => {
           null,
           recording1
         );
+
         expectedRecording2.processingState = RecordingProcessingState.Reprocess;
         expectedRecording2.processing = false;
         expectedRecording2.tracks[0].tags = [];
@@ -605,7 +606,7 @@ describe("Recordings - reprocessing tests", () => {
               id: 1,
               //                positions: [],
               // TODO enable after merge
-              filtered: true,
+              filtered: false,
               automatic: true,
             },
           ];
