@@ -338,12 +338,17 @@ export default function (app: Application, baseUrl: string) {
               }
             }
           }
-
+          let tracks: Track[] | null = null;
+          if (complete) {
+            tracks = await recording.getTracks();
+            for (const track of tracks) {
+              await track.updateIsFiltered();
+            }
+          }
           if (complete && recording.type === RecordingType.Audio) {
             const group = await recording.getGroup();
             const shouldFilter = group.settings?.filterHuman ?? true;
             if (shouldFilter) {
-              const tracks: Track[] = await recording.getTracks();
               let hasHuman = false;
               for (const t of tracks) {
                 const tags = await t.getTrackTags({});
@@ -380,7 +385,6 @@ export default function (app: Application, baseUrl: string) {
             (recording.type === RecordingType.ThermalRaw ||
               recording.type === RecordingType.InfraredVideo)
           ) {
-            const tracks = await recording.getTracks();
             const results = await saveThumbnailInfo(
               recording,
               tracks,
@@ -508,7 +512,6 @@ export default function (app: Application, baseUrl: string) {
           data: response.locals.data,
           AlgorithmId: request.body.algorithmId,
         });
-        await track.updateIsFiltered();
         trackId = track.id;
       }
       // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
@@ -585,7 +588,9 @@ export default function (app: Application, baseUrl: string) {
           request.body.what,
           request.body.confidence,
           true,
-          response.locals.data
+          response.locals.data,
+          null,
+          false
         );
         return successResponse(response, "Track tag added.", {
           trackTagId: tag.id,
