@@ -10,6 +10,7 @@
     :selected-items="modelValue"
     :open-on-mount="openOnMount"
     @change="updateModel"
+    @deselected="(deselected) => emit('deselected')"
     ref="layeredDropdown"
   />
 </template>
@@ -46,6 +47,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string[]): void;
+  (e: "deselected"): void;
 }>();
 
 const updateModel = (val: Classification[]) => {

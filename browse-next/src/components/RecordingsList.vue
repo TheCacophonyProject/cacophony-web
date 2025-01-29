@@ -124,7 +124,7 @@
                   ></span
                 >
                 <span
-                  v-else
+                  v-else-if="item && item.data"
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"
                   :class="tag.path.split('.')"
                   :key="tag.what"

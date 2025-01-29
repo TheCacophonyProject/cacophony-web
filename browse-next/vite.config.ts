@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from "url";
 
-import { defineConfig, searchForWorkspaceRoot, Connect } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import vue from "@vitejs/plugin-vue";
 import wasm from "vite-plugin-wasm";
 import topLevelAwait from "vite-plugin-top-level-await";
@@ -28,6 +28,9 @@ const crossOriginIsolation = {
 // https://vitejs.dev/config/
 export default defineConfig({
   envDir: ".",
+  optimizeDeps: {
+    exclude: ["spectastiq"],
+  },
   plugins: [
     Components({
       resolvers: [BootstrapVueNextResolver()],
@@ -75,7 +78,6 @@ export default defineConfig({
         // search up for workspace root
         searchForWorkspaceRoot(process.cwd()),
         // your custom rules
-        "/Users/jon/Dev/Personal/spectastiq",
       ],
     },
   },

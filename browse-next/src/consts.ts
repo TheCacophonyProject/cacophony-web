@@ -19,6 +19,18 @@ export const DEFAULT_TAGS = [
   "unidentified",
 ];
 
+export const DEFAULT_AUDIO_TAGS = [
+  "morepork",
+  "kiwi",
+  "kereru",
+  "tui",
+  "kea",
+  "bellbird",
+  "bird",
+  "human",
+  "unidentified",
+];
+
 export const RecordingLabels: {
   text: string;
   value?: string;

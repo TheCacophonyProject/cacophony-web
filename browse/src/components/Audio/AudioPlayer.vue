@@ -68,7 +68,7 @@
               @input="changeVolume"
             />
           </div>
-          <div class="player-bar-time ml-2 player-time d-flex flex-row">
+          <div class="player-bar-time ml-2 border-left d-flex flex-row">
             {{ time.curr }} / {{ time.total }}
           </div>
         </div>
@@ -1740,7 +1740,7 @@ spectrogram > svg {
   }
 }
 
-.player-time {
+.border-left {
   white-space: nowrap;
 }
 

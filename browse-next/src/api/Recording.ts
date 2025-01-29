@@ -76,6 +76,24 @@ export const createDummyTrack = (
     },
   }) as Promise<FetchResult<{ trackId: TrackId }>>;
 
+export const deleteTrack = (
+  recording: ApiRecordingResponse,
+  trackId: TrackId
+) =>
+  CacophonyApi.delete(
+    `/api/v1/recordings/${recording.id}/tracks/${trackId}?soft-delete=false`
+  ) as Promise<FetchResult<void>>;
+
+export const createUserDefinedTrack = (
+  recording: ApiRecordingResponse,
+  track: ApiTrackDataRequest
+) =>
+  CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
+    data: {
+      ...track,
+    },
+  }) as Promise<FetchResult<{ trackId: TrackId }>>;
+
 export const addRecordingLabel = (id: RecordingId, label: string) =>
   CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
     tag: {

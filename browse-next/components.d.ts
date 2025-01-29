@@ -80,6 +80,7 @@ declare module 'vue' {
     TracksScrubber: typeof import('./src/components/TracksScrubber.vue')['default']
     TrackTaggerRow: typeof import('./src/components/TrackTaggerRow.vue')['default']
     TwoStepActionButton: typeof import('./src/components/TwoStepActionButton.vue')['default']
+    TwoStepActionButtonPopover: typeof import('./src/components/TwoStepActionButtonPopover.vue')['default']
     VisitsBreakdownList: typeof import('./src/components/VisitsBreakdownList.vue')['default']
     VisitsDailyBreakdown: typeof import('./src/components/VisitsDailyBreakdown.vue')['default']
     VisitsTimeline: typeof import('./src/components/VisitsTimeline.vue')['default']

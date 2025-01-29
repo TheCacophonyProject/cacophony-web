@@ -1,29 +1,45 @@
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { type Spectastiq } from "@/components/spectastiq-viewer/spectastiq.js";
+import { type Spectastiq } from "spectastiq";
 import {
   computed,
+  type ComputedRef,
+  inject,
   onBeforeMount,
   onBeforeUnmount,
   onMounted,
+  type Ref,
   ref,
   watch,
 } from "vue";
-import { RecordingType } from "@typedefs/api/consts.ts";
-import { getRawRecording } from "@api/Recording.ts";
-import type {
-  IntermediateTrack,
-  Rectangle,
-} from "@/components/cptv-player/cptv-player-types";
+import {
+  createUserDefinedTrack,
+  getRawRecording,
+  replaceTrackTag,
+} from "@api/Recording.ts";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { TagColours } from "@/consts.ts";
-import type { TrackId } from "@typedefs/api/common";
-import { ColourMaps } from "@/components/cptv-player/cptv-decoder/frameRenderUtils.ts";
+import type { RecordingId, TrackId } from "@typedefs/api/common";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
+import type {
+  ApiAutomaticTrackTagResponse,
+  ApiTrackTagResponse,
+  TrackTagData,
+} from "@typedefs/api/trackTag";
+import {
+  currentSelectedProject as currentActiveProject,
+  currentUser as currentUserInfo,
+} from "@models/provides.ts";
+import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser.ts";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
+import { getClassificationForLabel } from "@api/Classifications.ts";
+import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 
 const props = defineProps<{
   recording: ApiRecordingResponse;
+  recordingId: RecordingId;
   currentTrack?: ApiTrackResponse;
 }>();
 const audioBlobUrl = ref<string | null>();
@@ -37,22 +53,33 @@ const emit = defineEmits<{
     payload: { trackId: TrackId; automatically: boolean }
   ): void;
   (e: "track-deselected"): void;
+  (
+    e: "track-tag-changed",
+    payload: {
+      track: ApiTrackResponse;
+      tag: string;
+      newId?: TrackId;
+      action: "add" | "remove";
+    }
+  ): void;
+  (e: "track-removed", payload: { trackId: TrackId }): void;
 }>();
 
-onBeforeMount(async () => {
-  if (props.recording.type === RecordingType.Audio) {
-    // Load the audio blob url.
-    // TODO: This can be done before the recording info is loaded,
-    //  except we don't know for sure it's an audio recording at that stage,
-    const response = await getRawRecording(props.recording.id);
-    if (response.success) {
-      if (audioBlobUrl.value) {
-        // Clean up the old one.
-        URL.revokeObjectURL(audioBlobUrl.value);
-      }
-      audioBlobUrl.value = URL.createObjectURL(response.result);
+const loadRecording = async () => {
+  // Load the audio blob url.
+  const response = await getRawRecording(props.recordingId);
+  if (response.success) {
+    if (audioBlobUrl.value) {
+      // Clean up the old one.
+      URL.revokeObjectURL(audioBlobUrl.value);
     }
+    audioBlobUrl.value = URL.createObjectURL(response.result);
   }
+};
+onBeforeMount(() => {
+  currentPalette.value =
+    localStorage.getItem("spectastiq-palette") || "Viridis";
+  loadRecording();
 });
 
 const getTrackBounds = (
@@ -142,6 +169,7 @@ const pointIsInExactBox = (x: number, y: number, box: Rectangle): boolean => {
   return x >= x0 && x < x1 && y >= y0 && y < y1;
 };
 
+watch(() => props.recordingId, loadRecording);
 watch(
   () => props.currentTrack,
   (track) => {
@@ -173,17 +201,34 @@ watch(
   }
 );
 
-const tracks = computed(() => {
-  return props.recording.tracks || [];
-});
-
 const overlayCanvasContext = ref<CanvasRenderingContext2D>();
 
 const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
   const spectastiq = spectastiqEl.value as Spectastiq;
   spectastiq.addEventListener("region-create", (e) => {
-    inRegionCreationMode.value = false;
-    // TODO: Create track and prompt for user classification.
+    const { start, end, minFreqHz, maxFreqHz } = e.detail;
+    // If the box is too small, don't create a region
+    if (end - start < 0.01 || maxFreqHz - minFreqHz < 1) {
+      inRegionCreationMode.value = false;
+      return;
+    }
+
+    setTimeout(() => {
+      showClassificationSelector.value = true;
+    }, 200);
+    pendingTrack.value = {
+      id: -1,
+      start,
+      end,
+      minFreq: minFreqHz,
+      maxFreq: maxFreqHz,
+      tags: [{ what: "unnamed", confidence: 0.5, id: -1 } as any],
+    };
+    emit("track-tag-changed", {
+      track: pendingTrack.value,
+      tag: "unnamed",
+      action: "add",
+    });
   });
   spectastiq.addEventListener(
     "select",
@@ -195,7 +240,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
       const duration = audioDuration.value;
       let bestD = Number.MAX_SAFE_INTEGER;
       let hitTrack;
-      for (const track of tracks.value) {
+      for (const track of tracksIntermediate.value) {
         const trackStart = track.start / duration;
         const trackEnd = track.end / duration;
         const hitBox = getTrackBounds(
@@ -227,6 +272,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
       }
     }
   );
+
   spectastiq.addEventListener("move", (e) => {
     const x = e.detail.offsetX;
     const y = e.detail.offsetY;
@@ -235,7 +281,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
     const end = selectionRangeEndZeroOne.value;
     const cropScaleY = audioSampleRate.value;
     let hit = false;
-    for (const track of tracks.value) {
+    for (const track of tracksIntermediate.value) {
       const trackStart = track.start / audioDuration.value;
       const trackEnd = track.end / audioDuration.value;
       const hitBox = getTrackBounds(
@@ -280,10 +326,10 @@ const padDims = (
   maxHeight: number
 ): Rectangle => {
   return [
-    Math.max(0, dims[0] - paddingX),
-    Math.max(0, dims[1] - paddingY),
-    Math.min(maxWidth, dims[2] + paddingX),
-    Math.min(maxHeight, dims[3] + paddingY),
+    dims[0] - paddingX,
+    dims[1] - paddingY,
+    dims[2] + paddingX,
+    dims[3] + paddingY,
   ];
 };
 
@@ -339,33 +385,31 @@ const drawRectWithText = (
     (left > 0 || right > 0) &&
     (left < context.canvas.width || right < context.canvas.width)
   ) {
-    // If exporting, show all the best guess animal tags, if not unknown
     if (what !== null) {
       const text = what;
       const textHeight = 9 * deviceRatio;
-      const marginX = 2 * deviceRatio;
-      const marginTop = 2 * deviceRatio;
-      let textX = right; // - (textWidth + marginX);
-      let textY = bottom + textHeight + marginTop;
+      const marginX = 3 * deviceRatio;
+      const marginTop = 3 * deviceRatio;
+      let textX = x;
+      let textY = bottom + marginTop;
       // Make sure the text doesn't get clipped off if the box is near the frame edges
-      if (textY + textHeight > context.canvas.height) {
-        textY = top - textHeight;
+      if (bottom + textHeight + marginTop * 2 < context.canvas.height) {
+        textY = bottom + marginTop;
+      } else if (y - (textHeight + marginTop) > 0) {
+        textY = top - (textHeight + marginTop * 2);
+      } else if (textY + textHeight > context.canvas.height) {
+        textY = top + marginTop * 4;
+        textX += 4 * deviceRatio;
       }
+      context.textBaseline = "top";
       context.font = `${13 * deviceRatio}px sans-serif`;
       context.lineWidth = 4;
       const textWidth = context.measureText(text).width;
-      context.textAlign = "right";
-      if (right - textWidth < 0) {
-        if (right - textWidth < 0 && x > 0) {
-          textX = x;
-        } else {
-          textX = marginX;
-        }
-        context.textAlign = "left";
+      context.textAlign = "left";
+      if (x < 0) {
+        textX = marginX;
       }
-      if (right >= context.canvas.width) {
-        textX = context.canvas.width - marginX;
-      }
+
       context.strokeStyle = isDarkTheme.value
         ? "rgba(0, 0, 0, 0.5)"
         : "rgba(255, 255, 255, 0.5)";
@@ -386,7 +430,7 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
     const cWidth = ctx.canvas.width;
     ctx.save();
     ctx.clearRect(0, 0, cWidth, cHeight);
-    for (const track of tracks.value) {
+    for (const track of tracksIntermediate.value) {
       const minFreq = 1 - (track.minFreq || 0) / audioSampleRate.value;
       const maxFreq = 1 - (track.maxFreq || 0) / audioSampleRate.value;
       const trackStart = track.start / audioDuration.value;
@@ -401,7 +445,7 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
         ctx,
         track.id,
         bounds,
-        track.tags[0].what,
+        track.what,
         props.recording.tracks,
         currentTrack,
         window.devicePixelRatio
@@ -413,6 +457,9 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
 
 onMounted(() => {
   let initedContextListeners = false;
+  if (props.recording) {
+    computeIntermediateTracks(props.recording.tracks);
+  }
   if (spectastiqEl.value) {
     const spectastiq = spectastiqEl.value as Spectastiq;
     spectastiq.addEventListener(
@@ -444,6 +491,9 @@ onMounted(() => {
         audioDuration.value = duration;
       }
     );
+    spectastiq.addEventListener("playback-ended", () => {
+      audioIsPlaying.value = false;
+    });
     spectastiq.addEventListener(
       "playhead-update",
       ({ detail: { timeInSeconds } }) => {
@@ -478,6 +528,78 @@ const changeVolume = (e: InputEvent) => {
 const currentTime = ref<number>(0);
 const currentPalette = ref<string>("Viridis");
 const inRegionCreationMode = ref<boolean>(false);
+const showClassificationSelector = ref<boolean>(false);
+const selectionPopover = ref<HTMLDivElement>();
+
+const pendingTrackClass = ref<string>();
+const pendingTrack = ref<ApiTrackResponse | null>(null);
+const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
+
+const cancelledCustomRegionCreation = () => {
+  inRegionCreationMode.value = false;
+  selectionPopover.value?.classList.add("removed");
+  emit("track-removed", { trackId: pendingTrack.value?.id });
+
+  setTimeout(() => {
+    showClassificationSelector.value = false;
+    pendingTrackClass.value = "";
+    pendingTrack.value = null;
+    if (spectastiqEl.value) {
+      spectastiqEl.value.resetYZoom();
+    }
+  }, 300);
+};
+
+watch(pendingTrackClass, async (classification: string[]) => {
+  if (
+    showClassificationSelector.value &&
+    classification.length &&
+    pendingTrack.value
+  ) {
+    selectionPopover.value?.classList.add("removed");
+    setTimeout(() => {
+      showClassificationSelector.value = false;
+    }, 300);
+    // Patch the pending track
+    pendingTrack.value.tags[0].what = classification[0];
+    emit("track-tag-changed", {
+      track: pendingTrack.value,
+      tag: classification[0],
+      action: "add",
+      userId: currentUser.value?.id,
+    });
+
+    const payload = {
+      start_s: pendingTrack.value.start,
+      end_s: pendingTrack.value.end,
+      minFreq: pendingTrack.value.minFreq,
+      maxFreq: pendingTrack.value.maxFreq,
+    };
+
+    const response = await createUserDefinedTrack(props.recording, payload);
+    if (response.success) {
+      emit("track-selected", {
+        trackId: response.result.trackId,
+        automatically: true,
+      });
+
+      emit("track-tag-changed", {
+        track: pendingTrack.value,
+        tag: classification[0],
+        action: "add",
+        newId: response.result.trackId,
+        userId: currentUser.value?.id,
+      });
+
+      await replaceTrackTag(
+        pendingTrack.value.tags[0],
+        props.recording.id,
+        response.result.trackId
+      );
+    }
+    // Then select newly created tag
+  }
+});
 
 const formatTime = (time: number): string => {
   let seconds = Math.floor(time);
@@ -492,6 +614,7 @@ const formatTime = (time: number): string => {
 const incrementPalette = () => {
   if (spectastiqEl.value) {
     currentPalette.value = spectastiqEl.value.nextPalette();
+    localStorage.setItem("spectastiq-palette", currentPalette.value);
   }
 };
 
@@ -549,10 +672,181 @@ const currentAbsoluteTime = computed<string | null>(() => {
   }
   return null;
 });
+
+const loadDateTime = ref<Date>(new Date());
+const getAuthoritativeTagForTrack = (
+  trackTags: ApiTrackTagResponse[]
+): [string, boolean, boolean] | null => {
+  const userTags = trackTags.filter((tag) => !tag.automatic);
+  if (userTags.length) {
+    return [
+      userTags[0].what,
+      false,
+      !!userTags[0].createdAt &&
+        new Date(userTags[0].createdAt) > loadDateTime.value,
+    ] as [string, boolean, boolean];
+  } else {
+    // NOTE: For audio, there can be multiple authoritative tags for a single track, until a user confirms one.
+    const masterTag = trackTags.find(
+      (tag) =>
+        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
+        (typeof tag.data === "object" &&
+          tag.data.name &&
+          tag.data.name === "Master")
+    );
+    if (masterTag) {
+      return [masterTag.what, true, false];
+    }
+  }
+  return null;
+};
+
+const currentProject = inject(currentActiveProject) as ComputedRef<
+  SelectedProject | false
+>;
+const userProjectSettings = computed<ApiProjectUserSettings>(() => {
+  return (
+    (currentProject.value as SelectedProject).userSettings || {
+      displayMode: "recordings",
+      tags: [],
+      notificationPreferences: {},
+      showFalseTriggers: false,
+    }
+  );
+});
+
+interface IntermediateTrack {
+  what: string | null;
+  start: number;
+  end: number;
+  maxFreq: number;
+  minFreq: number;
+  id: TrackId;
+}
+
+const masterTag = (tags: ApiTrackTagResponse[]) => {
+  let tag;
+  const userTags = tags.filter((tag) => !tag.automatic);
+  if (userTags.length) {
+    tag = userTags[0];
+  } else {
+    // If there are multiple AI master tags, as there seem to be for audio, find the most specific one.
+    const masterTags = tags.filter(
+      (tag) =>
+        tag.automatic &&
+        tag.data &&
+        (tag.data as TrackTagData).name === "Master"
+    );
+
+    if (masterTags.length === 1) {
+      tag = masterTags[0];
+    } else {
+      // Find the best/most specific tag.
+      const isNoise = (tag: ApiTrackTagResponse) =>
+        tag.what === "noise" || tag.what === "false-positive";
+      const nonNoiseMasters = masterTags.filter((tag) => !isNoise(tag));
+      if (nonNoiseMasters.length === 1) {
+        tag = nonNoiseMasters[0];
+      } else {
+        let mostSpecific = null;
+        for (const tag of nonNoiseMasters) {
+          if (mostSpecific === null) {
+            mostSpecific = tag;
+          } else if (
+            mostSpecific &&
+            tag.path.length > mostSpecific.path.length &&
+            tag.path.startsWith(mostSpecific.path)
+          ) {
+            mostSpecific = tag;
+          } else if (
+            mostSpecific &&
+            !mostSpecific.path.startsWith("all.bird") &&
+            tag.path.startsWith("all.bird")
+          ) {
+            mostSpecific = tag;
+          }
+        }
+        tag = mostSpecific;
+      }
+    }
+  }
+  if (tag) {
+    const mappedWhat = getClassificationForLabel(tag.what);
+    return {
+      ...tag,
+      what: mappedWhat ? mappedWhat.label : tag.what,
+    } as ApiAutomaticTrackTagResponse;
+  }
+  return null;
+};
+
+const tracksIntermediate = ref<IntermediateTrack[]>([]);
+const computeIntermediateTracks = (tracks: ApiTrackResponse[]) => {
+  const intermediateTracks: (IntermediateTrack & {
+    justTaggedFalseTrigger?: boolean;
+  })[] = [];
+  if (props.recording) {
+    for (const track of tracks) {
+      const { start, end, minFreq, maxFreq, tags, id } = track;
+      const authTag = masterTag(tags);
+      if (authTag !== null) {
+        const tag = getAuthoritativeTagForTrack([authTag]);
+        if (tag !== null) {
+          let justTaggedFalseTrigger = false;
+          const what = tag[0];
+          if ((what === "false-positive" || what === "noise") && tag[2]) {
+            justTaggedFalseTrigger = true;
+          }
+          intermediateTracks.push({
+            what,
+            minFreq: minFreq || 0,
+            maxFreq: maxFreq || 0,
+            start,
+            end,
+            justTaggedFalseTrigger,
+            id,
+          });
+        }
+      }
+    }
+  }
+  tracksIntermediate.value = intermediateTracks
+    .filter(
+      (track) =>
+        userProjectSettings.value.showFalseTriggers ||
+        (!userProjectSettings.value.showFalseTriggers &&
+          ((track.what !== "noise" && track.what !== "false-positive") ||
+            track.justTaggedFalseTrigger))
+    )
+    .map((track) => {
+      const t = { ...track };
+      delete t["justTaggedFalseTrigger"];
+      return t as IntermediateTrack;
+    });
+};
+
+watch(
+  () => props.recording.tracks,
+  (next) => {
+    computeIntermediateTracks(next);
+  },
+  { deep: true }
+);
+
+watch(tracksIntermediate, () => {
+  if (overlayCanvasContext.value) {
+    renderOverlay(overlayCanvasContext.value);
+  }
+});
 </script>
 <template>
   <div class="spectrogram" ref="spectrogramContainer">
-    <spectastiq-viewer id="spectastiq" :src="audioBlobUrl" ref="spectastiqEl">
+    <spectastiq-viewer
+      id="spectastiq"
+      :src="audioBlobUrl"
+      ref="spectastiqEl"
+      :color-scheme="currentPalette"
+    >
       <div
         slot="player-controls"
         class="player-controls d-flex align-content-center flex-row justify-content-between w-100"
@@ -583,25 +877,29 @@ const currentAbsoluteTime = computed<string | null>(() => {
               @input="changeVolume"
             />
           </div>
-          <div class="ms-2 ps-3 player-time align-items-end">
+          <div class="vertical-divider ms-2"></div>
+          <div class="ps-3 align-items-end">
             {{ formatTime(currentTime) }} / {{ formatTime(audioDuration) }}
           </div>
         </div>
 
         <div class="d-flex align-items-center">
-          <div class="me-1 pe-3 abs-time align-items-end">
-            {{ currentAbsoluteTime }}
+          <!--          <div class="me-1 pe-3 abs-time align-items-end">-->
+          <!--            {{ currentAbsoluteTime }}-->
+          <!--          </div>-->
+          <div class="border-right pe-3 align-items-end">
+            <button
+              @click.prevent="toggleRegionCreationMode"
+              ref="regionCreationMode"
+              data-tooltip="Create new region"
+            >
+              <font-awesome-icon
+                :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
+              />
+              <span class="ms-2">new track</span>
+            </button>
           </div>
-          <!--          <span>{{ currentPalette }}</span>-->
-          <button
-            @click.prevent="toggleRegionCreationMode"
-            ref="regionCreationMode"
-            data-tooltip="Create new region"
-          >
-            <font-awesome-icon
-              :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
-            />
-          </button>
+          <div class="vertical-divider"></div>
           <button
             @click.prevent="incrementPalette"
             ref="cyclePalette"
@@ -612,21 +910,67 @@ const currentAbsoluteTime = computed<string | null>(() => {
         </div>
       </div>
     </spectastiq-viewer>
-    <!--  TODO: Hook to toggle playback, to set play offset, to change palette, to enter track creation mode, to toggle Khz labels, to toggle tag overlays -->
+    <div
+      class="class-selection-popover"
+      v-if="showClassificationSelector"
+      ref="selectionPopover"
+    >
+      <hierarchical-tag-select
+        @deselected="cancelledCustomRegionCreation"
+        v-model="pendingTrackClass"
+      ></hierarchical-tag-select>
+    </div>
   </div>
 </template>
 <style lang="less">
+.class-selection-popover {
+  position: absolute;
+  width: 300px;
+  background: #333;
+  padding: 12px;
+  border-radius: 5px;
+  top: 20px;
+  left: calc(50% - 150px);
+  z-index: 1000;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  animation: add-animate-in 0.2s ease-in-out;
+  &.removed {
+    animation: remove-animate-out 0.2s ease-in-out forwards;
+  }
+}
+
+@keyframes add-animate-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes remove-animate-out {
+  from {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-200px);
+    opacity: 0;
+  }
+}
+
 .spectrogram {
   // 360px for spectrogram only
   min-height: 404px;
+  position: relative;
   background: #2b333f;
   overflow: hidden;
 }
-.player-time {
+.vertical-divider {
   border-left: 2px solid rgba(255, 255, 255, 0.5);
-}
-.abs-time {
-  border-right: 2px solid rgba(255, 255, 255, 0.5);
+  height: 24px;
 }
 .player-controls {
   min-height: 44px;

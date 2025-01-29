@@ -99,6 +99,7 @@ import {
   faCircle,
   faCircleCheck,
   faSquarePlus,
+  faTrashCan as faTrashCanRegular,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -132,6 +133,7 @@ library.add(
   faStarSolid,
   faDownload,
   faTrashCan,
+  faTrashCanRegular,
   faLink,
   faCheck,
   faSpinner,

@@ -14,6 +14,7 @@ import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 const props = withDefaults(
   defineProps<{
     recording?: ApiRecordingResponse | null;
+    classes?: string[];
   }>(),
   { recording: null }
 );
@@ -142,6 +143,7 @@ const notImplemented = () => {
 <template>
   <div
     class="recording-icons d-flex justify-content-between px-sm-2 align-items-center"
+    :class="props.classes || []"
   >
     <button
       type="button"
