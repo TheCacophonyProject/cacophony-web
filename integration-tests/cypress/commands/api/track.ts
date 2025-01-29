@@ -102,7 +102,9 @@ Cypress.Commands.add(
       trackId = getCreds(trackNameOrId).id.toString();
     }
 
-    const url = v1ApiPath(`recordings/${recordingId}/tracks/${trackId}`);
+    const url = v1ApiPath(`recordings/${recordingId}/tracks/${trackId}`, {
+      "soft-delete": "false",
+    });
 
     makeAuthorizedRequestWithStatus(
       {
