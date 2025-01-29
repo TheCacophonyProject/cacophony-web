@@ -29,6 +29,16 @@ cp _release/* ${build_dir}/_release  # makes things easier while developing rele
 
 cd ${build_dir}
 
+echo "Installing shared type definitions"
+cd types
+echo "Installing dependencies"
+npm ci
+echo "Compiling TypeScript..."
+./node_modules/.bin/tsc
+npm run generate-schemas
+
+cd ..
+
 echo "Building Cacophony Browse-Next"
 cd browse-next
 npm version --no-git-tag-version ${version}
@@ -36,14 +46,6 @@ echo "Installing dependencies"
 npm ci
 npm run build
 rm -rf node_modules
-
-echo "Installing shared type definitions"
-cd ../types
-echo "Installing dependencies"
-npm ci
-echo "Compiling TypeScript..."
-./node_modules/.bin/tsc
-npm run generate-schemas
 
 cd ..
 
