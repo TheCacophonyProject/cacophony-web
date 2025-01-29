@@ -896,7 +896,7 @@ watch(tracksIntermediate, () => {
               <font-awesome-icon
                 :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
               />
-              <span class="ms-2">new track</span>
+              <span class="ms-2">add track</span>
             </button>
           </div>
           <div class="vertical-divider"></div>
