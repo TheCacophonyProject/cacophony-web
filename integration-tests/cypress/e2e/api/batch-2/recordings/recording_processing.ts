@@ -705,7 +705,7 @@ describe("Recordings - processing tests", () => {
               id: 1,
               //              positions: [],
               // TODO enable after merge
-              filtered: true,
+              filtered: false,
               automatic: true,
             },
           ];
@@ -860,7 +860,7 @@ describe("Recordings - processing tests", () => {
               id: 1,
               //              positions: [],
               // TODO enable after merge
-              filtered: true,
+              filtered: false,
               automatic: true,
             },
           ];
@@ -1407,7 +1407,7 @@ describe("Recordings - processing tests", () => {
       });
     });
 
-    it.only("Stale recording reprocessed automatically if processing time >30 minutes", () => {
+    it("Stale recording reprocessed automatically if processing time >30 minutes", () => {
       cy.log(
         "Add recording with processing=true, processinmgState='analyse' and processingStartTime=30.minutes.ago"
       );
@@ -1604,6 +1604,7 @@ describe("Recordings - processing tests", () => {
             cy.log(
               "Update the recording setting currentStartTime to 30 minutes ago"
             );
+            fieldUpdates.processingFailedCount = 1;
             cy.processingApiPut(
               superuser,
               "rpRecording24",
@@ -1618,7 +1619,7 @@ describe("Recordings - processing tests", () => {
               superuser,
               RecordingType.ThermalRaw,
               RecordingProcessingState.AnalyseThermal,
-              "",
+              "rpRecording24",
               undefined,
               EXCLUDE_KEYS
             );
