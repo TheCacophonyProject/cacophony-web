@@ -72,7 +72,7 @@ interface RawTrack {
   frame_end: integer;
   positions: TrackFramePosition[];
   predictions: TrackClassification[];
-
+  tracking_score?: float;
   // Fields used in api when calculating good tracks/tags
   confidence?: FloatZeroToOne;
   message?: string;
@@ -92,7 +92,7 @@ export interface MinimalTrackRequestData {
   minFreq?: integer;
   maxFreq?: integer;
   scale?: string;
-
+  tracking_score?: float;
   num_frames?: integer;
   frame_start?: integer;
   frame_end?: integer;

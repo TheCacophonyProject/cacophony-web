@@ -191,6 +191,9 @@ export const mapTrack = (
   if (!minimal && track.data.positions && track.data.positions.length) {
     t.positions = track.data.positions.map(mapPosition);
   }
+  if (!minimal) {
+    t.tracking_score = track.data.tracking_score;
+  }
   return t;
 };
 
