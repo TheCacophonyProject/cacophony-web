@@ -1774,7 +1774,9 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const device = await models.Device.findByPk(request.params.id);
-        if (!device) return next(new UnprocessableError("Device not found"));
+        if (!device) {
+          return next(new UnprocessableError("Device not found"));
+        }
 
         // Add logic to detect device type from device properties
         const detectedType = device.kind;
