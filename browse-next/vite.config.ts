@@ -2,8 +2,6 @@ import { fileURLToPath, URL } from "url";
 
 import { defineConfig, searchForWorkspaceRoot } from "vite";
 import vue from "@vitejs/plugin-vue";
-import wasm from "vite-plugin-wasm";
-import topLevelAwait from "vite-plugin-top-level-await";
 import eslintPlugin from "vite-plugin-eslint";
 import Components from "unplugin-vue-components/vite";
 import { BootstrapVueNextResolver } from "unplugin-vue-components/resolvers";
@@ -35,8 +33,6 @@ export default defineConfig({
     Components({
       resolvers: [BootstrapVueNextResolver()],
     }),
-    wasm(),
-    topLevelAwait(),
     eslintPlugin({
       failOnError: false,
       exclude: ["**/consts.ts", "**/node_modules/**", "**/*.js"],
