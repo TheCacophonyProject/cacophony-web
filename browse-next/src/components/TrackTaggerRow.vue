@@ -177,7 +177,7 @@ const resizeDetails = () => {
 watch(showTaggerDetails, resizeDetails);
 watch(showClassificationSearch, resizeDetails);
 
-const selectAndMaybeToggleExpanded = () => {
+const selectAndMaybeToggleExpanded = (e: MouseEvent) => {
   expandedInternal.value = !expandedInternal.value;
   emit("expanded-changed", props.track.id, expandedInternal.value);
 };
@@ -322,7 +322,7 @@ const selectedUserTagLabel = computed<string[]>({
   },
 });
 
-const permanentlyDeleteTrack = async (trackId: string) => {
+const permanentlyDeleteTrack = async (trackId: TrackId) => {
   emit("removed-track", { trackId });
 };
 
@@ -654,8 +654,14 @@ onMounted(async () => {
       </button>
     </div>
     <div v-else>
+      <two-step-action-button-popover
+        v-if="userIsGroupAdmin && isAudioRecording"
+        :action="() => permanentlyDeleteTrack(track.id)"
+        :icon="['far', 'trash-can']"
+        :confirmation-label="'Delete track'"
+        color="#666"
+      ></two-step-action-button-popover>
       <button
-        v-if="!isAudioRecording"
         type="button"
         aria-label="Replay track"
         class="btn"
@@ -664,13 +670,6 @@ onMounted(async () => {
         <span class="visually-hidden">Replay track</span>
         <font-awesome-icon icon="rotate-right" color="#666" />
       </button>
-      <two-step-action-button-popover
-        v-if="userIsGroupAdmin && isAudioRecording"
-        :action="() => permanentlyDeleteTrack(track.id)"
-        :icon="['far', 'trash-can']"
-        :confirmation-label="'Delete track'"
-        color="#666"
-      ></two-step-action-button-popover>
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>
         <font-awesome-icon
@@ -944,5 +943,8 @@ onMounted(async () => {
     vertical-align: middle;
     color: #408f58;
   }
+}
+.track .btn:not(.confirm-button) {
+  width: 42px;
 }
 </style>

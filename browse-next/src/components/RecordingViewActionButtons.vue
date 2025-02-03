@@ -10,10 +10,11 @@ import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import { currentSelectedProject } from "@models/provides.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import type { LoadedResource } from "@api/types.ts";
 
 const props = withDefaults(
   defineProps<{
-    recording?: ApiRecordingResponse | null;
+    recording: LoadedResource<ApiRecordingResponse>;
     classes?: string[];
   }>(),
   { recording: null }

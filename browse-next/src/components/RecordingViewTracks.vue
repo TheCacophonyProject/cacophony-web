@@ -193,7 +193,11 @@ watch(
           expandedItemChanged(nextRecording.tracks[0].id, true);
         }
       } else {
-        expandedItemChanged(-1, true);
+        if (currentTrackId.value) {
+          expandedItemChanged(currentTrackId.value, true);
+        } else {
+          expandedItemChanged(-1, true);
+        }
       }
     }
   }
@@ -241,10 +245,12 @@ const selectedTrack = (trackId: TrackId, forceReplay = false) => {
   }
 };
 
-const removedTrack = async ({ trackId }: { id: TrackId }) => {
-  const response = await deleteTrack(props.recording, trackId);
-  if (response.success) {
-    emit("track-removed", { trackId });
+const removedTrack = async ({ trackId }: { trackId: TrackId }) => {
+  if (props.recording) {
+    const response = await deleteTrack(props.recording, trackId);
+    if (response.success) {
+      emit("track-removed", { trackId });
+    }
   }
 };
 
@@ -580,7 +586,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
     </div>
     <track-tagger-row
       v-for="(track, index) in recordingTracksPossiblyFiltered"
-      :key="index"
+      :key="track.id"
       :index="index"
       :processing-state="recording.processingState"
       :is-audio-recording="recordingType === RecordingType.Audio"

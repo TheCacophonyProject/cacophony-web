@@ -11,6 +11,7 @@ import {
   type Ref,
   ref,
   watch,
+  type WatchStopHandle,
 } from "vue";
 import {
   createUserDefinedTrack,
@@ -19,7 +20,7 @@ import {
 } from "@api/Recording.ts";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { TagColours } from "@/consts.ts";
-import type { RecordingId, TrackId } from "@typedefs/api/common";
+import type { RecordingId, TrackId, UserId } from "@typedefs/api/common";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import type {
@@ -36,9 +37,11 @@ import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/a
 import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
 import { getClassificationForLabel } from "@api/Classifications.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
+import type { LoadedResource } from "@api/types.ts";
 
 const props = defineProps<{
-  recording: ApiRecordingResponse;
+  userSelectedTrack?: ApiTrackResponse;
+  recording: LoadedResource<ApiRecordingResponse>;
   recordingId: RecordingId;
   currentTrack?: ApiTrackResponse;
 }>();
@@ -59,6 +62,7 @@ const emit = defineEmits<{
       track: ApiTrackResponse;
       tag: string;
       newId?: TrackId;
+      userId?: UserId;
       action: "add" | "remove";
     }
   ): void;
@@ -80,6 +84,23 @@ onBeforeMount(() => {
   currentPalette.value =
     localStorage.getItem("spectastiq-palette") || "Viridis";
   loadRecording();
+
+  if (props.recording) {
+    if (watchTracks.value) {
+      watchTracks.value();
+      watchTracks.value = null;
+    }
+    watchTracks.value = watch(
+      () => props.recording && props.recording.tracks,
+      (nextTracks) => {
+        if (nextTracks) {
+          computeIntermediateTracks(nextTracks);
+        }
+      },
+      { deep: true }
+    );
+    computeIntermediateTracks(props.recording.tracks);
+  }
 });
 
 const getTrackBounds = (
@@ -169,12 +190,18 @@ const pointIsInExactBox = (x: number, y: number, box: Rectangle): boolean => {
   return x >= x0 && x < x1 && y >= y0 && y < y1;
 };
 
-watch(() => props.recordingId, loadRecording);
 watch(
-  () => props.currentTrack,
-  (track) => {
-    if (overlayCanvasContext.value) {
-      renderOverlay(overlayCanvasContext.value);
+  () => props.userSelectedTrack,
+  (nextTrack) => {
+    // Just select next track if this a "replay current selected track" action
+    nextTrack && selectTrackRegion(nextTrack);
+  }
+);
+
+const selectTrackRegion = (track: ApiTrackResponse | undefined) => {
+  if (overlayCanvasContext.value) {
+    renderOverlay(overlayCanvasContext.value);
+    if (!track || track.id !== -1) {
       if (track) {
         // We should
         const trackStart = track.start / audioDuration.value;
@@ -199,7 +226,9 @@ watch(
       }
     }
   }
-);
+};
+
+watch(() => props.recordingId, loadRecording);
 
 const overlayCanvasContext = ref<CanvasRenderingContext2D>();
 
@@ -222,6 +251,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
       end,
       minFreq: minFreqHz,
       maxFreq: maxFreqHz,
+      automatic: false,
       tags: [{ what: "unnamed", confidence: 0.5, id: -1 } as any],
     };
     emit("track-tag-changed", {
@@ -344,7 +374,7 @@ const drawRectWithText = (
 ) => {
   context.save();
   const hasSelected = !!currentTrack;
-  const selected = currentTrack?.id === trackId;
+  const selected = currentTrack?.id === trackId && trackId !== -1;
   const trackIndex = tracks.findIndex((track) => track.id === trackId) || 0;
   const lineWidth = (selected ? 2 : 1) * pixelRatio;
   const outlineWidth = (lineWidth + 4) * pixelRatio;
@@ -430,26 +460,28 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
     const cWidth = ctx.canvas.width;
     ctx.save();
     ctx.clearRect(0, 0, cWidth, cHeight);
-    for (const track of tracksIntermediate.value) {
-      const minFreq = 1 - (track.minFreq || 0) / audioSampleRate.value;
-      const maxFreq = 1 - (track.maxFreq || 0) / audioSampleRate.value;
-      const trackStart = track.start / audioDuration.value;
-      const trackEnd = track.end / audioDuration.value;
-      const bounds = getTrackBounds(cWidth, cHeight, begin, end, [
-        trackStart,
-        maxFreq,
-        trackEnd,
-        minFreq,
-      ]);
-      drawRectWithText(
-        ctx,
-        track.id,
-        bounds,
-        track.what,
-        props.recording.tracks,
-        currentTrack,
-        window.devicePixelRatio
-      );
+    if (props.recording) {
+      for (const track of tracksIntermediate.value) {
+        const minFreq = 1 - (track.minFreq || 0) / audioSampleRate.value;
+        const maxFreq = 1 - (track.maxFreq || 0) / audioSampleRate.value;
+        const trackStart = track.start / audioDuration.value;
+        const trackEnd = track.end / audioDuration.value;
+        const bounds = getTrackBounds(cWidth, cHeight, begin, end, [
+          trackStart,
+          maxFreq,
+          trackEnd,
+          minFreq,
+        ]);
+        drawRectWithText(
+          ctx,
+          track.id,
+          bounds,
+          track.what,
+          props.recording.tracks,
+          currentTrack,
+          window.devicePixelRatio
+        );
+      }
     }
     ctx.restore();
   }
@@ -531,18 +563,22 @@ const inRegionCreationMode = ref<boolean>(false);
 const showClassificationSelector = ref<boolean>(false);
 const selectionPopover = ref<HTMLDivElement>();
 
-const pendingTrackClass = ref<string>();
+const pendingTrackClass = ref<string[]>([]);
 const pendingTrack = ref<ApiTrackResponse | null>(null);
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 
 const cancelledCustomRegionCreation = () => {
   inRegionCreationMode.value = false;
   selectionPopover.value?.classList.add("removed");
-  emit("track-removed", { trackId: pendingTrack.value?.id });
+  if (pendingTrack.value) {
+    emit("track-removed", {
+      trackId: pendingTrack.value.id,
+    });
+  }
 
   setTimeout(() => {
     showClassificationSelector.value = false;
-    pendingTrackClass.value = "";
+    pendingTrackClass.value = [];
     pendingTrack.value = null;
     if (spectastiqEl.value) {
       spectastiqEl.value.resetYZoom();
@@ -552,6 +588,7 @@ const cancelledCustomRegionCreation = () => {
 
 watch(pendingTrackClass, async (classification: string[]) => {
   if (
+    props.recording &&
     showClassificationSelector.value &&
     classification.length &&
     pendingTrack.value
@@ -563,8 +600,8 @@ watch(pendingTrackClass, async (classification: string[]) => {
     // Patch the pending track
     pendingTrack.value.tags[0].what = classification[0];
     emit("track-tag-changed", {
-      track: pendingTrack.value,
-      tag: classification[0],
+      track: pendingTrack.value as ApiTrackResponse,
+      tag: classification[0] || "",
       action: "add",
       userId: currentUser.value?.id,
     });
@@ -580,7 +617,7 @@ watch(pendingTrackClass, async (classification: string[]) => {
     if (response.success) {
       emit("track-selected", {
         trackId: response.result.trackId,
-        automatically: true,
+        automatically: false,
       });
 
       emit("track-tag-changed", {
@@ -825,17 +862,53 @@ const computeIntermediateTracks = (tracks: ApiTrackResponse[]) => {
     });
 };
 
+const watchTracks = ref<WatchStopHandle | null>(null);
+
 watch(
-  () => props.recording.tracks,
-  (next) => {
-    computeIntermediateTracks(next);
-  },
-  { deep: true }
+  () => props.recording,
+  (nextRecording) => {
+    if (nextRecording) {
+      if (watchTracks.value) {
+        watchTracks.value();
+        watchTracks.value = null;
+      }
+      watchTracks.value = watch(
+        () => nextRecording.tracks,
+        (nextTracks) => {
+          computeIntermediateTracks(nextTracks);
+        },
+        { deep: true }
+      );
+      computeIntermediateTracks(nextRecording.tracks);
+    } else {
+      if (watchTracks.value) {
+        watchTracks.value();
+        watchTracks.value = null;
+      }
+    }
+  }
 );
 
-watch(tracksIntermediate, () => {
+watch(tracksIntermediate, (next, prev) => {
   if (overlayCanvasContext.value) {
     renderOverlay(overlayCanvasContext.value);
+  }
+  const pendingTrack = prev.find((track) => track.id === -1);
+  if (
+    next &&
+    prev &&
+    !!pendingTrack &&
+    !next.some((track) => track.id === -1)
+  ) {
+    // Added new track
+    inRegionCreationMode.value = false;
+    const changedTrack = next.find(
+      (track) =>
+        track.start === pendingTrack.start && track.end === pendingTrack.end
+    );
+    if (changedTrack) {
+      selectTrackRegion(changedTrack as unknown as ApiTrackResponse);
+    }
   }
 });
 </script>

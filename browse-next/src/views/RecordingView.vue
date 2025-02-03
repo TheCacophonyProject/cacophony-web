@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import type { RouteParams } from "vue-router";
 import { useRoute } from "vue-router";
-import { type ComputedRef, defineCustomElement, type Ref } from "vue";
-import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  type ComputedRef,
+  inject,
+  nextTick,
+  onMounted,
+  type Ref,
+  ref,
+  watch,
+} from "vue";
 import type {
   DeviceId,
   LatLng,
@@ -168,7 +176,7 @@ watch(
 
 watch(
   () => route.params.trackId,
-  (nextTrackId) => {
+  (nextTrackId, prevTrackId) => {
     if (recording.value) {
       currentTrack.value = (
         recording.value as ApiRecordingResponse
@@ -582,12 +590,13 @@ const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
   });
 };
 
-const trackRemoved = ({ trackId }: TrackId) => {
+const trackRemoved = ({ trackId }: { trackId: TrackId }) => {
   if (recording.value) {
     const index = recording.value.tracks.findIndex(({ id }) => id === trackId);
     recording.value.tracks.splice(index, 1);
     if (currentTrack.value && currentTrack.value.id === trackId) {
       currentTrack.value = undefined;
+      deselectedTrack();
     }
   }
 };
@@ -632,6 +641,9 @@ const trackTagChanged = async ({
           );
         } else {
           console.error("Failed to find changed tag", tag);
+        }
+        if (trackToPatch.id === -1) {
+          await selectedTrack(-1, true);
         }
       } else if (action === "remove") {
         await recalculateCurrentVisit(track, undefined, tag);
@@ -1129,10 +1141,16 @@ const recordingHasRealDuration = computed<boolean>(() => {
 const prevRecordingType = ref<RecordingType | null>(null);
 
 const recordingType = computed<RecordingType | null>(() => {
-  if (recording.value) {
+  if (recording.value && !!recording.value) {
     return (recording.value as ApiRecordingResponse).type;
   } else if (prevRecordingType.value) {
     return prevRecordingType.value;
+  } else if (route.query["recording-mode"]) {
+    if (route.query["recording-mode"] === "audio") {
+      return RecordingType.Audio;
+    } else {
+      return RecordingType.ThermalRaw;
+    }
   }
   return null;
 });
@@ -1215,7 +1233,11 @@ const inlineModal = ref<boolean>(false);
 <template>
   <div
     class="recording-view d-flex flex-column"
-    :class="{ dimmed: inlineModal }"
+    :class="{
+      dimmed: inlineModal,
+      'recording-type-audio':
+        recordingType && recordingType === RecordingType.Audio,
+    }"
   >
     <header
       class="recording-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
@@ -1559,6 +1581,7 @@ const inlineModal = ref<boolean>(false);
     >
       <spectrogram-viewer
         :recording="recording"
+        :user-selected-track="userSelectedTrack"
         :recording-id="currentRecordingId"
         @track-selected="selectedTrackWrap"
         @track-deselected="deselectedTrack"
@@ -2285,7 +2308,22 @@ const inlineModal = ref<boolean>(false);
 .player-and-tagging.recording-type-audio {
   flex-direction: column;
 }
-.recording-view:has(.recording-type-audio) {
+.inline-modal {
+  // TODO - Max width for mobile breakpoints
+  @width: 400px;
+  @height: auto;
+  width: @width;
+  height: @height;
+  position: absolute;
+  border-radius: 2px;
+  top: 40%;
+  left: calc(50% - (@width / 2));
+  background: white;
+  z-index: 401;
+  .standard-shadow();
+}
+
+.recording-view.recording-type-audio {
   background: white;
   position: fixed;
   top: 16px;
@@ -2325,20 +2363,6 @@ const inlineModal = ref<boolean>(false);
     right: 0;
     z-index: 400;
   }
-}
-.inline-modal {
-  // TODO - Max width for mobile breakpoints
-  @width: 400px;
-  @height: auto;
-  width: @width;
-  height: @height;
-  position: absolute;
-  border-radius: 2px;
-  top: 40%;
-  left: calc(50% - (@width / 2));
-  background: white;
-  z-index: 401;
-  .standard-shadow();
 }
 .player-container {
   background: black;

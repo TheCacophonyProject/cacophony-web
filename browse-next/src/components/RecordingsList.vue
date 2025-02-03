@@ -127,37 +127,38 @@
                     >AI Queued</span
                   ></span
                 >
-                <span
-                  v-else-if="item && item.data"
-                  class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                  :class="tag.path.split('.')"
-                  :key="tag.what"
-                  v-for="tag in canonicalTagsForRecording(item.data)"
-                  ><span class="me-1">{{
-                    displayLabelForClassificationLabel(
-                      tag.what,
-                      tag.automatic && !tag.human
-                    )
-                  }}</span
-                  ><font-awesome-icon
-                    icon="check"
-                    size="xs"
-                    v-if="tag.human && tag.automatic"
-                    class="mx-1 align-middle"
-                    style="padding-bottom: 2px"
-                  /><font-awesome-icon
-                    icon="user"
-                    size="xs"
-                    v-else-if="tag.human"
-                    class="mx-1 align-middle"
-                    style="padding-bottom: 2px"
-                  /><font-awesome-icon
-                    icon="cog"
-                    size="xs"
-                    v-else-if="tag.automatic"
-                    class="mx-1 align-middle"
-                    style="padding-bottom: 2px"
-                  />
+                <span v-else-if="item && item.data">
+                  <span
+                    class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                    :class="(tag.path && tag.path.split('.')) || ''"
+                    :key="tag.what"
+                    v-for="tag in canonicalTagsForRecording(item.data)"
+                    ><span class="me-1">{{
+                      displayLabelForClassificationLabel(
+                        tag.what,
+                        tag.automatic && !tag.human
+                      )
+                    }}</span
+                    ><font-awesome-icon
+                      icon="check"
+                      size="xs"
+                      v-if="tag.human && tag.automatic"
+                      class="mx-1 align-middle"
+                      style="padding-bottom: 2px"
+                    /><font-awesome-icon
+                      icon="user"
+                      size="xs"
+                      v-else-if="tag.human"
+                      class="mx-1 align-middle"
+                      style="padding-bottom: 2px"
+                    /><font-awesome-icon
+                      icon="cog"
+                      size="xs"
+                      v-else-if="tag.automatic"
+                      class="mx-1 align-middle"
+                      style="padding-bottom: 2px"
+                    />
+                  </span>
                 </span>
                 <span
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"

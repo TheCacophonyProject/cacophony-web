@@ -9,14 +9,7 @@
     close-on-hide
   >
     <template #target>
-      <button
-        class="btn"
-        @click.stop.prevent="
-          () => {
-            console.log('clicked');
-          }
-        "
-      >
+      <button class="btn" @click.stop.prevent="() => {}">
         <font-awesome-icon
           :icon="icon"
           v-if="icon"
@@ -28,7 +21,7 @@
     </template>
 
     <button
-      @click="() => action()"
+      @click.stop.prevent="() => action()"
       class="btn btn-outline-danger text-nowrap w-100"
     >
       <font-awesome-icon icon="exclamation-triangle" />

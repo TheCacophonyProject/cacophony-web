@@ -244,9 +244,15 @@ const locationHasAudioRecordings = (location: ApiLocationResponse) => {
 const locationHasCameraRecordings = (location: ApiLocationResponse) => {
   return !!location.lastThermalRecordingTime;
 };
-
+const route = useRoute();
 const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
-  if (
+  if (route && route.query["display-mode"]) {
+    if (route.query["display-mode"] === "recordings") {
+      return ActivitySearchDisplayMode.Recordings;
+    } else if (route.query["display-mode"] === "visits") {
+      return ActivitySearchDisplayMode.Visits;
+    }
+  } else if (
     locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
     return ActivitySearchDisplayMode.Visits;
@@ -259,7 +265,13 @@ const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
 });
 
 const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
-  if (
+  if (route && route.query["recording-mode"]) {
+    if (route.query["recording-mode"] === "audio") {
+      return ActivitySearchRecordingMode.Audio;
+    } else if (route.query["recording-mode"] === "cameras") {
+      return ActivitySearchRecordingMode.Cameras;
+    }
+  } else if (
     locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
     return ActivitySearchRecordingMode.Cameras;
@@ -595,7 +607,7 @@ const syncSearchQuery = async (
   }
 };
 const router = useRouter();
-const route = useRoute();
+
 const watchQuery = ref<WatchStopHandle | null>(null);
 
 const loading = ref<boolean>(false);
