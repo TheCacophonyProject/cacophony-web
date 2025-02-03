@@ -85,15 +85,17 @@ const availableLabels = computed(() => {
 });
 
 const projectHasAudio = computed<boolean>(() => {
-  return (
-    !!currentProject.value && "lastAudioRecordingTime" in currentProject.value
-  );
+  if (currentProject.value !== false) {
+    return !!(currentProject.value as SelectedProject).lastAudioRecordingTime;
+  }
+  return false;
 });
 
 const projectHasCameras = computed<boolean>(() => {
-  return (
-    !!currentProject.value && "lastThermalRecordingTime" in currentProject.value
-  );
+  if (currentProject.value !== false) {
+    return !!(currentProject.value as SelectedProject).lastThermalRecordingTime;
+  }
+  return false;
 });
 
 const projectHasAudioAndThermal = computed<boolean>(() => {
