@@ -8,7 +8,7 @@ export const TagColours = [
   { background: "#ffcccc", foreground: "dark" },
 ];
 
-export const DEFAULT_TAGS = [
+export const DEFAULT_CAMERA_TAGS = [
   "possum",
   "rodent",
   "hedgehog",

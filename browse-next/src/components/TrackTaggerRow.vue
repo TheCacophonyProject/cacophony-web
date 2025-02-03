@@ -28,7 +28,7 @@ import type {
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
-import { DEFAULT_AUDIO_TAGS, DEFAULT_TAGS } from "@/consts";
+import { DEFAULT_AUDIO_TAGS, DEFAULT_CAMERA_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
 import TagImage from "@/components/TagImage.vue";
 import {
@@ -349,7 +349,7 @@ const defaultTags = computed<string[]>(() => {
         tags.push(...groupSettings.tags);
       } else {
         // Default base tags if admin hasn't edited them
-        tags.push(...DEFAULT_TAGS);
+        tags.push(...DEFAULT_CAMERA_TAGS);
       }
     } else {
       if (groupSettings && groupSettings.audioTags) {
