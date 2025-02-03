@@ -101,7 +101,10 @@
           v-else
           class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
         >
-          <div class="visit-thumb rounded-1">
+          <div
+            class="visit-thumb rounded-1"
+            v-if="item.data.type !== RecordingType.Audio"
+          >
             <image-loader
               :src="thumbnailSrcForRecording(item.data)"
               alt="Thumbnail for first recording of this visit"
@@ -110,7 +113,8 @@
             />
           </div>
           <div
-            class="ps-3 d-flex flex-column text-truncate flex-wrap flex-grow-1"
+            :class="{ 'ps-3': item.data.type !== RecordingType.Audio }"
+            class="d-flex flex-column text-truncate flex-wrap flex-grow-1"
           >
             <div
               class="tags-container d-flex justify-content-between flex-grow-1"

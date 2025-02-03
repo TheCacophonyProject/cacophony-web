@@ -2285,6 +2285,20 @@ const inlineModal = ref<boolean>(false);
 .player-and-tagging.recording-type-audio {
   flex-direction: column;
 }
+.recording-view:has(.recording-type-audio) {
+  background: white;
+  position: fixed;
+  top: 16px;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  @media screen and (max-width: 1040px) {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}
 .recording-view {
   @media screen and (max-width: 1040px) {
     background: white;
@@ -2294,14 +2308,6 @@ const inlineModal = ref<boolean>(false);
     left: 0;
     right: 0;
   }
-}
-.recording-view:has(.recording-type-audio) {
-  background: white;
-  position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
 }
 
 .dimmed {
