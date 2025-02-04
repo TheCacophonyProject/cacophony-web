@@ -856,7 +856,6 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
     recording.value &&
     recording.value.tracks.find(({ id }) => id == trackId)
   ) {
-    console.trace("SelectedTrack", trackId, automatically);
     if (!automatically) {
       // Make the player start playing at the beginning of the selected track,
       // and stop when it reaches the end of that track.
