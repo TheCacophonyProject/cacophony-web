@@ -473,19 +473,34 @@ const rejectAiSuggestedTag = () => {
 
 const pinCustomTag = async (classification: Classification) => {
   if (currentSelectedProject.value) {
+    const currentDisplayMode =
+      route.query["display-mode"] === "recordings" ? "recordings" : "visits";
     const userProjectSettings: ApiProjectUserSettings = currentSelectedProject
       .value.userSettings || {
-      displayMode: "visits",
+      displayMode: currentDisplayMode, // Current display mode
       tags: [],
+      audioTags: [],
     };
-    const tags = userProjectSettings.tags || [];
-    if (tags.includes(classification.label)) {
-      userProjectSettings.tags = tags.filter(
-        (tag) => tag !== classification.label
-      );
+    if (props.isAudioRecording) {
+      const tags = userProjectSettings.audioTags || [];
+      if (tags.includes(classification.label)) {
+        userProjectSettings.audioTags = tags.filter(
+          (tag) => tag !== classification.label
+        );
+      } else {
+        userProjectSettings.audioTags = userProjectSettings.audioTags || [];
+        userProjectSettings.audioTags.push(classification.label);
+      }
     } else {
-      userProjectSettings.tags = userProjectSettings.tags || [];
-      userProjectSettings.tags.push(classification.label);
+      const tags = userProjectSettings.tags || [];
+      if (tags.includes(classification.label)) {
+        userProjectSettings.tags = tags.filter(
+          (tag) => tag !== classification.label
+        );
+      } else {
+        userProjectSettings.tags = userProjectSettings.tags || [];
+        userProjectSettings.tags.push(classification.label);
+      }
     }
     await persistUserProjectSettings(userProjectSettings);
   }
