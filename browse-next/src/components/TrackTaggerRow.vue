@@ -326,6 +326,12 @@ const permanentlyDeleteTrack = async (trackId: TrackId) => {
   emit("removed-track", { trackId });
 };
 
+const trackWasCreatedByUser = (track: ApiTrackResponse): boolean => {
+  return track.tags.every(
+    (tag) => !tag.automatic && tag.userId === currentUser.value.id
+  );
+};
+
 const otherUserTags = computed<string[]>(
   () =>
     (CurrentUser.value &&
@@ -655,7 +661,9 @@ onMounted(async () => {
     </div>
     <div v-else>
       <two-step-action-button-popover
-        v-if="userIsGroupAdmin && isAudioRecording"
+        v-if="
+          (userIsGroupAdmin || trackWasCreatedByUser(track)) && isAudioRecording
+        "
         :action="() => permanentlyDeleteTrack(track.id)"
         :icon="['far', 'trash-can']"
         :confirmation-label="'Delete track'"
