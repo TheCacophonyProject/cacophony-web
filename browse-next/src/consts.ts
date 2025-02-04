@@ -8,7 +8,7 @@ export const TagColours = [
   { background: "#ffcccc", foreground: "dark" },
 ];
 
-export const DEFAULT_TAGS = [
+export const DEFAULT_CAMERA_TAGS = [
   "possum",
   "rodent",
   "hedgehog",
@@ -16,6 +16,18 @@ export const DEFAULT_TAGS = [
   "bird",
   "mustelid",
   "false-positive",
+  "unidentified",
+];
+
+export const DEFAULT_AUDIO_TAGS = [
+  "morepork",
+  "kiwi",
+  "kereru",
+  "tui",
+  "kea",
+  "bellbird",
+  "bird",
+  "human",
   "unidentified",
 ];
 

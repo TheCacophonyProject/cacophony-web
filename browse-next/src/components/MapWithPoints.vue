@@ -29,6 +29,7 @@ import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
 import { BSpinner } from "bootstrap-vue-next";
 import type { LatLng } from "@typedefs/api/common";
+import { useElementSize, useResizeObserver } from "@vueuse/core";
 
 const attribution = control.attribution;
 
@@ -55,6 +56,7 @@ const props = withDefaults(
     hasAttribution?: boolean;
     showCrossHairs?: boolean;
     width?: number;
+    square?: boolean;
   }>(),
   {
     isInteractive: true,
@@ -72,6 +74,7 @@ const props = withDefaults(
     showStationRadius: true,
     radius: 0,
     width: 0,
+    square: false,
     points: () => [] as NamedPoint[],
   }
 );
@@ -470,6 +473,12 @@ const fitMapBounds = () => {
   }
 };
 
+const parentWidth = computed(() => {
+  return mapDims.width || 0;
+});
+
+const mapDims = useElementSize(mapEl);
+
 onMounted(() => {
   loading.value = true;
   const mapElement = mapEl.value;
@@ -598,6 +607,7 @@ const leavePoint = () => {
     :style="{
       pointerEvents: isInteractive ? 'auto' : 'none',
       width: width !== 0 ? `${width}px` : 'auto',
+      height: `${parentWidth}px`,
     }"
     ref="mapEl"
   >

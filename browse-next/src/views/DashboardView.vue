@@ -368,27 +368,15 @@ const isLoading = computed<boolean>(
   () => locations.value === null || visitsContext.value === null
 );
 
-const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
-  if (currentProject.value && availableProjects.value) {
-    const project = (availableProjects.value as ApiProjectResponse[]).find(
-      ({ id }) => id === (currentProject.value as SelectedProject).id
-    );
-    return project || null;
-  }
-  return null;
-});
-
 const currentSelectedProjectHasAudio = computed<boolean>(() => {
   return (
-    !!currentSelectedProject.value &&
-    "lastAudioRecordingTime" in currentSelectedProject.value
+    !!currentProject.value && "lastAudioRecordingTime" in currentProject.value
   );
 });
 
 const currentSelectedProjectHasCameras = computed<boolean>(() => {
   return (
-    !!currentSelectedProject.value &&
-    "lastThermalRecordingTime" in currentSelectedProject.value
+    !!currentProject.value && "lastThermalRecordingTime" in currentProject.value
   );
 });
 

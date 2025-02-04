@@ -217,6 +217,8 @@ describe("Recording filtering", () => {
       expectedRecording5.tracks = trackResponseFromSet([track5], [model1]);
       expectedRecording5.tracks[0].filtered = true;
 
+      cy.processingApiPut(superuser, "rfRecording5", true, {}, undefined);
+
       cy.log("Check recording filtered");
       cy.apiRecordingCheck(
         "rfGroupAdmin",
@@ -267,7 +269,7 @@ describe("Recording filtering", () => {
             [model1]
           );
           expectedRecording5b.tracks[0].filtered = true;
-
+          cy.processingApiPut(superuser, "rfRecording5b", true, {}, undefined);
           cy.log("Check recording filtered");
           cy.apiRecordingCheck(
             "rfGroupAdmin",
@@ -388,6 +390,8 @@ describe("Recording filtering", () => {
       expectedRecording7.tracks[0].tags = [expectedTag7];
       expectedRecording7.tracks[0].filtered = false;
 
+      cy.processingApiPut(superuser, "rfRecording7", true, {}, undefined);
+
       cy.log("Check recording NOT filtered");
       cy.apiRecordingCheck(
         "rfGroupAdmin",
@@ -506,8 +510,11 @@ describe("Recording filtering", () => {
           0.95,
           { name: "Master" }
         );
+
+        cy.processingApiPut(superuser, "rfRecording9", true, {}, undefined);
         cy.log("Check recording not filtered");
-        expectedRecording9.processingState = RecordingProcessingState.Analyse;
+
+        expectedRecording9.processingState = RecordingProcessingState.Finished;
         expectedRecording9.tracks = trackResponseFromSet([track9], [model1]);
         expectedRecording9.tracks[0].tags = [expectedTag9];
         expectedRecording9.processing = false;
@@ -573,6 +580,9 @@ describe("Recording filtering", () => {
         expectedRecording10.tracks[0].tags = [expectedTag10];
         expectedRecording10.processing = false;
         expectedRecording10.tracks[0].filtered = false;
+
+        cy.log("Mark tracking as done");
+        cy.processingApiPut(superuser, "rfRecording10", true, {}, undefined);
 
         cy.log("Check recording NOT filtered");
         cy.apiRecordingCheck(
@@ -680,9 +690,10 @@ describe("Recording filtering", () => {
           0.95,
           { name: "Master" }
         ).then(() => {
+          cy.processingApiPut(superuser, "rfRecording11", true, {}, undefined);
           cy.log("Check recording now NOT filtered");
           expectedRecording11.processingState =
-            RecordingProcessingState.Reprocess;
+            RecordingProcessingState.Finished;
           expectedRecording11.tracks[0].tags[0].what = "possum";
           expectedRecording11.tracks[0].filtered = false;
           cy.apiRecordingCheck(

@@ -127,6 +127,9 @@
           "display": "false trigger"
         },
         {
+          "label": "noise"
+        },
+        {
           "label": "frog"
         },
         {

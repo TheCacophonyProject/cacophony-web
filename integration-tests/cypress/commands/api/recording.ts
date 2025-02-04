@@ -44,7 +44,11 @@ Cypress.Commands.add(
     statusCode: number = 200
   ) => {
     const id = getCreds(recordingName).id;
-    const jobKey = getCreds(recordingName).jobKey;
+    let jobKey = getCreds(recordingName).jobKey;
+    if (!jobKey) {
+      jobKey = null;
+    }
+
     logTestDescription(`Processing 'done' for recording ${recordingName}`, {
       id,
       result,

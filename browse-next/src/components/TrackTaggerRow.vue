@@ -13,6 +13,7 @@ import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
 import { persistUserProjectSettings } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
+import { deleteTrack } from "@api/Recording.ts";
 import {
   classifications,
   displayLabelForClassificationLabel,
@@ -27,7 +28,7 @@ import type {
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
-import { DEFAULT_TAGS } from "@/consts";
+import { DEFAULT_AUDIO_TAGS, DEFAULT_CAMERA_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
 import TagImage from "@/components/TagImage.vue";
 import {
@@ -35,7 +36,12 @@ import {
   currentUser,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
-import { RecordingProcessingState } from "@typedefs/api/consts.ts";
+import {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.ts";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
 
 const props = defineProps<{
   track: ApiTrackResponse;
@@ -43,6 +49,7 @@ const props = defineProps<{
   color: { foreground: string; background: string };
   selected: boolean;
   processingState: RecordingProcessingState;
+  isAudioRecording: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -56,6 +63,7 @@ const emit = defineEmits<{
     e: "remove-tag",
     payload: { trackId: TrackId; trackTagId: TrackTagId }
   ): void;
+  (e: "removed-track", payload: { trackId: TrackId }): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
@@ -81,7 +89,6 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
     if (masterTag.value) {
       tags.unshift(masterTag.value);
     }
-
     // NOTE: Delete button gives admins the ability to remove track tags created by other users,
     //  but not AI tags
     return tags.map((tag: ApiTrackTagResponse) => {
@@ -97,7 +104,9 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
           "&nbsp;"
         ),
         confidence: tag.automatic
-          ? Math.round(100 * tag.confidence).toString() + "%"
+          ? Math.round(
+              (props.isAudioRecording ? 1 : 100) * tag.confidence
+            ).toString() + "%"
           : "",
       };
       if (userIsGroupAdmin.value) {
@@ -141,7 +150,14 @@ const handleExpansion = (isExpanding: boolean) => {
 };
 
 watch(expanded, handleExpansion);
-
+watch(
+  () => props.selected,
+  (next) => {
+    if (next) {
+      show();
+    }
+  }
+);
 const resizeElementToContents = (el: HTMLElement) => {
   if (el.childNodes.length && expandedInternal.value) {
     const top = el.getBoundingClientRect().top;
@@ -161,7 +177,7 @@ const resizeDetails = () => {
 watch(showTaggerDetails, resizeDetails);
 watch(showClassificationSearch, resizeDetails);
 
-const selectAndMaybeToggleExpanded = () => {
+const selectAndMaybeToggleExpanded = (e: MouseEvent) => {
   expandedInternal.value = !expandedInternal.value;
   emit("expanded-changed", props.track.id, expandedInternal.value);
 };
@@ -192,11 +208,66 @@ const consensusUserTag = computed<string | null>(() => {
   );
 });
 
+const getAuthoritativeTagsForTrack = (
+  trackTags: ApiTrackTagResponse[]
+): string[] => {
+  const userTags = trackTags.filter((tag) => !tag.automatic);
+  const authTags = [];
+  if (userTags.length) {
+    authTags.push(userTags[0].what);
+  } else {
+    // NOTE: For audio, there can be multiple authoritative tags for a single track, until a user confirms one.
+    const masterTags = trackTags.filter(
+      (tag) =>
+        tag.automatic &&
+        tag.data &&
+        (tag.data as TrackTagData).name === "Master"
+    );
+    const isNoise = (tag: ApiTrackTagResponse) =>
+      tag.what === "noise" || tag.what === "false-positive";
+    const nonNoiseMaster = masterTags.some((tag) => !isNoise(tag));
+
+    for (const tag of masterTags) {
+      if ((nonNoiseMaster && !isNoise(tag)) || !nonNoiseMaster) {
+        authTags.push(tag.what);
+      }
+    }
+  }
+  return authTags;
+};
+
 const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
-  const tag = props.track.tags.find(
+  // If there are multiple AI master tags, as there seem to be for audio, find the most specific one.
+  const masterTags = props.track.tags.filter(
     (tag) =>
       tag.automatic && tag.data && (tag.data as TrackTagData).name === "Master"
   );
+  let tag;
+  if (masterTags.length === 1) {
+    tag = masterTags[0];
+  } else {
+    // Find the best/most specific tag.
+    const isNoise = (tag: ApiTrackTagResponse) =>
+      tag.what === "noise" || tag.what === "false-positive";
+    const nonNoiseMasters = masterTags.filter((tag) => !isNoise(tag));
+    if (nonNoiseMasters.length === 1) {
+      tag = nonNoiseMasters[0];
+    } else {
+      let mostSpecific = null;
+      for (const tag of nonNoiseMasters) {
+        if (mostSpecific === null) {
+          mostSpecific = tag;
+        } else if (
+          mostSpecific &&
+          tag.path.length > mostSpecific.path.length &&
+          tag.path.startsWith(mostSpecific.path)
+        ) {
+          mostSpecific = tag;
+        }
+      }
+      tag = mostSpecific;
+    }
+  }
   if (tag) {
     const mappedWhat = getClassificationForLabel(tag.what);
     return {
@@ -251,6 +322,20 @@ const selectedUserTagLabel = computed<string[]>({
   },
 });
 
+const permanentlyDeleteTrack = async (trackId: TrackId) => {
+  emit("removed-track", { trackId });
+};
+
+const trackWasCreatedByUser = (track: ApiTrackResponse): boolean => {
+  if (CurrentUser.value) {
+    return track.tags.every(
+      (tag) =>
+        !tag.automatic && tag.userId === (CurrentUser.value as LoggedInUser).id
+    );
+  }
+  return false;
+};
+
 const otherUserTags = computed<string[]>(
   () =>
     (CurrentUser.value &&
@@ -269,11 +354,20 @@ const defaultTags = computed<string[]>(() => {
   const tags = [];
   if (currentSelectedProject.value) {
     const groupSettings = currentSelectedProject.value.settings;
-    if (groupSettings && groupSettings.tags) {
-      tags.push(...groupSettings.tags);
+    if (!props.isAudioRecording) {
+      if (groupSettings && groupSettings.tags) {
+        tags.push(...groupSettings.tags);
+      } else {
+        // Default base tags if admin hasn't edited them
+        tags.push(...DEFAULT_CAMERA_TAGS);
+      }
     } else {
-      // Default base tags if admin hasn't edited them
-      tags.push(...DEFAULT_TAGS);
+      if (groupSettings && groupSettings.audioTags) {
+        tags.push(...groupSettings.audioTags);
+      } else {
+        // Default base tags if admin hasn't edited them
+        tags.push(...DEFAULT_AUDIO_TAGS);
+      }
     }
   }
   return tags;
@@ -284,10 +378,16 @@ const userDefinedTags = computed<Record<string, boolean>>(() => {
   const tags: Record<string, boolean> = {};
   if (currentSelectedProject.value) {
     const userSettings = currentSelectedProject.value.userSettings;
-    if (userSettings && userSettings.tags) {
+    if (userSettings) {
       // These are any user-defined "pinned" tags for this group.
-      for (const tag of userSettings.tags) {
-        tags[tag] = true;
+      if (props.isAudioRecording && userSettings.audioTags) {
+        for (const tag of userSettings.audioTags) {
+          tags[tag] = true;
+        }
+      } else if (!props.isAudioRecording && userSettings.tags) {
+        for (const tag of userSettings.tags) {
+          tags[tag] = true;
+        }
       }
     }
   }
@@ -298,7 +398,9 @@ const userDefinedTagLabels = computed<string[]>(() =>
 );
 
 const availableTags = computed<{ label: string; display: string }[]>(() => {
-  // TODO: These can be changed at a group preferences level my group admins,
+  // TODO: These should be different for audio and camera
+
+  // TODO: These can be changed at a group preferences level by group admins,
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
   const tags: Record<string, { label: string; display: string }> = {};
@@ -359,6 +461,7 @@ const confirmAiSuggestedTag = () => {
     });
   }
 };
+
 const replaySelectedTrack = () => {
   emit("selected-track", props.track.id, true);
 };
@@ -405,6 +508,18 @@ const processingIsAnalysing = computed<boolean>(
   () => props.processingState === RecordingProcessingState.Analyse
 );
 
+const row = ref<HTMLDivElement>();
+const show = () => {
+  if (row.value) {
+    row.value.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  // setTimeout(() => {
+  //   if (row.value) {
+  //     row.value.scrollIntoView({ block: "center", behavior: "smooth" });
+  //   }
+  // }, 200);
+};
+
 onMounted(async () => {
   if (!classifications.value) {
     await getClassifications();
@@ -415,6 +530,7 @@ onMounted(async () => {
 <template>
   <div
     class="track p-2 fs-8 d-flex align-items-center justify-content-between"
+    ref="row"
     :class="{ selected }"
     @click="selectAndMaybeToggleExpanded"
   >
@@ -511,7 +627,14 @@ onMounted(async () => {
         <span v-if="!processingIsAnalysing">&mdash;</span>
       </div>
     </div>
-    <div v-if="!hasUserTag && hasAiTag && !expanded">
+    <div v-if="!hasUserTag && hasAiTag && !expanded" class="d-flex">
+      <two-step-action-button-popover
+        v-if="isAudioRecording"
+        :action="() => permanentlyDeleteTrack(track.id)"
+        :icon="['far', 'trash-can']"
+        :confirmation-label="'Delete track'"
+        color="#666"
+      ></two-step-action-button-popover>
       <button
         type="button"
         class="btn fs-7 confirm-button"
@@ -541,6 +664,15 @@ onMounted(async () => {
       </button>
     </div>
     <div v-else>
+      <two-step-action-button-popover
+        v-if="
+          isAudioRecording && (userIsGroupAdmin || trackWasCreatedByUser(track))
+        "
+        :action="() => permanentlyDeleteTrack(track.id)"
+        :icon="['far', 'trash-can']"
+        :confirmation-label="'Delete track'"
+        color="#666"
+      ></two-step-action-button-popover>
       <button
         type="button"
         aria-label="Replay track"
@@ -823,5 +955,8 @@ onMounted(async () => {
     vertical-align: middle;
     color: #408f58;
   }
+}
+.track .btn:not(.confirm-button) {
+  width: 42px;
 }
 </style>

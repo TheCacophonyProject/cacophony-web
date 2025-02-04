@@ -101,7 +101,10 @@
           v-else
           class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
         >
-          <div class="visit-thumb rounded-1">
+          <div
+            class="visit-thumb rounded-1"
+            v-if="item.data.type !== RecordingType.Audio"
+          >
             <image-loader
               :src="thumbnailSrcForRecording(item.data)"
               alt="Thumbnail for first recording of this visit"
@@ -110,7 +113,8 @@
             />
           </div>
           <div
-            class="ps-3 d-flex flex-column text-truncate flex-wrap flex-grow-1"
+            :class="{ 'ps-3': item.data.type !== RecordingType.Audio }"
+            class="d-flex flex-column text-truncate flex-wrap flex-grow-1"
           >
             <div
               class="tags-container d-flex justify-content-between flex-grow-1"
@@ -123,37 +127,38 @@
                     >AI Queued</span
                   ></span
                 >
-                <span
-                  v-else
-                  class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                  :class="tag.path.split('.')"
-                  :key="tag.what"
-                  v-for="tag in canonicalTagsForRecording(item.data)"
-                  ><span class="me-1">{{
-                    displayLabelForClassificationLabel(
-                      tag.what,
-                      tag.automatic && !tag.human
-                    )
-                  }}</span
-                  ><font-awesome-icon
-                    icon="check"
-                    size="xs"
-                    v-if="tag.human && tag.automatic"
-                    class="mx-1 align-middle"
-                    style="padding-bottom: 2px"
-                  /><font-awesome-icon
-                    icon="user"
-                    size="xs"
-                    v-else-if="tag.human"
-                    class="mx-1 align-middle"
-                    style="padding-bottom: 2px"
-                  /><font-awesome-icon
-                    icon="cog"
-                    size="xs"
-                    v-else-if="tag.automatic"
-                    class="mx-1 align-middle"
-                    style="padding-bottom: 2px"
-                  />
+                <span v-else-if="item && item.data" class="d-flex flex-wrap">
+                  <span
+                    class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                    :class="(tag.path && tag.path.split('.')) || ''"
+                    :key="tag.what"
+                    v-for="tag in canonicalTagsForRecording(item.data)"
+                    ><span class="me-1">{{
+                      displayLabelForClassificationLabel(
+                        tag.what,
+                        tag.automatic && !tag.human
+                      )
+                    }}</span
+                    ><font-awesome-icon
+                      icon="check"
+                      size="xs"
+                      v-if="tag.human && tag.automatic"
+                      class="mx-1 align-middle"
+                      style="padding-bottom: 2px"
+                    /><font-awesome-icon
+                      icon="user"
+                      size="xs"
+                      v-else-if="tag.human"
+                      class="mx-1 align-middle"
+                      style="padding-bottom: 2px"
+                    /><font-awesome-icon
+                      icon="cog"
+                      size="xs"
+                      v-else-if="tag.automatic"
+                      class="mx-1 align-middle"
+                      style="padding-bottom: 2px"
+                    />
+                  </span>
                 </span>
                 <span
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"
@@ -188,13 +193,14 @@
               />{{ (item as RecordingItem).data.stationName }}</span
             >
             <div class="d-flex">
-              <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-                ><font-awesome-icon
-                  icon="video"
-                  size="xs"
-                  class="station-icon pe-1 text"
-                />{{ (item as RecordingItem).data.deviceName }}</span
-              >
+              <span class="visit-station-name text-truncate flex-shrink-1 pe-2">
+                <device-name
+                  no-margin
+                  :color="'rgba(0, 0, 0, 0.5)'"
+                  :name="(item as RecordingItem).data.deviceName"
+                  :type="deviceTypeFor((item as RecordingItem).data.deviceId)"
+                ></device-name>
+              </span>
               <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
                 ><font-awesome-icon
                   icon="stream"
@@ -222,6 +228,7 @@ import { displayLabelForClassificationLabel } from "@/api/Classifications";
 import { formatDuration, timeAtLocation } from "@/models/visitsUtils";
 import { DateTime } from "luxon";
 import type {
+  DeviceId,
   LatLng,
   RecordingId,
   StationId as LocationId,
@@ -231,15 +238,18 @@ import { API_ROOT } from "@api/root";
 import { ref } from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
 import {
+  DeviceType,
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.ts";
 import {
-  type TagItem,
   canonicalTagsForRecording,
+  type TagItem,
 } from "@models/recordingUtils.ts";
 import type { ApiTrackResponse } from "@typedefs/api/track";
-import type { ApiTrackTag, ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import type { ApiTrackTag } from "@typedefs/api/trackTag";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import DeviceName from "@/components/DeviceName.vue";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -249,12 +259,13 @@ const processingInProgress = [
   RecordingProcessingState.Tracking,
 ];
 
-const _props = withDefaults(
+const props = withDefaults(
   defineProps<{
     recordingsByDay: {
       dateTime: DateTime;
       items: (RecordingItem | SunItem)[];
     }[];
+    devices: ApiDeviceResponse[];
     canonicalLocation: LatLng;
     currentlySelectedRecordingId: RecordingId | null;
   }>(),
@@ -363,6 +374,14 @@ const unhighlightedLocation = (item: RecordingItem | SunItem) => {
   ) {
     emit("change-highlighted-location", null);
   }
+};
+
+const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
+  const device = props.devices.find((device) => device.id === deviceId);
+  if (device) {
+    return device.type;
+  }
+  return DeviceType.Thermal;
 };
 </script>
 

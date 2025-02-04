@@ -44,7 +44,8 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
     confidence: number,
     automatic: boolean,
     data: any,
-    userId?: number
+    userId?: number,
+    updateFiltered?: boolean
   ) => Promise<TrackTag>;
   getTrackTags: (options: FindOptions) => Promise<TrackTag[]>;
   replaceTag: (tag: TrackTag) => Promise<any>;
@@ -149,7 +150,8 @@ export default function (
     confidence,
     automatic,
     data,
-    userId = null
+    userId = null,
+    updateFiltered = true
   ): Promise<TrackTag> {
     const used = userId !== null || (data !== "" && data.name === AI_MASTER);
     const tag = (await this.createTrackTag({
@@ -160,7 +162,9 @@ export default function (
       UserId: userId,
       used,
     })) as TrackTag;
-    await this.updateIsFiltered();
+    if (updateFiltered) {
+      await this.updateIsFiltered();
+    }
     return tag;
   };
   // Return a specific track tag for the track.

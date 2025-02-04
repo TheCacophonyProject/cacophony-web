@@ -83,28 +83,19 @@ const availableLabels = computed(() => {
   }
   return labels;
 });
-const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
-  if (currentProject.value && availableProjects.value) {
-    const project = (availableProjects.value as ApiProjectResponse[]).find(
-      ({ id }) => id === (currentProject.value as SelectedProject).id
-    );
-    return project || null;
-  }
-  return null;
-});
 
 const projectHasAudio = computed<boolean>(() => {
-  return (
-    !!currentSelectedProject.value &&
-    "lastAudioRecordingTime" in currentSelectedProject.value
-  );
+  if (currentProject.value !== false) {
+    return !!(currentProject.value as SelectedProject).lastAudioRecordingTime;
+  }
+  return false;
 });
 
 const projectHasCameras = computed<boolean>(() => {
-  return (
-    !!currentSelectedProject.value &&
-    "lastThermalRecordingTime" in currentSelectedProject.value
-  );
+  if (currentProject.value !== false) {
+    return !!(currentProject.value as SelectedProject).lastThermalRecordingTime;
+  }
+  return false;
 });
 
 const projectHasAudioAndThermal = computed<boolean>(() => {
@@ -586,6 +577,9 @@ const getCurrentQuery = (): LocationQuery => {
   } else {
     delete query["labelled-with"];
   }
+  if (query["recording-mode"] === ActivitySearchRecordingMode.Audio) {
+    query["display-mode"] = ActivitySearchDisplayMode.Recordings;
+  }
   if (query["display-mode"] === "visits") {
     delete query["tag-mode"];
     delete query["labelled-with"];
@@ -911,37 +905,37 @@ const scrolledToStickyPosition = computed<boolean>(() => {
 
 <template>
   <div ref="searchParamsContainer">
-    <!--    <div-->
-    <!--      class="btn-group btn-group-sm d-flex mb-2"-->
-    <!--      role="group"-->
-    <!--      aria-label="Toggle between camera and bird monitor results"-->
-    <!--      v-if="projectHasAudioAndThermal"-->
-    <!--    >-->
-    <!--      <input-->
-    <!--        type="radio"-->
-    <!--        class="btn-check"-->
-    <!--        name="recording-mode"-->
-    <!--        id="recording-mode-cameras"-->
-    <!--        autocomplete="off"-->
-    <!--        v-model="recordingMode"-->
-    <!--        value="cameras"-->
-    <!--      />-->
-    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"-->
-    <!--        >Cameras</label-->
-    <!--      >-->
-    <!--      <input-->
-    <!--        type="radio"-->
-    <!--        class="btn-check"-->
-    <!--        name="recording-mode"-->
-    <!--        id="recording-mode-audio"-->
-    <!--        autocomplete="off"-->
-    <!--        v-model="recordingMode"-->
-    <!--        value="audio"-->
-    <!--      />-->
-    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"-->
-    <!--        >Bird Monitors</label-->
-    <!--      >-->
-    <!--    </div>-->
+    <div
+      class="btn-group btn-group-sm d-flex mb-2"
+      role="group"
+      aria-label="Toggle between camera and bird monitor results"
+      v-if="projectHasAudioAndThermal"
+    >
+      <input
+        type="radio"
+        class="btn-check"
+        name="recording-mode"
+        id="recording-mode-cameras"
+        autocomplete="off"
+        v-model="recordingMode"
+        value="cameras"
+      />
+      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"
+        >Cameras</label
+      >
+      <input
+        type="radio"
+        class="btn-check"
+        name="recording-mode"
+        id="recording-mode-audio"
+        autocomplete="off"
+        v-model="recordingMode"
+        value="audio"
+      />
+      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"
+        >Bird Monitors</label
+      >
+    </div>
     <div
       class="btn-group d-flex"
       :class="{ 'btn-group-sm': scrolledToStickyPosition }"

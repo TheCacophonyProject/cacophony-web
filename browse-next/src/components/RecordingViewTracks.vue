@@ -5,9 +5,17 @@ import type {
 } from "@typedefs/api/recording";
 import TrackTaggerRow from "@/components/TrackTaggerRow.vue";
 import { TagColours } from "@/consts";
-import { type ComputedRef, onBeforeMount, type Ref } from "vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import {
+  computed,
+  type ComputedRef,
+  inject,
+  onBeforeMount,
+  onMounted,
+  type Ref,
+  ref,
+  watch,
+} from "vue";
+import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import type {
   ApiTrackDataRequest,
   ApiTrackResponse,
@@ -16,6 +24,7 @@ import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
   addRecordingLabel,
   createDummyTrack,
+  deleteTrack,
   removeTrackTag,
   replaceTrackTag,
 } from "@api/Recording";
@@ -26,6 +35,8 @@ import {
 } from "@models/LoggedInUser";
 import type {
   ApiHumanTrackTagResponse,
+  ApiTrackTag,
+  ApiTrackTagResponse,
   TrackTagData,
 } from "@typedefs/api/trackTag";
 import {
@@ -52,6 +63,17 @@ const props = withDefaults(
   { recording: null }
 );
 
+const prevRecordingType = ref<RecordingType | null>(null);
+
+const recordingType = computed<null | RecordingType>(() => {
+  if (props.recording) {
+    return props.recording.type;
+  } else if (prevRecordingType.value) {
+    return prevRecordingType.value;
+  }
+  return null;
+});
+
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser>;
 
 const currentTrack = ref<ApiTrackResponse | null>(null);
@@ -65,6 +87,7 @@ const emit = defineEmits<{
     e: "track-selected",
     track: { trackId: TrackId; automatically: boolean }
   ): void;
+  (e: "track-removed", track: { trackId: TrackId }): void;
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
 }>();
 
@@ -145,23 +168,27 @@ const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
 };
 
 watch(
+  () => props.recording?.tracks,
+  (nextTracks) => {
+    cloneLocalTracks(nextTracks || []);
+  },
+  { deep: true }
+);
+
+watch(
   () => props.recording,
   (nextRecording) => {
     cloneLocalTracks(nextRecording?.tracks || []);
-    if (route.params.trackId) {
-      currentTrack.value = getTrackById(currentTrackId.value);
-    }
+
     if (nextRecording) {
-      if (nextRecording.tracks.length === 1) {
-        if (
-          nextRecording.tracks[0].tags.filter((tag) => !tag.automatic)
-            .length === 0
-        ) {
-          // Select the only track if there is only one track, and it is untagged by users.
-          expandedItemChanged(nextRecording.tracks[0].id, true);
-        }
-      } else {
-        expandedItemChanged(-1, true);
+      prevRecordingType.value = nextRecording.type;
+      if (route.params.trackId) {
+        currentTrack.value = getTrackById(currentTrackId.value);
+      } else if (recordingTracksPossiblyFiltered.value.length !== 0) {
+        emit("track-selected", {
+          trackId: recordingTracksPossiblyFiltered.value[0].id,
+          automatically: true,
+        });
       }
     }
   }
@@ -171,10 +198,10 @@ onMounted(() => {
   cloneLocalTracks(props.recording?.tracks || []);
   if (route.params.trackId) {
     currentTrack.value = getTrackById(currentTrackId.value);
-  } else if (recordingTracksLocal.value.length === 1) {
+  } else if (recordingTracksPossiblyFiltered.value.length !== 0) {
     emit("track-selected", {
-      trackId: recordingTracksLocal.value[0].id,
-      automatically: false,
+      trackId: recordingTracksPossiblyFiltered.value[0].id,
+      automatically: true,
     });
   }
   initialised.value = true;
@@ -188,7 +215,7 @@ const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
   await router.replace({
     ...route,
     params,
-  });
+  } as RouteLocationRaw);
   if (expanded) {
     // Select and play the track?
     const track = getTrackById(trackId);
@@ -205,6 +232,15 @@ const selectedTrack = (trackId: TrackId, forceReplay = false) => {
     if (track) {
       // Change track.
       emit("track-selected", { trackId, automatically: false });
+    }
+  }
+};
+
+const removedTrack = async ({ trackId }: { trackId: TrackId }) => {
+  if (props.recording) {
+    const response = await deleteTrack(props.recording, trackId);
+    if (response.success) {
+      emit("track-removed", { trackId });
     }
   }
 };
@@ -416,10 +452,10 @@ const recordingTracksPossiblyFiltered = computed<ApiTrackResponse[]>(() => {
     return recordingTracksLocal.value.filter((track) => {
       const userTags = track.tags.filter((tag) => !tag.automatic);
       const userHasNonFalseTriggerTags = userTags.some(
-        (tag) => tag.what !== "false-positive"
+        (tag) => tag.what !== "false-positive" && tag.what !== "noise"
       );
       const userHasFalseTriggerTags = userTags.some(
-        (tag) => tag.what === "false-positive"
+        (tag) => tag.what === "false-positive" || tag.what === "noise"
       );
       if (userHasNonFalseTriggerTags) {
         return true;
@@ -431,7 +467,7 @@ const recordingTracksPossiblyFiltered = computed<ApiTrackResponse[]>(() => {
         if (
           userTags.some(
             (tag) =>
-              tag.what === "false-positive" &&
+              (tag.what === "false-positive" || tag.what === "noise") &&
               tag.createdAt &&
               new Date(tag.createdAt) > loadDateTime.value
           )
@@ -440,12 +476,20 @@ const recordingTracksPossiblyFiltered = computed<ApiTrackResponse[]>(() => {
         }
         return false;
       }
-      return !track.tags.some(
+      // Handle multiple Master AI tags
+      const aiMasterTags = track.tags.filter(
         (tag) =>
           tag.automatic &&
-          tag.what === "false-positive" &&
           tag.data &&
           (tag.data as TrackTagData).name === "Master"
+      );
+      return !(
+        aiMasterTags.some(
+          (tag) => tag.what === "false-positive" || tag.what === "noise"
+        ) &&
+        !aiMasterTags.some(
+          (tag) => tag.what !== "false-positive" && tag.what !== "noise"
+        )
       );
     });
   }
@@ -457,22 +501,33 @@ const numFalseTriggers = computed<number>(() => {
   for (const track of recordingTracksLocal.value) {
     const userTags = track.tags.filter((tag) => !tag.automatic);
     const userFalseTrigger =
-      userTags.some((tag) => tag.what === "false-positive") &&
-      !userTags.some((tag) => tag.what !== "false-positive");
+      userTags.some(
+        (tag) => tag.what === "false-positive" || tag.what === "noise"
+      ) &&
+      !userTags.some(
+        (tag) => tag.what !== "false-positive" && tag.what !== "noise"
+      );
     if (userFalseTrigger) {
       falseTriggerCount++;
       continue;
     }
-    if (
-      track.tags.some(
-        (tag) =>
-          tag.automatic &&
-          tag.what === "false-positive" &&
-          tag.data &&
-          (tag.data as TrackTagData).name === "Master"
+
+    // Handle multiple Master AI tags
+    const aiMasterTags = track.tags.filter(
+      (tag) =>
+        tag.automatic &&
+        tag.data &&
+        (tag.data as TrackTagData).name === "Master"
+    );
+    const aiNoiseOnly =
+      aiMasterTags.some(
+        (tag) => tag.what === "false-positive" || tag.what === "noise"
       ) &&
-      !userTags.length
-    ) {
+      !aiMasterTags.some(
+        (tag) => tag.what !== "false-positive" && tag.what !== "noise"
+      );
+
+    if (aiNoiseOnly && !userTags.length) {
       falseTriggerCount++;
     }
   }
@@ -506,10 +561,13 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       <b-form-checkbox switch v-model="showFalseTriggers"
         ><span class="fs-7"
           >Show<span v-if="showFalseTriggers">ing</span> {{ numFalseTriggers }}
-          <span v-if="!showFalseTriggers">hidden</span> False Trigger<span
-            v-if="numFalseTriggers !== 1"
-            >s</span
-          ></span
+          <span v-if="!showFalseTriggers">hidden </span>
+          <span v-if="recordingType !== RecordingType.Audio"
+            >False Trigger<span v-if="numFalseTriggers !== 1">s</span></span
+          >
+          <span v-else
+            >noise track<span v-if="numFalseTriggers !== 1">s</span></span
+          > </span
         ><b-spinner
           class="ms-1"
           v-if="savingFalseTriggerSettings"
@@ -519,11 +577,13 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
     </div>
     <track-tagger-row
       v-for="(track, index) in recordingTracksPossiblyFiltered"
-      :key="index"
+      :key="track.id"
       :index="index"
       :processing-state="recording.processingState"
+      :is-audio-recording="recordingType === RecordingType.Audio"
       @expanded-changed="expandedItemChanged"
       @selected-track="selectedTrack"
+      @removed-track="removedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"
       @remove-tag="removeTag"
       :selected="
