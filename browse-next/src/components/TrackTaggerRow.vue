@@ -327,9 +327,13 @@ const permanentlyDeleteTrack = async (trackId: TrackId) => {
 };
 
 const trackWasCreatedByUser = (track: ApiTrackResponse): boolean => {
-  return track.tags.every(
-    (tag) => !tag.automatic && tag.userId === currentUser.value.id
-  );
+  if (CurrentUser.value) {
+    return track.tags.every(
+      (tag) =>
+        !tag.automatic && tag.userId === (CurrentUser.value as LoggedInUser).id
+    );
+  }
+  return false;
 };
 
 const otherUserTags = computed<string[]>(
@@ -662,7 +666,7 @@ onMounted(async () => {
     <div v-else>
       <two-step-action-button-popover
         v-if="
-          (userIsGroupAdmin || trackWasCreatedByUser(track)) && isAudioRecording
+          isAudioRecording && (userIsGroupAdmin || trackWasCreatedByUser(track))
         "
         :action="() => permanentlyDeleteTrack(track.id)"
         :icon="['far', 'trash-can']"
