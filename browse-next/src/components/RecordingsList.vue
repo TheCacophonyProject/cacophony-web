@@ -127,7 +127,7 @@
                     >AI Queued</span
                   ></span
                 >
-                <span v-else-if="item && item.data">
+                <span v-else-if="item && item.data" class="d-flex flex-wrap">
                   <span
                     class="visit-species-tag px-1 mb-1 text-capitalize me-1"
                     :class="(tag.path && tag.path.split('.')) || ''"
