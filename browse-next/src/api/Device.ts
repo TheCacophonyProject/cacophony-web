@@ -601,7 +601,7 @@ export const getReferenceImageForDeviceAtTime = (
     params.append("only-active", true.toString());
   }
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image?${optionalQueryString(params)}`
+    `/api/v1/devices/${deviceId}/reference-image${optionalQueryString(params)}`
   ) as Promise<FetchResult<Blob>>;
 };
 
@@ -617,7 +617,7 @@ export const hasReferenceImageForDeviceAtTime = (
   }
   // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image/exists?${optionalQueryString(
+    `/api/v1/devices/${deviceId}/reference-image/exists${optionalQueryString(
       params
     )}`
   ) as Promise<
