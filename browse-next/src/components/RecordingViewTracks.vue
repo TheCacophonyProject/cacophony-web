@@ -179,25 +179,16 @@ watch(
   () => props.recording,
   (nextRecording) => {
     cloneLocalTracks(nextRecording?.tracks || []);
-    if (route.params.trackId) {
-      currentTrack.value = getTrackById(currentTrackId.value);
-    }
+
     if (nextRecording) {
       prevRecordingType.value = nextRecording.type;
-      if (nextRecording.tracks.length === 1) {
-        if (
-          nextRecording.tracks[0].tags.filter((tag) => !tag.automatic)
-            .length === 0
-        ) {
-          // Select the only track if there is only one track, and it is untagged by users.
-          expandedItemChanged(nextRecording.tracks[0].id, true);
-        }
-      } else {
-        if (currentTrackId.value) {
-          expandedItemChanged(currentTrackId.value, true);
-        } else {
-          expandedItemChanged(-1, true);
-        }
+      if (route.params.trackId) {
+        currentTrack.value = getTrackById(currentTrackId.value);
+      } else if (recordingTracksPossiblyFiltered.value.length !== 0) {
+        emit("track-selected", {
+          trackId: recordingTracksPossiblyFiltered.value[0].id,
+          automatically: true,
+        });
       }
     }
   }
@@ -207,10 +198,10 @@ onMounted(() => {
   cloneLocalTracks(props.recording?.tracks || []);
   if (route.params.trackId) {
     currentTrack.value = getTrackById(currentTrackId.value);
-  } else if (recordingTracksLocal.value.length === 1) {
+  } else if (recordingTracksPossiblyFiltered.value.length !== 0) {
     emit("track-selected", {
-      trackId: recordingTracksLocal.value[0].id,
-      automatically: false,
+      trackId: recordingTracksPossiblyFiltered.value[0].id,
+      automatically: true,
     });
   }
   initialised.value = true;

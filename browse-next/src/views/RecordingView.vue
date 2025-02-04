@@ -811,18 +811,18 @@ const loadRecording = async () => {
         ).tracks.find(({ id }) => id == Number(route.params.trackId));
       }
 
-      if (
-        !route.params.trackId ||
-        (route.params.trackId && !currentTrack.value)
-      ) {
-        // set the default track if not set
-        if ((recording.value as ApiRecordingResponse).tracks.length) {
-          await selectedTrack(
-            (recording.value as ApiRecordingResponse).tracks[0].id,
-            true
-          );
-        }
-      }
+      // if (
+      //   !route.params.trackId ||
+      //   (route.params.trackId && !currentTrack.value)
+      // ) {
+      //   // set the default track if not set
+      //   if ((recording.value as ApiRecordingResponse).tracks.length) {
+      //     await selectedTrack(
+      //       (recording.value as ApiRecordingResponse).tracks[0].id,
+      //       true
+      //     );
+      //   }
+      // }
     } else {
       console.log("Recording load failed");
       // TODO Handle failure to get recording
@@ -852,28 +852,33 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
     ...route.params,
     trackId,
   };
-
-  if (!automatically) {
-    // Make the player start playing at the beginning of the selected track,
-    // and stop when it reaches the end of that track.
-    if (recording.value) {
-      userSelectedTrack.value = (
-        recording.value as ApiRecordingResponse
-      ).tracks.find(({ id }) => id === trackId);
-      await nextTick(() => {
-        userSelectedTrack.value = undefined;
-      });
+  if (
+    recording.value &&
+    recording.value.tracks.find(({ id }) => id == trackId)
+  ) {
+    console.trace("SelectedTrack", trackId, automatically);
+    if (!automatically) {
+      // Make the player start playing at the beginning of the selected track,
+      // and stop when it reaches the end of that track.
+      if (recording.value) {
+        userSelectedTrack.value = (
+          recording.value as ApiRecordingResponse
+        ).tracks.find(({ id }) => id === trackId);
+        await nextTick(() => {
+          userSelectedTrack.value = undefined;
+        });
+      }
+    } else {
+      // TODO: Should this automatically get removed if the selectedTrack has changed due to
+      //  the recording playing onto a new track
+      delete (params as Record<string, string | number>).detail;
     }
-  } else {
-    // TODO: Should this automatically get removed if the selectedTrack has changed due to
-    //  the recording playing onto a new track
-    delete (params as Record<string, string | number>).detail;
+    await router.replace({
+      name: route.name as string,
+      params,
+      query: route.query,
+    });
   }
-  await router.replace({
-    name: route.name as string,
-    params,
-    query: route.query,
-  });
 };
 const selectedTrackWrapped = ({
   trackId,
