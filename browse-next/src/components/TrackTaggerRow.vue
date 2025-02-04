@@ -619,7 +619,7 @@ onMounted(async () => {
     </div>
     <div v-if="!hasUserTag && hasAiTag && !expanded" class="d-flex">
       <two-step-action-button-popover
-        v-if="userIsGroupAdmin && isAudioRecording"
+        v-if="isAudioRecording"
         :action="() => permanentlyDeleteTrack(track.id)"
         :icon="['far', 'trash-can']"
         :confirmation-label="'Delete track'"
