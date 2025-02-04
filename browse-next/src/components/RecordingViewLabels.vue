@@ -136,6 +136,9 @@ const doAddLabel = async () => {
             <div>{{ card.when }}</div>
           </div>
           <button
+            v-if="
+              card._deleteAction.value && card._deleteAction.value.id !== -1
+            "
             class="btn text-secondary"
             @click.prevent="() => removeLabel(card._deleteAction.value.id)"
           >

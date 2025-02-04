@@ -179,6 +179,7 @@ export const queryRecordingsInProjectNew = (
   if (options.limit) {
     params.append("max-results", options.limit.toString());
   }
+  params.append("duration", "0");
   // Do we want this, or do we want to show processing recordings?
   // params.append("processingState", RecordingProcessingState.Finished);
 

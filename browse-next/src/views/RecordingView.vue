@@ -783,6 +783,15 @@ const loadRecording = async () => {
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
     recording.value = await getRecordingById(currentRecordingId.value);
     if (recording.value) {
+      if (recording.value.duration < 2.5 && recording.value.duration > 1.8) {
+        recording.value.tags.push({
+          id: -1,
+          confidence: 1,
+          detail: "Test recording",
+          createdAt: recording.value.recordingDateTime,
+        });
+      }
+
       const rec = recording.value as ApiRecordingResponse;
       prevRecordingType.value = rec.type;
 
