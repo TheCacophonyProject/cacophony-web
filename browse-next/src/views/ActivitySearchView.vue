@@ -21,7 +21,6 @@ import {
   allHistoricLocations,
   currentSelectedProject as currentActiveProject,
   latLngForActiveLocations,
-  selectedProjectDevices,
   urlNormalisedCurrentSelectedProjectName,
 } from "@models/provides";
 import {
@@ -65,7 +64,6 @@ import { DateTime } from "luxon";
 import {
   dayAndTimeAtLocation,
   formatDuration,
-  timeAtLocation,
   timezoneForLatLng,
   visitDuration,
 } from "@models/visitsUtils";
@@ -81,10 +79,8 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
-  type BulkVisitsResponse,
   getAllVisitsForProjectBetweenTimes,
   getVisitsForProject,
-  getVisitsForProjectNew,
   type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
@@ -1131,6 +1127,18 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
           data: sunrise.toISOString(),
         });
       }
+    }
+    if (
+      recording.type === "thermalRaw" &&
+      recording.duration < 2.5 &&
+      recording.duration > 1.8
+    ) {
+      recording.tags.push({
+        id: -1,
+        confidence: 1,
+        detail: "test recording",
+        createdAt: recording.recordingDateTime,
+      });
     }
     prevDay.items.push({
       type: "recording",

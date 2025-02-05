@@ -162,7 +162,7 @@
                 </span>
                 <span
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                  :class="[label.what]"
+                  :class="[label.what.split(' ').join('-')]"
                   :key="label.what"
                   v-for="label in regularLabelsForRecording((item as RecordingItem).data)"
                   >{{ label.what }}
@@ -563,6 +563,9 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
     &.rodent,
     &.hedgehog {
       background: #a36000;
+    }
+    &.test-recording {
+      background: #6a8bd5;
     }
   }
   .station-icon {

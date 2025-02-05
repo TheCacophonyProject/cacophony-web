@@ -38,6 +38,7 @@ import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
 import { getClassificationForLabel } from "@api/Classifications.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { LoadedResource } from "@api/types.ts";
+import internal from "node:stream";
 
 const props = defineProps<{
   userSelectedTrack?: ApiTrackResponse;
@@ -477,7 +478,7 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
           track.id,
           bounds,
           track.what,
-          props.recording.tracks,
+          tracksIntermediate.value,
           currentTrack,
           window.devicePixelRatio
         );
@@ -750,6 +751,12 @@ const userProjectSettings = computed<ApiProjectUserSettings>(() => {
       showFalseTriggers: false,
     }
   );
+});
+
+watch(userProjectSettings, (next, prev) => {
+  if (next.showFalseTriggers !== prev.showFalseTriggers && props.recording) {
+    computeIntermediateTracks(props.recording.tracks);
+  }
 });
 
 interface IntermediateTrack {
