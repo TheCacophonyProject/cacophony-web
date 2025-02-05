@@ -121,10 +121,12 @@ const doAddLabel = async () => {
       <template #_deleteAction="{ cell }">
         <button
           class="btn text-secondary"
+          v-if="cell.value.id !== -1"
           @click.prevent="() => removeLabel(cell.value.id)"
         >
           <font-awesome-icon icon="trash-can" />
         </button>
+        <span v-else></span>
       </template>
       <template #card="{ card }">
         <div class="d-flex flex-row justify-content-between">

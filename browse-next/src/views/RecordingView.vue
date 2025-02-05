@@ -783,7 +783,14 @@ const loadRecording = async () => {
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
     recording.value = await getRecordingById(currentRecordingId.value);
     if (recording.value) {
-      if (recording.value.duration < 2.5 && recording.value.duration > 1.8) {
+      if (
+        (recording.value.type === RecordingType.ThermalRaw &&
+          recording.value.duration < 2.5 &&
+          recording.value.duration > 1.8) ||
+        (recording.value.type === RecordingType.Audio &&
+          recording.value.duration > 9.8 &&
+          recording.value.duration < 11)
+      ) {
         recording.value.tags.push({
           id: -1,
           confidence: 1,
@@ -1126,10 +1133,10 @@ const requestedDownload = async () => {
       // eslint-disable-next-line no-undef
       request as RequestInit
     );
+    const mimeType =
+      downloadedFileResponse.headers.get("Content-Type") ||
+      "application/octet-stream";
     const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
-    const mimeType = downloadedFileResponse.headers.has("content-type")
-      ? (downloadedFileResponse.headers.get("content-type") as string)
-      : "application/octet-stream";
     download(
       URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
       `recording-${recordingId}-${DateTime.fromJSDate(

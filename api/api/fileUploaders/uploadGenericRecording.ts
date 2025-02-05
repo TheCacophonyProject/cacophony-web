@@ -258,7 +258,9 @@ const processFilePart = async (
   const mightBeTc2AudioFile =
     !("filename" in part) ||
     (part.filename &&
-      (part.filename.endsWith(".aac") || part.filename === "file"));
+      (part.filename.endsWith(".aac") ||
+        part.filename.endsWith(".m4a") ||
+        part.filename === "file"));
   let wasValidCptvFile = true;
   let wasValidM4aFile = true;
 

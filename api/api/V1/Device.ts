@@ -1067,6 +1067,7 @@ export default function (app: Application, baseUrl: string) {
             where: {
               DeviceId: response.locals.device.id,
               GroupId: response.locals.device.GroupId,
+              type: "thermalRaw",
               ...timeWindow,
             },
             attributes: [],

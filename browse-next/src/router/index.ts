@@ -319,6 +319,12 @@ const router = createRouter({
             import("@/views/ManageProjectTagSettingsSubView.vue"),
         },
         {
+          name: "project-misc-settings",
+          path: "project-settings",
+          meta: { title: "Settings for :projectName" },
+          component: () => import("@/views/ManageProjectSettingsSubView.vue"),
+        },
+        {
           name: "fix-project-locations",
           path: "fix-project-locations",
           meta: { title: "Fixup locations for :projectName" },

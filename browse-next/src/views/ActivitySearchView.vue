@@ -1129,9 +1129,12 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
       }
     }
     if (
-      recording.type === "thermalRaw" &&
-      recording.duration < 2.5 &&
-      recording.duration > 1.8
+      (recording.type === "thermalRaw" &&
+        recording.duration < 2.5 &&
+        recording.duration > 1.8) ||
+      (recording.type === "audio" &&
+        recording.duration < 11 &&
+        recording.duration > 9.8)
     ) {
       recording.tags.push({
         id: -1,

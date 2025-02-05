@@ -1365,7 +1365,7 @@ export const guessMimeType = (type, filename): string => {
     case RecordingType.ThermalRaw:
       return "application/x-cptv";
     case RecordingType.Audio:
-      return "audio/mpeg";
+      return "audio/mp4";
     default:
       return "application/octet-stream";
   }
