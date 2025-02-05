@@ -440,6 +440,80 @@ export const getDeviceModel = async (deviceId: DeviceId) => {
   }
 };
 
+/**
+ * Get a device reference image (pov or in-situ) at an optional point in time.
+ *   - type: "pov" or "in-situ"
+ *   - atTime: if specified, server attempts to find the reference image that applied at that time
+ *   - checkExists: if true, it will call the `.../reference-image/exists` path
+ *   - onlyActive: whether to require active device
+ *
+ * Returns a `FetchResult<Blob>` on success (unless checkExists = true, in which case
+ * the server might return JSON or an error). In that scenario, you can parse the “success”
+ * differently if needed.
+ */
+function getReferenceImage(
+  deviceId: DeviceId,
+  {
+    type = "pov",
+    atTime,
+    checkExists = false,
+    onlyActive = false,
+  }: {
+    type?: "pov" | "in-situ";
+    atTime?: Date;
+    checkExists?: boolean;
+    onlyActive?: boolean;
+  }
+): Promise<FetchResult<Blob>> {
+  const pathSuffix = checkExists ? "/exists" : "";
+  const params = new URLSearchParams();
+
+  if (type) params.append("type", type);
+  if (atTime) params.append("at-time", atTime.toISOString());
+  if (shouldViewAsSuperUser()) {
+    params.append("only-active", onlyActive ? "true" : "false");
+  } else {
+    params.append("view-mode", "user");
+    params.append("only-active", onlyActive ? "true" : "false");
+  }
+
+  return CacophonyApi.getBinary(
+    `/api/v1/devices/${deviceId}/reference-image${pathSuffix}?${params.toString()}`
+  );
+}
+
+/**
+ * Delete a device reference image (pov or in-situ).
+ *   - type: "pov" or "in-situ"
+ *   - atTime: optional date if referencing the historical entry
+ */
+function deleteReferenceImage(
+  deviceId: DeviceId,
+  {
+    type = "pov",
+    atTime,
+    onlyActive = false,
+  }: {
+    type?: "pov" | "in-situ";
+    atTime?: Date;
+    onlyActive?: boolean;
+  }
+): Promise<FetchResult<unknown>> {
+  const params = new URLSearchParams();
+  if (type) params.append("type", type);
+  if (atTime) params.append("at-time", atTime.toISOString());
+
+  if (shouldViewAsSuperUser()) {
+    params.append("only-active", onlyActive ? "true" : "false");
+  } else {
+    params.append("view-mode", "user");
+    params.append("only-active", onlyActive ? "true" : "false");
+  }
+
+  return CacophonyApi.delete(
+    `/api/v1/devices/${deviceId}/reference-image?${params.toString()}`
+  );
+}
 export default {
   getDevices,
   getDevice,
@@ -464,4 +538,6 @@ export default {
   getDeviceNodeGroup,
   getDeviceModel,
   getLatestEventsByDeviceId,
+  getReferenceImage,
+  deleteReferenceImage,
 };

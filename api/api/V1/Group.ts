@@ -852,7 +852,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/groups/:groupIdOrName/station Add a single station.
+   * @api {post} /api/v1/groups/:groupIdOrName/station Add a single station.
    * @apiName CreateStation
    * @apiGroup Station
    * @apiDescription Create a single station

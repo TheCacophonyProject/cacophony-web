@@ -34,6 +34,8 @@ import {
   MIN_STATION_SEPARATION_METERS,
 } from "@models/util/locationUtils.js";
 import { Op, QueryTypes } from "sequelize";
+import { mapDeviceResponse } from "./Device.js";
+import { Device } from "@/models/Device.js";
 
 const models = await modelsInit();
 
@@ -738,6 +740,80 @@ export default function (app: Application, baseUrl: string) {
         request.query.type as unknown as string
       );
       return successResponse(response, { speciesCountBulk });
+    }
+  );
+
+  /**
+   * @api {get} /api/v1/stations/:stationId/devices List devices currently assigned to a station
+   * @apiName GetDevicesForStation
+   * @apiGroup Station
+   *
+   * @apiDescription Returns all devices whose most recent DeviceHistory entry (before now)
+   * has `stationId === stationId`. In other words, they are currently located at this station.
+   *
+   * @apiParam {Number} stationId ID of the station
+   * @apiQuery {Boolean} [only-active=true] If `true`, only return active devices
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} devices Array of devices currently assigned
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:stationId/devices`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("stationId")),
+      booleanOf(param("only-active")).default(true),
+    ]),
+    fetchAuthorizedRequiredStationById(param("stationId")),
+    async (req: Request, res: Response) => {
+      const station = res.locals.station;
+      const onlyActive = req.query["only-active"] !== "false";
+
+      // We only want devices in the same group as `station.GroupId`.
+      // We'll do a single raw query that:
+      //   1) finds all devices for that group,
+      //   2) looks up each device’s latest deviceHistory entry,
+      //   3) checks if stationId == :stationId
+
+      const sql = `
+        SELECT d.*
+        FROM "Devices" d
+        JOIN LATERAL (
+          SELECT "stationId"
+          FROM "DeviceHistory" dh
+          WHERE dh."DeviceId" = d."id"
+            AND dh."GroupId" = d."GroupId"
+            AND dh."location" IS NOT NULL
+            AND dh."fromDateTime" <= now()
+          ORDER BY dh."fromDateTime" DESC
+          LIMIT 1
+        ) latest ON true
+        WHERE d."GroupId" = :groupId
+          ${onlyActive ? `AND d."active" = true` : ""}
+          AND latest."stationId" = :stationId
+      `;
+
+      const devicesRaw = await models.sequelize.query(sql, {
+        replacements: {
+          stationId: station.id,
+          groupId: station.GroupId,
+        },
+        type: QueryTypes.SELECT,
+        mapToModel: true,
+        // mapToModel requires we pass the model: Device
+        model: models.Device,
+      });
+
+      // Now `devicesRaw` is an array of Device instances
+      // We can map them to the standard ApiDeviceResponse format:
+      const viewAsSuperUser = res.locals.viewAsSuperUser;
+      const devices = (devicesRaw as Device[]).map((dev) =>
+        mapDeviceResponse(dev, viewAsSuperUser)
+      );
+
+      return successResponse(res, "Got devices for station", { devices });
     }
   );
 }

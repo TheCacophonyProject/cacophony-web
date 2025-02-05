@@ -444,7 +444,8 @@ export default function (app: Application, baseUrl: string) {
       deprecatedField(query("where")), // Sidekick
       anyOf(
         query("onlyActive").optional().isBoolean().toBoolean(),
-        query("only-active").optional().isBoolean().toBoolean()
+        query("only-active").optional().isBoolean().toBoolean(),
+        query("stationId").optional().isInt().toInt()
       ),
     ]),
     fetchAuthorizedRequiredDevices,
