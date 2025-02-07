@@ -220,8 +220,8 @@ const addSearchTermOnSubmit = () => {
 };
 
 const handleEscapeDismiss = () => {
-  closeSelect();
   (inputRef.value as HTMLInputElement).blur();
+  closeSelect();
   emit("deselected");
 };
 

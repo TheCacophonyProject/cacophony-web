@@ -1,23 +1,19 @@
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { type Spectastiq } from "spectastiq";
+//import { type Spectastiq } from "./spectastiq";
 import {
   computed,
   type ComputedRef,
   inject,
   onBeforeMount,
-  onBeforeUnmount,
   onMounted,
   type Ref,
   ref,
   watch,
   type WatchStopHandle,
 } from "vue";
-import {
-  createUserDefinedTrack,
-  getRawRecording,
-  replaceTrackTag,
-} from "@api/Recording.ts";
+import { createUserDefinedTrack, replaceTrackTag } from "@api/Recording.ts";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { TagColours } from "@/consts.ts";
 import type { RecordingId, TrackId, UserId } from "@typedefs/api/common";
@@ -32,13 +28,20 @@ import {
   currentSelectedProject as currentActiveProject,
   currentUser as currentUserInfo,
 } from "@models/provides.ts";
-import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser.ts";
+import {
+  CurrentUserCreds,
+  type LoggedInUser,
+  type LoggedInUserAuth,
+  type SelectedProject,
+  userIsLoggedIn,
+} from "@models/LoggedInUser.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
 import { getClassificationForLabel } from "@api/Classifications.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { LoadedResource } from "@api/types.ts";
-import internal from "node:stream";
+import { API_ROOT } from "@api/root.ts";
+import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 
 const props = defineProps<{
   userSelectedTrack?: ApiTrackResponse;
@@ -46,7 +49,8 @@ const props = defineProps<{
   recordingId: RecordingId;
   currentTrack?: ApiTrackResponse;
 }>();
-const audioBlobUrl = ref<string | null>();
+const audioUrl = ref<string | null>();
+const audioRequestHeaders = ref<string | null>();
 const spectastiqEl = ref<Spectastiq>();
 const spectrogramContainer = ref<HTMLDivElement>();
 const maxFrequency = 48000 / 2;
@@ -71,15 +75,15 @@ const emit = defineEmits<{
 }>();
 
 const loadRecording = async () => {
-  // Load the audio blob url.
-  const response = await getRawRecording(props.recordingId);
-  if (response.success) {
-    if (audioBlobUrl.value) {
-      // Clean up the old one.
-      URL.revokeObjectURL(audioBlobUrl.value);
+  if (userIsLoggedIn.value) {
+    await maybeRefreshStaleCredentials();
+    if (CurrentUserCreds.value) {
+      audioRequestHeaders.value = JSON.stringify({
+        Authorization: (CurrentUserCreds.value as LoggedInUserAuth).apiToken,
+      });
     }
-    audioBlobUrl.value = URL.createObjectURL(response.result);
   }
+  audioUrl.value = `${API_ROOT}/api/v1/recordings/raw/${props.recordingId}`;
 };
 onBeforeMount(() => {
   currentPalette.value =
@@ -199,30 +203,52 @@ watch(
   }
 );
 
-const selectTrackRegion = (track: ApiTrackResponse | undefined) => {
+watch(
+  () => props.currentTrack,
+  (nextTrack, prevTrack) => {
+    if (spectastiqEl.value) {
+      if (!nextTrack && prevTrack) {
+        // Deselected track
+        spectastiqEl.value.resetYZoom();
+        spectastiqEl.value.removePlaybackFrequencyBandPass();
+        if (audioIsPlaying.value) {
+          spectastiqEl.value
+            .togglePlayback()
+            .then((playing) => (audioIsPlaying.value = playing));
+        }
+      }
+    }
+  }
+);
+
+const selectTrackRegion = (track: ApiTrackResponse) => {
   if (overlayCanvasContext.value) {
     renderOverlay(overlayCanvasContext.value);
-    if (!track || track.id !== -1) {
-      if (track) {
-        // We should
-        const trackStart = track.start / audioDuration.value;
-        const trackEnd = track.end / audioDuration.value;
-        if (spectastiqEl.value && track.hasOwnProperty("maxFreq")) {
-          spectastiqEl.value.selectRegionOfInterest(
-            trackStart,
-            trackEnd,
-            (track.minFreq || 0) / audioSampleRate.value,
-            (track.maxFreq || 0) / audioSampleRate.value
-          );
-          spectastiqEl.value.setPlaybackFrequencyBandPass(
-            track.minFreq || 0,
-            track.maxFreq || audioSampleRate.value
-          );
+    if (track.id !== -1) {
+      const trackStart = track.start / audioDuration.value;
+      const trackEnd = track.end / audioDuration.value;
+      if (spectastiqEl.value && track.hasOwnProperty("maxFreq")) {
+        spectastiqEl.value.selectRegionOfInterest(
+          trackStart,
+          trackEnd,
+          (track.minFreq || 0) / audioSampleRate.value,
+          (track.maxFreq || 0) / audioSampleRate.value
+        );
+        currentTime.value = trackStart;
+        console.log("set band pass", track.minFreq, track.maxFreq);
+        spectastiqEl.value.setPlaybackFrequencyBandPass(
+          track.minFreq || 0,
+          track.maxFreq || audioSampleRate.value
+        );
+        if (audioIsPlaying.value) {
+          spectastiqEl.value
+            .togglePlayback()
+            .then((playing) => (audioIsPlaying.value = playing));
         }
-      } else {
-        if (spectastiqEl.value) {
-          spectastiqEl.value.resetYZoom();
-          spectastiqEl.value.removePlaybackFrequencyBandPass();
+        if (!audioIsPlaying.value) {
+          spectastiqEl.value
+            .togglePlayback()
+            .then((playing) => (audioIsPlaying.value = playing));
         }
       }
     }
@@ -487,7 +513,7 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
     ctx.restore();
   }
 };
-
+const audioIsPlaying = ref<boolean>(false);
 onMounted(() => {
   let initedContextListeners = false;
   if (props.recording) {
@@ -514,12 +540,11 @@ onMounted(() => {
       }
     );
     spectastiq.addEventListener("ready", () => {
-      console.log("initialised spectrogram");
+      //console.log("initialised spectrogram");
     });
     spectastiq.addEventListener(
       "audio-loaded",
       ({ detail: { sampleRate, duration } }) => {
-        console.log("loaded spectrogram data");
         audioSampleRate.value = sampleRate / 2;
         audioDuration.value = duration;
       }
@@ -531,22 +556,35 @@ onMounted(() => {
       "playhead-update",
       ({ detail: { timeInSeconds } }) => {
         currentTime.value = timeInSeconds;
+        if (
+          spectastiqEl.value &&
+          props.currentTrack &&
+          timeInSeconds >= props.currentTrack.end &&
+          audioIsPlaying.value
+        ) {
+          spectastiqEl.value.togglePlayback().then((playing) => {
+            audioIsPlaying.value = playing;
+          });
+        }
       }
     );
   }
 });
-onBeforeUnmount(() => {
-  if (audioBlobUrl.value) {
-    URL.revokeObjectURL(audioBlobUrl.value);
-  }
-});
-
-const togglePlayback = () => {
+const currentTime = ref<number>(0);
+const togglePlayback = async () => {
   if (spectastiqEl.value) {
-    audioIsPlaying.value = spectastiqEl.value.togglePlayback();
+    if (
+      !audioIsPlaying.value &&
+      props.currentTrack &&
+      currentTime.value >= props.currentTrack.end
+    ) {
+      selectTrackRegion(props.currentTrack);
+    } else {
+      audioIsPlaying.value = await spectastiqEl.value.togglePlayback();
+    }
   }
 };
-const audioIsPlaying = ref<boolean>(false);
+
 const showAdvancedControls = ref<boolean>(false);
 const volume = ref<number>(0.5);
 const volumeMuted = ref<boolean>(false);
@@ -558,7 +596,7 @@ const changeVolume = (e: InputEvent) => {
     }
   }
 };
-const currentTime = ref<number>(0);
+
 const currentPalette = ref<string>("Viridis");
 const inRegionCreationMode = ref<boolean>(false);
 const showClassificationSelector = ref<boolean>(false);
@@ -923,7 +961,8 @@ watch(tracksIntermediate, (next, prev) => {
   <div class="spectrogram" ref="spectrogramContainer">
     <spectastiq-viewer
       id="spectastiq"
-      :src="audioBlobUrl"
+      :request-headers="audioRequestHeaders"
+      :src="audioUrl"
       ref="spectastiqEl"
       :color-scheme="currentPalette"
     >

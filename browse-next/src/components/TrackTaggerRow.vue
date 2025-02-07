@@ -643,13 +643,6 @@ onMounted(async () => {
       </div>
     </div>
     <div v-if="!hasUserTag && hasAiTag && !expanded" class="d-flex">
-      <two-step-action-button-popover
-        v-if="isAudioRecording"
-        :action="() => permanentlyDeleteTrack(track.id)"
-        :icon="['far', 'trash-can']"
-        :confirmation-label="'Delete track'"
-        color="#666"
-      ></two-step-action-button-popover>
       <button
         type="button"
         class="btn fs-7 confirm-button"
@@ -677,17 +670,31 @@ onMounted(async () => {
           <font-awesome-icon :icon="['far', 'thumbs-down']" />
         </span>
       </button>
-    </div>
-    <div v-else>
       <two-step-action-button-popover
-        v-if="
-          isAudioRecording && (userIsGroupAdmin || trackWasCreatedByUser(track))
-        "
+        v-if="isAudioRecording"
         :action="() => permanentlyDeleteTrack(track.id)"
         :icon="['far', 'trash-can']"
         :confirmation-label="'Delete track'"
         color="#666"
       ></two-step-action-button-popover>
+    </div>
+    <div v-else>
+      <button
+        type="button"
+        class="btn fs-7 confirm-button"
+        @click.stop.prevent="confirmAiSuggestedTag"
+      >
+        <span class="label">Confirm</span>
+        <span class="fs-6 icon">
+          <font-awesome-icon
+            :icon="
+              thisUsersTagAgreesWithAiClassification
+                ? ['fas', 'thumbs-up']
+                : ['far', 'thumbs-up']
+            "
+          />
+        </span>
+      </button>
       <button
         type="button"
         aria-label="Replay track"
@@ -697,6 +704,15 @@ onMounted(async () => {
         <span class="visually-hidden">Replay track</span>
         <font-awesome-icon icon="rotate-right" color="#666" />
       </button>
+      <two-step-action-button-popover
+        v-if="
+          isAudioRecording && (userIsGroupAdmin || trackWasCreatedByUser(track))
+        "
+        :action="() => permanentlyDeleteTrack(track.id)"
+        :icon="['far', 'trash-can']"
+        :confirmation-label="'Delete track'"
+        color="#666"
+      ></two-step-action-button-popover>
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>
         <font-awesome-icon
