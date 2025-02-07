@@ -136,15 +136,29 @@ export default function (
     groupId: GroupId,
     atTime = new Date()
   ): Promise<DeviceHistory | null> {
-    return this.findOne({
+    let deviceHistoryEntry = await this.findOne({
       where: {
         DeviceId: deviceId,
         GroupId: groupId,
-        location: { [Op.ne]: null },
-        fromDateTime: { [Op.lte]: atTime },
+        fromDateTime: { [Op.gte]: atTime },
       },
-      order: [["fromDateTime", "DESC"]],
+      order: [["fromDateTime", "ASC"]],
     });
+
+    //
+    // If none exists, fallback to the latest entry "before" atTime
+    //
+    if (!deviceHistoryEntry) {
+      deviceHistoryEntry = await this.findOne({
+        where: {
+          DeviceId: deviceId,
+          GroupId: groupId,
+          fromDateTime: { [Op.lte]: atTime },
+        },
+        order: [["fromDateTime", "DESC"]],
+      });
+    }
+    return deviceHistoryEntry;
   };
   DeviceHistory.updateDeviceSettings = async function (
     deviceId: DeviceId,

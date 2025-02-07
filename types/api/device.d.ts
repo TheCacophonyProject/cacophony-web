@@ -76,14 +76,18 @@ export type WindowsSettings = {
   powerOn?: string;
   powerOff?: string;
 } & SettingsBase;
-
+export type ImageMimeTypes =
+  | "image/jpeg"
+  | "image/png"
+  | "image/webp"
+  | "image/gif";
 export interface ApiDeviceHistorySettings {
   referenceImagePOV?: string; // S3 Key for a device reference image
   referenceImagePOVFileSize?: number;
-  referenceImagePOVMimeType?: string;
+  referenceImagePOVMimeType?: ImageMimeTypes;
   referenceImageInSitu?: string; // S3 Key for a device reference image
   referenceImageInSituFileSize?: number;
-  referenceImageInSituMimeType?: string;
+  referenceImageInSituMimeType?: ImageMimeTypes;
   warp?: {
     dimensions?: { width: number; height: number };
     origin: [number, number];

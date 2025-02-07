@@ -1120,9 +1120,10 @@ export default function (app: Application, baseUrl: string) {
       } else if (
         [DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)
       ) {
-        const kind = request.query.type || "pov";
+        const kind = (request.query.type as string) || "pov";
         let referenceImage;
         let referenceImageFileSize;
+
         if (kind === "pov") {
           referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
           referenceImageFileSize =
@@ -1132,30 +1133,19 @@ export default function (app: Application, baseUrl: string) {
           referenceImageFileSize =
             deviceHistoryEntry?.settings?.referenceImageInSituFileSize;
         }
+
         const fromTime = deviceHistoryEntry?.fromDateTime;
         if (referenceImage && fromTime && referenceImageFileSize) {
           if (checkIfExists) {
-            // We want to return the earliest time after creation that this reference image is valid for too, so that the client only
-            // needs to query this API occasionally.
-            const laterDeviceHistoryEntry: DeviceHistory =
-              await models.DeviceHistory.findOne({
-                where: [
-                  {
-                    DeviceId: device.id,
-                    GroupId: device.GroupId,
-                    fromDateTime: { [Op.gt]: fromTime },
-                  },
-                  models.sequelize.where(
-                    Sequelize.fn("ST_X", Sequelize.col("location")),
-                    { [Op.ne]: deviceHistoryEntry.location.lng }
-                  ),
-                  models.sequelize.where(
-                    Sequelize.fn("ST_Y", Sequelize.col("location")),
-                    { [Op.ne]: deviceHistoryEntry.location.lat }
-                  ),
-                ] as any,
-                order: [["fromDateTime", "ASC"]],
-              });
+            // Build a payload showing fromDateTime & untilDateTime
+            const laterDeviceHistoryEntry = await models.DeviceHistory.findOne({
+              where: {
+                DeviceId: device.id,
+                GroupId: device.GroupId,
+                fromDateTime: { [Op.gt]: fromTime },
+              },
+              order: [["fromDateTime", "ASC"]],
+            });
             const payload: { fromDateTime: Date; untilDateTime?: Date } = {
               fromDateTime: fromTime,
             };
@@ -1168,26 +1158,24 @@ export default function (app: Application, baseUrl: string) {
               payload
             );
           } else {
-            // Get reference image for device at time if any, and return it
-            const time = fromTime
+            // Actually return the image
+            const timeString = fromTime
               ?.toISOString()
               .replace(/:/g, "_")
               .replace(".", "_");
-            const kind = request.query.type || "pov";
             const mimeType =
               kind === "pov"
                 ? deviceHistoryEntry?.settings?.referenceImagePOVMimeType
                 : deviceHistoryEntry?.settings?.referenceImageInSituMimeType;
 
-            const validatedMimeType =
-              mimeType && ALLOWED_MIME_TYPES.includes(mimeType as any)
-                ? mimeType
-                : "image/webp";
-
+            // Validate the mimeType or default
+            const validatedMimeType = ALLOWED_MIME_TYPES.includes(mimeType)
+              ? mimeType
+              : "image/webp";
             const filename = `device-${
               device.id
-            }-reference-image@${time}.${getExtension(validatedMimeType)}`;
-            // Get reference image for device at time if any.
+            }-reference-image@${timeString}.${getExtension(validatedMimeType)}`;
+
             return streamS3Object(
               request,
               response,
@@ -1200,6 +1188,7 @@ export default function (app: Application, baseUrl: string) {
             );
           }
         }
+
         return next(
           new UnprocessableError(
             "No reference image available for device at time"
@@ -1866,13 +1855,24 @@ export default function (app: Application, baseUrl: string) {
         //order: [["fromDateTime", "asc"]]
       });
       if (deviceHistoryEntry) {
+        const oldSettings = deviceHistoryEntry.settings || {};
         await deviceHistoryEntry.update({
           setBy: "user",
           location: setLocation,
           stationId: station.id,
           fromDateTime,
+          settings: oldSettings,
         });
       } else {
+        const previousEntry = await models.DeviceHistory.findOne({
+          where: {
+            uuid: device.uuid,
+            GroupId: device.GroupId,
+            // fromDateTime < your target time
+          },
+          order: [["fromDateTime", "DESC"]],
+        });
+        const oldSettings = previousEntry?.settings || {};
         await models.DeviceHistory.create({
           uuid: device.uuid,
           saltId: device.saltId,
@@ -1883,6 +1883,7 @@ export default function (app: Application, baseUrl: string) {
           GroupId: device.GroupId,
           deviceName: device.deviceName,
           stationId: station.id,
+          settings: oldSettings,
         });
       }
       // Get the earliest history location that's later than our current fromDateTime, if any
