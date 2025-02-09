@@ -100,6 +100,7 @@
         <div
           v-else
           class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
+          :class="{ redacted: (item.data as ApiRecordingResponse).redacted }"
         >
           <div
             class="visit-thumb rounded-1"
@@ -353,7 +354,9 @@ const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
 
 const selectedRecording = (recording: SunItem | RecordingItem) => {
   if (recording.type === "recording") {
-    emit("selected-recording", (recording as RecordingItem).data.id);
+    if (!recording.data.redacted) {
+      emit("selected-recording", (recording as RecordingItem).data.id);
+    }
   }
 };
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -393,6 +396,10 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
 }
 .visit-station-name {
   max-width: calc(100cqw - 65px);
+}
+.redacted {
+  opacity: 0.5;
+  pointer-events: none;
 }
 .visits-daily-breakdown {
   background: white;
@@ -566,6 +573,9 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
     }
     &.test-recording {
       background: #6a8bd5;
+    }
+    &.redacted-for-privacy {
+      background: #d56a6e;
     }
   }
   .station-icon {
