@@ -1,5 +1,8 @@
-import type { RecordingProcessingState } from "@typedefs/api/consts.js";
-import { RecordingType, TagMode } from "@typedefs/api/consts.js";
+import type {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.js";
+import { TagMode } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
   GroupId,
