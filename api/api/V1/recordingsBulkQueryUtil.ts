@@ -61,7 +61,7 @@ export const getFirstPass = (
           : { recordingDateTime: { [Op.lt]: until } }
         : {}),
       GroupId: projectId,
-      ...(types.includes(RecordingType.Audio) && includeFilteredTracks
+      ...(types.includes(RecordingType.Audio) && !includeFilteredTracks
         ? { redacted: false }
         : {}),
       duration: statusRecordingsOnly
