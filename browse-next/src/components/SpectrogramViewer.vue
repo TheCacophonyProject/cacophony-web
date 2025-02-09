@@ -209,9 +209,6 @@ watch(
     if (spectastiqEl.value) {
       if (!nextTrack && prevTrack) {
         // Deselected track
-
-        console.log("Deselected track", audioSampleRate.value);
-
         spectastiqEl.value.selectRegionOfInterest(0, 1, 0, 1);
         spectastiqEl.value.removePlaybackFrequencyBandPass();
         if (audioIsPlaying.value) {
@@ -228,19 +225,26 @@ const selectTrackRegion = (track: ApiTrackResponse) => {
   if (overlayCanvasContext.value) {
     renderOverlay(overlayCanvasContext.value);
     if (track.id !== -1) {
-      const trackStart = track.start / audioDuration.value;
-      const trackEnd = track.end / audioDuration.value;
+      const trackStartZeroOne = track.start / audioDuration.value;
+      const trackEndZeroOne = track.end / audioDuration.value;
       if (spectastiqEl.value && track.hasOwnProperty("maxFreq")) {
+        const minFreqZeroOne =
+          Math.max(0, track.minFreq || 0) / audioSampleRate.value;
+        const maxFreqZeroOne =
+          Math.min(
+            track.maxFreq || audioSampleRate.value,
+            audioSampleRate.value
+          ) / audioSampleRate.value;
         spectastiqEl.value.selectRegionOfInterest(
-          trackStart,
-          trackEnd,
-          (track.minFreq || 0) / audioSampleRate.value,
-          (track.maxFreq || 0) / audioSampleRate.value
+          trackStartZeroOne,
+          trackEndZeroOne,
+          minFreqZeroOne,
+          maxFreqZeroOne
         );
-        currentTime.value = trackStart;
+        currentTime.value = trackStartZeroOne;
         spectastiqEl.value.setPlaybackFrequencyBandPass(
-          track.minFreq || 0,
-          track.maxFreq || audioSampleRate.value
+          minFreqZeroOne * audioSampleRate.value,
+          maxFreqZeroOne * audioSampleRate.value
         );
         if (audioIsPlaying.value) {
           spectastiqEl.value
@@ -302,18 +306,18 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
       for (const track of tracksIntermediate.value) {
         const trackStart = track.start / duration;
         const trackEnd = track.end / duration;
+        const minFreq = 1 - Math.max(0, track.minFreq || 0) / cropScaleY;
+        const maxFreq =
+          1 - Math.min(track.maxFreq || 0, cropScaleY) / cropScaleY;
+
         const hitBox = getTrackBounds(
           context.canvas.width / devicePixelRatio,
           context.canvas.height / devicePixelRatio,
           begin,
           end,
-          [
-            trackStart,
-            1 - (track.maxFreq || 0) / cropScaleY,
-            trackEnd,
-            1 - (track.minFreq || 0) / cropScaleY,
-          ]
+          [trackStart, maxFreq, trackEnd, minFreq]
         );
+
         const d = pointIsInPaddedBox(x, y, hitBox);
         if (
           d !== false &&
@@ -343,17 +347,14 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
     for (const track of tracksIntermediate.value) {
       const trackStart = track.start / audioDuration.value;
       const trackEnd = track.end / audioDuration.value;
+      const minFreq = 1 - Math.max(0, track.minFreq || 0) / cropScaleY;
+      const maxFreq = 1 - Math.min(track.maxFreq || 0, cropScaleY) / cropScaleY;
       const hitBox = getTrackBounds(
         context.canvas.width / devicePixelRatio,
         context.canvas.height / devicePixelRatio,
         begin,
         end,
-        [
-          trackStart,
-          1 - (track.maxFreq || 0) / cropScaleY,
-          trackEnd,
-          1 - (track.minFreq || 0) / cropScaleY,
-        ]
+        [trackStart, maxFreq, trackEnd, minFreq]
       );
       if (pointIsInExactBox(x, y, hitBox)) {
         hit = true;
@@ -491,8 +492,12 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
     ctx.clearRect(0, 0, cWidth, cHeight);
     if (props.recording) {
       for (const track of tracksIntermediate.value) {
-        const minFreq = 1 - (track.minFreq || 0) / audioSampleRate.value;
-        const maxFreq = 1 - (track.maxFreq || 0) / audioSampleRate.value;
+        const minFreq =
+          1 - Math.max(0, track.minFreq || 0) / audioSampleRate.value;
+        const maxFreq =
+          1 -
+          Math.min(track.maxFreq || 0, audioSampleRate.value) /
+            audioSampleRate.value;
         const trackStart = track.start / audioDuration.value;
         const trackEnd = track.end / audioDuration.value;
         const bounds = getTrackBounds(cWidth, cHeight, begin, end, [
