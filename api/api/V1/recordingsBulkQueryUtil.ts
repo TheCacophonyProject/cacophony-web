@@ -1,8 +1,5 @@
-import type {
-  RecordingProcessingState,
-  RecordingType,
-} from "@typedefs/api/consts.js";
-import { TagMode } from "@typedefs/api/consts.js";
+import type { RecordingProcessingState } from "@typedefs/api/consts.js";
+import { TagMode, RecordingType } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
   GroupId,
@@ -64,7 +61,9 @@ export const getFirstPass = (
           : { recordingDateTime: { [Op.lt]: until } }
         : {}),
       GroupId: projectId,
-      // ...(types.includes(RecordingType.Audio) ? { redacted: false } : {}),
+      ...(types.includes(RecordingType.Audio) && includeFilteredTracks
+        ? { redacted: false }
+        : {}),
       duration: statusRecordingsOnly
         ? { [Op.and]: [{ [Op.lt]: 2.5 }, { [Op.gt]: 0.0 }] }
         : { [Op.gte]: minDuration },
