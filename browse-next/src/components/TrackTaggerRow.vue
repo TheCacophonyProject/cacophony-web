@@ -670,16 +670,28 @@ onMounted(async () => {
           <font-awesome-icon :icon="['far', 'thumbs-down']" />
         </span>
       </button>
+      <button
+        v-if="expanded"
+        type="button"
+        aria-label="Replay track"
+        class="btn"
+        @click.stop.prevent="replaySelectedTrack"
+      >
+        <span class="visually-hidden">Replay track</span>
+        <font-awesome-icon icon="rotate-right" color="#666" />
+      </button>
       <two-step-action-button-popover
         v-if="isAudioRecording"
         :action="() => permanentlyDeleteTrack(track.id)"
         :icon="['far', 'trash-can']"
         :confirmation-label="'Delete track'"
         color="#666"
+        :boundary-padding="true"
       ></two-step-action-button-popover>
     </div>
     <div v-else>
       <button
+        v-if="!hasUserTag"
         type="button"
         class="btn fs-7 confirm-button"
         @click.stop.prevent="confirmAiSuggestedTag"
@@ -696,6 +708,7 @@ onMounted(async () => {
         </span>
       </button>
       <button
+        v-if="expanded"
         type="button"
         aria-label="Replay track"
         class="btn"
@@ -712,6 +725,7 @@ onMounted(async () => {
         :icon="['far', 'trash-can']"
         :confirmation-label="'Delete track'"
         color="#666"
+        :boundary-padding="true"
       ></two-step-action-button-popover>
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>

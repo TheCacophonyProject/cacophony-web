@@ -209,7 +209,12 @@ watch(
     if (spectastiqEl.value) {
       if (!nextTrack && prevTrack) {
         // Deselected track
-        spectastiqEl.value.resetYZoom();
+        spectastiqEl.value.selectRegionOfInterest(
+          0,
+          1,
+          audioSampleRate.value / 2,
+          0
+        );
         spectastiqEl.value.removePlaybackFrequencyBandPass();
         if (audioIsPlaying.value) {
           spectastiqEl.value
@@ -235,7 +240,6 @@ const selectTrackRegion = (track: ApiTrackResponse) => {
           (track.maxFreq || 0) / audioSampleRate.value
         );
         currentTime.value = trackStart;
-        console.log("set band pass", track.minFreq, track.maxFreq);
         spectastiqEl.value.setPlaybackFrequencyBandPass(
           track.minFreq || 0,
           track.maxFreq || audioSampleRate.value
@@ -799,6 +803,7 @@ watch(userProjectSettings, (next, prev) => {
 
 interface IntermediateTrack {
   what: string | null;
+  user: boolean;
   start: number;
   end: number;
   maxFreq: number;
@@ -869,10 +874,14 @@ const computeIntermediateTracks = (tracks: ApiTrackResponse[]) => {
   })[] = [];
   if (props.recording) {
     for (const track of tracks) {
-      const { start, end, minFreq, maxFreq, tags, id } = track;
+      const { start, end, minFreq, maxFreq, tags, id, automatic } = track;
       const authTag = masterTag(tags);
       if (authTag !== null) {
         const tag = getAuthoritativeTagForTrack([authTag]);
+        let justCreatedTag = false;
+        if (tag) {
+          justCreatedTag = !tag[1] && tag[2];
+        }
         if (tag !== null) {
           let justTaggedFalseTrigger = false;
           const what = tag[0];
@@ -887,6 +896,7 @@ const computeIntermediateTracks = (tracks: ApiTrackResponse[]) => {
             end,
             justTaggedFalseTrigger,
             id,
+            user: justCreatedTag,
           });
         }
       }
@@ -953,6 +963,14 @@ watch(tracksIntermediate, (next, prev) => {
     );
     if (changedTrack) {
       selectTrackRegion(changedTrack as unknown as ApiTrackResponse);
+    }
+  } else if (next && prev && next.length === prev.length) {
+    for (let i = 0; i < next.length; i++) {
+      if (next[i].user && !prev[i].user) {
+        // Track tag changed, assume user confirmed or picked a tag.
+        emit("track-deselected");
+        break;
+      }
     }
   }
 });

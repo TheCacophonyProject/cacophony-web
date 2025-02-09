@@ -162,7 +162,7 @@
                 </span>
                 <span
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                  :class="[label.what.split(' ').join('-')]"
+                  :class="[label.what.toLowerCase().split(' ').join('-')]"
                   :key="label.what"
                   v-for="label in regularLabelsForRecording((item as RecordingItem).data)"
                   >{{ label.what }}

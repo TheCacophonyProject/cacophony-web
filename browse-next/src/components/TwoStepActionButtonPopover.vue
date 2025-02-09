@@ -2,14 +2,15 @@
   <b-popover
     click
     :disabled="disabled"
-    placement="left"
+    :placement="placement"
     no-fade
+    :strategy="'fixed'"
     :delay="{ show: 0, hide: 0 }"
     :boundary-padding="{ top: 17, bottom: 17 }"
-    close-on-hide
+    :close-on-hide="hasBoundaryPadding"
   >
     <template #target>
-      <button class="btn" @click.stop.prevent="() => {}">
+      <button class="btn" :class="[...classes]" @click.stop.prevent="() => {}">
         <font-awesome-icon
           :icon="icon"
           v-if="icon"
@@ -30,7 +31,11 @@
   </b-popover>
 </template>
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed } from "vue";
+
+const hasBoundaryPadding = computed(() => {
+  return props.boundaryPadding;
+});
 
 const props = withDefaults(
   defineProps<{
@@ -38,20 +43,29 @@ const props = withDefaults(
     label?: string | (() => string);
     confirmationLabel?: string | (() => string);
     disabled?: boolean;
+    classes?: string[];
     icon?: string | string[];
     color?: string;
     rotate?: 90 | 180 | 270 | null;
+    placement?: string;
+    boundaryPadding: boolean;
   }>(),
   {
     label: "",
     confirmationLabel: "",
     disabled: false,
+    classes: () => [],
     icon: "trash-can",
     color: "inherit",
     rotate: null,
+    placement: "left",
+    boundaryPadding: true,
   }
 );
 
+// :delay="{ show: 0, hide: 0 }"
+// :boundary-padding="{ top: 17, bottom: 17 }"
+// close-on-hide
 const computedLabel = computed<string>(() => {
   if (typeof props.label === "string") {
     return props.label;
