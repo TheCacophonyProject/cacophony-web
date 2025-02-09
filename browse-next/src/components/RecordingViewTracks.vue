@@ -184,7 +184,10 @@ watch(
       prevRecordingType.value = nextRecording.type;
       if (route.params.trackId) {
         currentTrack.value = getTrackById(currentTrackId.value);
-      } else if (recordingTracksPossiblyFiltered.value.length !== 0) {
+      } else if (
+        recordingTracksPossiblyFiltered.value.length !== 0 &&
+        nextRecording.type !== RecordingType.Audio
+      ) {
         emit("track-selected", {
           trackId: recordingTracksPossiblyFiltered.value[0].id,
           automatically: true,

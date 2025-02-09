@@ -197,6 +197,8 @@ const minDateForSelectedLocations = computed<Date>(() => {
 const searchIsValid = computed<boolean>(() => {
   const hasValidDateRange =
     Array.isArray(selectedDateRange.value) ||
+    (selectedDateRange.value.value &&
+      Array.isArray(selectedDateRange.value.value)) ||
     Array.isArray(customDateRange.value);
   const hasAdvancedSettingsSelected =
     showAdvanced.value &&
