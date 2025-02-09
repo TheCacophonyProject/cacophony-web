@@ -43,10 +43,7 @@ export const getFirstPass = (
       ...(includeDeletedRecordings
         ? {}
         : {
-            [Op.or]: [
-              { deletedAt: { [Op.eq]: null } },
-              { deletedAt: { [Op.ne]: null }, redacted: true },
-            ],
+            deletedAt: { [Op.eq]: null },
           }),
       ...(types.length !== 0 ? { type: { [Op.in]: types } } : {}),
       ...(processingState !== undefined ? { processingState } : {}),
@@ -64,7 +61,7 @@ export const getFirstPass = (
           : { recordingDateTime: { [Op.lt]: until } }
         : {}),
       GroupId: projectId,
-      ...(types.includes(RecordingType.Audio) ? { redacted: false } : {}),
+      // ...(types.includes(RecordingType.Audio) ? { redacted: false } : {}),
       duration: statusRecordingsOnly
         ? { [Op.and]: [{ [Op.lt]: 2.5 }, { [Op.gt]: 0.0 }] }
         : { [Op.gte]: minDuration },
