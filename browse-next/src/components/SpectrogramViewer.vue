@@ -209,12 +209,10 @@ watch(
     if (spectastiqEl.value) {
       if (!nextTrack && prevTrack) {
         // Deselected track
-        spectastiqEl.value.selectRegionOfInterest(
-          0,
-          1,
-          audioSampleRate.value / 2,
-          0
-        );
+
+        console.log("Deselected track", audioSampleRate.value);
+
+        spectastiqEl.value.selectRegionOfInterest(0, 1, 0, 1);
         spectastiqEl.value.removePlaybackFrequencyBandPass();
         if (audioIsPlaying.value) {
           spectastiqEl.value
