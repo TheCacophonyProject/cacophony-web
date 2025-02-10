@@ -347,6 +347,10 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
     for (const track of tracksIntermediate.value) {
       const trackStart = track.start / audioDuration.value;
       const trackEnd = track.end / audioDuration.value;
+      if (track.minFreq === undefined || track.maxFreq === undefined) {
+        alert("This track has no valid frequency range, so it can't be used.");
+        console.warn("track", track);
+      }
       const minFreq = 1 - Math.max(0, track.minFreq || 0) / cropScaleY;
       const maxFreq = 1 - Math.min(track.maxFreq || 0, cropScaleY) / cropScaleY;
       const hitBox = getTrackBounds(
@@ -660,6 +664,7 @@ watch(pendingTrackClass, async (classification: string[]) => {
       end_s: pendingTrack.value.end,
       minFreq: pendingTrack.value.minFreq,
       maxFreq: pendingTrack.value.maxFreq,
+      automatic: false,
     };
 
     const response = await createUserDefinedTrack(props.recording, payload);

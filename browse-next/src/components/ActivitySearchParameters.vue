@@ -24,7 +24,11 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import { canonicalLatLngForLocations } from "@/helpers/Location.ts";
-import { RecordingLabels } from "@/consts.ts";
+import {
+  CameraRecordingLabels,
+  AudioRecordingLabels,
+  CommonRecordingLabels,
+} from "@/consts.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
 import {
   ActivitySearchDisplayMode,
@@ -62,20 +66,22 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 const availableProjects = inject(userProjects) as Ref<
   LoadedResource<ApiProjectResponse[]>
 >;
+
+// FIXME: Add user selected labels. Probably wants to be a globally accessible function
 const availableLabels = computed(() => {
-  const labels = RecordingLabels.slice(2).map(({ text, value }) => ({
+  const labels = CameraRecordingLabels.slice(2).map(({ text, value }) => ({
     label: text,
     value: (value || text).toLowerCase(),
   }));
   if (selectedCoolLabel.value) {
-    const label = RecordingLabels[0];
+    const label = CameraRecordingLabels[0];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),
     });
   }
   if (selectedFlaggedLabel.value) {
-    const label = RecordingLabels[1];
+    const label = CameraRecordingLabels[1];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),

@@ -210,7 +210,7 @@ const addPendingAudioLabel = async () => {
   </card-table>
 
   <div
-    class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center"
+    class="d-flex flex-column flex-md-row justify-content-md-between my-3 align-items-center"
   >
     <h2 class="h6">Bird recording labels</h2>
     <div class="d-flex align-items-end justify-content-end ms-md-5">
