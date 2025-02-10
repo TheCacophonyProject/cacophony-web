@@ -20,11 +20,19 @@ export interface ApiGroupResponse {
   userSettings?: ApiGroupUserSettings;
 }
 
+export interface RecordingLabel {
+  text: string;
+  value?: string;
+  description?: string;
+}
+
 export interface ApiGroupSettings {
   // Define group-specific tagging preferences.
   // Define if cameras are on 24/7?
   tags?: string[];
   audioTags?: string[];
+  cameraLabels?: RecordingLabel[];
+  audioLabels?: RecordingLabel[];
   // Delete audio recordings with human voices
   filterHuman?: boolean;
   filteredAudioTags?: string[];

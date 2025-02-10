@@ -314,9 +314,16 @@ const router = createRouter({
         {
           name: "project-tag-settings",
           path: "tag-settings",
-          meta: { title: "Tag preferences for :projectName" },
+          meta: { title: "Tag and label settings for :projectName" },
           component: () =>
             import("@/views/ManageProjectTagSettingsSubView.vue"),
+        },
+        {
+          name: "project-label-settings",
+          path: "label-settings",
+          meta: { title: "Label settings for :projectName" },
+          component: () =>
+            import("@/views/ManageProjectLabelSettingsSubView.vue"),
         },
         {
           name: "project-misc-settings",

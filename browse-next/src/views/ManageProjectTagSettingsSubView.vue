@@ -25,6 +25,7 @@ const customCameraTags = computed<string[]>(() => {
   }
   return DEFAULT_CAMERA_TAGS;
 });
+
 const localCameraTags = ref<string[]>([]);
 localCameraTags.value = [...customCameraTags.value];
 
@@ -271,6 +272,7 @@ const addPendingAudioTag = async () => {
       </button>
     </template>
   </card-table>
+
   <div
     class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center mt-5"
   >

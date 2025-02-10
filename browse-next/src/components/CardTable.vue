@@ -51,7 +51,7 @@
               v-bind="{ cell, row: sortedItems[rowIndex] }"
             >
               <span
-                v-if="cell && cell.value"
+                v-if="cell && cell.value !== undefined"
                 class="text-nowrap"
                 v-html="cell.value"
               />

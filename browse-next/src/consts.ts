@@ -1,3 +1,5 @@
+import type { RecordingLabel } from "@typedefs/api/group";
+
 export const TagColours = [
   { background: "#32ff7e", foreground: "dark" },
   { background: "#4bcffa", foreground: "dark" },
@@ -31,18 +33,20 @@ export const DEFAULT_AUDIO_TAGS = [
   "unidentified",
 ];
 
-export const RecordingLabels: {
-  text: string;
-  value?: string;
-  description: string;
-}[] = [
-  { text: "Cool", description: "Mark this as a cool or interesting recording" },
+export const CommonRecordingLabels: RecordingLabel[] = [
+  {
+    text: "Cool",
+    description: "Mark this as a cool or interesting recording",
+  },
   {
     text: "Flagged for review",
     value: "requires review",
     description:
       "Flag this recording for review due to low confidence IDing track(s)",
   },
+];
+
+export const CameraRecordingLabels: RecordingLabel[] = [
   {
     text: "Animal in trap",
     value: "trapped in trap",
@@ -69,14 +73,13 @@ export const RecordingLabels: {
   },
   {
     text: "Outside",
-    description: "Outside",
   },
   {
     text: "Inside",
-    description: "Inside",
   },
   {
     text: "Incursion",
-    description: "Incursion",
   },
 ];
+
+export const AudioRecordingLabels: RecordingLabel[] = [];

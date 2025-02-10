@@ -9,7 +9,13 @@ import { CurrentUser } from "@models/LoggedInUser";
 import type { TagId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
-import { RecordingLabels } from "@/consts";
+import {
+  AudioRecordingLabels,
+  CameraRecordingLabels,
+  CommonRecordingLabels,
+} from "@/consts";
+import type { RecordingLabel } from "@typedefs/api/group";
+import { RecordingType } from "@typedefs/api/consts.ts";
 
 const props = withDefaults(
   defineProps<{
@@ -28,7 +34,7 @@ const tableItems = computed<CardTableRows<ApiRecordingTagResponse | string>>(
     return (props.recording?.tags || []).map(
       (tag: ApiRecordingTagResponse) => ({
         label:
-          labels.find((label) => label.value === tag.detail)?.text ||
+          labels.value.find((label) => label.value === tag.detail)?.text ||
           tag.detail,
         by: tag.taggerName || (tag.automatic ? "Cacophony AI" : "-"),
         when: DateTime.fromJSDate(new Date(tag.createdAt)).toRelative({
@@ -41,31 +47,54 @@ const tableItems = computed<CardTableRows<ApiRecordingTagResponse | string>>(
   }
 );
 
-interface Label {
-  text: string;
-  value: string;
-  description: string;
-}
-
 // TODO - Group-level defined labels created by group admin.
-const labels: Label[] = RecordingLabels.map(({ text, description, value }) => ({
-  text,
-  description,
-  value: (value || text).toLowerCase(),
-}));
+
+const cameraLabels = computed<RecordingLabel[]>(() => {
+  return [...CommonRecordingLabels, ...CameraRecordingLabels].map(
+    ({ text, description, value }) => ({
+      text: text,
+      description,
+      value: (value || text).toLowerCase(),
+    })
+  );
+});
+const audioLabels = computed<RecordingLabel[]>(() => {
+  return [...CommonRecordingLabels, ...AudioRecordingLabels].map(
+    ({ text, description, value }) =>
+      ({
+        text: text,
+        description,
+        value: (value || text).toLowerCase(),
+      } as RecordingLabel)
+  );
+});
+
+const labels = computed<RecordingLabel[]>(() => {
+  if (recordingTypeIsAudio.value) {
+    return audioLabels.value;
+  }
+  return cameraLabels.value;
+});
+
+const recordingTypeIsAudio = computed<boolean>(() => {
+  if (props.recording) {
+    return props.recording.type === RecordingType.Audio;
+  }
+  return false;
+});
 
 const unusedLabels = computed(() => {
   // Filter out labels that have already been added
-  return labels.filter(
+  return labels.value.filter(
     (label) => !props.recording?.tags.some((tag) => tag.detail === label.value)
   );
 });
 
 const selectedLabel = ref<string>("");
-const labelToAdd = computed<Label | null>(() => {
+const labelToAdd = computed<RecordingLabel | null>(() => {
   return (
     (selectedLabel.value !== "" &&
-      labels.find((label) => label.value === selectedLabel.value)) ||
+      labels.value.find((label) => label.value === selectedLabel.value)) ||
     null
   );
 });
@@ -97,14 +126,14 @@ const doAddLabel = async () => {
       props.recording.id,
       selectedLabel.value
     );
-    if (addLabelResponse.success) {
+    if (addLabelResponse.success && CurrentUser.value) {
       // Emit tag change event, patch upstream recording.
       emit("added-recording-label", {
         id: addLabelResponse.result.tagId,
         detail: selectedLabel.value,
         confidence: 0.9,
-        taggerName: CurrentUser.value?.userName,
-        taggerId: CurrentUser.value?.id,
+        taggerName: CurrentUser.value.userName,
+        taggerId: CurrentUser.value.id,
         createdAt: new Date().toISOString(),
       });
       selectedLabel.value = "";

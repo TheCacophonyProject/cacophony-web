@@ -225,8 +225,8 @@ const selectTrackRegion = (track: ApiTrackResponse) => {
   if (overlayCanvasContext.value) {
     renderOverlay(overlayCanvasContext.value);
     if (track.id !== -1) {
-      const trackStartZeroOne = track.start / audioDuration.value;
-      const trackEndZeroOne = track.end / audioDuration.value;
+      const trackStartZeroOne = Math.max(0, track.start / audioDuration.value);
+      const trackEndZeroOne = Math.min(1, track.end / audioDuration.value);
       if (spectastiqEl.value && track.hasOwnProperty("maxFreq")) {
         const minFreqZeroOne =
           Math.max(0, track.minFreq || 0) / audioSampleRate.value;
@@ -492,19 +492,22 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
     ctx.clearRect(0, 0, cWidth, cHeight);
     if (props.recording) {
       for (const track of tracksIntermediate.value) {
-        const minFreq =
+        const minFreqZeroOne =
           1 - Math.max(0, track.minFreq || 0) / audioSampleRate.value;
-        const maxFreq =
+        const maxFreqZeroOne =
           1 -
           Math.min(track.maxFreq || 0, audioSampleRate.value) /
             audioSampleRate.value;
-        const trackStart = track.start / audioDuration.value;
-        const trackEnd = track.end / audioDuration.value;
+        const trackStartZeroOne = Math.max(
+          0,
+          track.start / audioDuration.value
+        );
+        const trackEndZeroOne = Math.min(1, track.end / audioDuration.value);
         const bounds = getTrackBounds(cWidth, cHeight, begin, end, [
-          trackStart,
-          maxFreq,
-          trackEnd,
-          minFreq,
+          trackStartZeroOne,
+          maxFreqZeroOne,
+          trackEndZeroOne,
+          minFreqZeroOne,
         ]);
         drawRectWithText(
           ctx,
