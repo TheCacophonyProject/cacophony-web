@@ -97,4 +97,10 @@ export const DEFAULT_CAMERA_RECORDING_LABELS: RecordingLabel[] = [
   // },
 ];
 
-export const DEFAULT_AUDIO_RECORDING_LABELS: RecordingLabel[] = [];
+export const DEFAULT_AUDIO_RECORDING_LABELS: RecordingLabel[] = [
+  {
+    text: "Missed track",
+    description:
+      "One or more birds do not have a corresponding track in this recording",
+  },
+];

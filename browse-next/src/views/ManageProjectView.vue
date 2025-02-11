@@ -16,7 +16,9 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
   <div class="px-3 p-md-0">
     <p>
       Add or remove users who have access to this project, change the default
-      tags that users of this project see when tagging tracks.
+      tags and labels that users of this project see when tagging recordings.
+      <br />Customise which tags you'd like your users to see on your project
+      dashboard.
     </p>
     <!--    <p>-->
     <!--      If I'm the only user, and there are no devices, and no recordings, then we-->
