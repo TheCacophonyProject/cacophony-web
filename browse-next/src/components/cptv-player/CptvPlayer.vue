@@ -2807,22 +2807,35 @@ watch(
 }
 // Reference image overlay + slider
 .reference-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
   user-select: none;
+  overflow: hidden; /* ensures we don’t show anything outside the container */
 }
 
 .reveal-slider {
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Start at 50% to show half, or whatever default you want */
   width: 50%;
-  overflow: hidden;
+  height: 100%;
+  overflow: hidden; /* So only the left portion of the image is visible */
   user-select: none;
+
   > img {
-    user-select: none;
-    pointer-events: none;
-    max-width: 640px;
-    aspect-ratio: auto 4/3;
+    display: block; /* removes inline spacing gaps */
+    height: 100%;
+    object-fit: cover; /* critical to maintain aspect ratio but cover fully */
+    object-position: center; /* center the image as it covers */
+    pointer-events: none; /* so the handle can receive pointer events */
   }
 }
+
 @media screen and (max-width: 639px) {
   .reveal-slider > img {
     max-width: 100svw;

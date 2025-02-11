@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { type Ref } from "vue";
-import { computed, inject, ref, watch } from "vue";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import { updateReferenceImageForDeviceAtCurrentLocation } from "@api/Device";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
@@ -9,10 +9,43 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import type { DeviceId } from "@typedefs/api/common";
 import { drawSkewedImage } from "@/components/skew-image";
 import { useElementSize } from "@vueuse/core";
-import { encode } from "@jsquash/webp";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { LoadedResource } from "@api/types.ts";
 
+/**
+ * Converts an ImageData object to a WebP Blob.
+ *
+ * @param imageData The ImageData to convert.
+ * @param quality A number between 0 and 1 indicating image quality (default is 0.9).
+ * @returns A Promise that resolves to a Blob in WebP format.
+ */
+const convertImageDataToWebP = (
+  imageData: ImageData,
+  quality: number = 0.9
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = imageData.width;
+    tempCanvas.height = imageData.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    if (!tempCtx) {
+      reject(new Error("Failed to get 2D context from canvas"));
+      return;
+    }
+    tempCtx.putImageData(imageData, 0, 0);
+    tempCanvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Conversion to WebP failed"));
+        }
+      },
+      "image/webp",
+      quality
+    );
+  });
+};
 const emit = defineEmits<{
   (e: "updated-reference-image"): void;
 }>();
@@ -46,15 +79,15 @@ const latestReferenceImageURL = inject("latestReferenceImageURL") as Ref<
 const loading = computed<boolean>(() => {
   return (
     latestStatusRecording.value === null ||
-    latestReferenceImageURL.value === null
+    latestReferenceImageURL.value === undefined
   );
 });
 
 const { width: singleFrameCanvasWidth } = useElementSize(singleFrameCanvas);
-
+const fileInputRef = ref<HTMLInputElement | null>(null);
 // Used to replace (remove) the existing reference image
-const replaceExistingReferenceImage = async () => {
-  latestReferenceImageURL.value = null;
+const replaceExistingReferenceImage = () => {
+  fileInputRef.value?.click();
 };
 
 const editingReferenceImage = ref(false);
@@ -65,10 +98,13 @@ const editExistingReferenceImage = async () => {
     typeof latestReferenceImageURL.value === "string"
   ) {
     try {
+      await nextTick();
+      editingReferenceImage.value = true;
       const resp = await fetch(latestReferenceImageURL.value);
       const blob = await resp.blob();
       referenceImage.value = await createImageBitmap(blob);
-      editingReferenceImage.value = true;
+      positionHandles();
+      renderSkewedImage();
     } catch (e) {
       console.error("Failed to load existing reference image to edit:", e);
     }
@@ -77,11 +113,14 @@ const editExistingReferenceImage = async () => {
 
 const onSelectReferenceImage = async (event: Event) => {
   if (event && event.target && (event.target as HTMLInputElement).files) {
+    await nextTick();
+    editingReferenceImage.value = true;
     const files = (event.target as HTMLInputElement).files as FileList;
     const file = files[0];
     referenceImage.value = await createImageBitmap(file);
     positionHandles();
     renderSkewedImage();
+    await nextTick();
   }
 };
 
@@ -108,6 +147,18 @@ const moveHandle = (event: PointerEvent) => {
 
 const singleFrame = ref<HTMLCanvasElement>();
 
+const handleSingleFrameLoaded = (el: HTMLCanvasElement) => {
+  debugger;
+  singleFrame.value = el;
+  nextTick(() => {
+    positionHandles();
+  });
+};
+watch(singleFrame, (newVal) => {
+  if (newVal) {
+    positionHandles();
+  }
+});
 const constrainHandle = (
   handle: HTMLDivElement,
   clientX?: number,
@@ -163,85 +214,64 @@ const constrainHandle = (
 const buffer = 0; // extra offset in pixels to keep handles away from the exact corner
 
 const positionHandles = () => {
-  // Ensure that our essential elements exist
   if (
     !handle0.value ||
     !handle1.value ||
     !handle2.value ||
     !handle3.value ||
-    !referenceImage.value
+    !skewContainer.value
   ) {
     return;
   }
 
-  const handleBounds = handle0.value.getBoundingClientRect();
-  const dim = handleBounds.width / 2; // half the handle width
+  const h0 = handle0.value;
+  const h1 = handle1.value;
+  const h2 = handle2.value;
+  const h3 = handle3.value;
+  const handleBounds = h0.getBoundingClientRect();
+  const dim = handleBounds.width / 2;
 
-  if (
-    singleFrameBounds.top ||
-    singleFrameBounds.left ||
-    singleFrameBounds.right ||
-    singleFrameBounds.bottom
-  ) {
-    // When singleFrame is available, use its bounds to position handles with buffer adjustments.
-    const { left: parentX, top: parentY } = (
-      handle0.value.parentElement as HTMLDivElement
-    ).getBoundingClientRect();
+  // If the singleFrame exists, get its bounding rect:
+  if (singleFrame.value) {
+    const singleFrameBounds = singleFrame.value.getBoundingClientRect();
+    const { left: parentX, top: parentY } =
+      skewContainer.value.getBoundingClientRect();
 
-    // For the top-left handle: push the center inside by the buffer.
-    handle0.value.style.left = `${
-      singleFrameBounds.left - parentX - dim + buffer
-    }px`;
-    handle0.value.style.top = `${
-      singleFrameBounds.top - parentY - dim + buffer
-    }px`;
+    // Check that singleFrameBounds has valid dimensions.
+    if (singleFrameBounds.width > 0 && singleFrameBounds.height > 0) {
+      // Position top-left handle
+      h0.style.left = `${singleFrameBounds.left - parentX - dim}px`;
+      h0.style.top = `${singleFrameBounds.top - parentY - dim}px`;
 
-    // For the top-right handle: move it left by the buffer.
-    handle1.value.style.left = `${
-      singleFrameBounds.right - parentX - dim - buffer
-    }px`;
-    handle1.value.style.top = `${
-      singleFrameBounds.top - parentY - dim + buffer
-    }px`;
+      // Position top-right handle
+      h1.style.left = `${singleFrameBounds.right - parentX - dim}px`;
+      h1.style.top = `${singleFrameBounds.top - parentY - dim}px`;
 
-    // For the bottom-right handle: move it left and up by the buffer.
-    handle2.value.style.left = `${
-      singleFrameBounds.right - parentX - dim - buffer
-    }px`;
-    handle2.value.style.top = `${
-      singleFrameBounds.bottom - parentY - dim - buffer
-    }px`;
+      // Position bottom-right handle
+      h2.style.left = `${singleFrameBounds.right - parentX - dim}px`;
+      h2.style.top = `${singleFrameBounds.bottom - parentY - dim}px`;
 
-    // For the bottom-left handle: move it right by the buffer.
-    handle3.value.style.left = `${
-      singleFrameBounds.left - parentX - dim + buffer
-    }px`;
-    handle3.value.style.top = `${
-      singleFrameBounds.bottom - parentY - dim - buffer
-    }px`;
-  } else {
-    // Fallback: if there is no singleFrame, position the handles based on the container dimensions.
-    const container = skewContainer.value;
-    if (!container) return;
-    const { width: cWidth, height: cHeight } =
-      container.getBoundingClientRect();
-
-    // Top-left handle inset by the buffer.
-    handle0.value.style.left = `${0 - dim + buffer}px`;
-    handle0.value.style.top = `${0 - dim + buffer}px`;
-
-    // Top-right handle inset by the buffer.
-    handle1.value.style.left = `${cWidth - dim - buffer}px`;
-    handle1.value.style.top = `${0 - dim + buffer}px`;
-
-    // Bottom-right handle inset by the buffer.
-    handle2.value.style.left = `${cWidth - dim - buffer}px`;
-    handle2.value.style.top = `${cHeight - dim - buffer}px`;
-
-    // Bottom-left handle inset by the buffer.
-    handle3.value.style.left = `${0 - dim + buffer}px`;
-    handle3.value.style.top = `${cHeight - dim - buffer}px`;
+      // Position bottom-left handle
+      h3.style.left = `${singleFrameBounds.left - parentX - dim}px`;
+      h3.style.top = `${singleFrameBounds.bottom - parentY - dim}px`;
+      renderSkewedImage();
+      return;
+    }
   }
+
+  // Fallback: position handles relative to the container's size
+  const containerRect = skewContainer.value.getBoundingClientRect();
+  const cWidth = containerRect.width;
+  const cHeight = containerRect.height;
+
+  h0.style.left = `${-dim}px`;
+  h0.style.top = `${-dim}px`;
+  h1.style.left = `${cWidth - dim}px`;
+  h1.style.top = `${-dim}px`;
+  h2.style.left = `${cWidth - dim}px`;
+  h2.style.top = `${cHeight - dim}px`;
+  h3.style.left = `${-dim}px`;
+  h3.style.top = `${cHeight - dim}px`;
 
   renderSkewedImage();
 };
@@ -466,7 +496,6 @@ const releaseRevealHandle = (event: PointerEvent) => {
   }
 };
 
-// ----- Saving reference image -----
 const savingReferenceImage = ref<boolean>(false);
 
 const saveReferenceImage = async () => {
@@ -500,16 +529,19 @@ const saveReferenceImage = async () => {
   savingReferenceImage.value = false;
   renderSkewedImage();
 
-  const webp = await encode(imageData, { quality: 90 });
+  const webp = await convertImageDataToWebP(imageData);
   const response = await updateReferenceImageForDeviceAtCurrentLocation(
     device.value!.id,
     webp
   );
   if (response.success) {
-    // Refresh or notify success
-    emit("updated-reference-image");
-    // Optionally switch out of editing mode if editing an existing image
+    // Create a local blob URL to show the updated image immediately
+    const newUrl = URL.createObjectURL(webp);
+    latestReferenceImageURL.value = newUrl;
     editingReferenceImage.value = false;
+    emit("updated-reference-image");
+  } else {
+    console.error("Saving reference image failed:", response.result.messages);
   }
 };
 
@@ -557,7 +589,7 @@ const helpInfo = ref(true);
             :width="cptvFrameWidth"
             :height="cptvFrameHeight"
             ref="singleFrameCanvas"
-            @loaded="(el) => (singleFrame = el)"
+            @loaded="handleSingleFrameLoaded"
           />
           <input
             type="file"
@@ -566,7 +598,7 @@ const helpInfo = ref(true);
             v-if="!referenceImage"
             accept="image/png, image/jpeg, image/heif"
           />
-          <div class="skew-canvas" v-if="referenceImage">
+          <div class="skew-canvas" v-show="referenceImage">
             <canvas
               ref="referenceImageSkew"
               width="1280"
@@ -777,7 +809,7 @@ const helpInfo = ref(true);
                 v-if="latestStatusRecording"
                 ref="singleFrameCanvas"
                 class="position-absolute"
-                @loaded="(el) => (singleFrame = el)"
+                @loaded="handleSingleFrameLoaded"
               />
               <div class="reveal-slider position-absolute" ref="revealSlider">
                 <img
@@ -796,7 +828,13 @@ const helpInfo = ref(true);
             </div>
           </div>
         </div>
-
+        <input
+          ref="fileInputRef"
+          type="file"
+          style="display: none"
+          @change="onSelectReferenceImage"
+          accept="image/png, image/jpeg, image/heif"
+        />
         <div class="d-flex flex-column align-items-md-center mt-3">
           <div class="d-flex flex-wrap gap-2">
             <button
@@ -807,6 +845,7 @@ const helpInfo = ref(true);
               Choose a new reference image
             </button>
             <button
+              v-if="!editingReferenceImage"
               type="button"
               class="btn btn-secondary"
               @click="editExistingReferenceImage"

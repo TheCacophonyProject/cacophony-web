@@ -228,7 +228,11 @@ const _deviceType = computed<string>(() => {
       @start-blocking-work="() => emit('start-blocking-work')"
       @end-blocking-work="() => emit('end-blocking-work')"
       @updated-regions="(e) => (latestMaskRegions = e)"
-      @updated-reference-image="loadReferenceImage"
+      @updated-reference-image="
+        () => {
+          if (device) loadReferenceImage(device.id);
+        }
+      "
     />
   </div>
 </template>
