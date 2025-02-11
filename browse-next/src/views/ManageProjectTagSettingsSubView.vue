@@ -25,6 +25,7 @@ const customCameraTags = computed<string[]>(() => {
   }
   return DEFAULT_CAMERA_TAGS;
 });
+
 const localCameraTags = ref<string[]>([]);
 localCameraTags.value = [...customCameraTags.value];
 
@@ -213,11 +214,21 @@ const addPendingAudioTag = async () => {
   }
 };
 
+const reset = () => {
+  pendingTag.value = [];
+};
+
+const pendingTagIsValid = computed<boolean>(() => {
+  return (
+    pendingTag.value.length !== 0 && pendingTag.value[0].trim().length !== 0
+  );
+});
+
 // If there are no custom tags, display the defaultTags here in the default order.
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-  <h1 class="h5 d-none d-md-block">Project tag settings</h1>
+  <h1 class="h5 d-none d-md-block">Project tagging settings</h1>
   <div>
     <p>
       Manage the set of default tags that users see for this project when
@@ -271,6 +282,7 @@ const addPendingAudioTag = async () => {
       </button>
     </template>
   </card-table>
+
   <div
     class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center mt-5"
   >
@@ -319,9 +331,12 @@ const addPendingAudioTag = async () => {
   </card-table>
   <b-modal
     v-model="showAddCameraTagModal"
-    title="Add group camera tag"
-    @cancel="() => (pendingTag = [])"
+    title="Add project camera tag"
+    @cancel="reset"
+    @close="reset"
+    @esc="reset"
     @ok="addPendingCameraTag"
+    :ok-disabled="!pendingTagIsValid"
     ok-title="Add tag"
     ok-variant="secondary"
     cancel-variant="outline-secondary"
@@ -336,9 +351,12 @@ const addPendingAudioTag = async () => {
   </b-modal>
   <b-modal
     v-model="showAddAudioTagModal"
-    title="Add group audio tag"
-    @cancel="() => (pendingTag = [])"
+    title="Add project audio tag"
+    @cancel="reset"
+    @close="reset"
+    @esc="reset"
     @ok="addPendingAudioTag"
+    :ok-disabled="!pendingTagIsValid"
     ok-title="Add tag"
     ok-variant="secondary"
     cancel-variant="outline-secondary"

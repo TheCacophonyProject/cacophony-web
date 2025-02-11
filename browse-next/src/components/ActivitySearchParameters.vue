@@ -24,7 +24,6 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import { canonicalLatLngForLocations } from "@/helpers/Location.ts";
-import { RecordingLabels } from "@/consts.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
 import {
   ActivitySearchDisplayMode,
@@ -36,6 +35,10 @@ import type { ActivitySearchParams } from "@views/ActivitySearchView.vue";
 import { type LocationQuery, useRoute, useRouter } from "vue-router";
 import { useElementBounding } from "@vueuse/core";
 import { urlNormaliseName } from "@/utils.ts";
+import {
+  CurrentProjectAudioLabels,
+  CurrentProjectCameraLabels,
+} from "@/helpers/Project.ts";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -62,20 +65,27 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 const availableProjects = inject(userProjects) as Ref<
   LoadedResource<ApiProjectResponse[]>
 >;
+
 const availableLabels = computed(() => {
-  const labels = RecordingLabels.slice(2).map(({ text, value }) => ({
+  let labelSource;
+  if (recordingMode.value === ActivitySearchRecordingMode.Cameras) {
+    labelSource = CurrentProjectCameraLabels.value;
+  } else {
+    labelSource = CurrentProjectAudioLabels.value;
+  }
+  const labels = labelSource.slice(2).map(({ text, value }) => ({
     label: text,
     value: (value || text).toLowerCase(),
   }));
   if (selectedCoolLabel.value) {
-    const label = RecordingLabels[0];
+    const label = labelSource[0];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),
     });
   }
   if (selectedFlaggedLabel.value) {
-    const label = RecordingLabels[1];
+    const label = labelSource[1];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),
@@ -197,6 +207,8 @@ const minDateForSelectedLocations = computed<Date>(() => {
 const searchIsValid = computed<boolean>(() => {
   const hasValidDateRange =
     Array.isArray(selectedDateRange.value) ||
+    (selectedDateRange.value.value &&
+      Array.isArray(selectedDateRange.value.value)) ||
     Array.isArray(customDateRange.value);
   const hasAdvancedSettingsSelected =
     showAdvanced.value &&

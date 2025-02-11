@@ -100,6 +100,7 @@
         <div
           v-else
           class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
+          :class="{ redacted: (item.data as ApiRecordingResponse).redacted }"
         >
           <div
             class="visit-thumb rounded-1"
@@ -162,7 +163,7 @@
                 </span>
                 <span
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"
-                  :class="[label.what.split(' ').join('-')]"
+                  :class="[label.what.toLowerCase().split(' ').join('-')]"
                   :key="label.what"
                   v-for="label in regularLabelsForRecording((item as RecordingItem).data)"
                   >{{ label.what }}
@@ -177,9 +178,19 @@
                 >
                   <font-awesome-icon
                     :icon="
-                      label.what === 'cool' ? ['fas', 'star'] : ['fas', 'flag']
+                      label.what === 'cool'
+                        ? ['fas', 'star']
+                        : label.what === 'requires review'
+                        ? ['fas', 'flag']
+                        : ['far', 'comment']
                     "
-                    :color="label.what === 'cool' ? 'goldenrod' : '#ad0707'"
+                    :color="
+                      label.what === 'cool'
+                        ? 'goldenrod'
+                        : label.what === 'requires review'
+                        ? '#ad0707'
+                        : '#025bf3'
+                    "
                   />
                 </span>
               </div>
@@ -308,7 +319,7 @@ const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
   return Object.values(uniqueLabels);
 };
 
-const specialLabels = ["cool", "requires review"];
+const specialLabels = ["cool", "requires review", "note"];
 const regularLabelsForRecording = (
   recording: ApiRecordingResponse
 ): TagItem[] => {
@@ -353,7 +364,9 @@ const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
 
 const selectedRecording = (recording: SunItem | RecordingItem) => {
   if (recording.type === "recording") {
-    emit("selected-recording", (recording as RecordingItem).data.id);
+    if (!recording.data.redacted) {
+      emit("selected-recording", (recording as RecordingItem).data.id);
+    }
   }
 };
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -393,6 +406,10 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
 }
 .visit-station-name {
   max-width: calc(100cqw - 65px);
+}
+.redacted {
+  opacity: 0.5;
+  pointer-events: none;
 }
 .visits-daily-breakdown {
   background: white;
@@ -566,6 +583,9 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
     }
     &.test-recording {
       background: #6a8bd5;
+    }
+    &.redacted-for-privacy {
+      background: #d56a6e;
     }
   }
   .station-icon {

@@ -1143,6 +1143,14 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
         createdAt: recording.recordingDateTime,
       });
     }
+    if (recording.type === "audio" && recording.redacted) {
+      recording.tags.push({
+        id: -1,
+        confidence: 1,
+        detail: "redacted for privacy",
+        createdAt: recording.recordingDateTime,
+      });
+    }
     prevDay.items.push({
       type: "recording",
       data: recording,
