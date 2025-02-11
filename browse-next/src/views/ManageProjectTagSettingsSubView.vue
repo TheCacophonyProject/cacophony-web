@@ -218,6 +218,12 @@ const reset = () => {
   pendingTag.value = [];
 };
 
+const pendingTagIsValid = computed<boolean>(() => {
+  return (
+    pendingTag.value.length !== 0 && pendingTag.value[0].trim().length !== 0
+  );
+});
+
 // If there are no custom tags, display the defaultTags here in the default order.
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
@@ -330,6 +336,7 @@ const reset = () => {
     @close="reset"
     @esc="reset"
     @ok="addPendingCameraTag"
+    :ok-disabled="!pendingTagIsValid"
     ok-title="Add tag"
     ok-variant="secondary"
     cancel-variant="outline-secondary"
@@ -349,6 +356,7 @@ const reset = () => {
     @close="reset"
     @esc="reset"
     @ok="addPendingAudioTag"
+    :ok-disabled="!pendingTagIsValid"
     ok-title="Add tag"
     ok-variant="secondary"
     cancel-variant="outline-secondary"

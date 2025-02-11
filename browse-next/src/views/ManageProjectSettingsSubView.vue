@@ -158,6 +158,13 @@ const addIgnoredTag = async (tag: string, grouping: "camera" | "audio") => {
 const reset = () => {
   pendingIgnoredTag.value = [];
 };
+
+const pendingTagIsValid = computed<boolean>(() => {
+  return (
+    pendingIgnoredTag.value.length !== 0 &&
+    pendingIgnoredTag.value[0].trim().length !== 0
+  );
+});
 </script>
 <template>
   <h1 class="h5">Other project settings</h1>
@@ -224,6 +231,7 @@ const reset = () => {
     @close="reset"
     @esc="reset"
     @ok="addPendingIgnoredTag"
+    :ok-disabled="!pendingTagIsValid"
     ok-title="Add ignored tag"
     ok-variant="secondary"
     cancel-variant="outline-secondary"

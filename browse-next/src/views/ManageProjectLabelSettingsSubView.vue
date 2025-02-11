@@ -155,17 +155,35 @@ const pendingDescription = ref<string>("");
 const addPendingCameraLabel = async () => {
   if (pendingLabel.value.length) {
     await addCameraLabel(pendingLabel.value, pendingDescription.value);
-    pendingLabel.value = "";
-    pendingDescription.value = "";
+    reset();
   }
 };
 
 const addPendingAudioLabel = async () => {
   if (pendingLabel.value.length) {
     await addAudioLabel(pendingLabel.value, pendingDescription.value);
-    pendingLabel.value = "";
-    pendingDescription.value = "";
+    reset();
   }
+};
+
+const canReset = (
+  labels: RecordingLabel[],
+  defaultLabels: RecordingLabel[]
+) => {
+  if (labels.length !== defaultLabels.length) {
+    return true;
+  }
+  for (let i = 0; i < labels.length; i++) {
+    if (labels[i].value !== defaultLabels[i].value) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const reset = () => {
+  pendingLabel.value = "";
+  pendingDescription.value = "";
 };
 
 // If there are no custom tags, display the defaultTags here in the default order.
@@ -180,6 +198,7 @@ const addPendingAudioLabel = async () => {
       project.
     </p>
   </div>
+  <hr class="mt-4" />
   <div
     class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center"
   >
@@ -195,20 +214,39 @@ const addPendingAudioLabel = async () => {
       <button
         type="button"
         class="btn btn-outline-danger ms-2"
+        :disabled="
+          !canReset(localCameraLabels, DEFAULT_CAMERA_RECORDING_LABELS)
+        "
         @click.stop.prevent="resetCameraLabels"
       >
         Reset
       </button>
     </div>
   </div>
-  <card-table :items="cameraLabelTableItems" compact :max-card-width="0">
+  <card-table :items="cameraLabelTableItems" compact :max-card-width="575">
     <template #_deleteAction="{ cell }">
       <button class="btn" @click.prevent="() => removeCameraLabel(cell.value)">
         <font-awesome-icon icon="trash-can" />
       </button>
     </template>
+    <template #card="{ card }">
+      <div class="d-flex flex-row">
+        <div class="d-flex flex-column flex-grow-1 me-3">
+          <span
+            ><strong>{{ card.label.value }}</strong></span
+          >
+          <span>{{ card.description.value }}</span>
+        </div>
+        <button
+          class="btn"
+          @click.prevent="() => removeCameraLabel(card.label.value)"
+        >
+          <font-awesome-icon icon="trash-can" />
+        </button>
+      </div>
+    </template>
   </card-table>
-
+  <hr class="mt-4" />
   <div
     class="d-flex flex-column flex-md-row justify-content-md-between my-3 align-items-center"
   >
@@ -225,52 +263,91 @@ const addPendingAudioLabel = async () => {
         type="button"
         class="btn btn-outline-danger ms-2"
         @click.stop.prevent="resetAudioLabels"
+        :disabled="!canReset(localAudioLabels, DEFAULT_AUDIO_RECORDING_LABELS)"
       >
         Reset
       </button>
     </div>
   </div>
-  <card-table :items="audioLabelTableItems" compact :max-card-width="0">
+  <card-table :items="audioLabelTableItems" compact :max-card-width="575">
     <template #_deleteAction="{ cell }">
       <button class="btn" @click.prevent="() => removeAudioLabel(cell.value)">
         <font-awesome-icon icon="trash-can" />
       </button>
     </template>
+    <template #card="{ card }">
+      <div class="d-flex flex-row">
+        <div class="d-flex flex-column flex-grow-1 me-3">
+          <span
+            ><strong>{{ card.label.value }}</strong></span
+          >
+          <span>{{ card.description.value }}</span>
+        </div>
+        <button
+          class="btn"
+          @click.prevent="() => removeCameraLabel(card.label.value)"
+        >
+          <font-awesome-icon icon="trash-can" />
+        </button>
+      </div>
+    </template>
   </card-table>
   <b-modal
     v-model="showAddCameraLabelModal"
-    title="Add group camera tag"
-    @cancel="
-      () => {
-        pendingLabel = '';
-        pendingDescription = '';
-      }
-    "
+    title="Add project camera label"
+    @cancel="reset"
+    @close="reset"
+    @esc="reset"
     @ok="addPendingCameraLabel"
-    ok-title="Add tag"
+    ok-title="Add label"
     ok-variant="secondary"
+    :ok-disabled="!pendingLabel.length"
     cancel-variant="outline-secondary"
     centered
   >
-    <input type="text" v-model="pendingLabel" placeholder="label" />
-    <input type="text" v-model="pendingDescription" placeholder="description" />
+    <label for="camera-label" class="form-label">Label</label>
+    <b-form-input
+      id="camera-label"
+      v-model="pendingLabel"
+      placeholder="enter a new label"
+      class="mb-3"
+    />
+    <label for="camera-description" class="form-label"
+      >Description (optional)</label
+    >
+    <b-form-input
+      id="camera-description"
+      v-model="pendingDescription"
+      placeholder="describe the label usage in your project"
+    />
   </b-modal>
   <b-modal
     v-model="showAddAudioLabelModal"
-    title="Add group audio tag"
-    @cancel="
-      () => {
-        pendingLabel = '';
-        pendingDescription = '';
-      }
-    "
+    title="Add project audio label"
+    @cancel="reset"
+    @close="reset"
+    @esc="reset"
     @ok="addPendingAudioLabel"
-    ok-title="Add tag"
+    ok-title="Add label"
+    :ok-disabled="!pendingLabel.length"
     ok-variant="secondary"
     cancel-variant="outline-secondary"
     centered
   >
-    <input type="text" v-model="pendingLabel" placeholder="label" />
-    <input type="text" v-model="pendingDescription" placeholder="description" />
+    <label for="audio-label" class="form-label">Label</label>
+    <b-form-input
+      id="audio-label"
+      v-model="pendingLabel"
+      placeholder="enter a new label"
+      class="mb-3"
+    />
+    <label for="audio-description" class="form-label"
+      >Description (optional)</label
+    >
+    <b-form-input
+      id="audio-description"
+      v-model="pendingDescription"
+      placeholder="describe the label usage in your project"
+    />
   </b-modal>
 </template>
