@@ -283,8 +283,11 @@ const loadVisits = async () => {
   }
 };
 
-const reloadDashboard = async () => {
-  await Promise.all([loadLocations(), loadVisits()]);
+const reloadDashboard = async (nextProject) => {
+  console.log("Reloading dashboard", nextProject);
+  if (nextProject) {
+    await Promise.all([loadLocations(), loadVisits()]);
+  }
 };
 
 watch(timePeriodDays, loadVisits);
@@ -294,9 +297,7 @@ const loadedRouteName = ref<string>("");
 onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
   console.log("Loaded route name", loadedRouteName.value);
-  if (!classifications.value) {
-    await getClassifications();
-  }
+  await getClassifications();
 });
 // TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
 const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
@@ -359,7 +360,9 @@ const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
 provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
 
 onMounted(async () => {
-  await reloadDashboard();
+  if (currentProject.value) {
+    await reloadDashboard(currentProject.value);
+  }
   // Load visits for time period.
   // Get species summary.
 });
