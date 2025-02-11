@@ -66,20 +66,20 @@ const currentVisitsFilterComputed = computed<
   (visit: ApiVisitResponse) => boolean
 >(() => {
   if (currentVisitsFilter.value === null) {
-    return (visit) => visitorIsIgnored(visit) && !visitIsTombstoned(visit);
+    return (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit);
   } else {
     return (visit) =>
       (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
         visit
       ) &&
       !visitIsTombstoned(visit) &&
-      visitorIsIgnored(visit);
+      !visitorIsIgnored(visit);
   }
 });
 
 const dashboardVisits = computed<ApiVisitResponse[]>(() => {
   return ((visitsContext.value || []) as ApiVisitResponse[]).filter(
-    (visit) => visitorIsIgnored(visit) && !visitIsTombstoned(visit)
+    (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit)
   );
 });
 
@@ -110,19 +110,19 @@ const ignoredTags = computed<string[]>(() => {
 const visitorIsIgnored = (visit: ApiVisitResponse): boolean => {
   if (visit && visit.classification) {
     if (ignoredTags.value.includes(visit.classification)) {
-      return false;
+      return true;
     }
     const classification = getClassificationForLabel(visit.classification);
     if (classification && typeof classification.path === "string") {
       const parts = classification.path.split(".");
       for (const part of parts) {
         if (ignoredTags.value.includes(part)) {
-          return false;
+          return true;
         }
       }
     }
   }
-  return true;
+  return false;
 };
 
 const visitHasClassification =
@@ -283,8 +283,7 @@ const loadVisits = async () => {
   }
 };
 
-const reloadDashboard = async (nextProject) => {
-  console.log("Reloading dashboard", nextProject);
+const reloadDashboard = async (nextProject: SelectedProject | false) => {
   if (nextProject) {
     await Promise.all([loadLocations(), loadVisits()]);
   }
@@ -303,9 +302,9 @@ onBeforeMount(async () => {
 const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiLocationResponse[]
 >(() => {
-  const visitLocations = dashboardVisits.value.map(
-    (visit: ApiVisitResponse) => visit.stationId
-  );
+  // const visitLocations = dashboardVisits.value.map(
+  //   (visit: ApiVisitResponse) => visit.stationId
+  // );
   if (locations.value) {
     return (locations.value as ApiLocationResponse[])
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
@@ -325,10 +324,10 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
               new Date(location.lastThermalRecordingTime) > earliestDate.value)
           );
         }
-      })
-      .filter((location: ApiLocationResponse) =>
-        visitLocations.includes(location.id)
-      );
+      });
+    // .filter((location: ApiLocationResponse) =>
+    //   visitLocations.includes(location.id)
+    // );
   }
   return [];
 });
@@ -575,8 +574,8 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
           ><span v-else>day</span> for this project.
         </span>
         <span v-else>
-          There were no predator visits in any of the active locations in the
-          last
+          There were no visits for any target species in any of the active
+          locations in the last
           <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
           ><span v-else>day</span> for this project.
         </span>

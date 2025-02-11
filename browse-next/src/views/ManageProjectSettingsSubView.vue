@@ -219,12 +219,12 @@ const reset = () => {
   </div>
   <b-modal
     v-model="showAddCameraIgnoredTagModal"
-    title="Add project dashboard ignored classification"
+    title="Add project dashboard ignored tag"
     @cancel="reset"
     @close="reset"
     @esc="reset"
     @ok="addPendingIgnoredTag"
-    ok-title="Add ignored classification"
+    ok-title="Add ignored tag"
     ok-variant="secondary"
     cancel-variant="outline-secondary"
     centered

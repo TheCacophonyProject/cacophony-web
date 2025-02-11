@@ -29,7 +29,7 @@ import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
 import { BSpinner } from "bootstrap-vue-next";
 import type { LatLng } from "@typedefs/api/common";
-import { useElementSize, useResizeObserver } from "@vueuse/core";
+import { useElementSize } from "@vueuse/core";
 
 const attribution = control.attribution;
 
