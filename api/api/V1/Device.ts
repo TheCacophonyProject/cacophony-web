@@ -89,7 +89,10 @@ import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
 import logger from "@log";
-import { tryToMatchLocationToStationInGroup } from "@/models/util/locationUtils.js";
+import {
+  locationsAreEqual,
+  tryToMatchLocationToStationInGroup,
+} from "@/models/util/locationUtils.js";
 import { deleteFile } from "@/models/util/util.js";
 
 const models = await modelsInit();
@@ -1229,7 +1232,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
-      query("at-time").default(new Date()),
+      query("at-time").optional().isISO8601().toDate(),
       query("type").optional().isIn(["pov", "in-situ"]),
       booleanOf(query("only-active"), false),
     ]),
@@ -1252,7 +1255,7 @@ export default function (app: Application, baseUrl: string) {
       // If the location hasn't changed, we need to carry this forward whenever we create
       // another device history entry?
       const referenceType = request.query.type || "pov";
-      const atTime = request.query["at-time"] as unknown as Date;
+      const atTime = request.query["at-time"] ?? new Date();
       const device = response.locals.device as Device;
       const previousDeviceHistoryEntry: DeviceHistory =
         await models.DeviceHistory.findOne({
@@ -1540,12 +1543,13 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
-      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      query("at-time").optional().isISO8601().toDate(),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const atTime = request.query["at-time"] as unknown as Date;
+      const atTime =
+        (request.query["at-time"] as unknown as Date) ?? new Date();
       const device = response.locals.device as Device;
       const deviceSettings: DeviceHistory | null =
         await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
@@ -1684,30 +1688,46 @@ export default function (app: Application, baseUrl: string) {
         const newLocation = request.body.location;
         const newKind = request.body.type;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
+        const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
+          device.id,
+          device.GroupId
+        );
 
-        // Update device location and create DeviceHistory entry if new location is provided
+        // Update device location and create DeviceHistory entry if new location is provided and different
+        debugger;
         if (newLocation) {
-          device.location = newLocation;
-          await device.save();
+          if (!locationsAreEqual(device.location, newLocation)) {
+            device.location = newLocation;
+            await device.save();
+          }
 
-          const station = await tryToMatchLocationToStationInGroup(
-            models,
-            newLocation,
-            device.GroupId,
-            new Date()
-          );
+          if (
+            !latestDeviceHistoryEntry ||
+            (latestDeviceHistoryEntry &&
+              !locationsAreEqual(
+                latestDeviceHistoryEntry.location,
+                newLocation
+              ))
+          ) {
+            const station = await tryToMatchLocationToStationInGroup(
+              models,
+              newLocation,
+              device.GroupId,
+              new Date()
+            );
 
-          await models.DeviceHistory.create({
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            location: newLocation,
-            fromDateTime: new Date(),
-            setBy: setBy,
-            deviceName: device.deviceName,
-            saltId: device.saltId,
-            uuid: device.uuid,
-            stationId: station?.id,
-          });
+            await models.DeviceHistory.create({
+              DeviceId: device.id,
+              GroupId: device.GroupId,
+              location: newLocation,
+              fromDateTime: new Date(),
+              setBy: setBy,
+              deviceName: device.deviceName,
+              saltId: device.saltId,
+              uuid: device.uuid,
+              stationId: station?.id,
+            });
+          }
         }
 
         // Update device type (kind) if provided
