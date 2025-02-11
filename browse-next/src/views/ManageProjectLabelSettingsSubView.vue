@@ -6,9 +6,9 @@ import type { Ref } from "vue";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
 import {
-  AudioRecordingLabels,
-  CameraRecordingLabels,
-  CommonRecordingLabels,
+  DEFAULT_AUDIO_RECORDING_LABELS,
+  DEFAULT_CAMERA_RECORDING_LABELS,
+  COMMON_RECORDING_LABELS,
 } from "@/consts";
 import { currentSelectedProject } from "@models/provides";
 import type { RecordingLabel } from "@typedefs/api/group";
@@ -20,10 +20,10 @@ const customCameraLabels = computed<RecordingLabel[]>(() => {
     return (
       (localCameraLabels.value.length && localCameraLabels.value) ||
       selectedProject.value.settings?.cameraLabels ||
-      CameraRecordingLabels
+      DEFAULT_CAMERA_RECORDING_LABELS
     );
   }
-  return CommonRecordingLabels;
+  return COMMON_RECORDING_LABELS;
 });
 
 const localCameraLabels = ref<RecordingLabel[]>([]);
@@ -34,10 +34,10 @@ const customAudioLabels = computed<RecordingLabel[]>(() => {
     return (
       (localAudioLabels.value.length && localAudioLabels.value) ||
       selectedProject.value.settings?.audioLabels ||
-      AudioRecordingLabels
+      DEFAULT_AUDIO_RECORDING_LABELS
     );
   }
-  return AudioRecordingLabels;
+  return DEFAULT_AUDIO_RECORDING_LABELS;
 });
 const localAudioLabels = ref<RecordingLabel[]>([]);
 localAudioLabels.value = [...customAudioLabels.value];
@@ -137,12 +137,12 @@ const audioLabelTableItems = computed<CardTableRows<string>>(() => {
 });
 
 const resetCameraLabels = async () => {
-  localCameraLabels.value = [...CameraRecordingLabels];
+  localCameraLabels.value = [...DEFAULT_CAMERA_RECORDING_LABELS];
   await persistGroupCameraLabels();
 };
 
 const resetAudioLabels = async () => {
-  localAudioLabels.value = [...AudioRecordingLabels];
+  localAudioLabels.value = [...DEFAULT_AUDIO_RECORDING_LABELS];
   await persistGroupAudioLabels();
 };
 

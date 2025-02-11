@@ -1,9 +1,9 @@
 import { computed } from "vue";
 import { currentSelectedProject } from "@models/LoggedInUser.ts";
 import {
-  AudioRecordingLabels,
-  CameraRecordingLabels,
-  CommonRecordingLabels,
+  DEFAULT_AUDIO_RECORDING_LABELS,
+  DEFAULT_CAMERA_RECORDING_LABELS,
+  COMMON_RECORDING_LABELS,
 } from "@/consts.ts";
 import type { RecordingLabel } from "@typedefs/api/group";
 
@@ -14,12 +14,12 @@ export const CurrentProjectCameraLabels = computed<RecordingLabel[]>(() => {
       currentSelectedProject.value.settings.cameraLabels.length
     ) {
       return [
-        ...CommonRecordingLabels,
+        ...COMMON_RECORDING_LABELS,
         ...currentSelectedProject.value.settings.cameraLabels,
       ];
     }
   }
-  return [...CommonRecordingLabels, ...CameraRecordingLabels];
+  return [...COMMON_RECORDING_LABELS, ...DEFAULT_CAMERA_RECORDING_LABELS];
 });
 
 export const CurrentProjectAudioLabels = computed<RecordingLabel[]>(() => {
@@ -29,10 +29,10 @@ export const CurrentProjectAudioLabels = computed<RecordingLabel[]>(() => {
       currentSelectedProject.value.settings.audioLabels.length
     ) {
       return [
-        ...CommonRecordingLabels,
+        ...COMMON_RECORDING_LABELS,
         ...currentSelectedProject.value.settings.audioLabels,
       ];
     }
   }
-  return [...CommonRecordingLabels, ...AudioRecordingLabels];
+  return [...COMMON_RECORDING_LABELS, ...DEFAULT_AUDIO_RECORDING_LABELS];
 });

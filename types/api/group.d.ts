@@ -33,6 +33,8 @@ export interface ApiGroupSettings {
   audioTags?: string[];
   cameraLabels?: RecordingLabel[];
   audioLabels?: RecordingLabel[];
+  ignoredCameraDashboardTags?: string[];
+  ignoredAudioDashboardTags?: string[];
   // Delete audio recordings with human voices
   filterHuman?: boolean;
   filteredAudioTags?: string[];

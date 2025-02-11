@@ -46,6 +46,7 @@ import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
 import type { StationId as LocationId } from "@typedefs/api/common";
+import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -65,20 +66,20 @@ const currentVisitsFilterComputed = computed<
   (visit: ApiVisitResponse) => boolean
 >(() => {
   if (currentVisitsFilter.value === null) {
-    return (visit) => visitorIsPredator(visit) && !visitIsTombstoned(visit);
+    return (visit) => visitorIsIgnored(visit) && !visitIsTombstoned(visit);
   } else {
     return (visit) =>
       (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
         visit
       ) &&
       !visitIsTombstoned(visit) &&
-      visitorIsPredator(visit);
+      visitorIsIgnored(visit);
   }
 });
 
 const dashboardVisits = computed<ApiVisitResponse[]>(() => {
   return ((visitsContext.value || []) as ApiVisitResponse[]).filter(
-    (visit) => visitorIsPredator(visit) && !visitIsTombstoned(visit)
+    (visit) => visitorIsIgnored(visit) && !visitIsTombstoned(visit)
   );
 });
 
@@ -95,29 +96,28 @@ const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
 });
 
 provide("visitsContext", maybeFilteredVisitsContext);
-const onlyShowPredators = ref<boolean>(true);
-const ignored: string[] = [
-  "none",
-  //"unidentified",
-  //"false-positive",
-  "bird",
-  "vehicle",
-  "human",
-  "insect",
-];
-const visitorIsPredator = (visit: ApiVisitResponse): boolean => {
-  if (onlyShowPredators.value) {
-    if (visit && visit.classification) {
-      if (ignored.includes(visit.classification)) {
-        return false;
-      }
-      const classification = getClassificationForLabel(visit.classification);
-      if (classification && typeof classification.path === "string") {
-        const parts = classification.path.split(".");
-        for (const part of parts) {
-          if (ignored.includes(part)) {
-            return false;
-          }
+
+const ignoredTags = computed<string[]>(() => {
+  if (currentProject.value) {
+    return (
+      currentProject.value.settings?.ignoredCameraDashboardTags ||
+      DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS
+    );
+  }
+  return DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS;
+});
+
+const visitorIsIgnored = (visit: ApiVisitResponse): boolean => {
+  if (visit && visit.classification) {
+    if (ignoredTags.value.includes(visit.classification)) {
+      return false;
+    }
+    const classification = getClassificationForLabel(visit.classification);
+    if (classification && typeof classification.path === "string") {
+      const parts = classification.path.split(".");
+      for (const part of parts) {
+        if (ignoredTags.value.includes(part)) {
+          return false;
         }
       }
     }

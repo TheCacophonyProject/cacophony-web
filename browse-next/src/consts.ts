@@ -21,6 +21,15 @@ export const DEFAULT_CAMERA_TAGS = [
   "unidentified",
 ];
 
+export const DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS: string[] = [
+  "none",
+  "bird",
+  "vehicle",
+  "human",
+  "insect",
+];
+export const DEFAULT_DASHBOARD_IGNORED_AUDIO_TAGS: string[] = ["noise"];
+
 export const DEFAULT_AUDIO_TAGS = [
   "morepork",
   "kiwi",
@@ -33,7 +42,7 @@ export const DEFAULT_AUDIO_TAGS = [
   "unidentified",
 ];
 
-export const CommonRecordingLabels: RecordingLabel[] = [
+export const COMMON_RECORDING_LABELS: RecordingLabel[] = [
   {
     text: "Cool",
     description: "Mark this as a cool or interesting recording",
@@ -51,7 +60,7 @@ export const CommonRecordingLabels: RecordingLabel[] = [
   },
 ];
 
-export const CameraRecordingLabels: RecordingLabel[] = [
+export const DEFAULT_CAMERA_RECORDING_LABELS: RecordingLabel[] = [
   {
     text: "Animal in trap",
     value: "trapped in trap",
@@ -88,4 +97,4 @@ export const CameraRecordingLabels: RecordingLabel[] = [
   // },
 ];
 
-export const AudioRecordingLabels: RecordingLabel[] = [];
+export const DEFAULT_AUDIO_RECORDING_LABELS: RecordingLabel[] = [];

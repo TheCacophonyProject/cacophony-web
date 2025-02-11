@@ -317,9 +317,9 @@ const router = createRouter({
           component: () => import("@/views/ManageProjectUsersSubView.vue"),
         },
         {
-          name: "project-tag-settings",
-          path: "tag-settings",
-          meta: { title: "Tag and label settings for :projectName" },
+          name: "project-tagging-settings",
+          path: "tagging-settings",
+          meta: { title: "Tagging settings for :projectName" },
           component: () =>
             import("@/views/ManageProjectTagSettingsSubView.vue"),
         },

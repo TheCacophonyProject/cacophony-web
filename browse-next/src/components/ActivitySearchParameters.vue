@@ -24,11 +24,6 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import { canonicalLatLngForLocations } from "@/helpers/Location.ts";
-import {
-  CameraRecordingLabels,
-  AudioRecordingLabels,
-  CommonRecordingLabels,
-} from "@/consts.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
 import {
   ActivitySearchDisplayMode,

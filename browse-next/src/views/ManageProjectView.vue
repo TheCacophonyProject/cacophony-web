@@ -39,13 +39,13 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
     <router-link
       :class="[
         ...navLinkClasses,
-        { active: activeTabName === 'project-tag-settings' },
+        { active: activeTabName === 'project-tagging-settings' },
       ]"
-      title="Tag settings"
+      title="Tagging settings"
       :to="{
-        name: 'project-tag-settings',
+        name: 'project-tagging-settings',
       }"
-      >Tags</router-link
+      >Tagging</router-link
     >
     <router-link
       :class="[
