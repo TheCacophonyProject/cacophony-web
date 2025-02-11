@@ -63,6 +63,9 @@ import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
 import { urlNormaliseName } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
+import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
+import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
+import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -694,7 +697,18 @@ const tracks = computed<ApiTrackResponse[]>(() => {
 
 const tags = computed<ApiRecordingTagResponse[]>(() => {
   if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tags;
+    return (recording.value as ApiRecordingResponse).tags.filter(
+      (tag) => tag.detail !== "note"
+    );
+  }
+  return [];
+});
+
+const notes = computed<ApiRecordingTagResponse[]>(() => {
+  if (recording.value) {
+    return (recording.value as ApiRecordingResponse).tags.filter(
+      (tag) => tag.detail === "note"
+    );
   }
   return [];
 });
@@ -1481,6 +1495,24 @@ const inlineModal = ref<boolean>(false);
                 >({{ tags.length }})</span
               ></router-link
             >
+            <router-link
+              :class="[
+                ...navLinkClasses,
+                { active: activeTabName === `${recordingViewContext}-notes` },
+              ]"
+              title="Notes"
+              :to="{
+                name: `${recordingViewContext}-notes`,
+                params: {
+                  ...route.params,
+                  trackId: currentTrack?.id || tracks[0]?.id,
+                },
+              }"
+              >Notes
+              <span v-if="activeTabName !== `${recordingViewContext}-notes`"
+                >({{ notes.length }})</span
+              ></router-link
+            >
           </ul>
           <div class="tags-overflow" v-if="!isMobileView">
             <!-- RecordingViewTracks -->
@@ -1589,6 +1621,12 @@ const inlineModal = ref<boolean>(false);
               @removed-recording-label="removedRecordingLabel"
               v-if="isMobileView"
             />
+            <recording-view-notes
+              :recording="recording as ApiRecordingResponse"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              v-if="isMobileView"
+            />
           </div>
         </div>
       </div>
@@ -1655,6 +1693,24 @@ const inlineModal = ref<boolean>(false);
             >Labels
             <span v-if="activeTabName !== `${recordingViewContext}-labels`"
               >({{ tags.length }})</span
+            ></router-link
+          >
+          <router-link
+            :class="[
+              ...navLinkClasses,
+              { active: activeTabName === `${recordingViewContext}-notes` },
+            ]"
+            title="Notes"
+            :to="{
+              name: `${recordingViewContext}-notes`,
+              params: {
+                ...route.params,
+                trackId: currentTrack?.id || tracks[0]?.id,
+              },
+            }"
+            >Notes
+            <span v-if="activeTabName !== `${recordingViewContext}-notes`"
+              >({{ notes.length }})</span
             ></router-link
           >
         </ul>
@@ -1754,6 +1810,12 @@ const inlineModal = ref<boolean>(false);
               </div>
             </div>
             <recording-view-labels
+              :recording="recording as ApiRecordingResponse"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              v-if="isMobileView"
+            />
+            <recording-view-notes
               :recording="recording as ApiRecordingResponse"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"

@@ -178,9 +178,19 @@
                 >
                   <font-awesome-icon
                     :icon="
-                      label.what === 'cool' ? ['fas', 'star'] : ['fas', 'flag']
+                      label.what === 'cool'
+                        ? ['fas', 'star']
+                        : label.what === 'requires review'
+                        ? ['fas', 'flag']
+                        : ['far', 'comment']
                     "
-                    :color="label.what === 'cool' ? 'goldenrod' : '#ad0707'"
+                    :color="
+                      label.what === 'cool'
+                        ? 'goldenrod'
+                        : label.what === 'requires review'
+                        ? '#ad0707'
+                        : '#025bf3'
+                    "
                   />
                 </span>
               </div>
@@ -309,7 +319,7 @@ const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
   return Object.values(uniqueLabels);
 };
 
-const specialLabels = ["cool", "requires review"];
+const specialLabels = ["cool", "requires review", "note"];
 const regularLabelsForRecording = (
   recording: ApiRecordingResponse
 ): TagItem[] => {

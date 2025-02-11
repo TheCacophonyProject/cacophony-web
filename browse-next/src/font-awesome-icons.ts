@@ -100,6 +100,7 @@ import {
   faCircleCheck,
   faSquarePlus,
   faTrashCan as faTrashCanRegular,
+  faComment,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -198,7 +199,8 @@ library.add(
   faVolumeMute,
   faVolumeUp,
   faSquarePlus,
-  faSquarePlusSolid
+  faSquarePlusSolid,
+  faComment
 );
 
 export default FontAwesomeIcon;

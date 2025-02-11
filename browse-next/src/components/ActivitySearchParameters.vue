@@ -40,6 +40,10 @@ import type { ActivitySearchParams } from "@views/ActivitySearchView.vue";
 import { type LocationQuery, useRoute, useRouter } from "vue-router";
 import { useElementBounding } from "@vueuse/core";
 import { urlNormaliseName } from "@/utils.ts";
+import {
+  CurrentProjectAudioLabels,
+  CurrentProjectCameraLabels,
+} from "@/helpers/Project.ts";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -67,21 +71,26 @@ const availableProjects = inject(userProjects) as Ref<
   LoadedResource<ApiProjectResponse[]>
 >;
 
-// FIXME: Add user selected labels. Probably wants to be a globally accessible function
 const availableLabels = computed(() => {
-  const labels = CameraRecordingLabels.slice(2).map(({ text, value }) => ({
+  let labelSource;
+  if (recordingMode.value === ActivitySearchRecordingMode.Cameras) {
+    labelSource = CurrentProjectCameraLabels.value;
+  } else {
+    labelSource = CurrentProjectAudioLabels.value;
+  }
+  const labels = labelSource.slice(2).map(({ text, value }) => ({
     label: text,
     value: (value || text).toLowerCase(),
   }));
   if (selectedCoolLabel.value) {
-    const label = CameraRecordingLabels[0];
+    const label = labelSource[0];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),
     });
   }
   if (selectedFlaggedLabel.value) {
-    const label = CameraRecordingLabels[1];
+    const label = labelSource[1];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),

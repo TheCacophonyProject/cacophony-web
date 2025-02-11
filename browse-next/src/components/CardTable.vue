@@ -52,10 +52,14 @@
             >
               <span
                 v-if="cell && cell.value !== undefined"
-                class="text-nowrap"
+                :class="{ 'text-nowrap': !hasLineBreaks(cell) }"
                 v-html="cell.value"
               />
-              <span v-else-if="cell" class="text-nowrap" v-html="cell" />
+              <span
+                v-else-if="cell"
+                :class="{ 'text-nowrap': !hasLineBreaks(cell) }"
+                v-html="cell"
+              />
             </slot>
           </td>
         </tr>
@@ -85,10 +89,14 @@
               >
               <span
                 v-if="value.value"
-                class="text-nowrap"
+                :class="{ 'text-nowrap': !hasLineBreaks(value.value) }"
                 v-html="value.value"
               />
-              <span v-else-if="value" class="text-nowrap" v-html="value" />
+              <span
+                v-else-if="value"
+                :class="{ 'text-nowrap': !hasLineBreaks(value) }"
+                v-html="value"
+              />
             </div>
           </div>
         </slot>
@@ -138,6 +146,12 @@ const emit = defineEmits<{
 }>();
 
 const cardTableContainer = ref<HTMLDivElement>();
+
+const hasLineBreaks = (value: any) => {
+  return (
+    typeof value === "string" && (value.length > 50 || value.includes("\n"))
+  );
+};
 
 const { width } = useElementSize(cardTableContainer);
 const shouldRenderAsRows = computed(() => width.value >= props.maxCardWidth);

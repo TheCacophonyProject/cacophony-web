@@ -101,6 +101,16 @@ export const addRecordingLabel = (id: RecordingId, label: string) =>
       confidence: 0.9,
     },
   }) as Promise<FetchResult<{ tagId: TagId }>>;
+
+export const addRecordingNoteLabel = (id: RecordingId, note: string) =>
+  CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
+    tag: {
+      detail: "note",
+      comment: note,
+      confidence: 0.9,
+    },
+  }) as Promise<FetchResult<{ tagId: TagId }>>;
+
 export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
   CacophonyApi.delete(`/api/v1/recordings/${id}/tags/${tagId}`) as Promise<
     FetchResult<void>

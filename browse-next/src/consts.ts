@@ -44,6 +44,11 @@ export const CommonRecordingLabels: RecordingLabel[] = [
     description:
       "Flag this recording for review due to low confidence IDing track(s)",
   },
+  {
+    text: "Note",
+    value: "note",
+    description: "Add a note to this recording",
+  },
 ];
 
 export const CameraRecordingLabels: RecordingLabel[] = [
@@ -71,15 +76,16 @@ export const CameraRecordingLabels: RecordingLabel[] = [
     text: "Multiple animals",
     description: "There is more than one animal in this recording",
   },
-  {
-    text: "Outside",
-  },
-  {
-    text: "Inside",
-  },
-  {
-    text: "Incursion",
-  },
+  // TODO Migrate users using these labels to custom labels
+  // {
+  //   text: "Outside",
+  // },
+  // {
+  //   text: "Inside",
+  // },
+  // {
+  //   text: "Incursion",
+  // },
 ];
 
 export const AudioRecordingLabels: RecordingLabel[] = [];
