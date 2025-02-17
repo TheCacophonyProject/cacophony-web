@@ -8,6 +8,8 @@
     :delay="{ show: 0, hide: 0 }"
     :boundary-padding="{ top: 17, bottom: 17 }"
     :close-on-hide="hasBoundaryPadding"
+    ref="popover"
+    @hidden="didHide"
   >
     <template #target>
       <button class="btn" :class="[...classes]" @click.stop.prevent="() => {}">
@@ -22,7 +24,12 @@
     </template>
 
     <button
-      @click.stop.prevent="() => action()"
+      @click.stop.prevent="
+        () => {
+          action();
+          shouldHideInternal = true;
+        }
+      "
       class="btn btn-outline-danger text-nowrap w-100"
     >
       <font-awesome-icon icon="exclamation-triangle" />
@@ -31,11 +38,20 @@
   </b-popover>
 </template>
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import { BPopover, type PopoverPlacement } from "bootstrap-vue-next";
+
+const popover = ref<typeof BPopover>();
 
 const hasBoundaryPadding = computed(() => {
-  return props.boundaryPadding;
+  return shouldHideInternal.value || props.boundaryPadding;
 });
+
+const shouldHideInternal = ref(false);
+
+const didHide = () => {
+  shouldHideInternal.value = false;
+};
 
 const props = withDefaults(
   defineProps<{
@@ -47,7 +63,7 @@ const props = withDefaults(
     icon?: string | string[];
     color?: string;
     rotate?: 90 | 180 | 270 | null;
-    placement?: string;
+    placement?: PopoverPlacement;
     boundaryPadding: boolean;
   }>(),
   {

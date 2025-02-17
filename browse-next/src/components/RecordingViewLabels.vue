@@ -33,7 +33,6 @@ const emit = defineEmits<{
 
 const tags = computed<ApiRecordingTagResponse[]>(() => {
   if (props.recording) {
-    console.log(props.recording.tags);
     return props.recording.tags.filter((tag) => tag.detail !== "note");
   }
   return [];

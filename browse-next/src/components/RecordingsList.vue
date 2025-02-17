@@ -182,14 +182,14 @@
                         ? ['fas', 'star']
                         : label.what === 'requires review'
                         ? ['fas', 'flag']
-                        : ['far', 'comment']
+                        : ['fas', 'comment']
                     "
                     :color="
                       label.what === 'cool'
                         ? 'goldenrod'
                         : label.what === 'requires review'
                         ? '#ad0707'
-                        : '#025bf3'
+                        : '#3279ed'
                     "
                   />
                 </span>
