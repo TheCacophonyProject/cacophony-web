@@ -36,11 +36,7 @@ import {
   currentUser,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
-import {
-  RecordingProcessingState,
-  RecordingType,
-} from "@typedefs/api/consts.ts";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
 
 const props = defineProps<{

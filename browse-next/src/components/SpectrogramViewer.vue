@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { type Spectastiq } from "spectastiq";
-//import { type Spectastiq } from "./spectastiq";
+//import { type Spectastiq } from "spectastiq";
+import { type Spectastiq } from "./spectastiq";
 import {
   computed,
   type ComputedRef,
@@ -199,29 +199,25 @@ watch(
   () => props.userSelectedTrack,
   (nextTrack) => {
     // Just select next track if this a "replay current selected track" action
-    nextTrack && selectTrackRegion(nextTrack);
+    nextTrack && selectTrackRegionAndPlay(nextTrack);
   }
 );
 
 watch(
   () => props.currentTrack,
-  (nextTrack, prevTrack) => {
+  async (nextTrack, prevTrack) => {
     if (spectastiqEl.value) {
       if (!nextTrack && prevTrack) {
         // Deselected track
-        spectastiqEl.value.selectRegionOfInterest(0, 1, 0, 1);
+        await spectastiqEl.value.pause();
         spectastiqEl.value.removePlaybackFrequencyBandPass();
-        if (audioIsPlaying.value) {
-          spectastiqEl.value
-            .togglePlayback()
-            .then((playing) => (audioIsPlaying.value = playing));
-        }
+        await spectastiqEl.value.selectRegionOfInterest(0, 1, 0, 1);
       }
     }
   }
 );
 
-const selectTrackRegion = (track: ApiTrackResponse) => {
+const selectTrackRegionAndPlay = async (track: ApiTrackResponse) => {
   if (overlayCanvasContext.value) {
     renderOverlay(overlayCanvasContext.value);
     if (track.id !== -1) {
@@ -235,7 +231,7 @@ const selectTrackRegion = (track: ApiTrackResponse) => {
             track.maxFreq || audioSampleRate.value,
             audioSampleRate.value
           ) / audioSampleRate.value;
-        spectastiqEl.value.selectRegionOfInterest(
+        await spectastiqEl.value.selectRegionOfInterest(
           trackStartZeroOne,
           trackEndZeroOne,
           minFreqZeroOne,
@@ -246,16 +242,7 @@ const selectTrackRegion = (track: ApiTrackResponse) => {
           minFreqZeroOne * audioSampleRate.value,
           maxFreqZeroOne * audioSampleRate.value
         );
-        if (audioIsPlaying.value) {
-          spectastiqEl.value
-            .togglePlayback()
-            .then((playing) => (audioIsPlaying.value = playing));
-        }
-        if (!audioIsPlaying.value) {
-          spectastiqEl.value
-            .togglePlayback()
-            .then((playing) => (audioIsPlaying.value = playing));
-        }
+        await spectastiqEl.value.play(trackStartZeroOne);
       }
     }
   }
@@ -411,7 +398,7 @@ const drawRectWithText = (
   const selected = currentTrack?.id === trackId && trackId !== -1;
   const trackIndex = tracks.findIndex((track) => track.id === trackId) || 0;
   const lineWidth = (selected ? 2 : 1) * pixelRatio;
-  const outlineWidth = (lineWidth + 4) * pixelRatio;
+  const outlineWidth = lineWidth + 2 * pixelRatio;
   const deviceRatio = pixelRatio;
   const [left, top, right, bottom] = selected
     ? padDims(
@@ -561,10 +548,14 @@ onMounted(() => {
       ({ detail: { sampleRate, duration } }) => {
         audioSampleRate.value = sampleRate / 2;
         audioDuration.value = duration;
+        audioIsPlaying.value = false;
       }
     );
     spectastiq.addEventListener("playback-ended", () => {
       audioIsPlaying.value = false;
+    });
+    spectastiq.addEventListener("playback-started", () => {
+      audioIsPlaying.value = true;
     });
     spectastiq.addEventListener(
       "playhead-update",
@@ -576,9 +567,10 @@ onMounted(() => {
           timeInSeconds >= props.currentTrack.end &&
           audioIsPlaying.value
         ) {
-          spectastiqEl.value.togglePlayback().then((playing) => {
-            audioIsPlaying.value = playing;
-          });
+          // Pause at the end of the selected track
+          spectastiqEl.value.pause(
+            props.currentTrack.end / audioDuration.value
+          );
         }
       }
     );
@@ -592,9 +584,15 @@ const togglePlayback = async () => {
       props.currentTrack &&
       currentTime.value >= props.currentTrack.end
     ) {
-      selectTrackRegion(props.currentTrack);
+      await spectastiqEl.value.play(
+        props.currentTrack.start / audioDuration.value
+      );
     } else {
-      audioIsPlaying.value = await spectastiqEl.value.togglePlayback();
+      if (audioIsPlaying.value) {
+        await spectastiqEl.value.pause();
+      } else {
+        await spectastiqEl.value.play();
+      }
     }
   }
 };
@@ -973,15 +971,7 @@ watch(tracksIntermediate, (next, prev) => {
         track.start === pendingTrack.start && track.end === pendingTrack.end
     );
     if (changedTrack) {
-      selectTrackRegion(changedTrack as unknown as ApiTrackResponse);
-    }
-  } else if (next && prev && next.length === prev.length) {
-    for (let i = 0; i < next.length; i++) {
-      if (next[i].user && !prev[i].user) {
-        // Track tag changed, assume user confirmed or picked a tag.
-        emit("track-deselected");
-        break;
-      }
+      selectTrackRegionAndPlay(changedTrack as unknown as ApiTrackResponse);
     }
   }
 });
@@ -1111,7 +1101,7 @@ watch(tracksIntermediate, (next, prev) => {
 
 .spectrogram {
   // 360px for spectrogram only
-  min-height: 404px;
+  //min-height: 404px;
   position: relative;
   background: #2b333f;
   overflow: hidden;
