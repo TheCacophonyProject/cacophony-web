@@ -107,13 +107,6 @@
           height="auto"
           @click="openImageInModal(img.image)"
         />
-        <b-btn
-          class="btn-outline-dark btn-light btn-sm mt-1"
-          v-if="userIsGroupAdmin && !img.loading"
-          @click="deleteDeviceImage(img.deviceId, img.refType)"
-        >
-          Remove
-        </b-btn>
         <small v-if="!img.loading">{{ deviceLabel(img) }}</small>
       </div>
     </div>
@@ -130,14 +123,13 @@ import { isViewingAsOtherUser } from "@/components/NavBar.vue";
 import { shouldViewAsSuperUser } from "@/utils";
 import api from "@/api";
 
-// Example: deviceImages[] items
 interface DeviceImageItem {
   deviceId: number;
   refType: "pov" | "in-situ";
   key: string;
   loading: boolean;
-  image: string | null; // URL blob
-  deviceName?: string; // optional, if you want to label them
+  image: string | null;
+  deviceName?: string;
 }
 
 interface StationImageItem {
@@ -188,11 +180,11 @@ export default {
     // Fetch devices assigned to this station
     //    (adapt this call to however you find devices for a station)
     const devicesRes = await api.station.listDevices(this.station.id);
-    if (!devicesRes.success) return;
+    if (!devicesRes.success) {
+      return;
+    }
     const devices = devicesRes.result.devices;
-    console.log("Devices found:", devices);
 
-    // 3) For each device, try "pov" + "in-situ"
     for (const dev of devices) {
       const refTypes = ["pov", "in-situ"] as const;
       for (const refType of refTypes) {
@@ -202,7 +194,7 @@ export default {
           key: `${dev.id}-${refType}`,
           loading: true,
           image: null,
-          deviceName: dev.deviceName, // if you want to label it
+          deviceName: dev.deviceName,
         };
         this.deviceImages.push(devImg);
 
@@ -210,52 +202,43 @@ export default {
           const resp = await api.device.getReferenceImage(dev.id, {
             type: refType,
           });
-          console.log("Device image response:", resp);
           if (resp.success) {
             const blob = resp.result as Blob;
             devImg.image = URL.createObjectURL(blob);
           } else {
-            console.log("Error fetching device image:", resp.error);
             // If no image for that type, remove it from the array
             this.deviceImages = this.deviceImages.filter((i) => i !== devImg);
           }
         } catch (err) {
           // If 404 or similar, remove the placeholder
           this.deviceImages = this.deviceImages.filter((i) => i !== devImg);
-          console.error("Caught Error fetching device image:", err);
         }
         devImg.loading = false;
       }
     }
   },
   methods: {
-    // --- Station images ---
-
     async deleteStationImage(fileKey: string) {
-      // Remove from UI
       this.stationImages = this.stationImages.filter(
         (img) => img.key !== fileKey
       );
-      // Call station API to remove
       await api.station.deleteReferenceImage(this.station.id, fileKey);
     },
 
     async uploadSelectedStationImage() {
-      if (!this.selectedStationUpload) return;
+      if (!this.selectedStationUpload) {
+        return;
+      }
       const file = this.selectedStationUpload;
 
-      // You can adapt your resizing logic here if you want
-      // or just pass the File to the server as-is:
       const resizedBlob = await this.resizeImage(file);
 
-      // Upload
       const resp = await api.station.uploadReferenceImage(
         this.station.id,
         resizedBlob
       );
       if (resp.success) {
         const { fileKey } = resp.result;
-        // Add to our stationImages list so user sees it
         this.stationImages.push({
           key: fileKey,
           loading: false,
@@ -266,7 +249,6 @@ export default {
       this.selectedStationUpload = null;
     },
 
-    // (Example) Resizing helper if you want it
     resizeImage(file: File): Promise<Blob> {
       return new Promise<Blob>((resolve) => {
         const reader = new FileReader();
@@ -294,25 +276,9 @@ export default {
       });
     },
 
-    // --- Device images ---
-
-    async deleteDeviceImage(deviceId: number, refType: "pov" | "in-situ") {
-      // Remove from UI
-      this.deviceImages = this.deviceImages.filter(
-        (img) => !(img.deviceId === deviceId && img.refType === refType)
-      );
-      // Call device API to remove
-      await api.device.deleteReferenceImage(deviceId, { type: refType });
-    },
-
-    // Example device label helper
     deviceLabel(img: DeviceImageItem) {
-      // If you want to label them by device name & refType
       return `${img.deviceName || "Device #" + img.deviceId} - ${img.refType}`;
     },
-
-    // --- Shared modal ---
-
     openImageInModal(image: string) {
       this.showModal = true;
       this.modalImage = image;

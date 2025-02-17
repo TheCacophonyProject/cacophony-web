@@ -527,6 +527,28 @@ export const maybeUpdateDeviceHistory = async (
   stationToAssignToRecording: Station;
   deviceHistoryEntry: DeviceHistory;
 }> => {
+  if (location.lat === 0 || location.lng === 0) {
+    const existingHistory = await models.DeviceHistory.findOne({
+      where: {
+        uuid: device.uuid,
+        GroupId: device.GroupId,
+        location: { [Op.ne]: null },
+        stationId: { [Op.ne]: null },
+        fromDateTime: { [Op.lte]: dateTime },
+      },
+      order: [["fromDateTime", "DESC"]], // Get the latest one that's earlier than our current dateTime
+    });
+    if (existingHistory) {
+      const station = await models.Station.findByPk(existingHistory.stationId);
+      return {
+        stationToAssignToRecording: station,
+        deviceHistoryEntry: existingHistory,
+      };
+    }
+    throw new Error(
+      "Invalid location provided (lat or lng is 0) and no device history exists."
+    );
+  }
   {
     // Update the device location on config change. (It gets updated elsewhere if a newer recording comes in)
     const lastLocation = device.location;

@@ -457,7 +457,6 @@ function getReferenceImage(
     type = "pov",
     atTime,
     checkExists = false,
-    onlyActive = false,
   }: {
     type?: "pov" | "in-situ";
     atTime?: Date;
@@ -468,13 +467,11 @@ function getReferenceImage(
   const pathSuffix = checkExists ? "/exists" : "";
   const params = new URLSearchParams();
 
-  if (type) params.append("type", type);
-  if (atTime) params.append("at-time", atTime.toISOString());
-  if (shouldViewAsSuperUser()) {
-    params.append("only-active", onlyActive ? "true" : "false");
-  } else {
-    params.append("view-mode", "user");
-    params.append("only-active", onlyActive ? "true" : "false");
+  if (type) {
+    params.append("type", type);
+  }
+  if (atTime) {
+    params.append("at-time", atTime.toISOString());
   }
 
   return CacophonyApi.getBinary(
@@ -492,7 +489,6 @@ function deleteReferenceImage(
   {
     type = "pov",
     atTime,
-    onlyActive = false,
   }: {
     type?: "pov" | "in-situ";
     atTime?: Date;
@@ -500,14 +496,11 @@ function deleteReferenceImage(
   }
 ): Promise<FetchResult<unknown>> {
   const params = new URLSearchParams();
-  if (type) params.append("type", type);
-  if (atTime) params.append("at-time", atTime.toISOString());
-
-  if (shouldViewAsSuperUser()) {
-    params.append("only-active", onlyActive ? "true" : "false");
-  } else {
-    params.append("view-mode", "user");
-    params.append("only-active", onlyActive ? "true" : "false");
+  if (type) {
+    params.append("type", type);
+  }
+  if (atTime) {
+    params.append("at-time", atTime.toISOString());
   }
 
   return CacophonyApi.delete(

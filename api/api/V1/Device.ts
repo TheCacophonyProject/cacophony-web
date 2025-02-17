@@ -1692,30 +1692,32 @@ export default function (app: Application, baseUrl: string) {
           device.id,
           device.GroupId
         );
-
         // Update device location and create DeviceHistory entry if new location is provided and different
-        debugger;
         if (newLocation) {
-          if (!locationsAreEqual(device.location, newLocation)) {
+          if (
+            !device.location ||
+            !locationsAreEqual(device.location, newLocation)
+          ) {
             device.location = newLocation;
             await device.save();
           }
 
+          const station = await tryToMatchLocationToStationInGroup(
+            models,
+            newLocation,
+            device.GroupId,
+            new Date()
+          );
           if (
             !latestDeviceHistoryEntry ||
+            !latestDeviceHistoryEntry.location ||
+            (!latestDeviceHistoryEntry.stationId && station) ||
             (latestDeviceHistoryEntry &&
               !locationsAreEqual(
                 latestDeviceHistoryEntry.location,
                 newLocation
               ))
           ) {
-            const station = await tryToMatchLocationToStationInGroup(
-              models,
-              newLocation,
-              device.GroupId,
-              new Date()
-            );
-
             await models.DeviceHistory.create({
               DeviceId: device.id,
               GroupId: device.GroupId,

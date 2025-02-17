@@ -567,15 +567,14 @@ const helpInfo = ref(true);
       >
         <b-alert dismissible v-model="helpInfo">
           <p>
-            Sometimes it can be difficult to figure out what's going on in a
-            thermal camera recording scene.
+            Sometimes it’s hard to make sense of a scene captured by a thermal
+            camera. Try taking or selecting a
+            <strong>reference photo</strong>—for example, using the Sidekick
+            mobile app—then adjust it to match the thermal view.
           </p>
           <p>
-            Choose a <strong>'reference photo'</strong>, then adjust it to make
-            it match what the thermal camera sees as closely as possible.
-            <br /><br />
-            This can help you to remember where those bushes or trees were when
-            an animal magically emerges from them!
+            This makes it easier to remember where bushes or trees
+            are—especially helpful when an animal suddenly appears from them!
           </p>
         </b-alert>
 
