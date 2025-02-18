@@ -948,7 +948,7 @@ export default function (app: Application, baseUrl: string) {
         new Date();
       const device = response.locals.device as Device;
 
-      let deviceHistoryEntry = await this.findOne({
+      const deviceHistoryEntry = await this.findOne({
         where: {
           DeviceId: device.id,
           GroupId: device.GroupId,
