@@ -169,8 +169,12 @@ const constrainHandle = (
     left: handleX,
     top: handleY,
   } = handle.getBoundingClientRect();
-  if (clientX === undefined) clientX = handleX;
-  if (clientY === undefined) clientY = handleY;
+  if (clientX === undefined) {
+clientX = handleX;
+}
+  if (clientY === undefined) {
+clientY = handleY;
+}
 
   const {
     left: parentX,
@@ -500,7 +504,9 @@ const savingReferenceImage = ref<boolean>(false);
 
 const saveReferenceImage = async () => {
   const ctx = referenceImageSkew.value?.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) {
+return;
+}
 
   savingReferenceImage.value = true;
   renderSkewedImage(); // do one final draw at full opacity

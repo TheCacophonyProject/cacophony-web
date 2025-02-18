@@ -18,7 +18,7 @@
     <!-- Station images list -->
     <div class="d-flex flex-row mt-1 mb-2 flex-wrap">
       <div
-        v-for="(img, index) in stationImages"
+        v-for="img in stationImages"
         :key="img.key"
         class="
           d-flex
@@ -77,7 +77,7 @@
     <h2 class="mt-4">Device Reference Photos</h2>
     <div class="d-flex flex-row flex-wrap">
       <div
-        v-for="(img, idx) in deviceImages"
+        v-for="img in deviceImages"
         :key="img.key"
         class="
           d-flex

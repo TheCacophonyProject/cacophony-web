@@ -288,7 +288,6 @@ async function updateDeviceSettings(
   deviceId: DeviceId,
   settings: ApiDeviceHistorySettings
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
-  debugger;
   return CacophonyApi.post(`/api/v1/devices/${deviceId}/settings`, {
     settings,
   });

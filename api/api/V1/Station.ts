@@ -35,7 +35,7 @@ import {
 } from "@models/util/locationUtils.js";
 import { Op, QueryTypes } from "sequelize";
 import { mapDeviceResponse } from "./Device.js";
-import { Device } from "@/models/Device.js";
+import type { Device } from "@/models/Device.js";
 
 const models = await modelsInit();
 

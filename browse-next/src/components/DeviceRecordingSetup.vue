@@ -335,8 +335,9 @@ function calculateTimePercentagePoints(
   startTime: string,
   endTime: string
 ): Array<{ left: string; width: string }> {
-  if (startTime === "12:00" && endTime === "12:00")
-    return [{ left: "0%", width: "100%" }];
+  if (startTime === "12:00" && endTime === "12:00") {
+return [{ left: "0%", width: "100%" }];
+}
   const startPercentage = timeToPercentage(startTime);
   const endPercentage = timeToPercentage(endTime);
 
