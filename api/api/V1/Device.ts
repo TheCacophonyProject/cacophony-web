@@ -947,15 +947,19 @@ export default function (app: Application, baseUrl: string) {
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
       const device = response.locals.device as Device;
-
-      const deviceHistoryEntry = await this.findOne({
-        where: {
-          DeviceId: device.id,
-          GroupId: device.GroupId,
-          fromDateTime: { [Op.lte]: atTime },
-        },
-        order: [["fromDateTime", "ASC"]],
-      });
+      const kind = (request.query.type as string) || "pov";
+      const query =
+        kind === "pov"
+          ? "settings.referenceImagePOV"
+          : "settings.referenceImageInSitu";
+      const deviceHistoryEntry = await models.DeviceHistory.latest(
+        device.id,
+        device.GroupId,
+        atTime,
+        {
+          [query]: { [Op.ne]: null },
+        }
+      );
       if (!deviceHistoryEntry) {
         return next(
           new UnprocessableError(
@@ -1131,7 +1135,6 @@ export default function (app: Application, baseUrl: string) {
       } else if (
         [DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)
       ) {
-        const kind = (request.query.type as string) || "pov";
         let referenceImage;
         let referenceImageFileSize;
 
