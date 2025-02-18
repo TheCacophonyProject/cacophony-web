@@ -947,8 +947,15 @@ export default function (app: Application, baseUrl: string) {
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
       const device = response.locals.device as Device;
-      const deviceHistoryEntry: DeviceHistory | null =
-        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+
+      let deviceHistoryEntry = await this.findOne({
+        where: {
+          DeviceId: device.id,
+          GroupId: device.GroupId,
+          fromDateTime: { [Op.lte]: atTime },
+        },
+        order: [["fromDateTime", "ASC"]],
+      });
       if (!deviceHistoryEntry) {
         return next(
           new UnprocessableError(
@@ -1263,6 +1270,7 @@ export default function (app: Application, baseUrl: string) {
             DeviceId: device.id,
             GroupId: device.GroupId,
             location: { [Op.ne]: null },
+            fromDateTime: { [Op.lte]: atTime },
           },
           order: [["fromDateTime", "DESC"]],
         });
@@ -1361,7 +1369,7 @@ export default function (app: Application, baseUrl: string) {
         const device = response.locals.device as Device;
 
         // Find relevant device history entry
-        const deviceHistoryEntry = await models.DeviceHistory.findOne({
+        const deviceHistoryEntrys = await models.DeviceHistory.findAll({
           where: {
             DeviceId: device.id,
             GroupId: device.GroupId,
@@ -1370,9 +1378,18 @@ export default function (app: Application, baseUrl: string) {
           order: [["fromDateTime", "DESC"]],
         });
 
-        if (!deviceHistoryEntry) {
+        if (!deviceHistoryEntrys) {
           return successResponse(response, "No reference to delete");
         }
+
+        // Find entry that has referenceImage basedo n the type
+        const deviceHistoryEntry = deviceHistoryEntrys.find((dh) => {
+          if (referenceType === "pov") {
+            return !!dh.settings?.referenceImagePOV;
+          } else {
+            return !!dh.settings?.referenceImageInSitu;
+          }
+        });
 
         const settings = deviceHistoryEntry.settings || {};
         const imageKey =
@@ -1589,27 +1606,27 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
-      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      query("at-time").optional().isISO8601().toDate(),
       booleanOf(query("only-active"), false),
       booleanOf(query("latest-synced"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       try {
-        const atTime = request.query["at-time"] as unknown as Date;
+        const atTime =
+          (request.query["at-time"] as unknown as Date) ?? new Date();
         const device = response.locals.device as Device;
+        debugger;
         let deviceSettings: DeviceHistory | null = null;
         if (request.query["latest-synced"]) {
-          deviceSettings = await models.DeviceHistory.findOne({
-            where: {
-              DeviceId: device.id,
-              GroupId: device.GroupId,
-              location: { [Op.ne]: null },
-              fromDateTime: { [Op.lte]: atTime },
+          deviceSettings = await models.DeviceHistory.latest(
+            device.id,
+            device.GroupId,
+            atTime,
+            {
               "settings.synced": true,
-            },
-            order: [["fromDateTime", "DESC"]],
-          });
+            }
+          );
         } else {
           deviceSettings = await models.DeviceHistory.latest(
             device.id,
