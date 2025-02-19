@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { type Spectastiq } from "spectastiq";
-// import { type Spectastiq } from "./spectastiq";
+//import { type Spectastiq } from "./spectastiq";
 import {
   computed,
   type ComputedRef,
@@ -672,6 +672,9 @@ watch(pendingTrackClass, async (classification: string[]) => {
     // Patch the pending track
     pendingTrack.value.tags[0].what = classification[0];
     pendingTrack.value.tags[0].automatic = false;
+    const tagToReplace = {
+      ...pendingTrack.value.tags[0],
+    };
     pendingTrack.value.tags[0].createdAt = new Date().toISOString();
     pendingTrack.value.tags[0].userId = currentUser.value?.id;
     pendingTrack.value.tags[0].userName = currentUser.value?.userName;
@@ -704,9 +707,8 @@ watch(pendingTrackClass, async (classification: string[]) => {
         newId: response.result.trackId,
         userId: currentUser.value?.id,
       });
-
       await replaceTrackTag(
-        pendingTrack.value.tags[0],
+        tagToReplace,
         props.recording.id,
         response.result.trackId
       );
