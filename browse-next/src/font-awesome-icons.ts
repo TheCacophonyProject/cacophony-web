@@ -85,6 +85,7 @@ import {
   faVolumeMute,
   faVolumeUp,
   faSquarePlus as faSquarePlusSolid,
+  faComment,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -100,7 +101,6 @@ import {
   faCircleCheck,
   faSquarePlus,
   faTrashCan as faTrashCanRegular,
-  faComment,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(

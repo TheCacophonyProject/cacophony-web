@@ -66,6 +66,7 @@ import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
+import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 
 const selectedVisit = inject(
   "currentlySelectedVisit"
@@ -946,13 +947,13 @@ const recordingDurationString = computed<string>(() => {
     const duration = formatDuration(durationMs, true);
     let visitStart = timeAtLocation(
       rec.recordingDateTime,
-      locationContext.value
+      rec.location || locationContext.value
     );
     const visitEnd = timeAtLocation(
       new Date(
         new Date(rec.recordingDateTime).getTime() + durationMs
       ).toISOString(),
-      locationContext.value
+      rec.location || locationContext.value
     );
     if (visitStart === visitEnd) {
       return `${visitStart} (${duration})`;
@@ -1126,6 +1127,7 @@ const getExtensionForMimeType = (mimeType: string): string => {
 const requestedDownload = async () => {
   if (recording.value) {
     const rec = recording.value as ApiRecordingResponse;
+    await maybeRefreshStaleCredentials();
     const request = {
       mode: "cors",
       cache: "no-cache",
@@ -1471,6 +1473,7 @@ const inlineModal = ref<boolean>(false);
                   ...route.params,
                   trackId: currentTrack?.id || tracks[0]?.id,
                 },
+                query: route.query,
               }"
               >Tracks
               <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
@@ -1489,6 +1492,7 @@ const inlineModal = ref<boolean>(false);
                   ...route.params,
                   trackId: currentTrack?.id || tracks[0]?.id,
                 },
+                query: route.query,
               }"
               >Labels
               <span v-if="activeTabName !== `${recordingViewContext}-labels`"
@@ -1507,6 +1511,7 @@ const inlineModal = ref<boolean>(false);
                   ...route.params,
                   trackId: currentTrack?.id || tracks[0]?.id,
                 },
+                query: route.query,
               }"
               >Notes
               <span v-if="activeTabName !== `${recordingViewContext}-notes`"
@@ -1671,6 +1676,7 @@ const inlineModal = ref<boolean>(false);
                 ...route.params,
                 trackId: currentTrack?.id || tracks[0]?.id,
               },
+              query: route.query,
             }"
             >Tracks
             <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
@@ -1689,6 +1695,7 @@ const inlineModal = ref<boolean>(false);
                 ...route.params,
                 trackId: currentTrack?.id || tracks[0]?.id,
               },
+              query: route.query,
             }"
             >Labels
             <span v-if="activeTabName !== `${recordingViewContext}-labels`"
@@ -1707,6 +1714,7 @@ const inlineModal = ref<boolean>(false);
                 ...route.params,
                 trackId: currentTrack?.id || tracks[0]?.id,
               },
+              query: route.query,
             }"
             >Notes
             <span v-if="activeTabName !== `${recordingViewContext}-notes`"
@@ -2269,6 +2277,20 @@ const inlineModal = ref<boolean>(false);
       .fs-7();
     }
   }
+  @container (max-height: 940px) {
+    .recording-header-type {
+      .fs-8();
+    }
+    .recording-header-details {
+      line-height: 1;
+    }
+    .recording-header-label {
+      .fs-6();
+    }
+    .recording-header-time {
+      .fs-8();
+    }
+  }
 }
 .recording-view-footer {
   background: white;
@@ -2412,6 +2434,7 @@ const inlineModal = ref<boolean>(false);
   bottom: 16px;
   left: 16px;
   right: 16px;
+  container-type: size;
   @media screen and (max-width: 1040px) {
     top: 0;
     bottom: 0;

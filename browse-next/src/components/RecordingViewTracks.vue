@@ -220,7 +220,7 @@ const expandedItemChanged = async (trackId: TrackId, expanded: boolean) => {
     params,
   } as RouteLocationRaw);
   if (expanded) {
-    // Select and play the track?
+    // Select and play the track.
     const track = getTrackById(trackId);
     if (track) {
       // Change track.

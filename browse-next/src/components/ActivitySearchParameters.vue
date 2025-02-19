@@ -1040,7 +1040,12 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="showFilteredFalsePositivesAndNones"
         switch
         :disabled="showUntaggedOnly"
-        >Include false triggers</b-form-checkbox
+        >Include
+        <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
+          >false triggers</span
+        ><span v-if="recordingMode === ActivitySearchRecordingMode.Audio"
+          >redacted audio</span
+        ></b-form-checkbox
       >
       <span class="help-toggle" ref="falsePositiveInfoParent"
         ><font-awesome-icon icon="question"
@@ -1056,8 +1061,14 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       teleport-to="body"
       :target="falsePositiveInfoParent"
     >
-      Include recordings that are only tagged as false trigger, or which have no
-      tracks to tag.
+      <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
+        >Include recordings that are only tagged as false trigger, or which have
+        no tracks to tag.</span
+      >
+      <span v-if="recordingMode === ActivitySearchRecordingMode.Audio"
+        >Include recordings that were redacted, or which have no tracks to
+        tag.</span
+      >
     </b-popover>
   </div>
   <button
