@@ -90,6 +90,8 @@ const findSelectedItemName = () => {
 };
 
 const activeItemTitle = ref<string>("");
+
+// TODO: If overflowing items are selected, move the ellipsis around and have the selected item showing?
 </script>
 
 <template>

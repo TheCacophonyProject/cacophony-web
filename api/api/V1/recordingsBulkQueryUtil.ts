@@ -1,5 +1,5 @@
 import type { RecordingProcessingState } from "@typedefs/api/consts.js";
-import { RecordingType, TagMode } from "@typedefs/api/consts.js";
+import { TagMode, RecordingType } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
   GroupId,
@@ -40,7 +40,11 @@ export const getFirstPass = (
   const isHumanOnlyTagMode = [TagMode.HumanOnly].includes(tagMode);
   return {
     where: {
-      ...(includeDeletedRecordings ? {} : { deletedAt: { [Op.eq]: null } }),
+      ...(includeDeletedRecordings
+        ? {}
+        : {
+            deletedAt: { [Op.eq]: null },
+          }),
       ...(types.length !== 0 ? { type: { [Op.in]: types } } : {}),
       ...(processingState !== undefined ? { processingState } : {}),
       ...(devices.length !== 0 ? { DeviceId: { [Op.in]: devices } } : {}),
@@ -57,7 +61,9 @@ export const getFirstPass = (
           : { recordingDateTime: { [Op.lt]: until } }
         : {}),
       GroupId: projectId,
-      ...(types.includes(RecordingType.Audio) ? { redacted: false } : {}),
+      ...(types.includes(RecordingType.Audio) && !includeFilteredTracks
+        ? { redacted: false }
+        : {}),
       duration: statusRecordingsOnly
         ? { [Op.and]: [{ [Op.lt]: 2.5 }, { [Op.gt]: 0.0 }] }
         : { [Op.gte]: minDuration },

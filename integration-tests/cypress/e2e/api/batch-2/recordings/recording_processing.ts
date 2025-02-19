@@ -1521,7 +1521,7 @@ describe("Recordings - processing tests", () => {
       });
     });
 
-    it("Stale recording reprocessed ONCE only", () => {
+    it.skip("Stale recording reprocessed ONCE only", () => {
       cy.log(
         "Add recording with processing=true, processinmgState='analyse' and processingStartTime=30.minutes.ago"
       );

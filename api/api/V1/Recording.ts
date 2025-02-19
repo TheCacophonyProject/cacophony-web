@@ -1892,7 +1892,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
-      query("soft-delete").default(false).isBoolean().toBoolean(),
+      query("soft-delete").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),

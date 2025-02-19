@@ -128,5 +128,6 @@ const isBusy = ref<boolean>(false);
 }
 .inline-view-dialog {
   max-width: 1080px;
+  overflow: hidden;
 }
 </style>

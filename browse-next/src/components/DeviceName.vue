@@ -25,8 +25,17 @@
     />
   </b-link>
   <span class="d-inline-flex align-items-center" v-else>
-    <span class="ms-1 me-2 align-self-center position-relative"
-      ><font-awesome-icon :icon="deviceTypeIcon" />
+    <span
+      class="align-self-center position-relative"
+      :class="{
+        'ms-1': !props.noMargin,
+        'me-2': !props.noMargin,
+        'me-1': props.noMargin,
+      }"
+      ><font-awesome-icon
+        :icon="deviceTypeIcon"
+        :color="props.color || 'inherit'"
+      />
       <font-awesome-icon
         v-if="type === 'hybrid-thermal-audio'"
         icon="music"
@@ -60,6 +69,8 @@ const props = defineProps<{
   name: string;
   type: DeviceType;
   to?: RouteLocationRaw | null;
+  color?: string;
+  noMargin?: boolean;
 }>();
 
 const deviceTypeIcon = computed<string>(() => {

@@ -29,7 +29,7 @@ import {
   getDeviceLocationAtTime,
   getLastKnownDeviceBatteryLevel,
 } from "@api/Device";
-import { useRoute, useRouter } from "vue-router";
+import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
   currentSelectedProject,
@@ -94,14 +94,14 @@ const toggleActiveAndInactive = async () => {
         ...route.params,
         all: "all",
       },
-    });
+    } as RouteLocationRaw);
   } else {
     const params = { ...route.params };
     delete params.all;
     await router.push({
       ...route,
       params,
-    });
+    } as RouteLocationRaw);
   }
 };
 
@@ -221,7 +221,7 @@ const batteryLevelForDevice = async (
   const status = statusForDevice(device);
   if (status === "online" || status == "standby") {
     const response = await getLastKnownDeviceBatteryLevel(device.id);
-    if (response !== false) {
+    if (response) {
       if (response.battery === null) {
         return "unknown";
       }

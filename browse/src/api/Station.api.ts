@@ -172,6 +172,14 @@ function deleteReferenceImage(
   );
 }
 
+function listDevices(
+  stationId: number,
+  onlyActive = true
+): Promise<FetchResult<any>> {
+  return CacophonyApi.get(
+    `/api/v1/stations/${stationId}/devices?only-active=${onlyActive}`
+  );
+}
 export default {
   getStations,
   updateStationWithId,
@@ -188,4 +196,5 @@ export default {
   getStationCacophonyIndexBulk,
   getStationSpeciesCount,
   getStationSpeciesCountBulk,
+  listDevices,
 };

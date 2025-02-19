@@ -20,7 +20,11 @@ import type {
   DeviceEvent,
   IsoFormattedString,
 } from "@typedefs/api/event";
-import type { DeviceEventType } from "@typedefs/api/consts";
+import type {
+  DeviceEventType,
+  DeviceType,
+  DeviceTypeUnion,
+} from "@typedefs/api/consts";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
@@ -552,11 +556,9 @@ export const getMaskRegionsForDevice = (
 
 export const getSettingsForDevice = (
   deviceId: DeviceId,
-  atTime?: Date,
   lastSynced = false
 ) => {
   const params = new URLSearchParams();
-  params.append("at-time", (atTime || new Date()).toISOString());
   if (lastSynced) {
     params.append("latest-synced", true.toString());
   }
@@ -601,7 +603,7 @@ export const getReferenceImageForDeviceAtTime = (
     params.append("only-active", true.toString());
   }
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image?${optionalQueryString(params)}`
+    `/api/v1/devices/${deviceId}/reference-image${optionalQueryString(params)}`
   ) as Promise<FetchResult<Blob>>;
 };
 
@@ -617,7 +619,7 @@ export const hasReferenceImageForDeviceAtTime = (
   }
   // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/reference-image/exists?${optionalQueryString(
+    `/api/v1/devices/${deviceId}/reference-image/exists${optionalQueryString(
       params
     )}`
   ) as Promise<
@@ -667,31 +669,7 @@ export const getLastKnownDeviceBatteryLevel = (
 };
 
 export const getDeviceModel = async (deviceId: DeviceId) => {
-  try {
-    const nodegroup = await getDeviceNodeGroup(deviceId);
-    if (nodegroup) {
-      const model = nodegroup.includes("tc2")
-        ? "tc2"
-        : nodegroup.includes("pi")
-        ? "pi"
-        : null;
-      if (model !== null) {
-        return model;
-      }
-    }
-    return await getLatestEventsByDeviceId(deviceId, {
-      type: "versionData",
-      limit: 1,
-    }).then((response) => {
-      if (response.success && response.result.rows.length) {
-        return response.result.rows[0].EventDetail.details["tc2-agent"]
-          ? "tc2"
-          : "pi";
-      } else {
-        return null;
-      }
-    });
-  } catch (e) {
-    return null;
-  }
+  return CacophonyApi.get(`/api/v1/devices/${deviceId}/type`) as Promise<
+    FetchResult<{ type: DeviceTypeUnion }>
+  >;
 };

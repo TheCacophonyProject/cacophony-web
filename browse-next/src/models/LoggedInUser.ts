@@ -457,9 +457,10 @@ export interface SelectedProject {
   admin?: boolean;
   settings?: ApiProjectSettings;
   userSettings?: ApiProjectUserSettings;
+  lastThermalRecordingTime?: string;
+  lastAudioRecordingTime?: string;
 }
 export const currentSelectedProject = computed<SelectedProject | false>(() => {
-  // console.log("Recompute current selected project");
   if (
     userIsLoggedIn.value &&
     currentUserSettings.value &&
@@ -502,12 +503,22 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
         userSettings: matchedProject.userSettings,
         admin: matchedProject.admin,
         owner: matchedProject.owner,
+        lastAudioRecordingTime: matchedProject.lastAudioRecordingTime,
+        lastThermalRecordingTime: matchedProject.lastThermalRecordingTime,
       };
     }
   }
   if (nonPendingUserProjects.value.length !== 0) {
-    const { id, groupName, settings, userSettings, admin, owner } =
-      nonPendingUserProjects.value[0];
+    const {
+      id,
+      groupName,
+      settings,
+      userSettings,
+      admin,
+      owner,
+      lastAudioRecordingTime,
+      lastThermalRecordingTime,
+    } = nonPendingUserProjects.value[0];
     return {
       id,
       groupName,
@@ -515,6 +526,8 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
       userSettings,
       admin,
       owner,
+      lastAudioRecordingTime,
+      lastThermalRecordingTime,
     };
   }
   return false;

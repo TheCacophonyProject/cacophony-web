@@ -258,7 +258,9 @@ const processFilePart = async (
   const mightBeTc2AudioFile =
     !("filename" in part) ||
     (part.filename &&
-      (part.filename.endsWith(".aac") || part.filename === "file"));
+      (part.filename.endsWith(".aac") ||
+        part.filename.endsWith(".m4a") ||
+        part.filename === "file"));
   let wasValidCptvFile = true;
   let wasValidM4aFile = true;
 
@@ -437,6 +439,29 @@ export const uploadGenericRecording =
         (await models.Device.findByPk(recordingDeviceId, {
           include: [models.Group],
         }));
+    }
+
+    if (!recordingDevice) {
+      return next(
+        new UnprocessableError(
+          `No device found for ID ${recordingDeviceId}. Cannot proceed with upload.`
+        )
+      );
+    }
+    if (!recordingDevice.GroupId) {
+      return next(
+        new UnprocessableError(
+          `Device ${recordingDeviceId} is not assigned to any group. Cannot upload a recording.`
+        )
+      );
+    }
+    if (!recordingDevice.Group) {
+      // If we rely on `recordingDevice.Group` from `include: [models.Group]`
+      return next(
+        new UnprocessableError(
+          `Device ${recordingDeviceId} has GroupId = ${recordingDevice.GroupId}, but no matching group found.`
+        )
+      );
     }
 
     if (response.locals.requestUser) {
@@ -626,6 +651,17 @@ export const uploadGenericRecording =
         recordingTemplate.recordingDateTime,
         recordingTemplate.location
       );
+
+      if (!deviceId || !groupId) {
+        // We can throw a 422 or similar
+        await deleteUploads(uploadResults);
+        return next(
+          new UnprocessableError(
+            `Unable to determine valid device (${deviceId}) or group (${groupId}) for this recording.`
+          )
+        );
+      }
+
       recordingTemplate.DeviceId = deviceId;
       recordingTemplate.GroupId = groupId;
 

@@ -32,6 +32,7 @@ export enum RecordingProcessingState {
   ReTrack = "retrack",
   AnalyseThermal = "analyse",
   Finished = "FINISHED",
+  FinishedFailed = "FINISHED.failed",
   Analyse = "analyse",
   Reprocess = "reprocess",
   ReTrackFailed = "retrack.failed",
@@ -68,6 +69,7 @@ export enum DeviceType {
   Hybrid = "hybrid-thermal-audio",
   Unknown = "unknown",
 }
+export type DeviceTypeUnion = `${DeviceType}`;
 
 export enum UserGlobalPermission {
   Write = "write",

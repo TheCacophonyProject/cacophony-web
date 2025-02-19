@@ -43,7 +43,7 @@
         >
           <span>{{ dateString }}, {{ timeString }}</span>
           <b-btn
-            v-if="stationHasReferencePhoto"
+            v-if="stationHasReferencePhoto || deviceImage"
             class="btn btn-link bg-transparent"
             @click="openReferenceImageInModal()"
           >
@@ -135,6 +135,7 @@ export default {
       station: null,
       modalImage: null,
       showModal: false,
+      deviceImage: null,
     };
   },
   computed: {
@@ -250,19 +251,29 @@ export default {
   methods: {
     async openReferenceImageInModal() {
       if (!this.modalImage) {
-        const imageItem = {
-          loading: true,
-          key: this.stationReferencePhoto,
-          image: null,
-        };
-        this.modalImage = imageItem;
-        this.showModal = true;
-        api.station
-          .getReferenceImage(this.station.id, this.stationReferencePhoto)
-          .then((image) => {
-            imageItem.image = window.URL.createObjectURL(image.result as Blob);
-            imageItem.loading = false;
-          });
+        if (this.deviceImage) {
+          this.modalImage = {
+            loading: false,
+            image: this.deviceImage,
+          };
+          this.showModal = true;
+        } else if (this.stationReferencePhoto) {
+          const imageItem = {
+            loading: true,
+            key: this.stationReferencePhoto,
+            image: null,
+          };
+          this.modalImage = imageItem;
+          this.showModal = true;
+          api.station
+            .getReferenceImage(this.station.id, this.stationReferencePhoto)
+            .then((image) => {
+              imageItem.image = window.URL.createObjectURL(
+                image.result as Blob
+              );
+              imageItem.loading = false;
+            });
+        }
       } else {
         this.showModal = true;
       }
@@ -391,6 +402,24 @@ export default {
   },
   mounted: async function () {
     await this.fetchRecording({ id: this.$route.params.id, action: "updated" });
+    const atTime = new Date(this.recording.recordingDateTime);
+    const deviceImageExists = await api.device.getReferenceImage(
+      this.recording.deviceId,
+      {
+        type: "pov",
+        checkExists: true,
+        atTime,
+      }
+    );
+    if (deviceImageExists.success) {
+      const res = await api.device.getReferenceImage(this.recording.deviceId, {
+        type: "pov",
+        atTime,
+      });
+      if (res.success) {
+        this.deviceImage = window.URL.createObjectURL(res.result);
+      }
+    }
   },
 };
 </script>

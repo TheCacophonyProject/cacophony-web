@@ -130,6 +130,12 @@ const allVisitsForProjectInTimespan = async (
     }
     if (!alreadySentNoActivityEmail) {
       for (const visit of visits) {
+        if (visit.classification === "false-trigger") {
+          continue;
+        }
+        if (visit.classification === "none") {
+          visit.classification = "unidentified";
+        }
         recordingData[visit.classification] =
           recordingData[visit.classification] || 0;
         recordingData[visit.classification] += 1;

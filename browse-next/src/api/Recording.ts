@@ -76,6 +76,24 @@ export const createDummyTrack = (
     },
   }) as Promise<FetchResult<{ trackId: TrackId }>>;
 
+export const deleteTrack = (
+  recording: ApiRecordingResponse,
+  trackId: TrackId
+) =>
+  CacophonyApi.delete(
+    `/api/v1/recordings/${recording.id}/tracks/${trackId}?soft-delete=false`
+  ) as Promise<FetchResult<void>>;
+
+export const createUserDefinedTrack = (
+  recording: ApiRecordingResponse,
+  track: ApiTrackDataRequest
+) =>
+  CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
+    data: {
+      ...track,
+    },
+  }) as Promise<FetchResult<{ trackId: TrackId }>>;
+
 export const addRecordingLabel = (id: RecordingId, label: string) =>
   CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
     tag: {
@@ -83,6 +101,16 @@ export const addRecordingLabel = (id: RecordingId, label: string) =>
       confidence: 0.9,
     },
   }) as Promise<FetchResult<{ tagId: TagId }>>;
+
+export const addRecordingNoteLabel = (id: RecordingId, note: string) =>
+  CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
+    tag: {
+      detail: "note",
+      comment: note,
+      confidence: 0.9,
+    },
+  }) as Promise<FetchResult<{ tagId: TagId }>>;
+
 export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
   CacophonyApi.delete(`/api/v1/recordings/${id}/tags/${tagId}`) as Promise<
     FetchResult<void>
@@ -161,6 +189,7 @@ export const queryRecordingsInProjectNew = (
   if (options.limit) {
     params.append("max-results", options.limit.toString());
   }
+  params.append("duration", "0");
   // Do we want this, or do we want to show processing recordings?
   // params.append("processingState", RecordingProcessingState.Finished);
 
@@ -319,4 +348,12 @@ export const uploadRecording = (
     formData,
     true
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
+};
+
+export const getRawRecording = async (recordingId: RecordingId) => {
+  const ABORTABLE = true;
+  return CacophonyApi.get(
+    `/api/v1/recordings/raw/${recordingId}`,
+    ABORTABLE
+  ) as Promise<FetchResult<Blob>>;
 };

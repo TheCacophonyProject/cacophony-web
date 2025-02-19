@@ -146,16 +146,42 @@ export const canonicalLatLng = (
   }
   return location as LatLng;
 };
+const EARTH_RADIUS = 6371000; // Earth's radius in meters.
+const toRadians = (deg: number): number => (deg * Math.PI) / 180;
+/**
+ * Computes the distance between two points on the Earth using the Haversine formula.
+ *
+ * @param a - The first location.
+ * @param b - The second location.
+ * @returns The distance between the two points in meters.
+ */
+export const haversineDistance = (a: LatLng, b: LatLng): number => {
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
 
+  const havA =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const havC = 2 * Math.atan2(Math.sqrt(havA), Math.sqrt(1 - havA));
+  return EARTH_RADIUS * havC;
+};
+
+/**
+ * Compares two locations, treating them as equal if they are within 5 meters of each other.
+ *
+ * @param a - The first location.
+ * @param b - The second location.
+ * @returns True if the locations are within 5 meters; otherwise, false.
+ */
 export const locationsAreEqual = (
   a: LatLng | { coordinates: [number, number] },
   b: LatLng | { coordinates: [number, number] }
 ): boolean => {
   const canonicalA = canonicalLatLng(a);
   const canonicalB = canonicalLatLng(b);
-  // NOTE: We need to compare these numbers with an epsilon value, otherwise we get floating-point precision issues.
-  return (
-    Math.abs(canonicalA.lat - canonicalB.lat) < EPSILON &&
-    Math.abs(canonicalA.lng - canonicalB.lng) < EPSILON
-  );
+  const toleranceInMeters = 5; // 5 meters tolerance
+
+  return haversineDistance(canonicalA, canonicalB) < toleranceInMeters;
 };

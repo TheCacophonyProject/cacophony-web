@@ -42,9 +42,9 @@ const heightForTracks = computed((): number => {
     return minScrubberHeight;
   }
   const paddingY = 10;
-  const heightForTracks =
-    trackHeight * numUniqueYSlots.value + props.tracks.length - 1;
-  return Math.max(44, heightForTracks + paddingY * 2);
+  let h = trackHeight * numUniqueYSlots.value; // + props.tracks.length - 1;
+  h = Math.max(44, h + paddingY * 2);
+  return h;
 });
 
 const getOffsetYForTrack = (
@@ -92,26 +92,28 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
   const dimensions = [];
   numUniqueYSlots.value = 0;
   const uniqueYSlots: Record<number, boolean> = {};
-  for (let i = 0; i < tracks.length; i++) {
-    const thisLeft = tracks[i].positions[0][0] / props.totalFrames;
-    const thisRight =
-      tracks[i].positions[tracks[i].positions.length - 1][0] /
-      props.totalFrames;
-    const yOffset = getOffsetYForTrack(
-      i,
-      tracks,
-      dimensions,
-      thisLeft,
-      thisRight
-    );
-    dimensions.push({
-      top: yOffset,
-      right: thisRight,
-      left: thisLeft,
-    });
-    uniqueYSlots[yOffset] = true;
+  if (props.totalFrames !== 0) {
+    for (let i = 0; i < tracks.length; i++) {
+      const thisLeft = tracks[i].positions[0][0] / props.totalFrames;
+      const thisRight =
+        tracks[i].positions[tracks[i].positions.length - 1][0] /
+        props.totalFrames;
+      const yOffset = getOffsetYForTrack(
+        i,
+        tracks,
+        dimensions,
+        thisLeft,
+        thisRight
+      );
+      dimensions.push({
+        top: yOffset,
+        right: thisRight,
+        left: thisLeft,
+      });
+      uniqueYSlots[yOffset] = true;
+    }
+    trackDimensions.value = dimensions;
   }
-  trackDimensions.value = dimensions;
   numUniqueYSlots.value = Object.keys(uniqueYSlots).length;
 };
 
@@ -282,6 +284,7 @@ const currentTrackIndex = computed<number>(() => {
 <style scoped lang="less">
 .track-scrubber {
   background: #2b333f;
+  min-height: 0;
   transition: height 0.3s;
   /* Above the motion paths canvas if it exists */
   box-shadow: 0 1px 5px #000 inset;

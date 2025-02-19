@@ -1,3 +1,5 @@
+import type { RecordingLabel } from "@typedefs/api/group";
+
 export const TagColours = [
   { background: "#32ff7e", foreground: "dark" },
   { background: "#4bcffa", foreground: "dark" },
@@ -8,7 +10,7 @@ export const TagColours = [
   { background: "#ffcccc", foreground: "dark" },
 ];
 
-export const DEFAULT_TAGS = [
+export const DEFAULT_CAMERA_TAGS = [
   "possum",
   "rodent",
   "hedgehog",
@@ -19,18 +21,46 @@ export const DEFAULT_TAGS = [
   "unidentified",
 ];
 
-export const RecordingLabels: {
-  text: string;
-  value?: string;
-  description: string;
-}[] = [
-  { text: "Cool", description: "Mark this as a cool or interesting recording" },
+export const DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS: string[] = [
+  "none",
+  "bird",
+  "vehicle",
+  "human",
+  "insect",
+];
+export const DEFAULT_DASHBOARD_IGNORED_AUDIO_TAGS: string[] = ["noise"];
+
+export const DEFAULT_AUDIO_TAGS = [
+  "morepork",
+  "kiwi",
+  "kereru",
+  "tui",
+  "kea",
+  "bellbird",
+  "bird",
+  "human",
+  "unidentified",
+];
+
+export const COMMON_RECORDING_LABELS: RecordingLabel[] = [
+  {
+    text: "Cool",
+    description: "Mark this as a cool or interesting recording",
+  },
   {
     text: "Flagged for review",
     value: "requires review",
     description:
       "Flag this recording for review due to low confidence IDing track(s)",
   },
+  {
+    text: "Note",
+    value: "note",
+    description: "Add a note to this recording",
+  },
+];
+
+export const DEFAULT_CAMERA_RECORDING_LABELS: RecordingLabel[] = [
   {
     text: "Animal in trap",
     value: "trapped in trap",
@@ -55,16 +85,22 @@ export const RecordingLabels: {
     text: "Multiple animals",
     description: "There is more than one animal in this recording",
   },
+  // TODO Migrate users using these labels to custom labels
+  // {
+  //   text: "Outside",
+  // },
+  // {
+  //   text: "Inside",
+  // },
+  // {
+  //   text: "Incursion",
+  // },
+];
+
+export const DEFAULT_AUDIO_RECORDING_LABELS: RecordingLabel[] = [
   {
-    text: "Outside",
-    description: "Outside",
-  },
-  {
-    text: "Inside",
-    description: "Inside",
-  },
-  {
-    text: "Incursion",
-    description: "Incursion",
+    text: "Missed track",
+    description:
+      "One or more birds do not have a corresponding track in this recording",
   },
 ];

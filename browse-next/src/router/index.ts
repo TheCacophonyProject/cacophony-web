@@ -66,6 +66,11 @@ const recordingModalTabChildren = (grandParent: string, parent: string) => [
     name: `${grandParent}-${parent}-tracks`,
     component: () => import("@/components/RecordingViewTracks.vue"),
   },
+  {
+    path: "notes/:trackId?/:detail?",
+    name: `${grandParent}-${parent}-notes`,
+    component: () => import("@/components/RecordingViewNotes.vue"),
+  },
 ];
 
 const recordingModalChildren = (parent: string) => [
@@ -312,11 +317,24 @@ const router = createRouter({
           component: () => import("@/views/ManageProjectUsersSubView.vue"),
         },
         {
-          name: "project-tag-settings",
-          path: "tag-settings",
-          meta: { title: "Tag preferences for :projectName" },
+          name: "project-tagging-settings",
+          path: "tagging-settings",
+          meta: { title: "Tagging settings for :projectName" },
           component: () =>
             import("@/views/ManageProjectTagSettingsSubView.vue"),
+        },
+        {
+          name: "project-label-settings",
+          path: "label-settings",
+          meta: { title: "Label settings for :projectName" },
+          component: () =>
+            import("@/views/ManageProjectLabelSettingsSubView.vue"),
+        },
+        {
+          name: "project-misc-settings",
+          path: "project-settings",
+          meta: { title: "Settings for :projectName" },
+          component: () => import("@/views/ManageProjectSettingsSubView.vue"),
         },
         {
           name: "fix-project-locations",
@@ -513,7 +531,7 @@ router.beforeEach(async (to, from, next) => {
       !currentSelectedProject.value &&
       !isFetchingProjects.value
     ) {
-      console.log("User is logged in, refresh projects (2)");
+      //console.log("User is logged in, refresh projects (2)");
       const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });

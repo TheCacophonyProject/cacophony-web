@@ -24,7 +24,6 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import { canonicalLatLngForLocations } from "@/helpers/Location.ts";
-import { RecordingLabels } from "@/consts.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
 import {
   ActivitySearchDisplayMode,
@@ -36,6 +35,10 @@ import type { ActivitySearchParams } from "@views/ActivitySearchView.vue";
 import { type LocationQuery, useRoute, useRouter } from "vue-router";
 import { useElementBounding } from "@vueuse/core";
 import { urlNormaliseName } from "@/utils.ts";
+import {
+  CurrentProjectAudioLabels,
+  CurrentProjectCameraLabels,
+} from "@/helpers/Project.ts";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -62,20 +65,27 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 const availableProjects = inject(userProjects) as Ref<
   LoadedResource<ApiProjectResponse[]>
 >;
+
 const availableLabels = computed(() => {
-  const labels = RecordingLabels.slice(2).map(({ text, value }) => ({
+  let labelSource;
+  if (recordingMode.value === ActivitySearchRecordingMode.Cameras) {
+    labelSource = CurrentProjectCameraLabels.value;
+  } else {
+    labelSource = CurrentProjectAudioLabels.value;
+  }
+  const labels = labelSource.slice(2).map(({ text, value }) => ({
     label: text,
     value: (value || text).toLowerCase(),
   }));
   if (selectedCoolLabel.value) {
-    const label = RecordingLabels[0];
+    const label = labelSource[0];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),
     });
   }
   if (selectedFlaggedLabel.value) {
-    const label = RecordingLabels[1];
+    const label = labelSource[1];
     labels.push({
       label: label.text,
       value: (label.value || label.text).toLowerCase(),
@@ -83,28 +93,19 @@ const availableLabels = computed(() => {
   }
   return labels;
 });
-const currentSelectedProject = computed<ApiProjectResponse | null>(() => {
-  if (currentProject.value && availableProjects.value) {
-    const project = (availableProjects.value as ApiProjectResponse[]).find(
-      ({ id }) => id === (currentProject.value as SelectedProject).id
-    );
-    return project || null;
-  }
-  return null;
-});
 
 const projectHasAudio = computed<boolean>(() => {
-  return (
-    !!currentSelectedProject.value &&
-    "lastAudioRecordingTime" in currentSelectedProject.value
-  );
+  if (currentProject.value !== false) {
+    return !!(currentProject.value as SelectedProject).lastAudioRecordingTime;
+  }
+  return false;
 });
 
 const projectHasCameras = computed<boolean>(() => {
-  return (
-    !!currentSelectedProject.value &&
-    "lastThermalRecordingTime" in currentSelectedProject.value
-  );
+  if (currentProject.value !== false) {
+    return !!(currentProject.value as SelectedProject).lastThermalRecordingTime;
+  }
+  return false;
 });
 
 const projectHasAudioAndThermal = computed<boolean>(() => {
@@ -206,6 +207,8 @@ const minDateForSelectedLocations = computed<Date>(() => {
 const searchIsValid = computed<boolean>(() => {
   const hasValidDateRange =
     Array.isArray(selectedDateRange.value) ||
+    (selectedDateRange.value.value &&
+      Array.isArray(selectedDateRange.value.value)) ||
     Array.isArray(customDateRange.value);
   const hasAdvancedSettingsSelected =
     showAdvanced.value &&
@@ -586,6 +589,9 @@ const getCurrentQuery = (): LocationQuery => {
   } else {
     delete query["labelled-with"];
   }
+  if (query["recording-mode"] === ActivitySearchRecordingMode.Audio) {
+    query["display-mode"] = ActivitySearchDisplayMode.Recordings;
+  }
   if (query["display-mode"] === "visits") {
     delete query["tag-mode"];
     delete query["labelled-with"];
@@ -911,37 +917,37 @@ const scrolledToStickyPosition = computed<boolean>(() => {
 
 <template>
   <div ref="searchParamsContainer">
-    <!--    <div-->
-    <!--      class="btn-group btn-group-sm d-flex mb-2"-->
-    <!--      role="group"-->
-    <!--      aria-label="Toggle between camera and bird monitor results"-->
-    <!--      v-if="projectHasAudioAndThermal"-->
-    <!--    >-->
-    <!--      <input-->
-    <!--        type="radio"-->
-    <!--        class="btn-check"-->
-    <!--        name="recording-mode"-->
-    <!--        id="recording-mode-cameras"-->
-    <!--        autocomplete="off"-->
-    <!--        v-model="recordingMode"-->
-    <!--        value="cameras"-->
-    <!--      />-->
-    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"-->
-    <!--        >Cameras</label-->
-    <!--      >-->
-    <!--      <input-->
-    <!--        type="radio"-->
-    <!--        class="btn-check"-->
-    <!--        name="recording-mode"-->
-    <!--        id="recording-mode-audio"-->
-    <!--        autocomplete="off"-->
-    <!--        v-model="recordingMode"-->
-    <!--        value="audio"-->
-    <!--      />-->
-    <!--      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"-->
-    <!--        >Bird Monitors</label-->
-    <!--      >-->
-    <!--    </div>-->
+    <div
+      class="btn-group btn-group-sm d-flex mb-2"
+      role="group"
+      aria-label="Toggle between camera and bird monitor results"
+      v-if="projectHasAudioAndThermal"
+    >
+      <input
+        type="radio"
+        class="btn-check"
+        name="recording-mode"
+        id="recording-mode-cameras"
+        autocomplete="off"
+        v-model="recordingMode"
+        value="cameras"
+      />
+      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"
+        >Cameras</label
+      >
+      <input
+        type="radio"
+        class="btn-check"
+        name="recording-mode"
+        id="recording-mode-audio"
+        autocomplete="off"
+        v-model="recordingMode"
+        value="audio"
+      />
+      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"
+        >Bird Monitors</label
+      >
+    </div>
     <div
       class="btn-group d-flex"
       :class="{ 'btn-group-sm': scrolledToStickyPosition }"
@@ -1034,7 +1040,12 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="showFilteredFalsePositivesAndNones"
         switch
         :disabled="showUntaggedOnly"
-        >Include false triggers</b-form-checkbox
+        >Include
+        <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
+          >false triggers</span
+        ><span v-if="recordingMode === ActivitySearchRecordingMode.Audio"
+          >redacted audio</span
+        ></b-form-checkbox
       >
       <span class="help-toggle" ref="falsePositiveInfoParent"
         ><font-awesome-icon icon="question"
@@ -1050,8 +1061,14 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       teleport-to="body"
       :target="falsePositiveInfoParent"
     >
-      Include recordings that are only tagged as false trigger, or which have no
-      tracks to tag.
+      <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
+        >Include recordings that are only tagged as false trigger, or which have
+        no tracks to tag.</span
+      >
+      <span v-if="recordingMode === ActivitySearchRecordingMode.Audio"
+        >Include recordings that were redacted, or which have no tracks to
+        tag.</span
+      >
     </b-popover>
   </div>
   <button
