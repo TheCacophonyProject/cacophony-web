@@ -69,6 +69,7 @@ export enum DeviceType {
   Hybrid = "hybrid-thermal-audio",
   Unknown = "unknown",
 }
+export type DeviceTypeUnion = `${DeviceType}`;
 
 export enum UserGlobalPermission {
   Write = "write",

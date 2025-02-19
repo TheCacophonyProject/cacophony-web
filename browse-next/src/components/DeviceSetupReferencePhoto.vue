@@ -148,7 +148,6 @@ const moveHandle = (event: PointerEvent) => {
 const singleFrame = ref<HTMLCanvasElement>();
 
 const handleSingleFrameLoaded = (el: HTMLCanvasElement) => {
-  debugger;
   singleFrame.value = el;
   nextTick(() => {
     positionHandles();
@@ -170,11 +169,11 @@ const constrainHandle = (
     top: handleY,
   } = handle.getBoundingClientRect();
   if (clientX === undefined) {
-clientX = handleX;
-}
+    clientX = handleX;
+  }
   if (clientY === undefined) {
-clientY = handleY;
-}
+    clientY = handleY;
+  }
 
   const {
     left: parentX,
@@ -505,8 +504,8 @@ const savingReferenceImage = ref<boolean>(false);
 const saveReferenceImage = async () => {
   const ctx = referenceImageSkew.value?.getContext("2d");
   if (!ctx) {
-return;
-}
+    return;
+  }
 
   savingReferenceImage.value = true;
   renderSkewedImage(); // do one final draw at full opacity

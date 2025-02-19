@@ -18,12 +18,13 @@ import {
 import Datepicker from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
+import type { DeviceTypeUnion } from "@typedefs/api/consts";
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
 >;
 const route = useRoute();
-const deviceModel = ref<LoadedResource<"tc2" | "pi">>(null);
+const deviceModel = ref<LoadedResource<DeviceTypeUnion>>(null);
 // Device Settings
 const settings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
 const syncedSettings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
@@ -54,9 +55,10 @@ const device = computed<ApiDeviceResponse | null>(() => {
 
 const settingsLoading = resourceIsLoading(settings);
 const lastSyncedSettingsLoading = resourceIsLoading(lastSyncedSettings);
+
 const nodeGroupInfoLoading = resourceIsLoading(deviceModel);
 const isTc2Device = computed<boolean>(() => {
-  return deviceModel.value === "tc2";
+  return deviceModel.value === "hybrid-thermal-audio";
 });
 const defaultWindows = {
   powerOn: "-30m",
@@ -154,15 +156,16 @@ const initialised = ref<boolean>(false);
 onBeforeMount(async () => {
   await projectDevicesLoaded();
   await loadResource(settings, fetchSettings);
-  await loadResource(deviceModel, () => getDeviceModel(deviceId.value));
+  await loadResource(deviceModel, async () => {
+    const res = await getDeviceModel(deviceId.value);
+    if (res.success) {
+      return res.result.type;
+    }
+  });
   initialised.value = true;
   if (settings.value && !settings.value.synced) {
     // Load last synced settings
-    const response = await getSettingsForDevice(
-      deviceId.value,
-      new Date(),
-      true
-    );
+    const response = await getSettingsForDevice(deviceId.value, true);
     if (response && response.success && response.result.settings) {
       syncedSettings.value = response.result.settings;
     }
@@ -177,10 +180,13 @@ const useLowPowerMode = computed<boolean>({
     );
   },
   set: (val: boolean) => {
-    (settings.value as ApiDeviceHistorySettings).thermalRecording = {
-      useLowPowerMode: val,
-      updated: new Date().toISOString(),
-    };
+    if (settings.value) {
+      (settings.value as ApiDeviceHistorySettings).thermalRecording = {
+        useLowPowerMode: val,
+        updated: new Date().toISOString(),
+      };
+      settings.value.synced = false;
+    }
   },
 });
 const recordingWindowSetting = computed<"default" | "always" | "custom">({
@@ -235,6 +241,7 @@ const recordingWindowSetting = computed<"default" | "always" | "custom">({
           updated: new Date().toISOString(),
         };
       }
+      settings.value.synced = false;
     }
   },
 });
@@ -257,6 +264,7 @@ const customRecordingWindowStart = computed<Time>({
       };
       settings.value.windows.startRecording = timeObjToTimeStr(val);
       settings.value.windows.updated = new Date().toISOString();
+      settings.value.synced = false;
     }
   },
 });
@@ -280,6 +288,7 @@ const customRecordingWindowStop = computed<Time>({
       };
       settings.value.windows.stopRecording = timeObjToTimeStr(val);
       settings.value.windows.updated = new Date().toISOString();
+      settings.value.synced = false;
     }
   },
 });
@@ -306,6 +315,7 @@ const audioMode = computed<AudioModes>({
         audioMode: val,
         updated: new Date().toISOString(),
       };
+      settings.value.synced = false;
     }
   },
 });
@@ -336,8 +346,8 @@ function calculateTimePercentagePoints(
   endTime: string
 ): Array<{ left: string; width: string }> {
   if (startTime === "12:00" && endTime === "12:00") {
-return [{ left: "0%", width: "100%" }];
-}
+    return [{ left: "0%", width: "100%" }];
+  }
   const startPercentage = timeToPercentage(startTime);
   const endPercentage = timeToPercentage(endTime);
 
@@ -499,6 +509,7 @@ const audioSeed = computed<number>({
         audioSeed: val,
         updated: new Date().toISOString(),
       };
+      settings.value.synced = false;
     }
   },
 });

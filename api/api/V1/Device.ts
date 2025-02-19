@@ -1619,7 +1619,6 @@ export default function (app: Application, baseUrl: string) {
         const atTime =
           (request.query["at-time"] as unknown as Date) ?? new Date();
         const device = response.locals.device as Device;
-        debugger;
         let deviceSettings: DeviceHistory | null = null;
         if (request.query["latest-synced"]) {
           deviceSettings = await models.DeviceHistory.latest(
@@ -1634,7 +1633,10 @@ export default function (app: Application, baseUrl: string) {
           deviceSettings = await models.DeviceHistory.latest(
             device.id,
             device.GroupId,
-            atTime
+            atTime,
+            {
+              "settings.synced": { [Op.ne]: null },
+            }
           );
         }
         if (deviceSettings) {
