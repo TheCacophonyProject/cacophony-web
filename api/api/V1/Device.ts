@@ -1633,10 +1633,7 @@ export default function (app: Application, baseUrl: string) {
           deviceSettings = await models.DeviceHistory.latest(
             device.id,
             device.GroupId,
-            atTime,
-            {
-              "settings.synced": { [Op.ne]: null },
-            }
+            atTime
           );
         }
         if (deviceSettings) {
