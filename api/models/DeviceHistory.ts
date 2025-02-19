@@ -56,7 +56,8 @@ export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {
   latest(
     deviceId: DeviceId,
     groupId: GroupId,
-    atTime?: Date
+    atTime?: Date,
+    where?: any
   ): Promise<DeviceHistory | null>;
   getEarliestFromDateTimeForDeviceAtCurrentLocation(
     deviceId: DeviceId,
@@ -134,17 +135,43 @@ export default function (
   DeviceHistory.latest = async function (
     deviceId: DeviceId,
     groupId: GroupId,
-    atTime = new Date()
+    atTime = new Date(),
+    where = {}
   ): Promise<DeviceHistory | null> {
-    return this.findOne({
+    // Find the closest entry before (or at) atTime
+    const before = await this.findOne({
       where: {
         DeviceId: deviceId,
         GroupId: groupId,
-        location: { [Op.ne]: null },
         fromDateTime: { [Op.lte]: atTime },
+        location: { [Op.ne]: null },
+        ...where,
       },
       order: [["fromDateTime", "DESC"]],
     });
+
+    // Find the closest entry after (or at) atTime
+    const after = await this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+        fromDateTime: { [Op.gte]: atTime },
+        location: { [Op.ne]: null },
+        ...where,
+      },
+      order: [["fromDateTime", "ASC"]],
+    });
+
+    // If both exist, choose the one with the smallest difference to atTime.
+    if (before && after) {
+      const diffBefore = atTime.getTime() - before.fromDateTime.getTime();
+      const diffAfter = after.fromDateTime.getTime() - atTime.getTime();
+
+      return diffBefore <= diffAfter ? before : after;
+    }
+
+    // If only one exists, return that one.
+    return before || after;
   };
   DeviceHistory.updateDeviceSettings = async function (
     deviceId: DeviceId,

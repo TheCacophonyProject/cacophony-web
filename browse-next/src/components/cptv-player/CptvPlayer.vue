@@ -1386,6 +1386,7 @@ const togglePlayback = async (): Promise<void> => {
 
 const referenceImageURL = ref<string | null>(null);
 const showingReferencePhoto = ref<boolean>(false);
+const referenceOpacity = ref<number>(1);
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
   if (showingReferencePhoto.value) {
@@ -2119,8 +2120,10 @@ watch(
           <img
             v-if="referenceImageURL"
             ref="referenceImage"
-            alt="Device point-of-view reference photo at the time of recording"
+            alt="Device
+          point-of-view reference photo at the time of recording"
             :src="referenceImageURL"
+            :style="{ opacity: referenceOpacity }"
           />
         </div>
         <div
@@ -2262,6 +2265,24 @@ watch(
         >
           <span>{{ speedMultiplier }}x</span>
         </button>
+      </div>
+      <div
+        class="reference-opacity-container"
+        :class="{ open: showingReferencePhoto }"
+      >
+        <div
+          class="reference-opacity-slider"
+          :class="{ open: showingReferencePhoto }"
+        >
+          <input
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            v-model.number="referenceOpacity"
+          />
+          <font-awesome-icon icon="eye" />
+        </div>
       </div>
     </div>
     <div v-else-if="hasReferencePhoto" class="playback-nav justify-content-end">
@@ -2462,6 +2483,7 @@ watch(
   aspect-ratio: 4 / 3;
 }
 .cptv-player {
+  position: relative;
   user-select: none;
   background: #202731;
   .video-canvas {
@@ -2807,22 +2829,34 @@ watch(
 }
 // Reference image overlay + slider
 .reference-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   z-index: 1;
   user-select: none;
+  overflow: hidden; /* ensures we don’t show anything outside the container */
 }
 
 .reveal-slider {
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Start at 50% to show half, or whatever default you want */
   width: 50%;
-  overflow: hidden;
+  height: 100%;
+  overflow: hidden; /* So only the left portion of the image is visible */
   user-select: none;
+
   > img {
-    user-select: none;
-    pointer-events: none;
-    max-width: 640px;
-    aspect-ratio: auto 4/3;
+    display: block; /* removes inline spacing gaps */
+    height: 480px;
+    object-fit: cover; /* critical to maintain aspect ratio but cover fully */
+    object-position: center; /* center the image as it covers */
+    pointer-events: none; /* so the handle can receive pointer events */
   }
 }
+
 @media screen and (max-width: 639px) {
   .reveal-slider > img {
     max-width: 100svw;
@@ -2849,6 +2883,57 @@ watch(
   transition: opacity 0.2s;
   &:hover {
     opacity: 1;
+  }
+}
+
+.reference-opacity-container {
+  z-index: 2;
+  position: absolute;
+  right: 0;
+  bottom: 44px;
+  height: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  transition: height 0.3s ease-in-out;
+  background: #2b333f;
+  border-radius: 1em 1em 0em 0em;
+  .reference-opacity-toggle {
+    width: 48px;
+    height: 44px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    outline: none;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  &.open {
+    transform: translateY(0);
+    height: 44px;
+  }
+  .reference-opacity-slider {
+    flex: 1;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s;
+
+    opacity: 0;
+    &.open {
+      opacity: 100%;
+    }
+    input[type="range"] {
+      flex: 1;
+      cursor: pointer;
+      margin: 0 4px;
+      // You can style the slider track/ thumb if needed
+    }
   }
 }
 </style>

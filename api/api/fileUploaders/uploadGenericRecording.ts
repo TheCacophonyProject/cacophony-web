@@ -441,6 +441,29 @@ export const uploadGenericRecording =
         }));
     }
 
+    if (!recordingDevice) {
+      return next(
+        new UnprocessableError(
+          `No device found for ID ${recordingDeviceId}. Cannot proceed with upload.`
+        )
+      );
+    }
+    if (!recordingDevice.GroupId) {
+      return next(
+        new UnprocessableError(
+          `Device ${recordingDeviceId} is not assigned to any group. Cannot upload a recording.`
+        )
+      );
+    }
+    if (!recordingDevice.Group) {
+      // If we rely on `recordingDevice.Group` from `include: [models.Group]`
+      return next(
+        new UnprocessableError(
+          `Device ${recordingDeviceId} has GroupId = ${recordingDevice.GroupId}, but no matching group found.`
+        )
+      );
+    }
+
     if (response.locals.requestUser) {
       uploadingUser = response.locals.requestUser;
     }
@@ -628,6 +651,17 @@ export const uploadGenericRecording =
         recordingTemplate.recordingDateTime,
         recordingTemplate.location
       );
+
+      if (!deviceId || !groupId) {
+        // We can throw a 422 or similar
+        await deleteUploads(uploadResults);
+        return next(
+          new UnprocessableError(
+            `Unable to determine valid device (${deviceId}) or group (${groupId}) for this recording.`
+          )
+        );
+      }
+
       recordingTemplate.DeviceId = deviceId;
       recordingTemplate.GroupId = groupId;
 
