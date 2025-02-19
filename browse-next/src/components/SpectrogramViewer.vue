@@ -671,6 +671,10 @@ watch(pendingTrackClass, async (classification: string[]) => {
     }, 300);
     // Patch the pending track
     pendingTrack.value.tags[0].what = classification[0];
+    pendingTrack.value.tags[0].automatic = false;
+    pendingTrack.value.tags[0].createdAt = new Date().toISOString();
+    pendingTrack.value.tags[0].userId = currentUser.value?.id;
+    pendingTrack.value.tags[0].userName = currentUser.value?.userName;
     emit("track-tag-changed", {
       track: pendingTrack.value as ApiTrackResponse,
       tag: classification[0] || "",
