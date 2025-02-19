@@ -519,9 +519,19 @@ export default defineComponent({
     const createRectFromTrack = (track: AudioTrack) => {
       const id = `track_${track.id.toString()}`;
       const isTemp = track.id === -1;
-      const pos = isTemp
-        ? track.positions[1]
-        : track.positions[track.positions.length - 1]; // Temp track uses second position
+      let pos;
+      if (track.positions) {
+        pos = isTemp
+          ? track.positions[1]
+          : track.positions[track.positions.length - 1]; // Temp track uses second position
+      } else {
+        pos = {
+          x: track.start / props.duration,
+          y: (track.minFreq || 0) / props.sampleRate,
+          height: (track.maxFreq || 0 - track.minFreq || 0) / props.sampleRate,
+          width: (track.end - track.start) / props.duration,
+        };
+      }
       let { x, y, height, width } = pos
         ? convertRectangleToSVG(pos)
         : {
