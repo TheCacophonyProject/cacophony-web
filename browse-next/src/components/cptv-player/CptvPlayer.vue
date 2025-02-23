@@ -1394,7 +1394,8 @@ const toggleReferencePhotoComparison = async () => {
     // Load the reference photo.
     const referenceImageResponse = await getReferenceImageForDeviceAtTime(
       rec.deviceId,
-      new Date(rec.recordingDateTime)
+      new Date(rec.recordingDateTime),
+      true
     );
     if (referenceImageResponse.success) {
       referenceImageURL.value = URL.createObjectURL(

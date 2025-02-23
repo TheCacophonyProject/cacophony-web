@@ -751,7 +751,8 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
 
   const hasReferenceResponse = await hasReferenceImageForDeviceAtTime(
     deviceId,
-    atTime
+    atTime,
+    true
   );
   if (
     // We know the earliest time for the reference image, and the location.
