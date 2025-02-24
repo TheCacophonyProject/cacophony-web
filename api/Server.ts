@@ -121,7 +121,7 @@ const checkS3Connection = async (): Promise<void> => {
         const userTimeMs = requestCpuUsage.user / 1000;
         const systemTimeMs = requestCpuUsage.system / 1000;
 
-        const requester = response.locals.requestUser.id;
+        const requester = response.locals.requestUser?.id || -1;
         if (requester) {
           const storeUser = requesterStore.get(requester);
           if (!storeUser) {
@@ -325,7 +325,10 @@ const checkS3Connection = async (): Promise<void> => {
         where: { globalPermission: { [Op.ne]: "off" } },
       });
       for (const superUser of superUsers) {
-        SuperUsers.set(superUser.id, superUser.globalPermission);
+        SuperUsers.set(superUser.id, {
+          userName: superUser.userName,
+          globalPermission: superUser.globalPermission,
+        });
       }
     }
 

@@ -78,7 +78,10 @@ export default function (app: Application, baseUrl: string) {
             permission
           )
         ) {
-          SuperUsers.set(userToUpdate.id, userToUpdate.globalPermission);
+          SuperUsers.set(userToUpdate.id, {
+            globalPermission: userToUpdate.globalPermission,
+            userName: userToUpdate.userName,
+          });
         } else {
           SuperUsers.delete(userToUpdate.id);
         }
