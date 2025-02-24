@@ -64,6 +64,9 @@ const openHttpServer = (app): Promise<void> => {
 export const delayMs = async (delayMs: number) =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
+const requesterStore = new Map<string, any>();
+const routeStore = new Map<string, any>();
+
 // Returns a Promise that will resolve if it could connect to the S3 file storage
 // and reject if connection failed.
 const checkS3Connection = async (): Promise<void> => {
@@ -94,13 +97,13 @@ const checkS3Connection = async (): Promise<void> => {
   }
   const app: Application = express();
 
-  app.use((request: Request, response: Response, next: NextFunction) => {
+  app.use((request: Request, _response: Response, next: NextFunction) => {
     // Add a unique request ID to each API request, for logging purposes.
     asyncLocalStorage.enterWith(new Map());
-    (asyncLocalStorage.getStore() as Map<string, any>).set(
-      "requestId",
-      uuidv4()
-    );
+    const store = asyncLocalStorage.getStore() as Map<string, any>;
+    store.set("requestId", uuidv4());
+    const startUsage = process.cpuUsage();
+    store.set("cpuUsage", startUsage);
     log.info("UA: %s", request.headers["user-agent"]);
     next();
   });
@@ -109,17 +112,69 @@ const checkS3Connection = async (): Promise<void> => {
       transports: [consoleTransport],
       meta: false,
       metaField: null,
-      msg: (req: Request, res: Response): string => {
+      msg: (request: Request, response: Response): string => {
         const store = asyncLocalStorage.getStore() as Map<string, any>;
         const dbQueryCount = store?.get("queryCount");
         const dbQueryTime = store?.get("queryTime");
-        return `${req.method} ${req.url}\n\t\t Status(${
-          res.statusCode
+        const cpuUsage = store?.get("cpuUsage");
+        const requestCpuUsage = process.cpuUsage(cpuUsage);
+        const userTimeMs = requestCpuUsage.user / 1000;
+        const systemTimeMs = requestCpuUsage.system / 1000;
+
+        const requester = response.locals.requestUser.id;
+        if (requester) {
+          const storeUser = requesterStore.get(requester);
+          if (!storeUser) {
+            requesterStore.set(requester, []);
+          }
+          const timings = requesterStore.get(requester);
+          // Remove items for this user older than 5 minutes.
+          while (timings.length > 0) {
+            const elapsed = process.hrtime(timings[0].time);
+            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+            if (elapsedMs > 60000 * 5) {
+              timings.shift();
+            } else {
+              break;
+            }
+          }
+          requesterStore.get(requester).push({
+            time: process.hrtime(),
+            user: userTimeMs,
+            system: systemTimeMs,
+          });
+        }
+        const routeKey = request.method + request.url;
+        const routeTimings = routeStore.get(request.method + request.url);
+        if (!routeTimings) {
+          routeStore.set(routeKey, []);
+          const timings = routeStore.get(routeKey);
+          // Remove items for this user older than 5 minutes.
+          while (timings.length > 0) {
+            const elapsed = process.hrtime(timings[0].time);
+            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+            if (elapsedMs > 60000 * 5) {
+              timings.shift();
+            } else {
+              break;
+            }
+          }
+          routeStore.get(routeKey).push({
+            time: process.hrtime(),
+            user: userTimeMs,
+            system: systemTimeMs,
+          });
+        }
+
+        return `${request.method} ${request.url}\n\t\t Status(${
+          response.statusCode
         })\n\t\t ${
           dbQueryCount
             ? `${dbQueryCount} DB queries taking ${dbQueryTime}ms `
             : ""
-        }[${(res as any).responseTime}ms total response time]`;
+        }[${
+          (response as any).responseTime
+        }ms total response time, ${userTimeMs}ms user, ${systemTimeMs}ms system]`;
       },
     })
   );
@@ -157,6 +212,86 @@ const checkS3Connection = async (): Promise<void> => {
     }
     next();
   });
+
+  app.get("/api/v1/timings", (request: Request, response: Response) => {
+    const userTimings = [];
+    const routeTimings = [];
+    const usersToRemove = [];
+    const routesToRemove = [];
+    for (const [userId, timings] of requesterStore) {
+      // Remove timings older than 5 mins
+      while (timings.length > 0) {
+        const elapsed = process.hrtime(timings[0].time);
+        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        if (elapsedMs > 60000 * 5) {
+          timings.shift();
+        } else {
+          break;
+        }
+      }
+      if (timings.length === 0) {
+        // Remove user
+        usersToRemove.push(userId);
+      } else {
+        userTimings.push({
+          userId,
+          timings: timings.reduce(
+            (acc, timing) => {
+              acc.user += timing.user;
+              acc.system += timing.system;
+              return acc;
+            },
+            { user: 0, system: 0 }
+          ),
+        });
+      }
+    }
+    for (const userId of usersToRemove) {
+      requesterStore.delete(userId);
+    }
+    if (userTimings.length) {
+      userTimings.sort((a, b) => b.timings.user - a.timings.user);
+    }
+    for (const [route, timings] of routeStore) {
+      // Remove timings older than 5 mins
+      while (timings.length > 0) {
+        const elapsed = process.hrtime(timings[0].time);
+        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        if (elapsedMs > 60000 * 5) {
+          timings.shift();
+        } else {
+          break;
+        }
+      }
+      if (timings.length === 0) {
+        // Remove user
+        routesToRemove.push(route);
+      } else {
+        routeTimings.push({
+          route,
+          timings: timings.reduce(
+            (acc, timing) => {
+              acc.user += timing.user;
+              acc.system += timing.system;
+              return acc;
+            },
+            { user: 0, system: 0 }
+          ),
+        });
+      }
+    }
+    for (const route of routesToRemove) {
+      routeStore.delete(route);
+    }
+    if (routeTimings.length) {
+      routeTimings.sort((a, b) => b.timings.user - a.timings.user);
+    }
+    response.json({
+      userTimings,
+      routeTimings,
+    });
+  });
+
   await initialiseApi(app);
   app.use(customErrors.errorHandler);
 
