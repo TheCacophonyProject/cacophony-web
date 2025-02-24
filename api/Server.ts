@@ -121,7 +121,7 @@ const checkS3Connection = async (): Promise<void> => {
         const userTimeMs = requestCpuUsage.user / 1000;
         const systemTimeMs = requestCpuUsage.system / 1000;
 
-        const requester = response.locals.requestUser?.id || -1;
+        const requester = response.locals.requestUser?.id || 9999999;
         if (requester) {
           const storeUser = requesterStore.get(requester);
           if (!storeUser) {
@@ -145,26 +145,26 @@ const checkS3Connection = async (): Promise<void> => {
           });
         }
         const routeKey = request.method + request.url;
-        const routeTimings = routeStore.get(request.method + request.url);
+        const routeTimings = routeStore.get(routeKey);
         if (!routeTimings) {
           routeStore.set(routeKey, []);
-          const timings = routeStore.get(routeKey);
-          // Remove items for this user older than 5 minutes.
-          while (timings.length > 0) {
-            const elapsed = process.hrtime(timings[0].time);
-            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
-            if (elapsedMs > 60000 * 5) {
-              timings.shift();
-            } else {
-              break;
-            }
-          }
-          routeStore.get(routeKey).push({
-            time: process.hrtime(),
-            user: userTimeMs,
-            system: systemTimeMs,
-          });
         }
+        const timings = routeStore.get(routeKey);
+        // Remove items for this user older than 5 minutes.
+        while (timings.length > 0) {
+          const elapsed = process.hrtime(timings[0].time);
+          const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+          if (elapsedMs > 60000 * 5) {
+            timings.shift();
+          } else {
+            break;
+          }
+        }
+        routeStore.get(routeKey).push({
+          time: process.hrtime(),
+          user: userTimeMs,
+          system: systemTimeMs,
+        });
 
         return `${request.method} ${request.url}\n\t\t Status(${
           response.statusCode
@@ -243,6 +243,7 @@ const checkS3Connection = async (): Promise<void> => {
             },
             { user: 0, system: 0 }
           ),
+          detail: timings,
         });
       }
     }
@@ -277,6 +278,7 @@ const checkS3Connection = async (): Promise<void> => {
             },
             { user: 0, system: 0 }
           ),
+          detail: timings,
         });
       }
     }
