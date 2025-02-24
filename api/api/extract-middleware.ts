@@ -97,10 +97,12 @@ const extractJwtAuthenticatedEntityCommon = async (
       } else {
         response.locals.requestUser = {
           id: jwtDecoded.id,
+          userName: superUserPermissions.userName,
           hasGlobalRead: () => true,
           hasGlobalWrite: () =>
-            superUserPermissions === UserGlobalPermission.Write,
-          globalPermission: superUserPermissions,
+            superUserPermissions.globalPermission ===
+            UserGlobalPermission.Write,
+          globalPermission: superUserPermissions.globalPermission,
         };
       }
     } else if (type === "device") {
@@ -1311,7 +1313,7 @@ const getIncludeForUser = (
   } else {
     // Don't add any permission constraints when getting the resource
     log.info(
-      `Accessing model by user #${context.requestUser.id} as super-admin`
+      `Accessing model by user #${context.requestUser.id} (${context.requestUser.userName}) as super-admin`
     );
     return {};
   }
