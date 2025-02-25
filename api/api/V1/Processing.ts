@@ -24,7 +24,7 @@ import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRaw
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
-import { ClientError } from "../customErrors.js";
+import { AuthorizationError, ClientError } from "../customErrors.js";
 import util from "../V1/util.js";
 import {
   HttpStatusCode,
@@ -481,34 +481,38 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
-
-      // FIXME - We don't currently have ML generated tracks for audio recordings, but when we do we need to widen this check.
       body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
       idOf(body("algorithmId")),
     ]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
-    fetchUnauthorizedRequiredEventDetailSnapshotById(body("algorithmId")),
     parseJSONField(body("data")),
-    async (request: Request, response) => {
-      const deviceId = response.locals.recording.DeviceId;
-      const groupId = response.locals.recording.GroupId;
-      const atTime = response.locals.recording.recordingDateTime;
-      const positions =
-        response.locals.recording.data &&
-        response.locals.recording.data.positions;
-      let trackId: TrackId = 1;
-      let discardMaskedTrack = false;
-      if (positions) {
-        discardMaskedTrack = await trackIsMasked(
-          models,
-          deviceId,
-          groupId,
-          atTime,
-          positions
+    async (request: Request, response: Response, next: NextFunction) => {
+      const recording = await models.Recording.findByPk(request.params.id);
+      if (!recording) {
+        return next(
+          new AuthorizationError(
+            `Could not find a Recording with an id of '${request.params.id}'`
+          )
         );
       }
+      const deviceId = recording.DeviceId;
+      const groupId = recording.GroupId;
+      const atTime = recording.recordingDateTime;
+      let discardMaskedTrack = false;
+      let trackId: TrackId = 1;
+      if (recording.type === RecordingType.ThermalRaw) {
+        const positions = recording.data && recording.data.positions;
+        if (positions) {
+          discardMaskedTrack = await trackIsMasked(
+            models,
+            deviceId,
+            groupId,
+            atTime,
+            positions
+          );
+        }
+      }
       if (!discardMaskedTrack) {
-        const track = await response.locals.recording.createTrack({
+        const track = await recording.createTrack({
           data: response.locals.data,
           AlgorithmId: request.body.algorithmId,
         });
@@ -570,7 +574,6 @@ export default function (app: Application, baseUrl: string) {
       body("confidence").isFloat().toFloat(),
       body("data").isJSON().optional(),
     ]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
     (request, response, next) => {
       const trackId = param("trackId");
       const id = Number(extractValFromRequest(request, trackId));

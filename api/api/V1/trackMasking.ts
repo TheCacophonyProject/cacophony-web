@@ -5,6 +5,7 @@ import earcut from "earcut";
 import { Op } from "sequelize";
 import type { ModelsDictionary } from "@models";
 type ArrayPt = [number, number];
+
 export const trackIsMasked = async (
   models: ModelsDictionary,
   deviceId: DeviceId,
