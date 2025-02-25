@@ -17,10 +17,13 @@ import { Op } from "sequelize";
 import {
   asyncLocalStorage,
   CACOPHONY_WEB_VERSION,
+  RequesterStore,
+  RouteStore,
   SuperUsers,
 } from "./Globals.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import type { UserId } from "@typedefs/api/common.js";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -64,8 +67,29 @@ const openHttpServer = (app): Promise<void> => {
 export const delayMs = async (delayMs: number) =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
-const requesterStore = new Map<string, any>();
-const routeStore = new Map<string, any>();
+export const userShouldBeRateLimited = (userId: UserId): boolean => {
+  // NOTE: Check how much user time this user has used in the last minute in RequesterStore,
+  //  If it's over 20% (20 seconds) rate limit this user.
+  //  Also, if there are no other users currently using the platform in the last minute, don't rate limit.
+  const numUsers = RequesterStore.size;
+  if (numUsers > 2) {
+    const userTimings = RequesterStore.get(userId);
+    if (userTimings) {
+      let userTimeInLastMinute = 0;
+      for (const timing of userTimings) {
+        const elapsed = process.hrtime(timing.time);
+        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        if (elapsedMs <= 1000 * 60) {
+          userTimeInLastMinute += timing.user;
+        }
+      }
+      if (userTimeInLastMinute > 20000) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
 
 // Returns a Promise that will resolve if it could connect to the S3 file storage
 // and reject if connection failed.
@@ -122,12 +146,14 @@ const checkS3Connection = async (): Promise<void> => {
         const systemTimeMs = requestCpuUsage.system / 1000;
 
         const requester = response.locals.requestUser?.id || 9999999;
+        const wasRateLimited =
+          response.locals.requestUser?.wasRateLimited || false;
         if (requester) {
-          const storeUser = requesterStore.get(requester);
+          const storeUser = RequesterStore.get(requester);
           if (!storeUser) {
-            requesterStore.set(requester, []);
+            RequesterStore.set(requester, []);
           }
-          const timings = requesterStore.get(requester);
+          const timings = RequesterStore.get(requester);
           // Remove items for this user older than 5 minutes.
           while (timings.length > 0) {
             const elapsed = process.hrtime(timings[0].time);
@@ -138,18 +164,18 @@ const checkS3Connection = async (): Promise<void> => {
               break;
             }
           }
-          requesterStore.get(requester).push({
+          RequesterStore.get(requester).push({
             time: process.hrtime(),
             user: userTimeMs,
             system: systemTimeMs,
           });
         }
         const routeKey = request.method + request.url;
-        const routeTimings = routeStore.get(routeKey);
+        const routeTimings = RouteStore.get(routeKey);
         if (!routeTimings) {
-          routeStore.set(routeKey, []);
+          RouteStore.set(routeKey, []);
         }
-        const timings = routeStore.get(routeKey);
+        const timings = RouteStore.get(routeKey);
         // Remove items for this user older than 5 minutes.
         while (timings.length > 0) {
           const elapsed = process.hrtime(timings[0].time);
@@ -160,7 +186,7 @@ const checkS3Connection = async (): Promise<void> => {
             break;
           }
         }
-        routeStore.get(routeKey).push({
+        RouteStore.get(routeKey).push({
           time: process.hrtime(),
           user: userTimeMs,
           system: systemTimeMs,
@@ -174,7 +200,9 @@ const checkS3Connection = async (): Promise<void> => {
             : ""
         }[${
           (response as any).responseTime
-        }ms total response time, ${userTimeMs}ms user, ${systemTimeMs}ms system]`;
+        }ms total response time, ${userTimeMs}ms user, ${systemTimeMs}ms system${
+          wasRateLimited ? ", was rate limited" : ""
+        }]`;
       },
     })
   );
@@ -218,7 +246,7 @@ const checkS3Connection = async (): Promise<void> => {
     const routeTimings = [];
     const usersToRemove = [];
     const routesToRemove = [];
-    for (const [userId, timings] of requesterStore) {
+    for (const [userId, timings] of RequesterStore) {
       // Remove timings older than 5 mins
       while (timings.length > 0) {
         const elapsed = process.hrtime(timings[0].time);
@@ -248,12 +276,12 @@ const checkS3Connection = async (): Promise<void> => {
       }
     }
     for (const userId of usersToRemove) {
-      requesterStore.delete(userId);
+      RequesterStore.delete(userId);
     }
     if (userTimings.length) {
       userTimings.sort((a, b) => b.timings.user - a.timings.user);
     }
-    for (const [route, timings] of routeStore) {
+    for (const [route, timings] of RouteStore) {
       // Remove timings older than 5 mins
       while (timings.length > 0) {
         const elapsed = process.hrtime(timings[0].time);
@@ -283,7 +311,7 @@ const checkS3Connection = async (): Promise<void> => {
       }
     }
     for (const route of routesToRemove) {
-      routeStore.delete(route);
+      RouteStore.delete(route);
     }
     if (routeTimings.length) {
       routeTimings.sort((a, b) => b.timings.user - a.timings.user);

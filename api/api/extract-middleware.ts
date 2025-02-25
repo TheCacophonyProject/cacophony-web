@@ -34,6 +34,7 @@ import { SuperUsers } from "@/Globals.js";
 import type { Alert } from "@models/Alert.js";
 import type { Event } from "@models/Event.js";
 import config from "@/config.js";
+import { delayMs, userShouldBeRateLimited } from "@/Server.js";
 
 const models = await modelsInit();
 
@@ -104,6 +105,13 @@ const extractJwtAuthenticatedEntityCommon = async (
             UserGlobalPermission.Write,
           globalPermission: superUserPermissions.globalPermission,
         };
+      }
+      // TODO: See if we'd like to rate limit this user request.
+      // If this request user has used more than 20% of user cpu time in the past minute,
+      // Add a delay to rate limit the requester.
+      if (userShouldBeRateLimited(response.locals.requestUser.id)) {
+        response.locals.requestUser.wasRateLimited = true;
+        await delayMs(5000);
       }
     } else if (type === "device") {
       response.locals.requestDevice = { id: jwtDecoded.id };
