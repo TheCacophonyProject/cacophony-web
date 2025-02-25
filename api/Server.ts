@@ -153,11 +153,12 @@ const checkS3Connection = async (): Promise<void> => {
         const requestCpuUsage = process.cpuUsage(cpuUsage);
         const userTimeMs = requestCpuUsage.user / 1000;
         const systemTimeMs = requestCpuUsage.system / 1000;
-        const requesterType = !response.locals.requestUser
-          ? "user"
-          : !response.locals.deviceUser
-          ? "device"
-          : "unknown";
+        const requesterType =
+          response.locals.requestUser !== undefined
+            ? "user"
+            : response.locals.deviceUser !== undefined
+            ? "device"
+            : "unknown";
         let requester = `u9999`;
         if (requesterType === "user") {
           requester = `u${response.locals.requestUser?.id}`;
