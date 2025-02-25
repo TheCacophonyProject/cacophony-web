@@ -112,7 +112,7 @@ const extractJwtAuthenticatedEntityCommon = async (
       if (userShouldBeRateLimited(response.locals.requestUser.id)) {
         response.locals.requestUser.wasRateLimited = true;
         // Stagger the amount of rate-limiting to try and spread out repeat requests
-        await delayMs(3000 + Math.floor(Math.random() * 3000));
+        await delayMs(3000 + Math.floor(Math.random() * 4000));
       }
     } else if (type === "device") {
       response.locals.requestDevice = { id: jwtDecoded.id };
