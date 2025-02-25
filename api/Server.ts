@@ -67,13 +67,22 @@ const openHttpServer = (app): Promise<void> => {
 export const delayMs = async (delayMs: number) =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
-export const userShouldBeRateLimited = (userId: UserId): boolean => {
+export const userShouldBeRateLimited = (requesterId: string): boolean => {
   // NOTE: Check how much user time this user has used in the last minute in RequesterStore,
   //  If it's over 20% (20 seconds) rate limit this user.
   //  Also, if there are no other users currently using the platform in the last minute, don't rate limit.
-  const numUsers = RequesterStore.size;
-  if (numUsers > 2) {
-    const userTimings = RequesterStore.get(userId);
+  if (!requesterId.startsWith("u")) {
+    return false;
+  }
+  let numUserRequesters = 0;
+  for (const userId of RequesterStore.keys()) {
+    if (userId.startsWith("u")) {
+      numUserRequesters++;
+    }
+  }
+  const numRequesters = RequesterStore.size;
+  if (numUserRequesters > 2 || numRequesters > 10) {
+    const userTimings = RequesterStore.get(requesterId);
     if (userTimings) {
       let userTimeInLastMinute = 0;
       for (const timing of userTimings) {
@@ -144,15 +153,25 @@ const checkS3Connection = async (): Promise<void> => {
         const requestCpuUsage = process.cpuUsage(cpuUsage);
         const userTimeMs = requestCpuUsage.user / 1000;
         const systemTimeMs = requestCpuUsage.system / 1000;
-
-        const requester = response.locals.requestUser?.id || 9999999;
+        const requesterType = !response.locals.requestUser
+          ? "user"
+          : !response.locals.deviceUser
+          ? "device"
+          : "unknown";
+        let requester = `u9999`;
+        if (requesterType === "user") {
+          requester = `u${response.locals.requestUser?.id}`;
+        } else if (requesterType === "device") {
+          requester = `d${response.locals.deviceUser?.id}`;
+        }
         const wasRateLimited =
           response.locals.requestUser?.wasRateLimited || false;
-        if (requester) {
-          const storeUser = RequesterStore.get(requester);
-          if (!storeUser) {
-            RequesterStore.set(requester, []);
-          }
+
+        const storeUser = RequesterStore.get(requester);
+        if (!storeUser) {
+          RequesterStore.set(requester, []);
+        }
+        {
           const timings = RequesterStore.get(requester);
           // Remove items for this user older than 5 minutes.
           while (timings.length > 0) {
@@ -164,12 +183,13 @@ const checkS3Connection = async (): Promise<void> => {
               break;
             }
           }
-          RequesterStore.get(requester).push({
-            time: process.hrtime(),
-            user: userTimeMs,
-            system: systemTimeMs,
-          });
         }
+        RequesterStore.get(requester).push({
+          time: process.hrtime(),
+          user: userTimeMs,
+          system: systemTimeMs,
+        });
+
         const routeParts = [];
         for (const part of (request.method + request.url.split("?")[0]).split(
           "/"
@@ -185,15 +205,17 @@ const checkS3Connection = async (): Promise<void> => {
         if (!routeTimings) {
           RouteStore.set(routeKeyNormalised, []);
         }
-        const timings = RouteStore.get(routeKeyNormalised);
-        // Remove items for this user older than 5 minutes.
-        while (timings.length > 0) {
-          const elapsed = process.hrtime(timings[0].time);
-          const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
-          if (elapsedMs > 60000 * 5) {
-            timings.shift();
-          } else {
-            break;
+        {
+          const timings = RouteStore.get(routeKeyNormalised);
+          // Remove items for this user older than 5 minutes.
+          while (timings.length > 0) {
+            const elapsed = process.hrtime(timings[0].time);
+            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+            if (elapsedMs > 60000 * 5) {
+              timings.shift();
+            } else {
+              break;
+            }
           }
         }
         RouteStore.get(routeKeyNormalised).push({
