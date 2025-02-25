@@ -648,7 +648,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:id/tracks/:trackId/archive`,
     extractJwtAuthorisedSuperAdminUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
+    //fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (_request: Request, response) => {
       await response.locals.track.update({ archivedAt: Date.now() });
@@ -657,7 +657,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {patch} /api/fileProcessing/:id/tracks/:trackId Update track data for recording and archives the old track data.
+   * @api {post} /api/fileProcessing/:id/tracks/:trackId Update track data for recording and archives the old track data.
    * @apiName UpdateTrackData
    * @apiGroup Processing
    *
