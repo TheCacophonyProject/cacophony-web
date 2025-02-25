@@ -67,22 +67,22 @@ const openHttpServer = (app): Promise<void> => {
 export const delayMs = async (delayMs: number) =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
-export const userShouldBeRateLimited = (requesterId: string): boolean => {
+export const userShouldBeRateLimited = (requesterId: UserId): boolean => {
   // NOTE: Check how much user time this user has used in the last minute in RequesterStore,
   //  If it's over 20% (20 seconds) rate limit this user.
   //  Also, if there are no other users currently using the platform in the last minute, don't rate limit.
-  if (!requesterId.startsWith("u")) {
-    return false;
-  }
-  let numUserRequesters = 0;
-  for (const userId of RequesterStore.keys()) {
-    if (userId.startsWith("u")) {
-      numUserRequesters++;
-    }
-  }
+  const numUserRequesters = Array.from(RequesterStore.keys()).reduce(
+    (acc, userId) => {
+      if (userId.startsWith("u")) {
+        acc++;
+      }
+      return acc;
+    },
+    0
+  );
   const numRequesters = RequesterStore.size;
   if (numUserRequesters > 2 || numRequesters > 10) {
-    const userTimings = RequesterStore.get(requesterId);
+    const userTimings = RequesterStore.get(`u${requesterId}`);
     if (userTimings) {
       let userTimeInLastMinute = 0;
       for (const timing of userTimings) {
