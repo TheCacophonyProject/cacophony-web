@@ -106,12 +106,13 @@ const extractJwtAuthenticatedEntityCommon = async (
           globalPermission: superUserPermissions.globalPermission,
         };
       }
-      // TODO: See if we'd like to rate limit this user request.
+      // NOTE: See if we'd like to rate limit this user request.
       // If this request user has used more than 20% of user cpu time in the past minute,
       // Add a delay to rate limit the requester.
       if (userShouldBeRateLimited(response.locals.requestUser.id)) {
         response.locals.requestUser.wasRateLimited = true;
-        await delayMs(5000);
+        // Stagger the amount of rate-limiting to try and spread out repeat requests
+        await delayMs(3000 + Math.floor(Math.random() * 3000));
       }
     } else if (type === "device") {
       response.locals.requestDevice = { id: jwtDecoded.id };

@@ -170,12 +170,22 @@ const checkS3Connection = async (): Promise<void> => {
             system: systemTimeMs,
           });
         }
-        const routeKey = request.method + request.url;
-        const routeTimings = RouteStore.get(routeKey);
-        if (!routeTimings) {
-          RouteStore.set(routeKey, []);
+        const routeParts = [];
+        for (const part of (request.method + request.url.split("?")[0]).split(
+          "/"
+        )) {
+          if (Number(part).toString() === part) {
+            routeParts.push("XXX");
+          } else {
+            routeParts.push(part);
+          }
         }
-        const timings = RouteStore.get(routeKey);
+        const routeKeyNormalised = routeParts.join("/");
+        const routeTimings = RouteStore.get(routeKeyNormalised);
+        if (!routeTimings) {
+          RouteStore.set(routeKeyNormalised, []);
+        }
+        const timings = RouteStore.get(routeKeyNormalised);
         // Remove items for this user older than 5 minutes.
         while (timings.length > 0) {
           const elapsed = process.hrtime(timings[0].time);
@@ -186,7 +196,7 @@ const checkS3Connection = async (): Promise<void> => {
             break;
           }
         }
-        RouteStore.get(routeKey).push({
+        RouteStore.get(routeKeyNormalised).push({
           time: process.hrtime(),
           user: userTimeMs,
           system: systemTimeMs,
