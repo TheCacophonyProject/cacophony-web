@@ -186,12 +186,14 @@ const validateDataPart = async (
 const processAndValidateDataPart = async (
   part: MultipartFormPart,
   uploadingDeviceId: DeviceId,
-  models: ModelsDictionary
+  models: ModelsDictionary,
+  canceledRequest: { canceled: boolean }
 ) => {
   try {
     const data = await processDataPart(part);
     return await validateDataPart(data, uploadingDeviceId, models);
   } catch (err) {
+    canceledRequest.canceled = true;
     part.emit("error", err);
   }
 };
@@ -513,7 +515,8 @@ export const uploadGenericRecording =
         dataPromise = processAndValidateDataPart(
           part,
           recordingDeviceId,
-          models
+          models,
+          canceledRequest
         );
       } else if (recognisedFileParts.includes(part.name)) {
         fileUploadsInProgress.push(
@@ -554,6 +557,7 @@ export const uploadGenericRecording =
       } catch (error) {
         if (error instanceof CustomError && !canceledRequest.canceled) {
           canceledRequest.canceled = true;
+          await deleteUploads(uploadResults);
           return next(error);
         }
       }
@@ -562,6 +566,7 @@ export const uploadGenericRecording =
       if (data.location && !isLatLon(data.location, false)) {
         if (!canceledRequest.canceled) {
           canceledRequest.canceled = true;
+          await deleteUploads(uploadResults);
           return next(
             new UnprocessableError(
               `Invalid location '${JSON.stringify(data.location)}'`
@@ -758,7 +763,7 @@ export const uploadGenericRecording =
       ]);
 
       if (wouldHaveSuppliedTracks) {
-        // Now that we have a recording saved to the DB, we can create any associated track items
+        // Now that we have a recording saved to the DB, we can creat./e any associated track items
         await tracksFromMeta(models, recording, data.metadata);
       }
 

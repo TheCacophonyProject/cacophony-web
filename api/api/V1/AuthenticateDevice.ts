@@ -60,9 +60,6 @@ export default function (app: Application) {
     "/authenticate_device",
     validateFields([
       validPasswordOf(body("password")),
-      // FIXME - Make nested anyOf work properly with error messages etc.
-      //anyOf(
-      //  [
       anyOf(
         deprecatedField(validNameOf(body("devicename"))).optional(),
         validNameOf(body("deviceName")).optional()
@@ -71,12 +68,10 @@ export default function (app: Application) {
         deprecatedField(validNameOf(body("groupname"))).optional(),
         validNameOf(body("groupName")).optional()
       ),
-      //  ],
       anyOf(
         idOf(body("deviceId")).optional(),
         deprecatedField(idOf(body("deviceID"))).optional()
       ),
-      // ),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
       const b = request.body;
@@ -99,9 +94,25 @@ export default function (app: Application) {
     (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.device) {
         if (request.body.deviceId || request.body.deviceID) {
-          return next(
-            new AuthenticationError("Device not found for supplied deviceId")
-          );
+          const suppliedId = request.body.deviceId || request.body.deviceID;
+          const group = request.body.groupName || request.body.groupname;
+          const deviceName =
+            request.body.deviceName ||
+            request.body.devicename ||
+            "unknown device";
+          if (group) {
+            return next(
+              new AuthenticationError(
+                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}') in project '${group}'`
+              )
+            );
+          } else {
+            return next(
+              new AuthenticationError(
+                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}')`
+              )
+            );
+          }
         } else {
           return next(
             new AuthenticationError(

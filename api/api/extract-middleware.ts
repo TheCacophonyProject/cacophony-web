@@ -12,6 +12,7 @@ import {
 import type { ModelStaticCommon } from "@models";
 import modelsInit from "../models/index.js";
 import log from "../logging.js";
+import { createHash } from "crypto";
 import { modelTypeName, modelTypeNamePlural } from "./middleware.js";
 import type { ValidationChain } from "express-validator";
 import { validationResult } from "express-validator";
@@ -174,6 +175,42 @@ const extractJwtAuthenticatedEntity =
       );
       return next();
     } catch (e) {
+      // We might need to rate limit this.
+      const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
+      const user = token._type === "user";
+      if (!token) {
+        // User IP address for rate limiting
+        let ip =
+          request.headers["x-forwarded-for"] || request.socket.remoteAddress;
+        if (Array.isArray(ip)) {
+          ip = ip.join("");
+        }
+        if (ip) {
+          const hashedIp = createHash("sha1")
+            .update(ip, "utf8")
+            .digest("hex")
+            .substring(0, 10);
+          response.locals.requestUser = {
+            id: hashedIp,
+            hasGlobalRead: () => false,
+            hasGlobalWrite: () => false,
+            globalPermission: UserGlobalPermission.Off,
+          };
+        }
+      }
+      if (user) {
+        response.locals.requestUser = {
+          id: token.id,
+          hasGlobalRead: () => false,
+          hasGlobalWrite: () => false,
+          globalPermission: UserGlobalPermission.Off,
+        };
+        if (userShouldBeRateLimited(response.locals.requestUser.id)) {
+          response.locals.requestUser.wasRateLimited = true;
+          // Stagger the amount of rate-limiting to try and spread out repeat requests
+          await delayMs(3000 + Math.floor(Math.random() * 4000));
+        }
+      }
       return next(e);
     }
   };

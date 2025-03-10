@@ -138,8 +138,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Authentication
    * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * @apiBody {String} email Address identifying a valid user account
-   * @apiDeprecated Use /api/v1/users/authenticate-user
+   * @apiDeprecated Use /api/v1/users/authenticate
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
@@ -157,7 +156,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Authentication
    * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
@@ -461,7 +459,7 @@ export default function (app: Application, baseUrl: string) {
   app.post("/validateToken", ...validateTokenOptions);
 
   /**
-   * @api {post} /api/v1/users/validate-reset-token Validates a reset token
+   * @api {post} /api/v1/users/validate-reset-token Validates a password reset token
    * @apiName ValidateToken
    * @apiGroup Authentication
    * @apiDescription Used by the front-end when following a password reset link from an email to make sure

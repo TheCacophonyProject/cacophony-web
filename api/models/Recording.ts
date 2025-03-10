@@ -489,7 +489,6 @@ export default function (
         }
         recording.currentStateStartTime = now.toISOString();
         recording.processingEndTime = null;
-        recording.processingEndTime = null;
         recording.jobKey = uuidv4();
         recording.processing = true;
         await recording.save({

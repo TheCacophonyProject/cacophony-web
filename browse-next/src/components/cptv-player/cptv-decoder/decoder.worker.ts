@@ -157,13 +157,18 @@ class CptvDecoderInterface {
       } else {
         unlocker.unlock();
         this.locked = false;
+        const responseText = await this.response.text();
         try {
-          const r = await this.response.json();
+          const r = JSON.parse(responseText) as {
+            messages?: string[];
+            message?: string;
+          };
           return (
             (r.messages && r.messages.pop()) || r.message || "Unknown error"
           );
         } catch (e) {
-          return await this.response.text();
+          // FIXME: json can have already been read and failed, so text() will fail.
+          return responseText;
         }
       }
     } catch (e) {

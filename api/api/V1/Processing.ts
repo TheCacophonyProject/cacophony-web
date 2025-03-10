@@ -58,8 +58,8 @@ export default function (app: Application, baseUrl: string) {
      *
      * @apiParam {String} type Type of recording.
      * @apiParam {String} state Processing state.
-     * @apiSuccess {recording} requested
-     * @apiSuccess {String} signed url to download the raw file
+     * @apiSuccess {Recording} recording
+     * @apiSuccess {String} rawJWT signed url to download the raw file
 
      */
   app.get(

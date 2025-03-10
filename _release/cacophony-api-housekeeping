@@ -1,0 +1,4 @@
+# cron.d/cacophony-api-housekeeping
+#
+# every day @ 4.25am
+25 4 * * * root (cd /srv/cacophony/api/ && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader --experimental-json-modules ./scripts/clean-old-db-rows.js) 2>&1 | logger --tag clean-old-db-rows
