@@ -62,6 +62,11 @@ export const influx = {
   password: "",
 };
 
+export const grafana = {
+  host: "",
+  apiKey: "",
+};
+
 // List of devices to ignore when making the service error report.
 export const deviceErrorIgnoreList = [];
 // List of Cacophony users to ignore in platform usage report
@@ -79,6 +84,7 @@ export default {
   database,
   development: database,
   influx,
+  grafana,
   deviceErrorIgnoreList,
   cacophonyUserIds,
   cacophonyGroupIds,

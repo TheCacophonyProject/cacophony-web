@@ -186,14 +186,12 @@ const validateDataPart = async (
 const processAndValidateDataPart = async (
   part: MultipartFormPart,
   uploadingDeviceId: DeviceId,
-  models: ModelsDictionary,
-  canceledRequest: { canceled: boolean }
+  models: ModelsDictionary
 ) => {
   try {
     const data = await processDataPart(part);
     return await validateDataPart(data, uploadingDeviceId, models);
   } catch (err) {
-    canceledRequest.canceled = true;
     part.emit("error", err);
   }
 };
@@ -326,10 +324,12 @@ const processFilePart = async (
       await upload.done().catch((error) => {
         if (error.name !== "AbortError") {
           log.error("Upload error: %s", error.toString());
-          part.emit(
-            "error",
-            new UnprocessableError(`Upload error: '${part.name}'`)
-          );
+          decoder.close().then(() => {
+            part.emit(
+              "error",
+              new UnprocessableError(`Upload error: '${part.name}'`)
+            );
+          });
         }
       });
       uploaded = true;
@@ -469,7 +469,7 @@ export const uploadGenericRecording =
     if (response.locals.requestUser) {
       uploadingUser = response.locals.requestUser;
     }
-
+    const fileUploadsInProgress: Promise<RecordingFileUploadResult>[] = [];
     const partKey = `${recordingDevice.GroupId}/${moment().format(
       "YYYY/MM/DD/"
     )}${uuidv4()}`;
@@ -489,13 +489,13 @@ export const uploadGenericRecording =
             );
           }
         }
-        return next(error);
       }
+      return next(error);
     });
 
     // TODO - depending on the kind of asset we're uploading, it can go to different object storage providers and buckets.
     //  Choose destination based on object type, and potentially owning group.
-    const fileUploadsInProgress: Promise<RecordingFileUploadResult>[] = [];
+
     const recognisedFileParts = ["file", "derived", "thumb"];
     let dataPromise: Promise<any>;
     form.on("part", async (part: MultipartFormPart) => {
@@ -515,8 +515,7 @@ export const uploadGenericRecording =
         dataPromise = processAndValidateDataPart(
           part,
           recordingDeviceId,
-          models,
-          canceledRequest
+          models
         );
       } else if (recognisedFileParts.includes(part.name)) {
         fileUploadsInProgress.push(

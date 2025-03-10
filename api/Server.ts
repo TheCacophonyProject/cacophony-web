@@ -24,6 +24,7 @@ import {
 import path from "path";
 import { fileURLToPath } from "url";
 import type { UserId } from "@typedefs/api/common.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -115,6 +116,35 @@ const checkS3Connection = async (): Promise<void> => {
   }
 };
 
+const grafanaLabelRestart = async () => {
+  if (config.grafana && config.grafana.host.trim() !== "") {
+    const { host, apiKey } = config.grafana;
+    // We want to create a grafana annotation on restart
+    try {
+      const response = await fetch(`https://${host}/api/annotations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          time: Date.now(),
+          tags: ["cacophony-web-restart"],
+          text: CACOPHONY_WEB_VERSION.version,
+        }),
+      });
+      if (response && response.status !== HttpStatusCode.Ok) {
+        log.warning("Failed to set restart annotation in grafana.");
+      }
+    } catch (e) {
+      log.warning(
+        "Failed to set restart annotation in grafana: %s",
+        e.toString()
+      );
+    }
+  }
+};
+
 (async () => {
   log.notice("Starting Full Noise.");
   await config.loadConfigFromArgs(true);
@@ -128,6 +158,7 @@ const checkS3Connection = async (): Promise<void> => {
   } else {
     log.notice("Running in RELEASE mode");
   }
+
   const app: Application = express();
 
   app.use((request: Request, _response: Response, next: NextFunction) => {
@@ -397,6 +428,7 @@ const checkS3Connection = async (): Promise<void> => {
 
     await checkS3Connection();
     await openHttpServer(app);
+    await grafanaLabelRestart();
   } catch (error) {
     log.error(error.toString());
     process.exit(2);

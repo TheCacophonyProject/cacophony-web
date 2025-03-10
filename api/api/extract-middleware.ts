@@ -85,8 +85,7 @@ const extractJwtAuthenticatedEntityCommon = async (
     return next(new AuthorizationError("Admin has to be a user"));
   }
 
-  const short = true;
-  if ((short && type === "user") || type === "device") {
+  if (type === "user" || type === "device") {
     if (type === "user") {
       const superUserPermissions = SuperUsers.get(jwtDecoded.id);
       if (!superUserPermissions) {

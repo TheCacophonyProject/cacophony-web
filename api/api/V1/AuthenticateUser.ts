@@ -110,6 +110,14 @@ export default function (app: Application, baseUrl: string) {
         //  tokens that never expire.  If called from the new end-point, timeout in 30mins, and
         //  require use of the token refresh.
         const isNewEndPoint = request.path.endsWith("authenticate");
+
+        if (isNewEndPoint) {
+          // Clear out any out of date sessions for this user from the DB
+          await models.sequelize.query(
+            `delete from "UserSessions" where "UsersSessions"."userId" = ${response.locals.user.id} and "UserSessions"."updatedAt" < now() - interval '15 days'`
+          );
+        }
+
         await response.locals.user.update({ lastActiveAt: new Date() });
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
           models,
