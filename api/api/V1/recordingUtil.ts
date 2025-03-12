@@ -39,7 +39,8 @@ import type {
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
-import { saveTrackData, Track } from "@models/Track.js";
+import type { Track } from "@models/Track.js";
+import { saveTrackData } from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
