@@ -582,17 +582,6 @@ interface RecordingToTag {
   fileSize: number;
 }
 
-// eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
-export const needsTag = async (
-  biasToDeviceId?: DeviceId
-): Promise<FetchResult<QueryResult<RecordingToTag>>> => {
-  let requestUri = `${apiPath}/needs-tag`;
-  if (biasToDeviceId != null) {
-    requestUri += `?deviceId=${biasToDeviceId}`;
-  }
-  return CacophonyApi.get(requestUri);
-};
-
 export function calculateFromTime(query: RecordingQuery): string {
   if (query.hasOwnProperty("from") && query.from && query.from.length > 0) {
     return query.from;
@@ -650,7 +639,6 @@ export default {
   queryTrackTagsCount,
   deleteRecordingTag,
   makeApiQuery,
-  needsTag,
   latestForDevice,
   addRecording,
 };

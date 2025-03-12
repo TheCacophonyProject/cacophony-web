@@ -39,7 +39,7 @@ import type {
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
-import type { Track } from "@models/Track.js";
+import { saveTrackData, Track } from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
@@ -183,39 +183,38 @@ export async function getThumbnail(
 ): Promise<Uint8Array> {
   const fileKey = rec.rawFileKey;
   let thumbKey = `${fileKey}-thumb`;
-  const thumbedTracks = (rec.Tracks || []).filter((track) => {
-    return (
-      track.dataValues.hasOwnProperty("thumbnailScore") ||
-      (track.dataValues.data &&
-        track.dataValues.data.hasOwnProperty("thumbnail"))
-    );
-  });
-  if (
-    trackId !== undefined &&
-    thumbedTracks.some((track) => track.id === trackId)
-  ) {
-    thumbKey = `${fileKey}-${trackId}-thumb`;
-  } else if (thumbedTracks.length > 0) {
-    // choose best track based off visit tag and highest score
-    const recVisit = new Visit(rec, 0, thumbedTracks);
-    const commonTag = recVisit.mostCommonTag();
-    const trackIds = recVisit.events
-      .filter((event) => event.trackTag.what == commonTag.what)
-      .map((event) => event.trackID);
-    const bestTracks = rec.Tracks.filter((track) =>
-      trackIds.includes(track.id)
-    );
-    if (bestTracks.length !== 0) {
-      bestTracks.sort((a, b) => {
-        if (
-          a.dataValues.hasOwnProperty("thumbnailScore") &&
-          b.dataValues.hasOwnProperty("thumbnailScore")
-        ) {
-          return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
-        }
-        return b.data.thumbnail.score - a.data.thumbnail.score;
-      });
-      thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
+  if (trackId !== undefined) {
+    const thumbedTracks = (rec.Tracks || []).filter((track) => {
+      return (
+        track.dataValues.hasOwnProperty("thumbnailScore") ||
+        (track.dataValues.data &&
+          track.dataValues.data.hasOwnProperty("thumbnail"))
+      );
+    });
+    if (thumbedTracks.some((track) => track.id === trackId)) {
+      thumbKey = `${fileKey}-${trackId}-thumb`;
+    } else if (thumbedTracks.length > 0) {
+      // choose best track based off visit tag and highest score
+      const recVisit = new Visit(rec, 0, thumbedTracks);
+      const commonTag = recVisit.mostCommonTag();
+      const trackIds = recVisit.events
+        .filter((event) => event.trackTag.what == commonTag.what)
+        .map((event) => event.trackID);
+      const bestTracks = rec.Tracks.filter((track) =>
+        trackIds.includes(track.id)
+      );
+      if (bestTracks.length !== 0) {
+        bestTracks.sort((a, b) => {
+          if (
+            a.dataValues.hasOwnProperty("thumbnailScore") &&
+            b.dataValues.hasOwnProperty("thumbnailScore")
+          ) {
+            return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+          }
+          return b.data.thumbnail.score - a.data.thumbnail.score;
+        });
+        thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
+      }
     }
   }
   const s3 = openS3();
@@ -1398,11 +1397,11 @@ export const guessMimeType = (type, filename): string => {
 export const addTag = async (
   models: ModelsDictionary,
   user: User | null,
-  recording: Recording,
+  recordingId: RecordingId,
   tag: ApiRecordingTagRequest
 ): Promise<Tag> => {
   const tagInstance = models.Tag.buildSafely(tag);
-  (tagInstance as any).RecordingId = recording.id;
+  (tagInstance as any).RecordingId = recordingId;
   if (user) {
     tagInstance.taggerId = user.id;
   }
@@ -1426,67 +1425,76 @@ export const tracksFromMeta = async (
     const promises = [];
     const tracks = [];
     for (const trackMeta of metadata["tracks"]) {
+      const newTrack = {
+        data: trackMeta,
+        startSeconds: trackMeta.start_s || 0,
+        endSeconds: trackMeta.end_s || 0,
+        minFreqHz: null,
+        maxFreqHz: null,
+        AlgorithmId: algorithmDetail.id,
+      };
+      if (recording.type === RecordingType.Audio) {
+        newTrack.minFreqHz = trackMeta.minFreq || 0;
+        newTrack.maxFreqHz = trackMeta.maxFreq || 0;
+      }
       promises.push(
         new Promise((resolve, _reject) => {
-          recording
-            .createTrack({
-              data: trackMeta,
-              AlgorithmId: algorithmDetail.id,
-            })
-            .then((track) => {
-              if (
-                !("predictions" in trackMeta) ||
-                trackMeta["predictions"].length === 0
-              ) {
-                track.updateIsFiltered().then(resolve);
-              } else {
-                tracks.push(track);
-                const trackPromises = [];
-                for (const prediction of trackMeta["predictions"]) {
-                  let modelName = "unknown";
-                  if (prediction.model_id) {
-                    if (metadata.models) {
-                      const model = metadata.models.find(
-                        (model) => model.id == prediction.model_id
-                      );
-                      if (model) {
-                        modelName = model.name;
-                      }
+          recording.addTrack(newTrack).then((track) => {
+            // TODO:M: Wrangle object storage
+
+            if (
+              !("predictions" in trackMeta) ||
+              trackMeta["predictions"].length === 0
+            ) {
+              track.updateIsFiltered().then(resolve);
+            } else {
+              tracks.push(track);
+              const trackPromises = [];
+              for (const prediction of trackMeta["predictions"]) {
+                let modelName = "unknown";
+                if (prediction.model_id) {
+                  if (metadata.models) {
+                    const model = metadata.models.find(
+                      (model) => model.id == prediction.model_id
+                    );
+                    if (model) {
+                      modelName = model.name;
                     }
                   }
-
-                  const tag_data = { name: modelName };
-                  if (prediction.clarity) {
-                    tag_data["clarity"] = prediction["clarity"];
-                  }
-                  if (prediction.classify_time) {
-                    tag_data["classify_time"] = prediction["classify_time"];
-                  }
-                  if (prediction.prediction_frames) {
-                    tag_data["prediction_frames"] =
-                      prediction["prediction_frames"];
-                  }
-                  if (prediction.predictions) {
-                    tag_data["predictions"] = prediction["predictions"];
-                  }
-                  if (prediction.label) {
-                    tag_data["raw_tag"] = prediction["label"];
-                  }
-                  if (prediction.all_class_confidences) {
-                    tag_data["all_class_confidences"] =
-                      prediction["all_class_confidences"];
-                  }
-                  let tag = "unidentified";
-                  if (prediction.confident_tag) {
-                    tag = prediction["confident_tag"];
-                  }
-                  trackPromises.push(
-                    track.addTag(tag, prediction["confidence"], true, tag_data)
-                  );
                 }
-                Promise.all(trackPromises).then(resolve);
+
+                const tag_data = { name: modelName };
+                if (prediction.clarity) {
+                  tag_data["clarity"] = prediction["clarity"];
+                }
+                if (prediction.classify_time) {
+                  tag_data["classify_time"] = prediction["classify_time"];
+                }
+                if (prediction.prediction_frames) {
+                  tag_data["prediction_frames"] =
+                    prediction["prediction_frames"];
+                }
+                if (prediction.predictions) {
+                  tag_data["predictions"] = prediction["predictions"];
+                }
+                if (prediction.label) {
+                  tag_data["raw_tag"] = prediction["label"];
+                }
+                if (prediction.all_class_confidences) {
+                  tag_data["all_class_confidences"] =
+                    prediction["all_class_confidences"];
+                }
+                let tag = "unidentified";
+                if (prediction.confident_tag) {
+                  tag = prediction["confident_tag"];
+                }
+                trackPromises.push(
+                  track.addTag(tag, prediction["confidence"], true, tag_data)
+                );
               }
-            });
+              Promise.all(trackPromises).then(resolve);
+            }
+          });
         })
       );
     }
@@ -1503,9 +1511,9 @@ export const tracksFromMeta = async (
   return true;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function updateMetadata(recording: any, metadata: any) {
-  throw new Error("recordingUtil.updateMetadata is unimplemented!");
+export async function updateMetadata(recording: Recording, metadata: any) {
+  recording.additionalMetadata = metadata;
+  await recording.save();
 }
 
 // Returns a promise for the recordings visits query specified in the
@@ -1845,6 +1853,9 @@ export async function getRecordingForVisit(
               Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
             ),
           ],
+          // TODO:M:
+          //"start_s",
+          // "end_s"
         ],
         required: false,
         include: [
@@ -1857,6 +1868,8 @@ export async function getRecordingForVisit(
               "confidence",
               "path",
               [Sequelize.json("data.name"), "data"],
+              // TODO:M
+              // ["model", "data"], // Model column aliased to `data`
             ],
           },
         ],
@@ -2175,39 +2188,6 @@ interface TrackData {
   num_frames: number;
 }
 
-const addTracksToRecording = async (
-  recording: Recording,
-  tracks: RawTrack[],
-  trackingAlgorithmId: DetailSnapshotId
-): Promise<Track[]> => {
-  const createTracks = [];
-  for (const {
-    positions,
-    start_s,
-    end_s,
-    frame_start,
-    frame_end,
-    num_frames,
-  } of tracks) {
-    const limitedTrack: TrackData = {
-      // TODO do we need id in the front-end?
-      start_s,
-      end_s,
-      frame_start,
-      frame_end,
-      num_frames,
-      positions,
-    };
-    createTracks.push(
-      recording.createTrack({
-        data: limitedTrack,
-        AlgorithmId: trackingAlgorithmId, // FIXME Should *tracks* have an algorithm id, or rather should it be on the TrackTag?
-      })
-    );
-  }
-  return await Promise.all(createTracks);
-};
-
 const addAITrackTags = async (
   recording: Recording,
   rawTracks: RawTrack[],
@@ -2419,97 +2399,6 @@ const calculateTags = (
   }
 
   return [tracks, tags, hasMultipleAnimals];
-};
-
-export const finishedProcessingRecording = async (
-  models: ModelsDictionary,
-  recording: Recording,
-  classifierResult: ClassifierRawResult,
-  prevState: RecordingProcessingState
-): Promise<void> => {
-  // See if we should tag the recording as having multiple animals
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_, tags, hasMultipleAnimals] = calculateTags(classifierResult.tracks);
-  if (hasMultipleAnimals) {
-    await addTag(models, null, recording, {
-      detail: AcceptableTag.MultipleAnimals,
-      confidence: 1,
-    });
-  }
-
-  // See if we should tag the recording as false-positive (with no tracks) (or missed tracks?)
-
-  // TODO(jon): Do we need to stringify this?
-  const algorithm = await models.DetailSnapshot.getOrCreateMatching(
-    "algorithm",
-    classifierResult.algorithm
-  );
-  // Add any tracks
-  const tracks = await addTracksToRecording(
-    recording,
-    classifierResult.tracks,
-    algorithm.id
-  );
-
-  // Add tags for those tracks
-  // FIXME - unused
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const trackTags = await addAITrackTags(
-    recording,
-    classifierResult.tracks,
-    tracks,
-    classifierResult.models
-  );
-
-  // Calculate the AI_MASTER tag from the tracks provided, and add that
-  // FIXME - unused
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const masterTrackTagId = await calculateAndAddAIMasterTag(
-    recording,
-    classifierResult.tracks,
-    tracks
-  );
-
-  for (const track of tracks) {
-    await track.updateIsFiltered();
-  }
-
-  // Add additionalMetadata to recording:
-  // model name + classify time (total?)
-  // algorithm - tracking_algorithm
-  // tracking_time
-  // thumbnail_region
-
-  // Save metadata about classification:
-  await openS3()
-    .upload(
-      `${recording.rawFileKey}-classifier-metadata`,
-      await compressString(JSON.stringify(classifierResult))
-    )
-    .catch((err) => {
-      return err;
-    });
-
-  // Save a thumbnail if there was one
-  // method typescript will need to change
-  // const results = await saveThumbnailInfo(
-  //   recording,
-  //   classifierResult.tracks,
-  //   classifierResult.thumbnail_region
-  // );
-  // for(const result of results){
-  //   if (result instanceof Error) {
-  //     log.warning(
-  //       "Failed to upload thumbnail for %s",
-  //       `${recording.rawFileKey}-thumb`
-  //     );
-  //     log.error("Reason: %s", result.message);
-  //   }
-  // }
-
-  if (prevState !== RecordingProcessingState.Reprocess) {
-    await sendAlerts(models, recording.id);
-  }
 };
 
 export const fixupLatestRecordingTimesForDeletedRecording = async (

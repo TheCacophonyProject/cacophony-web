@@ -1,26 +1,17 @@
 import { successResponse } from "../V1/responseUtil.js";
-import middleware, {
-  getRecordingById,
-  expectedTypeOf,
-  validateFields,
-} from "../middleware.js";
+import middleware, { validateFields } from "../middleware.js";
 import log from "@log";
 import { body, param, query, oneOf } from "express-validator";
 import modelsInit from "@models/index.js";
 import _ from "lodash";
 import {
-  finishedProcessingRecording,
   saveThumbnailInfo,
   sendAlerts,
   signedToken,
   updateMetadata,
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
-import type { Recording } from "@models/Recording.js";
-
-import type { ClassifierRawResult } from "@typedefs/api/fileProcessing.js";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import ClassifierRawResultSchema from "@schemas/api/fileProcessing/ClassifierRawResult.schema.json" assert { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
@@ -33,17 +24,21 @@ import {
 } from "@typedefs/api/consts.js";
 import {
   extractJwtAuthorisedSuperAdminUser,
-  fetchUnauthorizedRequiredEventDetailSnapshotById,
-  fetchUnauthorizedRequiredRecordingById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
   fetchAuthorizedRequiredDeviceById,
   extractValFromRequest,
+  fetchUnauthorizedRequiredFlatRecordingById,
 } from "@api/extract-middleware.js";
-import type { Track } from "@/models/Track.js";
+import track, {
+  getTrackData,
+  saveTrackData,
+  type Track,
+} from "@/models/Track.js";
 import type { DeviceHistory } from "@models/DeviceHistory.js";
 import Sequelize, { Op } from "sequelize";
 import type { TrackId } from "@typedefs/api/common.js";
+import { openS3 } from "@models/util/util.js";
 const NULL_TRACK_ID = 1;
 const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
@@ -146,113 +141,6 @@ export default function (app: Application, baseUrl: string) {
         return keys[0];
       }
     )
-  );
-
-  // Add tracks
-
-  // Add track tags
-  // TODO - Processing should send this request gzipped.
-  app.put(
-    `${apiUrl}/raw`,
-    extractJwtAuthorisedSuperAdminUser,
-    [
-      body("id")
-        .isInt()
-        .toInt()
-        .withMessage(expectedTypeOf("integer"))
-        .bail()
-        .custom(getRecordingById())
-        .bail()
-        .custom(() =>
-          // Job key given matches the one on the retrieved recording
-          body("jobKey")
-            .exists()
-            .withMessage(expectedTypeOf("string"))
-            .custom(
-              (jobKey, { req }) =>
-                (req.body.recording as Recording).get("jobKey") === jobKey
-            )
-            .withMessage(
-              (jobKey, { req }) =>
-                `'jobKey' '${jobKey}' given did not match the database (${(
-                  req.body.recording as Recording
-                ).get("jobKey")})`
-            )
-        ),
-      body("success")
-        .isBoolean()
-        .toBoolean()
-        .withMessage(expectedTypeOf("boolean")),
-      body("result")
-        .exists()
-        .withMessage(expectedTypeOf("ClassifierRawResult"))
-        .bail()
-        .custom(jsonSchemaOf(ClassifierRawResultSchema)),
-      body("newProcessedFileKey").optional(),
-    ],
-    middleware.requestWrapper(async (request: Request, response: Response) => {
-      const {
-        id,
-        result,
-        complete,
-        newProcessedFileKey,
-        success,
-        recording,
-      }: {
-        id: number;
-        newProcessedFileKey?: string;
-        result: ClassifierRawResult;
-        recording: Recording;
-        complete: boolean;
-        success: boolean;
-      } = request.body;
-      // Input the bits we care about to the DB, and store the rest as gzipped metadata for the object?
-
-      const prevState = recording.processingState;
-      if (success) {
-        recording.set("currentStateStartTime", null);
-        if (newProcessedFileKey) {
-          recording.fileKey = newProcessedFileKey;
-        }
-        if (complete) {
-          recording.jobKey = null;
-          recording.processing = false;
-          recording.processingEndTime = new Date().toISOString();
-        }
-        recording.processingState = recording.getNextState();
-        recording.processingFailedCount = 0;
-        // Process extra data from file processing
-
-        // FIXME Is fieldUpdates ever set by current processing?
-        // if (result && result.fieldUpdates) {
-        // _.merge(recording, result.fieldUpdates);
-        // }
-        await recording.save();
-        if (
-          recording.type === RecordingType.ThermalRaw &&
-          recording.processingState === RecordingProcessingState.Finished
-        ) {
-          await finishedProcessingRecording(
-            models,
-            recording,
-            result,
-            prevState
-          );
-        }
-        return successResponse(response, `Processing finished for #${id}`);
-      } else {
-        // The current stage failed
-        recording.processingState =
-          `${recording.processingState}.failed` as RecordingProcessingState;
-        recording.processingFailedCount += 1;
-        recording.jobKey = null;
-        recording.processing = false;
-        recording.processingEndTime = new Date().toISOString(); // Still set processingEndTime, since we might want to know how long it took to fail.
-        await recording.save();
-        // FIXME - should this be an error response?
-        return successResponse(response, `Processing failed for #${id}`);
-      }
-    })
   );
 
   /**
@@ -452,7 +340,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/metadata`,
     extractJwtAuthorisedSuperAdminUser,
     validateFields([idOf(body("id")), body("metadata").isJSON()]),
-    fetchUnauthorizedRequiredRecordingById(body("id")),
+    fetchUnauthorizedRequiredFlatRecordingById(body("id")),
     parseJSONField(body("metadata")),
     async (_request: Request, response: Response) => {
       await updateMetadata(response.locals.recording, response.locals.metadata);
@@ -499,8 +387,9 @@ export default function (app: Application, baseUrl: string) {
       const atTime = recording.recordingDateTime;
       let discardMaskedTrack = false;
       let trackId: TrackId = 1;
+      const data = response.locals.data;
       if (recording.type === RecordingType.ThermalRaw) {
-        const positions = recording.data && recording.data.positions;
+        const positions = data && data.positions;
         if (positions) {
           discardMaskedTrack = await trackIsMasked(
             models,
@@ -512,10 +401,22 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       if (!discardMaskedTrack) {
-        const track = await recording.createTrack({
-          data: response.locals.data,
+        const newTrack = {
+          data,
           AlgorithmId: request.body.algorithmId,
-        });
+          startSeconds: data.start_s || 0,
+          endSeconds: data.end_s || 0,
+          minFreqHz: null,
+          maxFreqHz: null,
+        };
+        if (recording.type === RecordingType.Audio) {
+          newTrack.minFreqHz = data.minFreq || 0;
+          newTrack.maxFreqHz = data.maxFreq || 0;
+        }
+        const track = await recording.addTrack(newTrack);
+        await saveTrackData(track.id, data);
+        // TODO:M: Save track data to object storage
+
         trackId = track.id;
       }
       // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
@@ -540,10 +441,15 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:id/tracks`,
     extractJwtAuthorisedSuperAdminUser,
     validateFields([idOf(param("id"))]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredFlatRecordingById(param("id")),
     async (_request: Request, response: Response) => {
       const tracks = (await response.locals.recording.getTracks()) as Track[];
-      await Promise.all(tracks.map((track) => track.destroy()));
+      const promises = [];
+      for (const track of tracks) {
+        promises.push(openS3().deleteObject(`Track/${track.id}`));
+        promises.push(track.destroy());
+      }
+      await Promise.all(promises);
       return successResponse(response, "Tracks cleared.");
     }
   );
@@ -648,7 +554,6 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/:id/tracks/:trackId/archive`,
     extractJwtAuthorisedSuperAdminUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
-    //fetchUnauthorizedRequiredRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (_request: Request, response) => {
       await response.locals.track.update({ archivedAt: Date.now() });
@@ -675,19 +580,50 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("trackId")),
       body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
     ]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
+    fetchUnauthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
     async (_request: Request, response) => {
       // make a copy of the original track
+      // TODO:M: Wrangle object storage data
+      let d;
       const { data, filtered, AlgorithmId } = response.locals.track;
-      await response.locals.recording.createTrack({
-        data,
+      const oldData = await getTrackData(response.locals.track.id);
+      if (Object.keys(oldData).length === 0) {
+        d = data;
+      } else {
+        d = oldData;
+      }
+      const archivedDataCopy = {
+        data: d,
         AlgorithmId,
         filtered,
+        startSeconds: d.start_s || 0,
+        endSeconds: d.end_s || 0,
+        minFreqHz: null,
+        maxFreqHz: null,
         archivedAt: new Date(),
-      });
-      await response.locals.track.update({ data: response.locals.data });
+      };
+      if (response.locals.recording.type === RecordingType.Audio) {
+        archivedDataCopy.minFreqHz = d.minFreq || 0;
+        archivedDataCopy.maxFreqHz = d.maxFreq || 0;
+      }
+      await response.locals.recording.addTrack(archivedDataCopy);
+      const newData = response.locals.data;
+      const update = {
+        data: newData,
+        startSeconds: newData.start_s || 0,
+        endSeconds: newData.end_s || 0,
+        minFreqHz: null,
+        maxFreqHz: null,
+      };
+      if (response.locals.recording.type === RecordingType.Audio) {
+        update.minFreqHz = newData.minFreq || 0;
+        update.maxFreqHz = newData.maxFreq || 0;
+      }
+      await response.locals.track.update(update);
+      await saveTrackData(response.locals.track.id, response.locals.data);
+
       return successResponse(response, "Track updated");
     }
   );

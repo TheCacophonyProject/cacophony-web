@@ -15,7 +15,6 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import log from "../logging.js";
 import mime from "mime";
 import moment from "moment-timezone";
 import type { FindOptions, Includeable } from "sequelize";
@@ -28,15 +27,13 @@ import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type { Tag, TagStatic } from "./Tag.js";
 import type { Device, DeviceStatic } from "./Device.js";
 import type { Group } from "./Group.js";
-import type { Track } from "./Track.js";
+import { saveTrackData, type Track } from "./Track.js";
 
-import jsonwebtoken from "jsonwebtoken";
 import type { TrackTag } from "./TrackTag.js";
 import type { Station } from "./Station.js";
 import type {
   DeviceId,
   GroupId,
-  IsoFormattedDateString,
   LatLng,
   RecordingId,
   StationId,
@@ -57,7 +54,7 @@ import type {
 } from "@typedefs/api/recording.js";
 import labelPath from "../classifications/label_paths.json" assert { type: "json" };
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
-import { locationField, openS3 } from "@models/util/util.js";
+import { locationField } from "@models/util/util.js";
 import type { ApiTrackPosition } from "@typedefs/api/track.js";
 
 // Mapping
@@ -216,13 +213,36 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   //  potentially undocumented extension methods).
   getTrack: (id: TrackId) => Promise<Track | null>;
   getTracks: (options?: FindOptions) => Promise<Track[]>;
-  createTrack: ({
+  // createTrack: ({
+  //   data,
+  //   start_s,
+  //   end_s,
+  //   AlgorithmId,
+  //   filtered,
+  //   archivedAt,
+  // }: {
+  //   data: any;
+  //   start_s: number;
+  //   end_s: number;
+  //   AlgorithmId: DetailSnapshotId;
+  //   filtered?: boolean;
+  //   archivedAt?: Date;
+  // }) => Promise<Track>;
+  addTrack: ({
     data,
+    startSeconds,
+    endSeconds,
+    minFreqHz,
+    maxFreqHz,
     AlgorithmId,
     filtered,
     archivedAt,
   }: {
     data: any;
+    startSeconds: number;
+    endSeconds: number;
+    minFreqHz: number | null;
+    maxFreqHz: number | null;
     AlgorithmId: DetailSnapshotId;
     filtered?: boolean;
     archivedAt?: Date;
@@ -515,150 +535,6 @@ export default function (
     return options;
   };
 
-  Recording.getRecordingWithUntaggedTracks = async (
-    biasDeviceId: DeviceId
-  ): Promise<TagLimitedRecording> => {
-    // If a device id is supplied, try to bias the returned recording to that device.
-    // If the requested device has no more recordings, pick another random recording.
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] = (await sequelize.query(`
-select
-  g."RId" as "RecordingId",
-  g."DeviceId",
-  g."TrackData",
-  g."TId" as "TrackId",
-  g."TaggedBy",
-  g."rawFileKey",
-  g."rawMimeType",
-  g."duration",
-  g."recordingDateTime"
-from (
-  select *, "Tracks"."data" as "TrackData", "Tracks".id as "TId", "TrackTags".automatic as "TaggedBy" from (
-    select id as "RId", "DeviceId", "rawFileKey", "rawMimeType", "recordingDateTime", "duration" from "Recordings" inner join (
-      (select distinct("RecordingId") from "Tracks" inner join
-        (select tId as "TrackId" from
-          (
-           -- TrackTags for Tracks that have *only* TrackTags that were automatically set.
-           (select distinct("TrackId") as tId from "TrackTags" where automatic is true and "TrackTags"."archivedAt" IS NULL) as a
-             left outer join
-               (select distinct("TrackId") from "TrackTags" where automatic is false) as b
-             on a.tId = b."TrackId"
-          ) as c where c."TrackId" is null
-        ) as d on d."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null)
-      union all
-      -- All the recordings that have Tracks but no TrackTags
-      (select "RecordingId" from "Tracks"
-        left outer join "TrackTags" on "Tracks".id = "TrackTags"."TrackId"
-        where "TrackTags".id is null and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" IS NULL
-      )
-    ) as e on e."RecordingId" = "Recordings".id ${
-      biasDeviceId !== undefined ? ` where "DeviceId" = ${biasDeviceId}` : ""
-    } and "Recordings"."deletedAt" is null order by RANDOM() limit 1)
-  as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
-  left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
-) as g;`)) as [
-      {
-        RecordingId: RecordingId;
-        DeviceId: DeviceId;
-        TrackData: any;
-        TrackId: TrackId;
-        TaggedBy: UserId | false;
-        rawFileKey: string;
-        rawMimeType: string;
-        duration: number;
-        recordingDateTime: IsoFormattedDateString;
-      }[],
-      unknown
-    ];
-    // NOTE: We bundle everything we need into this one specialised request.
-    const flattenedResult = result.reduce(
-      (acc, item) => {
-        if (!acc.tracks.find(({ id }) => id === item.TrackId)) {
-          acc.RecordingId = item.RecordingId;
-          acc.DeviceId = item.DeviceId;
-          acc.fileKey = item.rawFileKey;
-          acc.fileMimeType = item.rawMimeType;
-          acc.recordingDateTime = item.recordingDateTime;
-          acc.duration = item.duration;
-
-          const t: any = {
-            trackId: item.TrackId,
-            id: item.TrackId,
-            start: item.TrackData.start_s,
-            end: item.TrackData.end_s,
-
-            numFrames: item.TrackData?.num_frames,
-            needsTagging: item.TaggedBy !== false,
-          };
-          if (item.TrackData.positions && item.TrackData.positions.length) {
-            t.positions = item.TrackData.positions.map(mapPosition);
-          }
-          acc.tracks.push(t);
-        }
-        return acc;
-      },
-      {
-        RecordingId: 0,
-        DeviceId: 0,
-        tracks: [],
-        duration: 0,
-        fileKey: "",
-        fileMimeType: "",
-        recordingDateTime: "",
-      }
-    );
-    // Sort tracks by time, so that the front-end doesn't have to.
-    flattenedResult.tracks.sort((a, b) => a.start - b.start);
-    // We need to retrieve the content length of the media file in order to sign
-    // the JWT token for it.
-    let ContentLength = 0;
-    try {
-      const s3 = openS3();
-      const s3Data = await s3.headObject(flattenedResult.fileKey);
-      ContentLength = s3Data.ContentLength;
-    } catch (err) {
-      log.warning(
-        "Error retrieving S3 Object for recording: %s, %s",
-        err.message,
-        flattenedResult.fileKey
-      );
-    }
-    const fileName = moment(new Date(flattenedResult.recordingDateTime))
-      .tz(config.timeZone)
-      .format("YYYYMMDD-HHmmss");
-
-    const downloadFileData = {
-      _type: "fileDownload",
-      key: flattenedResult.fileKey,
-      filename: `${fileName}.cptv`,
-      mimeType: flattenedResult.fileMimeType,
-    };
-
-    const recordingJWT = jsonwebtoken.sign(
-      downloadFileData,
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 } // Ten minutes
-    );
-    const tagJWT = jsonwebtoken.sign(
-      {
-        _type: "tagPermission",
-        recordingId: flattenedResult.RecordingId,
-      },
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 }
-    );
-    delete flattenedResult.fileKey;
-    delete flattenedResult.fileMimeType;
-    delete flattenedResult.recordingDateTime;
-    return {
-      ...flattenedResult,
-      recordingJWT,
-      tagJWT,
-      fileSize: ContentLength,
-    };
-  };
-
   //------------------
   // INSTANCE METHODS
   //------------------
@@ -799,6 +675,8 @@ from (
 
   // reprocess a recording and set all active tracks to archived
   Recording.prototype.reprocess = async function () {
+    // TODO:M
+
     const tags = await this.getTags();
     if (tags.length > 0) {
       const meta = this.additionalMetadata || {};
@@ -844,6 +722,39 @@ from (
     return track as Track;
   };
 
+  Recording.prototype.addTrack = async function ({
+    data,
+    startSeconds,
+    endSeconds,
+    minFreqHz,
+    maxFreqHz,
+    AlgorithmId,
+    filtered,
+    archivedAt,
+  }: {
+    data: any;
+    startSeconds: number;
+    endSeconds: number;
+    minFreqHz: number | null;
+    maxFreqHz: number | null;
+    AlgorithmId: DetailSnapshotId;
+    filtered?: boolean;
+    archivedAt?: Date;
+  }): Promise<Track> {
+    const track = await this.createTrack({
+      data,
+      startSeconds,
+      endSeconds,
+      minFreqHz,
+      maxFreqHz,
+      AlgorithmId,
+      filtered,
+      archivedAt,
+    });
+    await saveTrackData(track.id, data);
+    return track;
+  };
+
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
   Recording.queryBuilder.prototype.init = function (
     userId: UserId,
@@ -884,8 +795,7 @@ from (
     const noArchived = { archivedAt: null };
     const onlyMasterModel = options.filterModel
       ? {
-          //[Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
-          [Op.or]: { used: true },
+          used: true,
         }
       : {};
     if (hideFiltered) {
@@ -964,6 +874,7 @@ from (
               ),
               "data",
             ],
+            // TODO:M "start_s", "end_s"
           ],
           include: [
             {
@@ -977,6 +888,8 @@ from (
                 "TrackId",
                 "confidence",
                 "UserId",
+                // TODO:M Replace with model column
+                // ["model", "data"] // Model column aliased as data
                 [Sequelize.json("data.name"), "data"],
               ],
               include: [

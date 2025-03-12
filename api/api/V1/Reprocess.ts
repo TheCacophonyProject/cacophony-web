@@ -22,8 +22,10 @@ import { body, param } from "express-validator";
 import type { Application, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
-  fetchAuthorizedRequiredRecordingById,
-  fetchAuthorizedRequiredRecordingsByIds,
+  fetchAuthorizedRequiredFlatRecordingById,
+  fetchAuthorizedRequiredFlatRecordingsByIds,
+  fetchAuthorizedRequiredLimitedRecordingById,
+  fetchAuthorizedRequiredLimitedRecordingsByIds,
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";
 import { successResponse } from "./responseUtil.js";
@@ -54,8 +56,8 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/retry-failed/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response, next) => {
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
+    async (_request: Request, response: Response, next) => {
       if (!response.locals.recording.isFailed()) {
         return next(
           new BadRequestError(
@@ -92,8 +94,8 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
+    async (_request: Request, response: Response) => {
       await response.locals.recording.reprocess();
       return successResponse(response, "Recording reprocessed");
     }
@@ -124,7 +126,7 @@ export default (app: Application, baseUrl: string) => {
         .toArray()
         .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
     ]),
-    fetchAuthorizedRequiredRecordingsByIds(body("recordings")),
+    fetchAuthorizedRequiredFlatRecordingsByIds(body("recordings")),
     async (request: Request, response: Response, next: NextFunction) => {
       // FIXME: Anyone who can see a recording can ask for it to be reprocessed
       //  currently, but should be with the exception of users with globalRead permissions?

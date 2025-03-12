@@ -676,12 +676,7 @@ export default function (app: Application, baseUrl: string) {
             model: models.TrackTag,
             required: true,
             where: {
-              [Op.and]: {
-                [Op.or]: [
-                  { automatic: { [Op.eq]: true }, "data.name": "Master" },
-                  { automatic: { [Op.eq]: false } },
-                ],
-              },
+              used: true,
             },
             attributes: ["automatic", "what"],
           },
@@ -766,12 +761,7 @@ export default function (app: Application, baseUrl: string) {
             model: models.TrackTag,
             required: true,
             where: {
-              [Op.and]: {
-                [Op.or]: [
-                  { automatic: { [Op.eq]: true }, "data.name": "Master" },
-                  { automatic: { [Op.eq]: false } },
-                ],
-              },
+              used: true,
             },
             attributes: ["automatic", "what", "path"],
           },

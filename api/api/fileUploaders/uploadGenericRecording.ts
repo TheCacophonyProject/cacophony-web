@@ -864,7 +864,9 @@ const setInitialProcessingState = (
           recordingTemplate.type === RecordingType.InfraredVideo)
       ) {
         // NOTE: If there are supplied tracks, we have already done tracking on the device, so do post processing if required.
-        recordingTemplate.processingState = RecordingProcessingState.ReTrack;
+        // FIXME: Once we have re-processing working correctly
+        //  recordingTemplate.processingState = RecordingProcessingState.ReTrack;
+        recordingTemplate.processingState = RecordingProcessingState.Finished;
       } else {
         recordingTemplate.processingState = recordingUploadedState(data.type);
       }

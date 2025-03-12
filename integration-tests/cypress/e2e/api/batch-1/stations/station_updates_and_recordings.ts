@@ -166,7 +166,7 @@ describe("Stations: station updates also update recordings", () => {
     });
   });
 
-  it("station-update: change does not affect exsiting recordings", () => {
+  it("station-update: change does not affect existing recordings", () => {
     const deviceName = "new-device-7";
     const thisLocation = TestGetLocation(7);
     const recording1 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);

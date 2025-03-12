@@ -25,7 +25,7 @@ import modelsInit from "@models/index.js";
 import type { Recording } from "@models/Recording.js";
 import { mapPosition } from "@models/Recording.js";
 import type { Tag } from "@models/Tag.js";
-import type { Track } from "@models/Track.js";
+import { getTrackData, saveTrackData, Track } from "@models/Track.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert { type: "json" };
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
@@ -69,6 +69,7 @@ import {
   BadRequestError,
   ClientError,
   FatalError,
+  UnprocessableError,
 } from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
@@ -76,9 +77,12 @@ import {
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
+  fetchAuthorizedRequiredFlatRecordingById,
+  fetchAuthorizedRequiredFullRecordingById,
   fetchAuthorizedRequiredGroupByNameOrId,
-  fetchAuthorizedRequiredRecordingById,
-  fetchUnauthorizedRequiredRecordingById,
+  fetchAuthorizedRequiredLimitedRecordingById,
+  fetchUnauthorizedRequiredFlatRecordingById,
+  fetchUnauthorizedRequiredFullRecordingById,
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
@@ -122,6 +126,7 @@ import {
   queryRecordingsInProject,
   sqlDebugOutput,
 } from "./recordingsBulkQueryUtil.js";
+import { openS3 } from "@models/util/util.js";
 
 const models = await modelsInit();
 
@@ -140,6 +145,7 @@ const mapTrackTag = (
   const trackTagBase: ApiTrackTagResponse = {
     confidence: trackTag.confidence,
     createdAt: trackTag.createdAt?.toISOString(),
+    // TODO:M
     data: data as any, // FIXME - Probably returning a bit too much useless
     // data to the front-end?
     id: trackTag.id,
@@ -176,6 +182,7 @@ export const mapTrack = (
   track: Track,
   minimal: boolean = false
 ): ApiTrackResponse => {
+  // TODO:M:
   const t: ApiTrackResponse = {
     id: track.id,
     start: track.data.start_s,
@@ -1038,51 +1045,6 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} /api/v1/recordings/needs-tag Get a random recording that needs
-   * human tagging applied.
-   * @apiName NeedsTag
-   * @apiGroup Recordings
-   * @apiDescription Parameters are as per GET /api/V1/recordings. On
-   * success (status 200), the response body will contain JSON
-   * formatted details of the selected recordings.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} [deviceId] Optional deviceId to bias returned recording
-   * to.
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/needs-tag`,
-    extractJwtAuthorizedUser,
-    validateFields([idOf(query("deviceId")).optional()]),
-    async (request: Request, response: Response) => {
-      // NOTE: We only return the minimum set of fields we need to play
-      // back
-      //  a recording, show tracks in the UI, and have the user add a tag.
-      //  Generate a short-lived JWT token for each recording we return, keyed
-      //  to that recording.  Only return a single recording at a time.
-
-      let result;
-      if (!request.query.deviceId) {
-        result = await models.Recording.getRecordingWithUntaggedTracks();
-      } else {
-        // NOTE: Optionally, the returned recordings can be biased to be
-        // from
-        //  a preferred deviceId, to handle the case where we'd like a
-        //  series of random recordings to tag constrained to a single
-        //  device.
-        result = await models.Recording.getRecordingWithUntaggedTracks(
-          Number(request.query.deviceId)
-        );
-      }
-      // FIXME - should be a mapped recording?
-      return successResponse(response, "Completed query.", {
-        rows: [result],
-      });
-    }
-  );
-
-  /**
    * @api {get} /api/v1/recordings/track-tags
    * Get all track tags for a particular type of recording (thermal/audio)
    * @apiName TrackTags
@@ -1277,7 +1239,7 @@ export default (app: Application, baseUrl: string) => {
       query("deleted").default(false).isBoolean().toBoolean(),
       query("requires-signed-url").default(true).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFullRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
       const recording = mapRecordingResponse(response.locals.recording);
@@ -1419,7 +1381,7 @@ export default (app: Application, baseUrl: string) => {
       param("useArchival").optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       // NOTE: If the recording type is trailcam, then actually want to return "derived" rather than "raw" files, unless
       //  the useArchival param is present
@@ -1522,7 +1484,21 @@ export default (app: Application, baseUrl: string) => {
       query("trackId").optional().isInt().toInt(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (query("trackId")) {
+        await fetchUnauthorizedRequiredFullRecordingById(param("id"))(
+          request,
+          response,
+          next
+        );
+      } else {
+        await fetchUnauthorizedRequiredFlatRecordingById(param("id"))(
+          request,
+          response,
+          next
+        );
+      }
+    },
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
       const fileKey = rec.rawFileKey;
@@ -1606,7 +1582,7 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("id")),
       query("soft-delete").default(true).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response) => {
       let softDelete = false;
       const recording: Recording = response.locals.recording;
@@ -1643,6 +1619,8 @@ export default (app: Application, baseUrl: string) => {
               .catch((err) => {
                 log.warning(err);
               });
+
+            // TODO:M Also delete track and tag metadata in object store
           }
         }
         if (deleted && fileKey) {
@@ -1682,9 +1660,9 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("id")),
       body("updates").custom(jsonSchemaOf(ApiRecordingUpdateRequestSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     parseJSONField(body("updates")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await response.locals.recording.update(
         response.locals.updates as ApiRecordingUpdateRequest
       );
@@ -1712,13 +1690,13 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/undelete`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    (request: Request, response: Response, next: NextFunction) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       // Make sure we restrict this to deleted recordings
       response.locals.deleted = true;
       next();
     },
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
+    async (_request: Request, response: Response) => {
       const recording = response.locals.recording;
       await recording.update({
         deletedAt: null,
@@ -1761,7 +1739,7 @@ export default (app: Application, baseUrl: string) => {
     ]),
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (_request: Request, response: Response) => {
       const algorithm = response.locals.algorithm
         ? response.locals.algorithm
@@ -1776,13 +1754,15 @@ export default (app: Application, baseUrl: string) => {
       };
       let trackId: TrackId = 1;
       let algorithmId: number = 1;
-
       const deviceId = response.locals.recording.DeviceId;
       const groupId = response.locals.recording.GroupId;
       const atTime = response.locals.recording.recordingDateTime;
       const positions = data.positions;
       let discardMaskedTrack = false;
-      if (positions) {
+      if (
+        positions &&
+        response.locals.recording.type === RecordingType.ThermalRaw
+      ) {
         discardMaskedTrack = await trackIsMasked(
           models,
           deviceId,
@@ -1792,10 +1772,21 @@ export default (app: Application, baseUrl: string) => {
         );
       }
       if (!discardMaskedTrack) {
-        const track = await response.locals.recording.createTrack({
+        const newTrack = {
+          startSeconds: data.start_s || 0,
+          endSeconds: data.end_s || 0,
+          minFreqHz: null,
+          maxFreqHz: null,
           data,
           AlgorithmId: algorithmDetail.id,
-        });
+        };
+        if (response.locals.recording.type === RecordingType.Audio) {
+          newTrack.minFreqHz = data.minFreq || 0;
+          newTrack.maxFreqHz = data.maxFreq || 0;
+        }
+        const track = await response.locals.recording.addTrack(newTrack);
+        await saveTrackData(track.id, data);
+        // TODO:M: Wrangle object storage data
         await track.updateIsFiltered();
         trackId = track.id;
         algorithmId = track.AlgorithmId;
@@ -1829,11 +1820,14 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tracks`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
-      const tracks =
-        await response.locals.recording.getActiveTracksTagsAndTagger();
-      return successResponse(response, "OK.", { tracks: mapTracks(tracks) });
+    fetchAuthorizedRequiredFullRecordingById(param("id")),
+    async (_request: Request, response: Response) => {
+      // const tracks =
+      //   await response.locals.recording.getActiveTracksTagsAndTagger();
+      // TODO:M - should get full tracks, including user
+      return successResponse(response, "OK.", {
+        tracks: mapTracks(response.locals.recording.Tracks || []),
+      });
     }
   );
 
@@ -1858,12 +1852,14 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tracks/:trackId`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
-    async (request: Request, response: Response) => {
-      const track = await response.locals.recording.getTrack(
-        request.params.trackId
-      );
+    async (_request: Request, response: Response) => {
+      const track = response.locals.track;
+      const trackMeta = await getTrackData(track.id);
+      if (Object.keys(trackMeta).length !== 0) {
+        track.data = trackMeta;
+      }
       return successResponse(response, "OK.", {
         track: mapTrack(track),
       });
@@ -1894,19 +1890,18 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("trackId")),
       query("soft-delete").default(true).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // Make sure the track belongs to the recording (this could
       // probably be one query)
-      if (
-        (response.locals.track as Track).RecordingId ===
-        response.locals.recording.id
-      ) {
+      const track = response.locals.track as Track;
+      if (track.RecordingId === response.locals.recording.id) {
         if (request.query["soft-delete"]) {
           await response.locals.track.archive();
         } else {
-          await response.locals.track.destroy();
+          await openS3().deleteObject(`Track/${track.id}`);
+          await track.destroy();
         }
         return successResponse(response, "Track deleted.");
       } else {
@@ -1925,10 +1920,10 @@ export default (app: Application, baseUrl: string) => {
       body("automatic").isBoolean().toBoolean(),
       body("data").isJSON().optional(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       // Make sure track actually belongs to the recording we have permissions for.
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         return next();
@@ -2037,16 +2032,18 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("trackId")),
       body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         try {
           const track: Track = response.locals.track;
-
+          const updatedData = { ...track.data, ...request.body.data };
+          // TODO:M - Remove after migration
           await track.update({
-            data: { ...track.data, ...request.body.data },
+            data: updatedData,
           });
+          await saveTrackData(track.id, updatedData);
           return successResponse(response, "Track data updated.");
         } catch (e) {
           return next(
@@ -2055,7 +2052,7 @@ export default (app: Application, baseUrl: string) => {
         }
       } else {
         return next(
-          new FatalError("Track does not belong to specified recording")
+          new ClientError("Track does not belong to specified recording")
         );
       }
     }
@@ -2096,11 +2093,15 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("tagId")),
       body("updates").custom(jsonSchemaOf(ApiTrackTagAttributesSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
-    // FIXME - extract valid track for trackId on recording with id
     async (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.track.RecordingId !== response.locals.recording.id) {
+        return next(
+          new ClientError("Track does not belong to specified recording")
+        );
+      }
       try {
         await response.locals.track.updateTag(
           request.params.tagId,
@@ -2133,9 +2134,9 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tracks/:trackId/undelete`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await response.locals.track.unarchive();
       return successResponse(response, "Undeleted track.");
     }
@@ -2187,7 +2188,7 @@ export default (app: Application, baseUrl: string) => {
       if (request.body.tagJWT) {
         return next();
       } else {
-        await fetchAuthorizedRequiredRecordingById(param("id"))(
+        await fetchAuthorizedRequiredFlatRecordingById(param("id"))(
           request,
           response,
           next
@@ -2278,7 +2279,7 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("trackTagId")),
       query("tagJWT").isString().optional(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       let track;
       if (request.query.tagJWT) {
@@ -2306,8 +2307,6 @@ export default (app: Application, baseUrl: string) => {
           return next(new AuthorizationError("Failed to verify JWT."));
         }
       } else {
-        // FIXME - fetch in middleware
-        // Otherwise, just check that the user can update this track.
         track = await response.locals.recording.getTrack(
           request.params.trackId
         );
@@ -2316,7 +2315,7 @@ export default (app: Application, baseUrl: string) => {
         return next(new AuthorizationError("Track does not exist"));
       }
       // Ensure track belongs to this recording.
-      if (track.RecordingId !== request.params.id) {
+      if (track.RecordingId !== response.locals.recording.id) {
         return next(
           new AuthorizationError("Track does not belong to recording")
         );
@@ -2325,6 +2324,12 @@ export default (app: Application, baseUrl: string) => {
       const tag = await track.getTrackTag(request.params.trackTagId);
       if (!tag) {
         return next(new AuthorizationError("No such track tag."));
+      }
+      try {
+        // Try to remove additional data from object storage
+        await openS3().deleteObject(`TrackTag/${tag.id}`);
+      } catch (e) {
+        // No tag data to delete.
       }
 
       await tag.destroy();
@@ -2348,9 +2353,9 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tags/:tagId`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), idOf(param("tagId"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredRecordingTagById(param("tagId")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await response.locals.tag.destroy();
       return successResponse(response, "Deleted tag.");
     }
@@ -2381,13 +2386,13 @@ export default (app: Application, baseUrl: string) => {
         .bail()
         .custom(jsonSchemaOf(ApiRecordingTagRequestSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     parseJSONField(body("tag")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const tagInstance = await addTag(
         models,
         response.locals.requestUser,
-        response.locals.recording,
+        response.locals.recording.id,
         response.locals.tag
       );
       return successResponse(response, "Added new tag.", {
@@ -2775,7 +2780,8 @@ export default (app: Application, baseUrl: string) => {
               {
                 model: models.Track,
                 required: false,
-                attributes: ["id", "data"],
+                // TODO:M: Do we really need data here
+                attributes: ["id", "data"], //, "data"
                 where: {
                   archivedAt: {
                     [Op.is]: null,

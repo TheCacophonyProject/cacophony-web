@@ -25,6 +25,69 @@ import { additionalTags, filteredTags } from "./TrackTag.js";
 import type { Recording } from "./Recording.js";
 import type { RecordingId, TrackId } from "@typedefs/api/common.js";
 import type { TrackTagData } from "@/../types/api/trackTag.js";
+import { openS3 } from "@models/util/util.js";
+import { promisify } from "util";
+import zlib from "zlib";
+
+const gzip = promisify(zlib.gzip);
+const gunzip = promisify(zlib.gunzip);
+
+export const saveTrackTagData = async (
+  trackTagId: TrackTagId,
+  newData: TrackTagData,
+  existingData = {}
+) => {
+  const updatedData = {
+    ...(typeof existingData !== "string" && existingData),
+    ...newData,
+  };
+  const compressed = await gzip(
+    new Buffer(JSON.stringify(updatedData), "utf-8")
+  );
+  await openS3().upload(`TrackTag/${trackTagId}`, compressed);
+};
+
+const getTrackTagData = async (trackTagId: TrackTagId) => {
+  try {
+    const data = await openS3().getObject(`TrackTag/${trackTagId}`);
+    const compressedData = await data.Body.transformToByteArray();
+    const uncompressed = await gunzip(compressedData);
+    return JSON.parse(uncompressed.toString("utf-8"));
+  } catch (e) {
+    return {};
+  }
+};
+
+export const saveTrackData = async (
+  trackId: TrackId,
+  newData: any,
+  existingData = {}
+) => {
+  if (typeof newData !== "object") {
+    return;
+  }
+  const updatedData = {
+    ...(typeof existingData !== "string" && existingData),
+    ...newData,
+  };
+  if (Object.keys(updatedData).length !== 0) {
+    const compressed = await gzip(
+      new Buffer(JSON.stringify(updatedData), "utf-8")
+    );
+    await openS3().upload(`Track/${trackId}`, compressed);
+  }
+};
+
+export const getTrackData = async (trackId: TrackId) => {
+  try {
+    const data = await openS3().getObject(`Track/${trackId}`);
+    const compressedData = await data.Body.transformToByteArray();
+    const uncompressed = await gunzip(compressedData);
+    return JSON.parse(uncompressed.toString("utf-8"));
+  } catch (e) {
+    return {};
+  }
+};
 
 export interface Track extends Sequelize.Model, ModelCommon<Track> {
   id: TrackId;
@@ -32,6 +95,8 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
   AlgorithmId: number | null;
   data: any;
   automatic: boolean;
+  startSeconds: number;
+  endSeconds: number;
   filtered: boolean;
   // NOTE: Implicitly created by sequelize associations.
   getRecording: () => Promise<Recording>;
@@ -43,7 +108,7 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
     what: string,
     confidence: number,
     automatic: boolean,
-    data: any,
+    data: TrackTagData | "",
     userId?: number,
     updateFiltered?: boolean
   ) => Promise<TrackTag>;
@@ -61,6 +126,26 @@ export default function (
   const Track = sequelize.define("Track", {
     data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
+    startSeconds: {
+      type: Sequelize.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    endSeconds: {
+      type: Sequelize.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    minFreqHz: {
+      type: Sequelize.FLOAT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    maxFreqHz: {
+      type: Sequelize.FLOAT,
+      allowNull: true,
+      defaultValue: null,
+    },
     filtered: DataTypes.BOOLEAN,
   }) as unknown as TrackStatic;
 
@@ -112,6 +197,7 @@ export default function (
           await existingAnimalTags[i].destroy({ transaction: t });
         }
       }
+      await saveTrackData(trackId, tag.data);
       await tag.save({ transaction: t });
       return tag;
     });
@@ -133,6 +219,11 @@ export default function (
       if (!tag || tag.TrackId !== trackId) {
         return null;
       }
+      // TODO:M: Is this correct and/or used?  Seems like it should update the object storage JSON.
+
+      await saveTrackTagData(tagId, data, tag.data);
+
+      // TODO:M - eventually we don't really need this DB transaction, right?
       tag.data = {
         ...(typeof tag.data !== "string" && tag.data),
         ...data,
@@ -146,29 +237,39 @@ export default function (
   // Adds a tag to a track and checks if any alerts need to be sent. All trackTags
   // should be added this way
   Track.prototype.addTag = async function (
-    what,
-    confidence,
-    automatic,
-    data,
+    what: string,
+    confidence: number,
+    automatic: boolean,
+    data: TrackTagData | "",
     userId = null,
     updateFiltered = true
   ): Promise<TrackTag> {
-    const used = userId !== null || (data !== "" && data.name === AI_MASTER);
+    const modelName =
+      data !== "" && typeof data === "object" && data.hasOwnProperty("name")
+        ? data.name
+        : null;
+    const used = userId !== null || modelName === AI_MASTER;
     const tag = (await this.createTrackTag({
       what,
       confidence,
       automatic,
-      data,
+      data, // TODO:M: remove this after initial migration
+      model: modelName,
       UserId: userId,
       used,
     })) as TrackTag;
+    if (modelName && Object.keys(data).length > 0) {
+      // Save the additional Track metadata to object storage
+      await saveTrackTagData(tag.id, data as TrackTagData);
+    }
+
     if (updateFiltered) {
       await this.updateIsFiltered();
     }
     return tag;
   };
   // Return a specific track tag for the track.
-  Track.prototype.getTrackTag = async function (trackTagId) {
+  Track.prototype.getTrackTag = async function (trackTagId: TrackTagId) {
     const trackTag = await models.TrackTag.findByPk(trackTagId);
     if (!trackTag) {
       return null;
@@ -292,6 +393,7 @@ const isFiltered = (tags: TrackTag[]): boolean => {
     }
   }
   // if ai master tag is filtered this track is filtered
+  // TODO:M: replace with model column
   const masterTag = tags.find(
     (tag) =>
       tag.automatic &&

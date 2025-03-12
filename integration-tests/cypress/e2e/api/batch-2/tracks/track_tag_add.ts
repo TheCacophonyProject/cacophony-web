@@ -526,7 +526,7 @@ describe("Track Tags: add, check, delete", () => {
 
   //guest (power-tagger) tagging tests
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it("Can power-tag as non-owner by providing a valid tag JWT", () => {
+    it.skip("Can power-tag as non-owner by providing a valid tag JWT", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
       expectedTrack.filtered = true;
@@ -606,7 +606,7 @@ describe("Track Tags: add, check, delete", () => {
       });
     });
 
-    it("Cannot power-tag as non-owner by providing a non-valid tag JWT", () => {
+    it.skip("Cannot power-tag as non-owner by providing a non-valid tag JWT", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       const tagA = JSON.parse(JSON.stringify(tag1));
 

@@ -36,6 +36,7 @@ import type { Alert } from "@models/Alert.js";
 import type { Event } from "@models/Event.js";
 import config from "@/config.js";
 import { delayMs, userShouldBeRateLimited } from "@/Server.js";
+import { getTrackData } from "@models/Track.js";
 
 const models = await modelsInit();
 
@@ -1008,7 +1009,10 @@ const getGroups =
     });
   };
 
-const getRecordingRelationships = (recordingQuery: any): any => {
+const getRecordingRelationships = (
+  recordingQuery: any,
+  includeRelationships: boolean
+): any => {
   recordingQuery.attributes = [
     "id",
     "DeviceId",
@@ -1039,71 +1043,89 @@ const getRecordingRelationships = (recordingQuery: any): any => {
     "redacted",
   ];
   recordingQuery.include = recordingQuery.include || [];
-  recordingQuery.include.push({
-    model: models.Tag,
-    order: ["createdAt"],
-    attributes: [
-      "id",
-      "detail",
-      "comment",
-      "taggerId",
-      "automatic",
-      "confidence",
-      "startTime",
-      "duration",
-      "createdAt",
-    ],
-    include: [
-      {
-        model: models.User,
-        as: "tagger",
-        required: false,
-        attributes: ["userName"],
-      },
-    ],
-    required: false,
-  });
-  recordingQuery.include.push({
-    model: models.Track,
-    where: { archivedAt: null },
-    attributes: ["id", "data", "filtered"],
-    required: false,
-    include: [
-      {
-        model: models.TrackTag,
-        required: false,
-        where: { archivedAt: null },
-        order: ["createdAt"],
-        attributes: [
-          "id",
-          "what",
-          "path",
-          "automatic",
-          "confidence",
-          "data",
-          "TrackId",
-          "UserId",
-        ],
-        include: [
-          {
-            model: models.User,
-            required: false,
-            attributes: ["userName"],
-          },
-        ],
-      },
-    ],
-  });
-  recordingQuery.include.push({
-    model: models.Station,
-    attributes: ["name"],
-    required: false,
-  });
+  if (includeRelationships) {
+    recordingQuery.include.push({
+      model: models.Tag,
+      order: ["createdAt"],
+      attributes: [
+        "id",
+        "detail",
+        "comment",
+        "taggerId",
+        "automatic",
+        "confidence",
+        "startTime",
+        "duration",
+        "createdAt",
+      ],
+      include: [
+        {
+          model: models.User,
+          as: "tagger",
+          required: false,
+          attributes: ["userName"],
+        },
+      ],
+      required: false,
+    });
+    recordingQuery.include.push({
+      model: models.Track,
+      where: { archivedAt: null },
+      attributes: [
+        "id",
+        "data", // TODO:M
+        "startSeconds",
+        "endSeconds",
+        "minFreqHz",
+        "maxFreqHz",
+        "filtered",
+      ],
+      required: false,
+      include: [
+        {
+          model: models.TrackTag,
+          required: false,
+          where: { archivedAt: null },
+          order: ["createdAt"],
+          attributes: [
+            "id",
+            "what",
+            "path",
+            "automatic",
+            "confidence",
+            "model",
+            "data", // TODO:M
+            "TrackId",
+            "UserId",
+            "createdAt",
+            "updatedAt",
+          ],
+          include: [
+            {
+              model: models.User,
+              required: false,
+              attributes: ["userName"],
+            },
+          ],
+        },
+      ],
+    });
+    recordingQuery.include.push({
+      model: models.Station,
+      attributes: ["name"],
+      required: false,
+    });
+  }
   return recordingQuery;
 };
 
 const getRecording =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    forRequestUser: boolean = false,
+    asAdmin: boolean = false,
+    includeTrackMetadata = false,
+    includeRelationships = false
+  ) =>
   (
     recordingId: string,
     unused: string,
@@ -1144,26 +1166,54 @@ const getRecording =
       if (!getRecordingOptions) {
         getRecordingOptions = {};
       }
-      getRecordingOptions.include = [
-        {
-          model: models.Group,
-          required: true,
-          where: groupWhere,
-        },
-        {
-          model: models.Device,
-          required: true,
-          where: deviceWhere,
-        },
-      ];
+      if (includeRelationships) {
+        getRecordingOptions.include = [
+          {
+            model: models.Group,
+            required: true,
+            where: groupWhere,
+          },
+          {
+            model: models.Device,
+            required: true,
+            where: deviceWhere,
+          },
+        ];
+      }
     }
     getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
-    getRecordingOptions = getRecordingRelationships(getRecordingOptions);
-    return models.Recording.findOne(getRecordingOptions);
+    getRecordingOptions = getRecordingRelationships(
+      getRecordingOptions,
+      includeRelationships
+    );
+    return models.Recording.findOne(getRecordingOptions).then((rec) => {
+      if (includeTrackMetadata) {
+        // TODO: M Fetch all the metadata for tracks.
+        if (rec) {
+          const trackMetas = [];
+          for (const track of rec.Tracks) {
+            trackMetas.push(getTrackData(track.id));
+          }
+          return Promise.all(trackMetas).then((trackMetadatas) => {
+            for (let i = 0; i < trackMetadatas.length; i++) {
+              if (Object.keys(trackMetadatas[i]).length > 0) {
+                rec.Tracks[i].data = trackMetadatas[i];
+              }
+            }
+            return rec;
+          });
+        }
+      }
+      return rec;
+    });
   };
 
 const getRecordings =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (
+    forRequestUser: boolean = false,
+    asAdmin: boolean = false,
+    includeRelationships = false
+  ) =>
   (
     recordingIds: string,
     unused: string,
@@ -1212,7 +1262,10 @@ const getRecordings =
         ],
       };
     }
-    getRecordingOptions = getRecordingRelationships(getRecordingOptions);
+    getRecordingOptions = getRecordingRelationships(
+      getRecordingOptions,
+      includeRelationships
+    );
     return models.Recording.findAll({
       ...getRecordingOptions,
       order: ["recordingDateTime"],
@@ -1542,10 +1595,40 @@ const getDeviceForUserOrDevice = getDevice(true, false, true);
 
 const getDeviceForRequestUserAsAdmin = getDevice(true, true);
 const getDevicesForRequestUser = getDevices(true, false);
-const getRecordingForRequestUserAsAdmin = getRecording(true, true);
-const getRecordingForRequestUser = getRecording(true, false);
-const getRecordingsForRequestUserAsAdmin = getRecordings(true, true);
-const getRecordingsForRequestUser = getRecordings(true, false);
+
+// For applications that don't need track positions etc.
+// TODO:M Some applications don't even care about tracks, we just want to see if a user has access to a recording.
+const getLimitedRecordingForRequestUserAsAdmin = getRecording(
+  true,
+  true,
+  false,
+  true
+);
+const getLimitedRecordingForRequestUser = getRecording(
+  true,
+  false,
+  false,
+  true
+);
+const getLimitedRecordingsForRequestUserAsAdmin = getRecordings(
+  true,
+  true,
+  true
+);
+const getLimitedRecordingsForRequestUser = getRecordings(true, false, true);
+
+const getFlatRecordingsForRequestUser = getRecordings(true, false, false);
+
+const getFlatRecordingForRequestUser = getRecording(true, false, false, false);
+
+const getFullRecordingForRequestUserAsAdmin = getRecording(
+  true,
+  true,
+  true,
+  true
+);
+const getFullRecordingForRequestUser = getRecording(true, false, true, true);
+
 const getGroupUnauthenticated = getGroup();
 const getGroupForRequestUser = getGroup(true);
 const getGroupForRequestUserAsAdmin = getGroup(true, true);
@@ -1818,58 +1901,124 @@ export const fetchUnauthorizedRequiredUserById = (userId: ValidationChain) =>
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
   fetchOptionalModel(models.User, false, true, getUser(), userId);
 
-export const fetchAdminAuthorizedRequiredRecordingById = (
+export const fetchAdminAuthorizedRequiredLimitedRecordingById = (
   recordingId: ValidationChain
 ) =>
   fetchRequiredModel(
     models.Recording,
     false,
     true,
-    getRecordingForRequestUserAsAdmin,
+    getLimitedRecordingForRequestUserAsAdmin,
     recordingId
   );
 
-export const fetchAuthorizedRequiredRecordingById = (
+export const fetchAdminAuthorizedRequiredFullRecordingById = (
+  recordingId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getFullRecordingForRequestUserAsAdmin,
+    recordingId
+  );
+
+export const fetchAuthorizedRequiredLimitedRecordingById = (
   recordingId: ValidationChain | RecordingId
 ) =>
   fetchRequiredModel(
     models.Recording,
     false,
     true,
-    getRecordingForRequestUser,
+    getLimitedRecordingForRequestUser,
     recordingId
   );
 
-export const fetchUnauthorizedRequiredRecordingById = (
+export const fetchAuthorizedRequiredFlatRecordingById = (
+  recordingId: ValidationChain | RecordingId
+) =>
+  fetchRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getFlatRecordingForRequestUser,
+    recordingId
+  );
+
+export const fetchUnauthorizedRequiredFlatRecordingById = (
+  recordingId: ValidationChain | RecordingId
+) =>
+  fetchRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getRecording(false, false, false, false),
+    recordingId
+  );
+
+export const fetchAuthorizedRequiredFullRecordingById = (
+  recordingId: ValidationChain | RecordingId
+) =>
+  fetchRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getFullRecordingForRequestUser,
+    recordingId
+  );
+
+export const fetchUnauthorizedRequiredLimitedRecordingById = (
   recordingId: ValidationChain
 ) =>
   fetchRequiredModel(
     models.Recording,
     false,
     true,
-    getRecording(false, false),
+    getRecording(false, false, false, true),
     recordingId
   );
 
-export const fetchAdminAuthorizedRequiredRecordingsByIds = (
+export const fetchUnauthorizedRequiredFullRecordingById = (
+  recordingId: ValidationChain
+) =>
+  fetchRequiredModel(
+    models.Recording,
+    false,
+    true,
+    getRecording(false, false, true, true),
+    recordingId
+  );
+
+export const fetchAdminAuthorizedRequiredLimitedRecordingsByIds = (
   recordingIds: ValidationChain
 ) =>
   fetchRequiredModels(
     models.Recording,
     false,
     true,
-    getRecordingsForRequestUserAsAdmin,
+    getLimitedRecordingsForRequestUserAsAdmin,
     recordingIds
   );
 
-export const fetchAuthorizedRequiredRecordingsByIds = (
+export const fetchAuthorizedRequiredLimitedRecordingsByIds = (
   recordingIds: ValidationChain
 ) =>
   fetchRequiredModels(
     models.Recording,
     false,
     true,
-    getRecordingsForRequestUser,
+    getLimitedRecordingsForRequestUser,
+    recordingIds
+  );
+
+export const fetchAuthorizedRequiredFlatRecordingsByIds = (
+  recordingIds: ValidationChain
+) =>
+  fetchRequiredModels(
+    models.Recording,
+    false,
+    true,
+    getFlatRecordingsForRequestUser,
     recordingIds
   );
 
