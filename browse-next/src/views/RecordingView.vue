@@ -1388,21 +1388,7 @@ const inlineModal = ref<boolean>(false);
                 }"
               >
                 <div
-                  class="station-name pt-3 px-3 text-truncate d-inline-flex"
-                  :class="{ 'is-truncated': stationNameIsTruncated }"
-                >
-                  <font-awesome-icon
-                    icon="map-marker-alt"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />
-                  <span class="text-truncate" ref="stationNameSpan">
-                    {{ currentLocationName }}
-                  </span>
-                </div>
-                <div
-                  class="device-name pt-3 pe-2 text-truncate d-inline-flex"
+                  class="device-name pt-3 px-3 text-truncate d-inline-flex"
                   :class="{ 'is-truncated': deviceNameIsTruncated }"
                 >
                   <font-awesome-icon
@@ -1425,6 +1411,20 @@ const inlineModal = ref<boolean>(false);
                   >
                     {{ currentDeviceName }}
                   </router-link>
+                </div>
+                <div
+                  class="station-name pt-3 pe-2 text-truncate d-inline-flex"
+                  :class="{ 'is-truncated': stationNameIsTruncated }"
+                >
+                  <font-awesome-icon
+                    icon="map-marker-alt"
+                    size="xs"
+                    class="me-2"
+                    color="rgba(0, 0, 0, 0.7)"
+                  />
+                  <span class="text-truncate" ref="stationNameSpan">
+                    {{ currentLocationName }}
+                  </span>
                 </div>
               </div>
               <div class="recording-date-time fs-7 d-flex px-3 mt-1">
@@ -1564,18 +1564,7 @@ const inlineModal = ref<boolean>(false);
                 class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
               >
                 <div class="fw-bolder d-flex">
-                  <div class="station-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
-                  </div>
-                  <div class="device-name pe-2 text-truncate">
+                  <div class="device-name pe-3 text-truncate">
                     <font-awesome-icon
                       icon="microchip"
                       size="xs"
@@ -1596,6 +1585,17 @@ const inlineModal = ref<boolean>(false);
                     >
                       {{ currentDeviceName }}
                     </router-link>
+                  </div>
+                  <div class="station-name pe-2 text-truncate">
+                    <font-awesome-icon
+                      icon="map-marker-alt"
+                      size="xs"
+                      class="me-2"
+                      color="rgba(0, 0, 0, 0.7)"
+                    />
+                    <span class="text-truncate">
+                      {{ currentLocationName }}
+                    </span>
                   </div>
                 </div>
 
@@ -1762,18 +1762,7 @@ const inlineModal = ref<boolean>(false);
                 class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
               >
                 <div class="fw-bolder d-flex">
-                  <div class="station-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
-                  </div>
-                  <div class="device-name pe-2 text-truncate">
+                  <div class="device-name pe-3 text-truncate">
                     <font-awesome-icon
                       icon="microchip"
                       size="xs"
@@ -1794,6 +1783,17 @@ const inlineModal = ref<boolean>(false);
                     >
                       {{ currentDeviceName }}
                     </router-link>
+                  </div>
+                  <div class="station-name pe-2 text-truncate">
+                    <font-awesome-icon
+                      icon="map-marker-alt"
+                      size="xs"
+                      class="me-2"
+                      color="rgba(0, 0, 0, 0.7)"
+                    />
+                    <span class="text-truncate">
+                      {{ currentLocationName }}
+                    </span>
                   </div>
                 </div>
                 <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
@@ -1859,21 +1859,7 @@ const inlineModal = ref<boolean>(false);
             }"
           >
             <div
-              class="station-name pt-3 px-3 text-truncate d-inline-flex"
-              :class="{ 'is-truncated': stationNameIsTruncated }"
-            >
-              <font-awesome-icon
-                icon="map-marker-alt"
-                size="xs"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
-              />
-              <span class="text-truncate" ref="stationNameSpan">
-                {{ currentLocationName }}
-              </span>
-            </div>
-            <div
-              class="device-name pt-3 pe-2 text-truncate d-inline-flex"
+              class="device-name pt-3 px-3 text-truncate d-inline-flex"
               :class="{ 'is-truncated': deviceNameIsTruncated }"
             >
               <font-awesome-icon
@@ -1896,6 +1882,20 @@ const inlineModal = ref<boolean>(false);
               >
                 {{ currentDeviceName }}
               </router-link>
+            </div>
+            <div
+              class="station-name pt-3 pe-2 text-truncate d-inline-flex"
+              :class="{ 'is-truncated': stationNameIsTruncated }"
+            >
+              <font-awesome-icon
+                icon="map-marker-alt"
+                size="xs"
+                class="me-2"
+                color="rgba(0, 0, 0, 0.7)"
+              />
+              <span class="text-truncate" ref="stationNameSpan">
+                {{ currentLocationName }}
+              </span>
             </div>
           </div>
           <div class="recording-date-time fs-7 d-flex px-3 mt-1">
@@ -2211,12 +2211,15 @@ const inlineModal = ref<boolean>(false);
     @tabsHeight: 38.5px;
     @footerHeight: 55px;
     flex: 1;
-    max-height: calc(
-      100svh -
-        (
-          @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
-            @footerHeight
-        )
+    max-height: min(
+      @playerHeight,
+      calc(
+        100svh -
+          (
+            @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
+              @footerHeight
+          )
+      )
     );
     height: 100%;
   }
@@ -2353,7 +2356,7 @@ const inlineModal = ref<boolean>(false);
           opacity: 1;
         }
       }
-      .device-name:hover {
+      .station-name:hover {
         transform: translateX(-90%);
         > span {
           min-width: 270px;

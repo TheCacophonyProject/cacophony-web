@@ -389,7 +389,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async (request: Request, response: Response, _next: NextFunction) => {
+    async (_request: Request, response: Response, _next: NextFunction) => {
       // Get the recording count for the device.
       const deviceId = response.locals.device.id;
       const hasRecording = await models.Recording.findOne({
@@ -417,6 +417,36 @@ export default function (app: Application, baseUrl: string) {
           id: deviceId,
         });
       }
+    }
+  );
+
+  /**
+   * @api {post} /api/v1/devices/:deviceId/reactivate Reactivate a device
+   * @apiName ReactivateDevice
+   * @apiGroup Device
+   *
+   * @apiDescription If a device was previously set inactive, calling this end-point will reactivate it.
+   * If the device is already active this is a no-op
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:deviceId/reactivate`,
+    extractJwtAuthorizedUser,
+    validateFields([idOf(param("deviceId")), nameOrIdOf(body("group"))]),
+    fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async (_request: Request, response: Response, _next: NextFunction) => {
+      const deviceId = response.locals.device.id;
+      await response.locals.device.update({
+        active: true,
+      });
+      return successResponse(response, "Set device active", {
+        id: deviceId,
+      });
     }
   );
 

@@ -47,6 +47,15 @@ export const deleteDevice = (
     group: projectNameOrId,
   }) as Promise<FetchResult<{ id: DeviceId }>>;
 
+export const setDeviceActive = (
+  projectNameOrId: string | ProjectId,
+  deviceId: DeviceId
+) => {
+  return CacophonyApi.post(`/api/v1/devices/${deviceId}/reactivate`, {
+    group: projectNameOrId,
+  }) as Promise<FetchResult<{ id: DeviceId }>>;
+};
+
 export const getDeviceById = (
   deviceId: DeviceId,
   activeAndInactive = false

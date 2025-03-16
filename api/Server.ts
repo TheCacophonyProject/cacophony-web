@@ -296,6 +296,7 @@ const grafanaLabelRestart = async () => {
       "Access-Control-Allow-Headers",
       "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control"
     );
+    response.header("Cross-Origin-Resource-Policy", "cross-origin");
 
     // NOTE: We've seen an instance where the HOST request header is rewritten by the client, which would otherwise break
     //  some things.  If the host is unknown, default to browse-next.

@@ -28,6 +28,7 @@ import {
   getDeviceConfig,
   getDeviceLocationAtTime,
   getLastKnownDeviceBatteryLevel,
+  setDeviceActive,
 } from "@api/Device";
 import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
@@ -430,6 +431,11 @@ const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
   await reloadAllDevices();
 };
 
+const unarchiveDevice = async (deviceId: DeviceId) => {
+  await setDeviceActive(selectedProject.value.id, deviceId);
+  await reloadAllDevices();
+};
+
 const deleteConfirmationLabelForDevice = (
   device: ApiDeviceResponse
 ): string => {
@@ -439,6 +445,13 @@ const deleteConfirmationLabelForDevice = (
     return `Delete <strong><em>${device.deviceName}</em></strong>`;
   }
 };
+
+const unarchiveConfirmationLabelForDevice = (
+  device: ApiDeviceResponse
+): string => {
+  return `Set <strong><em>${device.deviceName}</em></strong> active`;
+};
+
 const selectedDevice = computed<ApiDeviceResponse | null>(() => {
   if (route.params.deviceId) {
     return (
@@ -656,7 +669,6 @@ const isDevicesRoot = computed(() => {
             >
               <div v-if="!cell.value.lastRecordingTime">No recordings</div>
               <two-step-action-button
-                v-if="cell.value.active"
                 class="text-end"
                 variant="outline-secondary"
                 :action="() => deleteOrArchiveDevice(cell.value.id)"
@@ -667,6 +679,25 @@ const isDevicesRoot = computed(() => {
                 "
                 :confirmation-label="
                   deleteConfirmationLabelForDevice(cell.value)
+                "
+                :classes="[
+                  'd-flex',
+                  'align-items-center',
+                  'fs-7',
+                  'text-nowrap',
+                  'ms-2',
+                ]"
+                alignment="right"
+              />
+            </div>
+            <div v-else-if="isProjectAdmin && !cell.value.active">
+              <two-step-action-button
+                class="text-end"
+                variant="outline-secondary"
+                :action="() => unarchiveDevice(cell.value.id)"
+                :icon="'circle-plus'"
+                :confirmation-label="
+                  unarchiveConfirmationLabelForDevice(cell.value)
                 "
                 :classes="[
                   'd-flex',

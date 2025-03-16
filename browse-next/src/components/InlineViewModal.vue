@@ -36,7 +36,6 @@ const closedModal = () => {
     params,
     query: route.query,
   });
-  console.log("Closed modal");
   emit("close");
 };
 const modal = ref<typeof BModal | null>(null);
