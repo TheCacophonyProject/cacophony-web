@@ -9,7 +9,11 @@
 import log from "../logging.js";
 import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
-import { saveTrackData, saveTrackTagData } from "@models/Track.js";
+import {
+  getTrackData,
+  saveTrackData,
+  saveTrackTagData,
+} from "@models/Track.js";
 
 const models = await modelsInit();
 
@@ -18,7 +22,7 @@ const migrateTracksStartingAtId = async (
   total: number
 ) => {
   const tracks = await models.Track.findAll({
-    include: ["data", "id"],
+    attributes: ["data", "id"],
     where: {
       id: { [Op.gt]: idCounter.id },
     },
@@ -32,9 +36,15 @@ const migrateTracksStartingAtId = async (
     tracks[tracks.length - 1].id,
     total
   );
-  for (const track of tracks) {
-    // Offload jsonb
-    await saveTrackData(track.id, track.data);
+  const chunkSize = 100;
+
+  for (let i = 0; i < tracks.length; i += chunkSize) {
+    const end = Math.min(i + chunkSize, tracks.length - 1);
+    const promises = tracks
+      .slice(i, end)
+      .map((track) => saveTrackData(track.id, track.data));
+    await Promise.all(promises);
+    log.info("Offloaded tracks %d - %d", tracks[i].id, tracks[end].id);
   }
   idCounter.id = tracks[tracks.length - 1].id;
   return tracks.length;
@@ -45,7 +55,7 @@ const migrateTrackTagsStartingAtId = async (
   total: number
 ) => {
   const trackTags = await models.TrackTag.findAll({
-    include: ["data", "id"],
+    attributes: ["data", "id"],
     where: {
       id: { [Op.gt]: idCounter.id },
     },
@@ -59,13 +69,43 @@ const migrateTrackTagsStartingAtId = async (
     trackTags[trackTags.length - 1].id,
     total
   );
-  for (const trackTag of trackTags) {
-    // Offload jsonb
-    await saveTrackTagData(trackTag.id, trackTag.data);
+
+  const chunkSize = 100;
+  for (let i = 0; i < trackTags.length; i += chunkSize) {
+    const end = Math.min(i + chunkSize, trackTags.length - 1);
+    const promises = trackTags
+      .slice(i, end)
+      .map((trackTag) => saveTrackTagData(trackTag.id, trackTag.data));
+    await Promise.all(promises);
+    log.info("Offloaded trackTags %d - %d", trackTags[i].id, trackTags[end].id);
   }
   idCounter.id = trackTags[trackTags.length - 1].id;
   return trackTags.length;
 };
+
+// const test = async () => {
+//   const tracks = await models.Track.findAll({
+//     attributes: ["data", "id"],
+//     where: {
+//       id: { [Op.gt]: 0 },
+//     },
+//     order: [["id", "asc"]],
+//     limit: 10000,
+//   });
+//
+//   for (const track of tracks) {
+//     // Offload jsonb
+//     console.log("Saving", JSON.stringify(track.data));
+//     await saveTrackData(track.id, track.data);
+//   }
+//
+//   for (const track of tracks) {
+//     // Offload jsonb
+//
+//     const data = await getTrackData(track.id);
+//     console.log("Retrieved", JSON.stringify(data));
+//   }
+// };
 
 async function main() {
   log.info("Migrating JSONB columns");
@@ -76,6 +116,7 @@ async function main() {
   while ((await migrateTracksStartingAtId(idCounter, totalTracks)) > 0) {
     // Continue.
   }
+  idCounter.id = 0;
   while ((await migrateTrackTagsStartingAtId(idCounter, totalTrackTags)) > 0) {
     // Continue
   }

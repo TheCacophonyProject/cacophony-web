@@ -41,18 +41,16 @@ export const saveTrackTagData = async (
     ...(typeof existingData !== "string" && existingData),
     ...newData,
   };
-  const compressed = await gzip(
-    new Buffer(JSON.stringify(updatedData), "utf-8")
-  );
-  await openS3().upload(`TrackTag/${trackTagId}`, compressed);
+  const jsonString = Buffer.from(JSON.stringify(updatedData), "utf-8");
+  await openS3().upload(`TrackTag/${trackTagId}`, jsonString);
 };
 
 const getTrackTagData = async (trackTagId: TrackTagId) => {
   try {
     const data = await openS3().getObject(`TrackTag/${trackTagId}`);
-    const compressedData = await data.Body.transformToByteArray();
-    const uncompressed = await gunzip(compressedData);
-    return JSON.parse(uncompressed.toString("utf-8"));
+    const uncompressed = await data.Body.transformToString("utf-8");
+    //const uncompressed = await gunzip(compressedData);
+    return JSON.parse(uncompressed);
   } catch (e) {
     return {};
   }
@@ -71,19 +69,17 @@ export const saveTrackData = async (
     ...newData,
   };
   if (Object.keys(updatedData).length !== 0) {
-    const compressed = await gzip(
-      new Buffer(JSON.stringify(updatedData), "utf-8")
-    );
-    await openS3().upload(`Track/${trackId}`, compressed);
+    const jsonString = Buffer.from(JSON.stringify(updatedData), "utf-8");
+    await openS3().upload(`Track/${trackId}`, jsonString);
   }
 };
 
 export const getTrackData = async (trackId: TrackId) => {
   try {
     const data = await openS3().getObject(`Track/${trackId}`);
-    const compressedData = await data.Body.transformToByteArray();
-    const uncompressed = await gunzip(compressedData);
-    return JSON.parse(uncompressed.toString("utf-8"));
+    const uncompressed = await data.Body.transformToString("utf-8");
+    //const uncompressed = await gunzip(compressedData);
+    return JSON.parse(uncompressed);
   } catch (e) {
     return {};
   }
