@@ -114,7 +114,7 @@ export default function (app: Application, baseUrl: string) {
         if (isNewEndPoint) {
           // Clear out any out of date sessions for this user from the DB
           await models.sequelize.query(
-            `delete from "UserSessions" where "UsersSessions"."userId" = ${response.locals.user.id} and "UserSessions"."updatedAt" < now() - interval '15 days'`
+            `delete from "UserSessions" where "UserSessions"."userId" = ${response.locals.user.id} and "UserSessions"."updatedAt" < now() - interval '15 days'`
           );
         }
 
