@@ -70,29 +70,45 @@ const uploadEvent = async (
     await device.update({ lastConnectionTime: new Date() });
   }
   let detailsId = response.locals.detailsnapshot?.id;
+  let env = "unknown";
   if (!detailsId) {
     const description: EventDescription = request.body.description;
+
+    let details: any = description.details || {};
+    if (typeof description.details === "string") {
+      try {
+        details = JSON.parse(description.details);
+      } catch (e) {
+        //
+        logger.error(
+          "Failed to parse JSON %s: %s",
+          e,
+          typeof description.details
+        );
+      }
+    }
+
+    env = details.env || "unknown";
+    if (["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
+      env = "unknown";
+    }
+    delete details.env;
     const detail = await models.DetailSnapshot.getOrCreateMatching(
       description.type,
-      description.details
+      details
     );
     detailsId = detail.id;
 
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
-      try {
-        const details = JSON.parse(description.details);
-        if (details.location !== null) {
-          await maybeUpdateDeviceHistory(
-            models,
-            device,
-            { lat: details.location.latitude, lng: details.location.longitude },
-            new Date(details.location.updated),
-            "config"
-          );
-        }
-      } catch (e) {
-        //...
+      if (details.location !== null) {
+        await maybeUpdateDeviceHistory(
+          models,
+          device,
+          { lat: details.location.latitude, lng: details.location.longitude },
+          new Date(details.location.updated),
+          "config"
+        );
       }
     }
   }
@@ -101,6 +117,7 @@ const uploadEvent = async (
     DeviceId: device.id,
     EventDetailId: detailsId,
     dateTime,
+    env,
   }));
   const count = eventList.length;
   try {

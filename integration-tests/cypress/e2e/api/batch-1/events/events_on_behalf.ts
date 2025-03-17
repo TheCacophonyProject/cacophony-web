@@ -53,6 +53,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: firstTime,
       Device: { deviceName: getTestName("camera1") },
       EventDetail: { type: EventTypes.POWERED_ON, details: {} },
+      env: "unknown",
     };
 
     // add and verify events
@@ -80,6 +81,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: firstTime,
       Device: { deviceName: getTestName("camera2") },
       EventDetail: { type: EventTypes.POWERED_ON, details: {} },
+      env: "unknown",
     };
     cy.apiGroupUserAdd("groupAdmin2", "groupMember2", "group2", false);
 
@@ -173,6 +175,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time1,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7b = {
       id: null,
@@ -181,6 +184,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time2,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7c = {
       id: null,
@@ -189,6 +193,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time3,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7d = {
       id: null,
@@ -197,6 +202,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time4,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7e = {
       id: null,
@@ -205,6 +211,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time5,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7f = {
       id: null,
@@ -213,6 +220,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time6,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     cy.apiEventsCheck(
       "groupAdmin",
@@ -254,6 +262,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time11,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8b = {
       id: null,
@@ -262,6 +271,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time12,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8c = {
       id: null,
@@ -270,6 +280,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time13,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8d = {
       id: null,
@@ -278,6 +289,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time14,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
 
     cy.apiEventsCheck(
@@ -418,6 +430,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time1,
       Device: { deviceName: getTestName("camera9") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
 
     cy.apiEventsCheck(

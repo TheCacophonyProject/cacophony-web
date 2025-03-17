@@ -72,6 +72,7 @@ describe("Events - query events", () => {
       DeviceId: getCreds("eqCamera").id,
       Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     expectedEvent2 = {
       id: null,
@@ -80,6 +81,7 @@ describe("Events - query events", () => {
       DeviceId: getCreds("eqCamera").id,
       Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     expectedEvent3 = {
       id: null,
@@ -88,6 +90,7 @@ describe("Events - query events", () => {
       DeviceId: getCreds("eqOtherCamera").id,
       Device: { deviceName: getTestName("eqOtherCamera") },
       EventDetail: eventDetails3,
+      env: "unknown",
     };
     //   expectedEvent4 = {
     //     id: null,

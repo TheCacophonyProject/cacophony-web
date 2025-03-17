@@ -54,6 +54,7 @@ describe("Events - add event as a device", () => {
       dateTime: timeNow,
       Device: { deviceName: getTestName("evCamera2") },
       EventDetail: eventDetails1c,
+      env: "unknown",
     };
     cy.apiEventsCheck(
       "evGroupAdmin2",
@@ -100,6 +101,7 @@ describe("Events - add event as a device", () => {
       dateTime: time1,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7b = {
       id: null,
@@ -108,6 +110,7 @@ describe("Events - add event as a device", () => {
       dateTime: time2,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7c = {
       id: null,
@@ -116,6 +119,7 @@ describe("Events - add event as a device", () => {
       dateTime: time3,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7d = {
       id: null,
@@ -124,6 +128,7 @@ describe("Events - add event as a device", () => {
       dateTime: time4,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     cy.apiEventsCheck(
       "evGroupAdmin",
@@ -153,6 +158,7 @@ describe("Events - add event as a device", () => {
       dateTime: time11,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8b = {
       id: null,
@@ -161,6 +167,7 @@ describe("Events - add event as a device", () => {
       dateTime: time12,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8c = {
       id: null,
@@ -169,6 +176,7 @@ describe("Events - add event as a device", () => {
       dateTime: time13,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8d = {
       id: null,
@@ -177,6 +185,7 @@ describe("Events - add event as a device", () => {
       dateTime: time14,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
 
     cy.apiEventsCheck(

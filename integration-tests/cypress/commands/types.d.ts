@@ -213,6 +213,7 @@ export interface ApiEventReturned {
   EventDetail?: ApiEventDetail;
   dateTime?: string;
   Device?: { deviceName: string };
+  env: string;
 }
 
 // from api/v1/events/powerevents (get)

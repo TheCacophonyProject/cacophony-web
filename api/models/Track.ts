@@ -28,6 +28,12 @@ import type { TrackTagData } from "@/../types/api/trackTag.js";
 import { openS3 } from "@models/util/util.js";
 import { promisify } from "util";
 import zlib from "zlib";
+import {
+  PutObjectCommand,
+  type PutObjectCommandInput,
+  type S3Client,
+} from "@aws-sdk/client-s3";
+import config from "@config";
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -35,22 +41,35 @@ const gunzip = promisify(zlib.gunzip);
 export const saveTrackTagData = async (
   trackTagId: TrackTagId,
   newData: TrackTagData,
-  existingData = {}
+  existingData = {},
+  client: S3Client | null = null
 ) => {
   const updatedData = {
     ...(typeof existingData !== "string" && existingData),
     ...newData,
   };
-  const jsonString = Buffer.from(JSON.stringify(updatedData), "utf-8");
-  await openS3().upload(`TrackTag/${trackTagId}`, jsonString);
+  const key = `TrackTag/${trackTagId}`;
+  const body = await gzip(Buffer.from(JSON.stringify(updatedData), "utf-8"));
+  if (client) {
+    const length = body.length || 0; //"length" in body ? body.length : 0;
+    const payload: PutObjectCommandInput = {
+      Key: key,
+      Body: body,
+      Bucket: config.s3Local.bucket,
+      ContentLength: length,
+    };
+    return client.send(new PutObjectCommand(payload));
+  } else {
+    await openS3().upload(key, body);
+  }
 };
 
 const getTrackTagData = async (trackTagId: TrackTagId) => {
   try {
     const data = await openS3().getObject(`TrackTag/${trackTagId}`);
-    const uncompressed = await data.Body.transformToString("utf-8");
-    //const uncompressed = await gunzip(compressedData);
-    return JSON.parse(uncompressed);
+    const compressedData = await data.Body.transformToByteArray();
+    const uncompressed = await gunzip(compressedData);
+    return JSON.parse(uncompressed.toString("utf-8"));
   } catch (e) {
     return {};
   }
@@ -59,7 +78,8 @@ const getTrackTagData = async (trackTagId: TrackTagId) => {
 export const saveTrackData = async (
   trackId: TrackId,
   newData: any,
-  existingData = {}
+  existingData = {},
+  client: S3Client | null = null
 ) => {
   if (typeof newData !== "object") {
     return;
@@ -69,17 +89,29 @@ export const saveTrackData = async (
     ...newData,
   };
   if (Object.keys(updatedData).length !== 0) {
-    const jsonString = Buffer.from(JSON.stringify(updatedData), "utf-8");
-    await openS3().upload(`Track/${trackId}`, jsonString);
+    const body = await gzip(Buffer.from(JSON.stringify(updatedData), "utf-8"));
+    const key = `Track/${trackId}`;
+    if (client) {
+      const length = body.length || 0; //"length" in body ? body.length : 0;
+      const payload: PutObjectCommandInput = {
+        Key: key,
+        Body: body,
+        Bucket: config.s3Local.bucket,
+        ContentLength: length,
+      };
+      return client.send(new PutObjectCommand(payload));
+    } else {
+      await openS3().upload(key, body);
+    }
   }
 };
 
 export const getTrackData = async (trackId: TrackId) => {
   try {
     const data = await openS3().getObject(`Track/${trackId}`);
-    const uncompressed = await data.Body.transformToString("utf-8");
-    //const uncompressed = await gunzip(compressedData);
-    return JSON.parse(uncompressed);
+    const compressedData = await data.Body.transformToByteArray();
+    const uncompressed = await gunzip(compressedData);
+    return JSON.parse(uncompressed.toString("utf-8"));
   } catch (e) {
     return {};
   }
