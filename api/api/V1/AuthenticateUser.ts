@@ -90,7 +90,7 @@ export default function (app: Application, baseUrl: string) {
       validPasswordOf(body("password")),
     ]),
     fetchUnauthorizedOptionalUserByEmailOrId(body(["email", "nameOrEmail"])),
-    (request: Request, response: Response, next: NextFunction) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.user) {
         // NOTE: Don't give away the fact that the user may not exist - remain vague in the
         //  error message as to whether the error is username or password related.
