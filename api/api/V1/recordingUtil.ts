@@ -39,7 +39,7 @@ import type {
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
-import type { Track } from "@models/Track.js";
+import { getTrackData, Track } from "@models/Track.js";
 import { saveTrackData } from "@models/Track.js";
 import type {
   DeviceId,
@@ -181,22 +181,25 @@ export async function getIRFrame(
 export async function getThumbnail(
   rec: Recording,
   trackId?: number
-): Promise<Uint8Array> {
+): Promise<Uint8Array | null> {
   const fileKey = rec.rawFileKey;
   let thumbKey = `${fileKey}-thumb`;
   if (trackId !== undefined) {
-    const thumbedTracks = (rec.Tracks || []).filter((track) => {
-      return (
-        track.dataValues.hasOwnProperty("thumbnailScore") ||
-        (track.dataValues.data &&
-          track.dataValues.data.hasOwnProperty("thumbnail"))
-      );
-    });
-    if (thumbedTracks.some((track) => track.id === trackId)) {
+    if (rec.Tracks.some((track) => track.id === trackId)) {
       thumbKey = `${fileKey}-${trackId}-thumb`;
-    } else if (thumbedTracks.length > 0) {
+    }
+  }
+  const s3 = openS3();
+  if (thumbKey.startsWith("a_")) {
+    thumbKey = thumbKey.slice(2);
+  }
+  try {
+    const data = await s3.getObject(thumbKey);
+    return data.Body.transformToByteArray();
+  } catch (e) {
+    if (rec.Tracks.length > 1) {
       // choose best track based off visit tag and highest score
-      const recVisit = new Visit(rec, 0, thumbedTracks);
+      const recVisit = new Visit(rec, 0, rec.Tracks);
       const commonTag = recVisit.mostCommonTag();
       const trackIds = recVisit.events
         .filter((event) => event.trackTag.what == commonTag.what)
@@ -205,6 +208,14 @@ export async function getThumbnail(
         trackIds.includes(track.id)
       );
       if (bestTracks.length !== 0) {
+        for (const track of bestTracks) {
+          track.data = await getTrackData(track.id);
+          if (!track.data.thumbnail) {
+            track.data.thumbnail = {
+              score: 0,
+            };
+          }
+        }
         bestTracks.sort((a, b) => {
           if (
             a.dataValues.hasOwnProperty("thumbnailScore") &&
@@ -216,14 +227,18 @@ export async function getThumbnail(
         });
         thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
       }
+      try {
+        if (thumbKey.startsWith("a_")) {
+          thumbKey = thumbKey.slice(2);
+        }
+        const data = await s3.getObject(thumbKey);
+        return data.Body.transformToByteArray();
+      } catch (e) {
+        return null;
+      }
     }
+    return null;
   }
-  const s3 = openS3();
-  if (thumbKey.startsWith("a_")) {
-    thumbKey = thumbKey.slice(2);
-  }
-  const data = await s3.getObject(thumbKey);
-  return data.Body.transformToByteArray();
 }
 
 const THUMBNAIL_SIZE = 64;
