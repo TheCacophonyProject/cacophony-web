@@ -1487,22 +1487,7 @@ export default (app: Application, baseUrl: string) => {
       query("trackId").optional().isInt().toInt(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
-    async (request: Request, response: Response, next: NextFunction) => {
-      if (!request.query.trackId) {
-        await fetchUnauthorizedRequiredFullRecordingById(param("id"))(
-          request,
-          response,
-          next
-        );
-      } else {
-        // If we're looking for a specific track thumbnail, we don't need the full recording.
-        await fetchUnauthorizedRequiredFlatRecordingById(param("id"))(
-          request,
-          response,
-          next
-        );
-      }
-    },
+    fetchUnauthorizedRequiredFullRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
       const fileKey = rec.rawFileKey;
