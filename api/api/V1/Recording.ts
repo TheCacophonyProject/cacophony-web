@@ -1488,13 +1488,14 @@ export default (app: Application, baseUrl: string) => {
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
-      if (query("trackId")) {
+      if (!request.query.trackId) {
         await fetchUnauthorizedRequiredFullRecordingById(param("id"))(
           request,
           response,
           next
         );
       } else {
+        // If we're looking for a specific track thumbnail, we don't need the full recording.
         await fetchUnauthorizedRequiredFlatRecordingById(param("id"))(
           request,
           response,

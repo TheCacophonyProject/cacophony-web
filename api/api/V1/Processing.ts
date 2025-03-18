@@ -230,6 +230,7 @@ export default function (app: Application, baseUrl: string) {
           if (complete) {
             tracks = await recording.getTracks();
             for (const track of tracks) {
+              track.data = await getTrackData(track.id);
               await track.updateIsFiltered();
             }
           }
@@ -414,7 +415,6 @@ export default function (app: Application, baseUrl: string) {
           newTrack.maxFreqHz = data.maxFreq || 0;
         }
         const track = await recording.addTrack(newTrack);
-        await saveTrackData(track.id, data);
         trackId = track.id;
       }
       // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add

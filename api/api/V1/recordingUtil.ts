@@ -31,7 +31,6 @@ import Sequelize, { Op, QueryTypes } from "sequelize";
 import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
 import { DeviceSummary, NON_ANIMAL_TAGS, Visit } from "./Visits.js";
 import type { Station } from "@models/Station.js";
-import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import type { Device } from "@models/Device.js";
 import type { PutObjectCommandOutput } from "@aws-sdk/client-s3";
 import type {
@@ -39,8 +38,8 @@ import type {
   DeviceHistorySetBy,
 } from "@models/DeviceHistory.js";
 import type { Tag } from "@models/Tag.js";
-import { getTrackData, Track } from "@models/Track.js";
-import { saveTrackData } from "@models/Track.js";
+import type { Track } from "@models/Track.js";
+import { getTrackData } from "@models/Track.js";
 import type {
   DeviceId,
   FileId,
@@ -52,14 +51,9 @@ import type {
   TrackTagId,
   UserId,
 } from "@typedefs/api/common.js";
-import {
-  AcceptableTag,
-  RecordingProcessingState,
-  RecordingType,
-} from "@typedefs/api/consts.js";
+import { RecordingType } from "@typedefs/api/consts.js";
 import type {
   ClassifierModelDescription,
-  ClassifierRawResult,
   RawTrack,
   TrackClassification,
   TrackFramePosition,
@@ -186,8 +180,23 @@ export async function getThumbnail(
   let thumbKey = `${fileKey}-thumb`;
   const s3 = openS3();
   if (trackId !== undefined) {
-    if (rec.Tracks.some((track) => track.id === trackId)) {
-      thumbKey = `${fileKey}-${trackId}-thumb`;
+    thumbKey = `${fileKey}-${trackId}-thumb`;
+    try {
+      if (thumbKey.startsWith("a_")) {
+        thumbKey = thumbKey.slice(2);
+      }
+      const data = await s3.getObject(thumbKey);
+      return data.Body.transformToByteArray();
+    } catch (err) {
+      log.error(
+        "Error getting thumbnail from s3 for recordingId %s, trackId: %s, %s",
+        rec.id,
+        trackId,
+        err.message
+      );
+
+      // Fallback to recording thumb
+      thumbKey = `${fileKey}-thumb`;
       try {
         if (thumbKey.startsWith("a_")) {
           thumbKey = thumbKey.slice(2);
@@ -196,12 +205,10 @@ export async function getThumbnail(
         return data.Body.transformToByteArray();
       } catch (err) {
         log.error(
-          "Error getting thumbnail from s3 for recordingId %s, trackId: %s, %s",
+          "Error getting fallback thumbnail from s3 for recordingId %s, %s",
           rec.id,
-          trackId,
           err.message
         );
-        return null;
       }
     }
   } else {
@@ -242,11 +249,29 @@ export async function getThumbnail(
       return data.Body.transformToByteArray();
     } catch (err) {
       log.error(
-        "Error getting thumbnail from s3 for recordingId %s, %s",
+        "Error getting best thumbnail from s3 for recordingId %s, %s",
         rec.id,
         err.message
       );
-      return null;
+
+      if (bestTracks.length !== 0) {
+        // Fallback to recording thumb
+        thumbKey = `${fileKey}-thumb`;
+        try {
+          if (thumbKey.startsWith("a_")) {
+            thumbKey = thumbKey.slice(2);
+          }
+          const data = await s3.getObject(thumbKey);
+          return data.Body.transformToByteArray();
+        } catch (err) {
+          log.error(
+            "Error getting clip thumbnail from s3 for recordingId %s, %s",
+            rec.id,
+            err.message
+          );
+          return null;
+        }
+      }
     }
   }
 }
@@ -357,6 +382,7 @@ export async function saveThumbnailInfo(
     } else {
       thumb = await createThumbnail(frame, track.data.thumbnail.region);
     }
+    log.warning("Saving track thumbnail %s", `${fileKey}-${track.id}-thumb`);
     frameUploads.push(
       await openS3()
         .upload(`${fileKey}-${track.id}-thumb`, thumb.data, thumb.meta)
@@ -379,6 +405,7 @@ export async function saveThumbnailInfo(
       } else {
         thumb = await createThumbnail(frame, clip_thumbnail);
       }
+      log.warning("Saving clip thumbnail %s", `${fileKey}-thumb`);
       frameUploads.push(
         await openS3()
           .upload(`${fileKey}-thumb`, thumb.data, thumb.meta)
@@ -1916,10 +1943,7 @@ export async function sendAlerts(
     include: [
       {
         model: models.Track,
-        attributes: [
-          "id",
-          [Sequelize.json("data.thumbnail.score"), "thumbnailScore"] as any,
-        ],
+        attributes: ["id"],
         required: true,
         include: [
           {
@@ -1956,6 +1980,14 @@ export async function sendAlerts(
       "type",
     ],
   });
+
+  for (const track of recording.Tracks) {
+    const trackData = await getTrackData(track.id);
+    if (trackData.thumbnail) {
+      track.dataValues.thumbnailScore = trackData.thumbnail.score;
+    }
+  }
+
   if (!recording) {
     return;
   }
