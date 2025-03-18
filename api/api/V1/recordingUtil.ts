@@ -222,12 +222,18 @@ export async function getThumbnail(
       trackIds.includes(track.id)
     );
     if (bestTracks.length !== 0) {
-      for (const track of bestTracks) {
-        track.data = await getTrackData(track.id);
-        if (!track.data.thumbnail) {
-          track.data.thumbnail = {
-            score: 0,
-          };
+      if (
+        !bestTracks.some((track) =>
+          track.dataValues.hasOwnProperty("thumbnailScore")
+        )
+      ) {
+        for (const track of bestTracks) {
+          track.data = await getTrackData(track.id);
+          if (!track.data.thumbnail) {
+            track.data.thumbnail = {
+              score: 0,
+            };
+          }
         }
       }
       bestTracks.sort((a, b) => {
@@ -1981,6 +1987,13 @@ export async function sendAlerts(
     ],
   });
 
+  if (!recording) {
+    return;
+  }
+  if (recording.type !== RecordingType.ThermalRaw) {
+    return;
+  }
+
   for (const track of recording.Tracks) {
     const trackData = await getTrackData(track.id);
     if (trackData.thumbnail) {
@@ -1988,12 +2001,6 @@ export async function sendAlerts(
     }
   }
 
-  if (!recording) {
-    return;
-  }
-  if (recording.type !== RecordingType.ThermalRaw) {
-    return;
-  }
   // If the recording is more than 24 hours old, don't send an alert
   const oneDayMs = 24 * 60 * 60 * 1000;
   if (
