@@ -1542,8 +1542,8 @@ export default (app: Application, baseUrl: string) => {
         return response.end(null, "binary");
       }
        */
-      try {
-        const data = await getThumbnail(rec, trackId);
+      const data = await getThumbnail(rec, trackId);
+      if (data !== null) {
         response.setHeader(
           "Content-disposition",
           "attachment; filename=" + filename
@@ -1552,13 +1552,8 @@ export default (app: Application, baseUrl: string) => {
         response.setHeader("Content-Length", data.length);
         response.write(data, "binary");
         return response.end(null, "binary");
-      } catch (err) {
+      } else {
         // FIXME - if the thumbnail doesn't exist, lets create it, even if the request takes a while.
-        log.error(
-          "Error getting thumbnail from s3 %s: %s",
-          rec.id,
-          err.message
-        );
         return next(new ClientError("No thumbnail exists"));
       }
     }

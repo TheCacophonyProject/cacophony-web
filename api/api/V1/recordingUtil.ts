@@ -184,60 +184,70 @@ export async function getThumbnail(
 ): Promise<Uint8Array | null> {
   const fileKey = rec.rawFileKey;
   let thumbKey = `${fileKey}-thumb`;
+  const s3 = openS3();
   if (trackId !== undefined) {
     if (rec.Tracks.some((track) => track.id === trackId)) {
       thumbKey = `${fileKey}-${trackId}-thumb`;
-    }
-  }
-  const s3 = openS3();
-  if (thumbKey.startsWith("a_")) {
-    thumbKey = thumbKey.slice(2);
-  }
-  try {
-    const data = await s3.getObject(thumbKey);
-    return data.Body.transformToByteArray();
-  } catch (e) {
-    if (rec.Tracks.length > 1) {
-      // choose best track based off visit tag and highest score
-      const recVisit = new Visit(rec, 0, rec.Tracks);
-      const commonTag = recVisit.mostCommonTag();
-      const trackIds = recVisit.events
-        .filter((event) => event.trackTag.what == commonTag.what)
-        .map((event) => event.trackID);
-      const bestTracks = rec.Tracks.filter((track) =>
-        trackIds.includes(track.id)
-      );
-      if (bestTracks.length !== 0) {
-        for (const track of bestTracks) {
-          track.data = await getTrackData(track.id);
-          if (!track.data.thumbnail) {
-            track.data.thumbnail = {
-              score: 0,
-            };
-          }
-        }
-        bestTracks.sort((a, b) => {
-          if (
-            a.dataValues.hasOwnProperty("thumbnailScore") &&
-            b.dataValues.hasOwnProperty("thumbnailScore")
-          ) {
-            return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
-          }
-          return b.data.thumbnail.score - a.data.thumbnail.score;
-        });
-        thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
-      }
       try {
         if (thumbKey.startsWith("a_")) {
           thumbKey = thumbKey.slice(2);
         }
         const data = await s3.getObject(thumbKey);
         return data.Body.transformToByteArray();
-      } catch (e) {
+      } catch (err) {
+        log.error(
+          "Error getting thumbnail from s3 for recordingId %s, trackId: %s, %s",
+          rec.id,
+          trackId,
+          err.message
+        );
         return null;
       }
     }
-    return null;
+  } else {
+    // choose best track based off visit tag and highest score
+    const recVisit = new Visit(rec, 0, rec.Tracks);
+    const commonTag = recVisit.mostCommonTag();
+    const trackIds = recVisit.events
+      .filter((event) => event.trackTag.what == commonTag.what)
+      .map((event) => event.trackID);
+    const bestTracks = rec.Tracks.filter((track) =>
+      trackIds.includes(track.id)
+    );
+    if (bestTracks.length !== 0) {
+      for (const track of bestTracks) {
+        track.data = await getTrackData(track.id);
+        if (!track.data.thumbnail) {
+          track.data.thumbnail = {
+            score: 0,
+          };
+        }
+      }
+      bestTracks.sort((a, b) => {
+        if (
+          a.dataValues.hasOwnProperty("thumbnailScore") &&
+          b.dataValues.hasOwnProperty("thumbnailScore")
+        ) {
+          return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+        }
+        return b.data.thumbnail.score - a.data.thumbnail.score;
+      });
+      thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
+    }
+    try {
+      if (thumbKey.startsWith("a_")) {
+        thumbKey = thumbKey.slice(2);
+      }
+      const data = await s3.getObject(thumbKey);
+      return data.Body.transformToByteArray();
+    } catch (err) {
+      log.error(
+        "Error getting thumbnail from s3 for recordingId %s, %s",
+        rec.id,
+        err.message
+      );
+      return null;
+    }
   }
 }
 
@@ -2025,10 +2035,8 @@ export async function sendAlerts(
     recording.GroupId || undefined
   );
   if (alerts.length !== 0) {
-    let thumbnail;
-    try {
-      thumbnail = await getThumbnail(recording, matchedTrack.id);
-    } catch (e) {
+    const thumbnail = await getThumbnail(recording, matchedTrack.id);
+    if (thumbnail === null) {
       log.warning(
         "Alerting without thumbnail for %d and track %d",
         recId,
