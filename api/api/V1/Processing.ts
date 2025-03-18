@@ -444,10 +444,18 @@ export default function (app: Application, baseUrl: string) {
       const tracks = (await response.locals.recording.getTracks()) as Track[];
       const promises = [];
       for (const track of tracks) {
+        const trackTags = await models.TrackTag.findAll({
+          where: {
+            TrackId: track.id,
+          },
+        });
+        for (const trackTag of trackTags) {
+          promises.push(openS3().deleteObject(`TrackTag/${trackTag.id}`));
+        }
         promises.push(openS3().deleteObject(`Track/${track.id}`));
         promises.push(track.destroy());
       }
-      await Promise.all(promises);
+      await Promise.allSettled(promises);
       return successResponse(response, "Tracks cleared.");
     }
   );

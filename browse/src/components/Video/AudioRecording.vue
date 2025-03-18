@@ -849,6 +849,8 @@ export default defineComponent({
           data,
           userId,
           automatic,
+          model: null,
+          path: null,
           userName: username,
         } as ApiHumanTrackTagResponse;
         const currTags = track.tags.filter((tag) => tag.userId !== userId);

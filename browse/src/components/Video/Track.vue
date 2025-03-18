@@ -70,6 +70,7 @@
         />
         <TrackData
           :track-tag="masterTag"
+          :recording-id="recordingId"
           v-if="isSuperUserAndViewingAsSuperUser"
         />
       </div>

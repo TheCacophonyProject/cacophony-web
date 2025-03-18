@@ -675,8 +675,6 @@ export default function (
 
   // reprocess a recording and set all active tracks to archived
   Recording.prototype.reprocess = async function () {
-    // TODO:M
-
     const tags = await this.getTags();
     if (tags.length > 0) {
       const meta = this.additionalMetadata || {};

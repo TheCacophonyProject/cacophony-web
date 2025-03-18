@@ -200,6 +200,7 @@ export const mapTracks = async (
   minimal: boolean = false
 ): Promise<ApiTrackResponse[]> => {
   if (!minimal) {
+    // TODO: Parallelize with a pool of S3Clients
     for (const track of tracks) {
       track.data = await getTrackData(track.id);
     }
@@ -1600,29 +1601,47 @@ export default (app: Application, baseUrl: string) => {
         const thumbKey = `${rawFileKey}-thumb`;
         const trackIds = (await recording.getTracks()).map(({ id }) => id);
 
+        for (const trackId of trackIds) {
+          const trackTags = await models.TrackTag.findAll({
+            where: {
+              TrackId: trackId,
+            },
+          });
+          for (const trackTag of trackTags) {
+            await util
+              .deleteS3Object(`/TrackTag/${trackTag.id}`)
+              .catch((err) => {
+                log.warning(err);
+              });
+          }
+          await util.deleteS3Object(`/Track/${trackId}`).catch((err) => {
+            log.warning(err);
+          });
+        }
+
         try {
           await recording.destroy({ force: true });
           deleted = true;
         } catch (e) {
           // ..
         }
-        if (deleted && rawFileKey) {
-          await util.deleteS3Object(rawFileKey).catch((err) => {
-            log.warning(err);
-          });
+        if (deleted) {
           // Delete thumbs
           await util.deleteS3Object(thumbKey).catch((err) => {
             log.warning(err);
           });
           // NOTE: There can be other thumbnails related to appending tracks, so delete those too.
-          for (const trackId of trackIds) {
-            await util
-              .deleteS3Object(`${rawFileKey}-${trackId}-thumb`)
-              .catch((err) => {
-                log.warning(err);
-              });
-
-            // TODO:M Also delete track and tag metadata in object store
+          if (deleted && rawFileKey) {
+            await util.deleteS3Object(rawFileKey).catch((err) => {
+              log.warning(err);
+            });
+            for (const trackId of trackIds) {
+              await util
+                .deleteS3Object(`${rawFileKey}-${trackId}-thumb`)
+                .catch((err) => {
+                  log.warning(err);
+                });
+            }
           }
         }
         if (deleted && fileKey) {
@@ -1899,7 +1918,19 @@ export default (app: Application, baseUrl: string) => {
         if (request.query["soft-delete"]) {
           await response.locals.track.archive();
         } else {
-          await openS3().deleteObject(`Track/${track.id}`);
+          await openS3()
+            .deleteObject(`Track/${track.id}`)
+            .catch((e) => log.warning(e));
+          const trackTags = await models.TrackTag.findAll({
+            where: {
+              TrackId: track.id,
+            },
+          });
+          for (const trackTag of trackTags) {
+            await openS3()
+              .deleteObject(`TrackTag/${trackTag.id}`)
+              .catch((e) => log.warning(e));
+          }
           await track.destroy();
         }
         return successResponse(response, "Track deleted.");
@@ -2775,8 +2806,7 @@ export default (app: Application, baseUrl: string) => {
               {
                 model: models.Track,
                 required: false,
-                // TODO:M: Do we really need data here (Maybe if this is used for a single recording, i.e. latest?)
-                attributes: ["id", "startSeconds", "endSeconds"], //, "data"
+                attributes: ["id", "startSeconds", "endSeconds"],
                 where: {
                   archivedAt: {
                     [Op.is]: null,
