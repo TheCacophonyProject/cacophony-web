@@ -85,9 +85,7 @@ export default {
   },
   computed: {
     aiGuess() {
-      return this.tags.find(
-        (tag) => tag.automatic && tag.data.name === "Master"
-      );
+      return this.tags.find((tag) => tag.automatic && tag.model === "Master");
     },
     aiGuessIsSameAsSomeUser() {
       return (

@@ -104,44 +104,42 @@ const migrateTrackTagsStartingAtId = async (
   return trackTags.length;
 };
 
-// const test = async () => {
-//   const tracks = await models.Track.findAll({
-//     attributes: ["data", "id"],
-//     where: {
-//       id: { [Op.gt]: 0 },
-//     },
-//     order: [["id", "asc"]],
-//     limit: 10000,
-//   });
-//
-//   for (const track of tracks) {
-//     // Offload jsonb
-//     console.log("Saving", JSON.stringify(track.data));
-//     await saveTrackData(track.id, track.data);
-//   }
-//
-//   for (const track of tracks) {
-//     // Offload jsonb
-//
-//     const data = await getTrackData(track.id);
-//     console.log("Retrieved", JSON.stringify(data));
-//   }
-// };
+const test = async () => {
+  const tracks = await models.Track.findAll({
+    attributes: ["data", "id"],
+    where: {
+      id: { [Op.gt]: 0 },
+    },
+    order: [["id", "asc"]],
+    limit: 1,
+  });
+
+  for (const track of tracks) {
+    // Offload jsonb
+    console.log("Saving", JSON.stringify(track.data));
+    await saveTrackData(track.id, track.data);
+  }
+
+  for (const track of tracks) {
+    // Offload jsonb
+    const data = await getTrackData(track.id);
+    console.log("Retrieved", JSON.stringify(data));
+  }
+};
 
 async function main() {
   log.info("Migrating JSONB columns");
   const totalTracks = await models.Track.count();
   const totalTrackTags = await models.TrackTag.count();
-
   // NOTE: Create a pool of s3client objects.
   const clients = [];
   for (let i = 0; i < 10; i++) {
     const clientConfig: S3ClientConfig = {
       region: "dummy-region",
-      endpoint: config.s3Local.endpoint,
+      endpoint: config.endpoint,
       credentials: {
-        accessKeyId: config.s3Local.publicKey,
-        secretAccessKey: config.s3Local.privateKey,
+        accessKeyId: config.publicKey,
+        secretAccessKey: config.privateKey,
       },
       forcePathStyle: true, // needed for minio
     };

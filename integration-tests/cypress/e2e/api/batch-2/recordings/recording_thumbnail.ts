@@ -136,7 +136,7 @@ describe("Recording thumbnails", () => {
                     automatic: true,
                     trackId: getCreds("rtTrack01").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -146,7 +146,6 @@ describe("Recording thumbnails", () => {
                 //                  positions: [],
                 // TODO enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 
@@ -284,7 +283,7 @@ describe("Recording thumbnails", () => {
                     automatic: true,
                     trackId: getCreds("rtTrack01").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -294,7 +293,6 @@ describe("Recording thumbnails", () => {
                 //                  positions: [],
                 // TODO enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 
@@ -453,7 +451,7 @@ describe("Recording thumbnails", () => {
                     automatic: true,
                     trackId: getCreds("rtTrack02").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -463,7 +461,6 @@ describe("Recording thumbnails", () => {
                 //                  positions: [],
                 // TODO: enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 

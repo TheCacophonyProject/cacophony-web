@@ -258,10 +258,7 @@ const collateTags = (
 
       // For track tags, pick the best one, which is the "master AI" tag.
       const aiTag = track.tags.find(
-        (tag: ApiAutomaticTrackTagResponse) =>
-          tag.data &&
-          (tag.data === "Master" ||
-            (typeof tag.data === "object" && tag.data.name === "Master"))
+        (tag: ApiAutomaticTrackTagResponse) => tag.model === "Master"
       );
       const humanTags = track.tags.filter(
         (tag: ApiHumanTrackTagResponse) => !tag.automatic

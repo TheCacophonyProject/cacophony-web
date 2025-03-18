@@ -836,13 +836,7 @@ const getAuthoritativeTagForTrack = (
         new Date(userTags[0].createdAt) > loadDateTime.value,
     ];
   } else {
-    const tag = trackTags.find(
-      (tag) =>
-        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
-        (typeof tag.data === "object" &&
-          tag.data.name &&
-          tag.data.name === "Master")
-    )?.what;
+    const tag = trackTags.find((tag) => tag.model === "Master")?.what;
     return (tag && [tag, true, false]) || null;
   }
 };

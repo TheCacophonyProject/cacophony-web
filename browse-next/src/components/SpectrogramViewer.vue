@@ -803,13 +803,7 @@ const getAuthoritativeTagForTrack = (
     ] as [string, boolean, boolean];
   } else {
     // NOTE: For audio, there can be multiple authoritative tags for a single track, until a user confirms one.
-    const masterTag = trackTags.find(
-      (tag) =>
-        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
-        (typeof tag.data === "object" &&
-          tag.data.name &&
-          tag.data.name === "Master")
-    );
+    const masterTag = trackTags.find((tag) => tag.model === "Master");
     if (masterTag) {
       return [masterTag.what, true, false];
     }
@@ -855,10 +849,7 @@ const masterTag = (tags: ApiTrackTagResponse[]) => {
   } else {
     // If there are multiple AI master tags, as there seem to be for audio, find the most specific one.
     const masterTags = tags.filter(
-      (tag) =>
-        tag.automatic &&
-        tag.data &&
-        (tag.data as TrackTagData).name === "Master"
+      (tag) => tag.automatic && tag.model === "Master"
     );
 
     if (masterTags.length === 1) {

@@ -607,7 +607,6 @@ describe("Recordings - reprocessing tests", () => {
               //                positions: [],
               // TODO enable after merge
               filtered: false,
-              automatic: true,
             },
           ];
           cy.apiRecordingCheck(
@@ -626,7 +625,7 @@ describe("Recordings - reprocessing tests", () => {
                     automatic: true,
                     trackId: getCreds("rrpTrack18").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -636,7 +635,6 @@ describe("Recordings - reprocessing tests", () => {
                 //                positions: [],
                 // TODO enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 

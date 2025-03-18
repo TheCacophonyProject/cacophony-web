@@ -134,27 +134,16 @@ const models = await modelsInit();
 const mapTrackTag = (
   trackTag: TrackTag
 ): ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse => {
-  let data = trackTag?.data;
-  if (data && typeof data === "string") {
-    try {
-      data = JSON.parse(data);
-    } catch (e) {
-      // ...
-    }
-  }
-
   const trackTagBase: ApiTrackTagResponse = {
     confidence: trackTag.confidence,
     createdAt: trackTag.createdAt?.toISOString(),
-    // TODO:M
-    data: data as any, // FIXME - Probably returning a bit too much useless
-    // data to the front-end?
     id: trackTag.id,
     automatic: false, // Unset
     trackId: trackTag.TrackId,
     updatedAt: trackTag.updatedAt?.toISOString(),
     what: trackTag.what,
     path: trackTag.path,
+    model: trackTag.model,
   };
   if (trackTag.automatic) {
     (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
@@ -171,7 +160,8 @@ const mapTrackTag = (
 };
 
 const mapTrackTags = (
-  trackTags: TrackTag[]
+  trackTags: TrackTag[],
+  minimal = false
 ): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] => {
   const t = trackTags.map(mapTrackTag);
   // Make sure tags are always in some deterministic order for testing purposes.
@@ -183,19 +173,19 @@ export const mapTrack = (
   track: Track,
   minimal: boolean = false
 ): ApiTrackResponse => {
-  // TODO:M:
   const t: ApiTrackResponse = {
     id: track.id,
-    start: track.data.start_s,
-    end: track.data.end_s,
-    tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
-    automatic: track.data.automatic ?? true,
-    ...(track.data.minFreq && { minFreq: track.data.minFreq }),
-    ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
+    start: track.startSeconds,
+    end: track.endSeconds,
+    tags: (track.TrackTags && mapTrackTags(track.TrackTags, minimal)) || [],
   };
-  if (!minimal) {
-    t.filtered = track.filtered;
+  if (track.minFreqHz !== null) {
+    t.minFreq = track.minFreqHz;
   }
+  if (track.maxFreqHz !== null) {
+    t.maxFreq = track.maxFreqHz;
+  }
+  t.filtered = track.filtered;
   if (!minimal && track.data.positions && track.data.positions.length) {
     t.positions = track.data.positions.map(mapPosition);
   }
@@ -205,10 +195,15 @@ export const mapTrack = (
   return t;
 };
 
-export const mapTracks = (
+export const mapTracks = async (
   tracks: Track[],
   minimal: boolean = false
-): ApiTrackResponse[] => {
+): Promise<ApiTrackResponse[]> => {
+  if (!minimal) {
+    for (const track of tracks) {
+      track.data = await getTrackData(track.id);
+    }
+  }
   const t = tracks.map((x) => mapTrack(x, minimal));
   // Sort tracks by start time
   t.sort((a, b) => a.start - b.start);
@@ -250,16 +245,20 @@ const ifNotNull = (val: any | null) => {
   return undefined;
 };
 
-export const mapRecordingResponse = (
+export const mapRecordingResponse = async (
   recording: Recording,
   minimal: boolean = false
-): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
+): Promise<ApiThermalRecordingResponse | ApiAudioRecordingResponse> => {
   const cameraTypes = [
     RecordingType.ThermalRaw,
     RecordingType.TrailCamVideo,
     RecordingType.TrailCamImage,
     RecordingType.InfraredVideo,
   ];
+  let tracks = [];
+  if (recording.Tracks) {
+    tracks = await mapTracks(recording.Tracks, minimal);
+  }
   try {
     const commonRecording: ApiRecordingResponse = {
       id: recording.id,
@@ -275,7 +274,7 @@ export const mapRecordingResponse = (
       stationName: recording.Station?.name,
       type: recording.type,
       tags: (recording.Tags && mapTags(recording.Tags)) || [],
-      tracks: (recording.Tracks && mapTracks(recording.Tracks, minimal)) || [],
+      tracks,
     };
     const comment = ifNotNull(recording.comment);
     const stationId = ifNotNull(recording.StationId);
@@ -750,7 +749,9 @@ export default (app: Application, baseUrl: string) => {
         limit: request.query.limit,
         offset: request.query.offset,
         count: result.count,
-        rows: result.rows.map((x) => mapRecordingResponse(x)),
+        rows: await Promise.all(
+          result.rows.map((x) => mapRecordingResponse(x, true))
+        ),
       });
     }
   );
@@ -1243,7 +1244,7 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredFullRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
-      const recording = mapRecordingResponse(response.locals.recording);
+      const recording = await mapRecordingResponse(response.locals.recording);
       if (request.query["requires-signed-url"]) {
         let rawJWT;
         let cookedJWT;
@@ -1787,7 +1788,6 @@ export default (app: Application, baseUrl: string) => {
         }
         const track = await response.locals.recording.addTrack(newTrack);
         await saveTrackData(track.id, data);
-        // TODO:M: Wrangle object storage data
         await track.updateIsFiltered();
         trackId = track.id;
         algorithmId = track.AlgorithmId;
@@ -1823,11 +1823,9 @@ export default (app: Application, baseUrl: string) => {
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredFullRecordingById(param("id")),
     async (_request: Request, response: Response) => {
-      // const tracks =
-      //   await response.locals.recording.getActiveTracksTagsAndTagger();
-      // TODO:M - should get full tracks, including user
+      const tracks = await mapTracks(response.locals.recording.Tracks || []);
       return successResponse(response, "OK.", {
-        tracks: mapTracks(response.locals.recording.Tracks || []),
+        tracks,
       });
     }
   );
@@ -2040,10 +2038,6 @@ export default (app: Application, baseUrl: string) => {
         try {
           const track: Track = response.locals.track;
           const updatedData = { ...track.data, ...request.body.data };
-          // TODO:M - Remove after migration
-          await track.update({
-            data: updatedData,
-          });
           await saveTrackData(track.id, updatedData);
           return successResponse(response, "Track data updated.");
         } catch (e) {
@@ -2781,8 +2775,8 @@ export default (app: Application, baseUrl: string) => {
               {
                 model: models.Track,
                 required: false,
-                // TODO:M: Do we really need data here
-                attributes: ["id", "data"], //, "data"
+                // TODO:M: Do we really need data here (Maybe if this is used for a single recording, i.e. latest?)
+                attributes: ["id", "startSeconds", "endSeconds"], //, "data"
                 where: {
                   archivedAt: {
                     [Op.is]: null,
@@ -2798,6 +2792,7 @@ export default (app: Application, baseUrl: string) => {
                       "path",
                       "UserId",
                       "id",
+                      "model",
                       "automatic",
                       "confidence",
                     ],
@@ -2856,7 +2851,7 @@ export default (app: Application, baseUrl: string) => {
         const sequelizeTime = performance.now() - now;
         if (!query.debug) {
           return successResponse(response, "Got recordings", {
-            recordings: recs,
+            recordings: await Promise.all(recs),
           });
         } else {
           return response

@@ -121,10 +121,12 @@ export interface Track extends Sequelize.Model, ModelCommon<Track> {
   id: TrackId;
   RecordingId: RecordingId;
   AlgorithmId: number | null;
-  data: any;
   automatic: boolean;
   startSeconds: number;
   endSeconds: number;
+  minFreqHz: number | null;
+  maxFreqHz: number | null;
+  data: any;
   filtered: boolean;
   // NOTE: Implicitly created by sequelize associations.
   getRecording: () => Promise<Recording>;
@@ -152,7 +154,6 @@ export default function (
   DataTypes
 ): TrackStatic {
   const Track = sequelize.define("Track", {
-    data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
     startSeconds: {
       type: Sequelize.FLOAT,
@@ -191,7 +192,7 @@ export default function (
 
   const models = sequelize.models;
 
-  Track.apiSettableFields = Object.freeze(["algorithm", "data", "archivedAt"]);
+  Track.apiSettableFields = Object.freeze(["algorithm", "archivedAt"]);
 
   Track.userGetAttributes = Object.freeze(
     Track.apiSettableFields.concat(["id"])
@@ -233,33 +234,18 @@ export default function (
     return trackTag;
   };
 
-  //add or replace a tag, such that this track only has 1 animal tag by this user
-  //and no duplicate tags
+  // Update tag data
   Track.prototype.updateTag = async function (
     tagId: TrackTagId,
     data: TrackTagData
   ): Promise<TrackTag | void> {
     const trackId = this.id;
-    const trackTag = await sequelize.transaction(async (t) => {
-      const tag = (await models.TrackTag.findByPk(tagId, {
-        transaction: t,
-      })) as TrackTag;
-      if (!tag || tag.TrackId !== trackId) {
-        return null;
-      }
-      // TODO:M: Is this correct and/or used?  Seems like it should update the object storage JSON.
-
-      await saveTrackTagData(tagId, data, tag.data);
-
-      // TODO:M - eventually we don't really need this DB transaction, right?
-      tag.data = {
-        ...(typeof tag.data !== "string" && tag.data),
-        ...data,
-      };
-      await tag.save({ transaction: t });
-      return tag;
-    });
-    return trackTag;
+    const tag = (await models.TrackTag.findByPk(tagId)) as TrackTag;
+    if (!tag || tag.TrackId !== trackId) {
+      return null;
+    }
+    await saveTrackTagData(tagId, data, tag.data);
+    return tag;
   };
 
   // Adds a tag to a track and checks if any alerts need to be sent. All trackTags
@@ -281,12 +267,11 @@ export default function (
       what,
       confidence,
       automatic,
-      data, // TODO:M: remove this after initial migration
       model: modelName,
       UserId: userId,
       used,
     })) as TrackTag;
-    if (modelName && Object.keys(data).length > 0) {
+    if (modelName) {
       // Save the additional Track metadata to object storage
       await saveTrackTagData(tag.id, data as TrackTagData);
     }
@@ -421,12 +406,8 @@ const isFiltered = (tags: TrackTag[]): boolean => {
     }
   }
   // if ai master tag is filtered this track is filtered
-  // TODO:M: replace with model column
   const masterTag = tags.find(
-    (tag) =>
-      tag.automatic &&
-      ((typeof tag.data === "object" && tag.data.name === "Master") ||
-        (tag.data && tag.data === "Master"))
+    (tag) => tag.automatic && tag.model === AI_MASTER
   );
   if (masterTag) {
     return filteredTags.some((filteredTag) => filteredTag === masterTag.what);

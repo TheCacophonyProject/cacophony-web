@@ -706,7 +706,6 @@ describe("Recordings - processing tests", () => {
               //              positions: [],
               // TODO enable after merge
               filtered: false,
-              automatic: true,
             },
           ];
           cy.apiRecordingCheck(
@@ -750,7 +749,7 @@ describe("Recordings - processing tests", () => {
                     automatic: true,
                     trackId: getCreds("rpTrack18").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -760,7 +759,6 @@ describe("Recordings - processing tests", () => {
                 //              positions: [],
                 // TODO enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 
@@ -861,7 +859,6 @@ describe("Recordings - processing tests", () => {
               //              positions: [],
               // TODO enable after merge
               filtered: false,
-              automatic: true,
             },
           ];
           cy.apiRecordingCheck(
@@ -880,7 +877,7 @@ describe("Recordings - processing tests", () => {
                     automatic: true,
                     trackId: getCreds("rpTrack19").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -890,7 +887,6 @@ describe("Recordings - processing tests", () => {
                 //              positions: [],
                 // TODO enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
             cy.processingApiTracksTagsPost(
@@ -1604,7 +1600,7 @@ describe("Recordings - processing tests", () => {
             cy.log(
               "Update the recording setting currentStartTime to 30 minutes ago"
             );
-            fieldUpdates.processingFailedCount = 1;
+            (fieldUpdates as any).processingFailedCount = 1;
             cy.processingApiPut(
               superuser,
               "rpRecording24",

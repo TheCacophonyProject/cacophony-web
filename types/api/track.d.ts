@@ -20,7 +20,6 @@ export interface ApiTrackResponse {
   id: TrackId;
   start: Seconds;
   end: Seconds;
-  automatic: boolean;
   positions?: ApiTrackPosition[];
   tags: ApiTrackTag[];
   filtered?: boolean;

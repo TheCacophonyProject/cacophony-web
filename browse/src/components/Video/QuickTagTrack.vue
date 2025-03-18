@@ -223,9 +223,7 @@ export default defineComponent({
       return "data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
     },
     aiGuess() {
-      return this.tags.find(
-        (tag) => tag.automatic && tag.data.name === "Master"
-      );
+      return this.tags.find((tag) => tag.automatic && tag.model === "Master");
     },
     pinnedLabels() {
       return this.$store.state.Video.pinnedLabels;

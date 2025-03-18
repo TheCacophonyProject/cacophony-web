@@ -163,7 +163,7 @@ export default {
   computed: {
     masterTag(): ApiTrackTagResponse | undefined {
       return (this.track as ApiTrackResponse).tags.find(
-        (tag) => tag.data.name === "Master"
+        (tag) => tag.model === "Master"
       );
     },
     trackClass() {

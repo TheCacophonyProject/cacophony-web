@@ -742,7 +742,6 @@ export default function (
     archivedAt?: Date;
   }): Promise<Track> {
     const track = await this.createTrack({
-      data,
       startSeconds,
       endSeconds,
       minFreqHz,
@@ -861,21 +860,7 @@ export default function (
           where: noArchived,
           required: false,
           separate: true,
-          attributes: [
-            "id",
-            "filtered",
-            [
-              Sequelize.fn(
-                "json_build_object",
-                "start_s",
-                Sequelize.literal(`"Track"."data"#>'{start_s}'`),
-                "end_s",
-                Sequelize.literal(`"Track"."data"#>'{end_s}'`)
-              ),
-              "data",
-            ],
-            // TODO:M "start_s", "end_s"
-          ],
+          attributes: ["id", "filtered", "startSeconds", "endSeconds"],
           include: [
             {
               model: models.TrackTag,
@@ -888,9 +873,7 @@ export default function (
                 "TrackId",
                 "confidence",
                 "UserId",
-                // TODO:M Replace with model column
-                // ["model", "data"] // Model column aliased as data
-                [Sequelize.json("data.name"), "data"],
+                "model",
               ],
               include: [
                 {

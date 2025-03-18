@@ -19,7 +19,7 @@ import {
 } from "@commands/dataTemplate";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
-const EXCLUDE_TRACK_IDS = ["[].id"];
+const EXCLUDE_TRACK_IDS = ["[].id", "[].data", "[].tags[].data"];
 
 describe("Tracks: add, check, delete", () => {
   const templateRecording: ApiRecordingSet = JSON.parse(
@@ -49,7 +49,6 @@ describe("Tracks: add, check, delete", () => {
     positions: positions1,
     tags: [],
     filtered: true,
-    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -254,7 +253,6 @@ describe("Tracks: add, check, delete", () => {
       //      TODO enable after merge
       tags: [],
       filtered: true,
-      automatic: true,
     };
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
 
@@ -305,7 +303,7 @@ describe("Tracks: add, check, delete", () => {
     );
   });
 
-  //Issue #: Can add a track with no start or no end time, or invlaid values in data. No validation!
+  //Issue #: Can add a track with no start or no end time, or invalid values in data. No validation!
   it.skip("Can handle invalid parameters", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
@@ -392,10 +390,10 @@ describe("Tracks: add, check, delete", () => {
     expectedTrack.tags[0]["createdAt"] = NOT_NULL_STRING;
     expectedTrack.tags[0]["updatedAt"] = NOT_NULL_STRING;
     expectedTrack.tags[0]["path"] = "all.mammal.cat";
-    expectedTrack.tags[0]["data"] = predictionResponseFromSet(
-      recording1.metadata.tracks[0].predictions,
-      recording1.metadata.models
-    )[0];
+    // expectedTrack.tags[0]["data"] = predictionResponseFromSet(
+    //   recording1.metadata.tracks[0].predictions,
+    //   recording1.metadata.models
+    // )[0];
     expectedTrack.positions = positionResponseFromSet(
       recording1.metadata.tracks[0].positions
     );

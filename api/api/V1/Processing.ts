@@ -415,8 +415,6 @@ export default function (app: Application, baseUrl: string) {
         }
         const track = await recording.addTrack(newTrack);
         await saveTrackData(track.id, data);
-        // TODO:M: Save track data to object storage
-
         trackId = track.id;
       }
       // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
@@ -585,7 +583,6 @@ export default function (app: Application, baseUrl: string) {
     parseJSONField(body("data")),
     async (_request: Request, response) => {
       // make a copy of the original track
-      // TODO:M: Wrangle object storage data
       let d;
       const { data, filtered, AlgorithmId } = response.locals.track;
       const oldData = await getTrackData(response.locals.track.id);
@@ -595,7 +592,6 @@ export default function (app: Application, baseUrl: string) {
         d = oldData;
       }
       const archivedDataCopy = {
-        data: d,
         AlgorithmId,
         filtered,
         startSeconds: d.start_s || 0,
@@ -611,7 +607,6 @@ export default function (app: Application, baseUrl: string) {
       await response.locals.recording.addTrack(archivedDataCopy);
       const newData = response.locals.data;
       const update = {
-        data: newData,
         startSeconds: newData.start_s || 0,
         endSeconds: newData.end_s || 0,
         minFreqHz: null,
@@ -622,7 +617,7 @@ export default function (app: Application, baseUrl: string) {
         update.maxFreqHz = newData.maxFreq || 0;
       }
       await response.locals.track.update(update);
-      await saveTrackData(response.locals.track.id, response.locals.data);
+      await saveTrackData(response.locals.track.id, newData);
 
       return successResponse(response, "Track updated");
     }

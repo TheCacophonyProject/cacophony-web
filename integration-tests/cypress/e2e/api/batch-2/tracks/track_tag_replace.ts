@@ -13,7 +13,10 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
+import {
+  TEMPLATE_AUDIO_RECORDING,
+  TEMPLATE_THERMAL_RECORDING,
+} from "@commands/dataTemplate";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = [
@@ -28,6 +31,9 @@ describe("Track Tags: replaceTag, check, delete", () => {
   //template recording with no tracks - add tracks during test
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+  );
+  const templateAudioRecording: ApiRecordingSet = JSON.parse(
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );
   templateRecording.metadata.tracks = [];
 
@@ -53,7 +59,6 @@ describe("Track Tags: replaceTag, check, delete", () => {
     positions: positions1,
     tags: [],
     filtered: true,
-    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -83,7 +88,6 @@ describe("Track Tags: replaceTag, check, delete", () => {
     maxFreq: 1000,
     id: NOT_NULL,
     filtered: true,
-    automatic: false,
     //    positions: [],
     //    TODO: enable after merge
     tags: [],
@@ -110,7 +114,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   const expectedTag1: ApiHumanTrackTagResponse = {
     confidence: 0.95,
     createdAt: NOT_NULL_STRING,
-    data: "",
+    model: null,
     path: "all",
     id: 99,
     automatic: false,
@@ -124,7 +128,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
     createdAt: NOT_NULL_STRING,
-    data: "",
+    model: null,
     path: "all",
     id: 99,
     automatic: false,
@@ -138,7 +142,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   const expectedAudioTag: ApiHumanTrackTagResponse = {
     confidence: 1,
     createdAt: NOT_NULL_STRING,
-    data: "",
+    model: null,
     path: "all",
     id: 99,
     automatic: false,
@@ -159,7 +163,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     confidence: 0.45,
     automatic: false,
     createdAt: NOT_NULL_STRING,
-    data: "",
+    model: null,
     path: "all",
     id: 99,
     trackId: 99,
@@ -178,7 +182,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     confidence: 0.46,
     automatic: false,
     createdAt: NOT_NULL_STRING,
-    data: "",
+    model: null,
     path: "all",
     id: 99,
     trackId: 99,
@@ -323,7 +327,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   });
 
   it("Can add, view and delete audio tags", () => {
-    const recording3 = TestCreateRecordingData(templateRecording);
+    const recording3 = TestCreateRecordingData(templateAudioRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedAudioTrack));
     const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedAudioTrack));
     expectedTrackWithTag.filtered = false;
@@ -823,7 +827,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
   });
 
-  it("Duplicate suplementary tags from different users are allowed", () => {
+  it("Duplicate supplementary tags from different users are allowed", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
     expectedTrackWithTags.filtered = false;

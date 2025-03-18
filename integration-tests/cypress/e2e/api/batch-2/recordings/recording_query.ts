@@ -207,7 +207,7 @@ describe("Recordings query using where", () => {
                   what: "possum",
                   automatic: false,
                   confidence: 0.7,
-                  data: "unknown",
+                  model: null,
                   trackId: -99,
                   path: "all",
                   id: -1,

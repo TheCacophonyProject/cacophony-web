@@ -55,19 +55,19 @@ describe("Recording filtering", () => {
 
   const tagResponseTemplate: ApiHumanTrackTagResponse = {
     confidence: 0.95,
-    data: "",
     id: NOT_NULL,
     automatic: false,
     trackId: NOT_NULL,
     what: "cat",
     path: "all",
+    model: null,
     userName: NOT_NULL_STRING,
     userId: NOT_NULL,
   };
 
   const automaticTagResponseTemplate: ApiAutomaticTrackTagResponse = {
     confidence: 0.95,
-    data: { name: "Master" },
+    model: "Master",
     id: NOT_NULL,
     automatic: true,
     trackId: NOT_NULL,

@@ -43,9 +43,9 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   automatic: boolean;
   UserId: UserId;
   User: User;
+  data?: any;
   confidence: number;
   model: string | null;
-  data: string | TrackTagData;
   archivedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -69,7 +69,6 @@ export default function (
     path: DataTypes.STRING, // ltree path
     confidence: DataTypes.FLOAT,
     automatic: DataTypes.BOOLEAN,
-    data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
     used: {
       // This tag is used in visit calculations/canonical tag search.

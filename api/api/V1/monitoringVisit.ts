@@ -16,6 +16,7 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import type { Station } from "@models/Station.js";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag.js";
 import type { TrackTag } from "@models/TrackTag.js";
+import { getTrackData } from "@models/Track.js";
 
 const models = await modelsInit();
 
@@ -88,7 +89,7 @@ export class Visit {
     return true;
   }
 
-  calculateTags(aiModel: string, dontSplit: boolean = false) {
+  async calculateTags(aiModel: string, dontSplit: boolean = false) {
     this.recordings = (this.rawRecordings || []).map((rec) =>
       this.calculateTrackTags(rec, aiModel)
     );
@@ -135,6 +136,15 @@ export class Visit {
         let bestMass = -1;
         let bestTag;
         for (const [tag, tracks] of bestAiTags) {
+          for (const track of tracks) {
+            const data = await getTrackData(track.id);
+            const mass =
+              (data.positions &&
+                data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+              0;
+            track.mass = mass;
+          }
+
           const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
           if (mass > bestMass) {
             bestMass = mass;
@@ -156,6 +166,15 @@ export class Visit {
       let bestMass = -1;
       let bestTag;
       for (const [tag, tracks] of aiGuess) {
+        for (const track of tracks) {
+          const data = await getTrackData(track.id);
+          const mass =
+            (data.positions &&
+              data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+            0;
+          track.mass = mass;
+        }
+
         const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
         if (mass > bestMass) {
           bestMass = mass;
@@ -180,20 +199,16 @@ export class Visit {
     for (const track of (recording as any).Tracks) {
       const bestTag = getCanonicalTrackTag(track.TrackTags);
       const aiTag: ApiTrackTagResponse = (track.TrackTags || []).find(
-        (tag) => tag.data === aiModel && tag.automatic
+        (tag) => tag.model === aiModel && tag.automatic
       );
-
       const thisTrack: VisitTrack = {
         id: track.id,
         tag: bestTag ? bestTag.what : null,
         isAITagged: bestTag ? bestTag.automatic : false,
         aiTag: (aiTag && aiTag.what) || null,
-        start: track.data ? track.data.start_s : "",
-        end: track.data ? track.data.end_s : "",
-        mass:
-          (track.positions &&
-            track.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
-          0,
+        start: track.startSeconds,
+        end: track.endSeconds,
+        mass: 0, // Only grab data/positions if we really need to tie-break;
       };
       if (
         bestTag &&
@@ -371,7 +386,6 @@ export async function generateVisits(
       "Too many recordings to retrieve. Please reduce your page size."
     );
   }
-
   const visits = groupRecordingsIntoVisits(
     recordings,
     moment(search.pageFrom),
@@ -386,7 +400,7 @@ export async function generateVisits(
 
   const actualVisits = [];
   for (const visit of visits) {
-    const { split } = visit.calculateTags(search.compareAi);
+    const { split } = await visit.calculateTags(search.compareAi);
     if (split) {
       // We need to create multiple visits from this visit, since there were multiple user tags for the period.
       const userVisits = {};
@@ -431,7 +445,7 @@ export async function generateVisits(
       }
       for (const aVisit of actualVisits) {
         if (aVisit.rawRecordings) {
-          aVisit.calculateTags(search.compareAi, true);
+          await aVisit.calculateTags(search.compareAi, true);
           delete aVisit.rawRecordings;
         }
         aVisit.markIfPossiblyIncomplete(incompleteCutoff);

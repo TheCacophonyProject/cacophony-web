@@ -74,10 +74,10 @@ describe("Recordings query using improved query API", () => {
     start: 2,
     end: 5,
     id: NOT_NULL,
-    automatic: true,
     tags: [
       {
         what: "cat",
+        model: "Master",
         automatic: true,
         confidence: 0.9,
         id: NOT_NULL,
@@ -320,6 +320,7 @@ describe("Recordings query using improved query API", () => {
                     automatic: false,
                     confidence: 0.7,
                     path: "all",
+                    model: null,
                     id: -1,
                     userName: getTestName(groupAdmin),
                     userId: getCreds(groupAdmin).id,

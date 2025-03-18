@@ -196,7 +196,6 @@ export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
   maxFreq: 1000,
   id: NOT_NULL,
   filtered: false,
-  automatic: true,
   //  positions: [
   //    {
   //      x: 111,
@@ -210,7 +209,7 @@ export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
   tags: [
     {
       what: "morepork",
-      data: { name: "Master" },
+      model: "Master",
       automatic: true,
       confidence: 1,
       trackId: NOT_NULL,
@@ -271,7 +270,6 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
   end: 8.67,
   id: NOT_NULL,
   filtered: false,
-  automatic: true,
   // TODO enable after merge
   //  positions: [
   //    {
@@ -288,7 +286,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
       what: "cat",
       automatic: true,
       confidence: 0.97,
-      data: { name: "Master" },
+      model: "Master",
       trackId: NOT_NULL,
       id: NOT_NULL,
       path: "all",

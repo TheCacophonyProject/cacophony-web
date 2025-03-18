@@ -712,7 +712,6 @@ export function trackResponseFromSet(
         start: track.start_s,
         end: track.end_s,
         filtered: false,
-        automatic: true,
       };
       if (includePositions) {
         newTrack.positions = tpos;
@@ -731,7 +730,7 @@ export function trackResponseFromSet(
             what: track.predictions[0].confident_tag,
             automatic: true,
             trackId: -99,
-            data: tpreddata[0],
+            model: "Master",
             confidence: track.predictions[0].confidence,
             id: 0,
             path: "all",

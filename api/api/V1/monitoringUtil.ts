@@ -215,7 +215,7 @@ async function getRecordings2(
       {
         model: models.Track,
         required: false,
-        attributes: ["id", "data"],
+        attributes: ["id", "startSeconds", "endSeconds"],
         where: {
           archivedAt: {
             [Op.is]: null,
@@ -233,6 +233,7 @@ async function getRecordings2(
               "id",
               "automatic",
               "confidence",
+              "model",
             ],
             include: [{ model: models.User, attributes: ["userName", "id"] }],
             where: {

@@ -355,7 +355,6 @@ export default function (app: Application, baseUrl: string) {
 
       const visits = await generateVisits2(searchDetails, logging);
       //const actualRecordings = visits.map((r: Recording[][]) => r.length);
-      console.log(visits);
       const sequelizeTime = performance.now() - now;
       if (!query.debug) {
         return successResponse(response, "Completed query.", {

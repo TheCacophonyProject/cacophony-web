@@ -34,20 +34,11 @@ const audioBaitInterval = 60 * 10;
 function sortTracks(tracks: Track[]) {
   // sort tracks in descending start time order
   tracks.sort(function (a, b) {
-    if (
-      a.data &&
-      b.data &&
-      a.data.start_s != undefined &&
-      b.data.start_s != undefined
-    ) {
-      const res = b.data.start_s - a.data.start_s;
-      if (res == 0) {
-        return b.id - a.id;
-      } else {
-        return res;
-      }
+    const res = b.startSeconds - a.startSeconds;
+    if (res == 0) {
+      return b.id - a.id;
     } else {
-      return 0;
+      return res;
     }
   });
 }
@@ -119,11 +110,7 @@ export function getCanonicalTrackTag(
     };
     return conflict as TrackTag;
   }
-  const masterTag = trackTags.filter((tag) =>
-    typeof tag.data === "string"
-      ? tag.data === AI_MASTER
-      : (tag.data as any)?.name == AI_MASTER
-  );
+  const masterTag = trackTags.filter((tag) => tag.model === AI_MASTER);
   return animalTags.shift() || manualTags.shift() || masterTag.shift();
 }
 
@@ -577,10 +564,9 @@ class TrackStartEnd {
     this.recStart = moment(rec.recordingDateTime);
     this.trackStart = moment(rec.recordingDateTime);
     this.trackEnd = moment(rec.recordingDateTime);
-
     if (track.data) {
-      this.trackStart = this.trackStart.add(track.data.start_s * 1000, "ms");
-      this.trackEnd = this.trackEnd.add(track.data.end_s * 1000, "ms");
+      this.trackStart = this.trackStart.add(track.startSeconds * 1000, "ms");
+      this.trackEnd = this.trackEnd.add(track.endSeconds * 1000, "ms");
     } else {
       this.trackStart = this.recStart;
       this.trackEnd = this.recStart;

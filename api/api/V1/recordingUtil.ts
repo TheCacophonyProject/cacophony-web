@@ -1441,8 +1441,6 @@ export const tracksFromMeta = async (
       promises.push(
         new Promise((resolve, _reject) => {
           recording.addTrack(newTrack).then((track) => {
-            // TODO:M: Wrangle object storage
-
             if (
               !("predictions" in trackMeta) ||
               trackMeta["predictions"].length === 0
@@ -1843,21 +1841,7 @@ export async function getRecordingForVisit(
         where: {
           archivedAt: null,
         },
-        attributes: [
-          "id",
-          [
-            Sequelize.fn(
-              "json_build_object",
-              "start_s",
-              Sequelize.literal(`"Tracks"."data"#>'{start_s}'`),
-              "end_s",
-              Sequelize.literal(`"Tracks"."data"#>'{end_s}'`)
-            ),
-          ],
-          // TODO:M:
-          //"start_s",
-          // "end_s"
-        ],
+        attributes: ["id", "startSeconds", "endSeconds"],
         required: false,
         include: [
           {
@@ -1868,9 +1852,7 @@ export async function getRecordingForVisit(
               "TrackId",
               "confidence",
               "path",
-              [Sequelize.json("data.name"), "data"],
-              // TODO:M
-              // ["model", "data"], // Model column aliased to `data`
+              "model",
             ],
           },
         ],

@@ -356,8 +356,16 @@ import RecordingProperties from "../Video/RecordingProperties.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import Help from "@/components/Help.vue";
 
-import { ApiTrackResponse, ApiTrackDataRequest } from "@typedefs/api/track";
-import { ApiTrackTag, ApiTrackTagAttributes } from "@typedefs/api/trackTag";
+import {
+  ApiTrackResponse,
+  ApiTrackDataRequest,
+  ApiTrackRequest,
+} from "@typedefs/api/track";
+import {
+  ApiHumanTrackTagResponse,
+  ApiTrackTag,
+  ApiTrackTagAttributes,
+} from "@typedefs/api/trackTag";
 import {
   ApiTrackTagRequest,
   ApiTrackTagResponse,
@@ -396,12 +404,10 @@ export const getDisplayTags = (
   const labelToParent = {};
   const classifications = flattenNodes(labelToParent, options, []);
   let automaticTags = track.tags.filter(
-    (tag) =>
-      tag.automatic &&
-      ((tag.data as any) === "Master" || tag.data.name === "Master")
+    (tag) => tag.automatic && tag.model === "Master"
   );
   const humanTags = track.tags.filter((tag) => !tag.automatic);
-  let reducedHuman = {};
+  const reducedHuman = {};
 
   humanTags.forEach((humanTag) => {
     let exists = false;
@@ -433,7 +439,7 @@ export const getDisplayTags = (
       reducedHuman[humanTag.what] = humanTag;
     }
   });
-  reducedHuman = Object.values(reducedHuman);
+  const reducedHumanValues: ApiTrackTag[] = Object.values(reducedHuman);
   if (automaticTags && automaticTags.length > 0) {
     if (automaticTags.length > 1 && humanTags.length == 0) {
       automaticTags = automaticTags.filter(
@@ -449,7 +455,7 @@ export const getDisplayTags = (
       );
     }
 
-    reducedHuman.sort((a, b) => {
+    reducedHumanValues.sort((a, b) => {
       if (a.what === "bird") {
         return 2;
       } else if (b.what === "bird") {
@@ -469,7 +475,7 @@ export const getDisplayTags = (
 
     if (humanTags.length > 0) {
       //tags which match or, matches an ai tag which is a parent of this tag but not a top level tag
-      const confirmedTags = reducedHuman.filter(
+      const confirmedTags = reducedHumanValues.filter(
         (tag) =>
           automaticTags.filter(
             (autoTag) =>
@@ -508,7 +514,7 @@ export const getDisplayTags = (
 
         // check if all human tags are the same
         return [
-          ...reducedHuman.map((humanTag) => ({
+          ...reducedHumanValues.map((humanTag) => ({
             ...humanTag,
             class: TagClass.Human,
           })),
@@ -524,9 +530,9 @@ export const getDisplayTags = (
         class: TagClass.Automatic,
       }));
     }
-  } else if (reducedHuman.length > 0) {
+  } else if (reducedHumanValues.length > 0) {
     return [
-      ...reducedHuman.map((humanTag) => ({
+      ...reducedHumanValues.map((humanTag) => ({
         ...humanTag,
         class: TagClass.Human,
       })),
@@ -708,9 +714,7 @@ export default defineComponent({
           (track) =>
             !track.tags.some((tag) => {
               if (tag.automatic) {
-                return tag.data.name === "Master"
-                  ? tags.includes(tag.what)
-                  : false;
+                return tag.model === "Master" ? tags.includes(tag.what) : false;
               } else {
                 tags.includes(tag.what);
               }
@@ -846,7 +850,7 @@ export default defineComponent({
           userId,
           automatic,
           userName: username,
-        } as ApiTrackTag;
+        } as ApiHumanTrackTagResponse;
         const currTags = track.tags.filter((tag) => tag.userId !== userId);
         const newTags = [...currTags, newTag];
         const taggedTrack = modifyTrack(trackId, {

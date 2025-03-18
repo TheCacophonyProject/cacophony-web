@@ -29,7 +29,7 @@ import type { Group } from "models/Group.js";
 import type { Recording } from "models/Recording.js";
 import type { Station } from "@/models/Station.js";
 import type { Schedule } from "@/models/Schedule.js";
-import { UserGlobalPermission } from "@typedefs/api/consts.js";
+import { RecordingType, UserGlobalPermission } from "@typedefs/api/consts.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 import { SuperUsers } from "@/Globals.js";
 import type { Alert } from "@models/Alert.js";
@@ -1073,7 +1073,6 @@ const getRecordingRelationships = (
       where: { archivedAt: null },
       attributes: [
         "id",
-        "data", // TODO:M
         "startSeconds",
         "endSeconds",
         "minFreqHz",
@@ -1094,7 +1093,6 @@ const getRecordingRelationships = (
             "automatic",
             "confidence",
             "model",
-            "data", // TODO:M
             "TrackId",
             "UserId",
             "createdAt",
@@ -1596,8 +1594,8 @@ const getDeviceForUserOrDevice = getDevice(true, false, true);
 const getDeviceForRequestUserAsAdmin = getDevice(true, true);
 const getDevicesForRequestUser = getDevices(true, false);
 
-// For applications that don't need track positions etc.
-// TODO:M Some applications don't even care about tracks, we just want to see if a user has access to a recording.
+// NOTE: Some applications don't even care about tracks
+//  or track positions, we just want to see if a user has access to a recording.
 const getLimitedRecordingForRequestUserAsAdmin = getRecording(
   true,
   true,
@@ -1621,13 +1619,17 @@ const getFlatRecordingsForRequestUser = getRecordings(true, false, false);
 
 const getFlatRecordingForRequestUser = getRecording(true, false, false, false);
 
-const getFullRecordingForRequestUserAsAdmin = getRecording(
-  true,
-  true,
-  true,
-  true
-);
-const getFullRecordingForRequestUser = getRecording(true, false, true, true);
+const getFullRecordingForRequestUser = async (a, b, c) => {
+  const result = await getRecording(true, false, true, true)(a, b, c);
+  if (result === null || result instanceof ClientError) {
+    return result;
+  }
+  // Get all track data for recording
+  for (const track of (result as any).Tracks) {
+    track.data = await getTrackData(track.id);
+  }
+  return result;
+};
 
 const getGroupUnauthenticated = getGroup();
 const getGroupForRequestUser = getGroup(true);
@@ -1912,16 +1914,16 @@ export const fetchAdminAuthorizedRequiredLimitedRecordingById = (
     recordingId
   );
 
-export const fetchAdminAuthorizedRequiredFullRecordingById = (
-  recordingId: ValidationChain
-) =>
-  fetchRequiredModel(
-    models.Recording,
-    false,
-    true,
-    getFullRecordingForRequestUserAsAdmin,
-    recordingId
-  );
+// export const fetchAdminAuthorizedRequiredFullRecordingById = (
+//   recordingId: ValidationChain
+// ) =>
+//   fetchRequiredModel(
+//     models.Recording,
+//     false,
+//     true,
+//     getFullRecordingForRequestUserAsAdmin,
+//     recordingId
+//   );
 
 export const fetchAuthorizedRequiredLimitedRecordingById = (
   recordingId: ValidationChain | RecordingId
