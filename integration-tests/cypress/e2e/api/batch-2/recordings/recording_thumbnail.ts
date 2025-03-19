@@ -74,7 +74,7 @@ describe("Recording thumbnails", () => {
       );
     });
 
-    it.only("Thumbnail generated as expected without track thumbnails", () => {
+    it("Thumbnail generated as expected without track thumbnails", () => {
       const recording01 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
         "rtCamera1",
