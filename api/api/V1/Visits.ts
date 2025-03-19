@@ -454,7 +454,7 @@ class Visit {
 
   addRecording(rec: any, tracks: Track[]) {
     for (const track of tracks) {
-      const taggedAs = getCanonicalTrackTag(track.TrackTags);
+      const taggedAs = getCanonicalTrackTag(track.TrackTags || []);
       const event = new VisitEvent(rec, track, null, taggedAs);
       this.addEvent(event);
     }
@@ -564,7 +564,10 @@ class TrackStartEnd {
     this.recStart = moment(rec.recordingDateTime);
     this.trackStart = moment(rec.recordingDateTime);
     this.trackEnd = moment(rec.recordingDateTime);
-    if (track.data) {
+    if (
+      track.hasOwnProperty("startSeconds") &&
+      track.hasOwnProperty("endSeconds")
+    ) {
       this.trackStart = this.trackStart.add(track.startSeconds * 1000, "ms");
       this.trackEnd = this.trackEnd.add(track.endSeconds * 1000, "ms");
     } else {

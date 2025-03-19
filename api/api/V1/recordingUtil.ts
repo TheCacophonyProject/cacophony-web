@@ -217,7 +217,9 @@ export async function getThumbnail(
       const recVisit = new Visit(rec, 0, rec.Tracks);
       const commonTag = recVisit.mostCommonTag();
       const trackIds = recVisit.events
-        .filter((event) => event.trackTag.what == commonTag.what)
+        .filter(
+          (event) => event.trackTag && event.trackTag.what == commonTag.what
+        )
         .map((event) => event.trackID);
       const bestTracks = rec.Tracks.filter((track) =>
         trackIds.includes(track.id)
