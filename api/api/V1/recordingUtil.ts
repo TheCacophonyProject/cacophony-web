@@ -213,70 +213,89 @@ export async function getThumbnail(
     }
   } else {
     // choose best track based off visit tag and highest score
-    const recVisit = new Visit(rec, 0, rec.Tracks);
-    const commonTag = recVisit.mostCommonTag();
-    const trackIds = recVisit.events
-      .filter((event) => event.trackTag.what == commonTag.what)
-      .map((event) => event.trackID);
-    const bestTracks = rec.Tracks.filter((track) =>
-      trackIds.includes(track.id)
-    );
-    if (bestTracks.length !== 0) {
-      if (
-        !bestTracks.some((track) =>
-          track.dataValues.hasOwnProperty("thumbnailScore")
-        )
-      ) {
-        for (const track of bestTracks) {
-          track.data = await getTrackData(track.id);
-          if (!track.data.thumbnail) {
-            track.data.thumbnail = {
-              score: 0,
-            };
-          }
-        }
-      }
-      bestTracks.sort((a, b) => {
-        if (
-          a.dataValues.hasOwnProperty("thumbnailScore") &&
-          b.dataValues.hasOwnProperty("thumbnailScore")
-        ) {
-          return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
-        }
-        return b.data.thumbnail.score - a.data.thumbnail.score;
-      });
-      thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
-    }
-    try {
-      if (thumbKey.startsWith("a_")) {
-        thumbKey = thumbKey.slice(2);
-      }
-      const data = await s3.getObject(thumbKey);
-      return data.Body.transformToByteArray();
-    } catch (err) {
-      log.error(
-        "Error getting best thumbnail from s3 for recordingId %s, %s",
-        rec.id,
-        err.message
+    if (rec.Tracks.length !== 0) {
+      const recVisit = new Visit(rec, 0, rec.Tracks);
+      const commonTag = recVisit.mostCommonTag();
+      const trackIds = recVisit.events
+        .filter((event) => event.trackTag.what == commonTag.what)
+        .map((event) => event.trackID);
+      const bestTracks = rec.Tracks.filter((track) =>
+        trackIds.includes(track.id)
       );
-
       if (bestTracks.length !== 0) {
-        // Fallback to recording thumb
-        thumbKey = `${fileKey}-thumb`;
-        try {
-          if (thumbKey.startsWith("a_")) {
-            thumbKey = thumbKey.slice(2);
+        if (
+          !bestTracks.some((track) =>
+            track.dataValues.hasOwnProperty("thumbnailScore")
+          )
+        ) {
+          for (const track of bestTracks) {
+            track.data = await getTrackData(track.id);
+            if (!track.data.thumbnail) {
+              track.data.thumbnail = {
+                score: 0,
+              };
+            }
           }
-          const data = await s3.getObject(thumbKey);
-          return data.Body.transformToByteArray();
-        } catch (err) {
-          log.error(
-            "Error getting clip thumbnail from s3 for recordingId %s, %s",
-            rec.id,
-            err.message
-          );
-          return null;
         }
+        bestTracks.sort((a, b) => {
+          if (
+            a.dataValues.hasOwnProperty("thumbnailScore") &&
+            b.dataValues.hasOwnProperty("thumbnailScore")
+          ) {
+            return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+          }
+          return b.data.thumbnail.score - a.data.thumbnail.score;
+        });
+        thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
+      }
+      try {
+        if (thumbKey.startsWith("a_")) {
+          thumbKey = thumbKey.slice(2);
+        }
+        const data = await s3.getObject(thumbKey);
+        return data.Body.transformToByteArray();
+      } catch (err) {
+        log.error(
+          "Error getting best thumbnail from s3 for recordingId %s, %s",
+          rec.id,
+          err.message
+        );
+
+        if (bestTracks.length !== 0) {
+          // Fallback to recording thumb
+          thumbKey = `${fileKey}-thumb`;
+          try {
+            if (thumbKey.startsWith("a_")) {
+              thumbKey = thumbKey.slice(2);
+            }
+            const data = await s3.getObject(thumbKey);
+            return data.Body.transformToByteArray();
+          } catch (err) {
+            log.error(
+              "Error getting clip thumbnail from s3 for recordingId %s, %s",
+              rec.id,
+              err.message
+            );
+            return null;
+          }
+        }
+      }
+    } else {
+      // Fallback to recording thumb
+      thumbKey = `${fileKey}-thumb`;
+      try {
+        if (thumbKey.startsWith("a_")) {
+          thumbKey = thumbKey.slice(2);
+        }
+        const data = await s3.getObject(thumbKey);
+        return data.Body.transformToByteArray();
+      } catch (err) {
+        log.error(
+          "Error getting clip thumbnail from s3 for recordingId %s, %s",
+          rec.id,
+          err.message
+        );
+        return null;
       }
     }
   }
