@@ -228,7 +228,7 @@ export default function (app: Application, baseUrl: string) {
           }
           let tracks: Track[] | null = null;
           if (complete) {
-            tracks = await recording.getTracks();
+            tracks = (await recording.getTracks()) || [];
             for (const track of tracks) {
               track.data = await getTrackData(track.id);
               await track.updateIsFiltered();
@@ -277,7 +277,7 @@ export default function (app: Application, baseUrl: string) {
             const results = await saveThumbnailInfo(
               recording,
               tracks,
-              recording.additionalMetadata["thumbnail_region"]
+              recording.additionalMetadata["thumbnail_region"] || 1
             );
             if (results) {
               for (const result of results) {
