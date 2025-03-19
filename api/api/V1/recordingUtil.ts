@@ -300,6 +300,7 @@ export async function getThumbnail(
         return null;
       }
     }
+    return null;
   }
 }
 

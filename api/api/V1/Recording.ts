@@ -1544,7 +1544,7 @@ export default (app: Application, baseUrl: string) => {
       }
        */
       const data = await getThumbnail(rec, trackId);
-      if (data !== null) {
+      if (data) {
         response.setHeader(
           "Content-disposition",
           "attachment; filename=" + filename
