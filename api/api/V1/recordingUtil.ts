@@ -216,39 +216,40 @@ export async function getThumbnail(
     if (rec.Tracks.length !== 0) {
       const recVisit = new Visit(rec, 0, rec.Tracks);
       const commonTag = recVisit.mostCommonTag();
-      const trackIds = recVisit.events
-        .filter(
-          (event) => event.trackTag && event.trackTag.what == commonTag.what
-        )
-        .map((event) => event.trackID);
-      const bestTracks = rec.Tracks.filter((track) =>
-        trackIds.includes(track.id)
-      );
-      if (bestTracks.length !== 0) {
-        if (
-          !bestTracks.some((track) =>
-            track.dataValues.hasOwnProperty("thumbnailScore")
+      let bestTracks = [];
+      if (commonTag !== null) {
+        const trackIds = recVisit.events
+          .filter(
+            (event) => event.trackTag && event.trackTag.what == commonTag.what
           )
-        ) {
-          for (const track of bestTracks) {
-            track.data = await getTrackData(track.id);
-            if (!track.data.thumbnail) {
-              track.data.thumbnail = {
-                score: 0,
-              };
+          .map((event) => event.trackID);
+        bestTracks = rec.Tracks.filter((track) => trackIds.includes(track.id));
+        if (bestTracks.length !== 0) {
+          if (
+            !bestTracks.some((track) =>
+              track.dataValues.hasOwnProperty("thumbnailScore")
+            )
+          ) {
+            for (const track of bestTracks) {
+              track.data = await getTrackData(track.id);
+              if (!track.data.thumbnail) {
+                track.data.thumbnail = {
+                  score: 0,
+                };
+              }
             }
           }
+          bestTracks.sort((a, b) => {
+            if (
+              a.dataValues.hasOwnProperty("thumbnailScore") &&
+              b.dataValues.hasOwnProperty("thumbnailScore")
+            ) {
+              return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+            }
+            return b.data.thumbnail.score - a.data.thumbnail.score;
+          });
+          thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
         }
-        bestTracks.sort((a, b) => {
-          if (
-            a.dataValues.hasOwnProperty("thumbnailScore") &&
-            b.dataValues.hasOwnProperty("thumbnailScore")
-          ) {
-            return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
-          }
-          return b.data.thumbnail.score - a.data.thumbnail.score;
-        });
-        thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
       }
       try {
         if (thumbKey.startsWith("a_")) {
