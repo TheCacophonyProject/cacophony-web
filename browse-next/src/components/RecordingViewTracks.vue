@@ -149,7 +149,6 @@ const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
         id: -1,
         start: 0,
         end: props.recording?.duration || 0,
-        automatic: false,
         tags: [],
         filtered: false,
       },
@@ -375,6 +374,7 @@ const addOrRemoveUserTag = async ({
           userName: currentUser.value?.userName,
           automatic: false,
           confidence: 0.85,
+          model: null,
           createdAt: new Date().toISOString(),
         };
         track.tags.push(interimTag);
@@ -481,10 +481,7 @@ const recordingTracksPossiblyFiltered = computed<ApiTrackResponse[]>(() => {
       }
       // Handle multiple Master AI tags
       const aiMasterTags = track.tags.filter(
-        (tag) =>
-          tag.automatic &&
-          tag.data &&
-          (tag.data as TrackTagData).name === "Master"
+        (tag) => tag.automatic && tag.model === "Master"
       );
       return !(
         aiMasterTags.some(
@@ -517,10 +514,7 @@ const numFalseTriggers = computed<number>(() => {
 
     // Handle multiple Master AI tags
     const aiMasterTags = track.tags.filter(
-      (tag) =>
-        tag.automatic &&
-        tag.data &&
-        (tag.data as TrackTagData).name === "Master"
+      (tag) => tag.automatic && tag.model === "Master"
     );
     const aiNoiseOnly =
       aiMasterTags.some(

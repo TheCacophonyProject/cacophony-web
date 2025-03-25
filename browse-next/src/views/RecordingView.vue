@@ -2211,16 +2211,16 @@ const inlineModal = ref<boolean>(false);
     @tabsHeight: 38.5px;
     @footerHeight: 55px;
     flex: 1;
-    max-height: min(
-      @playerHeight,
-      calc(
-        100svh -
-          (
-            @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
-              @footerHeight
-          )
-      )
-    );
+    //max-height: min(
+    //  @playerHeight,
+    //  calc(
+    //    100svh -
+    //      (
+    //        @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
+    //          @footerHeight
+    //      )
+    //  )
+    //);
     height: 100%;
   }
 }
