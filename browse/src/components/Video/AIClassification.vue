@@ -22,7 +22,7 @@
             onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='"
             :src="imgSrc(aiGuess.what)"
             class="tag-img"
-            :data-model="aiGuess.data.name"
+            :data-model="aiGuess.model"
           />
           <span>{{ aiGuess.what }}</span>
         </div>
