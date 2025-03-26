@@ -481,11 +481,11 @@ describe("Recording thumbnails", () => {
               EXCLUDE_IDS
             );
 
-            cy.log("Check thumbnail not available");
+            cy.log("Check fallback thumbnail available");
             cy.apiRecordingThumbnailCheck(
               "rtGroupAdmin",
               "rtRecording02",
-              HttpStatusCode.BadRequest,
+              HttpStatusCode.Ok,
               { message: "No thumbnail exists" }
             );
           });

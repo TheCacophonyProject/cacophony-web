@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import { body } from "express-validator";
+import { body, query } from "express-validator";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
@@ -71,6 +71,10 @@ export default function (app: Application) {
       anyOf(
         idOf(body("deviceId")).optional(),
         deprecatedField(idOf(body("deviceID"))).optional()
+      ),
+      anyOf(
+        query("onlyActive").default(false).isBoolean().toBoolean(),
+        query("only-active").default(false).isBoolean().toBoolean()
       ),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {

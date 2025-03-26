@@ -258,7 +258,7 @@ export async function getThumbnail(
         const data = await s3.getObject(thumbKey);
         return data.Body.transformToByteArray();
       } catch (err) {
-        log.error(
+        log.warning(
           "Error getting best thumbnail from s3 for recordingId %s, %s",
           rec.id,
           err.message
@@ -274,7 +274,7 @@ export async function getThumbnail(
             const data = await s3.getObject(thumbKey);
             return data.Body.transformToByteArray();
           } catch (err) {
-            log.error(
+            log.warning(
               "Error getting clip thumbnail from s3 for recordingId %s, %s",
               rec.id,
               err.message
@@ -283,26 +283,25 @@ export async function getThumbnail(
           }
         }
       }
-    } else {
-      // Fallback to recording thumb
-      thumbKey = `${fileKey}-thumb`;
-      try {
-        if (thumbKey.startsWith("a_")) {
-          thumbKey = thumbKey.slice(2);
-        }
-        const data = await s3.getObject(thumbKey);
-        return data.Body.transformToByteArray();
-      } catch (err) {
-        log.error(
-          "Error getting clip thumbnail from s3 for recordingId %s, %s",
-          rec.id,
-          err.message
-        );
-        return null;
-      }
     }
-    return null;
+    // Fallback to recording thumb
+    thumbKey = `${fileKey}-thumb`;
+    try {
+      if (thumbKey.startsWith("a_")) {
+        thumbKey = thumbKey.slice(2);
+      }
+      const data = await s3.getObject(thumbKey);
+      return data.Body.transformToByteArray();
+    } catch (err) {
+      log.error(
+        "Error getting clip thumbnail from s3 for recordingId %s, %s",
+        rec.id,
+        err.message
+      );
+      return null;
+    }
   }
+  return null;
 }
 
 const THUMBNAIL_SIZE = 64;
