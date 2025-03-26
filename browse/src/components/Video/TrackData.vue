@@ -9,7 +9,14 @@
         <font-awesome-icon icon="angle-up" class="fa-1x" />
       </span>
     </h6>
-    <div v-if="showDetails">
+    <div
+      v-if="
+        showDetails &&
+        hasLoadedDetails &&
+        localTrackTagData &&
+        localTrackTagData.data
+      "
+    >
       <p v-if="localTrackTagData.data.model_used">
         <strong>Model:</strong> {{ localTrackTagData.data.model_used }}
       </p>
@@ -86,7 +93,7 @@ export default {
       );
       if (response.success) {
         const tag = response.result.track.tags.find(
-          (tag) => tag.automatic === true
+          (tag) => tag.automatic === true && tag.model === "Master"
         );
         this.localTrackTagData = {
           ...(this.trackTag.data || {}),
