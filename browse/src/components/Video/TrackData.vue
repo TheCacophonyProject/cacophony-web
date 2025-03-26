@@ -88,17 +88,19 @@ export default {
   methods: {
     async loadDetails() {
       const response = await recordingApi.getTrack(
-        this.trackTag.TrackId,
+        this.trackTag.trackId,
         this.recordingId
       );
       if (response.success) {
         const tag = response.result.track.tags.find(
-          (tag) => tag.automatic === true && tag.model === "Master"
+          (tag) => tag.id === this.trackTag.id
         );
-        this.localTrackTagData = {
-          ...(this.trackTag.data || {}),
-          ...(tag.data || {}),
-        }; // Merge the new details with existing data
+        if (tag) {
+          this.localTrackTagData = {
+            ...(this.trackTag.data || {}),
+            ...(tag.data || {}),
+          }; // Merge the new details with existing data
+        }
         this.hasLoadedDetails = true;
       }
     },

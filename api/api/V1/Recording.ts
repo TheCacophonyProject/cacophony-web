@@ -1877,6 +1877,12 @@ export default (app: Application, baseUrl: string) => {
       if (Object.keys(trackMeta).length !== 0) {
         track.data = trackMeta;
       }
+      const trackTags = await models.TrackTag.findAll({
+        where: {
+          TrackId: track.id,
+        },
+      });
+      track.TrackTags = trackTags;
       for (const tag of track.TrackTags || []) {
         tag.data = await getTrackTagData(tag.id);
       }
