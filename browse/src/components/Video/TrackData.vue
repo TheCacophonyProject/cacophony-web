@@ -81,7 +81,7 @@ export default {
   methods: {
     async loadDetails() {
       const response = await recordingApi.getTrack(
-        this.track.id,
+        this.trackTag.TrackId,
         this.recordingId
       );
       if (response.success) {
