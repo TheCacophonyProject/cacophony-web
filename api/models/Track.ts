@@ -64,7 +64,7 @@ export const saveTrackTagData = async (
   }
 };
 
-const getTrackTagData = async (trackTagId: TrackTagId) => {
+export const getTrackTagData = async (trackTagId: TrackTagId) => {
   try {
     const data = await openS3().getObject(`TrackTag/${trackTagId}`);
     const compressedData = await data.Body.transformToByteArray();

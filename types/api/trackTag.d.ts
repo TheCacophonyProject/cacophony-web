@@ -32,6 +32,7 @@ export interface ApiTrackTagResponse {
   userId?: UserId;
   userName?: string;
   archivedAt?: IsoFormattedDateString; // FIXME - is this used?
+  data?: TrackTagData;
   model: string | null;
 }
 

@@ -26,7 +26,7 @@ import type { Recording } from "@models/Recording.js";
 import { mapPosition } from "@models/Recording.js";
 import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
-import { getTrackData, saveTrackData } from "@models/Track.js";
+import { getTrackData, saveTrackData, getTrackTagData } from "@models/Track.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert { type: "json" };
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
@@ -145,6 +145,9 @@ const mapTrackTag = (
     path: trackTag.path,
     model: trackTag.model,
   };
+  if (trackTag.data) {
+    trackTagBase.data = trackTag.data;
+  }
   if (trackTag.automatic) {
     (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
     return trackTagBase as ApiAutomaticTrackTagResponse;
@@ -1873,6 +1876,9 @@ export default (app: Application, baseUrl: string) => {
       const trackMeta = await getTrackData(track.id);
       if (Object.keys(trackMeta).length !== 0) {
         track.data = trackMeta;
+      }
+      for (const tag of track.TrackTags || []) {
+        tag.data = await getTrackTagData(tag.id);
       }
       return successResponse(response, "OK.", {
         track: mapTrack(track),

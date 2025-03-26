@@ -81,13 +81,16 @@ export default {
   methods: {
     async loadDetails() {
       const response = await recordingApi.getTrack(
-        this.trackTag.id,
+        this.track.id,
         this.recordingId
       );
       if (response.success) {
+        const tag = response.result.track.tags.find(
+          (tag) => tag.automatic === true
+        );
         this.localTrackTagData = {
           ...(this.trackTag.data || {}),
-          ...response.result.track,
+          ...(tag.data || {}),
         }; // Merge the new details with existing data
         this.hasLoadedDetails = true;
       }
