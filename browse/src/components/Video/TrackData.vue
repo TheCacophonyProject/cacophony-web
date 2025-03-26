@@ -97,8 +97,11 @@ export default {
         );
         if (tag) {
           this.localTrackTagData = {
-            ...(this.trackTag.data || {}),
-            ...(tag.data || {}),
+            ...this.trackTag,
+            data: {
+              ...(this.trackTag.data || {}),
+              ...(tag.data || {}),
+            },
           }; // Merge the new details with existing data
         }
         this.hasLoadedDetails = true;
