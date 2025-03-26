@@ -235,7 +235,14 @@ async function getRecordings2(
               "confidence",
               "model",
             ],
-            include: [{ model: models.User, attributes: ["userName", "id"] }],
+            include: [
+              { model: models.User, attributes: ["userName", "id"] },
+              {
+                model: models.TrackTagUserData,
+                required: false,
+                attributes: ["gender", "maturity"],
+              },
+            ],
             where: {
               used: true,
               archivedAt: {

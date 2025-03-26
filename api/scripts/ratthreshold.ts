@@ -3,6 +3,7 @@ import type { DeviceId, GroupId } from "@typedefs/api/common.js";
 import modelsInit from "@models/index.js";
 import { QueryTypes } from "sequelize";
 import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
+import { getTrackData } from "@models/Track.js";
 const models = await modelsInit();
 const HEIGHT = 120;
 const WIDTH = 160;
@@ -37,7 +38,6 @@ async function main() {
           latestHumanTaggedRodentDateTime = tagTime;
         }
       }
-
       const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
         deviceId,
         groupId
@@ -53,6 +53,7 @@ async function main() {
         );
         // get x, y values for each track
         for (const rodentRec of rodentQ) {
+          rodentRec["data"] = await getTrackData(rodentRec["id"]);
           const positions = rodentRec["data"]["positions"].filter(
             (x) => x["mass"] > 0 && !x["blank"]
           );
@@ -240,8 +241,7 @@ async function getRodentData(
       r."recordingDateTime",
       r."DeviceId",
       t.id,
-      r."location",
-      t.data,
+      r."location",     
       tt."what",
       tt."updatedAt"
     from

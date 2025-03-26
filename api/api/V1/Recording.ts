@@ -146,6 +146,12 @@ const mapTrackTag = (
   if (trackTag.data) {
     trackTagBase.data = trackTag.data;
   }
+  if (trackTag.TrackTagUserDatum) {
+    trackTagBase.data = {
+      ...(trackTagBase.data || {}),
+      ...trackTag.TrackTagUserDatum.dataValues,
+    } as any;
+  }
   if (trackTag.automatic) {
     (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
     return trackTagBase as ApiAutomaticTrackTagResponse;
@@ -1879,6 +1885,13 @@ export default (app: Application, baseUrl: string) => {
         where: {
           TrackId: track.id,
         },
+        include: [
+          {
+            model: models.TrackTagUserData,
+            attributes: ["gender", "maturity"],
+            required: false,
+          },
+        ],
       });
       for (const tag of track.TrackTags || []) {
         tag.data = await getTrackTagData(tag.id);
@@ -1979,14 +1992,16 @@ export default (app: Application, baseUrl: string) => {
         what: request.body.what,
         confidence: request.body.confidence,
         automatic: request.body.automatic,
-        data: response.locals.data || "",
         UserId: requestUser.id,
         TrackId: response.locals.track.id,
         path,
         used: true,
       }) as TrackTag;
       try {
-        const tag = await response.locals.track.replaceTag(newTag);
+        const tag = await response.locals.track.replaceTag(
+          newTag,
+          response.locals.data
+        );
         if (tag) {
           return successResponse(response, "Track tag added.", {
             trackTagId: tag.id,
@@ -1996,6 +2011,7 @@ export default (app: Application, baseUrl: string) => {
           return successResponse(response, "Tag already exists.");
         }
       } catch (e) {
+        console.log(e);
         return next(new FatalError("Server error replacing tag."));
       }
     },
@@ -2831,7 +2847,14 @@ export default (app: Application, baseUrl: string) => {
                       "automatic",
                       "confidence",
                     ],
-                    include: [{ model: models.User, attributes: ["userName"] }],
+                    include: [
+                      { model: models.User, attributes: ["userName"] },
+                      {
+                        model: models.TrackTagUserData,
+                        required: false,
+                        attributes: ["gender", "maturity"],
+                      },
+                    ],
                     where: {
                       used: true,
                       archivedAt: {

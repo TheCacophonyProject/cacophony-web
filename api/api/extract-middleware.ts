@@ -1104,6 +1104,11 @@ const getRecordingRelationships = (
               required: false,
               attributes: ["userName"],
             },
+            {
+              model: models.TrackTagUserData,
+              required: false,
+              attributes: ["gender", "maturity"],
+            },
           ],
         },
       ],

@@ -18,7 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import type { FindOptions } from "sequelize";
 import Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import type {
+  ModelCommon,
+  ModelsDictionary,
+  ModelStaticCommon,
+} from "./index.js";
 import type { TrackTag, TrackTagId } from "./TrackTag.js";
 import { AI_MASTER } from "./TrackTag.js";
 import { additionalTags, filteredTags } from "./TrackTag.js";
@@ -39,6 +43,7 @@ const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 
 export const saveTrackTagData = async (
+  models: ModelsDictionary,
   trackTagId: TrackTagId,
   newData: TrackTagData,
   existingData = {},
@@ -48,6 +53,32 @@ export const saveTrackTagData = async (
     ...(typeof existingData !== "string" && existingData),
     ...newData,
   };
+  if (
+    updatedData.hasOwnProperty("gender") ||
+    updatedData.hasOwnProperty("maturity")
+  ) {
+    const existing = await models.TrackTagUserData.findByPk(trackTagId, {
+      attributes: ["gender", "maturity"],
+    });
+    const userData = {
+      gender: updatedData.gender || null,
+      maturity: updatedData.maturity || null,
+    };
+    if (existing) {
+      await existing.update(userData);
+    }
+    console.log(
+      "Creating TrackTAgUserData: ",
+      userData,
+      " for TrackTagId: ",
+      trackTagId,
+      ""
+    );
+    await models.TrackTagUserData.create({
+      TrackTagId: trackTagId,
+      ...updatedData,
+    });
+  }
   const key = `TrackTag/${trackTagId}`;
   const body = await gzip(Buffer.from(JSON.stringify(updatedData), "utf-8"));
   if (client) {
@@ -201,7 +232,8 @@ export default function (
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
   Track.prototype.replaceTag = async function (
-    tag: TrackTag
+    tag: TrackTag,
+    userData?: any
   ): Promise<TrackTag | void> {
     const trackId = this.id;
     const trackTag = await sequelize.transaction(async function (t) {
@@ -226,10 +258,11 @@ export default function (
           await existingAnimalTags[i].destroy({ transaction: t });
         }
       }
-      await saveTrackData(trackId, tag.data);
-      await tag.save({ transaction: t });
-      return tag;
+      return await tag.save({ transaction: t });
     });
+    if (userData) {
+      await saveTrackTagData(models as any, trackTag.id, userData);
+    }
     await this.updateIsFiltered();
     return trackTag;
   };
@@ -244,7 +277,7 @@ export default function (
     if (!tag || tag.TrackId !== trackId) {
       return null;
     }
-    await saveTrackTagData(tagId, data, tag.data);
+    await saveTrackTagData(models as any, tagId, data, tag.data);
     return tag;
   };
 
@@ -273,7 +306,7 @@ export default function (
     })) as TrackTag;
     if (modelName) {
       // Save the additional Track metadata to object storage
-      await saveTrackTagData(tag.id, data as TrackTagData);
+      await saveTrackTagData(models as any, tag.id, data as TrackTagData);
     }
 
     if (updateFiltered) {

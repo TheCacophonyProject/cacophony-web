@@ -379,6 +379,81 @@ describe("Track Tags: replaceTag, check, delete", () => {
     );
   });
 
+  it("Can add and view extended user data on audio tags", () => {
+    const recording3 = TestCreateRecordingData(templateAudioRecording);
+    const expectedTrack = JSON.parse(JSON.stringify(expectedAudioTrack));
+    const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedAudioTrack));
+    expectedTrackWithTag.filtered = false;
+    expectedTrackWithTag.tags = [expectedAudioTag];
+    expectedTrackWithTag.tags[0].userName = getTestName("ttgGroupAdmin");
+
+    cy.log("Add recording and track");
+    cy.apiRecordingAdd(
+      "ttgCamera1",
+      recording3,
+      undefined,
+      "recordingWithUserData"
+    );
+    cy.apiTrackAdd(
+      "ttgGroupAdmin",
+      "recordingWithUserData",
+      "trackWithUserData",
+      "ttgAlgorithm3",
+      audioTrack,
+      algorithm1
+    );
+
+    cy.log("Group admin can tag the track");
+    cy.apiTrackTagReplaceTag(
+      "ttgGroupAdmin",
+      "recordingWithUserData",
+      "trackWithUserData",
+      "userDataTag",
+      {
+        ...audioTag,
+        data: JSON.stringify({
+          gender: "male",
+          maturity: "adult",
+        }),
+      }
+    );
+
+    cy.log("Check recording track & tag can be viewed correctly");
+    const expectedTrackWithTagWithUserData = JSON.parse(
+      JSON.stringify(expectedAudioTrack)
+    );
+    expectedTrackWithTagWithUserData.tags = [expectedAudioTag];
+    expectedTrackWithTagWithUserData.filtered = false;
+    expectedTrackWithTagWithUserData.tags[0].userName =
+      getTestName("ttgGroupAdmin");
+    expectedTrackWithTagWithUserData.tags[0].data = {
+      gender: "male",
+      maturity: "adult",
+    };
+    cy.apiTracksCheck(
+      "ttgGroupAdmin",
+      "recordingWithUserData",
+      [expectedTrackWithTagWithUserData],
+      EXCLUDE_TRACK_IDS
+    );
+
+    cy.log("Delete tag");
+    cy.apiTrackTagDelete(
+      "ttgGroupAdmin",
+      "recordingWithUserData",
+      "trackWithUserData",
+      "userDataTag"
+    );
+
+    cy.log("Check tag no longer exists");
+    cy.apiTracksCheck(
+      "ttgGroupAdmin",
+      "recordingWithUserData",
+      [expectedTrack],
+      EXCLUDE_TRACK_IDS
+    );
+  });
+
   it("User cannot tag recording they don't own without additional JWT", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));

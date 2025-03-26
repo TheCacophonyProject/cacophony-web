@@ -70,7 +70,6 @@ describe("Track Tags: add, check, delete", () => {
     positions: positions1,
     tags: [],
     filtered: true,
-    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {

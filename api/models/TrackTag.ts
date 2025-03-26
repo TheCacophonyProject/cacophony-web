@@ -21,6 +21,7 @@ import type Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type { User } from "./User.js";
 import LabelPaths from "../classifications/label_paths.json" assert { type: "json" };
+import type { TrackTagUserData } from "@models/TrackTagUserData.js";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 
@@ -29,9 +30,6 @@ export interface TrackTagData {
   all_class_confidences: null | Record<string, number>;
   classify_time: number;
   message?: string;
-  gender?: "male" | "female" | null;
-  maturity?: "juvenile" | "adult" | null;
-
   userTagsConflict?: boolean;
 }
 
@@ -51,6 +49,7 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   updatedAt: Date;
   path: string;
   used: boolean;
+  TrackTagUserDatum?: TrackTagUserData;
 }
 export const additionalTags = Object.freeze([
   "poor tracking",

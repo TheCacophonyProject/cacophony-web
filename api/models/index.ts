@@ -38,6 +38,7 @@ import { asyncLocalStorage } from "@/Globals.js";
 import type { DeviceHistoryStatic } from "./DeviceHistory.js";
 import type { GroupInvitesStatic } from "./GroupInvites.js";
 import { fileURLToPath } from "url";
+import { TrackTagUserDataStatic } from "@models/TrackTagUserData.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const basename = path.basename(__filename);
@@ -95,6 +96,7 @@ export interface ModelsDictionary {
   Recording: RecordingStatic;
   Tag: TagStatic;
   TrackTag: TrackTagStatic;
+  TrackTagUserData: TrackTagUserDataStatic;
   Track: TrackStatic;
   DetailSnapshot: DetailSnapshotStatic;
   File: FileStatic;
