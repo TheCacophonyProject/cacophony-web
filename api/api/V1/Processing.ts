@@ -277,7 +277,9 @@ export default function (app: Application, baseUrl: string) {
             const results = await saveThumbnailInfo(
               recording,
               tracks,
-              recording.additionalMetadata["thumbnail_region"] || 1
+              recording.additionalMetadata["thumbnail_region"] || {
+                frame_number: 1,
+              }
             );
             if (results) {
               for (const result of results) {

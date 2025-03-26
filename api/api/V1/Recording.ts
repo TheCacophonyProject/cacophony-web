@@ -26,7 +26,7 @@ import type { Recording } from "@models/Recording.js";
 import { mapPosition } from "@models/Recording.js";
 import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
-import { getTrackData, saveTrackData, getTrackTagData } from "@models/Track.js";
+import { getTrackData, getTrackTagData, saveTrackData } from "@models/Track.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert { type: "json" };
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
@@ -70,7 +70,6 @@ import {
   BadRequestError,
   ClientError,
   FatalError,
-  UnprocessableError,
 } from "../customErrors.js";
 import {
   extractJwtAuthorisedDevice,
@@ -81,7 +80,6 @@ import {
   fetchAuthorizedRequiredFlatRecordingById,
   fetchAuthorizedRequiredFullRecordingById,
   fetchAuthorizedRequiredGroupByNameOrId,
-  fetchAuthorizedRequiredLimitedRecordingById,
   fetchUnauthorizedRequiredFlatRecordingById,
   fetchUnauthorizedRequiredFullRecordingById,
   fetchUnauthorizedRequiredRecordingTagById,
@@ -1877,12 +1875,11 @@ export default (app: Application, baseUrl: string) => {
       if (Object.keys(trackMeta).length !== 0) {
         track.data = trackMeta;
       }
-      const trackTags = await models.TrackTag.findAll({
+      track.TrackTags = await models.TrackTag.findAll({
         where: {
           TrackId: track.id,
         },
       });
-      track.TrackTags = trackTags;
       for (const tag of track.TrackTags || []) {
         tag.data = await getTrackTagData(tag.id);
       }
