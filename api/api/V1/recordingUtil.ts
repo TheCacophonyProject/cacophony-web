@@ -378,7 +378,7 @@ export async function saveThumbnailInfo(
     frameNumbers.add(clip_thumbnail.frame_number);
   }
   if (frameNumbers.size == 0) {
-    log.warning(`No thumbnails to be made for ${recording.id}`);
+    log.info(`No thumbnails to be made for ${recording.id}`);
     return;
   }
   let frames;
@@ -411,7 +411,7 @@ export async function saveThumbnailInfo(
     } else {
       thumb = await createThumbnail(frame, track.data.thumbnail.region);
     }
-    log.warning("Saving track thumbnail %s", `${fileKey}-${track.id}-thumb`);
+    log.info("Saving track thumbnail %s", `${fileKey}-${track.id}-thumb`);
     frameUploads.push(
       await openS3()
         .upload(`${fileKey}-${track.id}-thumb`, thumb.data, thumb.meta)
@@ -434,7 +434,7 @@ export async function saveThumbnailInfo(
       } else {
         thumb = await createThumbnail(frame, clip_thumbnail);
       }
-      log.warning("Saving clip thumbnail %s", `${fileKey}-thumb`);
+      log.info("Saving clip thumbnail %s", `${fileKey}-thumb`);
       frameUploads.push(
         await openS3()
           .upload(`${fileKey}-thumb`, thumb.data, thumb.meta)

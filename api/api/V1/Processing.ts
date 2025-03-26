@@ -279,6 +279,10 @@ export default function (app: Application, baseUrl: string) {
               tracks,
               recording.additionalMetadata["thumbnail_region"] || {
                 frame_number: 1,
+                x: 0,
+                y: 0,
+                height: 120,
+                width: 160,
               }
             );
             if (results) {
