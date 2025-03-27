@@ -55,7 +55,7 @@ module.exports = {
 
     await util.migrationRemoveBelongsTo(
       queryInterface,
-      "TrackTagUserDAta",
+      "TrackTagUserData",
       "TrackTags"
     );
     await queryInterface.dropTable("TrackTagUserData");
