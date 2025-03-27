@@ -47,10 +47,10 @@ module.exports = {
   },
   down: async function (queryInterface, Sequelize) {
     await queryInterface.sequelize.query(
-      'drop type if exists "enum_TrackTags_gender";'
+      'drop type if exists "enum_TrackTagUserData_gender";'
     );
     await queryInterface.sequelize.query(
-      'drop type if exists "enum_TrackTags_maturity";'
+      'drop type if exists "enum_TrackTagUserData_maturity";'
     );
 
     await util.migrationRemoveBelongsTo(
