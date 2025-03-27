@@ -46,19 +46,19 @@ module.exports = {
     );
   },
   down: async function (queryInterface, Sequelize) {
-    await queryInterface.sequelize.query(
-      'drop type if exists "enum_TrackTagUserData_gender";'
-    );
-    await queryInterface.sequelize.query(
-      'drop type if exists "enum_TrackTagUserData_maturity";'
-    );
-
     await util.migrationRemoveBelongsTo(
       queryInterface,
       "TrackTagUserData",
       "TrackTags"
     );
     await queryInterface.dropTable("TrackTagUserData");
+
+    await queryInterface.sequelize.query(
+      'drop type if exists "enum_TrackTagUserData_gender";'
+    );
+    await queryInterface.sequelize.query(
+      'drop type if exists "enum_TrackTagUserData_maturity";'
+    );
 
     await queryInterface.addColumn("Tracks", "data", {
       type: Sequelize.JSONB,
