@@ -436,7 +436,14 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/:deviceId/reactivate`,
     extractJwtAuthorizedUser,
-    validateFields([idOf(param("deviceId")), nameOrIdOf(body("group"))]),
+    validateFields([
+      idOf(param("deviceId")),
+      nameOrIdOf(body("group")),
+      anyOf(
+        query("onlyActive").default(false).isBoolean().toBoolean(),
+        query("only-active").default(false).isBoolean().toBoolean()
+      ),
+    ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response, _next: NextFunction) => {

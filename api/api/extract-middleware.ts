@@ -177,7 +177,6 @@ const extractJwtAuthenticatedEntity =
     } catch (e) {
       // We might need to rate limit this.
       const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
-      const user = token._type === "user";
       if (!token) {
         // User IP address for rate limiting
         let ip =
@@ -198,9 +197,9 @@ const extractJwtAuthenticatedEntity =
           };
         }
       }
-      if (user) {
+      if (token._type && token._type === "user") {
         response.locals.requestUser = {
-          id: token.id,
+          id: token.id || -1,
           hasGlobalRead: () => false,
           hasGlobalWrite: () => false,
           globalPermission: UserGlobalPermission.Off,
