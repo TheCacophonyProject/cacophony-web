@@ -430,10 +430,7 @@ onMounted(() => {
             <span>My&nbsp;preferences</span>
           </router-link>
         </li>
-        <li
-          class="nav-item"
-          v-if="userIsAdminForCurrentSelectedProject || isViewingAsSuperUser"
-        >
+        <li class="nav-item" v-if="userIsAdminForCurrentSelectedProject">
           <router-link
             :to="{
               name: 'project-settings',

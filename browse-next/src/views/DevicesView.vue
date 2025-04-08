@@ -613,14 +613,14 @@ const isDevicesRoot = computed(() => {
           @select-point="selectPoint"
           :can-change-base-map="false"
         />
-        <div class="d-flex align-items-center justify-content-between my-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary"
-            @click="showCreateProxyDevicePrompt = true"
-          >
-            Register a trailcam
-          </button>
+        <div class="d-flex align-items-center justify-content-end my-2">
+          <!--          <button-->
+          <!--            type="button"-->
+          <!--            class="btn btn-outline-secondary"-->
+          <!--            @click="showCreateProxyDevicePrompt = true"-->
+          <!--          >-->
+          <!--            Register a trailcam-->
+          <!--          </button>-->
           <b-form-checkbox
             v-model="showInactiveDevicesInternalCheck"
             switch
@@ -786,17 +786,17 @@ const isDevicesRoot = computed(() => {
         <a href="#TODO"
           >Find out how to register a thermal camera or a bird monitor.</a
         >
-        <br /><br />
-        You can also register a trailcam. This represents a third-party trailcam
-        device that you plan to manually upload data for via this web
-        interface.<br />
-        <button
-          type="button"
-          class="mt-3 btn btn-outline-secondary"
-          @click="showCreateProxyDevicePrompt = true"
-        >
-          Register a trailcam
-        </button>
+        <!--        <br /><br />-->
+        <!--        You can also register a trailcam. This represents a third-party trailcam-->
+        <!--        device that you plan to manually upload data for via this web-->
+        <!--        interface.<br />-->
+        <!--        <button-->
+        <!--          type="button"-->
+        <!--          class="mt-3 btn btn-outline-secondary"-->
+        <!--          @click="showCreateProxyDevicePrompt = true"-->
+        <!--        >-->
+        <!--          Register a trailcam-->
+        <!--        </button>-->
       </p>
     </div>
     <create-proxy-device-modal

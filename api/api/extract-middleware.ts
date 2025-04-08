@@ -197,7 +197,7 @@ const extractJwtAuthenticatedEntity =
           };
         }
       }
-      if (token._type && token._type === "user") {
+      if (token && token._type && token._type === "user") {
         response.locals.requestUser = {
           id: token.id || -1,
           hasGlobalRead: () => false,
