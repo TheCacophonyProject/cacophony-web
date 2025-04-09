@@ -68,7 +68,7 @@ const resetCameraIgnoredTags = async () => {
   localDashboardIgnoredTags.value = [...DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS];
   await persistProjectDashboardIgnoredTagSettings(
     localDashboardIgnoredTags.value,
-    "camera"
+    "camera",
   );
 };
 
@@ -102,7 +102,7 @@ const cameraIgnoredTagTableItems = computed<CardTableRows<string>>(() => {
 
 const persistProjectDashboardIgnoredTagSettings = async (
   update: string[],
-  grouping: "audio" | "camera"
+  grouping: "audio" | "camera",
 ) => {
   const payload = {
     ...currentProjectSettings.value,
@@ -117,7 +117,7 @@ const persistProjectDashboardIgnoredTagSettings = async (
 
 const removeIgnoredTag = async (
   classification: string,
-  grouping: "camera" | "audio"
+  grouping: "camera" | "audio",
 ) => {
   let collection;
   if (grouping === "camera") {
@@ -137,7 +137,7 @@ const removeIgnoredTag = async (
   }
   await persistProjectDashboardIgnoredTagSettings(
     localDashboardIgnoredTags.value,
-    grouping
+    grouping,
   );
 };
 

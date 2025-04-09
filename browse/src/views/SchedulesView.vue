@@ -417,7 +417,7 @@ const mapSchedule = (schedule: ScheduleConfig): ScheduleConfig => {
 
 const populateAllSounds = (
   schedule: ScheduleConfig,
-  availableSounds: ApiAudiobaitFileResponse[]
+  availableSounds: ApiAudiobaitFileResponse[],
 ) => {
   const usedSounds = Object.keys(
     schedule.combos.reduce((acc, combo) => {
@@ -425,7 +425,7 @@ const populateAllSounds = (
         acc[sound] = true;
       }
       return acc;
-    }, {})
+    }, {}),
   );
   if (usedSounds.includes("random") || usedSounds.includes("same")) {
     // We need to add all sounds to the schedule
@@ -562,12 +562,11 @@ export default {
           JSON.stringify({
             details: sound.details,
             type: "audioBait",
-          })
+          }),
         );
         formData.append("file", sound.file);
-        const fileUploadResponse = await api.schedule.uploadAudiobaitFile(
-          formData
-        );
+        const fileUploadResponse =
+          await api.schedule.uploadAudiobaitFile(formData);
         if (fileUploadResponse.success) {
           this.files.push({
             ...sound,
@@ -582,13 +581,12 @@ export default {
     async createPendingSchedule() {
       const typedSchedule = populateAllSounds(
         mapSchedule(this.pendingSchedule),
-        this.files
+        this.files,
       );
 
       this.schedules.push({ id: "-", schedule: typedSchedule });
-      const createScheduleResponse = await api.schedule.createSchedule(
-        typedSchedule
-      );
+      const createScheduleResponse =
+        await api.schedule.createSchedule(typedSchedule);
       if (createScheduleResponse.success) {
         this.schedules[this.schedules.length - 1].id =
           createScheduleResponse.result.id;
@@ -601,7 +599,7 @@ export default {
       const deleteResponse = await api.schedule.deleteSchedule(id);
       if (deleteResponse.success) {
         const index = this.schedules.findIndex(
-          (schedule) => schedule.id === id
+          (schedule) => schedule.id === id,
         );
         this.schedules.splice(index, 1);
       }
@@ -611,7 +609,7 @@ export default {
       this.assigningTo = id;
       if (this.assignedDevices[id]) {
         this.selectedDevices = this.assignedDevices[id].map(({ id }) =>
-          this.audioDeviceOptions.find((option) => option.id === id)
+          this.audioDeviceOptions.find((option) => option.id === id),
         );
       }
       this.assigningToDevices = true;
@@ -625,21 +623,21 @@ export default {
       let previouslyAssigned = [];
       if (this.assignedDevices[scheduleId]) {
         previouslyAssigned = this.assignedDevices[scheduleId].map(
-          ({ id }) => id
+          ({ id }) => id,
         );
       }
       let deviceIds = this.selectedDevices.map(({ id }) => id);
       const removedIds = previouslyAssigned.filter(
-        (id) => !deviceIds.includes(id)
+        (id) => !deviceIds.includes(id),
       );
       // Filter out items that already are assigned:
       deviceIds = deviceIds.filter((id) => !previouslyAssigned.includes(id));
       await Promise.all([
         ...removedIds.map((deviceId) =>
-          api.device.removeScheduleFromDevice(deviceId, scheduleId)
+          api.device.removeScheduleFromDevice(deviceId, scheduleId),
         ),
         ...deviceIds.map((deviceId) =>
-          api.device.assignScheduleToDevice(deviceId, scheduleId)
+          api.device.assignScheduleToDevice(deviceId, scheduleId),
         ),
       ]);
       for (const device of this.devices) {
@@ -677,7 +675,7 @@ export default {
       if (
         !force &&
         this.schedules.find(({ schedule }: { schedule: ScheduleConfig }) =>
-          schedule.allsounds.includes(fileId)
+          schedule.allsounds.includes(fileId),
         )
       ) {
         this.confirmFileRemoval = true;

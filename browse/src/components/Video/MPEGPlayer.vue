@@ -300,7 +300,7 @@ export default {
         const hitTestPos = (x, y) => {
           const allFrameData = this.getVideoFrameDataForAllTracksAtTime(
             this.currentVideoTime,
-            this.showOverlaysForCurrentTrackOnly
+            this.showOverlaysForCurrentTrackOnly,
           );
           for (const rect of allFrameData) {
             if (
@@ -364,7 +364,7 @@ export default {
     },
     drawRectWithText(
       context,
-      { trackIndex, trackId, rectWidth, rectHeight, x, y }
+      { trackIndex, trackId, rectWidth, rectHeight, x, y },
     ) {
       context.strokeStyle = this.colours[trackIndex % this.colours.length];
       const selected =
@@ -377,7 +377,7 @@ export default {
         x - halfLineWidth,
         y - halfLineWidth,
         rectWidth + halfLineWidth,
-        rectHeight + halfLineWidth
+        rectHeight + halfLineWidth,
       );
       if (selected) {
         context.font = "12px Verdana";
@@ -414,7 +414,7 @@ export default {
           (track) =>
             track.start <= currentTime &&
             track.end >= currentTime &&
-            track.positions[currentFrame - track.positions[0].order]
+            track.positions[currentFrame - track.positions[0].order],
         )
         .map((track) => {
           const pos = track.positions[currentFrame - track.positions[0].order];
@@ -467,10 +467,10 @@ export default {
           // video frame is being displayed.
           const allFrameData = this.getVideoFrameDataForAllTracksAtTime(
             this.currentVideoTime,
-            this.showOverlaysForCurrentTrackOnly
+            this.showOverlaysForCurrentTrackOnly,
           );
           const trackExists = allFrameData.find(
-            (track) => track.trackId == this.currentTrack.trackId
+            (track) => track.trackId == this.currentTrack.trackId,
           );
           if (!trackExists && allFrameData.length > 0) {
             this.$emit("trackSelected", allFrameData[0]);

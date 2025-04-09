@@ -40,24 +40,24 @@ describe("Groups - user invitations", () => {
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(adminName, invitee, groupName);
-        }
+        },
       );
 
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          ACCEPT_INVITE_PREFIX
+          ACCEPT_INVITE_PREFIX,
         );
         expect(payload.group).to.equal(group);
         cy.log(
-          "Check that we can see the user email listed as pending when we list group users"
+          "Check that we can see the user email listed as pending when we list group users",
         );
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
           expectedTestUser,
         ]);
         cy.log(
-          "User signs up to browse using same email address they were invited with"
+          "User signs up to browse using same email address they were invited with",
         );
         cy.apiUserAdd(invitee, "_foobar1", getTestEmail(invitee)).then(
           (userId) => {
@@ -65,7 +65,7 @@ describe("Groups - user invitations", () => {
             cy.apiGroupUserAcceptInvite(invitee, groupName, token);
 
             cy.log(
-              "Check that the user is now listed as a non pending group member with normal permissions"
+              "Check that the user is now listed as a non pending group member with normal permissions",
             );
             cy.apiGroupUsersCheck(adminName, groupName, [
               expectedAdminUser,
@@ -76,7 +76,7 @@ describe("Groups - user invitations", () => {
                 owner: NOT_OWNER,
               },
             ]);
-          }
+          },
         );
       });
     });
@@ -106,30 +106,30 @@ describe("Groups - user invitations", () => {
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(adminName, invitee, groupName);
-        }
+        },
       );
 
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          ACCEPT_INVITE_PREFIX
+          ACCEPT_INVITE_PREFIX,
         );
 
         expect(payload.group).to.equal(group);
         cy.log(
-          "Check that we can see the user email listed as pending when we list group users"
+          "Check that we can see the user email listed as pending when we list group users",
         );
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
           expectedTestUser,
         ]);
         cy.log(
-          "User signs up to browse using a different email address than they were invited with"
+          "User signs up to browse using a different email address than they were invited with",
         );
         cy.apiUserAdd(
           existingMember,
           "_foobar1",
-          getTestEmail(existingMember)
+          getTestEmail(existingMember),
         ).then((userId) => {
           cy.log("Accept invite by signing up with the invite token");
           const useExistingUser = true;
@@ -137,11 +137,11 @@ describe("Groups - user invitations", () => {
             existingMember,
             groupName,
             token,
-            useExistingUser
+            useExistingUser,
           );
 
           cy.log(
-            "Check that the user is now listed as a non pending group member with normal permissions"
+            "Check that the user is now listed as a non pending group member with normal permissions",
           );
           cy.apiGroupUsersCheck(adminName, groupName, [
             expectedAdminUser,
@@ -180,24 +180,24 @@ describe("Groups - user invitations", () => {
           };
           cy.log("Invite a user");
           cy.apiGroupUserInvite(adminName, invitee, groupName, ADMIN);
-        }
+        },
       );
 
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          ACCEPT_INVITE_PREFIX
+          ACCEPT_INVITE_PREFIX,
         );
         expect(payload.group).to.equal(group);
         cy.log(
-          "Check that we can see the user email listed as pending when we list group users with admin permissions"
+          "Check that we can see the user email listed as pending when we list group users with admin permissions",
         );
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
           expectedTestUser,
         ]);
         cy.log(
-          "User signs up to browse using same email address they were invited with"
+          "User signs up to browse using same email address they were invited with",
         );
         cy.apiUserAdd(invitee, "_foobar1", getTestEmail(invitee)).then(
           (userId) => {
@@ -205,7 +205,7 @@ describe("Groups - user invitations", () => {
             cy.apiGroupUserAcceptInvite(invitee, groupName, token);
 
             cy.log(
-              "Check that the user is now listed as a non pending group member with admin permissions"
+              "Check that the user is now listed as a non pending group member with admin permissions",
             );
             cy.apiGroupUsersCheck(adminName, groupName, [
               expectedAdminUser,
@@ -216,7 +216,7 @@ describe("Groups - user invitations", () => {
                 owner: NOT_OWNER,
               },
             ]);
-          }
+          },
         );
       });
     });
@@ -249,26 +249,26 @@ describe("Groups - user invitations", () => {
             invitee,
             groupName,
             NOT_ADMIN,
-            OWNER
+            OWNER,
           );
-        }
+        },
       );
 
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          ACCEPT_INVITE_PREFIX
+          ACCEPT_INVITE_PREFIX,
         );
         expect(payload.group).to.equal(group);
         cy.log(
-          "Check that we can see the user email listed as pending when we list group users with owner permissions"
+          "Check that we can see the user email listed as pending when we list group users with owner permissions",
         );
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
           expectedTestUser,
         ]);
         cy.log(
-          "User signs up to browse using same email address they were invited with"
+          "User signs up to browse using same email address they were invited with",
         );
         cy.apiUserAdd(invitee, "_foobar1", getTestEmail(invitee)).then(
           (userId) => {
@@ -276,7 +276,7 @@ describe("Groups - user invitations", () => {
             cy.apiGroupUserAcceptInvite(invitee, groupName, token);
 
             cy.log(
-              "Check that the user is now listed as a non pending group member with owner permissions"
+              "Check that the user is now listed as a non pending group member with owner permissions",
             );
             cy.apiGroupUsersCheck(adminName, groupName, [
               expectedAdminUser,
@@ -287,7 +287,7 @@ describe("Groups - user invitations", () => {
                 owner: OWNER,
               },
             ]);
-          }
+          },
         );
       });
     });
@@ -302,7 +302,7 @@ describe("Groups - user invitations", () => {
       cy.apiUserAdd(
         existingMember,
         "_foobar1",
-        getTestEmail(existingMember)
+        getTestEmail(existingMember),
       ).then((userId) => {
         expectedTestUser = {
           userName: getTestName(existingMember),
@@ -328,31 +328,31 @@ describe("Groups - user invitations", () => {
             existingMember,
             groupName,
             NOT_ADMIN,
-            NOT_OWNER
+            NOT_OWNER,
           );
-        }
+        },
       );
 
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          ACCEPT_INVITE_PREFIX
+          ACCEPT_INVITE_PREFIX,
         );
         expect(payload.group).to.equal(group);
         cy.log(
-          "Check that we can see the user email listed as pending when we list group users with default permissions"
+          "Check that we can see the user email listed as pending when we list group users with default permissions",
         );
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
           expectedTestUser,
         ]);
         cy.log(
-          "User signs up to browse using same email address they were invited with"
+          "User signs up to browse using same email address they were invited with",
         );
         cy.log("Accept invite by signing up with the invite token");
         cy.apiGroupUserAcceptInvite(existingMember, groupName, token);
         cy.log(
-          "Check that the user is now listed as a non pending group member with default permissions"
+          "Check that the user is now listed as a non pending group member with default permissions",
         );
         const expectedUser = { ...expectedTestUser };
         delete expectedUser.pending;
@@ -373,7 +373,7 @@ describe("Groups - user invitations", () => {
       cy.apiUserAdd(
         existingMember,
         "_foobar1",
-        getTestEmail(existingMember)
+        getTestEmail(existingMember),
       ).then((userId) => {
         expectedTestUser = {
           userName: getTestName(existingMember),
@@ -399,31 +399,31 @@ describe("Groups - user invitations", () => {
             existingMember,
             groupName,
             ADMIN,
-            NOT_OWNER
+            NOT_OWNER,
           );
-        }
+        },
       );
 
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          ACCEPT_INVITE_PREFIX
+          ACCEPT_INVITE_PREFIX,
         );
         expect(payload.group).to.equal(group);
         cy.log(
-          "Check that we can see the user email listed as pending when we list group users with admin permissions"
+          "Check that we can see the user email listed as pending when we list group users with admin permissions",
         );
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
           expectedTestUser,
         ]);
         cy.log(
-          "User signs up to browse using same email address they were invited with"
+          "User signs up to browse using same email address they were invited with",
         );
         cy.log("Accept invite by signing up with the invite token");
         cy.apiGroupUserAcceptInvite(existingMember, groupName, token);
         cy.log(
-          "Check that the user is now listed as a non pending group member with admin permissions"
+          "Check that the user is now listed as a non pending group member with admin permissions",
         );
         const expectedUser = { ...expectedTestUser };
         delete expectedUser.pending;
@@ -444,7 +444,7 @@ describe("Groups - user invitations", () => {
       cy.apiUserAdd(
         existingMember,
         "_foobar1",
-        getTestEmail(existingMember)
+        getTestEmail(existingMember),
       ).then((userId) => {
         expectedTestUser = {
           userName: getTestName(existingMember),
@@ -470,31 +470,31 @@ describe("Groups - user invitations", () => {
             existingMember,
             groupName,
             NOT_ADMIN,
-            OWNER
+            OWNER,
           );
-        }
+        },
       );
 
       waitForEmail("invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
-          ACCEPT_INVITE_PREFIX
+          ACCEPT_INVITE_PREFIX,
         );
         expect(payload.group).to.equal(group);
         cy.log(
-          "Check that we can see the user email listed as pending when we list group users with owner permissions"
+          "Check that we can see the user email listed as pending when we list group users with owner permissions",
         );
         cy.apiGroupUsersCheck(adminName, groupName, [
           expectedAdminUser,
           expectedTestUser,
         ]);
         cy.log(
-          "User signs up to browse using same email address they were invited with"
+          "User signs up to browse using same email address they were invited with",
         );
         cy.log("Accept invite by signing up with the invite token");
         cy.apiGroupUserAcceptInvite(existingMember, groupName, token);
         cy.log(
-          "Check that the user is now listed as a non pending group member with owner permissions"
+          "Check that the user is now listed as a non pending group member with owner permissions",
         );
         const expectedUser = { ...expectedTestUser };
         delete expectedUser.pending;
@@ -513,7 +513,7 @@ describe("Groups - user invitations", () => {
         cy.apiUserAdd(
           existingUser,
           "_foobar1",
-          getTestEmail(existingUser)
+          getTestEmail(existingUser),
         ).then(() => {
           cy.apiGroupUserAdd(adminName, existingUser, groupName);
           cy.log("Invite an existing user of the group");
@@ -524,7 +524,7 @@ describe("Groups - user invitations", () => {
             false,
             false,
             false,
-            HttpStatusCode.Unprocessable
+            HttpStatusCode.Unprocessable,
           );
         });
       });
@@ -566,7 +566,7 @@ describe("Groups - user invitations", () => {
             false,
             false,
             false,
-            HttpStatusCode.Forbidden
+            HttpStatusCode.Forbidden,
           );
         });
       });

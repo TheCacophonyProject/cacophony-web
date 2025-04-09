@@ -87,12 +87,12 @@ export default {
     async getSpeciesData() {
       this.loading = true;
       const thermalDevices = this.devices.filter(
-        (device) => device.type == "thermal"
+        (device) => device.type == "thermal",
       );
       const iterable =
         this.groupingSelection == "device" ? thermalDevices : this.stations;
       const labels = iterable.map((item) =>
-        item.name ? item.name : item.deviceName
+        item.name ? item.name : item.deviceName,
       );
       const ids = iterable.map((item) => item.id);
       const requests = [];
@@ -121,7 +121,7 @@ export default {
               req["from"],
               req["window-size"],
               false,
-              "video"
+              "video",
             );
           } else if (this.groupingSelection == "station") {
             res = await api.station.getStationSpeciesCount(
@@ -129,7 +129,7 @@ export default {
               req["from"],
               req["window-size"],
               false,
-              "video"
+              "video",
             );
           }
           const result = res.result;
@@ -142,7 +142,7 @@ export default {
               "window Size": req["window-size"],
             };
           }
-        })
+        }),
       );
 
       var daysActiveResponse = await Promise.all(
@@ -152,7 +152,7 @@ export default {
             res = await api.device.getDeviceDaysActive(
               req["id"],
               req["from"],
-              req["window-size"]
+              req["window-size"],
             );
           } else if (this.groupingSelection == "station") {
             // res = await api.station.getStationDaysActive(req["id"], req["from"], req["window-size"])
@@ -164,7 +164,7 @@ export default {
               daysActive: result.activeDaysCount,
             };
           }
-        })
+        }),
       );
       var daysActive = daysActiveResponse;
 
@@ -194,7 +194,7 @@ export default {
       for (const res of response) {
         for (let i = 0; i < datasets.length; i++) {
           const speciesCount = res.speciesCounts.find(
-            (item) => item.what == datasets[i].label
+            (item) => item.what == datasets[i].label,
           );
           datasets[i].data.push(speciesCount ? speciesCount.count : 0);
         }
@@ -204,7 +204,7 @@ export default {
         datasets[i].data = datasets[i].data.map((item, index) =>
           daysActive[index].daysActive > 0
             ? item / daysActive[index].daysActive
-            : 0
+            : 0,
         );
         datasets[i].backgroundColor = colors[i];
         datasets[i].borderColor = "rgba(0,0,0,1)";
@@ -264,7 +264,7 @@ export default {
   computed: {
     windowSize() {
       return Math.ceil(
-        (this.toDate.getTime() - this.fromDate.getTime()) / 3600000
+        (this.toDate.getTime() - this.fromDate.getTime()) / 3600000,
       );
     },
   },

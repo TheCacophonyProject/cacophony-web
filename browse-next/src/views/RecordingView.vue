@@ -69,12 +69,12 @@ import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 
 const selectedVisit = inject(
-  "currentlySelectedVisit"
+  "currentlySelectedVisit",
 ) as Ref<ApiVisitResponse | null>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 const visitsContext = inject("visitsContext") as Ref<ApiVisitResponse[] | null>;
 const currentUserCreds = inject(
-  currentUserCredentials
+  currentUserCredentials,
 ) as Ref<LoggedInUserAuth | null>;
 
 const route = useRoute();
@@ -100,41 +100,41 @@ const locations: Ref<ApiLocationResponse[] | null> =
 
 const loadedRecordingIds = inject(
   "loadedRecordingIds",
-  computed(() => [])
+  computed(() => []),
 ) as ComputedRef<RecordingId[]>;
 const loadedRecordings = inject("loadedRecordings") as Ref<
   ApiRecordingResponse[]
 >;
 const canLoadMoreRecordingsInPast = inject(
   "canLoadMoreRecordingsInPast",
-  ref(false)
+  ref(false),
 ) as ComputedRef<boolean>;
 const requestLoadMoreRecordingsInPast = inject(
   "requestLoadMoreRecordingsInPast",
   () => {
     //
-  }
+  },
 ) as () => Promise<void>;
 const currentRecordingCount = inject(
   "currentRecordingCount",
-  ref(0)
+  ref(0),
 ) as ComputedRef<number>;
 const canExpandCurrentQueryIntoPast = inject(
   "canExpandCurrentQueryInPast",
-  computed(() => false)
+  computed(() => false),
 ) as ComputedRef<boolean>;
 const updatedRecording = inject(
   "updatedRecording",
   (recording: ApiRecordingResponse, recordingWasDeleted = false) => {
     //
-  }
+  },
 ) as (recording: ApiRecordingResponse, recordingWasDeleted?: boolean) => void;
 
 const recordingIds = ref(
   (() => {
     const ids = route.params.recordingIds;
     return (ids && (ids as string).split(",").map(Number)) || [];
-  })()
+  })(),
 );
 
 const allRecordingIds = computed<RecordingId[]>(() => {
@@ -175,7 +175,7 @@ watch(
   (nextRecordingId, prev) => {
     currentRecordingId.value = Number(nextRecordingId);
     loadRecording();
-  }
+  },
 );
 
 watch(
@@ -186,7 +186,7 @@ watch(
         recording.value as ApiRecordingResponse
       ).tracks.find(({ id }) => id == Number(nextTrackId));
     }
-  }
+  },
 );
 
 watch(locations, (nextStations) => {
@@ -199,7 +199,7 @@ watch(
   () => route.params.visitLabel,
   (nextVisitLabel) => {
     visitLabel.value = nextVisitLabel as string;
-  }
+  },
 );
 
 watch(
@@ -210,7 +210,7 @@ watch(
     } else {
       recordingIds.value = [];
     }
-  }
+  },
 );
 
 const nextVisit = computed<ApiVisitResponse | null>(() => {
@@ -447,7 +447,7 @@ const visitForRecording = computed<string>(() => {
       let bestHumanTag;
       // If there's anything human tagged that's not false-positive or unidentified, use that first.
       for (const [tag, count] of humanTagCounts.filter(
-        ([tag, _]) => !["false-positive", "unidentified"].includes(tag)
+        ([tag, _]) => !["false-positive", "unidentified"].includes(tag),
       )) {
         if (count > bestHumanTagCount) {
           bestHumanTagCount = count;
@@ -504,7 +504,7 @@ const negativeThingTags = [
 const recalculateCurrentVisit = async (
   track: ApiTrackResponse,
   addedTag?: ApiHumanTrackTagResponse,
-  removedTag?: string
+  removedTag?: string,
 ) => {
   if (recording.value && isInVisitContext.value) {
     // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
@@ -514,14 +514,14 @@ const recalculateCurrentVisit = async (
     const targetVisit =
       visitsContext.value &&
       (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-        visit.recordings.find(({ recId }) => recId === recordingId)
+        visit.recordings.find(({ recId }) => recId === recordingId),
       );
     if (targetVisit) {
       const targetVisitRecording = targetVisit.recordings.find(
-        ({ recId }) => recId === recordingId
+        ({ recId }) => recId === recordingId,
       ) as { recId: number; start: string; tracks: VisitRecordingTag[] };
       const targetTrack = targetVisitRecording.tracks.find(
-        ({ id }) => id === track.id
+        ({ id }) => id === track.id,
       );
       if (targetTrack) {
         if (removedTag) {
@@ -618,7 +618,7 @@ const trackTagChanged = async ({
 }) => {
   if (recording.value) {
     let trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
-      ({ id }) => id === track.id
+      ({ id }) => id === track.id,
     );
     if (
       !trackToPatch &&
@@ -636,12 +636,13 @@ const trackTagChanged = async ({
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
         const changedTag = trackToPatch.tags.find(
-          ({ what, userId }) => what === tag && userId === currentUser.value?.id
+          ({ what, userId }) =>
+            what === tag && userId === currentUser.value?.id,
         );
         if (changedTag) {
           await recalculateCurrentVisit(
             track,
-            changedTag as ApiHumanTrackTagResponse
+            changedTag as ApiHumanTrackTagResponse,
           );
         } else {
           console.error("Failed to find changed tag", tag);
@@ -680,7 +681,7 @@ const removedRecordingLabel = (labelId: TagId) => {
 };
 
 const locationContext: ComputedRef<LatLng> | undefined = inject(
-  latLngForActiveLocations
+  latLngForActiveLocations,
 );
 
 const isInGreaterVisitContext = computed<boolean>(() => {
@@ -699,7 +700,7 @@ const tracks = computed<ApiTrackResponse[]>(() => {
 const tags = computed<ApiRecordingTagResponse[]>(() => {
   if (recording.value) {
     return (recording.value as ApiRecordingResponse).tags.filter(
-      (tag) => tag.detail !== "note"
+      (tag) => tag.detail !== "note",
     );
   }
   return [];
@@ -708,7 +709,7 @@ const tags = computed<ApiRecordingTagResponse[]>(() => {
 const notes = computed<ApiRecordingTagResponse[]>(() => {
   if (recording.value) {
     return (recording.value as ApiRecordingResponse).tags.filter(
-      (tag) => tag.detail === "note"
+      (tag) => tag.detail === "note",
     );
   }
   return [];
@@ -741,7 +742,7 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     const matchingTimespan = (validTimespans as Timespan[]).find(
       (timespan) =>
         timespan.fromDateTime < atTime &&
-        (!timespan.untilDateTime || timespan.untilDateTime > atTime)
+        (!timespan.untilDateTime || timespan.untilDateTime > atTime),
     );
     if (matchingTimespan) {
       deviceHasReferencePhotoAtRecordingTime.value = true;
@@ -752,7 +753,7 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
   const hasReferenceResponse = await hasReferenceImageForDeviceAtTime(
     deviceId,
     atTime,
-    true
+    true,
   );
   if (
     // We know the earliest time for the reference image, and the location.
@@ -783,7 +784,7 @@ const isNightTime = (date: Date, location: LatLng): boolean => {
   const { sunrise, sunset } = sunCalc.getTimes(
     date,
     location.lat,
-    location.lng
+    location.lng,
   );
 
   const hourMin = date.getHours() * 60 + date.getMinutes();
@@ -824,14 +825,14 @@ const loadRecording = async () => {
 
       if (
         [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-          rec.type
+          rec.type,
         )
       ) {
         // If not already known, check if there is a reference image for the recording device at the time
         // the recording was made.
         const _ = checkReferencePhotoAtTime(
           rec.deviceId,
-          new Date(rec.recordingDateTime)
+          new Date(rec.recordingDateTime),
         );
       }
 
@@ -948,13 +949,13 @@ const recordingDurationString = computed<string>(() => {
     const duration = formatDuration(durationMs, true);
     let visitStart = timeAtLocation(
       rec.recordingDateTime,
-      rec.location || locationContext.value
+      rec.location || locationContext.value,
     );
     const visitEnd = timeAtLocation(
       new Date(
-        new Date(rec.recordingDateTime).getTime() + durationMs
+        new Date(rec.recordingDateTime).getTime() + durationMs,
       ).toISOString(),
-      rec.location || locationContext.value
+      rec.location || locationContext.value,
     );
     if (visitStart === visitEnd) {
       return `${visitStart} (${duration})`;
@@ -1148,7 +1149,7 @@ const requestedDownload = async () => {
     const downloadedFileResponse = await window.fetch(
       `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
       // eslint-disable-next-line no-undef
-      request as RequestInit
+      request as RequestInit,
     );
     const mimeType =
       downloadedFileResponse.headers.get("Content-Type") ||
@@ -1157,8 +1158,8 @@ const requestedDownload = async () => {
     download(
       URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
       `recording-${recordingId}-${DateTime.fromJSDate(
-        new Date(rec.recordingDateTime)
-      ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`
+        new Date(rec.recordingDateTime),
+      ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`,
     );
   }
 };
@@ -1241,11 +1242,11 @@ const deleteRecording = async () => {
         const targetVisit =
           visitsContext.value &&
           (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-            visit.recordings.find(({ recId }) => recId === recordingIdToDelete)
+            visit.recordings.find(({ recId }) => recId === recordingIdToDelete),
           );
         if (targetVisit) {
           const targetVisitRecordingIndex = targetVisit.recordings.findIndex(
-            ({ recId }) => recId === recordingIdToDelete
+            ({ recId }) => recId === recordingIdToDelete,
           );
           targetVisit.recordings.splice(targetVisitRecordingIndex, 1);
           if (targetVisit.recordings.length !== 0) {
@@ -1256,7 +1257,7 @@ const deleteRecording = async () => {
         }
       } else {
         const targetRecording = (loadedRecordings.value || []).find(
-          (rec) => rec.id === recordingIdToDelete
+          (rec) => rec.id === recordingIdToDelete,
         );
         if (targetRecording) {
           (targetRecording as MaybeDeletedRecording).tombstoned = true;
@@ -1991,7 +1992,7 @@ const inlineModal = ref<boolean>(false);
               <span class="fs-9" v-if="previousVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
-                    previousVisit.classification as string
+                    previousVisit.classification as string,
                   )
                 }}</span
                 >,&nbsp;<span
@@ -2120,7 +2121,7 @@ const inlineModal = ref<boolean>(false);
               <span class="fs-9" v-if="nextVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
-                    nextVisit.classification as string
+                    nextVisit.classification as string,
                   )
                 }}</span
                 >,&nbsp;<span

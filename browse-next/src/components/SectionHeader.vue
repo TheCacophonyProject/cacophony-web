@@ -7,7 +7,7 @@ import type { Ref } from "vue";
 import { currentSelectedProject } from "@models/provides";
 const route = useRoute();
 const currentProject = inject(
-  currentSelectedProject
+  currentSelectedProject,
 ) as Ref<SelectedProject | null>;
 const showProjectName = computed<boolean>(() => !!route.params.projectName);
 const currentProjectName = computed<string>(() => {

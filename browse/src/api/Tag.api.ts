@@ -12,7 +12,7 @@ const apiPath = "/api/v1/tags";
 
 function addTag(
   tag: ApiRecordingTagRequest,
-  id: RecordingId
+  id: RecordingId,
 ): Promise<FetchResult<{ tagId: TagId }>> {
   return CacophonyApi.post(apiPath, {
     recordingId: id,

@@ -10,7 +10,7 @@ export interface TagItem {
 }
 
 export const canonicalTagsForRecording = (
-  recording: ApiRecordingResponse
+  recording: ApiRecordingResponse,
 ): TagItem[] => {
   // Get unique tags for recording, and compile the taggers.
   const uniqueTags: Record<string, TagItem> = {};
@@ -48,7 +48,7 @@ export const canonicalTagsForRecording = (
 };
 
 export const humanTagsForRecording = (
-  recording: ApiRecordingResponse
+  recording: ApiRecordingResponse,
 ): TagItem[] => {
   // Get unique tags for recording, and compile the taggers.
   const uniqueTags: Record<string, TagItem> = {};
@@ -73,7 +73,7 @@ export const humanTagsForRecording = (
 };
 
 export const aiTagsForRecording = (
-  recording: ApiRecordingResponse
+  recording: ApiRecordingResponse,
 ): TagItem[] => {
   // Get unique tags for recording, and compile the taggers.
   const uniqueTags: Record<string, TagItem> = {};

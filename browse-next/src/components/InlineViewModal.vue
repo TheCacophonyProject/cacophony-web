@@ -11,7 +11,7 @@ const router = useRouter();
 const emit = defineEmits(["close", "shown"]);
 
 const urlNormalisedGroupName = inject(
-  urlNormalisedCurrentSelectedProjectName
+  urlNormalisedCurrentSelectedProjectName,
 ) as ComputedRef<string>;
 const props = withDefaults(
   defineProps<{
@@ -23,7 +23,7 @@ const props = withDefaults(
   {
     showInactive: false,
     noCloseOnBackdrop: false,
-  }
+  },
 );
 
 const closedModal = () => {

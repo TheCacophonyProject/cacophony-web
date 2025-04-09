@@ -12,7 +12,7 @@ declare namespace Cypress {
       groupName: string,
       log?: boolean,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -29,7 +29,7 @@ declare namespace Cypress {
       owner?: boolean,
       log?: boolean,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -44,7 +44,7 @@ declare namespace Cypress {
       admin?: boolean,
       owner?: boolean,
       log?: boolean,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -55,7 +55,7 @@ declare namespace Cypress {
       userName: string,
       groupName: string,
       log?: boolean,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -65,7 +65,7 @@ declare namespace Cypress {
       groupAdminUser: string,
       token: string,
       log?: boolean,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -79,7 +79,7 @@ declare namespace Cypress {
       token: string,
       useExistingUser?: boolean,
       log?: boolean,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -97,7 +97,7 @@ declare namespace Cypress {
       expectedGroups: ApiGroupReturned[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -113,7 +113,7 @@ declare namespace Cypress {
       expectedGroups: ApiGroupReturned[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -129,7 +129,7 @@ declare namespace Cypress {
       expectedDevices: ApiDeviceResponseAlias[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -146,7 +146,7 @@ declare namespace Cypress {
       expectedUsers: ApiGroupUserRelationshipResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -160,7 +160,7 @@ declare namespace Cypress {
       userName: string,
       groupName: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /*******************************************************************************************************
@@ -175,7 +175,7 @@ declare namespace Cypress {
     testGroupUserCheckAccess(
       username: string,
       groupname: string,
-      testForSuccess?: boolean
+      testForSuccess?: boolean,
     ): any;
   }
 }

@@ -261,7 +261,7 @@ export default Vue.extend({
         tag,
         recordingId,
         trackId,
-        this.currentRecording.tagJWT as unknown as JwtToken<TrackTag>
+        this.currentRecording.tagJWT as unknown as JwtToken<TrackTag>,
       );
       this.taggingPending = false;
       if (addTrackTagResponse.success) {
@@ -286,14 +286,14 @@ export default Vue.extend({
     async deleteTag(
       tag: LimitedTrackTag,
       recording: TagLimitedRecording,
-      track: LimitedTrack
+      track: LimitedTrack,
     ) {
       if (tag.what !== "skipped") {
         this.taggingPending = true;
         const { success } = await api.recording.deleteTrackTag(
           recording.RecordingId,
           track.trackId,
-          tag.TrackTagId
+          tag.TrackTagId,
         );
         this.taggingPending = false;
         if (success) {
@@ -334,7 +334,7 @@ export default Vue.extend({
           // Make sure it's not a recording we've seen before and skipped tracks from.
           if (
             this.history.find(
-              (prev) => prev.recording.RecordingId === recording.RecordingId
+              (prev) => prev.recording.RecordingId === recording.RecordingId,
             ) !== undefined
           ) {
             return await this.getRecording();

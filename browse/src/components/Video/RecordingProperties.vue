@@ -157,7 +157,7 @@ export default defineComponent({
     parseLocation: function () {
       if (this.recording.location) {
         return `Lat: ${this.recording.location.lat.toFixed(
-          2
+          2,
         )}, Long: ${this.recording.location.lng.toFixed(2)}`;
       } else {
         return "No location";

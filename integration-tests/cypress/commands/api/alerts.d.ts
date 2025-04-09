@@ -9,7 +9,7 @@ declare namespace Cypress {
       tag: ApiAlertCondition[],
       deviceName: string,
       frequency?: number,
-      statusCode?: number
+      statusCode?: number,
     ): Cypress.Chainable<AlertId>;
 
     /**
@@ -21,7 +21,7 @@ declare namespace Cypress {
       tag: ApiAlertCondition[],
       stationId: number,
       frequency?: number,
-      statusCode?: number
+      statusCode?: number,
     ): Cypress.Chainable<AlertId>;
 
     /**
@@ -33,7 +33,7 @@ declare namespace Cypress {
       userName: string,
       deviceName: string,
       expectedAlert: any,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -45,7 +45,7 @@ declare namespace Cypress {
       userName: string,
       stationId: StationId,
       expectedAlert: any,
-      statusCode?: number
+      statusCode?: number,
     ): Cypress.Chainable<ApiAlertResponse>;
   }
 }

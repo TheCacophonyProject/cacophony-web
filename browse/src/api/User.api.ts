@@ -6,7 +6,7 @@ import { UserGlobalPermission } from "@typedefs/api/consts";
 
 function login(
   email: string,
-  password: string
+  password: string,
 ): Promise<
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
 > {
@@ -16,7 +16,7 @@ function login(
       email,
       password,
     },
-    true
+    true,
   );
 }
 
@@ -38,12 +38,12 @@ function reset(email: string): Promise<FetchResult<{}>> {
     {
       email,
     },
-    true
+    true,
   );
 }
 
 function validateToken(
-  token: string
+  token: string,
 ): Promise<
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
 > {
@@ -52,13 +52,13 @@ function validateToken(
     {
       token,
     },
-    true
+    true,
   );
 }
 
 function changePassword(
   token: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<
   FetchResult<{ userData: ApiLoggedInUserResponse; token: JwtToken<UserId> }>
 > {
@@ -94,7 +94,7 @@ interface UserData {
 }
 
 function getUserDetails(
-  id: string
+  id: string,
 ): Promise<FetchResult<{ userData: UserData }>> {
   return CacophonyApi.get(`/api/v1/users/${id}`);
 }
@@ -105,7 +105,7 @@ function persistUser(
   email,
   globalPermission,
   userId,
-  acceptedEUA
+  acceptedEUA,
 ) {
   localStorage.setItem("userName", userName);
   localStorage.setItem("JWT", token);

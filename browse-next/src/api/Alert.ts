@@ -12,7 +12,7 @@ import CacophonyApi from "./api";
 import type { FetchResult } from "@api/types";
 
 export const getAlertsForLocation = (
-  locationId: LocationId
+  locationId: LocationId,
 ): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
   return CacophonyApi.get(`/api/v1/alerts/station/${locationId}`) as Promise<
     FetchResult<{ alerts: ApiAlertResponse[] }>
@@ -28,10 +28,10 @@ export const getAlertsForCurrentUser = (): Promise<
 };
 
 export const getAlertsForCurrentProject = (
-  projectId: ProjectId
+  projectId: ProjectId,
 ): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
   return CacophonyApi.get(
-    `/api/v1/alerts/project/${projectId}?view-mode=user`
+    `/api/v1/alerts/project/${projectId}?view-mode=user`,
   ) as Promise<FetchResult<{ alerts: ApiAlertResponse[] }>>;
 };
 
@@ -45,7 +45,7 @@ export const createAlertForScope = (
   scope: "project" | "location" | "device",
   scopeId: ProjectId | LocationId | DeviceId,
   tags: string[],
-  frequencySeconds: number
+  frequencySeconds: number,
 ) => {
   const body: ApiPostAlertRequestBody = {
     name: `${scope}_${scopeId}__${tags.join("_")}`, // We don't really use name in the UI.

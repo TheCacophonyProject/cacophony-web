@@ -47,7 +47,7 @@ const filePromise = async (file: FileSystemFileEntry): Promise<Blob> => {
 
 const processFile = async (
   fileBlob: Blob,
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
 ): Promise<
   | {
       fileHash: string;
@@ -159,7 +159,7 @@ const processFile = async (
   if (exif.Software) {
     if (Array.isArray(exif.Software)) {
       additionalMetadata.softwareVersion = exif.Software.map((x: number) =>
-        String.fromCharCode(x)
+        String.fromCharCode(x),
       ).join("");
     } else {
       additionalMetadata.softwareVersion = exif.Software.trim();
@@ -306,7 +306,7 @@ const processFile = async (
         left,
         footerLocationY,
         right - left,
-        footerHeight
+        footerHeight,
       );
       // Add padding if needed:
       if (paddingY !== 0) {
@@ -319,8 +319,8 @@ const processFile = async (
               0,
               0,
               textFooter.width,
-              textFooter.height + paddingY
-            )
+              textFooter.height + paddingY,
+            ),
           );
         }
       } else {
@@ -353,7 +353,7 @@ const processFile = async (
         resizeWidth: 1280,
         resizeHeight: Math.round(1280 * ratio),
         resizeQuality: "high",
-      }
+      },
     );
   } else {
     croppedImage = await createImageBitmap(fileBlob, {
@@ -368,7 +368,7 @@ const processFile = async (
       0,
       0,
       croppedImage.width,
-      croppedImage.height
+      croppedImage.height,
     );
     webp = await encode(imageData, {
       quality: 50, // Default is 75?

@@ -94,8 +94,8 @@
                           selectedTrack.displayTags.length === 0
                             ? "Select Tag..."
                             : selectedTrack.displayTags.length === 1
-                            ? selectedTrack.displayTags[0].what
-                            : "Multiple tags..."
+                              ? selectedTrack.displayTags[0].what
+                              : "Multiple tags..."
                         }}
                       </h4>
                     </b-row>
@@ -283,7 +283,7 @@ export default defineComponent({
       type: Function as PropType<
         (
           trackId: TrackId,
-          trackData: ApiTrackDataRequest
+          trackData: ApiTrackDataRequest,
         ) => Promise<{ success: boolean }>
       >,
       required: true,
@@ -339,7 +339,7 @@ export default defineComponent({
     });
     const getOriginPx = () => {
       const loader = document.getElementById(
-        "loader-progress"
+        "loader-progress",
       ) as HTMLDivElement;
       return parseFloat(loader.offsetWidth.toFixed(1));
     };
@@ -360,7 +360,7 @@ export default defineComponent({
       element: SVGElement | HTMLCanvasElement,
       origin: number,
       x: number,
-      y: number
+      y: number,
     ) => {
       element.style.transform = `scaleX(${x}) scaleY(${y})`;
       element.style.transformOrigin = `${origin}px bottom`;
@@ -372,15 +372,15 @@ export default defineComponent({
       }
 
       const zoomIndicatorStart = document.getElementById(
-        "zoom-indicator-start"
+        "zoom-indicator-start",
       ) as HTMLDivElement;
       const zoomIndicatorEnd = document.getElementById(
-        "zoom-indicator-end"
+        "zoom-indicator-end",
       ) as HTMLDivElement;
 
       const playerBar = document.getElementById("player-bar") as HTMLDivElement;
       const progress = document.getElementById(
-        "loader-progress"
+        "loader-progress",
       ) as HTMLDivElement;
 
       // Apply zoom to overlay and spectrogram
@@ -401,10 +401,10 @@ export default defineComponent({
       const start = -half - startOffset;
       const end = half + endOffset;
       zoomIndicatorStart.style.transform = `translateX(${start.toFixed(
-        1
+        1,
       )}px) ${translateY}`;
       zoomIndicatorEnd.style.transform = `translateX(${end.toFixed(
-        1
+        1,
       )}px) ${translateY}`;
     };
     watch(newSampleRate, () => {
@@ -413,10 +413,10 @@ export default defineComponent({
 
     watch(zoomed, (zoom) => {
       const zoomIndicatorStart = document.getElementById(
-        "zoom-indicator-start"
+        "zoom-indicator-start",
       ) as HTMLDivElement;
       const zoomIndicatorEnd = document.getElementById(
-        "zoom-indicator-end"
+        "zoom-indicator-end",
       ) as HTMLDivElement;
       if (zoom.enabled) {
         // make indicators visible
@@ -457,7 +457,7 @@ export default defineComponent({
             cursor: "pointer",
           },
         },
-        "rect"
+        "rect",
       ),
       pos: {
         startX: 0,
@@ -496,23 +496,23 @@ export default defineComponent({
       const { x, y, height, width } = tempTrack.value.pos;
       tempTrack.value.rect.setAttribute(
         "visibility",
-        tempTrack.value.active ? "visible" : "hidden"
+        tempTrack.value.active ? "visible" : "hidden",
       );
       tempTrack.value.rect.setAttribute(
         "x",
-        (x * spectrogram.value.width).toString()
+        (x * spectrogram.value.width).toString(),
       );
       tempTrack.value.rect.setAttribute(
         "y",
-        (y * spectrogram.value.height).toString()
+        (y * spectrogram.value.height).toString(),
       );
       tempTrack.value.rect.setAttribute(
         "width",
-        (width * spectrogram.value.width).toString()
+        (width * spectrogram.value.width).toString(),
       );
       tempTrack.value.rect.setAttribute(
         "height",
-        (height * spectrogram.value.height).toString()
+        (height * spectrogram.value.height).toString(),
       );
     });
 
@@ -565,7 +565,7 @@ export default defineComponent({
               fill: "none",
             },
           },
-          "rect"
+          "rect",
         );
 
         rect.addEventListener("mouseover", () => {
@@ -587,11 +587,11 @@ export default defineComponent({
         rect.setAttribute("y", (y * spectrogram.value.height).toString());
         rect.setAttribute(
           "width",
-          (width * spectrogram.value.width).toString()
+          (width * spectrogram.value.width).toString(),
         );
         rect.setAttribute(
           "height",
-          (height * spectrogram.value.height).toString()
+          (height * spectrogram.value.height).toString(),
         );
       }
       return rect;
@@ -627,7 +627,7 @@ export default defineComponent({
         Math.max(rectX, 0),
         Math.max(rectY, 0),
         colour,
-        "top-left-control"
+        "top-left-control",
       );
       overlay.value.appendChild(topLeftCircle);
 
@@ -636,7 +636,7 @@ export default defineComponent({
         Math.max(rectX + rectWidth, 0),
         Math.max(rectY + rectHeight, 0),
         colour,
-        "bottom-right-control"
+        "bottom-right-control",
       );
       overlay.value.appendChild(bottomRightCircle);
 
@@ -645,11 +645,11 @@ export default defineComponent({
         cx: number,
         cy: number,
         colour: string,
-        id: string
+        id: string,
       ) {
         const circle = document.createElementNS(
           "http://www.w3.org/2000/svg",
-          "circle"
+          "circle",
         );
         circle.id = id;
         circle.setAttribute("cx", cx.toString());
@@ -666,17 +666,17 @@ export default defineComponent({
 
       // Event handlers
       topLeftCircle.addEventListener("mousedown", (event) =>
-        onPressDown(event, "topLeft")
+        onPressDown(event, "topLeft"),
       );
       topLeftCircle.addEventListener("touchstart", (event) =>
-        onPressDown(event, "topLeft")
+        onPressDown(event, "topLeft"),
       );
 
       bottomRightCircle.addEventListener("mousedown", (event) =>
-        onPressDown(event, "bottomRight")
+        onPressDown(event, "bottomRight"),
       );
       bottomRightCircle.addEventListener("touchstart", (event) =>
-        onPressDown(event, "bottomRight")
+        onPressDown(event, "bottomRight"),
       );
       function getCoords(event: MouseEvent | TouchEvent): {
         x: number;
@@ -691,7 +691,7 @@ export default defineComponent({
 
       function onPressDown(
         event: MouseEvent | TouchEvent,
-        corner: "topLeft" | "bottomRight"
+        corner: "topLeft" | "bottomRight",
       ) {
         const { x: startX, y: startY } = getCoords(event);
 
@@ -704,7 +704,7 @@ export default defineComponent({
         function toggleButtonContainerVisibility() {
           // Get the button container
           const buttonContainer = document.getElementById(
-            "track-changes-container"
+            "track-changes-container",
           ) as HTMLElement;
 
           if (buttonContainer && controlsModified.value) {
@@ -746,23 +746,23 @@ export default defineComponent({
           const newX = constrainValue(
             rectX + dx,
             0,
-            rectX + rectWidth - minSize
+            rectX + rectWidth - minSize,
           );
           const newY = constrainValue(
             rectY + dy,
             0,
-            rectY + rectHeight - minSize
+            rectY + rectHeight - minSize,
           );
 
           element.setAttribute("x", newX.toString());
           element.setAttribute("y", newY.toString());
           element.setAttribute(
             "width",
-            (rectWidth - (newX - rectX)).toString()
+            (rectWidth - (newX - rectX)).toString(),
           );
           element.setAttribute(
             "height",
-            (rectHeight - (newY - rectY)).toString()
+            (rectHeight - (newY - rectY)).toString(),
           );
 
           topLeftCircle.setAttribute("cx", newX.toString());
@@ -772,17 +772,17 @@ export default defineComponent({
         function updateBottomRightControl(
           dx: number,
           dy: number,
-          minSize: number
+          minSize: number,
         ) {
           const newWidth = constrainValue(
             rectWidth + dx,
             minSize,
-            overlay.value.clientWidth - rectX
+            overlay.value.clientWidth - rectX,
           );
           const newHeight = constrainValue(
             rectHeight + dy,
             minSize,
-            overlay.value.clientHeight - rectY
+            overlay.value.clientHeight - rectY,
           );
 
           element.setAttribute("width", newWidth.toString());
@@ -795,7 +795,7 @@ export default defineComponent({
         function constrainValue(
           value: number,
           min: number,
-          max: number
+          max: number,
         ): number {
           return Math.min(Math.max(value, min), max);
         }
@@ -805,7 +805,7 @@ export default defineComponent({
           const rectY = parseFloat(element.getAttribute("y") || "0");
           const rectWidth = parseFloat(element.getAttribute("width") || "0");
           const buttonContainer = document.getElementById(
-            "track-changes-container"
+            "track-changes-container",
           ) as HTMLElement;
 
           if (buttonContainer) {
@@ -873,7 +873,7 @@ export default defineComponent({
         return;
       }
       const rect = document.querySelector(
-        `#track_${track.id.toString()}`
+        `#track_${track.id.toString()}`,
       ) as SVGRectElement;
       const rectPos = normalizeRect(getRect(rect));
       const { x, y, height, width } = convertSVGToRectangle(rectPos);
@@ -943,7 +943,7 @@ export default defineComponent({
                   fill: "none",
                 },
               },
-              "rect"
+              "rect",
             );
             overlay.value.appendChild(rect);
             hideControls();
@@ -962,7 +962,7 @@ export default defineComponent({
           hideControls();
           play();
         }
-      }
+      },
     );
 
     // Player Controls
@@ -1000,7 +1000,7 @@ export default defineComponent({
       (start: number, end: number = player.value.getDuration()) => {
         playRegion(start, end);
       },
-      50
+      50,
     );
 
     const [time, setTime] = useState({ curr: "0:00", total: "0:00" });
@@ -1023,14 +1023,14 @@ export default defineComponent({
       const roundedPercent = Math.round(percent / 0.001) * 0.001;
       setTime({ curr, total });
       const progressBar = document.getElementById(
-        "loader-progress"
+        "loader-progress",
       ) as HTMLProgressElement;
       progressBar.style.width = `${roundedPercent}%`;
     };
 
     const getDragCoords = (
       e: TouchEvent | MouseEvent,
-      context = overlay.value as Element
+      context = overlay.value as Element,
     ) => {
       const rect = context.getBoundingClientRect();
       let x = 0;
@@ -1270,7 +1270,7 @@ export default defineComponent({
             const track = oldTracks.get(trackId);
             if (track) {
               const rect = overlay.value.querySelector(
-                `#track_${trackId.toString()}`
+                `#track_${trackId.toString()}`,
               );
               if (rect) {
                 overlay.value.removeChild(rect);
@@ -1278,7 +1278,7 @@ export default defineComponent({
               }
             }
           });
-        }
+        },
       );
 
       watch(
@@ -1296,7 +1296,7 @@ export default defineComponent({
           } else {
             filterNode.type = "allpass";
           }
-        }
+        },
       );
 
       watch(volume, (v) => {
@@ -1321,7 +1321,7 @@ export default defineComponent({
         storeVolume(volume.value);
       });
       setVolumeSlider(
-        document.querySelector("#volume-slider") as HTMLInputElement
+        document.querySelector("#volume-slider") as HTMLInputElement,
       );
       const storedVolume = localStorage.getItem("volume");
       if (storedVolume) {
@@ -1364,7 +1364,7 @@ export default defineComponent({
 
       const attachSpectrogramOverlay = () => {
         const canvas = document.querySelector(
-          "#spectrogram canvas:nth-child(2)"
+          "#spectrogram canvas:nth-child(2)",
         ) as HTMLCanvasElement;
         canvas.style.zIndex = "0";
         // add scale x on mousewheel;
@@ -1372,7 +1372,7 @@ export default defineComponent({
         const spectrogramWidth = spectrogram.value.width;
         const spectrogramHeight = spectrogram.value.height;
         const container = document.querySelector(
-          "#spectrogram div"
+          "#spectrogram div",
         ) as HTMLElement;
 
         // check if newOverlay is already there
@@ -1418,7 +1418,7 @@ export default defineComponent({
           const { x, y } = getDragCoords(e);
           //check track.value.rect is in overlay
           const rect = overlay.value.querySelector(
-            `#new_track`
+            `#new_track`,
           ) as SVGRectElement;
           if (!rect) {
             overlay.value.appendChild(tempTrack.value.rect);
@@ -1470,7 +1470,7 @@ export default defineComponent({
 
         const confirmTrack = debounce(() => {
           const { x, y, width, height } = convertSVGToRectangle(
-            tempTrack.value.pos
+            tempTrack.value.pos,
           );
           const sampleRate = defaultSampleRate / 2;
           const start = x * player.value.getDuration();
@@ -1523,10 +1523,10 @@ export default defineComponent({
         document.addEventListener("touchend", onDragEndTime);
 
         const zoomIndicatorStart = document.getElementById(
-          "zoom-indicator-start"
+          "zoom-indicator-start",
         ) as HTMLDivElement;
         const zoomIndicatorEnd = document.getElementById(
-          "zoom-indicator-end"
+          "zoom-indicator-end",
         ) as HTMLDivElement;
         zoomIndicatorStart.addEventListener("mousedown", (event) => {
           onDragStartZoom("start", event.clientX);
@@ -1553,7 +1553,7 @@ export default defineComponent({
         // Move canvas image to SVG & clean up
         overlay.value.appendChild(tempTrack.value.rect);
         requestAnimationFrame(() =>
-          addTracksToOverlay([...props.tracks.values()])
+          addTracksToOverlay([...props.tracks.values()]),
         );
         if (isPlaying.value) {
           playAt(0);
@@ -1567,7 +1567,7 @@ export default defineComponent({
           if (props.selectedTrack.id === -1) {
             // remove previous
             const previousRect = overlay.value.querySelector(
-              "#new_track"
+              "#new_track",
             ) as SVGRectElement;
             if (previousRect) {
               overlay.value.removeChild(previousRect);
@@ -1587,7 +1587,7 @@ export default defineComponent({
         }
         if (!dragTime.value) {
           requestAnimationFrame(() =>
-            setPlayerTime(player.value.getCurrentTime())
+            setPlayerTime(player.value.getCurrentTime()),
           );
         }
       });
@@ -1603,14 +1603,14 @@ export default defineComponent({
         showLabels,
         (val) => {
           const labels = document.querySelector(
-            "#spectrogram canvas:nth-child(1)"
+            "#spectrogram canvas:nth-child(1)",
           ) as HTMLCanvasElement;
           labels.style.visibility = val ? "visible" : "hidden";
           // save to local storage
           localStorage.setItem("showAudioLabels", JSON.stringify(val));
           labels.style.pointerEvents = "none";
         },
-        { immediate: true }
+        { immediate: true },
       );
     });
     onBeforeUnmount(() => {

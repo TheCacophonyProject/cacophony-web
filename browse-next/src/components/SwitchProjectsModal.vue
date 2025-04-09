@@ -104,12 +104,12 @@ onBeforeMount(async () => {
   }
   if (
     !sortedUserProjects.value.find(
-      ({ groupName }) => currentProjectName.value === groupName
+      ({ groupName }) => currentProjectName.value === groupName,
     )
   ) {
     if (
       (allProjects.value || []).find(
-        ({ groupName }) => groupName === currentProjectName.value
+        ({ groupName }) => groupName === currentProjectName.value,
       )
     ) {
       selectedProjectName.value = currentProjectName.value;
@@ -145,7 +145,7 @@ const allNonUserProjects = computed<ApiProjectResponse[]>(() => {
         })
         .sort(
           (a, b) =>
-            b.latestRecordingTime.getTime() - a.latestRecordingTime.getTime()
+            b.latestRecordingTime.getTime() - a.latestRecordingTime.getTime(),
         )
     );
   }
@@ -166,7 +166,7 @@ const gotoNonUserProject = async () => {
 
 const gotoNonUserProjectForDevice = async () => {
   const device = (devicesList.value || []).find(
-    (device) => device.id === deviceToFilterProjects.value
+    (device) => device.id === deviceToFilterProjects.value,
   );
   if (device) {
     selectedProjectName.value = device.groupName;
@@ -241,7 +241,9 @@ const devicesList = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const userToFilterProjects = ref<UserId | null>(null);
 const deviceToFilterProjects = ref<DeviceId | null>(null);
 const filterUser = computed(() =>
-  (usersList.value || []).find((user) => user.id === userToFilterProjects.value)
+  (usersList.value || []).find(
+    (user) => user.id === userToFilterProjects.value,
+  ),
 );
 const loadAllUsers = async () => {
   const response = await listUsers();
@@ -284,13 +286,13 @@ watch(userToFilterProjects, (userId) => {
             if (
               selectedProjectName.value &&
               !filterUserProjects.value.some(
-                (project) => project.groupName === selectedProjectName.value
+                (project) => project.groupName === selectedProjectName.value,
               )
             ) {
               selectedProjectName.value = "";
             }
           }
-        }
+        },
       );
     }
   } else {

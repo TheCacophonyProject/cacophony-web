@@ -52,7 +52,7 @@ export default {
           if (e.path) {
             if (
               e.path.find(
-                (el) => el.classList && el.classList.contains("tab-list")
+                (el) => el.classList && el.classList.contains("tab-list"),
               )
             ) {
               this.collapsed = !this.collapsed;

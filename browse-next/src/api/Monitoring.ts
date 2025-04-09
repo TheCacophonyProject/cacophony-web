@@ -28,7 +28,7 @@ export const getVisitsForProjectNew = async (
     | RecordingType.TrailCamImage
     | RecordingType.ThermalRaw
     | RecordingType.Audio
-  )[]
+  )[],
 ) => {
   const params = new URLSearchParams();
   params.append("from", fromDate.toISOString());
@@ -49,7 +49,7 @@ export const getVisitsForProjectNew = async (
     params.append("view-mode", "user");
   }
   return (await CacophonyApi.get(
-    `/api/v1/monitoring/for-project/${projectId}?${params}`
+    `/api/v1/monitoring/for-project/${projectId}?${params}`,
   )) as FetchResult<VisitsQueryResult>;
 };
 
@@ -62,7 +62,7 @@ export const getVisitsForProject = async (
     | RecordingType.TrailCamVideo
     | RecordingType.TrailCamImage
     | RecordingType.ThermalRaw
-  )[]
+  )[],
 ) => {
   const params = new URLSearchParams();
   params.append("groups", projectId.toString());
@@ -84,7 +84,7 @@ export const getVisitsForProject = async (
   const ABORTABLE = true;
   return (await CacophonyApi.get(
     `/api/v1/monitoring/page?${params}`,
-    ABORTABLE
+    ABORTABLE,
   )) as FetchResult<VisitsQueryResult>;
 };
 
@@ -92,7 +92,7 @@ export const getVisitsForProject = async (
 export const getAllVisitsForProject = async (
   projectId: ProjectId,
   numDays: number,
-  progressUpdaterFn?: ProgressUpdater // progress updates caller with how far through the request it is[0, 1]
+  progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is[0, 1]
 ): Promise<{
   visits: ApiVisitResponse[];
   all: boolean;
@@ -103,7 +103,7 @@ export const getAllVisitsForProject = async (
   const now = new Date();
   let untilDate = new Date(now);
   const fromDate = new Date(
-    new Date(now).setDate(new Date(now).getDate() - numDays)
+    new Date(now).setDate(new Date(now).getDate() - numDays),
   );
 
   let numPagesEstimate = 0;
@@ -123,7 +123,7 @@ export const getAllVisitsForProject = async (
         ConcreteRecordingType.ThermalRaw,
         ConcreteRecordingType.TrailCamImage,
         ConcreteRecordingType.TrailCamVideo,
-      ]
+      ],
     );
     if (response && response.success) {
       const {
@@ -180,7 +180,7 @@ export const getAllVisitsForProjectBetweenTimes = async (
     | RecordingType.TrailCamVideo
     | RecordingType.ThermalRaw
   )[],
-  progressUpdaterFn?: ProgressUpdater // progress updates caller with how far through the request it is [0, 1]
+  progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is [0, 1]
 ): Promise<BulkVisitsResponse> => {
   const returnVisits: ApiVisitResponse[] = [];
   let morePagesExist = true;
@@ -198,7 +198,7 @@ export const getAllVisitsForProjectBetweenTimes = async (
       fromDate,
       untilDate,
       locations,
-      types
+      types,
     );
     if (response && response.success) {
       const {

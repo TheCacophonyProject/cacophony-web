@@ -34,7 +34,7 @@ onMounted(async () => {
 const loadLocations = async () => {
   locations.value = await getLocationsForProject(
     selectedProject.value.id.toString(),
-    true
+    true,
   );
 };
 
@@ -91,7 +91,7 @@ const sortLastActive = (a: ApiLocationResponse, b: ApiLocationResponse) => {
 const locationsActiveBetween = (
   locations: LoadedResource<ApiLocationResponse[]>,
   fromTime: Date,
-  untilTime: Date
+  untilTime: Date,
 ): ApiLocationResponse[] => {
   if (locations) {
     return locations
@@ -169,7 +169,7 @@ const locationForHighlightedPoint = computed<ApiLocationResponse | null>(() => {
   if (highlightedPoint.value) {
     return (
       (locations.value || []).find(({ location }) =>
-        locationsAreEqual(location, highlightedPoint.value?.location as LatLng)
+        locationsAreEqual(location, highlightedPoint.value?.location as LatLng),
       ) || null
     );
   }
@@ -226,7 +226,7 @@ const updateLocationName = async (payload: {
     location.name = payload.newName;
     LocationsForCurrentProject.value = (await getLocationsForProject(
       selectedProject.value.id.toString(),
-      true
+      true,
     )) as LoadedResource<ApiLocationResponse[]>;
   }
 };

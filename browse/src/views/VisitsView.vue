@@ -164,7 +164,7 @@
                             deviceVisits.item.events[
                               deviceVisits.item.events.length - 1
                             ].start,
-                            tableDateFormat
+                            tableDateFormat,
                           )
                         }}
                       </template>
@@ -173,7 +173,7 @@
                         {{
                           formatDate(
                             row.item.events[row.item.events.length - 1].start,
-                            tableTimeFormat
+                            tableTimeFormat,
                           )
                         }}
                       </template>
@@ -188,7 +188,7 @@
                       <template v-slot:row-details="row">
                         <div
                           v-for="(visitEvents, index_e) in sortEventsByRec(
-                            row.item
+                            row.item,
                           )"
                           :key="index_e"
                           class="rec-events"
@@ -201,7 +201,7 @@
                             {{
                               formatDate(
                                 visitEvents.recStart,
-                                tableDateTimeFormat
+                                tableDateTimeFormat,
                               )
                             }}
                           </div>
@@ -525,7 +525,7 @@ export default {
         (visit: Visit): boolean =>
           visit.events.length > 0 &&
           visit.what != DefaultLabels.birdLabel.value &&
-          visit.what != DefaultLabels.falsePositiveLabel.value
+          visit.what != DefaultLabels.falsePositiveLabel.value,
       );
 
       this.visits.push(...filtered);

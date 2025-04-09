@@ -60,7 +60,7 @@ const maxFrequency = 48000 / 2;
 const emit = defineEmits<{
   (
     e: "track-selected",
-    payload: { trackId: TrackId; automatically: boolean }
+    payload: { trackId: TrackId; automatically: boolean },
   ): void;
   (e: "track-deselected"): void;
   (
@@ -71,7 +71,7 @@ const emit = defineEmits<{
       newId?: TrackId;
       userId?: UserId;
       action: "add" | "remove";
-    }
+    },
   ): void;
   (e: "track-removed", payload: { trackId: TrackId }): void;
 }>();
@@ -81,7 +81,7 @@ const loadRecording = async () => {
     await maybeRefreshStaleCredentials();
     if (CurrentUserCreds.value) {
       const apiToken = decodeJWT(
-        (CurrentUserCreds.value as LoggedInUserAuth).apiToken
+        (CurrentUserCreds.value as LoggedInUserAuth).apiToken,
       );
       const now = new Date();
       if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
@@ -112,7 +112,7 @@ onBeforeMount(() => {
           computeIntermediateTracks(nextTracks);
         }
       },
-      { deep: true }
+      { deep: true },
     );
     computeIntermediateTracks(props.recording.tracks);
   }
@@ -123,7 +123,7 @@ const getTrackBounds = (
   contextHeight: number,
   startZeroOne: number,
   endZeroOne: number,
-  trackBox: Rectangle
+  trackBox: Rectangle,
 ): Rectangle => {
   let [left, top, right, bottom] = trackBox;
   if (spectastiqEl.value) {
@@ -165,7 +165,7 @@ const distanceBetween = (
   x1: number,
   y1: number,
   x2: number,
-  y2: number
+  y2: number,
 ): number => {
   const dX = Math.abs(x1 - x2);
   const dY = Math.abs(y1 - y2);
@@ -175,7 +175,7 @@ const distanceBetween = (
 const pointIsInPaddedBox = (
   x: number,
   y: number,
-  box: Rectangle
+  box: Rectangle,
 ): false | number => {
   // NOTE: If the box is narrow in width or height, and we're within some margin, count it as a hit.
   // Return distance from box center or false
@@ -194,7 +194,7 @@ const pointIsInPaddedBox = (
       topEdgeDistance,
       bottomEdgeDistance,
       rightEdgeDistance,
-      distanceBetween(x, y, cX, cY)
+      distanceBetween(x, y, cX, cY),
     );
   } else {
     return false;
@@ -210,7 +210,7 @@ watch(
   (nextTrack) => {
     // Just select next track if this a "replay current selected track" action
     nextTrack && selectTrackRegionAndPlay(nextTrack);
-  }
+  },
 );
 
 watch(
@@ -224,12 +224,12 @@ watch(
         await spectastiqEl.value.selectRegionOfInterest(0, 1, 0, 1);
       }
     }
-  }
+  },
 );
 
 const selectTrackRegionAndPlay = async (
   track: ApiTrackResponse,
-  shouldZoomToRegion = true
+  shouldZoomToRegion = true,
 ) => {
   if (overlayCanvasContext.value) {
     renderOverlay(overlayCanvasContext.value);
@@ -242,20 +242,20 @@ const selectTrackRegionAndPlay = async (
       const maxFreqZeroOne =
         Math.min(
           track.maxFreq || audioSampleRate.value,
-          audioSampleRate.value
+          audioSampleRate.value,
         ) / audioSampleRate.value;
       if (shouldZoomToRegion) {
         await spectastiqEl.value.selectRegionOfInterest(
           trackStartZeroOne,
           trackEndZeroOne,
           minFreqZeroOne,
-          maxFreqZeroOne
+          maxFreqZeroOne,
         );
       }
       currentTime.value = trackStartZeroOne;
       spectastiqEl.value.setPlaybackFrequencyBandPass(
         minFreqZeroOne * audioSampleRate.value,
-        maxFreqZeroOne * audioSampleRate.value
+        maxFreqZeroOne * audioSampleRate.value,
       );
       await spectastiqEl.value.play(trackStartZeroOne);
     }
@@ -318,7 +318,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
           context.canvas.height / devicePixelRatio,
           begin,
           end,
-          [trackStart, maxFreq, trackEnd, minFreq]
+          [trackStart, maxFreq, trackEnd, minFreq],
         );
 
         const d = pointIsInPaddedBox(x, y, hitBox);
@@ -336,7 +336,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
       } else {
         emit("track-deselected");
       }
-    }
+    },
   );
 
   spectastiq.addEventListener("move", (e) => {
@@ -361,7 +361,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
         context.canvas.height / devicePixelRatio,
         begin,
         end,
-        [trackStart, maxFreq, trackEnd, minFreq]
+        [trackStart, maxFreq, trackEnd, minFreq],
       );
       if (pointIsInExactBox(x, y, hitBox)) {
         hit = true;
@@ -390,7 +390,7 @@ const padDims = (
   paddingX: number,
   paddingY: number,
   maxWidth: number,
-  maxHeight: number
+  maxHeight: number,
 ): Rectangle => {
   return [
     dims[0] - paddingX,
@@ -407,7 +407,7 @@ const drawRectWithText = (
   what: string | null,
   tracks: IntermediateTrack[] | ApiTrackResponse[] = [],
   currentTrack: ApiTrackResponse | undefined,
-  pixelRatio: number
+  pixelRatio: number,
 ) => {
   context.save();
   const hasSelected = !!currentTrack;
@@ -422,7 +422,7 @@ const drawRectWithText = (
         0, // 10 * deviceRatio
         15 * deviceRatio,
         context.canvas.width,
-        context.canvas.height
+        context.canvas.height,
       )
     : dims;
   const width = right - left;
@@ -507,7 +507,7 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
             audioSampleRate.value;
         const trackStartZeroOne = Math.max(
           0,
-          track.start / audioDuration.value
+          track.start / audioDuration.value,
         );
         const trackEndZeroOne = Math.min(1, track.end / audioDuration.value);
         const bounds = getTrackBounds(cWidth, cHeight, begin, end, [
@@ -523,7 +523,7 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
           track.what,
           tracksIntermediate.value,
           currentTrack,
-          window.devicePixelRatio
+          window.devicePixelRatio,
         );
       }
     }
@@ -554,7 +554,7 @@ onMounted(() => {
         selectionRangeEndZeroOne.value = end;
         overlayCanvasContext.value = ctx;
         renderOverlay(ctx);
-      }
+      },
     );
     spectastiq.addEventListener("ready", () => {
       //console.log("initialised spectrogram");
@@ -565,7 +565,7 @@ onMounted(() => {
         audioSampleRate.value = sampleRate / 2;
         audioDuration.value = duration;
         audioIsPlaying.value = false;
-      }
+      },
     );
     spectastiq.addEventListener("playback-ended", () => {
       audioIsPlaying.value = false;
@@ -581,18 +581,18 @@ onMounted(() => {
           if (props.currentTrack && timeInSeconds >= props.currentTrack.end) {
             // Pause at the end of the selected track
             spectastiqEl.value.pause(
-              props.currentTrack.end / audioDuration.value
+              props.currentTrack.end / audioDuration.value,
             );
           } else if (
             pendingTrack.value &&
             timeInSeconds >= pendingTrack.value.end
           ) {
             spectastiqEl.value.pause(
-              pendingTrack.value.end / audioDuration.value
+              pendingTrack.value.end / audioDuration.value,
             );
           }
         }
-      }
+      },
     );
   }
 });
@@ -605,7 +605,7 @@ const togglePlayback = async () => {
       currentTime.value >= props.currentTrack.end
     ) {
       await spectastiqEl.value.play(
-        props.currentTrack.start / audioDuration.value
+        props.currentTrack.start / audioDuration.value,
       );
     } else {
       if (audioIsPlaying.value) {
@@ -710,7 +710,7 @@ watch(pendingTrackClass, async (classification: string[]) => {
       await replaceTrackTag(
         tagToReplace,
         props.recording.id,
-        response.result.trackId
+        response.result.trackId,
       );
     }
     // Then select newly created tag
@@ -791,7 +791,7 @@ const currentAbsoluteTime = computed<string | null>(() => {
 
 const loadDateTime = ref<Date>(new Date());
 const getAuthoritativeTagForTrack = (
-  trackTags: ApiTrackTagResponse[]
+  trackTags: ApiTrackTagResponse[],
 ): [string, boolean, boolean] | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
@@ -849,7 +849,7 @@ const masterTag = (tags: ApiTrackTagResponse[]) => {
   } else {
     // If there are multiple AI master tags, as there seem to be for audio, find the most specific one.
     const masterTags = tags.filter(
-      (tag) => tag.automatic && tag.model === "Master"
+      (tag) => tag.automatic && tag.model === "Master",
     );
 
     if (masterTags.length === 1) {
@@ -935,7 +935,7 @@ const computeIntermediateTracks = (tracks: ApiTrackResponse[]) => {
         userProjectSettings.value.showFalseTriggers ||
         (!userProjectSettings.value.showFalseTriggers &&
           ((track.what !== "noise" && track.what !== "false-positive") ||
-            track.justTaggedFalseTrigger))
+            track.justTaggedFalseTrigger)),
     )
     .map((track) => {
       const t = { ...track };
@@ -959,7 +959,7 @@ watch(
         (nextTracks) => {
           computeIntermediateTracks(nextTracks);
         },
-        { deep: true }
+        { deep: true },
       );
       computeIntermediateTracks(nextRecording.tracks);
     } else {
@@ -968,7 +968,7 @@ watch(
         watchTracks.value = null;
       }
     }
-  }
+  },
 );
 
 watch(tracksIntermediate, (next, prev) => {
@@ -986,7 +986,7 @@ watch(tracksIntermediate, (next, prev) => {
     inRegionCreationMode.value = false;
     const changedTrack = next.find(
       (track) =>
-        track.start === pendingTrack.start && track.end === pendingTrack.end
+        track.start === pendingTrack.start && track.end === pendingTrack.end,
     );
     if (changedTrack) {
       selectTrackRegionAndPlay(changedTrack as unknown as ApiTrackResponse);

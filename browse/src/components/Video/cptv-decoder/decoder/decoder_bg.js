@@ -219,7 +219,7 @@ function __wbg_adapter_26(arg0, arg1, arg2) {
   wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h7220e89b344ffef7(
     arg0,
     arg1,
-    addHeapObject(arg2)
+    addHeapObject(arg2),
   );
 }
 
@@ -235,7 +235,7 @@ function __wbg_adapter_67(arg0, arg1, arg2, arg3) {
     arg0,
     arg1,
     addHeapObject(arg2),
-    addHeapObject(arg3)
+    addHeapObject(arg3),
   );
 }
 
@@ -431,7 +431,7 @@ export function __wbg_stack_658279fe44541cf6(arg0, arg1) {
   const ptr1 = passStringToWasm0(
     ret,
     wasm.__wbindgen_malloc,
-    wasm.__wbindgen_realloc
+    wasm.__wbindgen_realloc,
   );
   const len1 = WASM_VECTOR_LEN;
   getInt32Memory0()[arg0 / 4 + 1] = len1;
@@ -556,7 +556,7 @@ export function __wbg_length_72e2208bbc0efc61(arg0) {
 export function __wbg_newwithbyteoffsetandlength_31ff1024ef0c63c7(
   arg0,
   arg1,
-  arg2
+  arg2,
 ) {
   const ret = new Uint16Array(getObject(arg0), arg1 >>> 0, arg2 >>> 0);
   return addHeapObject(ret);
@@ -588,7 +588,7 @@ export function __wbindgen_debug_string(arg0, arg1) {
   const ptr1 = passStringToWasm0(
     ret,
     wasm.__wbindgen_malloc,
-    wasm.__wbindgen_realloc
+    wasm.__wbindgen_realloc,
   );
   const len1 = WASM_VECTOR_LEN;
   getInt32Memory0()[arg0 / 4 + 1] = len1;

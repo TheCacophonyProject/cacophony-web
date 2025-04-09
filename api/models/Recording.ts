@@ -549,7 +549,9 @@ export default function (
       nextState = Recording.finishedState(this.type);
     } else if (this.processingState == RecordingProcessingState.ReTrack) {
       nextState = RecordingProcessingState.Analyse;
-    } else if (this.processingState == RecordingProcessingState.TrackAndAnalyse) {
+    } else if (
+      this.processingState == RecordingProcessingState.TrackAndAnalyse
+    ) {
       nextState = RecordingProcessingState.Finished;
     } else {
       const job_index = jobs.indexOf(this.processingState);
@@ -1280,7 +1282,7 @@ export default function (
     }
   };
   Recording.finishedState = function (type: RecordingType) {
-      return RecordingProcessingState.Finished;
+    return RecordingProcessingState.Finished;
   };
   Recording.processingAttributes = [
     "id",

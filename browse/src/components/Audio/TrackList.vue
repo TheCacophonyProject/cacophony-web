@@ -90,17 +90,7 @@
               <div
                 v-for="tag in track.displayTags"
                 :key="tag.id"
-                class="
-                  capitalize
-                  text-white
-                  d-flex
-                  align-items-center
-                  p-0
-                  pl-2
-                  pr-2
-                  mr-1
-                  rounded
-                "
+                class="capitalize text-white d-flex align-items-center p-0 pl-2 pr-2 mr-1 rounded"
                 :class="{
                   ['ai-tag']:
                     tag.class === 'denied' || tag.class === 'automatic',
@@ -112,10 +102,10 @@
                   tag.class === 'human'
                     ? 'Tagged by human'
                     : tag.class === 'automatic' || tag.class === 'denied'
-                    ? 'Tagged by Cacophony AI'
-                    : tag.class === 'confirmed'
-                    ? 'Tagged by Cacophony AI and human'
-                    : ''
+                      ? 'Tagged by Cacophony AI'
+                      : tag.class === 'confirmed'
+                        ? 'Tagged by Cacophony AI and human'
+                        : ''
                 }`"
               >
                 <b-button
@@ -158,7 +148,7 @@
                     (tag) =>
                       tag.class === 'automatic' ||
                       (tag.class === 'confirmed' &&
-                        !track.tags.some((t) => t.userName === userName))
+                        !track.tags.some((t) => t.userName === userName)),
                   ).length == 1 && !redacted
                 "
                 variant="outline-success"
@@ -172,8 +162,8 @@
                         (tag) =>
                           tag.class === 'automatic' ||
                           (tag.class === 'confirmed' &&
-                            !track.tags.some((t) => t.userName === userName))
-                      )
+                            !track.tags.some((t) => t.userName === userName)),
+                      ),
                     )
                 "
               >
@@ -202,7 +192,7 @@
             () => {
               if (toggledTrackHistory.includes(track.id)) {
                 toggledTrackHistory = toggledTrackHistory.filter(
-                  (id) => id !== track.id
+                  (id) => id !== track.id,
                 );
               } else {
                 toggledTrackHistory.push(track.id);
@@ -351,7 +341,7 @@ export default defineComponent({
       if (!this.isSuperUserAndViewingAsSuperUser) {
         // Remove AI tags other than master, as they'll just be confusing
         items = items.filter(
-          (item: ApiTrackTag) => !item.automatic || item.model === "Master"
+          (item: ApiTrackTag) => !item.automatic || item.model === "Master",
         );
       }
       return items;
@@ -404,15 +394,15 @@ export default defineComponent({
       return trackA.start - trackB.start;
     };
     const [tracks, setTracks] = useState<AudioTrack[]>(
-      [...props.audioTracks.values()].filter(filterTracks).sort(sortTracks)
+      [...props.audioTracks.values()].filter(filterTracks).sort(sortTracks),
     );
     watch(
       () => props.audioTracks,
       (newTracks) => {
         setTracks(
-          [...newTracks.values()].filter(filterTracks).sort(sortTracks)
+          [...newTracks.values()].filter(filterTracks).sort(sortTracks),
         );
-      }
+      },
     );
     onMounted(() => {
       watch(
@@ -426,7 +416,7 @@ export default defineComponent({
             list.style.height = `${cssHeight}px`;
           }
         },
-        { immediate: true }
+        { immediate: true },
       );
     });
 
@@ -443,7 +433,7 @@ export default defineComponent({
             list.scrollTop = scrollPosition;
           }
         }
-      }
+      },
     );
 
     watch(
@@ -461,7 +451,7 @@ export default defineComponent({
         if (list) {
           list.scrollTop = 0;
         }
-      }
+      },
     );
 
     return {

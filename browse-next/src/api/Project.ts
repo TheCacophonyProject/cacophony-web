@@ -20,12 +20,12 @@ export const addNewProject = (projectName: string) =>
 
 export const saveProjectUserSettings = (
   id: ProjectId,
-  settings: ApiProjectUserSettings
+  settings: ApiProjectUserSettings,
 ) => CacophonyApi.patch(`/api/v1/groups/${id}/my-settings`, { settings });
 
 export const saveProjectSettings = (
   id: ProjectId,
-  settings: ApiProjectSettings
+  settings: ApiProjectSettings,
 ) => CacophonyApi.patch(`/api/v1/groups/${id}/group-settings`, { settings });
 
 export const getCurrentUserProjects = (abortable: boolean) => {
@@ -49,7 +49,7 @@ export const addOrUpdateProjectUser = (
   isAdmin: boolean,
   isOwner: boolean,
   userId?: UserId,
-  email?: string
+  email?: string,
 ) => {
   const payload: {
     group: string | ProjectId;
@@ -75,7 +75,7 @@ export const addOrUpdateProjectUser = (
 export const removeProjectUser = (
   projectName: string,
   userId?: UserId,
-  email?: string
+  email?: string,
 ) => {
   const payload: {
     group: string | ProjectId;
@@ -95,7 +95,7 @@ export const removeProjectUser = (
 };
 
 export const getProjectByName = (
-  projectName: string
+  projectName: string,
 ): Promise<LoadedResource<ApiProjectResponse>> => {
   const params = new URLSearchParams();
   if (!shouldViewAsSuperUser.value) {
@@ -103,14 +103,14 @@ export const getProjectByName = (
   }
   return unwrapLoadedResource(
     CacophonyApi.get(
-      `/api/v1/groups/${encodeURIComponent(projectName)}?${params}`
+      `/api/v1/groups/${encodeURIComponent(projectName)}?${params}`,
     ) as Promise<FetchResult<{ group: ApiProjectResponse }>>,
-    "group"
+    "group",
   );
 };
 
 export const getProjectById = (
-  projectId: ProjectId
+  projectId: ProjectId,
 ): Promise<LoadedResource<ApiProjectResponse>> => {
   const params = new URLSearchParams();
   if (!shouldViewAsSuperUser.value) {
@@ -120,77 +120,77 @@ export const getProjectById = (
     CacophonyApi.get(`/api/v1/groups/${projectId}?${params}`) as Promise<
       FetchResult<{ group: ApiProjectResponse }>
     >,
-    "group"
+    "group",
   );
 };
 
 export const getUsersForProject = (
-  projectNameOrId: string | number
+  projectNameOrId: string | number,
 ): Promise<LoadedResource<ApiProjectUserResponse[]>> => {
   return unwrapLoadedResource(
     CacophonyApi.get(
-      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/users`
+      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/users`,
     ) as Promise<FetchResult<{ users: ApiProjectUserResponse[] }>>,
-    "users"
+    "users",
   );
 };
 
 export const getDevicesForProject = (
   projectNameOrId: string | number,
   activeAndInactive = false,
-  NO_ABORT = false
+  NO_ABORT = false,
 ): Promise<LoadedResource<ApiDeviceResponse[]>> => {
   const params = new URLSearchParams();
   params.append(
     "only-active",
-    activeAndInactive ? false.toString() : true.toString()
+    activeAndInactive ? false.toString() : true.toString(),
   );
   return unwrapLoadedResource(
     CacophonyApi.get(
       `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/devices?${params}`,
-      !NO_ABORT
+      !NO_ABORT,
     ) as Promise<FetchResult<{ devices: ApiDeviceResponse[] }>>,
-    "devices"
+    "devices",
   );
 };
 
 export const getLocationsForProject = (
   projectNameOrId: string,
   activeAndInactive = false, // Only active locations by default (non-retired)
-  withRecordings = true // Only locations with recordings - locations with all recordings deleted won't show.
+  withRecordings = true, // Only locations with recordings - locations with all recordings deleted won't show.
 ): Promise<LoadedResource<ApiLocationResponse[]>> => {
   const params = new URLSearchParams();
   params.append(
     "only-active",
-    activeAndInactive ? false.toString() : true.toString()
+    activeAndInactive ? false.toString() : true.toString(),
   );
   params.append(
     "with-recordings",
-    withRecordings ? false.toString() : true.toString()
+    withRecordings ? false.toString() : true.toString(),
   );
   return unwrapLoadedResource(
     CacophonyApi.get(
-      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/stations?${params}`
+      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/stations?${params}`,
     ) as Promise<FetchResult<{ stations: ApiLocationResponse[] }>>,
-    "stations"
+    "stations",
   );
 };
 
 export const getLocationByNameInProject = (
   projectNameOrId: string | ProjectId,
-  locationName: string
+  locationName: string,
 ) =>
   CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(
-      projectNameOrId
-    )}/station/${encodeURIComponent(locationName)}`
+      projectNameOrId,
+    )}/station/${encodeURIComponent(locationName)}`,
   ) as Promise<FetchResult<{ station: ApiLocationResponse }>>;
 
 export const inviteSomeoneToProject = (
   projectNameOrId: string | ProjectId,
   inviteeEmail: string,
   asAdmin = false,
-  asOwner = false
+  asOwner = false,
 ) =>
   CacophonyApi.post(
     `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/invite-user`,
@@ -198,7 +198,7 @@ export const inviteSomeoneToProject = (
       email: inviteeEmail,
       admin: asAdmin,
       owner: asOwner,
-    }
+    },
   ) as Promise<FetchResult<void>>;
 /*
 const createStationInGroup = (

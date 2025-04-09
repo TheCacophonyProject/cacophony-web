@@ -171,7 +171,7 @@ export default {
       var iterable = [];
       if (this.groupingSelection == "device") {
         const audioDevices = this.devices.filter(
-          (device) => device.type == "audio"
+          (device) => device.type == "audio",
         );
         iterable = audioDevices;
       } else if (this.groupingSelection == "station") {
@@ -197,32 +197,32 @@ export default {
               req["id"],
               req["from"],
               req["steps"],
-              req["interval"]
+              req["interval"],
             );
           } else if (this.groupingSelection == "station") {
             res = await api.station.getStationCacophonyIndexBulk(
               req["id"],
               req["from"],
               req["steps"],
-              req["interval"]
+              req["interval"],
             );
           }
           return { ...res, name: req["name"] };
-        })
+        }),
       );
 
       response = response.filter((res) =>
         res.result.cacophonyIndexBulk.some(
-          (item) => item.cacophonyIndex != null
-        )
+          (item) => item.cacophonyIndex != null,
+        ),
       );
       const stepSizeInMs = this.getStepSizeInMs(
         toDateRounded,
-        this.intervalSelection
+        this.intervalSelection,
       );
       const windowEnds = Array.from(
         { length: steps },
-        (_, i) => new Date(toDateRounded.getTime() - i * stepSizeInMs)
+        (_, i) => new Date(toDateRounded.getTime() - i * stepSizeInMs),
       ).reverse();
 
       const data = {};
@@ -233,7 +233,7 @@ export default {
         }
         for (let i = 0; i < windowEnds.length; i++) {
           const index = res.result.cacophonyIndexBulk.findIndex(
-            (item) => item.from === windowEnds[i].toISOString()
+            (item) => item.from === windowEnds[i].toISOString(),
           );
           if (index !== -1) {
             data[name][i] = res.result.cacophonyIndexBulk[index].cacophonyIndex;
@@ -266,7 +266,7 @@ export default {
       var datasets = [];
       var i = 0;
       const audioDevices = this.devices.filter(
-        (device) => device.type == "audio"
+        (device) => device.type == "audio",
       );
       for (var device of audioDevices) {
         if (this.indexData[device.deviceName] != null) {
@@ -357,7 +357,7 @@ export default {
           const currMonthDays = new Date(
             toDateRounded.getFullYear(),
             toDateRounded.getMonth() + 1,
-            0
+            0,
           ).getDate();
           return currMonthDays * 24 * 60 * 60 * 1000;
         }
@@ -365,7 +365,7 @@ export default {
           const currYearDays = new Date(
             toDateRounded.getFullYear(),
             11,
-            31
+            31,
           ).getDate();
           return currYearDays * 24 * 60 * 60 * 1000;
         }

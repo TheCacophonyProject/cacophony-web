@@ -35,7 +35,7 @@ export default {
       this.queryPending = true;
       // Call API and process results
       const results = await api.monitoring.getAllVisits(
-        this.params as unknown as NewVisitQuery
+        this.params as unknown as NewVisitQuery,
       );
       const rows = results.filteredVisits.map((visit) => [
         visit.stationId ? visit.station : visit.device,

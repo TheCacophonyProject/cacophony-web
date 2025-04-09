@@ -32,8 +32,8 @@ const defaultPalette = computed(
   () =>
     ColourMaps.find(([name, _val]) => name === props.palette) as [
       string,
-      Uint32Array
-    ]
+      Uint32Array,
+    ],
 );
 const creds = computed<LoggedInUserAuth | null>(() => {
   if (import.meta.env.DEV) {
@@ -42,7 +42,7 @@ const creds = computed<LoggedInUserAuth | null>(() => {
   return prodCreds.value;
 });
 const defaultOverlayPalette = ColourMaps.find(
-  ([name, _val]) => name === "Default"
+  ([name, _val]) => name === "Default",
 ) as [string, Uint32Array];
 const canvas = ref<HTMLCanvasElement>();
 const props = withDefaults(
@@ -62,7 +62,7 @@ const props = withDefaults(
     width: "",
     apronPixels: 0,
     smoothing: true,
-  }
+  },
 );
 
 const widthStyle = computed<string>(() => {
@@ -89,7 +89,7 @@ const loadRecording = async () => {
     const result = await cptvDecoder.initWithRecordingIdAndKnownSize(
       props.recording.id,
       0,
-      creds.value.apiToken
+      creds.value.apiToken,
     );
     if (result === true) {
       let gotGoodFrame = false;
@@ -116,7 +116,7 @@ const loadRecording = async () => {
             frame.imageData,
             defaultPalette.value[1],
             min,
-            max
+            max,
           );
           frameData.value = new ImageData(buffer, 160, 120);
           renderFrame();
@@ -153,7 +153,7 @@ const renderFrame = () => {
             props.apronPixels,
             props.apronPixels,
             160 - props.apronPixels * 2,
-            120 - props.apronPixels * 2
+            120 - props.apronPixels * 2,
           );
         });
       } else {
@@ -185,14 +185,14 @@ watch(
   () => props.overlay,
   (_overlayData) => {
     renderFrame();
-  }
+  },
 );
 
 watch(
   () => props.overlayOpacity,
   (_overlayData) => {
     renderFrame();
-  }
+  },
 );
 </script>
 

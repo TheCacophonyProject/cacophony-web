@@ -115,7 +115,7 @@ export default {
     },
     alertToDeleteItem() {
       return this.alerts.find(
-        ({ id }) => id === parseInt(this.alertToDeleteId)
+        ({ id }) => id === parseInt(this.alertToDeleteId),
       );
     },
     alertToDeleteName() {
@@ -172,7 +172,7 @@ export default {
     async submitAlert() {
       const response = await api.alerts.createAlertForStation(
         this.station.id,
-        this.currentAlertTag
+        this.currentAlertTag,
       );
       if (response.success) {
         this.$emit("alerts-changed");

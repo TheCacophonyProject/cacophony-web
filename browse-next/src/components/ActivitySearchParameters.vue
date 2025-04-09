@@ -241,7 +241,7 @@ const maxDateForProject = computed<Date>(() => {
     for (const location of props.locations.value) {
       const latestDateForLocation = getLatestDateForLocationInRecordingMode(
         location,
-        props.params.recordingMode
+        props.params.recordingMode,
       );
       if (latestDateForLocation && latestDateForLocation > latest) {
         latest = latestDateForLocation;
@@ -262,7 +262,7 @@ const maxDateForSelectedLocations = computed<Date>(() => {
     for (const location of selectedLocations.value as ApiLocationResponse[]) {
       const latestDateForLocation = getLatestDateForLocationInRecordingMode(
         location,
-        props.params.recordingMode
+        props.params.recordingMode,
       );
       if (latestDateForLocation && latestDateForLocation > latest) {
         latest = latestDateForLocation;
@@ -289,7 +289,7 @@ const maybeSelectDatePicker = (value: {
 };
 const onChangeLocationsSelect = (
   value: (ApiLocationResponse | "any")[],
-  _select: MultiSelectEl
+  _select: MultiSelectEl,
 ) => {
   if (!optionsRemapping.value) {
     if (value.length > 1) {
@@ -330,7 +330,7 @@ watch(
       selectedDateRange.value = commonDateRanges.value[0];
       customDateRange.value = null;
     }
-  }
+  },
 );
 
 const commonDateRanges = computed<
@@ -391,7 +391,7 @@ const commonDateRanges = computed<
       label: "Custom date range",
       value: "custom",
       urlLabel: "",
-    }
+    },
   );
   return ranges as {
     value: [Date, Date] | "custom";
@@ -442,14 +442,14 @@ const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
         }
         const latestDateForLocation = getLatestDateForLocationInRecordingMode(
           location,
-          props.params.recordingMode
+          props.params.recordingMode,
         );
         return (
           latestDateForLocation &&
           latestDateForLocation >= combinedDateRange.value[0] &&
           new Date(location.activeAt) <= combinedDateRange.value[1]
         );
-      }
+      },
     );
   }
   return [];
@@ -481,7 +481,7 @@ const selectedLocationsSelect = ref<MultiSelectEl>();
 const optionsInited = ref<boolean>(false);
 const optionsRemapping = ref<boolean>(false);
 const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
-  locationsInSelectedTimespan
+  locationsInSelectedTimespan,
 );
 const remapLocationOptions = (nextOptions: LocationOption[]) => {
   // If this changed, we need to remap the selected locations to the existing
@@ -500,7 +500,7 @@ const remapLocationOptions = (nextOptions: LocationOption[]) => {
             const match = nextOptions.find(
               (option) =>
                 (option.value as ApiLocationResponse).id &&
-                (option.value as ApiLocationResponse).id === item.id
+                (option.value as ApiLocationResponse).id === item.id,
             );
             if (match) {
               multiselectEl.select(match);
@@ -520,10 +520,10 @@ const remapLocationOptions = (nextOptions: LocationOption[]) => {
 watch(locationsInSelectedTimespanOptions, remapLocationOptions);
 
 const recordingMode = ref<ActivitySearchRecordingMode>(
-  ActivitySearchRecordingMode.Cameras
+  ActivitySearchRecordingMode.Cameras,
 );
 const displayMode = ref<ActivitySearchDisplayMode>(
-  ActivitySearchDisplayMode.Visits
+  ActivitySearchDisplayMode.Visits,
 );
 
 const computedDisplayMode = computed<ActivitySearchDisplayMode>({
@@ -553,7 +553,7 @@ const getCurrentQuery = (): LocationQuery => {
     ? "any"
     : (
         selectedLocations.value.filter(
-          (item) => item !== "any"
+          (item) => item !== "any",
         ) as ApiLocationResponse[]
       )
         .map(({ id }) => id)
@@ -603,7 +603,7 @@ const getCurrentQuery = (): LocationQuery => {
 };
 const updateDateRouteComponent = async (
   next: [Date, Date],
-  prev: [Date, Date] | undefined
+  prev: [Date, Date] | undefined,
 ) => {
   const isDates =
     Array.isArray(next) &&
@@ -622,7 +622,7 @@ const updateDateRouteComponent = async (
     const commonDateRange = commonDateRanges.value.find(
       ({ value }) =>
         value[0] === combinedDateRange.value[0] &&
-        value[1] === combinedDateRange.value[1]
+        value[1] === combinedDateRange.value[1],
     );
     if (commonDateRange) {
       query.from = commonDateRange.urlLabel;
@@ -652,7 +652,7 @@ const startOfDay = (d: Date): Date => {
 
 const updateRoute = async (
   next: string | boolean,
-  prev: string | boolean | undefined
+  prev: string | boolean | undefined,
 ) => {
   if (prev !== next) {
     // TODO: Emit event to clear current search results (or really, just handle the route change in the parent)
@@ -665,7 +665,7 @@ const updateRoute = async (
 
 const arrayContentsAreTheSame = (
   a: (number | string)[],
-  b: (number | string)[]
+  b: (number | string)[],
 ): boolean => {
   if (a.length !== b.length) {
     return false;
@@ -689,7 +689,7 @@ const updateTagsRoute = async (next: string[], prev: string[] | undefined) => {
 
 const updateLabelsRoute = async (
   next: string[],
-  prev: string[] | undefined
+  prev: string[] | undefined,
 ) => {
   console.log("update labels", next, prev);
   if (!arrayContentsAreTheSame(prev || [], next)) {
@@ -703,10 +703,10 @@ const updateLabelsRoute = async (
 
 const updateLocationsRoute = async (
   next: (ApiLocationResponse | "any")[],
-  prev: (ApiLocationResponse | "any")[] | undefined
+  prev: (ApiLocationResponse | "any")[] | undefined,
 ) => {
   const flattenLocations = (
-    a: (ApiLocationResponse | "any")[]
+    a: (ApiLocationResponse | "any")[],
   ): (number | string)[] => {
     return a.map((item: ApiLocationResponse | "any") => {
       if (item === "any") {
@@ -717,7 +717,7 @@ const updateLocationsRoute = async (
   };
   const locationArrayContentsAreTheSame = (
     a: (ApiLocationResponse | "any")[],
-    b: (ApiLocationResponse | "any")[]
+    b: (ApiLocationResponse | "any")[],
   ): boolean =>
     arrayContentsAreTheSame(flattenLocations(a), flattenLocations(b));
   if (!locationArrayContentsAreTheSame(prev || [], next)) {
@@ -729,7 +729,7 @@ const updateLocationsRoute = async (
 };
 const syncParams = (
   next: ActivitySearchParams,
-  _prev: ActivitySearchParams | undefined
+  _prev: ActivitySearchParams | undefined,
 ) => {
   // Set our local state variables from the state change from our parent
   displayMode.value = next.displayMode;
@@ -745,7 +745,7 @@ const syncParams = (
     starredLabel.value = next.labelledWith.includes(COOL);
     flaggedLabel.value = next.labelledWith.includes(FLAG);
     selectedLabels.value = next.labelledWith.filter(
-      (label) => label !== COOL && label !== FLAG
+      (label) => label !== COOL && label !== FLAG,
     );
   }
   showFilteredFalsePositivesAndNones.value = next.includeFalsePositives;
@@ -755,7 +755,7 @@ const syncParams = (
     } else {
       selectedLocations.value = next.locations
         .map((id) =>
-          (props.locations.value || []).find((item) => item.id === id)
+          (props.locations.value || []).find((item) => item.id === id),
         )
         .filter((x) => x !== undefined) as ApiLocationResponse[];
     }
@@ -763,7 +763,7 @@ const syncParams = (
   let foundRange;
   if (next.from) {
     foundRange = commonDateRanges.value.find(
-      ({ urlLabel }) => next.from === urlLabel
+      ({ urlLabel }) => next.from === urlLabel,
     );
   }
   if (foundRange) {
@@ -844,7 +844,7 @@ onBeforeMount(() => {
   watchDisplayMode.value = watch(displayMode, updateRoute);
   watchCombinedDateRange.value = watch(
     combinedDateRange,
-    updateDateRouteComponent
+    updateDateRouteComponent,
   );
   watchSelectedLocations.value = watch(selectedLocations, updateLocationsRoute);
   watchUntaggedOnly.value = watch(showUntaggedOnly, (next: boolean) => {
@@ -875,13 +875,13 @@ onBeforeMount(() => {
         }
       }
       updateTagsRoute(next, prev);
-    }
+    },
   );
   watchSubClassToggle.value = watch(includeSubSpeciesTags, updateRoute);
   watchTagMode.value = watch(tagMode, updateRoute);
   watchFilterFalsePositivesAndNones.value = watch(
     showFilteredFalsePositivesAndNones,
-    updateRoute
+    updateRoute,
   );
   watchStarred.value = watch(starredLabel, updateRoute);
   watchFlagged.value = watch(flaggedLabel, updateRoute);
@@ -908,7 +908,7 @@ onBeforeUnmount(() => {
 
 const searchParamsContainer = ref<HTMLDivElement>();
 const { top: searchParamsOffsetTop } = useElementBounding(
-  searchParamsContainer
+  searchParamsContainer,
 );
 const scrolledToStickyPosition = computed<boolean>(() => {
   return searchParamsOffsetTop.value === 15;

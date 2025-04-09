@@ -24,7 +24,7 @@ const projectUsers = ref<LoadedResource<ApiProjectUserResponse[]>>(null);
 const loadingUsers = ref(false);
 const fallibleCurrentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 const fallibleCurrentSelectedProject = inject(
-  selectedProject
+  selectedProject,
 ) as Ref<SelectedProject>;
 // NOTE: If this route loaded, these globals are properly set, so we can unwrap the fallible versions.
 const currentSelectedProject = computed<SelectedProject>(() => {
@@ -38,7 +38,7 @@ const loadProjectUsers = async () => {
   loadingUsers.value = true;
   await userProjectsLoaded();
   projectUsers.value = await getUsersForProject(
-    (currentSelectedProject.value as { groupName: string; id: ProjectId }).id
+    (currentSelectedProject.value as { groupName: string; id: ProjectId }).id,
   );
   loadingUsers.value = false;
 };
@@ -70,7 +70,7 @@ const updateUserPermissions = async () => {
       (currentSelectedProject.value as SelectedProject).groupName,
       permissions.value.includes("admin"),
       permissions.value.includes("owner"),
-      user.id
+      user.id,
     );
   } else {
     // The user is invited, and the userName field is actually the email
@@ -79,7 +79,7 @@ const updateUserPermissions = async () => {
       permissions.value.includes("admin"),
       permissions.value.includes("owner"),
       undefined,
-      user.userName
+      user.userName,
     );
   }
   if (updateUserResponse.success) {
@@ -93,7 +93,7 @@ const acceptPendingUser = async (user: ApiProjectUserResponse) => {
     (currentSelectedProject.value as SelectedProject).groupName,
     user.admin,
     user.owner,
-    user.id
+    user.id,
   );
   if (acceptPendingUserResponse) {
     await loadProjectUsers();
@@ -108,14 +108,14 @@ const removeUser = async (user: ApiProjectUserResponse) => {
     if (user.id) {
       removeUserResponse = await removeProjectUser(
         (currentSelectedProject.value as SelectedProject).groupName,
-        user.id
+        user.id,
       );
     } else {
       // The user is invited, and the userName field is actually the email
       removeUserResponse = await removeProjectUser(
         (currentSelectedProject.value as SelectedProject).groupName,
         undefined,
-        user.userName
+        user.userName,
       );
     }
     if (removeUserResponse.success) {
@@ -312,10 +312,10 @@ const permissionsOptions = computed(() => [
             userIsCurrentUser(card._deleteAction.value)
               ? 'Leave group'
               : card._deleteAction.value.pending === 'requested'
-              ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join project`
-              : card._deleteAction.value.pending === 'invited'
-              ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
-              : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
+                ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join project`
+                : card._deleteAction.value.pending === 'invited'
+                  ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
+                  : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
           "
           alignment="right"
         />
@@ -395,10 +395,10 @@ const permissionsOptions = computed(() => [
           userIsCurrentUser(cell.value)
             ? 'Leave group'
             : cell.value.pending === 'requested'
-            ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join project`
-            : cell.value.pending === 'invited'
-            ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
-            : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
+              ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join project`
+              : cell.value.pending === 'invited'
+                ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
+                : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
         "
         alignment="right"
       />

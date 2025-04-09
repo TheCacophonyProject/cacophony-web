@@ -52,7 +52,7 @@ export interface AiConfusionMatrix {
 export function countByClassThenAiClass(
   visits: NewVisit[],
   allLabels: TrackLabel[],
-  otherLabel: string
+  otherLabel: string,
 ): AiConfusionMatrix {
   const otherIndex = allLabels.length;
   const labels = allLabels.map((tagClass) => tagClass.value);
@@ -105,10 +105,10 @@ export function countByClassThenAiClass(
 function findLabelIndex(
   value: string,
   allLabels: TrackLabel[],
-  defaultValue: number
+  defaultValue: number,
 ): number {
   let index = allLabels.findIndex((tagClass) =>
-    tagClass.allIncludedTags.includes(value)
+    tagClass.allIncludedTags.includes(value),
   );
   if (index < 0) {
     index = defaultValue;

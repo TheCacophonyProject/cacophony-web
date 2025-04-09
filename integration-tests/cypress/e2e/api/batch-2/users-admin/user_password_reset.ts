@@ -29,7 +29,7 @@ describe("User: password reset", () => {
 
       waitForEmail("password reset").then((email) => {
         expect(email.includes("token="), "Email contains reset token").to.equal(
-          true
+          true,
         );
         const { token } = extractTokenStartingWith(email, "token=");
         cy.log("reset password");
@@ -55,7 +55,7 @@ describe("User: password reset", () => {
       waitForEmail("password reset").then((email) => {
         const { token } = extractTokenStartingWith(
           email,
-          RESET_PASSWORD_PREFIX
+          RESET_PASSWORD_PREFIX,
         );
         cy.log("reset password");
         cy.apiUserChangePassword(token, "password2");
@@ -68,7 +68,7 @@ describe("User: password reset", () => {
           null,
           getTestEmail(user),
           "password",
-          HttpStatusCode.AuthorizationError
+          HttpStatusCode.AuthorizationError,
         );
       });
     });

@@ -218,7 +218,7 @@ export default defineComponent({
         Array.isArray(selectedOptions.value)
       ) {
         selectedOptions.value = selectedOptions.value.filter(
-          (o) => o !== option
+          (o) => o !== option,
         );
       }
     };
@@ -251,7 +251,7 @@ export default defineComponent({
         createOptionsPaths(props.options);
         setToPath("all");
       },
-      { immediate: true }
+      { immediate: true },
     );
     const displayedOptions = computed(() => {
       const searching = searchTerm.value === "";
@@ -263,7 +263,7 @@ export default defineComponent({
             return acc;
           }
           const children: Option = acc.children.find(
-            ({ label }) => label === path
+            ({ label }) => label === path,
           );
 
           return children;
@@ -415,7 +415,8 @@ export default defineComponent({
     padding: 0.2em 0.6em 0.2em 0.6em;
     background-color: white;
     border-radius: 0.4em;
-    box-shadow: 0px 0px 3px rgba(214, 214, 214, 0.2),
+    box-shadow:
+      0px 0px 3px rgba(214, 214, 214, 0.2),
       0px 0px 3px rgba(138, 138, 138, 0.2);
   }
 }

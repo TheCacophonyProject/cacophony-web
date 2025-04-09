@@ -73,7 +73,7 @@ describe("Devices list", () => {
     cy.apiRecordingAdd(
       camera3,
       { type: RecordingType.ThermalRaw },
-      "oneframe.cptv"
+      "oneframe.cptv",
     );
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
       expectedDevice3AdminView = {
@@ -140,7 +140,7 @@ describe("Devices list", () => {
             email: superuser,
           },
         },
-        user2
+        user2,
       );
 
       cy.apiDevicesCheck(superuser, [expectedDevice2AdminView], {
@@ -157,7 +157,7 @@ describe("Devices list", () => {
             email: superuser,
           },
         },
-        user2
+        user2,
       );
     });
   } else {
@@ -184,7 +184,7 @@ describe("Devices list", () => {
     cy.apiDevicesCheck(
       user3,
       [expectedDevice3AdminView, expectedDevice4AdminView],
-      { onlyActive: false }
+      { onlyActive: false },
     );
   });
 });

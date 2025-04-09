@@ -91,17 +91,20 @@ export default defineComponent({
   setup(props) {
     // create 2d array of labels where each row has props.cols elements
     const createGridValues = (labels: { label: string; pinned: boolean }[]) =>
-      labels.reduce((acc, label, index) => {
-        const rowIndex = Math.floor(index / props.cols);
-        const colIndex = index % props.cols;
-        if (!acc[rowIndex]) {
-          acc[rowIndex] = [];
-        }
-        acc[rowIndex][colIndex] = label;
-        return acc;
-      }, [] as { label: string; pinned: boolean }[][]);
+      labels.reduce(
+        (acc, label, index) => {
+          const rowIndex = Math.floor(index / props.cols);
+          const colIndex = index % props.cols;
+          if (!acc[rowIndex]) {
+            acc[rowIndex] = [];
+          }
+          acc[rowIndex][colIndex] = label;
+          return acc;
+        },
+        [] as { label: string; pinned: boolean }[][],
+      );
     const [gridValues, setGridValues] = useState(
-      createGridValues(props.labels)
+      createGridValues(props.labels),
     );
     const [hoveredPinned, setHoveredPinned] = useState(null);
 
@@ -109,7 +112,7 @@ export default defineComponent({
       () => props.labels,
       (newLabels) => {
         setGridValues(createGridValues(newLabels));
-      }
+      },
     );
     return {
       gridValues,

@@ -176,7 +176,7 @@ library.add(
   faThumbtack,
   faCheck,
   faImages,
-  faPencilAlt
+  faPencilAlt,
 );
 
 export default FontAwesomeIcon;

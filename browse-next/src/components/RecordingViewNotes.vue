@@ -14,7 +14,7 @@ const props = withDefaults(
   defineProps<{
     recording?: ApiRecordingResponse | null;
   }>(),
-  { recording: null }
+  { recording: null },
 );
 
 const emit = defineEmits<{
@@ -52,7 +52,7 @@ const tableItems = computed<CardTableRows<ApiRecordingTagResponse | string>>(
       _deleteAction: { value: tag, cellClasses: ["text-end"] },
       __sort: { value: new Date(tag.createdAt).getTime().toString() },
     }));
-  }
+  },
 );
 
 const note = ref<string>("");
@@ -73,7 +73,7 @@ const removeNote = async (id: TagId) => {
     removingNoteInProgress.value = true;
     const removeNoteResponse = await removeRecordingLabel(
       props.recording.id,
-      id
+      id,
     );
     if (removeNoteResponse.success) {
       emit("removed-recording-label", id);
@@ -87,7 +87,7 @@ const doAddNote = async () => {
     addingNoteInProgress.value = true;
     const addLabelResponse = await addRecordingNoteLabel(
       props.recording.id,
-      note.value
+      note.value,
     );
     if (addLabelResponse.success && CurrentUser.value) {
       // Emit tag change event, patch upstream recording.

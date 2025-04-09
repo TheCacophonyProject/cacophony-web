@@ -112,14 +112,7 @@
               :toggle-pin-tag="togglePinTag"
             />
             <b-row
-              class="
-                d-flex
-                mt-2
-                mb-4
-                flex-wrap
-                justify-content-center
-                button-selectors
-              "
+              class="d-flex mt-2 mb-4 flex-wrap justify-content-center button-selectors"
             >
               <h3 class="w-100 ml-4">Attributes</h3>
               <b-button-group class="mr-2">
@@ -134,7 +127,7 @@
                     toggleAttributeToTrackTag(
                       { gender: 'male' },
                       selectedTrack.id,
-                      usersTag.id
+                      usersTag.id,
                     )
                   "
                   :disabled="!usersTag"
@@ -151,7 +144,7 @@
                     toggleAttributeToTrackTag(
                       { gender: 'female' },
                       selectedTrack.id,
-                      usersTag.id
+                      usersTag.id,
                     )
                   "
                   :disabled="!usersTag"
@@ -170,7 +163,7 @@
                     toggleAttributeToTrackTag(
                       { maturity: 'adult' },
                       selectedTrack.id,
-                      usersTag.id
+                      usersTag.id,
                     )
                   "
                   :disabled="!usersTag"
@@ -187,7 +180,7 @@
                     toggleAttributeToTrackTag(
                       { maturity: 'juvenile' },
                       selectedTrack.id,
-                      usersTag.id
+                      usersTag.id,
                     )
                   "
                   :disabled="!usersTag"
@@ -384,7 +377,7 @@ import { reduce } from "lodash";
 const flattenNodes = (
   acc: Record<string, { label: string; display: string; parents: string[] }>,
   node: Option,
-  parents: string[]
+  parents: string[],
 ) => {
   for (const child of node.children || []) {
     acc[child.label] = {
@@ -399,12 +392,12 @@ const flattenNodes = (
 
 export const getDisplayTags = (
   options: Option,
-  track: ApiTrackResponse
+  track: ApiTrackResponse,
 ): DisplayTag[] => {
   const labelToParent = {};
   const classifications = flattenNodes(labelToParent, options, []);
   let automaticTags = track.tags.filter(
-    (tag) => tag.automatic && tag.model === "Master"
+    (tag) => tag.automatic && tag.model === "Master",
   );
   const humanTags = track.tags.filter((tag) => !tag.automatic);
   const reducedHuman = {};
@@ -449,9 +442,9 @@ export const getDisplayTags = (
               others != tag &&
               others.what in labelToParent &&
               labelToParent[others.what].parents.find(
-                (parent) => parent === tag.what
-              )
-          )
+                (parent) => parent === tag.what,
+              ),
+          ),
       );
     }
 
@@ -488,10 +481,10 @@ export const getDisplayTags = (
                     labelToParent[autoTag.what].parents.length > 0 &&
                     tag.what in labelToParent &&
                     labelToParent[tag.what].parents.find(
-                      (parent) => parent === autoTag.what
-                    )
-                ))
-          ).length > 0
+                      (parent) => parent === autoTag.what,
+                    ),
+                )),
+          ).length > 0,
       );
 
       if (confirmedTags.length > 0) {
@@ -602,13 +595,13 @@ export default defineComponent({
     const userId = store.state.User.userData.id;
     const [url, setUrl] = useState(
       // props.audioUrl ? props.audioUrl : props.audioRawUrl
-      props.audioRawUrl ? props.audioRawUrl : props.audioUrl
+      props.audioRawUrl ? props.audioRawUrl : props.audioUrl,
     );
     const buffer = ref<Blob>(null);
     const [sampleRate, setSampleRate] = useState<number>(
       localStorage.getItem("audio-sample-rate")
         ? parseInt(localStorage.getItem("audio-sample-rate"))
-        : 24000
+        : 24000,
     );
     watch(sampleRate, (currSampleRate) => {
       localStorage.setItem("audio-sample-rate", currSampleRate.toString());
@@ -630,7 +623,7 @@ export default defineComponent({
         const url = newRawUrl ? newRawUrl : newUrl;
         buffer.value = await fetchAudioBuffer(url);
         setUrl(url);
-      }
+      },
     );
 
     const deletedStation = ref(false);
@@ -640,7 +633,7 @@ export default defineComponent({
         setDeleted(true);
         // check if station is now empty and delete if it is
         const response = await api.station.getStationById(
-          props.recording.stationId
+          props.recording.stationId,
         );
         if (response.success) {
           const { station } = response.result;
@@ -658,7 +651,7 @@ export default defineComponent({
                 footerClass: "p-2",
                 hideHeaderClose: false,
                 centered: true,
-              }
+              },
             );
             if (shouldDelete) {
               await api.station.deleteStationById(station.id);
@@ -681,7 +674,7 @@ export default defineComponent({
 
     const createAudioTrack = (
       track: ApiTrackResponse,
-      index: number
+      index: number,
     ): AudioTrack => {
       const displayTags = getDisplayTags(options.value, track);
 
@@ -705,7 +698,7 @@ export default defineComponent({
         tracks.map((track, index) => {
           const audioTrack = createAudioTrack(track, index);
           return [track.id, audioTrack];
-        })
+        }),
       );
     const filterTracks = (tracks: (ApiTrackResponse | AudioTrack)[]) => {
       const tags = filteredAudioTags.value ?? [];
@@ -718,7 +711,7 @@ export default defineComponent({
               } else {
                 tags.includes(tag.what);
               }
-            }) || track.tags.some((tag) => !tag.automatic)
+            }) || track.tags.some((tag) => !tag.automatic),
         )
         .filter((track) => showFilteredNoise.value || !track.filtered);
       return filtered;
@@ -757,7 +750,7 @@ export default defineComponent({
         };
         const response = await api.recording.addTrack(
           trackRequest,
-          props.recording.id
+          props.recording.id,
         );
 
         if (response.success) {
@@ -776,7 +769,7 @@ export default defineComponent({
             const track = tracks.get(id);
             tracks.set(
               id,
-              produce(track, () => newTrack)
+              produce(track, () => newTrack),
             );
           });
           return newTrack;
@@ -789,7 +782,7 @@ export default defineComponent({
     };
     const modifyTrack = (
       trackId: TrackId,
-      trackChanges: Partial<AudioTrack>
+      trackChanges: Partial<AudioTrack>,
     ): AudioTrack => {
       setTracks((draftTracks) => {
         const track = draftTracks.get(trackId);
@@ -798,7 +791,7 @@ export default defineComponent({
           produce(track, () => ({
             ...track,
             ...trackChanges,
-          }))
+          })),
         );
       });
       return tracks.value.get(trackId) as AudioTrack;
@@ -810,7 +803,7 @@ export default defineComponent({
       automatic = false,
       confidence = 1,
       data: any = {},
-      username = userName
+      username = userName,
     ): Promise<AudioTrack> => {
       const track = tracks.value.get(trackId);
       const tag: ApiTrackTagRequest = {
@@ -832,14 +825,14 @@ export default defineComponent({
             footerClass: "p-2",
             hideHeaderClose: false,
             centered: true,
-          }
+          },
         );
       }
       const response = await api.recording.replaceTrackTag(
         tag,
         props.recording.id,
         Number(trackId),
-        tag.automatic
+        tag.automatic,
       );
       if (response.success) {
         const newTag = {
@@ -883,7 +876,7 @@ export default defineComponent({
     const toggleAttributeToTrackTag = async (
       newAttr: Partial<ApiTrackTagAttributes>,
       trackId: TrackId,
-      tagId: number
+      tagId: number,
     ) => {
       try {
         const tag = tracks.value.get(trackId).tags.find((tag) => {
@@ -907,7 +900,7 @@ export default defineComponent({
           newAttrs,
           props.recording.id,
           trackId,
-          tagId
+          tagId,
         );
         if (response.success) {
           setTracks((tracks) => {
@@ -928,7 +921,7 @@ export default defineComponent({
 
     const deleteTrackTag = async (
       trackId: TrackId,
-      tagId: number
+      tagId: number,
     ): Promise<AudioTrack> => {
       const track = tracks.value.get(trackId);
       if (track) {
@@ -939,7 +932,7 @@ export default defineComponent({
       const response = await api.recording.deleteTrackTag(
         props.recording.id,
         trackId,
-        tagId
+        tagId,
       );
       if (response.success) {
         const currTags = track.tags.filter((tag) => tag.id !== tagId);
@@ -974,12 +967,12 @@ export default defineComponent({
     const deleteTagFromSelectedTrack = async () => {
       if (selectedTrack.value) {
         const userTag = selectedTrack.value.tags.find(
-          (tag) => tag.userId === userId
+          (tag) => tag.userId === userId,
         );
         if (userTag) {
           const newTrack = await deleteTrackTag(
             selectedTrack.value.id,
-            userTag.id
+            userTag.id,
           );
           // check if the track is now empty
           if (newTrack.tags.length === 0) {
@@ -993,12 +986,12 @@ export default defineComponent({
 
     const updateTrack = async (
       trackId: TrackId,
-      trackData: ApiTrackDataRequest
+      trackData: ApiTrackDataRequest,
     ) => {
       const response = await api.recording.updateTrack(
         trackId,
         props.recording.id,
-        trackData
+        trackData,
       );
       if (response.success) {
         // update local state
@@ -1012,7 +1005,7 @@ export default defineComponent({
               ...trackData,
               start: trackData.start_s,
               end: trackData.end_s,
-            }))
+            })),
           );
         });
         return { success: true };
@@ -1026,7 +1019,7 @@ export default defineComponent({
         const response = await api.recording.deleteTrack(
           trackId,
           props.recording.id,
-          true
+          true,
         );
         if (response.success) {
           if (permanent) {
@@ -1056,7 +1049,7 @@ export default defineComponent({
       try {
         const response = await api.recording.undeleteTrack(
           trackId,
-          props.recording.id
+          props.recording.id,
         );
         if (response.success) {
           modifyTrack(trackId, {
@@ -1071,7 +1064,7 @@ export default defineComponent({
     };
 
     const [cacophonyIndex, setCacophonyIndex] = useState(
-      props.recording.cacophonyIndex
+      props.recording.cacophonyIndex,
     );
     const showCacophonyIndex = ref(false);
     const group = ref<ApiGroupResponse>(null);
@@ -1097,7 +1090,7 @@ export default defineComponent({
             (tag: { what: string }) =>
               !fixedLabels.some((label) => {
                 return label.toLowerCase() === tag.what.toLowerCase();
-              })
+              }),
           )
           .sort((a: { freq: number }, b: { freq: number }) => b.freq - a.freq)
           // sort those that are pinned first
@@ -1117,7 +1110,7 @@ export default defineComponent({
 
       const pinnedBirdLabels = storedCommonTags.filter((bird) => bird.pinned);
       const unpinnedBirdLabels = storedCommonTags.filter(
-        (bird) => !bird.pinned
+        (bird) => !bird.pinned,
       );
       const commonBirdLabels = [
         "Morepork",
@@ -1130,8 +1123,8 @@ export default defineComponent({
         .filter(
           (val: string) =>
             !storedCommonTags.find(
-              (bird) => bird.label.toLowerCase() === val.toLowerCase()
-            )
+              (bird) => bird.label.toLowerCase() === val.toLowerCase(),
+            ),
         )
         .map((label: string) => ({ label, pinned: false }));
 
@@ -1223,7 +1216,7 @@ export default defineComponent({
         },
         {
           immediate: true,
-        }
+        },
       );
     });
 
@@ -1286,7 +1279,7 @@ export default defineComponent({
           date: formatDateStr(tag.createdAt),
         }));
       },
-      { immediate: true }
+      { immediate: true },
     );
     const addRecordingTag = async () => {
       const detail = currTag.value ?? "note";
@@ -1300,7 +1293,7 @@ export default defineComponent({
 
       const res = await api.recording.addRecordingTag(
         tagReq,
-        props.recording.id
+        props.recording.id,
       );
 
       if (res.success) {
@@ -1321,7 +1314,7 @@ export default defineComponent({
     const deleteComment = async (id: string) => {
       const res = await api.recording.deleteRecordingTag(
         Number(id),
-        props.recording.id
+        props.recording.id,
       );
 
       if (res.success) {

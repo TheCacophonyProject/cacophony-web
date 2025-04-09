@@ -38,7 +38,7 @@ watch(
   (newItems) => {
     items.value = newItems as VNode[];
     findSelectedItemName();
-  }
+  },
 );
 watch(listWidth, (newWidth) => {
   // Measure the children.
@@ -82,7 +82,7 @@ watch(listHeight, (newHeight, oldHeight) => {
 });
 const findSelectedItemName = () => {
   const name = items.value.find(
-    (item) => item.props && item.props.class.includes("active")
+    (item) => item.props && item.props.class.includes("active"),
   );
   if (name && name.props) {
     activeItemTitle.value = name.props.title;

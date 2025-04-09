@@ -196,7 +196,7 @@ export default {
       return SunCalc.getTimes(
         this.date,
         this.recording.location.lat,
-        this.recording.location.lng
+        this.recording.location.lng,
       );
     },
     timeUntilDawn(): string {
@@ -269,7 +269,7 @@ export default {
             .getReferenceImage(this.station.id, this.stationReferencePhoto)
             .then((image) => {
               imageItem.image = window.URL.createObjectURL(
-                image.result as Blob
+                image.result as Blob,
               );
               imageItem.loading = false;
             });
@@ -300,7 +300,7 @@ export default {
               },
             },
           },
-          "Undo"
+          "Undo",
         );
         this.$bvToast.toast([undoButton], {
           id: id.toString(),
@@ -328,7 +328,7 @@ export default {
             this.fileSize = fileSize;
             if (recording.stationId) {
               const stationResponse = await api.station.getStationById(
-                this.recordingInternal.stationId
+                this.recordingInternal.stationId,
               );
               if (stationResponse.success) {
                 this.station = stationResponse.result.station;
@@ -385,7 +385,7 @@ export default {
         } = tracksResponse;
         const track = tracks.find((track) => track.id === trackId);
         const localTrack = this.recording.tracks.find(
-          (track) => track.id === trackId
+          (track) => track.id === trackId,
         );
         localTrack.tags = track.tags;
         localTrack.filtered = track.filtered;
@@ -409,7 +409,7 @@ export default {
         type: "pov",
         checkExists: true,
         atTime,
-      }
+      },
     );
     if (deviceImageExists.success) {
       const res = await api.device.getReferenceImage(this.recording.deviceId, {

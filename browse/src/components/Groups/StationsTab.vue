@@ -311,12 +311,12 @@ export default {
             let { latitude, longitude } = updatedStation;
             if (Math.abs(latitude - station.latitude) > EPSILON) {
               latitude = `<del>${Number(station.latitude).toFixed(
-                5
+                5,
               )}</del> -> ${Number(latitude).toFixed(5)}`;
             }
             if (Math.abs(longitude - station.longitude) > EPSILON) {
               longitude = `<del>${Number(station.longitude).toFixed(
-                5
+                5,
               )}</del> -> ${Number(longitude).toFixed(5)}`;
             }
             diff[station.name] = {
@@ -345,7 +345,7 @@ export default {
         }
       }
       return (Object.values(diff) as StationData[]).sort((a, b) =>
-        a.name.localeCompare(b.name)
+        a.name.localeCompare(b.name),
       );
     },
   },
@@ -373,7 +373,7 @@ export default {
     async doStationRename() {
       await api.station.renameStationById(
         this.stationToRename.id,
-        this.newStationName
+        this.newStationName,
       );
       this.$emit("change");
       this.renaming = false;
@@ -394,7 +394,7 @@ export default {
             item.hasOwnProperty("Type") &&
             item.hasOwnProperty("Lat") &&
             item.hasOwnProperty("Lon") &&
-            item.hasOwnProperty("Number / Code")
+            item.hasOwnProperty("Number / Code"),
         )
       ) {
         this.invalidCsvFormat = true;
@@ -421,7 +421,7 @@ export default {
       }));
       // If the list has items with the "thermal camera" column, use that, else use "camera"
       const cameraKey = monitoring.find(
-        (item) => item.Type === "thermal camera"
+        (item) => item.Type === "thermal camera",
       )
         ? "thermal camera"
         : "camera";
@@ -460,7 +460,7 @@ export default {
             lat: Number(latitude),
             lng: Number(longitude),
           })),
-          applyFromDate
+          applyFromDate,
         );
         this.$emit("change");
         this.pendingStations = [];
@@ -469,7 +469,7 @@ export default {
         }
         if (Object.values(result.updatedRecordingsPerStation).length !== 0) {
           this.assignedRecordingsCount = Object.values(
-            result.updatedRecordingsPerStation
+            result.updatedRecordingsPerStation,
           ).reduce((acc: number, count: number) => acc + count, 0);
         }
         this.enableEditingStations = false;

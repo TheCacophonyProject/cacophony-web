@@ -18,7 +18,7 @@ declare namespace Cypress {
       data: ApiTrackDataRequest,
       algorithm: any,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -37,7 +37,7 @@ declare namespace Cypress {
       recordingNameOrId: string,
       trackNameOrId: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -64,7 +64,7 @@ declare namespace Cypress {
       expectedTrack: ApiTrackResponse,
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -88,7 +88,7 @@ declare namespace Cypress {
       expectedTracks: ApiTrackResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -111,7 +111,7 @@ declare namespace Cypress {
       tagName: string,
       data: ApiTrackTagRequest,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -134,7 +134,7 @@ declare namespace Cypress {
       tagName: string,
       data: ApiTrackTagRequest,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -157,7 +157,7 @@ declare namespace Cypress {
       trackNameOrId: string,
       tagNameOrId: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
   }
 }

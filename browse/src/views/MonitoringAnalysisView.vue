@@ -387,7 +387,7 @@ export default defineComponent({
             ? Array.isArray(route.value.query.tag)
               ? route.value.query.tag.includes(trackTag.label)
               : trackTag.label === route.value.query.tag
-            : true
+            : true,
         );
     };
 
@@ -441,7 +441,7 @@ export default defineComponent({
             await setTrackTags();
           }
         }
-      }
+      },
     );
 
     watch(
@@ -461,7 +461,7 @@ export default defineComponent({
         }
         const nshades = Math.max(
           Object.keys(barChart.data.datasets[0].data).length,
-          6
+          6,
         );
         barChart.data.datasets[0].backgroundColor = colormap({
           colormap: "summer",
@@ -469,7 +469,7 @@ export default defineComponent({
           format: "hex",
         }).reverse();
         barChart.update();
-      }
+      },
     );
 
     watch([trackTags, filterTrackTags], () => {

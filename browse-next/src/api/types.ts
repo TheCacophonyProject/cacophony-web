@@ -56,7 +56,7 @@ export interface JwtTokenPayload<
     | "join-group"
     | "invite-new-user"
     | "invite-existing-user"
-    | "refresh"
+    | "refresh",
 > {
   exp: number;
   iat: number;

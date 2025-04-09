@@ -174,7 +174,7 @@ export default {
             acc[name] = acc[name] || 0;
             acc[name]++;
             return acc;
-          }, {})
+          }, {}),
       );
     },
   },

@@ -73,7 +73,7 @@ const lng = computed<number | undefined>({
 const easting = ref<number | undefined>();
 const northing = ref<number | undefined>();
 const currentProject = inject(
-  currentSelectedProject
+  currentSelectedProject,
 ) as ComputedRef<SelectedProject>;
 
 // Get NZ latlng bounds as range.
@@ -85,7 +85,7 @@ watch(format, (next: "latlng" | "nztm") => {
     if (easting.value !== undefined && northing.value !== undefined) {
       const latLng = convertNZTMToLatLng(
         easting.value as number,
-        northing.value as number
+        northing.value as number,
       );
       latInternal.value = latLng.lat;
       lngInternal.value = latLng.lng;
@@ -94,7 +94,7 @@ watch(format, (next: "latlng" | "nztm") => {
     if (latInternal.value !== undefined && lngInternal.value !== undefined) {
       const eastNorth = convertLatLngToNZTM(
         lngInternal.value as number,
-        latInternal.value as number
+        latInternal.value as number,
       );
       easting.value = eastNorth.easting;
       northing.value = eastNorth.northing;
@@ -161,7 +161,7 @@ const updateCenter = (latLng: LatLng) => {
   lngInternal.value = latLng.lng;
   const northingEasting = convertLatLngToNZTM(
     lng.value as number,
-    lat.value as number
+    lat.value as number,
   );
   northing.value = northingEasting.northing;
   easting.value = northingEasting.easting;

@@ -15,7 +15,7 @@ const props = withDefaults(
     height: number | string;
     alt?: string;
   }>(),
-  { alt: "" }
+  { alt: "" },
 );
 
 const emit = defineEmits<{
@@ -49,7 +49,7 @@ watch(
   () => props.src,
   () => {
     initImageLoadHandlers();
-  }
+  },
 );
 
 const image = ref<HTMLImageElement>();
@@ -99,7 +99,7 @@ onMounted(() => {
           root: null,
           window,
           threshold: 0,
-        }
+        },
       );
       watcher.value = watch(elementIsVisible, elementBecameVisible);
       stopper.value = stop;

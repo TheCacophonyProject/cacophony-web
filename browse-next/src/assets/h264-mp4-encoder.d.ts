@@ -44,7 +44,7 @@ export declare namespace FS {
     path: string,
     uid: number,
     gid: number,
-    dontFollow?: boolean
+    dontFollow?: boolean,
   ): void;
   function lchown(path: string, uid: number, gid: number): void;
   function fchown(fd: number, uid: number, gid: number): void;
@@ -56,7 +56,7 @@ export declare namespace FS {
     flags: string,
     mode?: number,
     fd_start?: number,
-    fd_end?: number
+    fd_end?: number,
   ): FSStream;
   function close(stream: FSStream): void;
   function llseek(stream: FSStream, offset: number, whence: number): any;
@@ -65,7 +65,7 @@ export declare namespace FS {
     buffer: ArrayBufferView,
     offset: number,
     length: number,
-    position?: number
+    position?: number,
   ): number;
   function write(
     stream: FSStream,
@@ -73,7 +73,7 @@ export declare namespace FS {
     offset: number,
     length: number,
     position?: number,
-    canOwn?: boolean
+    canOwn?: boolean,
   ): number;
   function allocate(stream: FSStream, offset: number, length: number): void;
   function mmap(
@@ -83,7 +83,7 @@ export declare namespace FS {
     length: number,
     position: number,
     prot: number,
-    flags: number
+    flags: number,
   ): any;
   function ioctl(stream: FSStream, cmd: any, arg: any): any;
   function readFile(
@@ -91,41 +91,41 @@ export declare namespace FS {
     opts: {
       encoding: "binary";
       flags?: string;
-    }
+    },
   ): Uint8Array;
   function readFile(
     path: string,
     opts: {
       encoding: "utf8";
       flags?: string;
-    }
+    },
   ): string;
   function readFile(
     path: string,
     opts?: {
       flags?: string;
-    }
+    },
   ): Uint8Array;
   function writeFile(
     path: string,
     data: string | ArrayBufferView,
     opts?: {
       flags?: string;
-    }
+    },
   ): void;
   function cwd(): string;
   function chdir(path: string): void;
   function init(
     input: null | (() => number | null),
     output: null | ((c: number) => any),
-    error: null | ((c: number) => any)
+    error: null | ((c: number) => any),
   ): void;
   function createLazyFile(
     parent: string | FSNode,
     name: string,
     url: string,
     canRead: boolean,
-    canWrite: boolean
+    canWrite: boolean,
   ): FSNode;
   function createPreloadedFile(
     parent: string | FSNode,
@@ -136,7 +136,7 @@ export declare namespace FS {
     onload?: () => void,
     onerror?: () => void,
     dontCreateFile?: boolean,
-    canOwn?: boolean
+    canOwn?: boolean,
   ): void;
   function createDataFile(
     parent: string | FSNode,
@@ -144,7 +144,7 @@ export declare namespace FS {
     data: ArrayBufferView,
     canRead: boolean,
     canWrite: boolean,
-    canOwn: boolean
+    canOwn: boolean,
   ): FSNode;
 }
 export interface H264MP4Encoder {
@@ -208,14 +208,14 @@ export interface H264MP4Encoder {
   initialize(): void;
   /** Add a frame in YUV format (expected size: width * height * 3 / 2). */
   addFrameYuv(
-    buffer: ArrayBuffer | Uint8Array | Uint8ClampedArray | Int8Array | string
+    buffer: ArrayBuffer | Uint8Array | Uint8ClampedArray | Int8Array | string,
   ): void;
   /**
    * Add a frame in RGBA format (expected size: width * height * 4).
    * Alpha is ignored but is kept for convenience of working with the HTML5 canvas.getImageData().
    */
   addFrameRgba(
-    buffer: ArrayBuffer | Uint8Array | Uint8ClampedArray | Int8Array | string
+    buffer: ArrayBuffer | Uint8Array | Uint8ClampedArray | Int8Array | string,
   ): void;
   /** Finish outputting the video to the `outputFilename`. */
   finalize(): void;

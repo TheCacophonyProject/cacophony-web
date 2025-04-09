@@ -76,7 +76,7 @@ const props = withDefaults(
     width: 0,
     square: false,
     points: () => [] as NamedPoint[],
-  }
+  },
 );
 
 interface LeafletInternalRawMarker {
@@ -206,7 +206,7 @@ watch(
         pointMarker.foregroundMarker.closeTooltip();
       }
     }
-  }
+  },
 );
 
 const mapLayers = [
@@ -238,19 +238,19 @@ const mapBounds = computed<LatLngBounds | null>(() => {
       // Give the bounds 300m around the focused location.
       // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
       return latLng(props.focusedPoint.location).toBounds(
-        boundsPaddingInMeters
+        boundsPaddingInMeters,
       );
     } else if (props.activePoints && props.activePoints.length === 1) {
       // Give the bounds 300m around the location.
       return latLng(props.activePoints[0].location).toBounds(
-        boundsPaddingInMeters
+        boundsPaddingInMeters,
       );
     } else if (props.activePoints && props.activePoints.length > 1) {
       return latLngBounds(
         props.activePoints.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
-        })
+        }),
       );
     }
   }
@@ -262,7 +262,7 @@ const mapBounds = computed<LatLngBounds | null>(() => {
         props.points.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
-        })
+        }),
       )) ||
     null
   );
@@ -321,7 +321,7 @@ const maybeShowAttributionForCurrentLayer = () => {
   }
   if (showAttribution) {
     const attributionForLayer = attribution().addAttribution(
-      (tileLayer.getAttribution && tileLayer.getAttribution()) || ""
+      (tileLayer.getAttribution && tileLayer.getAttribution()) || "",
     );
     (map as LeafletMap).addControl(attributionForLayer);
   }
@@ -406,7 +406,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("mouseover", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && hoverPoint(namedPoint);
         });
@@ -414,7 +415,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("click", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && selectPoint(namedPoint);
         });
@@ -552,7 +554,7 @@ onMounted(() => {
       DomEvent.addListener(
         el,
         "dblclick",
-        DomEvent.stopPropagation
+        DomEvent.stopPropagation,
       ).addListener(el, "dblclick", DomEvent.preventDefault);
       return el;
     };
@@ -572,7 +574,7 @@ watch(
       map.invalidateSize();
       map.setView(props.center, props.zoomLevel);
     }
-  }
+  },
 );
 //  TODO: On point highlight, animate the size/colour of the point.
 //  Suggests that maybe we don't want to use vue-leaflet to manage the lifecycle of the points.

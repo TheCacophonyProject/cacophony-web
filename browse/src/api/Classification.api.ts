@@ -3,10 +3,10 @@ import CacophonyApi from "./CacophonyApi";
 import { ApiClassificationResponse } from "@typedefs/api/trackTag";
 
 function getClassifications(
-  version?: string
+  version?: string,
 ): Promise<FetchResult<ApiClassificationResponse>> {
   return CacophonyApi.get(
-    `/api/v1/files/classifications${version ? `?version=${version}` : ""}`
+    `/api/v1/files/classifications${version ? `?version=${version}` : ""}`,
   );
 }
 

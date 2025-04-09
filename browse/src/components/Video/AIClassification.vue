@@ -104,12 +104,12 @@ export default {
     },
     agreeingUsersCount() {
       return this.userTags.filter(
-        (tag) => tag === this.mapName(this.aiGuess.what)
+        (tag) => tag === this.mapName(this.aiGuess.what),
       ).length;
     },
     disagreeingUsersCount() {
       return this.userTags.filter(
-        (tag) => tag !== this.mapName(this.aiGuess.what)
+        (tag) => tag !== this.mapName(this.aiGuess.what),
       ).length;
     },
     isSuperUser() {

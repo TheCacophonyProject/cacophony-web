@@ -32,15 +32,15 @@ const EXCLUDE_COLUMNS = ["Date", "Time"];
 
 describe("Recordings: bulk delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
   );
   delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
   delete templateRecording.metadata;
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING),
   );
 
   before(() => {
@@ -55,7 +55,7 @@ describe("Recordings: bulk delete, undelete", () => {
     cy.testCreateUserGroupAndDevice(
       "rsdGroup2Admin",
       "rsdGroup2",
-      "rsdCamera2"
+      "rsdCamera2",
     );
   });
 
@@ -65,7 +65,12 @@ describe("Recordings: bulk delete, undelete", () => {
     cy.log("Add recording as device");
     cy.apiRecordingAdd("rsdCamera1", recording1, undefined, "rsdRecording1")
       .then(() =>
-        cy.apiRecordingAdd("rsdCamera1", recording2, undefined, "rsdRecording2")
+        cy.apiRecordingAdd(
+          "rsdCamera1",
+          recording2,
+          undefined,
+          "rsdRecording2",
+        ),
       )
       .then(() => {
         const id1 = getCreds("rsdRecording1").id;
@@ -74,14 +79,14 @@ describe("Recordings: bulk delete, undelete", () => {
         cy.apiRecordingBulkDelete(
           "rsdGroupAdmin",
           { where: { id: id1 } },
-          HttpStatusCode.Ok
+          HttpStatusCode.Ok,
         ).then(() => {
           cy.log("Check recording no longer shown by default");
           const ids = [id1, id2];
           cy.apiRecordingsCountCheck(
             "rsdGroupAdmin",
             { where: { id: ids } },
-            1
+            1,
           );
 
           cy.log("Undelete");
@@ -90,7 +95,7 @@ describe("Recordings: bulk delete, undelete", () => {
             cy.apiRecordingsCountCheck(
               "rsdGroupAdmin",
               { where: { id: ids }, order: '[["id", "ASC"]]' },
-              2
+              2,
             );
           });
         });
@@ -104,7 +109,12 @@ describe("Recordings: bulk delete, undelete", () => {
 
     cy.apiRecordingAdd("rsdCamera1", recording1, undefined, "rsdRecording6")
       .then(() =>
-        cy.apiRecordingAdd("rsdCamera1", recording2, undefined, "rsdRecording7")
+        cy.apiRecordingAdd(
+          "rsdCamera1",
+          recording2,
+          undefined,
+          "rsdRecording7",
+        ),
       )
       .then(() => {
         const id1 = getCreds("rsdRecording1").id;
@@ -115,7 +125,7 @@ describe("Recordings: bulk delete, undelete", () => {
         cy.apiRecordingBulkDelete(
           "rsdGroup2Admin",
           { where: { id: id1 } },
-          HttpStatusCode.BadRequest
+          HttpStatusCode.BadRequest,
         );
 
         cy.log("Check recording not deleted");
@@ -125,26 +135,26 @@ describe("Recordings: bulk delete, undelete", () => {
         cy.apiRecordingBulkDelete(
           "rsdGroupAdmin",
           { where: { id: id1 } },
-          HttpStatusCode.Ok
+          HttpStatusCode.Ok,
         ).then(() => {
           cy.log("Non member cannot list as deleted");
           cy.apiRecordingsCountCheck(
             "rsdGroup2Admin",
             { deleted: true, where: { id: id1 } },
-            0
+            0,
           );
 
           cy.log("Non member cannot Undelete");
           cy.apiRecordingBulkUndelete(
             "rsdGroup2Admin",
             [id1],
-            HttpStatusCode.Forbidden
+            HttpStatusCode.Forbidden,
           ).then(() => {
             cy.log("Check recording still deleted");
             cy.apiRecordingsCountCheck(
               "rsdGroupAdmin",
               { deleted: true, where: { id: id1 } },
-              1
+              1,
             );
           });
         });
@@ -159,19 +169,19 @@ describe("Recordings: bulk delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording7"
+      "rsdRecording7",
     ).then(() => {
       cy.log("Soft-delete recording");
       cy.apiRecordingBulkDelete(
         "rsdGroupAdmin",
         { where: { id: getCreds("rsdRecording7").id } },
-        HttpStatusCode.Ok
+        HttpStatusCode.Ok,
       ).then(() => {
         cy.log("Check not returned by /recordings/?where=");
         cy.apiRecordingsCountCheck(
           "rsdGroupAdmin",
           { where: { id: getCreds("rsdRecording7").id } },
-          0
+          0,
         );
 
         //check /recordings/report
@@ -179,7 +189,7 @@ describe("Recordings: bulk delete, undelete", () => {
         cy.apiRecordingsReportCheck(
           "rsdGroupAdmin",
           { where: { id: getCreds("rsdRecording7").id } },
-          []
+          [],
         );
       });
     });
@@ -198,21 +208,21 @@ describe("Recordings: bulk delete, undelete", () => {
           "rsdCamera1",
           "rsdGroup",
           station.name,
-          recording1
+          recording1,
         );
 
         cy.log("Soft-delete recording");
         cy.apiRecordingBulkDelete(
           "rsdGroupAdmin",
           { where: { id: getCreds("rsdRecording8").id } },
-          HttpStatusCode.Ok
+          HttpStatusCode.Ok,
         ).then(() => {
           //check /recordings/count
           cy.log("Check returned when deleted requested by /recordings/count");
           cy.apiRecordingsCountCheck(
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-            1
+            1,
           );
 
           //check /recordings/report
@@ -221,7 +231,7 @@ describe("Recordings: bulk delete, undelete", () => {
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording8").id } },
             [expectedReportFromQuery1],
-            EXCLUDE_COLUMNS
+            EXCLUDE_COLUMNS,
           );
         });
       });
@@ -236,7 +246,7 @@ describe("Recordings: bulk delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording9"
+      "rsdRecording9",
     ).then(() => {
       expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -245,7 +255,7 @@ describe("Recordings: bulk delete, undelete", () => {
         "rsdGroup",
         null,
         recording1,
-        false
+        false,
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
       //expectedRecordingFromQuery1.tracks[0].positions = [];
@@ -255,13 +265,13 @@ describe("Recordings: bulk delete, undelete", () => {
         where: { id: getCreds("rsdRecording9").id },
       }).then(() => {
         cy.log(
-          "Check recording was soft-deleted (listed in soft-deleted recordings query"
+          "Check recording was soft-deleted (listed in soft-deleted recordings query",
         );
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",
           { deleted: true, where: { id: getCreds("rsdRecording9").id } },
           [expectedRecordingFromQuery1],
-          EXCLUDE_IDS_RECORDINGS
+          EXCLUDE_IDS_RECORDINGS,
         );
       });
     });
@@ -275,19 +285,19 @@ describe("Recordings: bulk delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording10"
+      "rsdRecording10",
     ).then(() => {
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingBulkDelete(
         "rsdGroupAdmin",
         { where: { id: getCreds("rsdRecording10").id } },
-        HttpStatusCode.Ok
+        HttpStatusCode.Ok,
       ).then(() => {
         cy.log("Handling of undelete invalid recording id");
         cy.apiRecordingBulkUndelete(
           "rsdGroupAdmin",
           [999999],
-          HttpStatusCode.Forbidden
+          HttpStatusCode.Forbidden,
         );
 
         cy.log("Handling of invalid parameter");
@@ -295,7 +305,7 @@ describe("Recordings: bulk delete, undelete", () => {
           "rsdGroupAdmin",
           [999999],
           HttpStatusCode.Forbidden,
-          { additionalParams: { badParameter: "hello" } }
+          { additionalParams: { badParameter: "hello" } },
         );
       });
     });

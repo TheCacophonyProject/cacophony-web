@@ -196,18 +196,18 @@ export interface TrackTagQuery {
 const apiPath = "/api/v1/recordings";
 
 function query(
-  queryParams: RecordingQuery
+  queryParams: RecordingQuery,
 ): Promise<FetchResult<QueryResult<ApiRecordingResponse>>> {
   return CacophonyApi.get(
-    `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
+    `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`,
   );
 }
 
 function bulkDelete(
-  queryParams: RecordingQuery
+  queryParams: RecordingQuery,
 ): Promise<FetchResult<{ ids: string[] }>> {
   return CacophonyApi.delete(
-    `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`
+    `${apiPath}?${querystring.stringify(makeApiQuery(queryParams))}`,
   );
 }
 
@@ -218,13 +218,13 @@ function bulkUndelete(ids: RecordingId[]): Promise<FetchResult<any>> {
 }
 
 function queryTrackTags(
-  params: TrackTagQuery
+  params: TrackTagQuery,
 ): Promise<FetchResult<QueryResult<TrackTagRow>>> {
   if (!shouldViewAsSuperUser()) {
     params["view-mode"] = "user";
   }
   return CacophonyApi.get(
-    `${apiPath}/track-tags?${querystring.stringify({ ...params })}`
+    `${apiPath}/track-tags?${querystring.stringify({ ...params })}`,
   );
 }
 
@@ -242,13 +242,13 @@ export type TrackTagCount = {
 };
 
 function queryTrackTagsCount(
-  params: TrackTagQuery
+  params: TrackTagQuery,
 ): Promise<FetchResult<QueryResult<TrackTagCount>>> {
   if (!shouldViewAsSuperUser()) {
     params["view-mode"] = "user";
   }
   return CacophonyApi.get(
-    `${apiPath}/track-tags/count?${querystring.stringify({ ...params })}`
+    `${apiPath}/track-tags/count?${querystring.stringify({ ...params })}`,
   );
 }
 
@@ -359,24 +359,24 @@ function makeApiQuery(query: RecordingQuery): any {
 }
 
 function queryVisits(
-  queryParams: RecordingQuery
+  queryParams: RecordingQuery,
 ): Promise<FetchResult<VisitsQueryResult>> {
   return CacophonyApi.get(
-    `${apiPath}/visits?${querystring.stringify(makeApiQuery(queryParams))}`
+    `${apiPath}/visits?${querystring.stringify(makeApiQuery(queryParams))}`,
   );
 }
 
 function queryCount(
-  queryParams: RecordingQuery
+  queryParams: RecordingQuery,
 ): Promise<FetchResult<QueryResultCount>> {
   return CacophonyApi.get(
-    `${apiPath}/count?${querystring.stringify(makeApiQuery(queryParams))}`
+    `${apiPath}/count?${querystring.stringify(makeApiQuery(queryParams))}`,
   );
 }
 
 function id(
   id: RecordingId,
-  deleted = false
+  deleted = false,
 ): Promise<
   FetchResult<{
     recording: ApiRecordingResponse;
@@ -407,7 +407,7 @@ function undelete(id: RecordingId): Promise<FetchResult<any>> {
 
 function getTrack(
   trackId: TrackId,
-  recordingId: RecordingId
+  recordingId: RecordingId,
 ): Promise<
   FetchResult<{
     trackId: TrackId;
@@ -419,14 +419,14 @@ function getTrack(
 }
 
 function tracks(
-  recordingId: RecordingId
+  recordingId: RecordingId,
 ): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
   return CacophonyApi.get(`${apiPath}/${recordingId}/tracks`);
 }
 
 function addTrack(
   body: ApiTrackRequest,
-  recordingId: RecordingId
+  recordingId: RecordingId,
 ): Promise<FetchResult<{ trackId: number }>> {
   return CacophonyApi.post(`${apiPath}/${recordingId}/tracks`, body);
 }
@@ -434,33 +434,33 @@ function addTrack(
 function deleteTrack(
   trackId: TrackId,
   recordingId: RecordingId,
-  softDelete = false
+  softDelete = false,
 ): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
   return CacophonyApi.delete(
     `${apiPath}/${recordingId}/tracks/${trackId}${
       softDelete && "?soft-delete=true"
-    }`
+    }`,
   );
 }
 
 function undeleteTrack(
   trackId: TrackId,
-  recordingId: RecordingId
+  recordingId: RecordingId,
 ): Promise<FetchResult<{ tracks: ApiTrackResponse[] }>> {
   return CacophonyApi.patch(
     `${apiPath}/${recordingId}/tracks/${trackId}/undelete`,
-    {}
+    {},
   );
 }
 
 function updateTrack(
   trackId: TrackId,
   recordingId: RecordingId,
-  data: ApiTrackDataRequest
+  data: ApiTrackDataRequest,
 ): Promise<FetchResult<{}>> {
   return CacophonyApi.patch(
     `${apiPath}/${recordingId}/tracks/${trackId}/update-data`,
-    { data }
+    { data },
   );
 }
 
@@ -468,7 +468,7 @@ function replaceTrackTag(
   tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId,
-  automatic = false
+  automatic = false,
 ): Promise<FetchResult<{ trackTagId?: number }>> {
   const body: ApiTrackTagRequest = {
     ...tag,
@@ -476,7 +476,7 @@ function replaceTrackTag(
   };
   return CacophonyApi.post(
     `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,
-    body
+    body,
   );
 }
 
@@ -484,11 +484,11 @@ function updateTrackTag(
   body: ApiTrackTagAttributes,
   recordingId: RecordingId,
   trackId: TrackId,
-  tagId: number
+  tagId: number,
 ): Promise<FetchResult<{ trackTagId?: number }>> {
   return CacophonyApi.patch(
     `${apiPath}/${recordingId}/tracks/${trackId}/tags/${tagId}`,
-    { updates: body }
+    { updates: body },
   );
 }
 
@@ -496,7 +496,7 @@ function addTrackTag(
   tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId,
-  tagJWT?: JwtToken<TrackTag>
+  tagJWT?: JwtToken<TrackTag>,
 ): Promise<FetchResult<{ trackTagId: number; success: boolean }>> {
   // Quick fix: New tags should use unidentified, not unknown
   if (tag.what === "unknown") {
@@ -513,7 +513,7 @@ function addTrackTag(
   }
   return CacophonyApi.post(
     `${apiPath}/${recordingId}/tracks/${trackId}/tags`,
-    body
+    body,
   );
 }
 
@@ -521,7 +521,7 @@ function deleteTrackTag(
   id: RecordingId,
   trackId: TrackId,
   trackTagId: TrackTagId,
-  tagJWT?: JwtToken<TrackTag>
+  tagJWT?: JwtToken<TrackTag>,
 ): Promise<FetchResult<any>> {
   let requestUri = `${apiPath}/${id}/tracks/${trackId}/tags/${trackTagId}`;
   if (tagJWT !== undefined) {
@@ -532,7 +532,7 @@ function deleteTrackTag(
 
 function addRecordingTag(
   tag: ApiRecordingTagRequest,
-  id: RecordingId
+  id: RecordingId,
 ): Promise<FetchResult<{ tagId: TagId }>> {
   return CacophonyApi.post(`${apiPath}/${id}/tags`, {
     tag,
@@ -541,7 +541,7 @@ function addRecordingTag(
 
 function deleteRecordingTag(
   tagId: TagId,
-  id: RecordingId
+  id: RecordingId,
 ): Promise<FetchResult<void>> {
   return CacophonyApi.delete(`${apiPath}/${id}/tags/${tagId}`);
 }
@@ -557,7 +557,7 @@ function thumbnail(id: RecordingId): string {
 function addRecording(
   file: Blob,
   data: any,
-  deviceId: DeviceId
+  deviceId: DeviceId,
 ): Promise<FetchResult<{ id: RecordingId; messages: string[] }>> {
   const formData = new FormData();
   formData.set("data", JSON.stringify(data));
@@ -565,7 +565,7 @@ function addRecording(
   return CacophonyApi.postMultipartFormData(
     `/api/v1/recordings/device/${deviceId}`,
     formData,
-    true
+    true,
   );
 }
 
@@ -601,7 +601,7 @@ export function calculateFromTime(query: RecordingQuery): string {
 }
 
 export function latestForDevice(
-  deviceId: DeviceId
+  deviceId: DeviceId,
 ): Promise<
   SuccessFetchResult<QueryResult<ApiRecordingResponse>> | FailureFetchResult
 > {

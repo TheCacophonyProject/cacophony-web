@@ -52,7 +52,7 @@ export class CptvDecoderContext {
    * @returns {CptvDecoderContext}
    */
   static newWithReadableStream(
-    stream: ReadableStreamDefaultReader
+    stream: ReadableStreamDefaultReader,
   ): CptvDecoderContext;
   /**
    * @returns {Promise<CptvHeader | string>}
@@ -87,13 +87,13 @@ export interface InitOutput {
     a: number,
     b: number,
     c: number,
-    d: number
+    d: number,
   ) => number;
   readonly __wbindgen_export_2: WebAssembly.Table;
   readonly _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h1ea9dee0275cc798: (
     a: number,
     b: number,
-    c: number
+    c: number,
   ) => void;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_exn_store: (a: number) => void;
@@ -101,7 +101,7 @@ export interface InitOutput {
     a: number,
     b: number,
     c: number,
-    d: number
+    d: number,
   ) => void;
 }
 
@@ -125,5 +125,5 @@ export function initSync(module: SyncInitInput): InitOutput;
  * @returns {Promise<InitOutput>}
  */
 export default function __wbg_init(
-  module_or_path?: InitInput | Promise<InitInput>
+  module_or_path?: InitInput | Promise<InitInput>,
 ): Promise<InitOutput>;

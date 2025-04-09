@@ -202,7 +202,7 @@ library.add(
   faVolumeUp,
   faSquarePlus,
   faSquarePlusSolid,
-  faComment
+  faComment,
 );
 
 export default FontAwesomeIcon;

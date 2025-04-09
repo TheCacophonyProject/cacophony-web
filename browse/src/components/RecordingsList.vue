@@ -175,7 +175,7 @@ const addToListOfTags = (
   allTags: Record<string, IntermediateDisplayTag>,
   tagName: string,
   isAutomatic: boolean,
-  taggerId: number | null
+  taggerId: number | null,
 ) => {
   const tag = allTags[tagName] || {
     taggerIds: [],

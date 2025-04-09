@@ -21,12 +21,12 @@ describe("Groups - add, check and remove users", () => {
           admin: ADMIN,
           owner: OWNER,
         };
-      }
+      },
     );
     cy.testCreateUserGroupAndDevice(
       "guGroup2Admin",
       "guGroup2",
-      "guCamera2"
+      "guCamera2",
     ).then(() => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       expectedGuAdminUser2 = {
@@ -84,11 +84,11 @@ describe("Groups - add, check and remove users", () => {
       NOT_ADMIN,
       NOT_OWNER,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log(
-      "check that new user was not created and group member can see users list"
+      "check that new user was not created and group member can see users list",
     );
     cy.apiGroupUsersCheck("guTestUser", "guGroup", [
       expectedGuAdminUser,
@@ -100,7 +100,7 @@ describe("Groups - add, check and remove users", () => {
       "guTestUser",
       "guGroupAdmin",
       "guGroup",
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("check that user was not deleted");
@@ -122,7 +122,7 @@ describe("Groups - add, check and remove users", () => {
       NOT_ADMIN,
       NOT_OWNER,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("check that group admin cannot view another groups user list");
@@ -131,7 +131,7 @@ describe("Groups - add, check and remove users", () => {
       "guGroup2",
       [],
       [],
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("attempt to remove a user using non admin account");
@@ -139,7 +139,7 @@ describe("Groups - add, check and remove users", () => {
       "guGroupAdmin",
       "guGroup2Admin",
       "guGroup2",
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -152,27 +152,27 @@ describe("Groups - add, check and remove users", () => {
       NOT_ADMIN,
       NOT_OWNER,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log(
-      "check that cannot remove non-existent user (user exists but not in group)"
+      "check that cannot remove non-existent user (user exists but not in group)",
     );
     cy.apiGroupUserRemove(
       "guGroupAdmin",
       "guTestUser2",
       "guGroup",
-      HttpStatusCode.BadRequest
+      HttpStatusCode.BadRequest,
     );
 
     cy.log(
-      "check that cannot remove non-existent user (user not registered in system)"
+      "check that cannot remove non-existent user (user not registered in system)",
     );
     cy.apiGroupUserRemove(
       "guGroupAdmin",
       "IDontExist",
       "guGroup",
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -185,7 +185,7 @@ describe("Groups - add, check and remove users", () => {
       NOT_ADMIN,
       NOT_OWNER,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("check that cannot view a non existent group");
@@ -194,17 +194,17 @@ describe("Groups - add, check and remove users", () => {
       "ThisGroupDoesNotExist",
       [],
       [],
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log(
-      "check that cannot remove non-existent user (user not registered in system)"
+      "check that cannot remove non-existent user (user not registered in system)",
     );
     cy.apiGroupUserRemove(
       "guGroupAdmin",
       "guTestUser",
       "ThisGroupDoesNotExist",
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -216,7 +216,7 @@ describe("Groups - add, check and remove users", () => {
       [expectedGuAdminUser],
       [],
       HttpStatusCode.Ok,
-      { useRawGroupName: true }
+      { useRawGroupName: true },
     );
   });
 
@@ -260,7 +260,7 @@ describe("Groups - add, check and remove users", () => {
       ADMIN,
       NOT_OWNER,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("change to admin user");

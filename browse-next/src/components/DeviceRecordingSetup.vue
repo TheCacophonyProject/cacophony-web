@@ -37,17 +37,17 @@ const lastSyncedSettings = computed<LoadedResource<ApiDeviceHistorySettings>>(
       return syncedSettings.value;
     }
     return false;
-  }
+  },
 );
 
 const deviceId = computed<DeviceId>(
-  () => Number(route.params.deviceId) as DeviceId
+  () => Number(route.params.deviceId) as DeviceId,
 );
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
       devices.value.find(
-        (device: ApiDeviceResponse) => device.id === deviceId.value
+        (device: ApiDeviceResponse) => device.id === deviceId.value,
       )) ||
     null
   );
@@ -76,7 +76,7 @@ const timeStrToTimeObj = (timeStr: string): Time => {
 
 const timeObjToTimeStr = (time: Time): string => {
   return `${String(time.hours).padStart(2, "0")}:${String(
-    time.minutes
+    time.minutes,
   ).padStart(2, "0")}`;
 };
 
@@ -138,7 +138,7 @@ const recordingWindow = computed<string | null>(() => {
 
 const loadResource = async (
   target: Ref<LoadedResource<unknown>>,
-  loader: () => Promise<unknown | false>
+  loader: () => Promise<unknown | false>,
 ): Promise<void> => {
   return new Promise((resolve) => {
     const isLoading = target.value === null;
@@ -250,7 +250,7 @@ const customRecordingWindowStart = computed<Time>({
     if (settings.value) {
       return timeStrToTimeObj(
         (settings.value as ApiDeviceHistorySettings).windows?.startRecording ||
-          ""
+          "",
       );
     } else {
       return { hours: 12, minutes: 0, seconds: 0 };
@@ -274,7 +274,7 @@ const customRecordingWindowStop = computed<Time>({
     if (settings.value) {
       return timeStrToTimeObj(
         (settings.value as ApiDeviceHistorySettings).windows?.stopRecording ||
-          ""
+          "",
       );
     } else {
       return { hours: 12, minutes: 0, seconds: 0 };
@@ -343,7 +343,7 @@ function timeToPercentage(timeStr: string): number {
 
 function calculateTimePercentagePoints(
   startTime: string,
-  endTime: string
+  endTime: string,
 ): Array<{ left: string; width: string }> {
   if (startTime === "12:00" && endTime === "12:00") {
     return [{ left: "0%", width: "100%" }];
@@ -396,7 +396,7 @@ const thermalBarStyles = computed(() => {
 
   const thermalRanges = calculateTimePercentagePoints(
     startRecording,
-    stopRecording
+    stopRecording,
   );
 
   return thermalRanges.map((range) => ({
@@ -446,7 +446,7 @@ const audioBarStyles = computed(() => {
 
     const thermalRanges = calculateTimePercentagePoints(
       startRecording,
-      stopRecording
+      stopRecording,
     );
 
     // Audio ranges are inverse of thermal ranges

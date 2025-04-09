@@ -125,21 +125,21 @@ export default {
       this.results = await api.monitoring.getAllVisits(
         queryParams,
         aiComparisonVisit,
-        this.updateProgress
+        this.updateProgress,
       );
       this.queryPending = false;
       this.allCategoriesMatrix = countByClassThenAiClass(
         this.results.filteredVisits,
         DefaultLabels.detailedAiEvaluationMatrix(),
-        "other"
+        "other",
       );
       const overView = countByClassThenAiClass(
         this.results.filteredVisits,
         DefaultLabels.overViewAiEvaluationMatrix(),
-        "other"
+        "other",
       );
       overView.percentages = overView.percentages.filter(
-        (element) => element.y != 2
+        (element) => element.y != 2,
       );
       overView.percentages.forEach((element) => {
         element.color = element.x == element.y ? "limegreen" : "lightsalmon";
@@ -155,16 +155,16 @@ export default {
       const pest = overView.labels.indexOf("pest");
       const totalCount = overView.percentages.reduce(
         (total, point) => total + point.count,
-        0
+        0,
       );
       const totalCorrect = overView.percentages.reduce(
         (total, point) => (point.x == point.y ? total + point.count : total),
-        0
+        0,
       );
       const escapedPests = overView.percentages.reduce(
         (total, point) =>
           point.y == pest && point.x != point.y ? total + point.count : total,
-        0
+        0,
       );
       if (bird >= 0 && pest >= 0 && totalCount > 0 && overView.percentages) {
         const deadBirds = findItem(pest, bird, overView.percentages);

@@ -19,7 +19,7 @@ import { DateTime } from "luxon";
 
 const route = useRoute();
 const deviceId = computed<DeviceId>(
-  () => Number(route.params.deviceId) as DeviceId
+  () => Number(route.params.deviceId) as DeviceId,
 );
 const loadedDeviceEvents = ref<LoadedResource<DeviceEvent[]>>(null);
 const deviceEvents = computed<DeviceEvent[]>(() => {
@@ -75,7 +75,7 @@ const knownEventTypesOptions = computed<{ value: string; label: string }[]>(
         label: homogeniseLabel(key),
       }))
       .sort((a, b) => (a.label > b.label ? 1 : -1));
-  }
+  },
 );
 
 const loadingEvents = ref<boolean>(false);
@@ -173,7 +173,7 @@ onUpdated(() => {
                 break;
               }
             }
-          }
+          },
         );
       }
     }
@@ -255,7 +255,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
         >
           <div
             v-for="([key, val], index) in Object.entries(
-              event.EventDetail.details
+              event.EventDetail.details,
             ).filter(([_, vv], i) => !!vv)"
             :key="index"
             class="row"
@@ -265,7 +265,11 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
             </div>
             <div class="col" v-if="!Array.isArray(val)">
               <div
-                v-if="val && typeof val === 'object' && Object.keys(val as Object).length !== 0"
+                v-if="
+                  val &&
+                  typeof val === 'object' &&
+                  Object.keys(val as Object).length !== 0
+                "
               >
                 <div
                   class="row"

@@ -65,7 +65,7 @@ export default {
             event,
             "nearest",
             { intersect: true },
-            true
+            true,
           );
           if (nearestElements.length > 0) {
             const dataIndex = nearestElements[0].index;
@@ -110,7 +110,7 @@ export default {
   async mounted() {
     await this.getSpeciesCounts();
     this.originalLabels = this.chartData.datasets.map(
-      (dataset) => dataset.label
+      (dataset) => dataset.label,
     );
   },
   watch: {
@@ -146,10 +146,10 @@ export default {
       this.loading = true;
       var requests = [];
       var windowSize = Math.ceil(
-        (this.toDate.getTime() - this.fromDate.getTime()) / 3600000
+        (this.toDate.getTime() - this.fromDate.getTime()) / 3600000,
       );
       const audioDevices = this.devices.filter(
-        (device) => device.type == "audio"
+        (device) => device.type == "audio",
       );
 
       if (this.groupingSelection == "device") {
@@ -181,7 +181,7 @@ export default {
               req["from"],
               req["window-size"],
               false,
-              "audio"
+              "audio",
             );
           } else if (this.groupingSelection == "station") {
             res = await api.station.getStationSpeciesCount(
@@ -189,7 +189,7 @@ export default {
               req["from"],
               req["window-size"],
               false,
-              "audio"
+              "audio",
             );
           }
           const result = res.result;
@@ -202,7 +202,7 @@ export default {
               "window Size": req["window-size"],
             };
           }
-        })
+        }),
       );
 
       response = response.filter((res) => res.what.length != 0);
@@ -253,7 +253,7 @@ export default {
     updateSelectOptions() {
       if (this.groupingSelection == "device") {
         const audioDevices = this.devices.filter(
-          (device) => device.type == "audio"
+          (device) => device.type == "audio",
         );
         this.selectOptions = audioDevices.map((device) => ({
           name: `${device.deviceName.slice(0, 25)}${

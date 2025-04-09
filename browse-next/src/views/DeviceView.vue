@@ -51,7 +51,7 @@ const loadDevice = async (deviceId: DeviceId) => {
   await Promise.all([userProjectsLoaded(), projectDevicesLoaded()]);
   if (projectDevices.value) {
     const targetDevice = (projectDevices.value as ApiDeviceResponse[]).find(
-      ({ id }) => id === deviceId
+      ({ id }) => id === deviceId,
     );
     if (targetDevice) {
       device.value = targetDevice;
@@ -80,7 +80,7 @@ const loadReferenceImage = (deviceId: DeviceId) => {
       } else {
         latestReferenceImageURL.value = false;
       }
-    }
+    },
   );
 };
 
@@ -95,7 +95,7 @@ onBeforeMount(async () => {
     //  TODO: Use meta/status to get low power 2s recordings
     getLatestStatusRecordingForDevice(
       device.value.id,
-      device.value.groupId
+      device.value.groupId,
     ).then((result) => (latestStatusRecording.value = result));
     loadReferenceImage(device.value.id);
     getMaskRegionsForDevice(device.value.id, true).then(
@@ -107,7 +107,7 @@ onBeforeMount(async () => {
         } else {
           latestMaskRegions.value = false;
         }
-      }
+      },
     );
   }
 });
@@ -151,7 +151,13 @@ const _deviceType = computed<string>(() => {
       <!--        >Events</router-link-->
       <!--      >-->
       <router-link
-        v-if="currentUserIsSuperUser && device?.active && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
+        v-if="
+          currentUserIsSuperUser &&
+          device?.active &&
+          [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes(
+            (device as ApiDeviceResponse).type,
+          )
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-events') },
@@ -163,7 +169,12 @@ const _deviceType = computed<string>(() => {
         >Events</router-link
       >
       <router-link
-        v-if="device?.active && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
+        v-if="
+          device?.active &&
+          [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes(
+            (device as ApiDeviceResponse).type,
+          )
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-diagnostics') },
@@ -175,7 +186,13 @@ const _deviceType = computed<string>(() => {
         >Diagnostics</router-link
       >
       <router-link
-        v-if="device?.active && [DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
+        v-if="
+          device?.active &&
+          [DeviceType.Hybrid, DeviceType.Thermal].includes(
+            (device as ApiDeviceResponse).type,
+          ) &&
+          (device as ApiDeviceResponse).location
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-setup') },
@@ -187,7 +204,13 @@ const _deviceType = computed<string>(() => {
         >Setup</router-link
       >
       <router-link
-        v-if="device?.active && [DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
+        v-if="
+          device?.active &&
+          [DeviceType.Hybrid, DeviceType.Thermal].includes(
+            (device as ApiDeviceResponse).type,
+          ) &&
+          (device as ApiDeviceResponse).location
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-insights') },

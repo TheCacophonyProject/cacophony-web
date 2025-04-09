@@ -29,7 +29,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    userEmailAddress.touched ? isValidEmailAddress.value : undefined
+    userEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 
 const resetPassword = async () => {

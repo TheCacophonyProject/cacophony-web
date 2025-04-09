@@ -52,7 +52,9 @@ const isMobileView = useMediaQuery("(max-width: 639px)");
       :is="item"
       :key="index"
       :visible="index == selectedStep"
-      @validation-state-change="(isValid: boolean) => validationStateChanged(isValid, index)"
+      @validation-state-change="
+        (isValid: boolean) => validationStateChanged(isValid, index)
+      "
     />
   </div>
 </template>

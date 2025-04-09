@@ -208,7 +208,7 @@ const addToListOfTags = (
   allTags: Record<string, IntermediateDisplayTag>,
   tagName: string,
   isAutomatic: boolean,
-  taggerId: number | null
+  taggerId: number | null,
 ) => {
   const tag = allTags[tagName] || {
     taggerIds: [],
@@ -230,7 +230,7 @@ const collateTags = (
   recType: RecordingType,
   options: Option,
   recTags: any[],
-  tracks: ApiTrackResponse[]
+  tracks: ApiTrackResponse[],
 ): DisplayTag[] => {
   // Build a collection of tagItems - one per animal
   const tagItems: Record<string, DisplayTag> = {};
@@ -246,7 +246,7 @@ const collateTags = (
             tagItems,
             tag.what,
             tag.automatic,
-            tag.automatic ? null : tag.userId
+            tag.automatic ? null : tag.userId,
           );
           if (tag.class === TagClass.Confirmed) {
             tagItems[tag.what].automatic = true;
@@ -258,16 +258,16 @@ const collateTags = (
 
       // For track tags, pick the best one, which is the "master AI" tag.
       const aiTag = track.tags.find(
-        (tag: ApiAutomaticTrackTagResponse) => tag.model === "Master"
+        (tag: ApiAutomaticTrackTagResponse) => tag.model === "Master",
       );
       const humanTags = track.tags.filter(
-        (tag: ApiHumanTrackTagResponse) => !tag.automatic
+        (tag: ApiHumanTrackTagResponse) => !tag.automatic,
       );
 
       let humansDisagree = false;
       if (aiTag && humanTags.length !== 0) {
         humansDisagree = humanTags.some(
-          (tag: ApiHumanTrackTagResponse) => tag.what !== aiTag.what
+          (tag: ApiHumanTrackTagResponse) => tag.what !== aiTag.what,
         );
       }
 
@@ -379,7 +379,7 @@ export default {
             this.item.type,
             this.options,
             this.item.recTags,
-            this.item.tracks
+            this.item.tracks,
           ) ?? []
         );
       } else {
@@ -389,7 +389,7 @@ export default {
             this.item.type,
             this.options,
             this.item.recTags,
-            goodTracks
+            goodTracks,
           ) ?? []
         );
       }

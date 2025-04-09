@@ -190,7 +190,7 @@ export default {
     recordingsListLink() {
       const firstRecordingId = this.item.item.recordings[0].recId;
       const remainingIds = this.item.item.recordings.map(
-        ({ recId }) => `id=${recId}`
+        ({ recId }) => `id=${recId}`,
       );
       let remainingIdsQuery = "";
       if (remainingIds.length > 0) {

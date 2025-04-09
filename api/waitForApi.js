@@ -22,7 +22,7 @@ const apiServerIsUp = async (url) => {
   const now = new Date();
   const waitMins = 5;
   const fiveMinutesFromNow = new Date(
-    now.setMinutes(now.getMinutes() + waitMins)
+    now.setMinutes(now.getMinutes() + waitMins),
   );
   console.log(`Waiting up to ${waitMins} minutes for API server...`);
 
@@ -30,7 +30,7 @@ const apiServerIsUp = async (url) => {
     let up = false;
     try {
       up = await apiServerIsUp(
-        "http://localhost:1080/api/v1/end-user-agreement/latest"
+        "http://localhost:1080/api/v1/end-user-agreement/latest",
       );
     } catch (e) {
       // ...

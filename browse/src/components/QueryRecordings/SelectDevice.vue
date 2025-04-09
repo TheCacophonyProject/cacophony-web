@@ -26,8 +26,8 @@
               option.kind === 'thermal'
                 ? 'video'
                 : option.kind === 'audio'
-                ? 'music'
-                : 'microchip'
+                  ? 'music'
+                  : 'microchip'
             "
             size="xs"
           />
@@ -64,8 +64,8 @@
               kind === 'thermal'
                 ? 'video'
                 : kind === 'audio'
-                ? 'music'
-                : 'microchip'
+                  ? 'music'
+                  : 'microchip'
             "
             size="xs"
           />
@@ -125,9 +125,8 @@ const disambiguateStationNames = (stations) => {
           d.name += ` (${station.groupName})`;
         }
       } else {
-        seenNames[station.name][
-          seenNames[station.name].length - 1
-        ].name += ` (${station.groupName})`;
+        seenNames[station.name][seenNames[station.name].length - 1].name +=
+          ` (${station.groupName})`;
       }
     }
   }
@@ -247,7 +246,7 @@ export default defineComponent({
         if (!this.hideSelectedType.has("station")) {
           for (const stationId of this.selectedStations) {
             loadStationPromises.push(
-              api.station.getStationById(stationId as number)
+              api.station.getStationById(stationId as number),
             );
           }
         }
@@ -272,10 +271,10 @@ export default defineComponent({
                   name: deviceName,
                   kind: type,
                   uid: `device_${id}`,
-                })
+                }),
               )
-              .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
-          )
+              .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {}),
+          ),
         );
         this.groups = Object.freeze(
           groupsResponses
@@ -290,9 +289,9 @@ export default defineComponent({
                 type: "group",
                 name: groupName,
                 uid: `group_${id}`,
-              })
+              }),
             )
-            .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
+            .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {}),
         );
         this.stations = Object.freeze(
           disambiguateStationNames(
@@ -309,10 +308,10 @@ export default defineComponent({
                   id,
                   groupName,
                   uid: `station_${id}`,
-                })
+                }),
               )
-              .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
-          )
+              .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {}),
+          ),
         );
       } else {
         // Load the entire set of available options.
@@ -333,8 +332,8 @@ export default defineComponent({
                     groupName,
                     uid: `device_${id}`,
                   }))
-                  .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {})
-              )
+                  .reduce((acc, curr) => ((acc[curr.id] = curr), acc), {}),
+              ),
             );
           }
           if (!this.hideSelectedType.has("group")) {
@@ -351,8 +350,8 @@ export default defineComponent({
                   acc[groupId].deviceCount++;
                   return acc;
                 },
-                {}
-              )
+                {},
+              ),
             );
           }
         }
@@ -372,9 +371,9 @@ export default defineComponent({
                     };
                     return acc;
                   },
-                  {}
-                )
-              )
+                  {},
+                ),
+              ),
             );
           }
         }

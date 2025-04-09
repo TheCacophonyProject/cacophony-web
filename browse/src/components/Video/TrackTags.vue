@@ -136,7 +136,7 @@ export default {
         // Remove AI tags other than master, as they'll just be confusing
         items = this.items.filter(
           (item: ApiTrackTagResponse) =>
-            !item.automatic || item.model === "Master"
+            !item.automatic || item.model === "Master",
         );
       }
       return items.sort((a: ApiTrackTagResponse, b: ApiTrackTagResponse) => {
@@ -191,7 +191,7 @@ export default {
         (tag) =>
           !tag.automatic &&
           tag.what === what &&
-          tag.userName === this.thisUserName
+          tag.userName === this.thisUserName,
       );
     },
     confirmTag: function ({ what, confidence }) {

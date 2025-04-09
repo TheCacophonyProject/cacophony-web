@@ -159,7 +159,7 @@ export default {
       const query = this.makePaginatedQuery(
         this.serialisedQuery,
         page,
-        perPage
+        perPage,
       );
       this.updateRoute(query);
       this.getVisits(query);
@@ -169,7 +169,7 @@ export default {
       const fullQuery = this.makePaginatedQuery(
         query,
         this.currentPage,
-        this.perPage
+        this.perPage,
       );
       this.updateRoute(fullQuery);
     },
@@ -184,7 +184,7 @@ export default {
       const fullQuery = this.makePaginatedQuery(
         query,
         this.currentPage,
-        this.perPage
+        this.perPage,
       );
       this.updateRoute(fullQuery);
       this.getVisits(fullQuery);

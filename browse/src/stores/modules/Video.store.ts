@@ -52,7 +52,7 @@ const mutations = {
   },
   receiveRecording(
     state,
-    { recording, downloadFileJWT, downloadRawJWT, fileSize, rawSize }
+    { recording, downloadFileJWT, downloadRawJWT, fileSize, rawSize },
   ) {
     state.recording = recording;
     state.downloadFileJWT = downloadFileJWT;
@@ -85,7 +85,7 @@ const mutations = {
 
   deleteTag(state, tagId) {
     state.recording.Tags = state.recording.Tags.filter(
-      (tag) => tag.id != tagId
+      (tag) => tag.id != tagId,
     );
   },
 
@@ -107,7 +107,7 @@ const mutations = {
     const track = state.tracks.find((track) => track.id === deletedTag.TrackId);
     if (track) {
       track.TrackTags = track.TrackTags.filter(
-        (tag) => tag.id != deletedTag.id
+        (tag) => tag.id != deletedTag.id,
       );
     }
   },

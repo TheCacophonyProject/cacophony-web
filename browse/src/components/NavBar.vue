@@ -259,7 +259,7 @@ export default {
       {
         on: { click: () => this.$bvToast.hide(id) },
       },
-      "Close"
+      "Close",
     );
     this.$bvToast.show("browse-next-toast");
     //
@@ -304,7 +304,7 @@ export default {
       if (this.selectedUser) {
         // Log in as user:
         const otherUser = await User.loginOther(
-          this.selectedUser.email || this.selectedUser.id
+          this.selectedUser.email || this.selectedUser.id,
         );
         this.$store.dispatch("User/LOGIN_OTHER", otherUser.result);
         window.location.reload();

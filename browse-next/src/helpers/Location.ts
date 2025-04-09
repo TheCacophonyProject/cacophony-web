@@ -9,7 +9,7 @@ import { DeviceType as ConcreteDeviceType } from "@typedefs/api/consts.ts";
 export const canonicalLatLngForLocations = (
   locations:
     | Ref<LoadedResource<ApiLocationResponse[]>>
-    | ComputedRef<ApiLocationResponse[]>
+    | ComputedRef<ApiLocationResponse[]>,
 ) =>
   computed<LatLng>(() => {
     if (locations.value && locations.value.length) {
@@ -20,7 +20,7 @@ export const canonicalLatLngForLocations = (
 
 export const latestRecordingTimeForDeviceAtLocation = (
   device: ApiDeviceResponse,
-  location: ApiLocationResponse
+  location: ApiLocationResponse,
 ): Date | null => {
   if (location && device.type) {
     if (
@@ -34,8 +34,8 @@ export const latestRecordingTimeForDeviceAtLocation = (
         return new Date(
           Math.max(
             new Date(location.lastAudioRecordingTime).getTime(),
-            new Date(location.lastThermalRecordingTime).getTime()
-          )
+            new Date(location.lastThermalRecordingTime).getTime(),
+          ),
         );
       } else if (location.lastAudioRecordingTime) {
         return new Date(location.lastAudioRecordingTime);
@@ -49,7 +49,7 @@ export const latestRecordingTimeForDeviceAtLocation = (
       return new Date(location.lastAudioRecordingTime);
     } else if (
       [ConcreteDeviceType.Thermal, ConcreteDeviceType.TrailCam].includes(
-        device.type
+        device.type,
       ) &&
       location.lastThermalRecordingTime
     ) {

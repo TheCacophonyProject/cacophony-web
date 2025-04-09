@@ -223,10 +223,10 @@ export default defineComponent({
     },
     hasAudioOrUnknownDevices() {
       const hasAudio = (this.devices as ApiDeviceResponse[]).some(
-        (device) => device.type === DeviceType.Audio
+        (device) => device.type === DeviceType.Audio,
       );
       const hasUnknown = (this.devices as ApiDeviceResponse[]).some(
-        (device) => device.type === DeviceType.Unknown
+        (device) => device.type === DeviceType.Unknown,
       );
       return hasAudio || hasUnknown;
     },
@@ -254,7 +254,7 @@ export default defineComponent({
     anyDevicesAreUnhealthy() {
       return this.devices.some(
         (device) =>
-          device.type === DeviceType.Thermal && device.isHealthy === false
+          device.type === DeviceType.Thermal && device.isHealthy === false,
       );
     },
     availableMediaTypes(): Set<RecordingType> {
@@ -383,7 +383,7 @@ export default defineComponent({
       this.recordingQueryFinal = this.recordingQuery();
 
       const countResponse = await api.recording.queryCount(
-        this.recordingQuery()
+        this.recordingQuery(),
       );
       if (countResponse.success) {
         const {
@@ -421,7 +421,7 @@ export default defineComponent({
         now.setDate(now.getDate() - 1);
 
         const getDevicesResponse = await api.groups.getDevicesForGroup(
-          this.groupName
+          this.groupName,
         );
         if (getDevicesResponse.success) {
           this.devices = getDevicesResponse.result.devices;
@@ -433,7 +433,7 @@ export default defineComponent({
       this.stationsLoading = true;
 
       const stationsResponse = await api.groups.getStationsForGroup(
-        this.groupName
+        this.groupName,
       );
       if (stationsResponse.success) {
         if (stationsResponse.result.stations.length === 0) {
@@ -442,7 +442,7 @@ export default defineComponent({
           return;
         }
         const stationIds = stationsResponse.result.stations.map(
-          (station) => station.id
+          (station) => station.id,
         );
         const recordingsCountsResponse =
           await api.station.getStationsRecordingsCount(stationIds);

@@ -23,7 +23,7 @@ import type {
 
 export const getRecordingById = (
   id: RecordingId,
-  includeDeletedRecordings = false
+  includeDeletedRecordings = false,
 ): Promise<LoadedResource<ApiRecordingResponse>> => {
   const params = new URLSearchParams();
   if (includeDeletedRecordings) {
@@ -36,7 +36,7 @@ export const getRecordingById = (
         recording: ApiRecordingResponse;
       }>
     >,
-    "recording"
+    "recording",
   );
 };
 
@@ -44,7 +44,7 @@ export const replaceTrackTag = (
   tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId,
-  automatic = false
+  automatic = false,
 ) => {
   const body: ApiTrackTagRequest = {
     ...tag,
@@ -52,22 +52,22 @@ export const replaceTrackTag = (
   };
   return CacophonyApi.post(
     `/api/v1/recordings/${recordingId}/tracks/${trackId}/replace-tag`,
-    body
+    body,
   ) as Promise<FetchResult<{ trackTagId?: number }>>;
 };
 
 export const removeTrackTag = (
   id: RecordingId,
   trackId: TrackId,
-  trackTagId: TrackTagId
+  trackTagId: TrackTagId,
 ) =>
   CacophonyApi.delete(
-    `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`
+    `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`,
   ) as Promise<FetchResult<void>>;
 
 export const createDummyTrack = (
   recording: ApiRecordingResponse,
-  track: ApiTrackDataRequest
+  track: ApiTrackDataRequest,
 ) =>
   CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
     data: {
@@ -78,15 +78,15 @@ export const createDummyTrack = (
 
 export const deleteTrack = (
   recording: ApiRecordingResponse,
-  trackId: TrackId
+  trackId: TrackId,
 ) =>
   CacophonyApi.delete(
-    `/api/v1/recordings/${recording.id}/tracks/${trackId}?soft-delete=false`
+    `/api/v1/recordings/${recording.id}/tracks/${trackId}?soft-delete=false`,
   ) as Promise<FetchResult<void>>;
 
 export const createUserDefinedTrack = (
   recording: ApiRecordingResponse,
-  track: ApiTrackDataRequest
+  track: ApiTrackDataRequest,
 ) =>
   CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
     data: {
@@ -150,7 +150,7 @@ export interface BulkRecordingsResponse {
 
 export const queryRecordingsInProjectNew = (
   projectId: ProjectId,
-  options: QueryRecordingsOptions
+  options: QueryRecordingsOptions,
 ): Promise<
   FetchResult<{ recordings: ApiRecordingResponse[]; count?: number }>
 > => {
@@ -219,7 +219,7 @@ export const queryRecordingsInProjectNew = (
   const ABORTABLE = true;
   return CacophonyApi.get(
     `/api/v1/recordings/for-project/${projectId}?${params}`,
-    ABORTABLE
+    ABORTABLE,
   ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
   //"rows"
   //);
@@ -228,32 +228,32 @@ export const queryRecordingsInProjectNew = (
 export const getRecordingsForDeviceInProject = (
   deviceIds: DeviceId | DeviceId[],
   projectId: ProjectId,
-  tags?: string[]
+  tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> =>
   getRecordingsForLocationsAndDevicesInProject(
     projectId,
     undefined,
     deviceIds,
-    tags
+    tags,
   );
 
 export const getRecordingsForLocationsInProject = (
   locationIds: LocationId | LocationId[],
   projectId: ProjectId,
-  tags?: string[]
+  tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> =>
   getRecordingsForLocationsAndDevicesInProject(
     projectId,
     locationIds,
     undefined,
-    tags
+    tags,
   );
 
 export const getRecordingsForLocationsAndDevicesInProject = (
   projectId: ProjectId,
   locationIds?: LocationId | LocationId[],
   deviceIds?: DeviceId | DeviceId[],
-  tags?: string[]
+  tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> => {
   const options: QueryRecordingsOptions = {
     limit: 100,
@@ -275,14 +275,14 @@ export const getRecordingsForLocationsAndDevicesInProject = (
     queryRecordingsInProjectNew(projectId, options) as Promise<
       WrappedFetchResult<ApiRecordingResponse[]>
     >,
-    "recordings"
+    "recordings",
   );
 };
 
 export const getAllRecordingsForProjectBetweenTimes = async (
   projectId: ProjectId,
   query: QueryRecordingsOptions,
-  progressUpdater: () => void
+  progressUpdater: () => void,
 ): Promise<ApiRecordingResponse[]> => {
   query.limit = 1000;
   const recordings = [];
@@ -299,7 +299,7 @@ export const getAllRecordingsForProjectBetweenTimes = async (
       // TODO: Show progress bar based on a linear interpolation of start vs end time.
       if (recordings.length) {
         query.untilDateTime = new Date(
-          recordings[recordings.length - 1].recordingDateTime
+          recordings[recordings.length - 1].recordingDateTime,
         );
         query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
       }
@@ -320,7 +320,7 @@ export const longRunningQuery = (seconds?: number, succeed?: boolean) => {
   }
   return CacophonyApi.get(
     `/api/v1/recordings/long-running-query?${params}`,
-    abortable
+    abortable,
   ) as Promise<FetchResult<{ count: number }>>;
 };
 
@@ -332,7 +332,7 @@ export const uploadRecording = (
   derivedFile?: ArrayBuffer,
   derivedFileName?: string,
   thumbFile?: ArrayBuffer,
-  thumbFileName?: string
+  thumbFileName?: string,
 ) => {
   const formData = new FormData();
   formData.set("data", JSON.stringify(data));
@@ -346,7 +346,7 @@ export const uploadRecording = (
   return CacophonyApi.postMultipartFormData(
     `/api/v1/recordings/device/${deviceId}`,
     formData,
-    true
+    true,
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
 };
 
@@ -354,6 +354,6 @@ export const getRawRecording = async (recordingId: RecordingId) => {
   const ABORTABLE = true;
   return CacophonyApi.get(
     `/api/v1/recordings/raw/${recordingId}`,
-    ABORTABLE
+    ABORTABLE,
   ) as Promise<FetchResult<Blob>>;
 };

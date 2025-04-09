@@ -37,7 +37,7 @@ export default {
       clearTimeout(this.timeout);
       this.timeout = setTimeout(
         () => this.$store.dispatch("Messaging/ACKNOWLEDGE"),
-        10000
+        10000,
       );
       return this.$store.state.Messaging.messages;
     },

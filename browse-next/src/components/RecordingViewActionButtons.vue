@@ -18,7 +18,7 @@ const props = withDefaults(
     recording: LoadedResource<ApiRecordingResponse>;
     classes?: string[];
   }>(),
-  { recording: null }
+  { recording: null },
 );
 
 const currentProject = inject(currentSelectedProject) as ComputedRef<
@@ -76,13 +76,13 @@ const addLabel = async (label: string) => {
 const removeLabel = async (label: string) => {
   if (props.recording) {
     const labelToRemove = props.recording.tags.find(
-      (tag) => tag.detail === label
+      (tag) => tag.detail === label,
     );
     if (labelToRemove) {
       removingLabelInProgress.value = true;
       const removeLabelResponse = await removeRecordingLabel(
         props.recording.id,
-        labelToRemove.id
+        labelToRemove.id,
       );
       if (removeLabelResponse.success) {
         emit("removed-recording-label", labelToRemove.id);

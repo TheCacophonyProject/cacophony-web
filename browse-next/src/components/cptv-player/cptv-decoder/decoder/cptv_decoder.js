@@ -232,7 +232,7 @@ function __wbg_adapter_28(arg0, arg1, arg2) {
   wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h1ea9dee0275cc798(
     arg0,
     arg1,
-    addHeapObject(arg2)
+    addHeapObject(arg2),
   );
 }
 
@@ -248,7 +248,7 @@ function __wbg_adapter_65(arg0, arg1, arg2, arg3) {
     arg0,
     arg1,
     addHeapObject(arg2),
-    addHeapObject(arg3)
+    addHeapObject(arg3),
   );
 }
 
@@ -256,7 +256,7 @@ const CptvDecoderContextFinalization =
   typeof FinalizationRegistry === "undefined"
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry((ptr) =>
-        wasm.__wbg_cptvdecodercontext_free(ptr >>> 0)
+        wasm.__wbg_cptvdecodercontext_free(ptr >>> 0),
       );
 /**
  */
@@ -286,7 +286,7 @@ export class CptvDecoderContext {
    */
   static newWithReadableStream(stream) {
     const ret = wasm.cptvdecodercontext_newWithReadableStream(
-      addHeapObject(stream)
+      addHeapObject(stream),
     );
     return CptvDecoderContext.__wrap(ret);
   }
@@ -322,7 +322,7 @@ async function __wbg_load(module, imports) {
         if (module.headers.get("Content-Type") != "application/wasm") {
           console.warn(
             "`WebAssembly.instantiateStreaming` failed because your server does not serve wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n",
-            e
+            e,
           );
         } else {
           throw e;
@@ -384,7 +384,7 @@ function __wbg_get_imports() {
     const ptr1 = passStringToWasm0(
       ret,
       wasm.__wbindgen_malloc,
-      wasm.__wbindgen_realloc
+      wasm.__wbindgen_realloc,
     );
     const len1 = WASM_VECTOR_LEN;
     getInt32Memory0()[arg0 / 4 + 1] = len1;
@@ -544,7 +544,7 @@ function __wbg_get_imports() {
   imports.wbg.__wbg_newwithbyteoffsetandlength_9fd64654bc0b0817 = function (
     arg0,
     arg1,
-    arg2
+    arg2,
   ) {
     const ret = new Uint16Array(getObject(arg0), arg1 >>> 0, arg2 >>> 0);
     return addHeapObject(ret);
@@ -575,7 +575,7 @@ function __wbg_get_imports() {
       const ret = Reflect.set(
         getObject(arg0),
         getObject(arg1),
-        getObject(arg2)
+        getObject(arg2),
       );
       return ret;
     }, arguments);
@@ -585,7 +585,7 @@ function __wbg_get_imports() {
     const ptr1 = passStringToWasm0(
       ret,
       wasm.__wbindgen_malloc,
-      wasm.__wbindgen_realloc
+      wasm.__wbindgen_realloc,
     );
     const len1 = WASM_VECTOR_LEN;
     getInt32Memory0()[arg0 / 4 + 1] = len1;

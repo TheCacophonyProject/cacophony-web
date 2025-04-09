@@ -24,7 +24,7 @@ export async function fetch(
   url,
   init,
   suppressGlobalMessaging = false,
-  binary = false
+  binary = false,
 ) {
   init = {
     ...defaults,
@@ -44,7 +44,7 @@ export async function fetch(
     store.dispatch("User/LOGOUT");
     store.dispatch(
       "Messaging/ERROR",
-      "Error accessing your account.   Please log in again."
+      "Error accessing your account.   Please log in again.",
     );
     await router.push("login");
   } else {
@@ -77,13 +77,13 @@ function handleMessages(result, status) {
   }
   result.messages &&
     result.messages.forEach((message) =>
-      store.dispatch(`Messaging/${level}`, message)
+      store.dispatch(`Messaging/${level}`, message),
     );
   result.message && store.dispatch(`Messaging/${level}`, result.message);
   if (result.errorType === "client") {
     if (result.messages) {
       result.messages.forEach((message) =>
-        store.dispatch(`Messaging/ERROR`, message)
+        store.dispatch(`Messaging/ERROR`, message),
       );
     } else if (result.message) {
       store.dispatch("Messaging/ERROR", result.message);

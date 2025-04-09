@@ -164,7 +164,7 @@ export default {
   computed: {
     masterTag(): ApiTrackTagResponse | undefined {
       return (this.track as ApiTrackResponse).tags.find(
-        (tag) => tag.model === "Master"
+        (tag) => tag.model === "Master",
       );
     },
     trackClass() {
@@ -176,7 +176,7 @@ export default {
     hasUserTags(): boolean {
       return (
         (this.track as ApiTrackResponse).tags.find(
-          ({ automatic }) => !automatic
+          ({ automatic }) => !automatic,
         ) !== undefined
       );
     },
@@ -216,7 +216,7 @@ export default {
       const trackId = this.track.id;
       // Replace any tag by the current user:
       const tagByUser = this.userTagItems.find(
-        (tag) => tag.userName === this.$store.state.User.userData.userName
+        (tag) => tag.userName === this.$store.state.User.userData.userName,
       );
       if (tagByUser) {
         this.localTags = this.localTags.filter((tag) => tag !== tagByUser);
@@ -235,7 +235,7 @@ export default {
       const replaceTrackTagResponse = await api.recording.replaceTrackTag(
         tag,
         recordingId,
-        trackId
+        trackId,
       );
       if (replaceTrackTagResponse.success) {
         const trackTagId = replaceTrackTagResponse.result.trackTagId;
@@ -261,7 +261,7 @@ export default {
         const result = await api.recording.deleteTrackTag(
           recordingId,
           tagToDelete.trackId,
-          tagToDelete.id
+          tagToDelete.id,
         );
         if (!result.success) {
           if (removedTag) {
@@ -281,7 +281,7 @@ export default {
     trackSelected(increment, gotoStart = true, playToEnd = true) {
       const index = Math.min(
         this.numTracks - 1,
-        Math.max(0, this.index + increment)
+        Math.max(0, this.index + increment),
       );
       if (0 <= index && index < this.numTracks) {
         this.$emit("track-selected", {

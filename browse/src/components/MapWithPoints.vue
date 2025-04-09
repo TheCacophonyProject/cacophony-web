@@ -154,7 +154,7 @@ export default {
       return (
         this.mapLocations.length &&
         latLngBounds([this.mapLocations.map(({ location }) => location)]).pad(
-          0.25
+          0.25,
         )
       );
     },
@@ -163,7 +163,7 @@ export default {
         location:
           typeof location === "string"
             ? latLng(
-                location.split(", ").map(Number) as [number, number, number]
+                location.split(", ").map(Number) as [number, number, number],
               )
             : location,
         ...rest,

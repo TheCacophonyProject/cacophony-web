@@ -301,7 +301,7 @@ export default {
     async doStationRename() {
       const renameResponse = await api.station.renameStationById(
         this.station.id,
-        this.newStationName
+        this.newStationName,
       );
       if (renameResponse.success) {
         this.station.name = this.newStationName;
@@ -343,7 +343,7 @@ export default {
     },
     async deleteStation() {
       const deleteResponse = await api.station.deleteStationById(
-        this.station.id
+        this.station.id,
       );
       if (deleteResponse.success) {
         this.$router.push({
@@ -368,11 +368,11 @@ export default {
           }
           if (stationsResponse.success) {
             const station = stationsResponse.result.stations.filter(
-              (station) => station.name === this.stationName
+              (station) => station.name === this.stationName,
             );
             if (station.length > 1) {
               const nonRetired = station.find(
-                (item) => !item.hasOwnProperty("retiredAt")
+                (item) => !item.hasOwnProperty("retiredAt"),
               );
               if (nonRetired) {
                 this.station = nonRetired;
@@ -380,7 +380,7 @@ export default {
                 const sortedByLatestRetired = station.sort(
                   (a, b) =>
                     new Date(a.retiredAt).getTime() -
-                    new Date(b.retiredAt).getTime()
+                    new Date(b.retiredAt).getTime(),
                 );
                 this.station = sortedByLatestRetired.pop();
                 this.stationIsRetired = true;
@@ -414,7 +414,7 @@ export default {
         this.recordingsCountLoading = true;
         {
           const countResponse = await api.recording.queryCount(
-            this.recordingsQueryFinal
+            this.recordingsQueryFinal,
           );
           if (countResponse.success) {
             this.recordingsCount = countResponse.result.count;

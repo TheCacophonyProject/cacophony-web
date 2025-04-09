@@ -108,7 +108,7 @@ const generateBezier = (
   points: Point[],
   chords: number[],
   startTangent: Point,
-  endTangent: Point
+  endTangent: Point,
 ): Curve => {
   const a = chords.map((chord) => {
     const inverseChord = 1 - chord;
@@ -141,8 +141,8 @@ const generateBezier = (
       point,
       add(
         add(mul(points[0], b0), mul(points[0], b1)),
-        add(mul(lastPoint, b2), mul(lastPoint, b3))
-      )
+        add(mul(lastPoint, b2), mul(lastPoint, b3)),
+      ),
     );
     x[0] += dot(a[i][0], tmp);
     x[1] += dot(a[i][1], tmp);
@@ -176,7 +176,7 @@ const generateBezier = (
       points[0],
       add(points[0], mul(startTangent, dist)),
       add(lastPoint, mul(endTangent, dist)),
-      lastPoint
+      lastPoint,
     );
   } else {
     // The control points are positioned an alpha distance out along the tangent vectors
@@ -184,7 +184,7 @@ const generateBezier = (
       points[0],
       add(points[0], mul(startTangent, alphaL)),
       add(lastPoint, mul(endTangent, alphaR)),
-      lastPoint
+      lastPoint,
     );
   }
 };
@@ -194,7 +194,7 @@ const basis = (
   w1: Point,
   w2: Point,
   w3: Point,
-  w4: Point
+  w4: Point,
 ): Point => {
   const tSquared = t * t;
   const tCubed = tSquared * t;
@@ -206,9 +206,9 @@ const basis = (
   return add(
     add(
       add(mul(w1, oneMinusTCubed), mul(w2, 3.0 * oneMinusTSquared * t)),
-      mul(w3, 3.0 * oneMinusT * tSquared)
+      mul(w3, 3.0 * oneMinusT * tSquared),
     ),
-    mul(w4, tCubed)
+    mul(w4, tCubed),
   );
 };
 
@@ -218,14 +218,14 @@ const pointAtPos = (curve: Curve, pos: number): Point => {
     curve.startPoint,
     curve.controlPoints[0],
     curve.controlPoints[1],
-    curve.endPoint
+    curve.endPoint,
   );
 };
 
 const maxErrorForCurve = (
   points: Point[],
   chords: number[],
-  curve: Curve
+  curve: Curve,
 ): { error: number; splitPos: number } => {
   const errors = points.map((point, index) => {
     const chord = chords[index];
@@ -267,7 +267,7 @@ const deCasteljau2 = (t: number, w1: Point, w2: Point): Point => {
 const newtonRaphsonRootFind = (
   curve: Curve,
   point: Point,
-  estimatedT: number
+  estimatedT: number,
 ): number => {
   const start = curve.startPoint;
   const end = curve.endPoint;
@@ -298,7 +298,7 @@ const newtonRaphsonRootFind = (
 const reparameterize = (
   points: Point[],
   chords: number[],
-  curve: Curve
+  curve: Curve,
 ): number[] => {
   return points.map((point, index) => {
     const chord = chords[index];
@@ -316,7 +316,7 @@ const fitCubicCurve = (
   points: Point[],
   startTangent: Point,
   endTangent: Point,
-  maxError: number
+  maxError: number,
 ): Curve[] => {
   if (points.length == 2) {
     return fitLine(points[0], points[1]);
@@ -350,7 +350,7 @@ const fitCubicCurve = (
       const centerTangent = tangentBetween(
         points[splitPos - 1],
         points[splitPos],
-        points[splitPos + 1]
+        points[splitPos + 1],
       );
 
       // Fit the two sides
@@ -358,13 +358,13 @@ const fitCubicCurve = (
         points.slice(0, splitPos + 1),
         startTangent,
         centerTangent,
-        maxError
+        maxError,
       );
       const rhs = fitCubicCurve(
         points.slice(splitPos, points.length),
         mul(centerTangent, -1.0),
         endTangent,
-        maxError
+        maxError,
       );
 
       return [...lhs, ...rhs];
@@ -425,7 +425,7 @@ export const smoothLine = (points: Point[]): Point[] => {
         acc.y += pt.y * w;
         return acc;
       },
-      { x: 0, y: 0 }
+      { x: 0, y: 0 },
     );
   }
   return points;
@@ -456,7 +456,7 @@ export const pointsForTrack = ({ positions }: ApiTrackResponse): Point[] => {
 
 export const motionPathForTrack = (
   track: ApiTrackResponse,
-  scale: number
+  scale: number,
 ): MotionPath | null => {
   const pointsForThisTrack = pointsForTrack(track);
   if (pointsForThisTrack.length > 1) {
@@ -476,14 +476,14 @@ export const motionPathForTrack = (
     if (
       !equal(
         decimatedPoints[decimatedPoints.length - 1],
-        pointsForThisTrack[pointsForThisTrack.length - 1]
+        pointsForThisTrack[pointsForThisTrack.length - 1],
       )
     ) {
       decimatedPoints.push(pointsForThisTrack[pointsForThisTrack.length - 1]);
     }
 
     const scaledPoints = smoothLine(
-      decimatedPoints.map((point) => mul(point, scale))
+      decimatedPoints.map((point) => mul(point, scale)),
     );
 
     // const allPoints = smoothLine(
@@ -497,8 +497,8 @@ export const motionPathForTrack = (
         normalise(
           sub(
             scaledPoints[scaledPoints.length - 1],
-            scaledPoints[scaledPoints.length - 2]
-          )
+            scaledPoints[scaledPoints.length - 2],
+          ),
         ),
       ],
     };

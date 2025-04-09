@@ -53,7 +53,7 @@ export default {
               },
             });
           }
-        })
+        }),
       ),
     ];
     // Add the actual content at the bottom of the list
@@ -66,8 +66,8 @@ export default {
             "card-body": true,
           },
         },
-        selectedOption && selectedOption.componentOptions.children
-      )
+        selectedOption && selectedOption.componentOptions.children,
+      ),
     );
     return createElement(
       "div",
@@ -80,7 +80,7 @@ export default {
           "device-tabs": true,
         },
       },
-      options
+      options,
     );
   },
 };
