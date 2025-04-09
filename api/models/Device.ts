@@ -16,7 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import bcrypt from "bcrypt";
 import { format } from "util";
 import type { FindOptions } from "sequelize";
-import Sequelize from "sequelize";
+import Sequelize, { QueryTypes } from "sequelize";
 import type {
   ModelCommon,
   ModelsDictionary,
@@ -295,12 +295,38 @@ export default function (
 
   Device.stoppedDevices = async function () {
     const oneDayAgo = new Date();
+    const twoDaysAgo = new Date();
+    const audioOnlyDeviceIds = await sequelize.query(
+      `
+    select "DeviceId" from (
+      select
+      distinct on
+      ("Events"."DeviceId") *
+      from
+      "Events"
+      inner join "DetailSnapshots" on
+      "DetailSnapshots".id = "Events"."EventDetailId"
+      where
+      "DetailSnapshots".type = 'config'
+      order by
+      "DeviceId",
+      "Events"."createdAt" desc
+    ) as latest_device_configs where 
+    latest_device_configs.details->'audio-recording'->>'audio-mode' = 'AudioOnly';
+    `,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+
     oneDayAgo.setHours(oneDayAgo.getHours() - 25);
-    return this.findAll({
+    twoDaysAgo.setHours(twoDaysAgo.getHours() - 48);
+    const stoppedThermalDevices = await this.findAll({
       where: {
         lastConnectionTime: {
           [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
         },
+        id: { [Op.notIn]: audioOnlyDeviceIds.map((d) => d["DeviceId"]) },
       },
       include: [
         {
@@ -308,6 +334,20 @@ export default function (
         },
       ],
     });
+    const stoppedAudioOnlyDevices = await this.findAll({
+      where: {
+        lastConnectionTime: {
+          [Op.and]: [{ [Op.lt]: twoDaysAgo }, { [Op.ne]: null }],
+        },
+        id: { [Op.in]: audioOnlyDeviceIds.map((d) => d["DeviceId"]) },
+      },
+      include: [
+        {
+          model: models.Group,
+        },
+      ],
+    });
+    return [...stoppedAudioOnlyDevices, ...stoppedThermalDevices];
   };
 
   Device.getFromNameAndGroup = async function (deviceName, groupName) {
