@@ -79,6 +79,7 @@ export default function (app: Application, baseUrl: string) {
           query("state").isIn([
             RecordingProcessingState.Reprocess,
             RecordingProcessingState.AnalyseThermal,
+            RecordingProcessingState.TrackAndAnalyse,
             RecordingProcessingState.Tracking,
             RecordingProcessingState.ReTrack,
           ]),

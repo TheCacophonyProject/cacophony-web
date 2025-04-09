@@ -549,6 +549,8 @@ export default function (
       nextState = Recording.finishedState(this.type);
     } else if (this.processingState == RecordingProcessingState.ReTrack) {
       nextState = RecordingProcessingState.Analyse;
+    } else if (this.processingState == RecordingProcessingState.TrackAndAnalyse) {
+      nextState = RecordingProcessingState.Finished;
     } else {
       const job_index = jobs.indexOf(this.processingState);
       if (job_index == -1) {
@@ -1259,6 +1261,7 @@ export default function (
     ],
     thermalRaw: [
       RecordingProcessingState.ReTrack,
+      RecordingProcessingState.TrackAndAnalyse,
       RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,
@@ -1273,15 +1276,11 @@ export default function (
     if (type == RecordingType.Audio || type == RecordingType.TrailCamImage) {
       return RecordingProcessingState.Analyse;
     } else {
-      return RecordingProcessingState.Tracking;
+      return RecordingProcessingState.TrackAndAnalyse;
     }
   };
   Recording.finishedState = function (type: RecordingType) {
-    if (type == RecordingType.Audio) {
       return RecordingProcessingState.Finished;
-    } else {
-      return RecordingProcessingState.Finished;
-    }
   };
   Recording.processingAttributes = [
     "id",
