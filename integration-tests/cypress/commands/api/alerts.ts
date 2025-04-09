@@ -19,7 +19,7 @@ Cypress.Commands.add(
     conditions: ApiAlertCondition[],
     deviceName: string,
     frequency: number | null = null,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     logTestDescription(
       `Create alert ${getTestName(alertName)} for ${deviceName} `,
@@ -29,7 +29,7 @@ Cypress.Commands.add(
         conditions,
         frequency,
         id: getTestName(alertName),
-      },
+      }
     );
     const deviceId = getCreds(deviceName).id;
     const alertJson = {
@@ -49,14 +49,14 @@ Cypress.Commands.add(
         body: alertJson,
       },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         saveIdOnly(alertName, response.body.id);
         cy.wrap(response.body.id);
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -67,7 +67,7 @@ Cypress.Commands.add(
     conditions: ApiAlertCondition[],
     stationId: number,
     frequency: number | null = null,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     logTestDescription(
       `Create alert ${getTestName(alertName)} for station ${stationId} `,
@@ -77,7 +77,7 @@ Cypress.Commands.add(
         conditions,
         frequency,
         id: getTestName(alertName),
-      },
+      }
     );
     const alertJson = {
       name: getTestName(alertName),
@@ -96,14 +96,14 @@ Cypress.Commands.add(
         body: alertJson,
       },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         saveIdOnly(alertName, response.body.id);
         cy.wrap(response.body.id);
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -112,7 +112,7 @@ Cypress.Commands.add(
     userName: string,
     deviceName: string,
     expectedAlert: any,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     logTestDescription(`Check for expected alert for ${deviceName} `, {
       userName,
@@ -124,7 +124,7 @@ Cypress.Commands.add(
         checkExpectedAlerts(response, expectedAlert);
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -133,7 +133,7 @@ Cypress.Commands.add(
     userName: string,
     stationId: StationId,
     expectedAlert: any,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     logTestDescription(`Check for expected alert for stationId ${stationId} `, {
       userName,
@@ -146,14 +146,14 @@ Cypress.Commands.add(
         cy.wrap(response.body.alerts[0]);
       }
     });
-  },
+  }
 );
 
 export function createExpectedAlert(
   alertName: string,
   frequencySeconds: number,
   conditions: ApiAlertCondition[],
-  hasLastAlert: boolean,
+  hasLastAlert: boolean
 ): any {
   //alertId will have been saved when we created the alert
   const alertId = getCreds(alertName).id;
@@ -170,7 +170,7 @@ export function createExpectedAlert(
 function apiDeviceAlertsGet(
   userName: string,
   deviceName: string,
-  statusCode: number,
+  statusCode: number
 ) {
   const deviceId = getCreds(deviceName).id;
   const params = {};
@@ -178,49 +178,49 @@ function apiDeviceAlertsGet(
   return makeAuthorizedRequestWithStatus(
     { url: v1ApiPath(`alerts/device/${deviceId}`, params) },
     userName,
-    statusCode,
+    statusCode
   );
 }
 
 function apiStationAlertsGet(
   userName: string,
   stationId: StationId,
-  statusCode: number,
+  statusCode: number
 ) {
   const params = {};
 
   return makeAuthorizedRequestWithStatus(
     { url: v1ApiPath(`alerts/station/${stationId}`, params) },
     userName,
-    statusCode,
+    statusCode
   );
 }
 
 function checkExpectedAlerts(
   response: Cypress.Response<any>,
-  expectedAlert: any,
+  expectedAlert: any
 ) {
   expect(response.body.alerts.length, `Expected 1 alert`).to.eq(1);
   const thealert = response.body.alerts[0];
 
   expect(thealert.name, `Name should be ${expectedAlert.alertName}`).to.eq(
-    expectedAlert.alertName,
+    expectedAlert.alertName
   );
   expect(
     thealert.frequencySeconds,
-    `frequencySeconds should have been ${expectedAlert.frequencySeconds}`,
+    `frequencySeconds should have been ${expectedAlert.frequencySeconds}`
   ).to.eq(expectedAlert.frequencySeconds);
   expect(
     thealert.conditions[0]["tag"],
-    `conditions should have been ${expectedAlert.conditions[0]["tag"]}`,
+    `conditions should have been ${expectedAlert.conditions[0]["tag"]}`
   ).to.eq(expectedAlert.conditions[0].tag);
   expect(
     thealert.conditions[0].automatic,
-    `conditions should have been ${expectedAlert.conditions[0].automatic}`,
+    `conditions should have been ${expectedAlert.conditions[0].automatic}`
   ).to.eq(expectedAlert.conditions[0].automatic);
   if (expectedAlert.hasLastAlert == false) {
     expect(thealert.lastAlert, `lastAlert should have been 'never'`).to.eq(
-      "never",
+      "never"
     );
   } else {
     expect(thealert.lastAlert, `should have a lastAlert`).to.not.eq("never");
@@ -241,14 +241,14 @@ export function runReportStoppedDevicesScript(callback) {
       testRunOnApi(
         '"cd api && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader /app/api/scripts/report-stopped-devices.js > log.log"',
         null,
-        callback,
-      ),
+        callback
+      )
     );
   } else {
     testRunOnApi(
       '"node --no-warnings=ExperimentalWarnings --loader /srv/cacophony/api/node_modules/esm-module-alias/loader /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"',
       null,
-      callback,
+      callback
     );
   }
 }

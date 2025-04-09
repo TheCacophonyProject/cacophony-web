@@ -99,10 +99,10 @@ describe("Recordings query using improved query API", () => {
   delete audioRecordingResponse["additionalMetadata"];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(thermalRecordingResponse),
+    JSON.stringify(thermalRecordingResponse)
   );
   const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
-    JSON.stringify(audioRecordingResponse),
+    JSON.stringify(audioRecordingResponse)
   );
 
   const track1 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
@@ -170,7 +170,7 @@ describe("Recordings query using improved query API", () => {
     const createGroup2 = cy.testCreateUserGroupAndDevice(
       group2Admin,
       group2,
-      group2Device1,
+      group2Device1
     );
 
     //define intercept here to allow adding recordings in before() - normally intercept is
@@ -190,7 +190,7 @@ describe("Recordings query using improved query API", () => {
             null,
             recording1,
             false,
-            true,
+            true
           );
           cy.apiRecordingsQueryV2Check(
             groupAdmin,
@@ -200,7 +200,7 @@ describe("Recordings query using improved query API", () => {
               until: incrementDate(expectedRecording1.recordingDateTime),
             }),
             [expectedRecording1],
-            EXCLUDE_PARAMS,
+            EXCLUDE_PARAMS
           ).then((body) => {
             group1Recordings.push(body.recordings[0]);
           });
@@ -211,7 +211,7 @@ describe("Recordings query using improved query API", () => {
               group1Device1,
               recording2,
               undefined,
-              "rqRecording2",
+              "rqRecording2"
             )
             .then(() => {
               expectedRecording2 = TestCreateExpectedRecordingData(
@@ -222,7 +222,7 @@ describe("Recordings query using improved query API", () => {
                 null,
                 recording2,
                 false,
-                true,
+                true
               );
               expectedRecording2.tracks[0].start =
                 recording2.metadata.tracks[0].start_s;
@@ -242,11 +242,11 @@ describe("Recordings query using improved query API", () => {
                   until: incrementDate(expectedRecording2.recordingDateTime),
                 }),
                 [expectedRecording2],
-                EXCLUDE_PARAMS,
+                EXCLUDE_PARAMS
               ).then((body) => {
                 group1Recordings.push(body.recordings[0]);
               });
-            }),
+            })
         )
         .then(() =>
           cy
@@ -254,7 +254,7 @@ describe("Recordings query using improved query API", () => {
               group1Device2,
               recording3,
               undefined,
-              "rqRecording3",
+              "rqRecording3"
             )
             .then(() => {
               expectedRecording3 = TestCreateExpectedRecordingData(
@@ -265,7 +265,7 @@ describe("Recordings query using improved query API", () => {
                 null,
                 recording3,
                 false,
-                true,
+                true
               );
               delete expectedRecording3.version;
               delete expectedRecording3.batteryCharging;
@@ -284,11 +284,11 @@ describe("Recordings query using improved query API", () => {
                   "include-false-positives": true.toString(),
                 }),
                 [expectedRecording3],
-                EXCLUDE_PARAMS,
+                EXCLUDE_PARAMS
               ).then((body) => {
                 group1Recordings.push(body.recordings[0]);
               });
-            }),
+            })
         )
         .then(() =>
           cy
@@ -296,7 +296,7 @@ describe("Recordings query using improved query API", () => {
               group1Device2,
               recording4,
               undefined,
-              "rqRecording4",
+              "rqRecording4"
             )
             .then((id) => {
               expectedRecording4 = TestCreateExpectedRecordingData(
@@ -307,7 +307,7 @@ describe("Recordings query using improved query API", () => {
                 null,
                 recording4,
                 false,
-                true,
+                true
               );
               expectedRecording4.processingState =
                 RecordingProcessingState.Finished;
@@ -331,17 +331,17 @@ describe("Recordings query using improved query API", () => {
                     new URLSearchParams({
                       from: expectedRecording4.recordingDateTime,
                       until: incrementDate(
-                        expectedRecording4.recordingDateTime,
+                        expectedRecording4.recordingDateTime
                       ),
                     }),
                     [expectedRecording4],
-                    EXCLUDE_PARAMS,
+                    EXCLUDE_PARAMS
                   ).then((body) => {
                     group1Recordings.push(body.recordings[0]);
                   });
-                },
+                }
               );
-            }),
+            })
         );
     });
 
@@ -363,8 +363,8 @@ describe("Recordings query using improved query API", () => {
             confidence: 0.85,
           },
           200,
-          { useRawRecordingId: true },
-        ),
+          { useRawRecordingId: true }
+        )
       );
       // Recording with 1 track but no tags
       cy.apiRecordingAddWithTracks(group2Device1, []);
@@ -394,7 +394,7 @@ describe("Recordings query using improved query API", () => {
       cy.apiRecordingAddWithTracks(group2Device1, [["false-positive"]]).then(
         (id) => {
           cy.testUserAddTagRecording(id, 0, group2Admin, "possum");
-        },
+        }
       );
 
       // Recording with 1 non-false-positive track, corrected by user.
@@ -431,7 +431,7 @@ describe("Recordings query using improved query API", () => {
       undefined,
       [],
       200,
-      { "num-results": 3 },
+      { "num-results": 3 }
     );
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
@@ -442,7 +442,7 @@ describe("Recordings query using improved query API", () => {
       undefined,
       [],
       200,
-      { "num-results": 4 },
+      { "num-results": 4 }
     );
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
@@ -453,7 +453,7 @@ describe("Recordings query using improved query API", () => {
       undefined,
       [],
       200,
-      { "num-results": 3 },
+      { "num-results": 3 }
     );
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
@@ -465,7 +465,7 @@ describe("Recordings query using improved query API", () => {
       undefined,
       [],
       200,
-      { "num-results": 4 },
+      { "num-results": 4 }
     );
   });
 
@@ -480,7 +480,7 @@ describe("Recordings query using improved query API", () => {
           types: "thermal",
         }),
         [expectedRecording1, expectedRecording4],
-        EXCLUDE_PARAMS,
+        EXCLUDE_PARAMS
       );
     }
     {
@@ -495,12 +495,12 @@ describe("Recordings query using improved query API", () => {
         undefined,
         [],
         200,
-        { "num-results": 2 },
+        { "num-results": 2 }
       );
     }
     {
       cy.log(
-        "Check that removing recording type filtering returns more results at this location",
+        "Check that removing recording type filtering returns more results at this location"
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
@@ -511,7 +511,7 @@ describe("Recordings query using improved query API", () => {
         undefined,
         [],
         200,
-        { "num-results": 2 },
+        { "num-results": 2 }
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
@@ -523,12 +523,12 @@ describe("Recordings query using improved query API", () => {
         undefined,
         [],
         200,
-        { "num-results": 3 },
+        { "num-results": 3 }
       );
     }
     {
       cy.log(
-        "Check we get the correct number of recordings setting a from date",
+        "Check we get the correct number of recordings setting a from date"
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
@@ -541,12 +541,12 @@ describe("Recordings query using improved query API", () => {
         undefined,
         [],
         200,
-        { "num-results": 2 },
+        { "num-results": 2 }
       );
     }
     {
       cy.log(
-        "Check we get the correct number of recordings setting a from and until dates",
+        "Check we get the correct number of recordings setting a from and until dates"
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
@@ -560,12 +560,12 @@ describe("Recordings query using improved query API", () => {
         undefined,
         [],
         200,
-        { "num-results": 0 },
+        { "num-results": 0 }
       );
     }
     {
       cy.log(
-        "Check we get the correct number of recordings setting an until date",
+        "Check we get the correct number of recordings setting an until date"
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
@@ -578,7 +578,7 @@ describe("Recordings query using improved query API", () => {
         undefined,
         [],
         200,
-        { "num-results": 1 },
+        { "num-results": 1 }
       );
     }
   });
@@ -595,7 +595,7 @@ describe("Recordings query using improved query API", () => {
           "include-false-positives": true.toString(),
         }),
         [expectedRecording1, expectedRecording2],
-        EXCLUDE_PARAMS,
+        EXCLUDE_PARAMS
       );
     }
     {
@@ -616,7 +616,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 4,
-        },
+        }
       );
     }
   });
@@ -624,7 +624,7 @@ describe("Recordings query using improved query API", () => {
   it("Tracks tagged by user should become the canonical tag for the track when searching tagged recordings", () => {
     cy.log(
       "Check that recordings tagged by AI as cat and subsequently corrected by a " +
-        "human don't come up when searching for recordings tagged with cat.",
+        "human don't come up when searching for recordings tagged with cat."
     );
     cy.apiRecordingsQueryV2Check(
       groupAdmin,
@@ -638,14 +638,14 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 1,
-      },
+      }
     );
   });
 
   it("Group member can view recordings filtered by tag and label", () => {
     {
       cy.log(
-        "Check that recording tagged with cat AND labelled with cool doesn't exist",
+        "Check that recording tagged with cat AND labelled with cool doesn't exist"
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
@@ -660,7 +660,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 0,
-        },
+        }
       );
 
       cy.log("Add label 'cool' to recording");
@@ -674,10 +674,10 @@ describe("Recordings query using improved query API", () => {
           confidence: 0.85,
         },
         200,
-        { useRawRecordingId: true },
+        { useRawRecordingId: true }
       ).then(() => {
         cy.log(
-          "Check that recording tagged with cat AND labelled with cool exists",
+          "Check that recording tagged with cat AND labelled with cool exists"
         );
         cy.apiRecordingsQueryV2Check(
           groupAdmin,
@@ -692,13 +692,13 @@ describe("Recordings query using improved query API", () => {
           200,
           {
             "num-results": 1,
-          },
+          }
         );
       });
     }
     {
       cy.log(
-        "Check that recording tagged with possum AND labelled with requires review doesn't exist",
+        "Check that recording tagged with possum AND labelled with requires review doesn't exist"
       );
       cy.apiRecordingsQueryV2Check(
         groupAdmin,
@@ -713,7 +713,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 0,
-        },
+        }
       );
 
       cy.log("Add requires review label");
@@ -726,10 +726,10 @@ describe("Recordings query using improved query API", () => {
           confidence: 0.85,
         },
         200,
-        { useRawRecordingId: true },
+        { useRawRecordingId: true }
       ).then(() => {
         cy.log(
-          "Check that recording tagged with possum AND labelled with requires review exists",
+          "Check that recording tagged with possum AND labelled with requires review exists"
         );
         cy.apiRecordingsQueryV2Check(
           groupAdmin,
@@ -744,7 +744,7 @@ describe("Recordings query using improved query API", () => {
           200,
           {
             "num-results": 1,
-          },
+          }
         );
       });
     }
@@ -760,7 +760,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 1,
-        },
+        }
       );
     }
     {
@@ -776,7 +776,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 2,
-        },
+        }
       );
     }
     {
@@ -793,7 +793,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 1,
-        },
+        }
       );
     }
 
@@ -802,14 +802,14 @@ describe("Recordings query using improved query API", () => {
       group1Recordings[0].id.toString(),
       "coolLabel1",
       200,
-      { useRawRecordingId: true },
+      { useRawRecordingId: true }
     );
     cy.apiRecordingTagDelete(
       groupAdmin,
       group1Recordings[1].id.toString(),
       "flaggedLabel1",
       200,
-      { useRawRecordingId: true },
+      { useRawRecordingId: true }
     );
   });
 
@@ -823,7 +823,7 @@ describe("Recordings query using improved query API", () => {
           "tagged-with": "cat",
         }),
         [expectedRecording1],
-        EXCLUDE_PARAMS,
+        EXCLUDE_PARAMS
       );
     }
     {
@@ -835,7 +835,7 @@ describe("Recordings query using improved query API", () => {
           "tagged-with": "mammal",
         }),
         [expectedRecording1, expectedRecording2, expectedRecording4],
-        EXCLUDE_PARAMS,
+        EXCLUDE_PARAMS
       );
     }
     {
@@ -852,7 +852,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 0,
-        },
+        }
       );
     }
     {
@@ -865,7 +865,7 @@ describe("Recordings query using improved query API", () => {
           "sub-class-tags": false.toString(),
         }),
         [expectedRecording1],
-        EXCLUDE_PARAMS,
+        EXCLUDE_PARAMS
       );
     }
     {
@@ -879,7 +879,7 @@ describe("Recordings query using improved query API", () => {
           ["sub-class-tags", false.toString()],
         ]),
         [expectedRecording1],
-        EXCLUDE_PARAMS,
+        EXCLUDE_PARAMS
       );
     }
     {
@@ -892,7 +892,7 @@ describe("Recordings query using improved query API", () => {
           ["tagged-with", "possum"],
         ]),
         [expectedRecording1, expectedRecording2, expectedRecording4],
-        EXCLUDE_PARAMS,
+        EXCLUDE_PARAMS
       );
     }
   });
@@ -909,7 +909,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 4,
-        },
+        }
       );
     }
     {
@@ -925,7 +925,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 1,
-        },
+        }
       );
     }
     {
@@ -941,7 +941,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 3,
-        },
+        }
       );
     }
     {
@@ -958,7 +958,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 4,
-        },
+        }
       );
     }
   });
@@ -979,7 +979,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 0,
-        },
+        }
       );
     }
     {
@@ -998,7 +998,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 2,
-        },
+        }
       );
     }
     {
@@ -1017,7 +1017,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 2,
-        },
+        }
       );
     }
     {
@@ -1036,7 +1036,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 0,
-        },
+        }
       );
     }
     {
@@ -1056,7 +1056,7 @@ describe("Recordings query using improved query API", () => {
         200,
         {
           "num-results": 0,
-        },
+        }
       );
     }
   });
@@ -1070,7 +1070,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 6,
-      },
+      }
     );
 
     cy.apiRecordingsQueryV2Check(
@@ -1084,7 +1084,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 12,
-      },
+      }
     );
   });
 
@@ -1100,7 +1100,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 3,
-      },
+      }
     );
   });
   it("Group member can view only untagged recordings that have a certain label", () => {
@@ -1116,7 +1116,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 1,
-      },
+      }
     );
   });
 
@@ -1132,7 +1132,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 3,
-      },
+      }
     );
   });
 
@@ -1149,7 +1149,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 2,
-      },
+      }
     );
   });
 
@@ -1166,7 +1166,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 7,
-      },
+      }
     );
   });
 
@@ -1182,7 +1182,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 2,
-      },
+      }
     );
   });
 
@@ -1199,7 +1199,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 2,
-      },
+      }
     );
   });
 
@@ -1217,7 +1217,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 1,
-      },
+      }
     );
   });
 
@@ -1236,7 +1236,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 2,
-      },
+      }
     );
   });
 
@@ -1254,7 +1254,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 2,
-      },
+      }
     );
   });
 
@@ -1271,7 +1271,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 1,
-      },
+      }
     );
   });
 
@@ -1289,7 +1289,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 0,
-      },
+      }
     );
   });
 
@@ -1305,7 +1305,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 5,
-      },
+      }
     );
   });
 
@@ -1323,7 +1323,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 4,
-      },
+      }
     );
   });
 
@@ -1340,7 +1340,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 1,
-      },
+      }
     );
   });
 
@@ -1357,7 +1357,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 2,
-      },
+      }
     );
   });
 
@@ -1373,7 +1373,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 1,
-      },
+      }
     );
   });
 
@@ -1389,7 +1389,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 6,
-      },
+      }
     );
     cy.apiRecordingsQueryV2Check(
       group2Admin,
@@ -1402,7 +1402,7 @@ describe("Recordings query using improved query API", () => {
       200,
       {
         "num-results": 0,
-      },
+      }
     );
   });
 });

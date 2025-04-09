@@ -47,11 +47,11 @@ describe("Stations: assign recordings to stations", () => {
   it("Adding a recording in a new location automatically creates a new station, deviceHistory", () => {
     const deviceName = "new-device";
     const recordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 1),
+      new Date().setDate(new Date().getDate() + 1)
     );
     const location = TestGetLocation(1);
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
 
@@ -77,7 +77,7 @@ describe("Stations: assign recordings to stations", () => {
             NOT_NULL_STRING,
             null,
             "register",
-            null,
+            null
           );
           expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -85,7 +85,7 @@ describe("Stations: assign recordings to stations", () => {
             recordingTime.toISOString(),
             location,
             "automatic",
-            station.name,
+            station.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
         });
@@ -99,7 +99,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneDayLater = new Date(new Date().setDate(new Date().getDate() + 1));
     const twoDaysLater = new Date(new Date().setDate(new Date().getDate() + 2));
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
 
@@ -117,7 +117,7 @@ describe("Stations: assign recordings to stations", () => {
       .thenCheckStationIsNew(Josie)
       .then((station: TestNameAndId) => {
         cy.log(
-          "Check activeAt and lastThermalRecording match recordingDateTime",
+          "Check activeAt and lastThermalRecording match recordingDateTime"
         );
         cy.apiStationCheck(Josie, station.name, expectedStation1);
 
@@ -128,7 +128,7 @@ describe("Stations: assign recordings to stations", () => {
           NOT_NULL_STRING,
           null,
           "register",
-          null,
+          null
         );
         expectedHistory[1] = TestCreateExpectedHistoryEntry(
           deviceName,
@@ -136,12 +136,12 @@ describe("Stations: assign recordings to stations", () => {
           oneDayLater.toISOString(),
           location,
           "automatic",
-          station.name,
+          station.name
         );
         cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
         cy.log(
-          "Upload another recording and check assigned to existing station",
+          "Upload another recording and check assigned to existing station"
         );
         cy.testUploadRecording(deviceName, {
           ...nearbyLocation,
@@ -150,7 +150,7 @@ describe("Stations: assign recordings to stations", () => {
           .thenCheckStationNameIs(Josie, station.name)
           .then(() => {
             cy.log(
-              "Check activeAt unchanged, lastThermalRecording matches new recordingDateTime",
+              "Check activeAt unchanged, lastThermalRecording matches new recordingDateTime"
             );
             expectedStation1.lastThermalRecordingTime =
               twoDaysLater.toISOString();
@@ -163,7 +163,7 @@ describe("Stations: assign recordings to stations", () => {
               twoDaysLater.toISOString(),
               nearbyLocation,
               "automatic",
-              station.name,
+              station.name
             );
             cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
           });
@@ -178,10 +178,10 @@ describe("Stations: assign recordings to stations", () => {
     const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
     const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
     const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
+      new Date().setDate(new Date().getDate() + 3)
     );
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
     expectedStation1.location = location;
@@ -196,10 +196,10 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: stationName, ...location },
-      oneDaysTime.toISOString(),
+      oneDaysTime.toISOString()
     ).then((stationId: number) => {
       cy.log(
-        "Check activeAt matches set value, no retiredAt, no lastThermalRecording",
+        "Check activeAt matches set value, no retiredAt, no lastThermalRecording"
       );
       expectedStation1.activeAt = oneDaysTime.toISOString();
       delete expectedStation1.lastThermalRecordingTime;
@@ -207,13 +207,13 @@ describe("Stations: assign recordings to stations", () => {
       cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
       cy.log(
-        "Add a matching recording, dated day 3 and check assigned to existing station",
+        "Add a matching recording, dated day 3 and check assigned to existing station"
       );
       cy.testUploadRecording(deviceName, { ...location, time: threeDaysTime })
         .thenCheckStationIdIs(Josie, stationId)
         .then((station: TestNameAndId) => {
           cy.log(
-            "Check activeAt unchanged, lastThermalRecording now matches recordingDateTime",
+            "Check activeAt unchanged, lastThermalRecording now matches recordingDateTime"
           );
           expectedStation1.activeAt = oneDaysTime.toISOString();
           expectedStation1.lastThermalRecordingTime =
@@ -227,7 +227,7 @@ describe("Stations: assign recordings to stations", () => {
             NOT_NULL_STRING,
             null,
             "register",
-            null,
+            null
           );
           expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -235,12 +235,12 @@ describe("Stations: assign recordings to stations", () => {
             threeDaysTime.toISOString(),
             location,
             "automatic",
-            station.name,
+            station.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
           cy.log(
-            "Upload an earlier recording dated day 2 and check assigned to existing station",
+            "Upload an earlier recording dated day 2 and check assigned to existing station"
           );
           cy.testUploadRecording(deviceName, {
             ...nearbyLocation,
@@ -250,7 +250,7 @@ describe("Stations: assign recordings to stations", () => {
             .thenCheckStationNameIs(Josie, station.name)
             .then(() => {
               cy.log(
-                "Check station activeAt unchanged, lastThermalRecording not changed (as 2nd recording was earlier than 1st)",
+                "Check station activeAt unchanged, lastThermalRecording not changed (as 2nd recording was earlier than 1st)"
               );
               expectedStation1.activeAt = oneDaysTime.toISOString();
               expectedStation1.lastThermalRecordingTime =
@@ -258,7 +258,7 @@ describe("Stations: assign recordings to stations", () => {
               cy.apiStationCheck(Josie, station.name, expectedStation1);
 
               cy.log(
-                "Check earlier deviceHistory entry added backdated to earlier recording time",
+                "Check earlier deviceHistory entry added backdated to earlier recording time"
               );
               expectedHistory[2] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -266,7 +266,7 @@ describe("Stations: assign recordings to stations", () => {
                 twoDaysTime.toISOString(),
                 nearbyLocation,
                 "automatic",
-                station.name,
+                station.name
               );
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
             });
@@ -281,10 +281,10 @@ describe("Stations: assign recordings to stations", () => {
     const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
     const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
     const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
+      new Date().setDate(new Date().getDate() + 3)
     );
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
     expectedStation1.location = location;
@@ -299,10 +299,10 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: stationName, ...location },
-      oneDaysTime.toISOString(),
+      oneDaysTime.toISOString()
     ).then((stationId: number) => {
       cy.log(
-        "Check activeAt matches set value, no retiredAt, no lastThermalRecording",
+        "Check activeAt matches set value, no retiredAt, no lastThermalRecording"
       );
       expectedStation1.activeAt = oneDaysTime.toISOString();
       delete expectedStation1.lastThermalRecordingTime;
@@ -310,7 +310,7 @@ describe("Stations: assign recordings to stations", () => {
       cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
       cy.log(
-        "Add a matching recording, dated day 3 and check assigned to existing station",
+        "Add a matching recording, dated day 3 and check assigned to existing station"
       );
       cy.testUploadRecording(deviceName, {
         ...location,
@@ -320,7 +320,7 @@ describe("Stations: assign recordings to stations", () => {
         .thenCheckStationIdIs(Josie, stationId)
         .then((station: TestNameAndId) => {
           cy.log(
-            "Check activeAt unchanged, lastThermalRecording now matches recordingDateTime",
+            "Check activeAt unchanged, lastThermalRecording now matches recordingDateTime"
           );
           expectedStation1.activeAt = oneDaysTime.toISOString();
           expectedStation1.lastThermalRecordingTime =
@@ -334,7 +334,7 @@ describe("Stations: assign recordings to stations", () => {
             NOT_NULL_STRING,
             null,
             "register",
-            null,
+            null
           );
           expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -342,12 +342,12 @@ describe("Stations: assign recordings to stations", () => {
             threeDaysTime.toISOString(),
             location,
             "automatic",
-            station.name,
+            station.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
           cy.log(
-            "Upload an earlier recording dated day 2 and check assigned to existing station",
+            "Upload an earlier recording dated day 2 and check assigned to existing station"
           );
           cy.testUploadRecording(deviceName, {
             ...location,
@@ -357,7 +357,7 @@ describe("Stations: assign recordings to stations", () => {
             .thenCheckStationNameIs(Josie, station.name)
             .then(() => {
               cy.log(
-                "Check station activeAt unchanged, lastThermalRecording not changed (as 2nd recording was earlier than 1st)",
+                "Check station activeAt unchanged, lastThermalRecording not changed (as 2nd recording was earlier than 1st)"
               );
               expectedStation1.activeAt = oneDaysTime.toISOString();
               expectedStation1.lastThermalRecordingTime =
@@ -365,7 +365,7 @@ describe("Stations: assign recordings to stations", () => {
               cy.apiStationCheck(Josie, station.name, expectedStation1);
 
               cy.log(
-                "Check existing deviceHistory entry backdated to earlier recording time",
+                "Check existing deviceHistory entry backdated to earlier recording time"
               );
               expectedHistory[1] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -373,7 +373,7 @@ describe("Stations: assign recordings to stations", () => {
                 twoDaysTime.toISOString(),
                 location,
                 "automatic",
-                station.name,
+                station.name
               );
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
             });
@@ -403,7 +403,7 @@ describe("Stations: assign recordings to stations", () => {
             cy.log("Check stations were different");
             expect(
               station1.id,
-              "Both recordings get different new stations",
+              "Both recordings get different new stations"
             ).to.not.equal(station2.id);
           });
       });
@@ -415,7 +415,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
     const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
     expectedStation1.location = nearbyLocation;
@@ -438,7 +438,7 @@ describe("Stations: assign recordings to stations", () => {
           NOT_NULL_STRING,
           null,
           "register",
-          null,
+          null
         );
         expectedHistory[1] = TestCreateExpectedHistoryEntry(
           deviceName,
@@ -446,7 +446,7 @@ describe("Stations: assign recordings to stations", () => {
           twoDaysTime.toISOString(),
           nearbyLocation,
           "automatic",
-          station.name,
+          station.name
         );
         cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -463,7 +463,7 @@ describe("Stations: assign recordings to stations", () => {
             cy.apiStationCheck(Josie, station.name, expectedStation1);
 
             cy.log(
-              "Check existing deviceHistory entry backdated to earlier recording time",
+              "Check existing deviceHistory entry backdated to earlier recording time"
             );
             expectedHistory[1] = TestCreateExpectedHistoryEntry(
               deviceName,
@@ -471,7 +471,7 @@ describe("Stations: assign recordings to stations", () => {
               oneDaysTime.toISOString(),
               nearbyLocation,
               "automatic",
-              station.name,
+              station.name
             );
             cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
           });
@@ -487,7 +487,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
     const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
     const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
+      new Date().setDate(new Date().getDate() + 3)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
     cy.apiDeviceAdd(deviceName, group);
@@ -495,7 +495,7 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: station1Name, ...location1 },
-      oneDaysTime.toISOString(),
+      oneDaysTime.toISOString()
     );
 
     cy.log("Upload recording in location1, check matched to station1");
@@ -513,7 +513,7 @@ describe("Stations: assign recordings to stations", () => {
           NOT_NULL_STRING,
           null,
           "register",
-          null,
+          null
         );
         expectedHistory[1] = TestCreateExpectedHistoryEntry(
           deviceName,
@@ -521,12 +521,12 @@ describe("Stations: assign recordings to stations", () => {
           twoDaysTime.toISOString(),
           location1Nearby,
           "automatic",
-          getTestName(station1Name),
+          getTestName(station1Name)
         );
         cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
         cy.log(
-          "Upload later recording in location2, check new station created",
+          "Upload later recording in location2, check new station created"
         );
         cy.testUploadRecording(deviceName, {
           ...location2,
@@ -542,7 +542,7 @@ describe("Stations: assign recordings to stations", () => {
               threeDaysTime.toISOString(),
               location2,
               "automatic",
-              station2.name,
+              station2.name
             );
             cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
           });
@@ -559,7 +559,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
     const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
     const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
+      new Date().setDate(new Date().getDate() + 3)
     );
     const expectedHistory: DeviceHistoryEntry[] = [];
     cy.apiDeviceAdd(deviceName, group);
@@ -567,13 +567,13 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: station1Name, ...location1 },
-      oneDaysTime.toISOString(),
+      oneDaysTime.toISOString()
     ).then(() => {
       cy.apiGroupStationAdd(
         Josie,
         group,
         { name: station2Name, ...location2 },
-        oneDaysTime.toISOString(),
+        oneDaysTime.toISOString()
       ).then(() => {
         cy.log("Upload recording in location1, check matched to station1");
         cy.testUploadRecording(deviceName, {
@@ -598,7 +598,7 @@ describe("Stations: assign recordings to stations", () => {
                   NOT_NULL_STRING,
                   null,
                   "register",
-                  null,
+                  null
                 );
                 expectedHistory[1] = TestCreateExpectedHistoryEntry(
                   deviceName,
@@ -606,7 +606,7 @@ describe("Stations: assign recordings to stations", () => {
                   twoDaysTime.toISOString(),
                   location1Nearby,
                   "automatic",
-                  getTestName(station1Name),
+                  getTestName(station1Name)
                 );
                 expectedHistory[2] = TestCreateExpectedHistoryEntry(
                   deviceName,
@@ -614,7 +614,7 @@ describe("Stations: assign recordings to stations", () => {
                   threeDaysTime.toISOString(),
                   location2,
                   "automatic",
-                  getTestName(station2Name),
+                  getTestName(station2Name)
                 );
                 cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
               });
@@ -635,7 +635,7 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: stationName, ...location },
-      oneWeekAgo.toISOString(),
+      oneWeekAgo.toISOString()
     ).then(() => {
       cy.log("Upload another recording and check assigned to same station");
       cy.testUploadRecording(deviceName, {
@@ -669,7 +669,7 @@ describe("Stations: assign recordings to stations", () => {
       group,
       { name: stationName, ...location },
       dayOne.toISOString(),
-      dayThree.toISOString(),
+      dayThree.toISOString()
     ).then((stationId: number) => {
       cy.testUploadRecording(deviceName, {
         ...location,
@@ -685,7 +685,7 @@ describe("Stations: assign recordings to stations", () => {
             NOT_NULL_STRING,
             null,
             "register",
-            null,
+            null
           );
           expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -693,7 +693,7 @@ describe("Stations: assign recordings to stations", () => {
             dayTwo.toISOString(),
             location,
             "automatic",
-            getTestName(stationName),
+            getTestName(stationName)
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
         });
@@ -713,7 +713,7 @@ describe("Stations: assign recordings to stations", () => {
       group,
       { name: stationName, ...location },
       oneMonthAgo.toISOString(),
-      oneWeekAgo.toISOString(),
+      oneWeekAgo.toISOString()
     ).then((stationId: number) => {
       cy.testUploadRecording(deviceName, {
         ...location,
@@ -736,7 +736,7 @@ describe("Stations: assign recordings to stations", () => {
       group,
       { name: stationName, ...location },
       oneMonthAgo.toISOString(),
-      oneWeekAgo.toISOString(),
+      oneWeekAgo.toISOString()
     ).then(() => {
       cy.testUploadRecording(deviceName, {
         ...location,
@@ -756,7 +756,7 @@ describe("Stations: assign recordings to stations", () => {
     const now = new Date();
 
     const expectedNewStation = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     expectedNewStation.location = location;
     expectedNewStation.activeAt = now.toISOString();
@@ -766,7 +766,7 @@ describe("Stations: assign recordings to stations", () => {
       group,
       { name: stationName, ...location },
       oneMonthAgo.toISOString(),
-      oneWeekAgo.toISOString(),
+      oneWeekAgo.toISOString()
     ).then(() => {
       cy.testUploadRecording(deviceName, {
         ...location,
@@ -794,7 +794,7 @@ describe("Stations: assign recordings to stations", () => {
       group,
       { name: stationName, ...location },
       oneMonthAgo.toISOString(),
-      oneWeekAgo.toISOString(),
+      oneWeekAgo.toISOString()
     ).then(() => {
       cy.testUploadRecording(deviceName, {
         ...location,
@@ -817,7 +817,7 @@ describe("Stations: assign recordings to stations", () => {
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     expectedStation1.location = location;
     expectedStation1.activeAt = dayOne.toISOString();
@@ -835,7 +835,7 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: stationName, ...location },
-      dayOne.toISOString(),
+      dayOne.toISOString()
     ).then(() => {
       cy.log("Check station created correctly");
       delete expectedStation1.lastAudioRecordingTime;
@@ -847,7 +847,7 @@ describe("Stations: assign recordings to stations", () => {
         .thenCheckStationNameIs(Josie, getTestName(stationName))
         .then(() => {
           cy.log(
-            "Check station updated correctly with lastAudioRecordingTime`",
+            "Check station updated correctly with lastAudioRecordingTime`"
           );
           expectedStation1.lastAudioRecordingTime = dayTwo.toISOString();
           cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
@@ -859,7 +859,7 @@ describe("Stations: assign recordings to stations", () => {
             NOT_NULL_STRING,
             null,
             "register",
-            null,
+            null
           );
           expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -867,7 +867,7 @@ describe("Stations: assign recordings to stations", () => {
             dayTwo.toISOString(),
             nearbyLocation,
             "automatic",
-            getTestName(stationName),
+            getTestName(stationName)
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -877,18 +877,18 @@ describe("Stations: assign recordings to stations", () => {
             deviceName,
             audioRecording,
             undefined,
-            recording2Name,
+            recording2Name
           )
             .thenCheckStationNameIs(Josie, getTestName(stationName))
             .then(() => {
               cy.log(
-                "Check station updated correctly with lastThermalRecordingTime",
+                "Check station updated correctly with lastThermalRecordingTime"
               );
               expectedStation1.lastAudioRecordingTime = dayThree.toISOString();
               cy.apiStationCheck(
                 Josie,
                 getTestName(stationName),
-                expectedStation1,
+                expectedStation1
               );
             });
         });
@@ -905,7 +905,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
 
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     expectedStation1.location = location;
     expectedStation1.activeAt = oneMonthAgo.toISOString();
@@ -927,7 +927,7 @@ describe("Stations: assign recordings to stations", () => {
         cy.apiStationCheck(Josie, station.name, expectedStation1);
 
         cy.log(
-          "Add another audio recording and check station is updated correctly",
+          "Add another audio recording and check station is updated correctly"
         );
         audioRecording.location = [nearbyLocation.lat, nearbyLocation.lng];
         audioRecording.recordingDateTime = oneWeekAgo.toISOString();
@@ -935,12 +935,12 @@ describe("Stations: assign recordings to stations", () => {
           deviceName,
           audioRecording,
           undefined,
-          recording2Name,
+          recording2Name
         )
           .thenCheckStationIdIs(Josie, station.id)
           .then(() => {
             cy.log(
-              "Check station updated correctly with lastAudioRecordingTime`",
+              "Check station updated correctly with lastAudioRecordingTime`"
             );
             expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
             cy.apiStationCheck(Josie, station.name, expectedStation1);
@@ -962,7 +962,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
 
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     expectedStation1.location = location;
     expectedStation1.activeAt = oneMonthAgo.toISOString();
@@ -975,7 +975,7 @@ describe("Stations: assign recordings to stations", () => {
     audioRecording.location = [nearbyLocation.lat, nearbyLocation.lng];
 
     const thermalRecording = TestCreateRecordingData(
-      TEMPLATE_THERMAL_RECORDING,
+      TEMPLATE_THERMAL_RECORDING
     );
     thermalRecording.recordingDateTime = now.toISOString();
     thermalRecording.location = [nearbyLocation.lat, nearbyLocation.lng];
@@ -987,7 +987,7 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: stationName, ...location },
-      oneMonthAgo.toISOString(),
+      oneMonthAgo.toISOString()
     ).then(() => {
       cy.log("Check station created correctly");
       delete expectedStation1.lastAudioRecordingTime;
@@ -999,29 +999,29 @@ describe("Stations: assign recordings to stations", () => {
         audioDeviceName,
         audioRecording,
         undefined,
-        audioRecordingName,
+        audioRecordingName
       )
         .thenCheckStationNameIs(Josie, getTestName(stationName))
         .then(() => {
           cy.log(
-            "Check station updated correctly with lastAudioRecordingTime`",
+            "Check station updated correctly with lastAudioRecordingTime`"
           );
           expectedStation1.lastAudioRecordingTime = oneWeekAgo.toISOString();
           cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
 
           cy.log(
-            "Add a thermal recording and check station is updated correctly",
+            "Add a thermal recording and check station is updated correctly"
           );
           cy.apiRecordingAdd(
             thermalDeviceName,
             thermalRecording,
             undefined,
-            thermalRecordingName,
+            thermalRecordingName
           )
             .thenCheckStationNameIs(Josie, getTestName(stationName))
             .then(() => {
               cy.log(
-                "Check station updated correctly with lastThermalRecordingTime",
+                "Check station updated correctly with lastThermalRecordingTime"
               );
               expectedStation1.lastAudioRecordingTime =
                 oneWeekAgo.toISOString();
@@ -1029,7 +1029,7 @@ describe("Stations: assign recordings to stations", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(stationName),
-                expectedStation1,
+                expectedStation1
               );
             });
         });
@@ -1047,7 +1047,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
 
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     expectedStation1.location = location;
     expectedStation1.activeAt = oneMonthAgo.toISOString();
@@ -1058,7 +1058,7 @@ describe("Stations: assign recordings to stations", () => {
     audioRecording.location = [location.lat, location.lng];
 
     const thermalRecording = TestCreateRecordingData(
-      TEMPLATE_THERMAL_RECORDING,
+      TEMPLATE_THERMAL_RECORDING
     );
     thermalRecording.recordingDateTime = now.toISOString();
     thermalRecording.location = [nearbyLocation.lat, nearbyLocation.lng];
@@ -1071,7 +1071,7 @@ describe("Stations: assign recordings to stations", () => {
       audioDeviceName,
       audioRecording,
       undefined,
-      audioRecordingName,
+      audioRecordingName
     )
       .thenCheckStationIsNew(Josie)
       .then((station: TestNameAndId) => {
@@ -1081,18 +1081,18 @@ describe("Stations: assign recordings to stations", () => {
         cy.apiStationCheck(Josie, station.name, expectedStation1);
 
         cy.log(
-          "Add a thermal recording and check station is updated correctly",
+          "Add a thermal recording and check station is updated correctly"
         );
         cy.apiRecordingAdd(
           thermalDeviceName,
           thermalRecording,
           undefined,
-          thermalRecordingName,
+          thermalRecordingName
         )
           .thenCheckStationIdIs(Josie, station.id)
           .then(() => {
             cy.log(
-              "Check station updated correctly with lastThermalRecordingTime",
+              "Check station updated correctly with lastThermalRecordingTime"
             );
             expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
             expectedStation1.lastThermalRecordingTime = now.toISOString();
@@ -1112,7 +1112,7 @@ describe("Stations: assign recordings to stations", () => {
     const oneMonthAgo = new Date(new Date().setDate(new Date().getDate() - 30));
 
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     expectedStation1.location = location;
     expectedStation1.activeAt = oneMonthAgo.toISOString();
@@ -1123,7 +1123,7 @@ describe("Stations: assign recordings to stations", () => {
     audioRecording.location = [location.lat, location.lng];
 
     const thermalRecording = TestCreateRecordingData(
-      TEMPLATE_THERMAL_RECORDING,
+      TEMPLATE_THERMAL_RECORDING
     );
     thermalRecording.recordingDateTime = now.toISOString();
     thermalRecording.location = [anotherNearbyLocation.lat, nearbyLocation.lng];
@@ -1135,7 +1135,7 @@ describe("Stations: assign recordings to stations", () => {
       deviceName,
       audioRecording,
       undefined,
-      audioRecordingName,
+      audioRecordingName
     )
       .thenCheckStationIsNew(Josie)
       .then((station: TestNameAndId) => {
@@ -1145,18 +1145,18 @@ describe("Stations: assign recordings to stations", () => {
         cy.apiStationCheck(Josie, station.name, expectedStation1);
 
         cy.log(
-          "Add a thermal recording and check station is updated correctly",
+          "Add a thermal recording and check station is updated correctly"
         );
         cy.apiRecordingAdd(
           deviceName,
           thermalRecording,
           undefined,
-          thermalRecordingName,
+          thermalRecordingName
         )
           .thenCheckStationNameIs(Josie, station.name)
           .then(() => {
             cy.log(
-              "Check station updated correctly with lastThermalRecordingTime",
+              "Check station updated correctly with lastThermalRecordingTime"
             );
             expectedStation1.lastAudioRecordingTime = oneMonthAgo.toISOString();
             expectedStation1.lastThermalRecordingTime = now.toISOString();
@@ -1178,7 +1178,7 @@ describe("Stations: assign recordings to stations", () => {
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const expectedStation1 = JSON.parse(
-      JSON.stringify(templateExpectedStation),
+      JSON.stringify(templateExpectedStation)
     );
     expectedStation1.location = location;
     expectedStation1.activeAt = dayOne.toISOString();
@@ -1191,7 +1191,7 @@ describe("Stations: assign recordings to stations", () => {
     audioRecording.location = [nearbyLocation.lat, nearbyLocation.lng];
 
     const thermalRecording = TestCreateRecordingData(
-      TEMPLATE_THERMAL_RECORDING,
+      TEMPLATE_THERMAL_RECORDING
     );
     thermalRecording.recordingDateTime = dayThree.toISOString();
     thermalRecording.location = [nearbyLocation.lat, nearbyLocation.lng];
@@ -1202,7 +1202,7 @@ describe("Stations: assign recordings to stations", () => {
       Josie,
       group,
       { name: stationName, ...location },
-      dayOne.toISOString(),
+      dayOne.toISOString()
     ).then(() => {
       cy.log("Check station created correctly");
       delete expectedStation1.lastAudioRecordingTime;
@@ -1214,12 +1214,12 @@ describe("Stations: assign recordings to stations", () => {
         deviceName,
         audioRecording,
         undefined,
-        audioRecordingName,
+        audioRecordingName
       )
         .thenCheckStationNameIs(Josie, getTestName(stationName))
         .then(() => {
           cy.log(
-            "Check station updated correctly with lastAudioRecordingTime`",
+            "Check station updated correctly with lastAudioRecordingTime`"
           );
           expectedStation1.lastAudioRecordingTime = dayTwo.toISOString();
           cy.apiStationCheck(Josie, getTestName(stationName), expectedStation1);
@@ -1228,12 +1228,12 @@ describe("Stations: assign recordings to stations", () => {
             deviceName,
             thermalRecording,
             undefined,
-            thermalRecordingName,
+            thermalRecordingName
           )
             .thenCheckStationNameIs(Josie, getTestName(stationName))
             .then(() => {
               cy.log(
-                "Check station updated correctly with lastThermalRecordingTime",
+                "Check station updated correctly with lastThermalRecordingTime"
               );
               expectedStation1.lastAudioRecordingTime = dayTwo.toISOString();
               expectedStation1.lastThermalRecordingTime =
@@ -1241,11 +1241,11 @@ describe("Stations: assign recordings to stations", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(stationName),
-                expectedStation1,
+                expectedStation1
               );
 
               cy.log(
-                "Check device has just one valid deviceHistory location created",
+                "Check device has just one valid deviceHistory location created"
               );
               expectedHistory[0] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -1253,7 +1253,7 @@ describe("Stations: assign recordings to stations", () => {
                 NOT_NULL_STRING,
                 null,
                 "register",
-                null,
+                null
               );
               expectedHistory[1] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -1261,7 +1261,7 @@ describe("Stations: assign recordings to stations", () => {
                 dayTwo.toISOString(),
                 nearbyLocation,
                 "automatic",
-                getTestName(stationName),
+                getTestName(stationName)
               );
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
             });

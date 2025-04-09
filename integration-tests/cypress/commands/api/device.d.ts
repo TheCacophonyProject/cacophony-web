@@ -11,7 +11,7 @@ declare namespace Cypress {
       password?: string,
       generateUniqueName?: boolean,
       log?: boolean,
-      statusCode?: number,
+      statusCode?: number
     ): Cypress.Chainable<DeviceId>;
 
     /**
@@ -20,7 +20,7 @@ declare namespace Cypress {
     apiDeviceDeleteOrSetInactive(
       userName: string,
       deviceName: string,
-      groupName: string,
+      groupName: string
     ): Cypress.Chainable<boolean>;
 
     /**
@@ -39,7 +39,7 @@ declare namespace Cypress {
       stationIdOrName: string,
       location?: LatLng,
       statusCode?: number,
-      additionalParams?: any,
+      additionalParams?: any
     ): any;
 
     /**
@@ -55,7 +55,7 @@ declare namespace Cypress {
       deviceIdOrName: string,
       expectedHistory: any[],
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -70,7 +70,7 @@ declare namespace Cypress {
       newGroup: string,
       newPassword?: string,
       generateUniqueName?: boolean,
-      statusCode?: number,
+      statusCode?: number
     ): any;
 
     /**
@@ -85,7 +85,7 @@ declare namespace Cypress {
       newGroup: string,
       adminUserName: string,
       newPassword?: string,
-      statusCode?: number,
+      statusCode?: number
     ): any;
 
     /**
@@ -98,7 +98,7 @@ declare namespace Cypress {
       userName: string,
       expectedDevice: ApiDeviceResponse[],
       params?: any,
-      statusCode?: number,
+      statusCode?: number
     ): any;
 
     /**
@@ -108,7 +108,7 @@ declare namespace Cypress {
       userName: string,
       expectedDevices: ApiDeviceResponse[],
       params?: string,
-      statusCode?: number,
+      statusCode?: number
     ): any;
 
     /**
@@ -118,7 +118,7 @@ declare namespace Cypress {
       userName: string,
       deviceName: string,
       activeAndInactive?: boolean,
-      statusCode?: number,
+      statusCode?: number
     ): Cypress.Chainable<Cypress.Response>;
 
     /**
@@ -131,7 +131,7 @@ declare namespace Cypress {
       groupName: string | null,
       groupId: number | null,
       params?: any,
-      statusCode?: number,
+      statusCode?: number
     ): any;
 
     /**
@@ -147,7 +147,7 @@ declare namespace Cypress {
       groupId: number | null,
       expectedDevices: ApiDeviceResponse,
       params?: any,
-      statusCode?: number,
+      statusCode?: number
     ): any;
 
     // FIXME - Delete?  Just use deviceInGroup?
@@ -161,14 +161,14 @@ declare namespace Cypress {
       userName: string,
       deviceName: string,
       expectedUsers: ApiGroupsUserRelationshipResponse[],
-      statusCode?: number,
+      statusCode?: number
     ): any;
 
     apiDeviceHeartbeat(
       deviceName: string,
       nextHeartbeat: string,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     apiDeviceAddMaskRegions(
@@ -176,7 +176,7 @@ declare namespace Cypress {
       deviceName: string,
       maskRegions: ApiMaskRegionsData,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     apiDeviceGetMaskRegions(
@@ -184,7 +184,7 @@ declare namespace Cypress {
       deviceName: string,
       atTime?: Date,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -204,7 +204,7 @@ declare namespace Cypress {
       recTime: string,
       stationTime: string,
       move?: boolean,
-      additionalRecTime?: string,
+      additionalRecTime?: string
     ): any;
   }
 }

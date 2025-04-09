@@ -97,14 +97,14 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayTwo.toISOString(),
       dayZero.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log("Add new recording in same place, after lastRecordingTime");
       cy.log("and check recording uses updated station");
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: dayThree, noTracks: true },
-        thirdName,
+        thirdName
       )
         .thenCheckStationNameIs(Josie, getTestName(manualStationName))
         .then(() => {
@@ -114,7 +114,7 @@ describe("Fix location: subsequent recordings", () => {
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
-            expectedManualStation,
+            expectedManualStation
           );
 
           cy.log("Check deviceHistory unchanged by new recording");
@@ -125,7 +125,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             true,
-            DeviceType.Thermal,
+            DeviceType.Thermal
           );
           expectedDevice.location = oldLocation;
           cy.apiDeviceInGroupCheck(
@@ -133,7 +133,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             null,
-            expectedDevice,
+            expectedDevice
           );
         });
     });
@@ -163,17 +163,17 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayTwo.toISOString(),
       dayZero.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log(
-        "Add new recording in same place, before lastRecordingTime (dayOne)",
+        "Add new recording in same place, before lastRecordingTime (dayOne)"
       );
       cy.log("and check recording uses updated station");
 
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: dayOne, noTracks: true },
-        firstName,
+        firstName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
@@ -181,7 +181,7 @@ describe("Fix location: subsequent recordings", () => {
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
-            expectedManualStation,
+            expectedManualStation
           );
 
           cy.log("Check new deviceHistory entry creted for earlier recording");
@@ -191,7 +191,7 @@ describe("Fix location: subsequent recordings", () => {
             dayOne.toISOString(),
             oldLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
 
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
@@ -201,7 +201,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             true,
-            DeviceType.Thermal,
+            DeviceType.Thermal
           );
           expectedDevice.location = oldLocation;
           cy.apiDeviceInGroupCheck(
@@ -209,7 +209,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             null,
-            expectedDevice,
+            expectedDevice
           );
         });
     });
@@ -239,33 +239,33 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayTwo.toISOString(),
       dayOne.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log(
-        "Add new recording in same place, before manual station creation time",
+        "Add new recording in same place, before manual station creation time"
       );
       cy.log("and check recording creates a new station");
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: dayZero, noTracks: true },
-        firstName,
+        firstName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
           cy.log(
             "Check manual station NOT backdated by prior recording",
             newStation.name,
-            newStation.id,
+            newStation.id
           );
           expectedManualStation.activeAt = dayOne.toISOString();
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
-            expectedManualStation,
+            expectedManualStation
           );
 
           cy.log(
-            "Check new devicehistory entry created (automatically) by new recording",
+            "Check new devicehistory entry created (automatically) by new recording"
           );
           expectedHistory[1] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -273,7 +273,7 @@ describe("Fix location: subsequent recordings", () => {
             dayZero.toISOString(),
             oldLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
           expectedHistory.push(
             TestCreateExpectedHistoryEntry(
@@ -282,8 +282,8 @@ describe("Fix location: subsequent recordings", () => {
               dayTwo.toISOString(), // Fixup date
               oldLocation,
               "user",
-              getTestName(manualStationName),
-            ),
+              getTestName(manualStationName)
+            )
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -292,7 +292,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             true,
-            DeviceType.Thermal,
+            DeviceType.Thermal
           );
           expectedDevice.location = oldLocation;
           cy.apiDeviceInGroupCheck(
@@ -300,7 +300,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             null,
-            expectedDevice,
+            expectedDevice
           );
         });
     });
@@ -330,14 +330,14 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayTwo.toISOString(),
       dayZero.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log("Add new recording located elsewhere, after lastRecordingTime");
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
         { ...elsewhereLocation, time: dayThree, noTracks: true },
-        thirdName,
+        thirdName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
@@ -345,11 +345,11 @@ describe("Fix location: subsequent recordings", () => {
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
-            expectedManualStation,
+            expectedManualStation
           );
 
           cy.log(
-            "Check deviceHistory has new entry for new recording locvation",
+            "Check deviceHistory has new entry for new recording locvation"
           );
           expectedHistory[2] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -357,7 +357,7 @@ describe("Fix location: subsequent recordings", () => {
             dayThree.toISOString(),
             elsewhereLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -366,7 +366,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             true,
-            DeviceType.Thermal,
+            DeviceType.Thermal
           );
           expectedDevice.location = elsewhereLocation;
           cy.apiDeviceInGroupCheck(
@@ -374,7 +374,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             null,
-            expectedDevice,
+            expectedDevice
           );
         });
     });
@@ -404,14 +404,14 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayTwo.toISOString(),
       dayZero.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log("Add new recording located elsewhere, before lastRecordingTime");
       cy.log("and check recording creates new station");
       cy.testUploadRecording(
         deviceName,
         { ...elsewhereLocation, time: dayOne, noTracks: true },
-        firstName,
+        firstName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
@@ -419,11 +419,11 @@ describe("Fix location: subsequent recordings", () => {
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
-            expectedManualStation,
+            expectedManualStation
           );
 
           cy.log(
-            "Check devicehistory has a new earlier entry for new location by new recording",
+            "Check devicehistory has a new earlier entry for new location by new recording"
           );
           expectedHistory[2] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -431,7 +431,7 @@ describe("Fix location: subsequent recordings", () => {
             dayOne.toISOString(),
             elsewhereLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -440,7 +440,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             true,
-            DeviceType.Thermal,
+            DeviceType.Thermal
           );
           expectedDevice.location = oldLocation;
           cy.apiDeviceInGroupCheck(
@@ -448,7 +448,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             null,
-            expectedDevice,
+            expectedDevice
           );
         });
     });
@@ -478,18 +478,18 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayThree.toISOString(),
       dayTwo.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       expectedManualStation.activeAt = dayTwo.toISOString();
 
       cy.log(
-        "Add new recording located elsewhere, before manual station creation time (dayOne)",
+        "Add new recording located elsewhere, before manual station creation time (dayOne)"
       );
       cy.log("and check recording creates a new station");
       cy.testUploadRecording(
         deviceName,
         { ...elsewhereLocation, time: dayOne, noTracks: true },
-        firstName,
+        firstName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
@@ -497,11 +497,11 @@ describe("Fix location: subsequent recordings", () => {
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
-            expectedManualStation,
+            expectedManualStation
           );
 
           cy.log(
-            "Check new devicehistory entry created (automatically) by new recording",
+            "Check new devicehistory entry created (automatically) by new recording"
           );
           expectedHistory[2] = TestCreateExpectedHistoryEntry(
             deviceName,
@@ -509,7 +509,7 @@ describe("Fix location: subsequent recordings", () => {
             dayOne.toISOString(),
             elsewhereLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
           cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -518,7 +518,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             true,
-            DeviceType.Thermal,
+            DeviceType.Thermal
           );
           expectedDevice.location = oldLocation;
           cy.apiDeviceInGroupCheck(
@@ -526,7 +526,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             null,
-            expectedDevice,
+            expectedDevice
           );
         });
     });
@@ -557,16 +557,16 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayTwo.toISOString(),
       dayZero.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log(
-        "Add new recording located elsewhere, dayFour - after lastRecordingTime",
+        "Add new recording located elsewhere, dayFour - after lastRecordingTime"
       );
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
         { ...elsewhereLocation, time: dayFour, noTracks: true },
-        fourthName,
+        fourthName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
@@ -576,17 +576,17 @@ describe("Fix location: subsequent recordings", () => {
             dayFour.toISOString(),
             elsewhereLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
 
           cy.log(
-            "Add old recording at old location after last recording at the location (dayThree)",
+            "Add old recording at old location after last recording at the location (dayThree)"
           );
           cy.log("and check recording assigned to re-assigned station");
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: dayThree, noTracks: true },
-            thirdName,
+            thirdName
           )
             .thenCheckStationNameIs(Josie, getTestName(manualStationName))
             .then(() => {
@@ -596,7 +596,7 @@ describe("Fix location: subsequent recordings", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(manualStationName),
-                expectedManualStation,
+                expectedManualStation
               );
 
               cy.log("Check deviceHistory unchanged");
@@ -607,7 +607,7 @@ describe("Fix location: subsequent recordings", () => {
                 deviceName,
                 group,
                 true,
-                DeviceType.Thermal,
+                DeviceType.Thermal
               );
               expectedDevice.location = elsewhereLocation;
               cy.apiDeviceInGroupCheck(
@@ -615,7 +615,7 @@ describe("Fix location: subsequent recordings", () => {
                 deviceName,
                 group,
                 null,
-                expectedDevice,
+                expectedDevice
               );
             });
         });
@@ -647,16 +647,16 @@ describe("Fix location: subsequent recordings", () => {
       newLocation,
       dayTwo.toISOString(),
       dayZero.toISOString(),
-      false,
+      false
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log(
-        "Add new recording located elsewhere, dayFour - after lastRecordingTime",
+        "Add new recording located elsewhere, dayFour - after lastRecordingTime"
       );
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
         { ...elsewhereLocation, time: dayFour, noTracks: true },
-        fourthName,
+        fourthName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
@@ -666,17 +666,17 @@ describe("Fix location: subsequent recordings", () => {
             dayFour.toISOString(),
             elsewhereLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
 
           cy.log(
-            "Add old recording at old location before last recording at the location (dayOne)",
+            "Add old recording at old location before last recording at the location (dayOne)"
           );
           cy.log("and check recording assigned to re-assigned station");
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: dayOne, noTracks: true },
-            firstName,
+            firstName
           )
             .thenCheckStationIsNew(Josie)
             .then((newerStation: TestNameAndId) => {
@@ -684,11 +684,11 @@ describe("Fix location: subsequent recordings", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(manualStationName),
-                expectedManualStation,
+                expectedManualStation
               );
 
               cy.log(
-                "Check deviceHistory added for earlier recording time prior to fixup",
+                "Check deviceHistory added for earlier recording time prior to fixup"
               );
               expectedHistory[1].fromDateTime = dayOne.toISOString();
               expectedHistory[1].setBy = "automatic";
@@ -710,7 +710,7 @@ describe("Fix location: subsequent recordings", () => {
                 deviceName,
                 group,
                 true,
-                DeviceType.Thermal,
+                DeviceType.Thermal
               );
               expectedDevice.location = elsewhereLocation;
               cy.apiDeviceInGroupCheck(
@@ -718,7 +718,7 @@ describe("Fix location: subsequent recordings", () => {
                 deviceName,
                 group,
                 null,
-                expectedDevice,
+                expectedDevice
               );
             });
         });
@@ -749,7 +749,7 @@ describe("Fix location: subsequent recordings", () => {
       dayOne.toISOString(),
       dayZero.toISOString(),
       false,
-      dayThree.toISOString(),
+      dayThree.toISOString()
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log("Add new recording in same place, before lastRecordingTime");
       cy.log("and check recording uses updated station");
@@ -757,7 +757,7 @@ describe("Fix location: subsequent recordings", () => {
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: dayTwo, noTracks: true },
-        firstName,
+        firstName
       )
         .thenCheckStationNameIs(Josie, getTestName(manualStationName))
         .then(() => {
@@ -765,7 +765,7 @@ describe("Fix location: subsequent recordings", () => {
           cy.apiStationCheck(
             Josie,
             getTestName(manualStationName),
-            expectedManualStation,
+            expectedManualStation
           );
 
           cy.log("Check deviceHistory unchanged");
@@ -776,7 +776,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             true,
-            DeviceType.Thermal,
+            DeviceType.Thermal
           );
           expectedDevice.location = oldLocation;
           cy.apiDeviceInGroupCheck(
@@ -784,7 +784,7 @@ describe("Fix location: subsequent recordings", () => {
             deviceName,
             group,
             null,
-            expectedDevice,
+            expectedDevice
           );
         });
     });
@@ -816,16 +816,16 @@ describe("Fix location: subsequent recordings", () => {
       dayOne.toISOString(),
       dayZero.toISOString(),
       false,
-      dayThree.toISOString(),
+      dayThree.toISOString()
     ).then((expectedHistory: DeviceHistoryEntry[]) => {
       cy.log(
-        "Add new recording located elsewhere, dayFour - after lastRecordingTime",
+        "Add new recording located elsewhere, dayFour - after lastRecordingTime"
       );
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
         { ...elsewhereLocation, time: dayFour, noTracks: true },
-        fourthName,
+        fourthName
       )
         .thenCheckStationIsNew(Josie)
         .then((newStation: TestNameAndId) => {
@@ -835,17 +835,17 @@ describe("Fix location: subsequent recordings", () => {
             dayFour.toISOString(),
             elsewhereLocation,
             "automatic",
-            newStation.name,
+            newStation.name
           );
 
           cy.log(
-            "Add old recording at old location between first and last recording at the location (dayTwo)",
+            "Add old recording at old location between first and last recording at the location (dayTwo)"
           );
           cy.log("and check recording assigned to re-assigned station");
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: dayTwo, noTracks: true },
-            firstName,
+            firstName
           )
             .thenCheckStationNameIs(Josie, getTestName(manualStationName))
             .then(() => {
@@ -853,7 +853,7 @@ describe("Fix location: subsequent recordings", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(manualStationName),
-                expectedManualStation,
+                expectedManualStation
               );
 
               cy.log("Check deviceHistory uncganged");
@@ -869,7 +869,7 @@ describe("Fix location: subsequent recordings", () => {
                 deviceName,
                 group,
                 true,
-                DeviceType.Thermal,
+                DeviceType.Thermal
               );
               expectedDevice.location = elsewhereLocation;
               cy.apiDeviceInGroupCheck(
@@ -877,7 +877,7 @@ describe("Fix location: subsequent recordings", () => {
                 deviceName,
                 group,
                 null,
-                expectedDevice,
+                expectedDevice
               );
             });
         });

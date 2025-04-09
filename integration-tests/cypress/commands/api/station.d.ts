@@ -13,7 +13,7 @@ declare namespace Cypress {
       expectedStations: ApiStationResponse[],
       excludeCheckOn?: any,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -31,7 +31,7 @@ declare namespace Cypress {
       expectedStation: ApiStationResponse,
       excludeCheckOn?: any,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -50,7 +50,7 @@ declare namespace Cypress {
       untilDate?: string,
       retire?: boolean,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -67,7 +67,7 @@ declare namespace Cypress {
       stationIdOrName: string,
       deleteRecordings?: boolean,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /** Shortcut to apiStationUpdate which only sets the untilDate
@@ -77,7 +77,7 @@ declare namespace Cypress {
       userName: string,
       stationIdOrName: string,
       retirementDate?: string,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): Cypress.Chainable<void>;
   }
 }

@@ -24,7 +24,7 @@ describe("Devices historic settings", () => {
       params.append("type", "pov");
       let queryString = params.toString();
       const referenceImageApiUrl = v1ApiPath(
-        `devices/${getCreds(camera).id}/reference-image`,
+        `devices/${getCreds(camera).id}/reference-image`
       );
       cy.log("Add a POV reference image");
       // Add a reference image.
@@ -35,11 +35,11 @@ describe("Devices historic settings", () => {
         "image/jpeg",
         {},
         "",
-        200,
+        200
       ).then(() => {
         cy.log("Make sure we can retrieve the reference image");
         const deviceSettingsApiUrl = v1ApiPath(
-          `devices/${getCreds(camera).id}/settings`,
+          `devices/${getCreds(camera).id}/settings`
         );
         params = new URLSearchParams();
         params.append("at-time", new Date().toISOString());
@@ -50,14 +50,14 @@ describe("Devices historic settings", () => {
             method: "GET",
             url: `${deviceSettingsApiUrl}?${queryString}`,
           },
-          user,
+          user
         ).then((response) => {
           const settings = response.body.settings;
           expect(settings).to.exist;
           const referenceImagePOVExist =
             settings.hasOwnProperty("referenceImagePOV");
           const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-            "referenceImagePOVFileSize",
+            "referenceImagePOVFileSize"
           );
           expect(referenceImagePOVExist).to.be.true;
           expect(referenceImagePOVFileSizeExist).to.be.true;
@@ -76,7 +76,7 @@ describe("Devices historic settings", () => {
                 },
               },
             },
-            user,
+            user
           ).then(() => {
             cy.log("Check low power mode has been merged");
             params = new URLSearchParams();
@@ -87,14 +87,14 @@ describe("Devices historic settings", () => {
                 method: "GET",
                 url: `${deviceSettingsApiUrl}?${queryString}`,
               },
-              user,
+              user
             ).then((response) => {
               const settings = response.body.settings;
               expect(settings).to.exist;
               const referenceImagePOVExist =
                 settings.hasOwnProperty("referenceImagePOV");
               const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-                "referenceImagePOVFileSize",
+                "referenceImagePOVFileSize"
               );
               const lowPowerModeSettingExist =
                 settings.hasOwnProperty("thermalRecording");
@@ -110,7 +110,7 @@ describe("Devices historic settings", () => {
               expect(syncExists).to.be.true;
 
               cy.log(
-                "Upload a second recording at a different location to create a new DeviceHistory entry",
+                "Upload a second recording at a different location to create a new DeviceHistory entry"
               );
               cy.testUploadRecording(camera, {
                 ...TestGetLocation(2),
@@ -118,7 +118,7 @@ describe("Devices historic settings", () => {
                 noTracks: true,
               }).then(() => {
                 cy.log(
-                  "Make sure the settings have been cleared for the older location.",
+                  "Make sure the settings have been cleared for the older location."
                 );
                 params = new URLSearchParams();
                 params.append("at-time", oneDayAgo.toISOString());
@@ -128,7 +128,7 @@ describe("Devices historic settings", () => {
                     method: "GET",
                     url: `${deviceSettingsApiUrl}?${queryString}`,
                   },
-                  user,
+                  user
                 ).then((response) => {
                   const hasSettings =
                     response.body.settings &&
@@ -143,7 +143,7 @@ describe("Devices historic settings", () => {
                 noTracks: true,
               }).then(() => {
                 cy.log(
-                  "Make sure the location specific settings have been cleared for the new location, while other settings are preserved",
+                  "Make sure the location specific settings have been cleared for the new location, while other settings are preserved"
                 );
                 params = new URLSearchParams();
                 params.append("at-time", new Date().toISOString());
@@ -153,7 +153,7 @@ describe("Devices historic settings", () => {
                     method: "GET",
                     url: `${deviceSettingsApiUrl}?${queryString}`,
                   },
-                  user,
+                  user
                 ).then((response) => {
                   const settings = response.body.settings;
                   expect(settings).to.exist;
@@ -186,7 +186,7 @@ describe("Devices historic settings", () => {
                         settings: confirmedSettings,
                       },
                     },
-                    camera,
+                    camera
                   ).then(() => {
                     params = new URLSearchParams();
                     params.append("at-time", new Date().toISOString());
@@ -196,14 +196,14 @@ describe("Devices historic settings", () => {
                         method: "GET",
                         url: `${deviceSettingsApiUrl}?${queryString}`,
                       },
-                      user,
+                      user
                     ).then((response) => {
                       const settings = response.body.settings;
                       expect(settings).to.exist;
                       expect(syncExists).to.be.true;
                       expect(settings.synced).to.be.true;
                       cy.log(
-                        "Add new settings and ask for the latest synced settings",
+                        "Add new settings and ask for the latest synced settings"
                       );
                       makeAuthorizedRequest(
                         {
@@ -218,7 +218,7 @@ describe("Devices historic settings", () => {
                             },
                           },
                         },
-                        user,
+                        user
                       ).then(() => {
                         params = new URLSearchParams();
                         params.append("at-time", new Date().toISOString());
@@ -228,7 +228,7 @@ describe("Devices historic settings", () => {
                             method: "GET",
                             url: `${deviceSettingsApiUrl}?${queryString}`,
                           },
-                          user,
+                          user
                         ).then((response) => {
                           const settings = response.body.settings;
                           expect(settings).to.exist;
@@ -245,7 +245,7 @@ describe("Devices historic settings", () => {
                             method: "GET",
                             url: `${deviceSettingsApiUrl}?${queryString}`,
                           },
-                          user,
+                          user
                         ).then((response) => {
                           const settings = response.body.settings;
                           expect(settings).to.exist;

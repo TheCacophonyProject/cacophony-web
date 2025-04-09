@@ -53,7 +53,7 @@ describe("Monitoring : filters", () => {
       Poppy,
       null,
       { groups: [groupRabbitsId, groupHedgehogsId] },
-      [{}, {}, {}, {}],
+      [{}, {}, {}, {}]
     );
   });
 
@@ -78,7 +78,7 @@ describe("Monitoring : filters", () => {
       Poppy,
       null,
       { from: afterDate1, until: beforeDate4 },
-      [{ start: date2 }, { start: date3 }],
+      [{ start: date2 }, { start: date3 }]
     );
   });
 });

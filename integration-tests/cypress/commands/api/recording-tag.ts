@@ -16,7 +16,7 @@ Cypress.Commands.add(
     tagName: string,
     data: ApiRecordingTagRequest,
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     logTestDescription(`Adding tag to recording ${recordingNameOrId}`, {
       recording: recordingNameOrId,
@@ -41,7 +41,7 @@ Cypress.Commands.add(
         body: params,
       },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode == 200) {
         if (tagName !== null) {
@@ -54,7 +54,7 @@ Cypress.Commands.add(
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -64,7 +64,7 @@ Cypress.Commands.add(
     recordingNameOrId: string,
     tagNameOrId: string,
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     logTestDescription(`Delete tag from recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
@@ -92,13 +92,13 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages).to.contain(additionalChecks["message"]);
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -109,7 +109,7 @@ Cypress.Commands.add(
     expectedTags: any[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     logTestDescription(`Check recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
@@ -129,21 +129,21 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === 200) {
         checkTreeStructuresAreEqualExcept(
           expectedTags,
           response.body.recording.tags,
-          excludeCheckOn,
+          excludeCheckOn
         );
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages).to.contain(
-            additionalChecks["message"],
+            additionalChecks["message"]
           );
         }
       }
     });
-  },
+  }
 );

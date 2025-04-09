@@ -302,7 +302,7 @@ describe("Device mask regions", () => {
       let queryString = params.toString();
       // eslint-disable-next-line no-undef
       const apiUrl = v1ApiPath(
-        `devices/${getCreds(camera).id}/reference-image`,
+        `devices/${getCreds(camera).id}/reference-image`
       );
 
       // Add a reference image.
@@ -313,12 +313,12 @@ describe("Device mask regions", () => {
         "image/jpeg",
         {},
         "",
-        200,
+        200
       );
 
       cy.apiDeviceAddMaskRegions(user, camera, testRegions1);
       const deviceSettingsApiUrl = v1ApiPath(
-        `devices/${getCreds(camera).id}/settings`,
+        `devices/${getCreds(camera).id}/settings`
       );
 
       params = new URLSearchParams();
@@ -330,7 +330,7 @@ describe("Device mask regions", () => {
           method: "GET",
           url: `${deviceSettingsApiUrl}?${queryString}`,
         },
-        user,
+        user
       ).then((response) => {
         const settings = response.body.settings;
         expect(settings).to.exist;
@@ -338,7 +338,7 @@ describe("Device mask regions", () => {
         const referenceImagePOVExist =
           settings.hasOwnProperty("referenceImagePOV");
         const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-          "referenceImagePOVFileSize",
+          "referenceImagePOVFileSize"
         );
         expect(maskRegionsExist).to.be.true;
         expect(referenceImagePOVExist).to.be.true;
@@ -367,7 +367,7 @@ describe("Device mask regions", () => {
         time: new Date(),
         noTracks: true,
       },
-      recording,
+      recording
     );
     cy.apiDeviceAddMaskRegions(user, camera, {
       maskRegions: {
@@ -390,7 +390,7 @@ describe("Device mask regions", () => {
       maskedTrack,
       "testAlgorithm1",
       maskedTrack1,
-      algorithm1,
+      algorithm1
     ).then((response) => {
       expect(response.body.trackId).to.equal(1);
     });

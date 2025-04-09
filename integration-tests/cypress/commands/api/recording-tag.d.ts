@@ -16,7 +16,7 @@ declare namespace Cypress {
       tagName: string,
       data: ApiRecordingTagRequest,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -35,7 +35,7 @@ declare namespace Cypress {
       recordingNameOrId: string,
       tagNameOrId: string,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -53,7 +53,7 @@ declare namespace Cypress {
       expectedTags: any[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
   }
 }

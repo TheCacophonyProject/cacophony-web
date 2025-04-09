@@ -24,7 +24,7 @@ Cypress.Commands.add(
     owner = false,
     log = true,
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     let fullGroupName: string;
     if (additionalChecks["useRawGroupName"] === true) {
@@ -44,7 +44,7 @@ Cypress.Commands.add(
     logTestDescription(
       `${groupAdminUser} Adding user '${userName}' to group '${groupName}' ${adminStr} ${ownerStr}`,
       { user: userName, groupName, admin, owner },
-      log,
+      log
     );
     const body = {
       group: fullGroupName,
@@ -61,9 +61,9 @@ Cypress.Commands.add(
         body,
       },
       groupAdminUser,
-      statusCode,
+      statusCode
     );
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -75,7 +75,7 @@ Cypress.Commands.add(
     admin: boolean = false,
     owner: boolean = false,
     log: boolean = true,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     const fullGroupName = getTestName(groupName);
     const email = getTestEmail(inviteeEmail);
@@ -85,7 +85,7 @@ Cypress.Commands.add(
     logTestDescription(
       `${groupAdminUser} Inviting user '${email}' to group '${groupName}'${adminStr}${ownerStr}`,
       { user: inviteeEmail, groupName, admin, owner },
-      log,
+      log
     );
     const body = {
       email,
@@ -103,9 +103,9 @@ Cypress.Commands.add(
         body,
       },
       groupAdminUser,
-      statusCode,
+      statusCode
     );
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -116,7 +116,7 @@ Cypress.Commands.add(
     token: string,
     useExistingUser: boolean = false,
     log: boolean = true,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     const fullGroupName = getTestName(groupName);
     const body = {
@@ -125,21 +125,21 @@ Cypress.Commands.add(
     logTestDescription(
       `${invitedUser} accepting invitation to group '${groupName}'`,
       { user: invitedUser, groupName },
-      log,
+      log
     );
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: v1ApiPath(
           `groups/${fullGroupName}/accept-invitation`,
-          useExistingUser ? { "existing-member": 1 } : {},
+          useExistingUser ? { "existing-member": 1 } : {}
         ),
         body,
       },
       invitedUser,
-      statusCode,
+      statusCode
     );
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -149,12 +149,12 @@ Cypress.Commands.add(
     userName: string,
     groupName: string,
     log: boolean = true,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     logTestDescription(
       `${userName} requesting access to group '${groupName}' from ${groupAdminUserEmail}`,
       { user: userName, groupName, groupAdminUserEmail },
-      log,
+      log
     );
     const body = {
       groupAdminEmail: groupAdminUserEmail,
@@ -167,9 +167,9 @@ Cypress.Commands.add(
         body,
       },
       userName,
-      statusCode,
+      statusCode
     );
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -178,12 +178,12 @@ Cypress.Commands.add(
     groupAdminUser: string,
     token: string,
     log: boolean = true,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     logTestDescription(
       `${groupAdminUser} approves access to group`,
       { user: groupAdminUser },
-      log,
+      log
     );
     makeAuthorizedRequestWithStatus(
       {
@@ -194,9 +194,9 @@ Cypress.Commands.add(
         },
       },
       groupAdminUser,
-      statusCode,
+      statusCode
     );
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -206,7 +206,7 @@ Cypress.Commands.add(
     userName: string,
     groupName: string,
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     let fullGroupName: string;
     if (additionalChecks["useRawGroupName"] === true) {
@@ -225,7 +225,7 @@ Cypress.Commands.add(
     logTestDescription(
       `${groupAdminUser} Removing user '${userName}' from group '${groupName}' `,
       { user: userName, groupName },
-      true,
+      true
     );
 
     makeAuthorizedRequestWithStatus(
@@ -238,9 +238,9 @@ Cypress.Commands.add(
         },
       },
       groupAdminUser,
-      statusCode,
+      statusCode
     );
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -251,7 +251,7 @@ Cypress.Commands.add(
     expectedUsers: ApiGroupUserResponse[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     let fullGroupName: string;
     let sortUsers: ApiGroupUserResponse[];
@@ -268,14 +268,14 @@ Cypress.Commands.add(
     logTestDescription(
       `${userName} Check users in group '${groupName}' `,
       { user: userName, groupName },
-      true,
+      true
     );
 
     //send the request
     makeAuthorizedRequestWithStatus(
       { url: fullUrl },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
@@ -289,11 +289,11 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedUsers,
           sortUsers,
-          excludeCheckOn,
+          excludeCheckOn
         );
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -303,7 +303,7 @@ Cypress.Commands.add(
     groupName: string,
     log = true,
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     let fullGroupName: string;
 
@@ -316,7 +316,7 @@ Cypress.Commands.add(
     logTestDescription(
       `Create group '${groupName}' for user '${userName}'`,
       { user: userName, group: groupName },
-      log,
+      log
     );
 
     makeAuthorizedRequestWithStatus(
@@ -326,14 +326,14 @@ Cypress.Commands.add(
         body: { groupname: fullGroupName },
       },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === 200) {
         saveIdOnly(groupName, response.body.groupId);
         cy.wrap(response.body.groupId);
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -344,7 +344,7 @@ Cypress.Commands.add(
     expectedGroups: ApiGroupReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     let sortGroups: ApiGroupReturned[];
     let sortExpectedGroups: ApiGroupReturned[];
@@ -362,14 +362,14 @@ Cypress.Commands.add(
     logTestDescription(
       `${userName} Check group '${groupNameOrId}' `,
       { user: userName, groupNameOrId },
-      true,
+      true
     );
 
     //send the request
     makeAuthorizedRequestWithStatus(
       { url: fullUrl },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
@@ -379,40 +379,40 @@ Cypress.Commands.add(
           for (let count = 0; count < sortGroups.length; count++) {
             sortGroups[count].Devices = sortArrayOn(
               sortGroups[count].Devices,
-              "deviceName",
+              "deviceName"
             );
             sortGroups[count].Users = sortArrayOn(
               sortGroups[count].Users,
-              "userName",
+              "userName"
             );
             sortGroups[count].GroupUsers = sortArrayOn(
               sortGroups[count].GroupUsers,
-              "userId",
+              "userId"
             );
           }
           for (let count = 0; count < sortExpectedGroups.length; count++) {
             sortExpectedGroups[count].Devices = sortArrayOn(
               sortExpectedGroups[count].Devices,
-              "deviceName",
+              "deviceName"
             );
             sortExpectedGroups[count].Users = sortArrayOn(
               sortExpectedGroups[count].Users,
-              "userName",
+              "userName"
             );
             sortExpectedGroups[count].GroupUsers = sortArrayOn(
               sortExpectedGroups[count].GroupUsers,
-              "userId",
+              "userId"
             );
           }
         }
         checkTreeStructuresAreEqualExcept(
           sortExpectedGroups,
           sortGroups,
-          excludeCheckOn,
+          excludeCheckOn
         );
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -423,7 +423,7 @@ Cypress.Commands.add(
     expectedGroups: ApiGroupReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     let sortGroups: ApiGroupReturned[];
     let sortExpectedGroups: ApiGroupReturned[];
@@ -431,7 +431,7 @@ Cypress.Commands.add(
     logTestDescription(
       `${userName} Check groups accessible for user`,
       { user: userName },
-      true,
+      true
     );
     const params = {
       where: JSON.stringify(where),
@@ -443,7 +443,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       { url: fullUrl },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
@@ -456,29 +456,29 @@ Cypress.Commands.add(
           for (let count = 0; count < sortGroups.length; count++) {
             sortGroups[count].Devices = sortArrayOn(
               sortGroups[count].Devices,
-              "deviceName",
+              "deviceName"
             );
             sortGroups[count].Users = sortArrayOn(
               sortGroups[count].Users,
-              "userName",
+              "userName"
             );
             sortGroups[count].GroupUsers = sortArrayOn(
               sortGroups[count].GroupUsers,
-              "userId",
+              "userId"
             );
           }
           for (let count = 0; count < sortExpectedGroups.length; count++) {
             sortExpectedGroups[count].Devices = sortArrayOn(
               sortExpectedGroups[count].Devices,
-              "deviceName",
+              "deviceName"
             );
             sortExpectedGroups[count].Users = sortArrayOn(
               sortExpectedGroups[count].Users,
-              "userName",
+              "userName"
             );
             sortExpectedGroups[count].GroupUsers = sortArrayOn(
               sortExpectedGroups[count].GroupUsers,
-              "userId",
+              "userId"
             );
           }
         }
@@ -486,11 +486,11 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedGroups,
           sortGroups,
-          excludeCheckOn,
+          excludeCheckOn
         );
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -501,7 +501,7 @@ Cypress.Commands.add(
     expectedDevices: ApiGroupsDevice[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     let sortDevices: ApiGroupsDevice[];
     let sortExpectedDevices: ApiGroupsDevice[];
@@ -517,7 +517,7 @@ Cypress.Commands.add(
     logTestDescription(
       `${userName} Check group's devices for group ${groupNameOrId}`,
       { user: userName },
-      true,
+      true
     );
 
     const fullUrl = v1ApiPath(`groups/${fullGroupName}/devices`);
@@ -526,7 +526,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       { url: fullUrl },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
@@ -541,11 +541,11 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedDevices,
           sortDevices,
-          excludeCheckOn,
+          excludeCheckOn
         );
       }
     });
-  },
+  }
 );
 
 /*******************************************************************************************************
@@ -563,7 +563,7 @@ Cypress.Commands.add(
     logTestDescription(
       `${userName} Check user '${userName}' can see group '${groupName}' `,
       { user: userName, groupName },
-      true,
+      true
     );
 
     cy.request({
@@ -577,5 +577,5 @@ Cypress.Commands.add(
         expect(allGroupNames).not.to.contain(fullGroupname);
       }
     });
-  },
+  }
 );

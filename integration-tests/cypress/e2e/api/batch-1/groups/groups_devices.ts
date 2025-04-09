@@ -29,7 +29,7 @@ describe("Groups - get devices for group", () => {
           type: DeviceType.Unknown,
           isHealthy: false,
         };
-      },
+      }
     );
 
     //2nd group
@@ -79,7 +79,7 @@ describe("Groups - get devices for group", () => {
       "gdGroup",
       [],
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -91,7 +91,7 @@ describe("Groups - get devices for group", () => {
       [expectedDevice, expectedDevice1b],
       [],
       HttpStatusCode.Ok,
-      { useRawGroupName: true },
+      { useRawGroupName: true }
     );
 
     cy.log("Check member can view group's devices");
@@ -104,7 +104,7 @@ describe("Groups - get devices for group", () => {
       ],
       [],
       HttpStatusCode.Ok,
-      { useRawGroupName: true },
+      { useRawGroupName: true }
     );
   });
 
@@ -134,7 +134,7 @@ describe("Groups - get devices for group", () => {
       "gdCam4a",
       { type: RecordingType.ThermalRaw },
       "oneframe.cptv",
-      "raRecording1",
+      "raRecording1"
     );
     cy.apiDeviceReregister("gdCam4a", "gdCam4b", "gdGroup4").then(() => {
       expectedGroupDevice4b = {
@@ -163,7 +163,7 @@ describe("Groups - get devices for group", () => {
       };
 
       cy.log(
-        "Verify device query shows both old device as inactive (and new one as active)",
+        "Verify device query shows both old device as inactive (and new one as active)"
       );
       cy.apiDevicesCheck("gdUser4", [expectedDevice4a, expectedDevice4b], {
         onlyActive: false,
@@ -183,7 +183,7 @@ describe("Groups - get devices for group", () => {
       HttpStatusCode.Forbidden,
       {
         useRawGroupName: true,
-      },
+      }
     );
   });
 

@@ -15,11 +15,11 @@ Cypress.Commands.add(
         userName,
         deviceName,
         expectedVisits,
-      },
+      }
     );
 
     checkVisitsMatch(userName, deviceName, expectedVisits);
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -27,7 +27,7 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    expectedVisits: TestComparableVisit[],
+    expectedVisits: TestComparableVisit[]
   ) => {
     logTestDescription(`Check visits match ${JSON.stringify(expectedVisits)}`, {
       userName,
@@ -36,13 +36,13 @@ Cypress.Commands.add(
     });
 
     checkVisitsMatch(userName, deviceName, expectedVisits);
-  },
+  }
 );
 
 function checkVisitsMatch(
   userName: string,
   deviceName: string,
-  expectedVisits: TestComparableVisit[],
+  expectedVisits: TestComparableVisit[]
 ) {
   const where: TestVisitsWhere = {
     duration: { $gte: "0" },
@@ -69,13 +69,13 @@ function checkVisitsMatch(
 
 function checkResponseMatches(
   response: Cypress.Response<any>,
-  expectedVisits: TestComparableVisit[],
+  expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;
 
   expect(
     responseVisits.length,
-    `Number of visits to be ${responseVisits.length}`,
+    `Number of visits to be ${responseVisits.length}`
   ).to.eq(expectedVisits.length);
   const increasingDateResponseVisits = responseVisits.reverse();
 
@@ -109,6 +109,6 @@ function checkResponseMatches(
     responseVisitsToCompare.push(simplifiedResponseVisit);
   }
   expect(JSON.stringify(responseVisitsToCompare)).to.eq(
-    JSON.stringify(expectedVisits),
+    JSON.stringify(expectedVisits)
   );
 }

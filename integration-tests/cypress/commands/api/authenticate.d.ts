@@ -10,7 +10,7 @@ declare namespace Cypress {
       userName?: string,
       email?: string,
       password?: string,
-      statuscode?: number,
+      statuscode?: number
     ): Chainable<Element>;
 
     /**
@@ -20,7 +20,7 @@ declare namespace Cypress {
     apiAuthenticateAs(
       userA: string,
       userB?: string,
-      statusCode?: number,
+      statusCode?: number
     ): Chainable<Element>;
 
     /**
@@ -35,7 +35,7 @@ declare namespace Cypress {
       groupName: string,
       password?: string,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): Chainable<Element>;
 
     /**
@@ -47,7 +47,7 @@ declare namespace Cypress {
       userName: string,
       ttl?: string,
       access?: ApiAuthenticateAccess,
-      statusCode?: number,
+      statusCode?: number
     ): any;
   }
 }
