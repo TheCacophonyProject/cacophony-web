@@ -818,7 +818,7 @@ const recordingUploadedState = (type: RecordingType) => {
   if (type === RecordingType.Audio) {
     return RecordingProcessingState.Analyse;
   } else if (type === RecordingType.ThermalRaw) {
-    return RecordingProcessingState.Tracking;
+    return RecordingProcessingState.TrackAndAnalyse;
   } else if (type === RecordingType.InfraredVideo) {
     return RecordingProcessingState.Tracking;
   } else if (type == RecordingType.TrailCamImage) {
