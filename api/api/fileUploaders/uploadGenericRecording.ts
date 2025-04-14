@@ -43,6 +43,7 @@ import { isLatLon } from "@models/util/validation.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import logger from "@log";
+import type { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -761,9 +762,14 @@ export const uploadGenericRecording =
         ),
       ]);
 
-      if (data.metadata && data.metadata.metadata_source) {
-        recording.additionalMetadata.metadataSource =
-          data.metadata.metadata_source;
+      if (
+        data.metadata &&
+        data.metadata.metadata_source &&
+        data.type === RecordingType.ThermalRaw
+      ) {
+        (
+          recording.additionalMetadata as ApiThermalRecordingMetadataResponse
+        ).metadataSource = data.metadata.metadata_source;
         recording.save();
       }
 
