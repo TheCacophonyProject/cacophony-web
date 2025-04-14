@@ -32,7 +32,7 @@ describe("Device register", () => {
           NOT_NULL_STRING,
           null,
           "register",
-          null,
+          null
         );
       expectedHistory.saltId = 1234567;
 
@@ -56,7 +56,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
       LOG,
-      HttpStatusCode.BadRequest,
+      HttpStatusCode.BadRequest
     );
     cy.apiDeviceAdd(
       "gotya",
@@ -65,7 +65,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
       LOG,
-      HttpStatusCode.BadRequest,
+      HttpStatusCode.BadRequest
     );
   });
 
@@ -77,7 +77,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
     cy.apiDeviceAdd(
       "123-34",
@@ -86,7 +86,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -104,7 +104,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
     cy.apiDeviceAdd(
       "-device2",
@@ -113,7 +113,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
     cy.apiDeviceAdd(
       "_device3",
@@ -122,7 +122,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -147,7 +147,7 @@ describe("Device register", () => {
       null,
       expectedDevice,
       null,
-      HttpStatusCode.Ok,
+      HttpStatusCode.Ok
     );
   });
 
@@ -160,7 +160,7 @@ describe("Device register", () => {
       "",
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
     //not space
     cy.apiDeviceAdd(
@@ -170,7 +170,7 @@ describe("Device register", () => {
       " ",
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
     //not less than 8 chars
     cy.apiDeviceAdd(
@@ -180,7 +180,7 @@ describe("Device register", () => {
       "1234567",
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -192,7 +192,7 @@ describe("Device register", () => {
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
       LOG,
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 });

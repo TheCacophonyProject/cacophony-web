@@ -9,7 +9,7 @@ export function sendMultipartMessage(
   jwt: string,
   formData: any,
   waitOn: string,
-  onComplete: any,
+  onComplete: any
 ) {
   //: Cypress.Chainable<Interception>
   const xhr = new XMLHttpRequest();
@@ -45,7 +45,7 @@ export function uploadFile(
   data: ApiRecordingSet | Record<string, string | string[] | number>,
   waitOn: string,
   statusCode: number = 200,
-  fileNameToUse?: string,
+  fileNameToUse?: string
 ): Cypress.Chainable<
   Promise<{
     recordingId: RecordingId;
@@ -57,7 +57,7 @@ export function uploadFile(
   const doUpload = (
     blob: Blob | { fileBlob: Blob; filename: string; key: string }[],
     data: any,
-    resolve,
+    resolve
   ) => {
     // Build up the form
     const formData = new FormData();
@@ -102,12 +102,12 @@ export function uploadFile(
         } else {
           expect(
             xhr.status,
-            `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`,
+            `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`
           ).to.equal(statusCode);
         }
 
         resolve({ ...xhr.response, statusCode });
-      },
+      }
     );
   };
 
@@ -166,7 +166,7 @@ export function uploadFile(
           // File in binary format gets converted to blob so it can be sent as Form data
           const blob = Cypress.Blob.binaryStringToBlob(
             fileBinary,
-            getMimeTypeFromFileName(item.filename),
+            getMimeTypeFromFileName(item.filename)
           );
           blobs[item.filename] = { ...item, fileBlob: blob };
           if (Object.keys(blobs).length === fileName.length) {
@@ -181,7 +181,7 @@ export function uploadFile(
         // File in binary format gets converted to blob so it can be sent as Form data
         const blob = Cypress.Blob.binaryStringToBlob(
           fileBinary,
-          getMimeTypeFromFileName(fileName),
+          getMimeTypeFromFileName(fileName)
         );
         doUpload(blob, data, resolve);
       });

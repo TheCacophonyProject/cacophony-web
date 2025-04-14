@@ -18,7 +18,7 @@ Cypress.Commands.add(
     });
 
     checkMonitoringMatches(userName, stationId, {}, expectedVisits);
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -27,7 +27,7 @@ Cypress.Commands.add(
     userName: string,
     stationId: StationId,
     expectedVisits: TestComparableVisit[],
-    log = true,
+    log = true
   ) => {
     logTestDescription(
       `Check visits match ${prettyLog(expectedVisits)}`,
@@ -36,11 +36,11 @@ Cypress.Commands.add(
         stationId,
         expectedVisits,
       },
-      log,
+      log
     );
 
     checkMonitoringMatches(userName, stationId, {}, expectedVisits);
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -49,18 +49,18 @@ Cypress.Commands.add(
     userName: string,
     stationId: StationId,
     searchParams: TestVisitSearchParams,
-    expectedVisits: TestComparableVisit[],
+    expectedVisits: TestComparableVisit[]
   ) => {
     logTestDescription(
       `Check monitoring visits with filter ${prettyLog(
-        searchParams,
+        searchParams
       )} match ${prettyLog(expectedVisits)} `,
       {
         userName,
         stationId,
         expectedVisits,
         searchParams,
-      },
+      }
     );
 
     if (searchParams.from) {
@@ -72,14 +72,14 @@ Cypress.Commands.add(
     }
 
     checkMonitoringMatches(userName, stationId, searchParams, expectedVisits);
-  },
+  }
 );
 
 function checkMonitoringMatches(
   userName: string,
   stationId: StationId,
   specialParams: TestVisitSearchParams,
-  expectedVisits: TestComparableVisit[],
+  expectedVisits: TestComparableVisit[]
 ) {
   const params: TestVisitSearchParams = {
     page: 1,
@@ -103,13 +103,13 @@ function checkMonitoringMatches(
 
 function checkResponseMatches(
   response: Cypress.Response<any>,
-  expectedVisits: TestComparableVisit[],
+  expectedVisits: TestComparableVisit[]
 ) {
   const responseVisits = response.body.visits;
 
   expect(
     responseVisits.length,
-    `Number of visits is ${responseVisits.length}`,
+    `Number of visits is ${responseVisits.length}`
   ).to.be.equal(expectedVisits.length);
   const increasingDateResponseVisits = responseVisits.reverse();
 
@@ -126,7 +126,7 @@ function checkResponseMatches(
 
     if (expectedVisit.camera) {
       simplifiedResponseVisit.camera = stripBackName(
-        completeResponseVisit.device,
+        completeResponseVisit.device
       );
     }
 
@@ -149,12 +149,12 @@ function checkResponseMatches(
       if (expectedVisit.start instanceof Date) {
         // full date
         simplifiedResponseVisit.start = new Date(
-          completeResponseVisit.timeStart,
+          completeResponseVisit.timeStart
         );
       } else {
         // just time
         simplifiedResponseVisit.start = new Date(
-          completeResponseVisit.timeStart,
+          completeResponseVisit.timeStart
         )
           .toTimeString()
           .substring(0, 5);

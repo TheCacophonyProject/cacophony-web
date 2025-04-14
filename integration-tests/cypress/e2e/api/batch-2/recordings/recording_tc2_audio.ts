@@ -14,10 +14,10 @@ import { RecordingType } from "@typedefs/api/consts";
 
 describe("Recordings - audio recording parameter tests", () => {
   const templateExpectedRecording: ApiAudioRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE_TC2),
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE_TC2)
   );
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_AUDIO_RECORDING_TC2),
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_TC2)
   );
 
   const adminUser = "tc2AudioGroupAdmin";
@@ -39,7 +39,7 @@ describe("Recordings - audio recording parameter tests", () => {
       device,
       { type: RecordingType.Audio },
       "embedded-metadata-tc2.aac",
-      "rarRecording1",
+      "rarRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -47,14 +47,14 @@ describe("Recordings - audio recording parameter tests", () => {
         device,
         group,
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         adminUser,
         "rarRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
   });

@@ -10,7 +10,7 @@ declare namespace Cypress {
       userName: string,
       stationId: number,
       expectedVisits: TestComparableVisit[],
-      log?: boolean,
+      log?: boolean
     ): any;
 
     /**
@@ -23,7 +23,7 @@ declare namespace Cypress {
       userName: string,
       stationId: number | null,
       searchParams: TestVisitSearchParams,
-      expectedVisits: TestComparableVisit[],
+      expectedVisits: TestComparableVisit[]
     ): any;
     /*
      * check the visits returned match the listed visits specified. Only the specified information will be checked.
@@ -34,7 +34,7 @@ declare namespace Cypress {
     checkMonitoringTags(
       userName: string,
       stationId: number,
-      expectedTags: string[],
+      expectedTags: string[]
     ): any;
   }
 }

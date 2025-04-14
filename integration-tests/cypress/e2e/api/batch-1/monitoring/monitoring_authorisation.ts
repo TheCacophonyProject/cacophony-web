@@ -26,7 +26,7 @@ describe("Recording authorizations", () => {
           checkRecording(member, recordingId, (recording) => {
             stationId = recording.stationId;
           });
-        },
+        }
       );
       recordingUploaded = true;
     }
@@ -47,7 +47,7 @@ describe("Recording authorizations", () => {
 
 function checkMonitoringRequestSucceeds(
   username: string,
-  stationId: StationId,
+  stationId: StationId
 ) {
   logTestDescription(`User ${username} should be able to see visits.`, {});
   cy.checkMonitoring(username, stationId, [{}], NO_LOG_MESSAGE);
@@ -55,7 +55,7 @@ function checkMonitoringRequestSucceeds(
 
 function checkMonitoringRequestReturnsNoResults(
   username: string,
-  stationId: StationId,
+  stationId: StationId
 ) {
   logTestDescription(`User ${username} should not see any visits.`, {});
   cy.checkMonitoring(username, stationId, [], NO_LOG_MESSAGE);

@@ -37,7 +37,7 @@ describe("Group Admin Pages", () => {
     // check what page looks like after groups are added
     cy.get("h1").contains(getTestName(FriendsForever));
     cy.contains("Manage the users associated with this group and view ").should(
-      "be.visible",
+      "be.visible"
     );
 
     // check self is admin
@@ -51,7 +51,7 @@ describe("Group Admin Pages", () => {
 
     cy.get("h1").should("contain", "Your groups");
     cy.contains("Groups link together devices with the users who").should(
-      "be.visible",
+      "be.visible"
     );
     cy.contains("Create group").should("be.visible");
 

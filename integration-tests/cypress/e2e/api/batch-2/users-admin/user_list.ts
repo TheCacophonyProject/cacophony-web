@@ -39,7 +39,7 @@ describe("User: list", () => {
         [expectedUser1, expectedUser2, expectedUser3],
         [],
         HttpStatusCode.Ok,
-        { contains: true },
+        { contains: true }
       );
     });
   } else {

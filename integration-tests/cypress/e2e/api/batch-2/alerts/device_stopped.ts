@@ -37,7 +37,7 @@ describe.skip("Devices stopped alerts", () => {
         cy.log("Check for stop-reported event");
         const expectedStopEvent = testCreateExpectedEvent(
           camera,
-          "stop-reported",
+          "stop-reported"
         );
         cy.testEventsCheckAgainstExpected(user, camera, expectedStopEvent, 3);
       });
@@ -199,7 +199,7 @@ describe.skip("Devices stopped alerts", () => {
         runReportStoppedDevicesScript(() => {
           cy.apiEventsCheck(user, "hrtCamera1", {}, []);
         });
-      },
+      }
     );
   });
 
@@ -218,7 +218,7 @@ describe.skip("Devices stopped alerts", () => {
             });
             cy.apiEventsCheck(user, "hrtCamera2", {}, [expectedStopEvent]);
           });
-        },
+        }
       );
     });
   });
@@ -249,7 +249,7 @@ describe.skip("Devices stopped alerts", () => {
             cy.log("Check that there is still only one stop events");
             cy.apiEventsCheck(user, "hrtCamera3", {}, [expectedStopEvent]);
           });
-        },
+        }
       );
     });
   });
@@ -274,7 +274,7 @@ describe.skip("Devices stopped alerts", () => {
       cy.log("Send a new heartbeat");
       cy.apiDeviceHeartbeat(
         "hrtCamera4",
-        secondNextHeartBeatTime.toISOString(),
+        secondNextHeartBeatTime.toISOString()
       ).then(() => {
         cy.log("Check for stopped devices");
         runReportStoppedDevicesScript(() => {

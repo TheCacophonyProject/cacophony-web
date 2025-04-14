@@ -14,12 +14,12 @@ import {
 
 describe("Update recordings", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
   delete templateExpectedRecording.tracks;
 
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
   delete templateRecording.metadata;
 
@@ -55,7 +55,7 @@ describe("Update recordings", () => {
       "ruCamera1",
       recording01,
       "oneframe.cptv",
-      "ruRecording01",
+      "ruRecording01"
     ).then(() => {
       let expectedRecording01 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -63,14 +63,14 @@ describe("Update recordings", () => {
         "ruCamera1",
         "ruGroup",
         null,
-        recording01,
+        recording01
       );
       cy.log("Check recording prior to update");
       cy.apiRecordingCheck(
         "ruGroupAdmin",
         "ruRecording01",
         expectedRecording01,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       ).then(() => {
         cy.log("Update recording");
         cy.apiRecordingUpdate("ruGroupAdmin", "ruRecording01", fieldUpdates);
@@ -81,7 +81,7 @@ describe("Update recordings", () => {
           "ruGroupAdmin",
           "ruRecording01",
           expectedRecording01,
-          EXCLUDE_IDS,
+          EXCLUDE_IDS
         );
       });
     });
@@ -93,7 +93,7 @@ describe("Update recordings", () => {
       "ruCamera1",
       recording02,
       "oneframe.cptv",
-      "ruRecording02",
+      "ruRecording02"
     ).then(() => {
       let expectedRecording02 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -101,14 +101,14 @@ describe("Update recordings", () => {
         "ruCamera1",
         "ruGroup",
         null,
-        recording02,
+        recording02
       );
       cy.log("Check recording prior to update");
       cy.apiRecordingCheck(
         "ruGroupMember",
         "ruRecording02",
         expectedRecording02,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       ).then(() => {
         cy.log("Update recording");
         cy.apiRecordingUpdate("ruGroupMember", "ruRecording02", fieldUpdates);
@@ -119,7 +119,7 @@ describe("Update recordings", () => {
           "ruGroupMember",
           "ruRecording02",
           expectedRecording02,
-          EXCLUDE_IDS,
+          EXCLUDE_IDS
         );
       });
     });
@@ -131,7 +131,7 @@ describe("Update recordings", () => {
       "ruCamera1",
       recording05,
       "oneframe.cptv",
-      "ruRecording05",
+      "ruRecording05"
     ).then(() => {
       const expectedRecording05 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -139,14 +139,14 @@ describe("Update recordings", () => {
         "ruCamera1",
         "ruGroup",
         null,
-        recording05,
+        recording05
       );
       cy.log("Attempt to update recording");
       cy.apiRecordingUpdate(
         "ruGroup2Admin",
         "ruRecording05",
         fieldUpdates,
-        HttpStatusCode.Forbidden,
+        HttpStatusCode.Forbidden
       );
 
       cy.log("Check recording not updated");
@@ -154,7 +154,7 @@ describe("Update recordings", () => {
         "ruGroupMember",
         "ruRecording05",
         expectedRecording05,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
   });
@@ -165,7 +165,7 @@ describe("Update recordings", () => {
       "99999",
       fieldUpdates,
       HttpStatusCode.Forbidden,
-      { useRawRecordingId: true },
+      { useRawRecordingId: true }
     );
   });
 
@@ -175,7 +175,7 @@ describe("Update recordings", () => {
       "ruCamera1",
       recording06,
       "oneframe.cptv",
-      "ruRecording06",
+      "ruRecording06"
     ).then(() => {
       const expectedRecording06 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -183,21 +183,21 @@ describe("Update recordings", () => {
         "ruCamera1",
         "ruGroup",
         null,
-        recording06,
+        recording06
       );
       cy.log("Attempt to update invalid field");
       cy.apiRecordingUpdate(
         "ruGroupAdmin",
         "ruRecording06",
         { badField: "hello" },
-        HttpStatusCode.Unprocessable,
+        HttpStatusCode.Unprocessable
       );
       cy.log("Attempt to update field with invalid value");
       cy.apiRecordingUpdate(
         "ruGroupAdmin",
         "ruRecording06",
         { additionalMetadata: "badValue" },
-        HttpStatusCode.Unprocessable,
+        HttpStatusCode.Unprocessable
       );
 
       cy.log("Check recording not updated");
@@ -205,7 +205,7 @@ describe("Update recordings", () => {
         "ruGroupMember",
         "ruRecording06",
         expectedRecording06,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
   });

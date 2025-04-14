@@ -14,7 +14,7 @@ declare namespace Cypress {
       fromDate?: string,
       untilDate?: string,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): Cypress.Chainable<StationId>;
 
     /**
@@ -31,7 +31,7 @@ declare namespace Cypress {
       expectedStation: ApiStationResponse,
       excludeCheckOn?: any,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     /**
@@ -48,7 +48,7 @@ declare namespace Cypress {
       expectedStations: ApiStationResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): any;
 
     // to be run straight after an apiRecordingAdd

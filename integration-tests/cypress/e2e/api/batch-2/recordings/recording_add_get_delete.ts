@@ -21,12 +21,12 @@ import {
 
 describe("Recordings (thermal): add, get, delete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
   );
   // NOTE: Save time in tests by not creating tracks - these tests don't use them.
   delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
   delete templateRecording.metadata;
 
@@ -55,16 +55,16 @@ describe("Recordings (thermal): add, get, delete", () => {
           "raCamera1",
           "raGroup",
           null,
-          recording1,
+          recording1
         );
         cy.log("Check recording can be viewed correctly");
         cy.apiRecordingCheck(
           "raGroupAdmin",
           "raRecording1",
           expectedRecording1,
-          EXCLUDE_IDS,
+          EXCLUDE_IDS
         );
-      },
+      }
     );
 
     cy.log("Delete recording");
@@ -76,7 +76,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -93,16 +93,16 @@ describe("Recordings (thermal): add, get, delete", () => {
           "raCamera1",
           "raGroup",
           null,
-          recording1,
+          recording1
         );
         cy.log("Check recording can be viewed correctly");
         cy.apiRecordingCheck(
           "raGroupMember",
           "raRecording1",
           expectedRecording1,
-          EXCLUDE_IDS,
+          EXCLUDE_IDS
         );
-      },
+      }
     );
 
     cy.log("Delete recording");
@@ -114,7 +114,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -128,7 +128,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raCamera1",
       "raGroup",
       recording1,
-      "raRecording1",
+      "raRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -136,14 +136,14 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raCamera1",
         "raGroup",
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "raGroupAdmin",
         "raRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
 
@@ -156,7 +156,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -170,7 +170,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raCamera1",
       "raGroup",
       recording1,
-      "raRecording1",
+      "raRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -178,14 +178,14 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raCamera1",
         "raGroup",
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "raGroupMember",
         "raRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
 
@@ -198,7 +198,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -212,7 +212,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       "oneframe.cptv",
-      422,
+      422
     );
   });
 
@@ -226,7 +226,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       "oneframe.cptv",
-      400,
+      400
     );
   });
 
@@ -240,7 +240,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       "invalid.cptv",
-      422,
+      422
     );
   });
 
@@ -253,7 +253,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroupAdmin",
       "raCamera1",
       recording1,
-      "raRecording1",
+      "raRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -261,14 +261,14 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raCamera1",
         "raGroup",
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "raGroupAdmin",
         "raRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
 
@@ -281,7 +281,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -294,7 +294,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroupMember",
       "raCamera1",
       recording1,
-      "raRecording1",
+      "raRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -302,14 +302,14 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raCamera1",
         "raGroup",
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "raGroupMember",
         "raRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
 
@@ -322,7 +322,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -331,13 +331,13 @@ describe("Recordings (thermal): add, get, delete", () => {
     let expectedRecording1: ApiThermalRecordingResponse;
 
     cy.log(
-      "Add a recording to device to be re-registered so that the old device is set inactive, not deleted",
+      "Add a recording to device to be re-registered so that the old device is set inactive, not deleted"
     );
     cy.apiRecordingAddOnBehalfUsingDevice(
       "raGroupAdmin",
       "raCamera1",
       recording1,
-      "raRecording1",
+      "raRecording1"
     ).then(() => {
       cy.log("Rename/reregister device");
       cy.apiDeviceReregister("raCamera1", "raCamera1-renamed", "raGroup").then(
@@ -347,7 +347,7 @@ describe("Recordings (thermal): add, get, delete", () => {
             "raGroupAdmin",
             "raCamera1",
             recording1,
-            "raRecording1",
+            "raRecording1"
           ).then(() => {
             expectedRecording1 = TestCreateExpectedRecordingData(
               templateExpectedRecording,
@@ -355,14 +355,14 @@ describe("Recordings (thermal): add, get, delete", () => {
               "raCamera1",
               "raGroup",
               null,
-              recording1,
+              recording1
             );
             cy.log("Check recording can be viewed correctly");
             cy.apiRecordingCheck(
               "raGroupMember",
               "raRecording1",
               expectedRecording1,
-              EXCLUDE_IDS,
+              EXCLUDE_IDS
             );
           });
 
@@ -375,9 +375,9 @@ describe("Recordings (thermal): add, get, delete", () => {
             "raRecording1",
             undefined,
             [],
-            HttpStatusCode.Forbidden,
+            HttpStatusCode.Forbidden
           );
-        },
+        }
       );
     });
   });
@@ -387,26 +387,26 @@ describe("Recordings (thermal): add, get, delete", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
     cy.log(
-      "Add a recording to device to be re-registered so that the old device is set inactive, not deleted",
+      "Add a recording to device to be re-registered so that the old device is set inactive, not deleted"
     );
     cy.apiRecordingAddOnBehalfUsingDevice(
       "raGroupAdmin",
       "raCamera1-renamed",
       recording1,
-      "raRecording1",
+      "raRecording1"
     ).then(() => {
       cy.log("Rename/reregister device");
       cy.apiDeviceReregister(
         "raCamera1-renamed",
         "raCamera1-renamed2",
-        "raGroup",
+        "raGroup"
       ).then(() => {
         cy.log("Add recording as group member");
         cy.apiRecordingAddOnBehalfUsingDevice(
           "raGroupMember",
           "raCamera1-renamed",
           recording1,
-          "raRecording1",
+          "raRecording1"
         ).then(() => {
           expectedRecording1 = TestCreateExpectedRecordingData(
             templateExpectedRecording,
@@ -414,14 +414,14 @@ describe("Recordings (thermal): add, get, delete", () => {
             "raCamera1-renamed",
             "raGroup",
             null,
-            recording1,
+            recording1
           );
           cy.log("Check recording can be viewed correctly");
           cy.apiRecordingCheck(
             "raGroupMember",
             "raRecording1",
             expectedRecording1,
-            EXCLUDE_IDS,
+            EXCLUDE_IDS
           );
         });
 
@@ -434,7 +434,7 @@ describe("Recordings (thermal): add, get, delete", () => {
           "raRecording1",
           undefined,
           [],
-          HttpStatusCode.Forbidden,
+          HttpStatusCode.Forbidden
         );
       });
     });
@@ -449,7 +449,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording2,
       "raRecording2",
       undefined,
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
     cy.log("Cannot add recording for another group's devices using group");
     cy.apiRecordingAddOnBehalfUsingGroup(
@@ -459,7 +459,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording2,
       "raRecording2",
       undefined,
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
 
     cy.apiRecordingAdd("raCamera2", recording2, undefined, "raRecording2");
@@ -469,14 +469,14 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording2",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Cannot delete another group's recordings");
     cy.apiRecordingDelete(
       "raGroupAdmin",
       "raRecording2",
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
     cy.apiRecordingDelete("raGroup2Admin", "raRecording2");
   });
@@ -491,7 +491,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       HttpStatusCode.Unprocessable,
-      { useRawDeviceName: true },
+      { useRawDeviceName: true }
     );
 
     cy.log("Add recording using non-existent device id");
@@ -502,7 +502,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       HttpStatusCode.Forbidden,
-      { useRawDeviceName: true },
+      { useRawDeviceName: true }
     );
 
     cy.log("Add recording using valid group, non-existent device name");
@@ -514,7 +514,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       HttpStatusCode.Forbidden,
-      { useRawDeviceName: true },
+      { useRawDeviceName: true }
     );
 
     cy.log("Add recording using non-existent group");
@@ -525,7 +525,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       undefined,
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Add recording using valid group and another groups device");
@@ -536,7 +536,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       undefined,
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -548,7 +548,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       undefined,
       [],
       HttpStatusCode.Forbidden,
-      { useRawRecordingId: true },
+      { useRawRecordingId: true }
     );
     cy.apiRecordingCheck(
       "raGroupAdmin",
@@ -556,7 +556,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       undefined,
       [],
       HttpStatusCode.Unprocessable,
-      { useRawRecordingId: true },
+      { useRawRecordingId: true }
     );
   });
 
@@ -569,7 +569,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroupAdmin",
       "ThisIsNotAValidId",
       HttpStatusCode.Unprocessable,
-      { useRawRecordingId: true },
+      { useRawRecordingId: true }
     );
   });
 
@@ -583,7 +583,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       recording1,
       "raRecording1",
       "invalid.cptv",
-      422,
+      422
     );
   });
 
@@ -603,12 +603,12 @@ describe("Recordings (thermal): add, get, delete", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        undefined,
+        undefined
       );
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.TrailCamImage,
-        undefined,
+        undefined
       );
     }
 
@@ -621,9 +621,9 @@ describe("Recordings (thermal): add, get, delete", () => {
           recordingId,
           (recording) => {
             stationId = recording.stationId;
-          },
+          }
         );
-      },
+      }
     );
 
     cy.log("Delete recording");
@@ -633,7 +633,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.apiRecordingsReportCheck(
       "raGroupAdmin",
       { where: {}, order: '[["id", "ASC"]]' },
-      [],
+      []
     );
 
     cy.log("Check /recordings/id: ignores deleted recording");
@@ -642,14 +642,14 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check /recordings/id:/thumbnail ignores deleted recording");
     cy.apiRecordingThumbnailCheck(
       "raGroupAdmin",
       "raRecording1",
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
 
     cy.log("Check /recordings/count ignores deleted recording");
@@ -659,7 +659,7 @@ describe("Recordings (thermal): add, get, delete", () => {
         where: {},
         order: '[["id", "ASC"]]',
       },
-      0,
+      0
     );
 
     cy.log("Check /recordings ignores deleted recording");
@@ -670,7 +670,7 @@ describe("Recordings (thermal): add, get, delete", () => {
         order: '[["id", "ASC"]]',
       },
       [],
-      EXCLUDE_IDS,
+      EXCLUDE_IDS
     );
     cy.log("Check /monitoring ignores deleted recording");
     cy.checkMonitoringWithFilter("raGroupAdmin", stationId, filter, []);
@@ -691,7 +691,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       [
         { filename: "trailcam-image.jpeg", key: "file" },
         { filename: "trailcam-image-resized.webp", key: "derived" },
-      ],
+      ]
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -699,14 +699,14 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raCamera1",
         "raGroup",
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "raGroupAdmin",
         "tcRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
   });
@@ -721,7 +721,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raCamera1",
       recording1,
       "zero-sized.cptv",
-      "raRecording1",
+      "raRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -729,7 +729,7 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raCamera1",
         "raGroup",
         null,
-        recording1,
+        recording1
       );
       expectedRecording1.processingState = RecordingProcessingState.Corrupt;
       cy.log("Check recording can be viewed correctly");
@@ -737,7 +737,7 @@ describe("Recordings (thermal): add, get, delete", () => {
         "raGroupAdmin",
         "raRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
   });

@@ -28,7 +28,7 @@ describe("Station alerts", () => {
         lng: 1.2,
         lat: 2.4,
       },
-      "recording1",
+      "recording1"
     )
       .then((recordingId: RecordingId) => {
         cy.apiRecordingGet(usera.name, recordingId).then((response) => {
@@ -43,7 +43,7 @@ describe("Station alerts", () => {
           POSSUM_ALERT,
           stationId,
           null,
-          HttpStatusCode.Forbidden,
+          HttpStatusCode.Forbidden
         ).then((response: any) => {
           checkResponse(response, HttpStatusCode.Forbidden);
         });
@@ -65,7 +65,7 @@ describe("Station alerts", () => {
         POSSUM_ALERT,
         stationId,
         0,
-        HttpStatusCode.Ok,
+        HttpStatusCode.Ok
       ).then(() => {
         //upload a recording tagged as possum and  build an expected event using the returned recording details
         cy.testUploadRecording(
@@ -77,18 +77,18 @@ describe("Station alerts", () => {
             lng: 2,
             time: new Date(),
           },
-          "recording1",
+          "recording1"
         ).then(() => {
           const expectedAlert = createExpectedAlert(
             "alert1",
             0,
             POSSUM_ALERT,
-            true,
+            true
           );
           const expectedEvent = createExpectedEvent(
             usera.camera,
             "recording1",
-            "alert1",
+            "alert1"
           );
 
           //check that an alert is present and has a 'last alerted'
@@ -98,7 +98,7 @@ describe("Station alerts", () => {
           cy.testEventsCheckAgainstExpected(
             usera.name,
             usera.camera,
-            expectedEvent,
+            expectedEvent
           );
         });
       });
@@ -120,7 +120,7 @@ describe("Station alerts", () => {
         POSSUM_ALERT,
         stationId,
         0,
-        HttpStatusCode.Ok,
+        HttpStatusCode.Ok
       ).then(() => {
         //upload a recording tagged as possum and  build an expected event using the returned recording details
         cy.testUploadRecordingOnBehalfUsingDevice(
@@ -133,13 +133,13 @@ describe("Station alerts", () => {
             lng: 2,
             time: new Date(),
           },
-          "recording1",
+          "recording1"
         ).then(() => {
           const expectedAlert = createExpectedAlert(
             "alert1",
             0,
             POSSUM_ALERT,
-            false,
+            false
           );
           // check that an alert is present and has no 'last alerted'
           cy.apiStationAlertCheck(usera.name, stationId, expectedAlert);
@@ -167,7 +167,7 @@ describe("Station alerts", () => {
         POSSUM_ALERT,
         stationId,
         0,
-        HttpStatusCode.Ok,
+        HttpStatusCode.Ok
       ).then(() => {
         //upload a recording tagged as possum and  build an expected event using the returned recording details
         cy.testUploadRecording(
@@ -179,13 +179,13 @@ describe("Station alerts", () => {
             lng: 2,
             time: twoDaysAgo,
           },
-          "recording1",
+          "recording1"
         ).then(() => {
           const expectedAlert = createExpectedAlert(
             "alert1",
             0,
             POSSUM_ALERT,
-            false,
+            false
           );
           // check that an alert is present and has no 'last alerted'
           cy.apiStationAlertCheck(usera.name, stationId, expectedAlert);

@@ -14,10 +14,10 @@ import {
 import { HttpStatusCode } from "@typedefs/api/consts";
 describe("Recordings - audio recording parameter tests", () => {
   const templateExpectedRecording: ApiAudioRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE),
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
   );
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_AUDIO_RECORDING),
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
   );
 
   before(() => {
@@ -33,7 +33,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.testCreateUserGroupAndDevice(
       "rarGroup2Admin",
       "rarGroup2",
-      "rarDevice2",
+      "rarDevice2"
     );
   });
 
@@ -46,7 +46,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording1,
       "60sec-audio.m4a",
-      "rarRecording1",
+      "rarRecording1"
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -54,14 +54,14 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
     });
 
@@ -74,7 +74,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden,
+      HttpStatusCode.Forbidden
     );
   });
 
@@ -90,7 +90,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarRecording1",
       200,
       {},
-      "file", //
+      "file" //
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -98,14 +98,14 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording1,
+        recording1
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording1",
         expectedRecording1,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDownloadCheck("rarGroupAdmin", "rarRecording1");
     });
@@ -121,7 +121,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording2,
       "60sec-audio.m4a",
-      "rarRecording2",
+      "rarRecording2"
     ).then(() => {
       expectedRecording2 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -129,13 +129,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording2,
+        recording2
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording2",
         expectedRecording2,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording2");
     });
@@ -152,7 +152,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording14,
       "60sec-audio.m4a",
       "rarRecording14",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -166,7 +166,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording15,
       "60sec-audio.m4a",
-      "rarRecording15",
+      "rarRecording15"
     ).then(() => {
       expectedRecording15 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -174,14 +174,14 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording15,
+        recording15
       );
       expectedRecording15.recordingDateTime = recording15.recordingDateTime;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording15",
         expectedRecording15,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording15");
     });
@@ -196,7 +196,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording8,
       "60sec-audio.m4a",
       "rarRecording8",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -215,7 +215,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording11,
       "60sec-audio.m4a",
-      "rarRecording11",
+      "rarRecording11"
     ).then(() => {
       expectedRecording11 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -223,13 +223,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording11,
+        recording11
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording11",
         expectedRecording11,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording11");
     });
@@ -243,7 +243,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording12,
       "60sec-audio.m4a",
-      "rarRecording12",
+      "rarRecording12"
     ).then(() => {
       expectedRecording12 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -251,13 +251,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording12,
+        recording12
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording12",
         expectedRecording12,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording12");
     });
@@ -270,7 +270,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording13,
       "60sec-audio.m4a",
-      "rarRecording13",
+      "rarRecording13"
     ).then(() => {
       expectedRecording13 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -278,13 +278,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording13,
+        recording13
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording13",
         expectedRecording13,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording13");
     });
@@ -297,7 +297,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording14,
       "60sec-audio.m4a",
-      "rarRecording14",
+      "rarRecording14"
     ).then(() => {
       expectedRecording14 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -305,13 +305,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording14,
+        recording14
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording14",
         expectedRecording14,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording14");
     });
@@ -324,7 +324,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording15,
       "60sec-audio.m4a",
-      "rarRecording15",
+      "rarRecording15"
     ).then(() => {
       expectedRecording15 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -332,13 +332,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording15,
+        recording15
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording15 ",
         expectedRecording15,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording15");
     });
@@ -351,7 +351,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording16,
       "60sec-audio.m4a",
-      "rarRecording16",
+      "rarRecording16"
     ).then(() => {
       expectedRecording16 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -359,13 +359,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording16,
+        recording16
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording16 ",
         expectedRecording16,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording16");
     });
@@ -378,7 +378,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording17,
       "60sec-audio.m4a",
-      "rarRecording17",
+      "rarRecording17"
     ).then(() => {
       expectedRecording17 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -386,13 +386,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording17,
+        recording17
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording17",
         expectedRecording17,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording17");
     });
@@ -407,7 +407,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording18,
       "60sec-audio.m4a",
       "rarRecording18",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
 
     const recording19 = TestCreateRecordingData(templateRecording);
@@ -417,7 +417,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording19,
       "60sec-audio.m4a",
       "rarRecording19",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
 
     const recording20 = TestCreateRecordingData(templateRecording);
@@ -427,7 +427,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording20,
       "60sec-audio.m4a",
       "rarRecording20",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -442,7 +442,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording21,
       "60sec-audio.m4a",
-      "rarRecording21",
+      "rarRecording21"
     ).then(() => {
       expectedRecording21 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -450,13 +450,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording21,
+        recording21
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording21",
         expectedRecording21,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording21");
     });
@@ -470,7 +470,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording22,
       "60sec-audio.m4a",
-      "rarRecording22",
+      "rarRecording22"
     ).then(() => {
       expectedRecording22 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -478,13 +478,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording22,
+        recording22
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording22",
         expectedRecording22,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording22");
     });
@@ -498,7 +498,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording23,
       "60sec-audio.m4a",
-      "rarRecording23",
+      "rarRecording23"
     ).then(() => {
       expectedRecording23 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -506,14 +506,14 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording23,
+        recording23
       );
       expectedRecording23.version = null;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording23",
         expectedRecording23,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording23");
     });
@@ -529,7 +529,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording24,
       "60sec-audio.m4a",
-      "rarRecording24",
+      "rarRecording24"
     ).then(() => {
       expectedRecording24 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -537,13 +537,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording24,
+        recording24
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording24",
         expectedRecording24,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording24");
     });
@@ -557,7 +557,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording25,
       "60sec-audio.m4a",
-      "rarRecording25",
+      "rarRecording25"
     ).then(() => {
       expectedRecording25 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -565,14 +565,14 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording25,
+        recording25
       );
       delete expectedRecording25.comment;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording25",
         expectedRecording25,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording25");
     });
@@ -586,7 +586,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording26,
       "60sec-audio.m4a",
-      "rarRecording26",
+      "rarRecording26"
     ).then(() => {
       expectedRecording26 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -594,13 +594,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording26,
+        recording26
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording26",
         expectedRecording26,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording26");
     });
@@ -616,7 +616,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording27,
       "60sec-audio.m4a",
-      "rarRecording27",
+      "rarRecording27"
     ).then(() => {
       expectedRecording27 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -624,13 +624,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording27,
+        recording27
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording27",
         expectedRecording27,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording27");
     });
@@ -645,7 +645,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "60sec-audio.m4a",
       "rarRecording28",
       HttpStatusCode.BadRequest,
-      { message: "Uploaded file integrity check failed, please retry." },
+      { message: "Uploaded file integrity check failed, please retry." }
     );
 
     cy.log("Blank hash accepted");
@@ -657,7 +657,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording29,
       "60sec-audio.m4a",
-      "rarRecording29",
+      "rarRecording29"
     ).then(() => {
       expectedRecording29 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -665,13 +665,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording29,
+        recording29
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording29",
         expectedRecording29,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording29");
     });
@@ -685,7 +685,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording30,
       "60sec-audio.m4a",
-      "rarRecording30",
+      "rarRecording30"
     ).then(() => {
       expectedRecording30 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -693,13 +693,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording30,
+        recording30
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording30",
         expectedRecording30,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording30");
     });
@@ -715,7 +715,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording31,
       "60sec-audio.m4a",
-      "rarRecording31",
+      "rarRecording31"
     ).then(() => {
       expectedRecording31 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -723,13 +723,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording31,
+        recording31
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording31",
         expectedRecording31,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording31");
     });
@@ -746,7 +746,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording32,
       "60sec-audio.m4a",
-      "rarRecording32",
+      "rarRecording32"
     ).then(() => {
       expectedRecording32 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -754,13 +754,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording32,
+        recording32
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording32",
         expectedRecording32,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording32");
     });
@@ -774,7 +774,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording33,
       "60sec-audio.m4a",
-      "rarRecording33",
+      "rarRecording33"
     ).then(() => {
       expectedRecording33 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -782,13 +782,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording33,
+        recording33
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording33",
         expectedRecording33,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording33");
     });
@@ -803,7 +803,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording34,
       "60sec-audio.m4a",
-      "rarRecording34",
+      "rarRecording34"
     ).then(() => {
       expectedRecording34 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -811,7 +811,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording34,
+        recording34
       );
       expectedRecording34.additionalMetadata = {
         normal: "0",
@@ -842,7 +842,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarGroupAdmin",
         "rarRecording34",
         expectedRecording34,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording34");
     });
@@ -860,7 +860,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording35,
       "60sec-audio.m4a",
-      "rarRecording35",
+      "rarRecording35"
     ).then(() => {
       expectedRecording35 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -868,13 +868,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording35,
+        recording35
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording35",
         expectedRecording35,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording35");
     });
@@ -889,7 +889,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording36,
       "60sec-audio.m4a",
-      "rarRecording36",
+      "rarRecording36"
     ).then(() => {
       expectedRecording36 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -897,13 +897,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording36,
+        recording36
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording36",
         expectedRecording36,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording36");
     });
@@ -918,7 +918,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording37,
       "60sec-audio.m4a",
-      "rarRecording37",
+      "rarRecording37"
     ).then(() => {
       expectedRecording37 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -926,7 +926,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording37,
+        recording37
       );
       delete expectedRecording37.batteryCharging;
       delete expectedRecording37.batteryLevel;
@@ -934,7 +934,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarGroupAdmin",
         "rarRecording37",
         expectedRecording37,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording37");
     });
@@ -949,7 +949,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording38,
       "60sec-audio.m4a",
-      "rarRecording38",
+      "rarRecording38"
     ).then(() => {
       expectedRecording38 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -957,7 +957,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording38,
+        recording38
       );
       delete expectedRecording38.batteryLevel;
       delete expectedRecording38.batteryCharging;
@@ -965,7 +965,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarGroupAdmin",
         "rarRecording38",
         expectedRecording38,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording38");
     });
@@ -981,7 +981,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording43,
       "60sec-audio.m4a",
       "rarRecording43",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Invalid charge state");
@@ -992,7 +992,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording44,
       "60sec-audio.m4a",
       "rarRecording44",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -1007,7 +1007,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording39,
       "60sec-audio.m4a",
-      "rarRecording39",
+      "rarRecording39"
     ).then(() => {
       expectedRecording39 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1015,13 +1015,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording39,
+        recording39
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording39",
         expectedRecording39,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording39");
     });
@@ -1035,7 +1035,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording40,
       "60sec-audio.m4a",
-      "rarRecording40",
+      "rarRecording40"
     ).then(() => {
       expectedRecording40 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1043,13 +1043,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording40,
+        recording40
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording40",
         expectedRecording40,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording40");
     });
@@ -1063,7 +1063,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording41,
       "60sec-audio.m4a",
-      "rarRecording41",
+      "rarRecording41"
     ).then(() => {
       expectedRecording41 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1071,14 +1071,14 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording41,
+        recording41
       );
       delete expectedRecording41.airplaneModeOn;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording41",
         expectedRecording41,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording41");
     });
@@ -1092,7 +1092,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording42,
       "60sec-audio.m4a",
-      "rarRecording42",
+      "rarRecording42"
     ).then(() => {
       expectedRecording42 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1100,14 +1100,14 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording42,
+        recording42
       );
       delete expectedRecording42.airplaneModeOn;
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording42",
         expectedRecording42,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording42");
     });
@@ -1122,7 +1122,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording45,
       "60sec-audio.m4a",
       "rarRecording45",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 
@@ -1138,7 +1138,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording46,
       "60sec-audio.m4a",
-      "rarRecording46",
+      "rarRecording46"
     ).then(() => {
       expectedRecording46 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1146,13 +1146,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording46,
+        recording46
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording46",
         expectedRecording46,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording46");
     });
@@ -1167,7 +1167,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording47,
       "60sec-audio.m4a",
-      "rarRecording47",
+      "rarRecording47"
     ).then(() => {
       expectedRecording47 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1175,13 +1175,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording47,
+        recording47
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording47",
         expectedRecording47,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording47");
     });
@@ -1196,7 +1196,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording48,
       "60sec-audio.m4a",
-      "rarRecording48",
+      "rarRecording48"
     ).then(() => {
       expectedRecording48 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1204,13 +1204,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording48,
+        recording48
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording48",
         expectedRecording48,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording48");
     });
@@ -1225,7 +1225,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording49,
       "60sec-audio.m4a",
-      "rarRecording49",
+      "rarRecording49"
     ).then(() => {
       expectedRecording49 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1233,13 +1233,13 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording49,
+        recording49
       );
       cy.apiRecordingCheck(
         "rarGroupAdmin",
         "rarRecording49",
         expectedRecording49,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording49");
     });
@@ -1254,7 +1254,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording50,
       "60sec-audio.m4a",
-      "rarRecording50",
+      "rarRecording50"
     ).then(() => {
       expectedRecording50 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1262,7 +1262,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording50,
+        recording50
       );
       delete expectedRecording50.relativeToDawn;
       delete expectedRecording50.relativeToDusk;
@@ -1270,7 +1270,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarGroupAdmin",
         "rarRecording50",
         expectedRecording50,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording50");
     });
@@ -1285,7 +1285,7 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarDevice1",
       recording51,
       "60sec-audio.m4a",
-      "rarRecording51",
+      "rarRecording51"
     ).then(() => {
       expectedRecording51 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -1293,7 +1293,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarDevice1",
         "rarGroup",
         null,
-        recording51,
+        recording51
       );
       delete expectedRecording51.relativeToDawn;
       delete expectedRecording51.relativeToDusk;
@@ -1302,7 +1302,7 @@ describe("Recordings - audio recording parameter tests", () => {
         "rarGroupAdmin",
         "rarRecording51",
         expectedRecording51,
-        EXCLUDE_IDS,
+        EXCLUDE_IDS
       );
       cy.apiRecordingDelete("rarGroupAdmin", "rarRecording51");
     });
@@ -1318,7 +1318,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording52,
       "60sec-audio.m4a",
       "rarRecording52",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
 
     cy.log("Invalid relativeToDusk");
@@ -1329,7 +1329,7 @@ describe("Recordings - audio recording parameter tests", () => {
       recording53,
       "60sec-audio.m4a",
       "rarRecording53",
-      HttpStatusCode.Unprocessable,
+      HttpStatusCode.Unprocessable
     );
   });
 

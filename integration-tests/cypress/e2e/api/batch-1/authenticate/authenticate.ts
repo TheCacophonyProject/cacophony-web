@@ -34,7 +34,7 @@ describe("Authentication", () => {
       camera1,
       group1,
       "wrong-password",
-      HttpStatusCode.AuthorizationError,
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -43,7 +43,7 @@ describe("Authentication", () => {
       camera2,
       group1,
       "p" + getTestName(camera1),
-      HttpStatusCode.AuthorizationError,
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -52,7 +52,7 @@ describe("Authentication", () => {
       camera1,
       group2,
       "p" + getTestName(camera1),
-      HttpStatusCode.AuthorizationError,
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -66,7 +66,7 @@ describe("Authentication", () => {
       null,
       getTestEmail(userA),
       "bad_password",
-      HttpStatusCode.AuthorizationError,
+      HttpStatusCode.AuthorizationError
     );
   });
 
@@ -79,7 +79,7 @@ describe("Authentication", () => {
       //verify each user gets their own data
       cy.testGroupUserCheckAccess(userB + "_on_behalf", group2);
       cy.log(
-        "verify user cannot see items outside their group (i.e. are not super_user)",
+        "verify user cannot see items outside their group (i.e. are not super_user)"
       );
       cy.testGroupUserCheckAccess(userB + "_on_behalf", group1, false);
     });

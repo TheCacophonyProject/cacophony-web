@@ -15,7 +15,7 @@ describe("Monitoring : times and recording groupings", () => {
     cy.testAddRecordingsAtTimes(
       camera,
       ["21:04", "21:13", "21:22"],
-      location1,
+      location1
     ).then((recordingIds) => {
       checkRecording(Dexter, recordingIds[0], (recording) => {
         cy.checkMonitoring(Dexter, recording.stationId, [{ recordings: 3 }]);
@@ -35,7 +35,7 @@ describe("Monitoring : times and recording groupings", () => {
             { recordings: 1 },
           ]);
         });
-      },
+      }
     );
   });
 
@@ -52,7 +52,7 @@ describe("Monitoring : times and recording groupings", () => {
             { recordings: 1 },
           ]);
         });
-      },
+      }
     );
   });
 
@@ -66,7 +66,7 @@ describe("Monitoring : times and recording groupings", () => {
         checkRecording(Dexter, recordingId, (recording) => {
           cy.checkMonitoring(Dexter, recording.stationId, [{ recordings: 2 }]);
         });
-      },
+      }
     );
   });
 
@@ -108,7 +108,7 @@ describe("Monitoring : times and recording groupings", () => {
             { start: "21:22" },
           ]);
         });
-      },
+      }
     );
   });
 
@@ -128,7 +128,7 @@ describe("Monitoring : times and recording groupings", () => {
             { start: "21:22" },
           ]);
         });
-      },
+      }
     );
   });
 
@@ -148,7 +148,7 @@ describe("Monitoring : times and recording groupings", () => {
           };
           cy.checkMonitoringWithFilter(Dexter, recording.stationId, filter, []);
         });
-      },
+      }
     );
   });
 
@@ -168,7 +168,7 @@ describe("Monitoring : times and recording groupings", () => {
             { recordings: 3, start: "20:40", incomplete: "false" },
           ]);
         });
-      },
+      }
     );
   });
 
@@ -191,7 +191,7 @@ describe("Monitoring : times and recording groupings", () => {
             { recordings: 2, start: "20:59", incomplete: "false" },
           ]);
         });
-      },
+      }
     );
   });
 
@@ -212,7 +212,7 @@ describe("Monitoring : times and recording groupings", () => {
           };
           cy.checkMonitoringWithFilter(Dexter, recording.stationId, filter, []);
         });
-      },
+      }
     );
   });
 

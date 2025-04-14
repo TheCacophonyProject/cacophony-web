@@ -13,7 +13,7 @@ declare namespace Cypress {
       recordingName?: string,
       fileName?: string,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): Cypress.Chainable<RecordingIdAlias>;
 
     /**
@@ -32,7 +32,7 @@ declare namespace Cypress {
       recordingName?: string,
       fileName?: string,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): Cypress.Chainable<RecordingIdAlias>;
 
     /**
@@ -50,14 +50,14 @@ declare namespace Cypress {
       recordingName?: string,
       fileName?: string,
       statusCode?: number,
-      additionalChecks?: any,
+      additionalChecks?: any
     ): Cypress.Chainable<RecordingIdAlias>;
 
     testAddRecordingThenUserTag(
       deviceName: string,
       details: TestThermalRecordingInfoAlias,
       tagger: string,
-      tag: string,
+      tag: string
     ): any;
 
     /**
@@ -67,7 +67,7 @@ declare namespace Cypress {
       recordingId: number,
       trackIndex: number,
       tagger: string,
-      tag: string,
+      tag: string
     ): any;
 
     /**
@@ -77,13 +77,13 @@ declare namespace Cypress {
       recordingId: number,
       trackIndex: number,
       tagger: string,
-      tag: string,
+      tag: string
     ): any;
 
     testAddRecordingsAtTimes(
       deviceName: string,
       times: string[],
-      location: { lat: number; lng: number },
+      location: { lat: number; lng: number }
     ): Cypress.Chainable<number[]>;
 
     // to be run straight after an apiRecordingAdd
@@ -95,7 +95,7 @@ declare namespace Cypress {
     testCheckDeviceHasRecordings(
       userName: string,
       deviceName: string,
-      count: number,
+      count: number
     ): any;
     /**
      * Return a list of recording ids that match a query
@@ -103,7 +103,7 @@ declare namespace Cypress {
 
     testGetRecordingIdsForQuery(
       userName: string,
-      where: any,
+      where: any
     ): Cypress.Chainable<number[]>;
 
     /**
@@ -113,7 +113,7 @@ declare namespace Cypress {
     testDeleteRecordingsInState(
       superuser: string,
       type: string,
-      state: string,
+      state: string
     ): any;
   }
 }

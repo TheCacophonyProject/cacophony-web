@@ -9,7 +9,7 @@ export const clearMailServerLog = () => {
   cy.log("Clearing mail server stub log");
   return cy.exec(
     `cd ../api && docker exec cacophony-api bash -lic "echo "" > mailServerStub.log;"`,
-    { log: false },
+    { log: false }
   );
 };
 export const waitForEmail = (type: string = "") => {
@@ -18,12 +18,12 @@ export const waitForEmail = (type: string = "") => {
   return cy
     .exec(
       `cd ../api && docker exec cacophony-api bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 1; done; cat mailServerStub.log;"`,
-      { log: false },
+      { log: false }
     )
     .then((response) => {
       email = response.stdout;
       expect(email.split("\n")[0], "Received an email").to.include(
-        "SERVER: received email",
+        "SERVER: received email"
       );
       return cy.wrap(email, { log: false });
     });
@@ -32,22 +32,22 @@ export const startMailServerStub = () => {
   cy.log("Attempting to start mail server stub");
   cy.exec(
     `cd ../api && docker exec cacophony-api bash -lic "node ./api/scripts/mailServerStub.js > /dev/null &"`,
-    { log: false, failOnNonZeroExit: false },
+    { log: false, failOnNonZeroExit: false }
   ).then(() => {
     // Wait for the mail server log file to be created
     return cy.exec(
       `cd ../api && docker exec cacophony-api bash -lic "until [ -f mailServerStub.log ]; do sleep 1; done;"`,
-      { log: false },
+      { log: false }
     );
   });
 };
 export const extractTokenStartingWith = (
   email: string,
-  tokenUrlPrefix: string,
+  tokenUrlPrefix: string
 ): { token: string; payload: Record<string, string | number> } => {
   expect(
     email.includes(tokenUrlPrefix),
-    "Email contains expected token",
+    "Email contains expected token"
   ).to.equal(true);
   const tokenString = email
     .match(new RegExp(`${tokenUrlPrefix}[A-Za-z0-9.:_-]*`))
@@ -78,12 +78,12 @@ export const getEmailToAddress = (email: string): string => {
 export const confirmEmailAddress = (userName: string) => {
   return waitForEmail("welcome").then((email) => {
     expect(getEmailSubject(email)).to.equal(
-      "🔧 Finish setting up your new Cacophony Monitoring account",
+      "🔧 Finish setting up your new Cacophony Monitoring account"
     );
     expect(getEmailToAddress(email)).to.equal(getTestEmail(userName));
     const { payload, token } = extractTokenStartingWith(
       email,
-      CONFIRM_EMAIL_PREFIX,
+      CONFIRM_EMAIL_PREFIX
     );
     expect(payload._type).to.equal("confirm-email");
     return cy.apiConfirmEmailAddress(token);

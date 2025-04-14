@@ -13,7 +13,7 @@ Cypress.Commands.add(
     userName: string | null = null,
     email: string | null = null,
     password: string | null = null,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     const theUrl = apiPath() + "/authenticate_user";
     const data = {};
@@ -47,7 +47,7 @@ Cypress.Commands.add(
         }
       });
     }
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -67,13 +67,13 @@ Cypress.Commands.add(
         body: data,
       },
       userA,
-      statusCode,
+      statusCode
     ).then((response) => {
       if (statusCode == 200) {
         saveCreds(response, userB + "_on_behalf");
       }
     });
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -83,7 +83,7 @@ Cypress.Commands.add(
     groupName: string,
     password: string | null = null,
     statusCode: number = 200,
-    additionalChecks: any = {},
+    additionalChecks: any = {}
   ) => {
     const theUrl = apiPath() + "/authenticate_device";
     const fullDeviceName = getTestName(deviceName);
@@ -121,7 +121,7 @@ Cypress.Commands.add(
         saveCreds(response, deviceName, response.body.id);
       });
     }
-  },
+  }
 );
 
 Cypress.Commands.add(
@@ -130,7 +130,7 @@ Cypress.Commands.add(
     userName: string,
     ttl: string | null = null,
     access: ApiAuthenticateAccess | null = null,
-    statusCode: number = 200,
+    statusCode: number = 200
   ) => {
     const theUrl = apiPath() + "/token";
 
@@ -150,12 +150,12 @@ Cypress.Commands.add(
         body: data,
       },
       userName,
-      statusCode,
+      statusCode
     ).then((response) => {
       response.body.token = "JWT " + response.body.token;
       if (statusCode == 200) {
         saveCreds(response, userName + "_temp_token");
       }
     });
-  },
+  }
 );

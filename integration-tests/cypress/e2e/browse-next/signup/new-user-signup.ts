@@ -76,12 +76,12 @@ const confirmNewUserEmailAddress = (user: string) => {
       expect(response.body).to.exist;
       expect(response.body.token).to.exist;
       cy.visit(
-        `/confirm-account-email/${response.body.token.replace(/\./g, ":")}`,
+        `/confirm-account-email/${response.body.token.replace(/\./g, ":")}`
       );
       cy.url().should("contain", "/setup");
       expect(cyEl("create new project button")).to.exist;
       expect(cyEl("join existing project button")).to.exist;
-    },
+    }
   );
 };
 
@@ -119,7 +119,7 @@ describe("New users can sign up and confirm their email address", () => {
     waitForEmail("join request").then((email) => {
       const { token } = extractTokenStartingWith(
         email,
-        JOIN_GROUP_REQUEST_PREFIX,
+        JOIN_GROUP_REQUEST_PREFIX
       );
 
       cy.log("Bob signs in and accepts the email link");
@@ -159,7 +159,7 @@ describe("New users can sign up and confirm their email address", () => {
       // We should be taken to the sign-in page.
       cy.url().should(
         "contain",
-        `sign-in?nextUrl=/confirm-account-email/${urlFriendlyToken}`,
+        `sign-in?nextUrl=/confirm-account-email/${urlFriendlyToken}`
       );
 
       signInExistingUser(user, password);
@@ -218,14 +218,14 @@ describe("New users can sign up and confirm their email address", () => {
     modalOkayButton("join-project-modal").click();
 
     cy.log(
-      "User should we should see our requested project listed with a pending status",
+      "User should we should see our requested project listed with a pending status"
     );
     expect(cyEl("pending project memberships")).to.exist;
     expect(cyEl("pending project memberships").contains(project)).to.exist;
     expect(
       cyEl("pending project memberships").contains(
-        "Waiting for approval from project admin",
-      ),
+        "Waiting for approval from project admin"
+      )
     ).to.exist;
   });
 
@@ -331,7 +331,7 @@ describe("New users can sign up and confirm their email address", () => {
       signOut();
 
       cy.log(
-        "Logged out user with a project invite link should be able to accept the invitation after login",
+        "Logged out user with a project invite link should be able to accept the invitation after login"
       );
       signInExistingUser(user2, password2);
       const project3 = uniqueName("project");
@@ -390,7 +390,7 @@ describe("New users can sign up and confirm their email address", () => {
 
   it("Legacy browse users can sign in and have the option of confirming their current email address or choosing a new one", () => {
     cy.log(
-      "Create an existing user with projects but without confirming email address",
+      "Create an existing user with projects but without confirming email address"
     );
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
@@ -431,7 +431,7 @@ describe("New users can sign up and confirm their email address", () => {
     expect(cyEl("new email address")).to.exist;
 
     cy.log(
-      "Check that we can correctly choose another email address from here",
+      "Check that we can correctly choose another email address from here"
     );
     const evenNewerEmailAddress = getEmail(uniqueName("Bob3"));
     cyEl("new email address").type(evenNewerEmailAddress, { force: true });

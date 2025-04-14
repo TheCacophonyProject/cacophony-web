@@ -24,7 +24,7 @@ describe("Monitoring : tracks and tags", () => {
         checkRecording(Damian, recordingId, (recording) => {
           cy.checkMonitoring(Damian, recording.stationId, noVisits);
         });
-      },
+      }
     );
   });
 
@@ -54,7 +54,7 @@ describe("Monitoring : tracks and tags", () => {
         checkRecording(Damian, recordingId, (recording) => {
           cy.checkMonitoringTags(Damian, recording.stationId, ["cat"]);
         });
-      },
+      }
     );
   });
 
@@ -72,7 +72,7 @@ describe("Monitoring : tracks and tags", () => {
         checkRecording(Damian, recordingId, (recording) => {
           cy.checkMonitoringTags(Damian, recording.stationId, ["rat"]);
         });
-      },
+      }
     );
   });
 
@@ -100,7 +100,7 @@ describe("Monitoring : tracks and tags", () => {
         checkRecording(Damian, recordingId, (recording) => {
           cy.checkMonitoringTags(Damian, recording.stationId, ["unidentified"]);
         });
-      },
+      }
     );
   });
 
@@ -138,7 +138,7 @@ describe("Monitoring : tracks and tags", () => {
         checkRecording(Damian, recordingId, (recording) => {
           cy.checkMonitoringTags(Damian, recording.stationId, ["rabbit"]);
         });
-      },
+      }
     );
   });
 
@@ -155,7 +155,7 @@ describe("Monitoring : tracks and tags", () => {
         checkRecording(Damian, recordingId, (recording) => {
           cy.checkMonitoringTags(Damian, recording.stationId, ["possum"]);
         });
-      },
+      }
     );
   });
 
@@ -235,7 +235,7 @@ describe("Monitoring : tracks and tags", () => {
         checkRecording(Damian, recordingId, (recording) => {
           cy.checkMonitoringTags(Damian, recording.stationId, ["possum"]);
         });
-      },
+      }
     );
   });
 
