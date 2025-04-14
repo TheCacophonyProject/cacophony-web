@@ -739,13 +739,11 @@ export const uploadGenericRecording =
       }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
+      const metadataSupplied = "metadata" in data;
+
       const wouldHaveSuppliedTracksWithPredictions =
         dataHasSuppliedTracksWithPredictions(data);
-      setInitialProcessingState(
-        recordingTemplate,
-        data,
-        wouldHaveSuppliedTracks
-      );
+      setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
       const [recording, _station] = await Promise.all([
         recordingTemplate.save(),
@@ -763,14 +761,15 @@ export const uploadGenericRecording =
       ]);
 
       if (
-        data.metadata &&
+        metadataSupplied &&
         data.metadata.metadata_source &&
         data.type === RecordingType.ThermalRaw
       ) {
-        (
-          recording.additionalMetadata as ApiThermalRecordingMetadataResponse
-        ).metadataSource = data.metadata.metadata_source;
-        recording.save();
+        recording.additionalMetadata = {
+          ...recording.additionalMetadata,
+          metadataSource: data.metadata.metadata_source,
+        };
+        await recording.save();
       }
 
       if (wouldHaveSuppliedTracks) {
@@ -857,7 +856,7 @@ const dataHasSuppliedTracksWithPredictions = (data: { metadata?: any }) => {
 const setInitialProcessingState = (
   recordingTemplate: Recording,
   data: { processingState?: RecordingProcessingState; type: RecordingType },
-  hasSuppliedTracks: boolean
+  hasSuppliedMetadata: boolean
 ) => {
   if (data.processingState) {
     // NOTE: If the processingState field is present when a recording is uploaded, this means that the recording
@@ -871,7 +870,7 @@ const setInitialProcessingState = (
       recordingTemplate.processingState !== RecordingProcessingState.Corrupt
     ) {
       if (
-        hasSuppliedTracks &&
+        hasSuppliedMetadata &&
         (recordingTemplate.type === RecordingType.ThermalRaw ||
           recordingTemplate.type === RecordingType.InfraredVideo)
       ) {
