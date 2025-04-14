@@ -761,8 +761,9 @@ export const uploadGenericRecording =
         ),
       ]);
 
-      if (data.metadata && data.metadata.source) {
-        recording.additionalMetadata.metadataSource = data.metadata.source;
+      if (data.metadata && data.metadata.metadata_source) {
+        recording.additionalMetadata.metadataSource =
+          data.metadata.metadata_source;
         recording.save();
       }
 
