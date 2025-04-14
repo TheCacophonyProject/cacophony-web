@@ -87,7 +87,7 @@ describe("Monitoring : multiple cameras and stations", () => {
             });
           });
         });
-      }
+      },
     );
   });
 });

@@ -14,7 +14,7 @@ declare namespace Cypress {
       expectedRecording: any,
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /** Put to /api/fileProcessing 'done' endpoint
@@ -29,7 +29,7 @@ declare namespace Cypress {
       success: boolean,
       result: any,
       newProcessedFileKey: string,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /** Post to /api/fileProcessing/algorithm
@@ -39,7 +39,7 @@ declare namespace Cypress {
 
     processingApiAlgorithmPost(
       userName: string,
-      algorithm: any
+      algorithm: any,
     ): Chainable<number>;
 
     /** Post to /api/fileProcessing/:id/tracks
@@ -53,7 +53,7 @@ declare namespace Cypress {
       recordingName: string,
       data: any,
       algorithmId: number,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /** Post to /api/fileProcessing/:id/tracks/:trackId/tags
@@ -68,7 +68,7 @@ declare namespace Cypress {
       what: any,
       confidence: number,
       data?: any,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /** Delete from /api/fileProcessing/:id/tracks
@@ -79,7 +79,7 @@ declare namespace Cypress {
     processingApiTracksDelete(
       userName: string,
       recordingName: string,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -93,7 +93,7 @@ declare namespace Cypress {
       recordingName?: string,
       fileName?: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): Cypress.Chainable<RecordingId>;
 
     /**
@@ -108,7 +108,7 @@ declare namespace Cypress {
       recordingName?: string,
       fileName?: string | { filename: string; key: string }[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): Cypress.Chainable<RecordingId>;
 
     /**
@@ -123,7 +123,7 @@ declare namespace Cypress {
       recordingName?: string,
       statusCode?: number,
       additionalChecks?: any,
-      useFileName?: string
+      useFileName?: string,
     ): Cypress.Chainable<RecordingId>;
 
     /**
@@ -134,7 +134,7 @@ declare namespace Cypress {
       deviceName: string,
       tracks?: string[][],
       recordingDateTime?: string,
-      location?: [number, number]
+      location?: [number, number],
     ): Cypress.Chainable<RecordingId>;
 
     /** Get a single recording response using api/v1/recordings/{id}
@@ -142,7 +142,7 @@ declare namespace Cypress {
     apiRecordingGet(
       userName: string,
       recordingNameOrId: RecordingId,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     apiRecordingGetFile(userName: string, recordingNameOrId: RecordingId): any;
@@ -160,7 +160,7 @@ declare namespace Cypress {
       expectedRecording: ApiRecordingResponse,
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     apiRecordingDownloadCheck(userName: string, recordingNameOrId: string): any;
@@ -181,7 +181,7 @@ declare namespace Cypress {
       expectedRecordings: ApiRecordingNeedsTagReturned[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /** Update a single recording using api/v1/recordings/{id} PATCH
@@ -196,7 +196,7 @@ declare namespace Cypress {
       recordingNameOrId: string,
       updates: any,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /** Get thumbnail for recording using api/v1/recordings/{id}/thumbnail
@@ -211,7 +211,7 @@ declare namespace Cypress {
       recordingNameOrId: string,
       statusCode?: number,
       additionalChecks?: any,
-      trackName?: string
+      trackName?: string,
     ): any;
 
     /** Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
@@ -228,7 +228,7 @@ declare namespace Cypress {
       )[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /** Query recordings in a project (/api/v1/recordings/for-project/) using query parameters
@@ -246,7 +246,7 @@ declare namespace Cypress {
       )[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /** Query recordings (/api/v1/recordings/report) using where (query["where"]) and optional (query[...]) API parameters
@@ -260,7 +260,7 @@ declare namespace Cypress {
       expectedRecordings?: ApiRecordingColumns[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /** Query recordings count (/api/v1/recordings/count) using where (query["where"]) and optional (query[...]) API parameters
@@ -273,7 +273,7 @@ declare namespace Cypress {
       query: any,
       expectedCount: number,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): Cypress.Chainable<number>;
 
     /** Delete a single recording using api/v1/recordings/{id} DELETE
@@ -287,7 +287,7 @@ declare namespace Cypress {
       userName: string,
       recordingNameOrId: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /** Undelete a single recording using api/v1/recordings/{id}/undelete GET
@@ -301,7 +301,7 @@ declare namespace Cypress {
       userName: string,
       recordingNameOrId: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /* Delete a single recording using api/v1/recordings/{id} DELETE
@@ -315,7 +315,7 @@ declare namespace Cypress {
       userName: string,
       query: any,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /* Undelete recording using api/v1/recordings/undelete PATCH
@@ -329,7 +329,7 @@ declare namespace Cypress {
       userName: string,
       recordingIds: number[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /* Mark a list of recordings (recordingIds[]) for reprocessing
@@ -340,7 +340,7 @@ declare namespace Cypress {
       userName: string,
       recordingIds: number[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
   }
 }

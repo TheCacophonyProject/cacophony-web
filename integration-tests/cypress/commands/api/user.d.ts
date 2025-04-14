@@ -25,7 +25,7 @@ declare namespace Cypress {
       endUserAgreement?: number,
       statusCode?: number,
       additionalChecks?: any,
-      inviteToken?: string
+      inviteToken?: string,
     ): Cypress.Chainable<UserId>;
 
     /**
@@ -41,7 +41,7 @@ declare namespace Cypress {
       updateUserNameOrId: string,
       permission: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -53,7 +53,7 @@ declare namespace Cypress {
       userName: string,
       updates: any,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -70,7 +70,7 @@ declare namespace Cypress {
       expectedUser: ApiLoggedInUserResponse,
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -88,7 +88,7 @@ declare namespace Cypress {
       expectedUsers: ApiUserResponse[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -110,7 +110,7 @@ declare namespace Cypress {
     apiResetPassword(
       userName: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -122,7 +122,7 @@ declare namespace Cypress {
     apiResetPasswordLegacy(
       userName: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -133,7 +133,7 @@ declare namespace Cypress {
       token: string,
       password: string,
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -148,7 +148,7 @@ declare namespace Cypress {
     testCreateUserGroupAndDevice(
       userName: string,
       group: string,
-      camera: string
+      camera: string,
     ): any;
 
     /**
@@ -156,7 +156,7 @@ declare namespace Cypress {
      */
     testCreateUserAndGroup(
       userName: string,
-      group: string
+      group: string,
     ): Cypress.Chainable<{ userId: UserId; groupId: GroupId }>;
 
     /**

@@ -53,7 +53,7 @@ describe("Events - query power events", () => {
     cy.testCreateUserGroupAndDevice(
       "peOtherGroupAdmin",
       "peOtherGroup",
-      "peOtherGroupCamera"
+      "peOtherGroupCamera",
     );
 
     //Create some events to reuse / query
@@ -64,7 +64,7 @@ describe("Events - query power events", () => {
       "peGroupAdmin",
       "peCamera",
       eventStopReported,
-      [time2]
+      [time2],
     );
     cy.apiEventsDeviceAddOnBehalf("peGroupAdmin", "peCamera", eventPowerOff, [
       time3,
@@ -73,31 +73,31 @@ describe("Events - query power events", () => {
       "peGroupAdmin",
       "peOtherCamera",
       eventPowerOn,
-      [time4]
+      [time4],
     );
     cy.apiEventsDeviceAddOnBehalf(
       "peGroupAdmin",
       "peOtherCamera",
       eventStopReported,
-      [time5]
+      [time5],
     );
     cy.apiEventsDeviceAddOnBehalf(
       "peOtherGroupAdmin",
       "peOtherGroupCamera",
       eventPowerOn,
-      [time1]
+      [time1],
     );
     cy.apiEventsDeviceAddOnBehalf(
       "peOtherGroupAdmin",
       "peOtherGroupCamera",
       eventVersionData,
-      [time4]
+      [time4],
     );
     cy.apiEventsDeviceAddOnBehalf(
       "peOtherGroupAdmin",
       "peOtherGroupCamera",
       eventStopReported,
-      [time5]
+      [time5],
     );
   });
 
@@ -178,7 +178,7 @@ describe("Events - query power events", () => {
       {},
       [],
       [],
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -190,7 +190,7 @@ describe("Events - query power events", () => {
       { deviceId: 999999 },
       [],
       [],
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
     cy.log("Bad value for device id");
     cy.apiPowerEventsCheck(
@@ -199,7 +199,7 @@ describe("Events - query power events", () => {
       { deviceId: "bad value" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 });

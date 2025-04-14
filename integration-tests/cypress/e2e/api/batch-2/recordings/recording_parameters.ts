@@ -19,11 +19,11 @@ import { HttpStatusCode } from "@typedefs/api/consts";
 
 describe("Recordings - parameter tests", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
   );
   delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
   delete templateRecording.metadata;
 
@@ -38,7 +38,7 @@ describe("Recordings - parameter tests", () => {
     cy.testCreateUserGroupAndDevice(
       "rpaGroup2Admin",
       "rpaGroup2",
-      "rpaCamera2"
+      "rpaCamera2",
     );
   });
 
@@ -51,7 +51,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       undefined,
-      "rpaRecording1"
+      "rpaRecording1",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -59,14 +59,14 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.log("Check recording can be viewed correctly");
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording1",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
     });
 
@@ -79,7 +79,7 @@ describe("Recordings - parameter tests", () => {
       "rpaRecording1",
       undefined,
       [],
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -93,7 +93,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording2"
+      "rpaRecording2",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -101,13 +101,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording2",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording2");
     });
@@ -118,7 +118,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "rpaRecording3",
-      "oneframe.cptv"
+      "oneframe.cptv",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -126,13 +126,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording3",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording3");
     });
@@ -144,7 +144,7 @@ describe("Recordings - parameter tests", () => {
       "rpaGroup",
       recording1,
       "raRecording4",
-      "oneframe.cptv"
+      "oneframe.cptv",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -152,13 +152,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording4",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording4");
     });
@@ -169,7 +169,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "tenminutes.cptv",
-      "rpaRecording5"
+      "rpaRecording5",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -177,13 +177,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording5",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording5");
     });
@@ -194,7 +194,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "raRecording6",
-      "tenminutes.cptv"
+      "tenminutes.cptv",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -202,13 +202,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording6",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording6");
     });
@@ -220,7 +220,7 @@ describe("Recordings - parameter tests", () => {
       "rpaGroup",
       recording1,
       "raRecording7",
-      "tenminutes.cptv"
+      "tenminutes.cptv",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -228,13 +228,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording7",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording7");
     });
@@ -248,7 +248,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording35"
+      "rpaRecording35",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -256,14 +256,14 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       expectedRecording1.duration = 0.4444444444444444;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording35",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording35");
     });
@@ -279,7 +279,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording8"
+      "rpaRecording8",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -287,14 +287,14 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       expectedRecording1.recordingDateTime = recording1.recordingDateTime;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording8",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording8");
     });
@@ -307,7 +307,7 @@ describe("Recordings - parameter tests", () => {
       recording2,
       "oneframe.cptv",
       "rpaRecording9",
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
   it("Can read recordingDateTime from file if not provided", () => {
@@ -319,7 +319,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording36"
+      "rpaRecording36",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -327,14 +327,14 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       expectedRecording1.recordingDateTime = "2021-03-18T17:36:46.555Z";
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording36",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording36");
     });
@@ -349,7 +349,7 @@ describe("Recordings - parameter tests", () => {
       recording1,
       "oneframe.cptv",
       "rpaRecording10",
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -368,7 +368,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording11"
+      "rpaRecording11",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -376,13 +376,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording11",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording11");
     });
@@ -396,7 +396,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording2,
       "oneframe.cptv",
-      "rpaRecording12"
+      "rpaRecording12",
     ).then(() => {
       expectedRecording2 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -404,13 +404,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording2
+        recording2,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording12",
         expectedRecording2,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording12");
     });
@@ -423,7 +423,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording3,
       "oneframe.cptv",
-      "rpaRecording13"
+      "rpaRecording13",
     ).then(() => {
       expectedRecording3 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -431,13 +431,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording3
+        recording3,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording13",
         expectedRecording3,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording13");
     });
@@ -450,7 +450,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording4,
       "oneframe.cptv",
-      "rpaRecording14"
+      "rpaRecording14",
     ).then(() => {
       expectedRecording4 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -458,13 +458,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording4
+        recording4,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording14",
         expectedRecording4,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording14");
     });
@@ -477,7 +477,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording5,
       "oneframe.cptv",
-      "rpaRecording15"
+      "rpaRecording15",
     ).then(() => {
       expectedRecording5 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -485,13 +485,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording5
+        recording5,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording15 ",
         expectedRecording5,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording15");
     });
@@ -504,7 +504,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording6,
       "oneframe.cptv",
-      "rpaRecording16"
+      "rpaRecording16",
     ).then(() => {
       expectedRecording6 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -512,13 +512,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording6
+        recording6,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording16 ",
         expectedRecording6,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording16");
     });
@@ -531,7 +531,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording7,
       "oneframe.cptv",
-      "rpaRecording17"
+      "rpaRecording17",
     ).then(() => {
       expectedRecording7 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -539,13 +539,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording7
+        recording7,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording17",
         expectedRecording7,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording17");
     });
@@ -560,7 +560,7 @@ describe("Recordings - parameter tests", () => {
       recording1,
       "oneframe.cptv",
       "rpaRecording18",
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
 
     const recording2 = TestCreateRecordingData(templateRecording);
@@ -570,7 +570,7 @@ describe("Recordings - parameter tests", () => {
       recording2,
       "oneframe.cptv",
       "rpaRecording19",
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
 
     const recording3 = TestCreateRecordingData(templateRecording);
@@ -580,7 +580,7 @@ describe("Recordings - parameter tests", () => {
       recording3,
       "oneframe.cptv",
       "rpaRecording20",
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -594,7 +594,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording21"
+      "rpaRecording21",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -602,7 +602,7 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       // NOTE: Version seems to only ever be set for audio recordings, so doesn't
       //  really apply here
@@ -611,7 +611,7 @@ describe("Recordings - parameter tests", () => {
         "rpaGroupAdmin",
         "rpaRecording21",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording21");
     });
@@ -625,7 +625,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording2,
       "oneframe.cptv",
-      "rpaRecording22"
+      "rpaRecording22",
     ).then(() => {
       expectedRecording2 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -633,13 +633,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording2
+        recording2,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording22",
         expectedRecording2,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording22");
     });
@@ -653,7 +653,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording3,
       "oneframe.cptv",
-      "rpaRecording23"
+      "rpaRecording23",
     ).then(() => {
       expectedRecording3 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -661,13 +661,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording3
+        recording3,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording23",
         expectedRecording3,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording23");
     });
@@ -683,7 +683,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording24"
+      "rpaRecording24",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -691,13 +691,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording24",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording24");
     });
@@ -711,7 +711,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording2,
       "oneframe.cptv",
-      "rpaRecording25"
+      "rpaRecording25",
     ).then(() => {
       expectedRecording2 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -719,14 +719,14 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording2
+        recording2,
       );
       delete expectedRecording2.comment;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording25",
         expectedRecording2,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording25");
     });
@@ -740,7 +740,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording3,
       "oneframe.cptv",
-      "rpaRecording26"
+      "rpaRecording26",
     ).then(() => {
       expectedRecording3 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -748,14 +748,14 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording3
+        recording3,
       );
       delete expectedRecording3.comment;
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording26",
         expectedRecording3,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording26");
     });
@@ -770,7 +770,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording27"
+      "rpaRecording27",
     ).then((recordingId) => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -778,13 +778,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording27",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
 
       cy.log("Check that duplicate uploads for the same device are rejected");
@@ -794,7 +794,7 @@ describe("Recordings - parameter tests", () => {
         "oneframe.cptv",
         "rpaRecording27",
         HttpStatusCode.Ok,
-        { message: "Duplicate recording found for device" }
+        { message: "Duplicate recording found for device" },
       );
 
       cy.apiRecordingDelete("rpaGroupAdmin", recordingId.toString(), 200, {
@@ -812,7 +812,7 @@ describe("Recordings - parameter tests", () => {
       "oneframe.cptv",
       "rpaRecording28",
       HttpStatusCode.BadRequest,
-      { message: "Uploaded file integrity check failed, please retry." }
+      { message: "Uploaded file integrity check failed, please retry." },
     );
 
     cy.log("Blank hash accepted");
@@ -824,7 +824,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording3,
       "oneframe.cptv",
-      "rpaRecording29"
+      "rpaRecording29",
     ).then(() => {
       expectedRecording3 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -832,13 +832,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording3
+        recording3,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording29",
         expectedRecording3,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording29");
     });
@@ -852,7 +852,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording4,
       "oneframe.cptv",
-      "rpaRecording30"
+      "rpaRecording30",
     ).then(() => {
       expectedRecording4 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -860,13 +860,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording4
+        recording4,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording30",
         expectedRecording4,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording30");
     });
@@ -885,7 +885,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording1,
       "oneframe.cptv",
-      "rpaRecording31"
+      "rpaRecording31",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -893,13 +893,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording1
+        recording1,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording31",
         expectedRecording1,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording31");
     });
@@ -916,7 +916,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording2,
       "oneframe.cptv",
-      "rpaRecording32"
+      "rpaRecording32",
     ).then(() => {
       expectedRecording2 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -924,13 +924,13 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording2
+        recording2,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording32",
         expectedRecording2,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording32");
     });
@@ -944,7 +944,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording3,
       "oneframe.cptv",
-      "rpaRecording33"
+      "rpaRecording33",
     ).then(() => {
       expectedRecording3 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -952,19 +952,19 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording3
+        recording3,
       );
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording33",
         expectedRecording3,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording33");
     });
 
     cy.log(
-      "Can handle missing additionalMetadata (optional) extracts it from cptv file if not provided"
+      "Can handle missing additionalMetadata (optional) extracts it from cptv file if not provided",
     );
     const recording4 = TestCreateRecordingData(templateRecording);
     let expectedRecording4: ApiThermalRecordingResponse;
@@ -974,7 +974,7 @@ describe("Recordings - parameter tests", () => {
       "rpaCamera1",
       recording4,
       "oneframe.cptv",
-      "rpaRecording34"
+      "rpaRecording34",
     ).then(() => {
       expectedRecording4 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -982,7 +982,7 @@ describe("Recordings - parameter tests", () => {
         "rpaCamera1",
         "rpaGroup",
         null,
-        recording4
+        recording4,
       );
       expectedRecording4.additionalMetadata = {
         previewSecs: 5,
@@ -992,7 +992,7 @@ describe("Recordings - parameter tests", () => {
         "rpaGroupAdmin",
         "rpaRecording34",
         expectedRecording4,
-        EXCLUDE_IDS
+        EXCLUDE_IDS,
       );
       cy.apiRecordingDelete("rpaGroupAdmin", "rpaRecording34");
     });

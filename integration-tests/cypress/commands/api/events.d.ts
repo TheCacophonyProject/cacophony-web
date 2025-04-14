@@ -10,7 +10,7 @@ declare namespace Cypress {
       dates?: string[],
       eventDetailId?: number,
       log?: boolean,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -24,7 +24,7 @@ declare namespace Cypress {
       dates?: string[],
       eventDetailId?: number,
       log?: boolean,
-      statusCode?: number
+      statusCode?: number,
     ): any;
 
     /**
@@ -45,7 +45,7 @@ declare namespace Cypress {
       expectedEvents: ApiEventReturned[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: {}
+      additionalChecks?: {},
     ): any;
 
     /**
@@ -60,7 +60,7 @@ declare namespace Cypress {
       expectedErrors: ApiEventErrorCategory[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     /**
@@ -77,7 +77,7 @@ declare namespace Cypress {
       expectedEvent: ApiPowerEventReturned[],
       excludeCheckOn?: string[],
       statusCode?: number,
-      additionalChecks?: any
+      additionalChecks?: any,
     ): any;
 
     // *************************************************************************************************************************************
@@ -91,7 +91,7 @@ declare namespace Cypress {
       userName: string,
       deviceName: string,
       expectedEvent: TestComparablePowerEvent,
-      statusCode?: number
+      statusCode?: number,
     ): Chainable<Element>;
 
     /**
@@ -103,7 +103,7 @@ declare namespace Cypress {
       deviceName: string,
       expectedEvent: any,
       eventNumber?: number,
-      statusCode?: number
+      statusCode?: number,
     ): Chainable<Element>;
   }
 }

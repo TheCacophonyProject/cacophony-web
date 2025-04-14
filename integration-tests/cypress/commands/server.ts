@@ -20,7 +20,7 @@ export function v1ApiPath(page: string, queryParams: any = {}): string {
 
 export function processingApiPath(
   page: string = "",
-  queryParams: any = {}
+  queryParams: any = {},
 ): string {
   const urlpage = urlFormat({
     pathname: `/api/fileProcessing/${page}`,
@@ -89,14 +89,14 @@ export function getCreds(userName: string): ApiCreds {
     if (creds == undefined) {
       logTestDescription(
         `ERROR: could not find credentials for '${userName}'`,
-        { name: userName }
+        { name: userName },
       );
     }
     return creds;
   } else {
     logTestDescription(
       `NOTE: asked to retrieve credential for 'undefined'`,
-      {}
+      {},
     );
 
     return {
@@ -114,7 +114,7 @@ export function getCreds(userName: string): ApiCreds {
 
 export function getCredsByIdAndNameLike(
   id: number,
-  nameLike: string
+  nameLike: string,
 ): ApiCreds {
   const creds = Cypress.env("testCreds");
   const values: ApiCreds[] = Object.values(creds);
@@ -122,7 +122,7 @@ export function getCredsByIdAndNameLike(
     values,
   });
   const cred: ApiCreds = values.find(
-    (cred) => cred.id === id && cred.name.includes(nameLike)
+    (cred) => cred.id === id && cred.name.includes(nameLike),
   );
 
   return cred;
@@ -138,7 +138,7 @@ export function renameCreds(oldName: string, newName: string) {
 export function saveCreds(
   response: Cypress.Response<any>,
   name: string,
-  id = 0
+  id = 0,
 ) {
   // console.log(response.body);
   const creds = {
@@ -172,7 +172,7 @@ export function saveStation(location: ApiLocation, name: string, id = 0) {
 export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string,
-  statusCode: number
+  statusCode: number,
 ): Cypress.Chainable<Cypress.Response<any>> {
   if (statusCode && statusCode > 200) {
     // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
@@ -189,7 +189,7 @@ export function makeAuthorizedRequestWithStatus(
 export function checkAuthorizedRequestFails(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string,
-  statusCode: number
+  statusCode: number,
 ) {
   // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
   requestDetails.failOnStatusCode = false;
@@ -200,7 +200,7 @@ export function checkAuthorizedRequestFails(
 
 export function checkRequestFails(
   requestDetails: Partial<Cypress.RequestOptions>,
-  statusCode: number
+  statusCode: number,
 ) {
   // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
   requestDetails.failOnStatusCode = false;
@@ -211,7 +211,7 @@ export function checkRequestFails(
 
 export function makeAuthorizedRequest(
   requestDetails: Partial<Cypress.RequestOptions>,
-  credName: string
+  credName: string,
 ): Cypress.Chainable<Cypress.Response<any>> {
   const creds = getCreds(credName);
   requestDetails.headers = creds.headers;
@@ -221,11 +221,11 @@ export function makeAuthorizedRequest(
 export function expectRequestHasFailed(response: any, statusCode: number) {
   expect(
     response.isOkStatusCode,
-    "Request should return a failure status code."
+    "Request should return a failure status code.",
   ).to.be.false;
   expect(
     response.status,
-    `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`
+    `Error scenario should be caught and return custom ${statusCode} error, should not cause 500 server error`,
   ).to.equal(statusCode);
 
   return response;
@@ -278,7 +278,7 @@ export function sortArrayOnTwoKeys(theArray: any, key1: string, key2: string) {
 export function checkFlatStructuresAreEqualExcept(
   containedStruct: any,
   containingStruct: any,
-  excludeKeys: any
+  excludeKeys: any,
 ) {
   const containedKeys: string[] = Object.keys(containedStruct).sort();
   const containingKeys: string[] = Object.keys(containingStruct).sort();
@@ -286,13 +286,13 @@ export function checkFlatStructuresAreEqualExcept(
     if (!excludeKeys.includes(containedKeys[count])) {
       expect(
         containingKeys,
-        `result includes parameter ${containedKeys[count]}`
+        `result includes parameter ${containedKeys[count]}`,
       ).includes(containedKeys[count]);
       expect(
         containingStruct[containedKeys[count]],
         `${containedKeys[count]} should equal ${
           containedStruct[containedKeys[count]]
-        }`
+        }`,
       ).to.equal(containedStruct[containedKeys[count]]);
     }
   }
@@ -307,14 +307,14 @@ export function checkTreeStructuresAreEqualExcept(
   excludeKeys: any = [],
   treeSoFar: string = "",
   prettyTreeSoFar: string = "",
-  approximateTimes: any = []
+  approximateTimes: any = [],
 ) {
   if (isArrayOrHash(containingStruct)) {
     if (Array.isArray(containingStruct)) {
       //check lengths are equal
       expect(
         containingStruct.length,
-        `Expect ${prettyTreeSoFar} number of elements should match`
+        `Expect ${prettyTreeSoFar} number of elements should match`,
       ).to.equal(containedStruct.length);
 
       //iterate over array
@@ -330,15 +330,15 @@ export function checkTreeStructuresAreEqualExcept(
             excludeKeys,
             elementName,
             prettyElementName,
-            approximateTimes
+            approximateTimes,
           );
         } else {
           //otherwise, check the values are as expected
           expect(
             containingStruct[count],
             `Expected ${prettyElementName} should equal ${JSON.stringify(
-              containedStruct[count]
-            )}`
+              containedStruct[count],
+            )}`,
           ).to.equal(containedStruct[count]);
         }
       }
@@ -364,10 +364,10 @@ export function checkTreeStructuresAreEqualExcept(
           }
         }
         keys = keys.filter(
-          (key) => !excludedElementNames.includes(`${treeSoFar}.${key}`)
+          (key) => !excludedElementNames.includes(`${treeSoFar}.${key}`),
         );
         expectedKeys = expectedKeys.filter(
-          (key) => !excludedElementNames.includes(`${treeSoFar}.${key}`)
+          (key) => !excludedElementNames.includes(`${treeSoFar}.${key}`),
         );
         let diff = { missingKeys: [], unknownKeys: [] };
         if (keys.length !== expectedKeys.length) {
@@ -379,7 +379,7 @@ export function checkTreeStructuresAreEqualExcept(
         }
         expect(
           keys.length,
-          `Check ${prettyTreeSoFar} number of elements in [${keys.toString()}]}${diffPrinted}`
+          `Check ${prettyTreeSoFar} number of elements in [${keys.toString()}]}${diffPrinted}`,
         ).to.equal(expectedKeys.length);
 
         const containedKeys: string[] = keys;
@@ -397,25 +397,25 @@ export function checkTreeStructuresAreEqualExcept(
               excludeKeys,
               elementName,
               prettyElementName,
-              approximateTimes
+              approximateTimes,
             );
           } else {
             //check we were asked to validate, or validate NOT NULL
             if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
               expect(
                 containingStruct[containedKeys[count]],
-                `Expected ${prettyElementName} should not be NULL`
+                `Expected ${prettyElementName} should not be NULL`,
               ).to.not.be.null;
             } else if (approximateTimes.includes(elementName)) {
               const comparedTime = new Date(
-                containingStruct[containedKeys[count]]
+                containingStruct[containedKeys[count]],
               ).getTime();
               const expectedTime = new Date(
-                containedStruct[containedKeys[count]]
+                containedStruct[containedKeys[count]],
               ).getTime();
               expect(
                 new Date(comparedTime),
-                `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`
+                `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`,
               ).to.be.within(expectedTime - 60000, expectedTime + 60000);
             } else {
               //otherwise, check the values are as expected
@@ -427,21 +427,21 @@ export function checkTreeStructuresAreEqualExcept(
                 expect(
                   testVal,
                   `Expected ${prettyElementName} should be more than ${JSON.stringify(
-                    containedStruct[containedKeys[count]]
-                  )}`
+                    containedStruct[containedKeys[count]],
+                  )}`,
                 ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
                 expect(
                   testVal,
                   `Expected ${prettyElementName} should be less than ${JSON.stringify(
-                    containedStruct[containedKeys[count]]
-                  )}`
+                    containedStruct[containedKeys[count]],
+                  )}`,
                 ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
               } else {
                 expect(
                   containingStruct[containedKeys[count]],
                   `Expected ${prettyElementName} should equal ${JSON.stringify(
-                    containedStruct[containedKeys[count]]
-                  )}`
+                    containedStruct[containedKeys[count]],
+                  )}`,
                 ).to.equal(containedStruct[containedKeys[count]]);
               }
             }
@@ -454,8 +454,8 @@ export function checkTreeStructuresAreEqualExcept(
     expect(
       JSON.stringify(containingStruct),
       `Expect flat element ${prettyTreeSoFar} should equal ${JSON.stringify(
-        containedStruct
-      )}`
+        containedStruct,
+      )}`,
     ).to.equal(JSON.stringify(containedStruct));
   }
 }
@@ -485,21 +485,21 @@ export function removeUndefinedParams(jsStruct: any): any {
 export function testRunOnApi(
   command: string,
   options = {},
-  callback = undefined
+  callback = undefined,
 ) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     cy.exec(
       `cd ../api && docker-compose exec -T server bash -lic ${command}`,
-      options
+      options,
     ).then((val) => callback && callback(val));
   } else {
     if (Cypress.env("API-ssh-server") != null) {
       cy.exec(`ssh ${Cypress.env("API-ssh-server")} ${command}`, options).then(
-        () => callback && callback()
+        () => callback && callback(),
       );
     } else {
       alert(
-        "Asked to run command on API server but have no credentials to do so"
+        "Asked to run command on API server but have no credentials to do so",
       );
     }
   }
@@ -511,7 +511,7 @@ export function checkMessages(response: any, expectedMessages: string[]) {
   expectedMessages.forEach(function (message: string) {
     expect(
       messages.find((el: string) => el.includes(message)),
-      `Messages should contain ${message}`
+      `Messages should contain ${message}`,
     ).to.exist;
   });
 }
@@ -525,7 +525,7 @@ export function checkWarnings(response: any, expectedWarnings: any) {
     expectedWarnings.forEach(function (warning: string) {
       expect(
         warnings.find((el: string) => el.includes(warning)),
-        `Messages should contain ${warning}`
+        `Messages should contain ${warning}`,
       ).to.exist;
     });
   }

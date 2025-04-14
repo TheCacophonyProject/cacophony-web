@@ -21,7 +21,7 @@ Cypress.Commands.add(
     expectedStations: ApiStationResponse[],
     excludeCheckOn: any = ["lastActiveThermalTime", "[].lastActiveThermalTime"],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Check stations for ${userName}`, {
       userName,
@@ -38,7 +38,7 @@ Cypress.Commands.add(
         url: v1ApiPath(`stations`, params),
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         let sortStations: ApiStationResponse[] = [];
@@ -54,7 +54,7 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedStations,
           sortStations,
-          excludeCheckOn
+          excludeCheckOn,
         );
       }
       if (additionalChecks["warnings"]) {
@@ -69,7 +69,7 @@ Cypress.Commands.add(
         checkMessages(response, additionalChecks["messages"]);
       }
     });
-  }
+  },
 );
 Cypress.Commands.add(
   "apiStationCheck",
@@ -79,7 +79,7 @@ Cypress.Commands.add(
     expectedStation: ApiStationResponse,
     excludeCheckOn: any = [".lastActiveThermalTime"],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let stationId: string;
 
@@ -105,13 +105,13 @@ Cypress.Commands.add(
         url: v1ApiPath(`stations/${stationId}`, params),
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         checkTreeStructuresAreEqualExcept(
           expectedStation,
           response.body.station,
-          excludeCheckOn
+          excludeCheckOn,
         );
         cy.wrap(response.body.station.id);
       }
@@ -122,7 +122,7 @@ Cypress.Commands.add(
         checkMessages(response, additionalChecks["messages"]);
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -135,7 +135,7 @@ Cypress.Commands.add(
     untilDate?: string,
     retire?: boolean,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let stationId: string;
     const thisStation = JSON.parse(JSON.stringify(stationUpdates));
@@ -154,7 +154,7 @@ Cypress.Commands.add(
 
     logTestDescription(
       `Update station ${prettyLog(thisStation)}'${stationId}' `,
-      { userName, thisStation }
+      { userName, thisStation },
     );
 
     const body: { [key: string]: string } = {
@@ -177,7 +177,7 @@ Cypress.Commands.add(
         body,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode == 200) {
         //store station Ids against names
@@ -192,7 +192,7 @@ Cypress.Commands.add(
         checkMessages(response, additionalChecks["messages"]);
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -202,7 +202,7 @@ Cypress.Commands.add(
     stationIdOrName: string,
     deleteRecordings: boolean = true,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let stationId: string;
 
@@ -225,7 +225,7 @@ Cypress.Commands.add(
         }),
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["warnings"]) {
         const warnings = response.body.warnings;
@@ -239,7 +239,7 @@ Cypress.Commands.add(
         checkMessages(response, additionalChecks["messages"]);
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -248,7 +248,7 @@ Cypress.Commands.add(
     userName: string,
     stationIdOrName: string,
     retirementDate: string = new Date().toISOString(),
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let stationId: string;
     //Get station ID from name (unless we're asked not to)
@@ -267,14 +267,14 @@ Cypress.Commands.add(
         },
       },
       userName,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
-  }
+  },
 );
 
 export function TestCreateStationData(
   prefix: string,
-  identifier: number
+  identifier: number,
 ): ApiStationData {
   const thisLocation = TestGetLocation(identifier);
   return {
@@ -287,10 +287,10 @@ export function TestCreateStationData(
 export function TestCreateExpectedStation(
   template: ApiStationResponse,
   prefix: string,
-  identifier: number
+  identifier: number,
 ): ApiStationResponse {
   const expectedStation: ApiStationResponse = JSON.parse(
-    JSON.stringify(template)
+    JSON.stringify(template),
   );
   const thisLocation = TestGetLocation(identifier);
   expectedStation.name = getTestName(prefix + identifier.toString());
@@ -304,10 +304,10 @@ export function TestCreateExpectedAutomaticStation(
   template: ApiStationResponse,
   identifier: number,
   deviceName: string,
-  recTime: string
+  recTime: string,
 ): ApiStationResponse {
   const expectedStation: ApiStationResponse = JSON.parse(
-    JSON.stringify(template)
+    JSON.stringify(template),
   );
   const thisLocation = TestGetLocation(identifier);
   expectedStation.name =
