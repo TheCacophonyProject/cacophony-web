@@ -79,7 +79,7 @@ interface RawTrack {
   thumbnail?: ThumbnailInfo | null;
 }
 
-interface ThumbnailInfo {
+export interface ThumbnailInfo {
   region: TrackFramePosition;
   contours: number;
   median_diff: number;
