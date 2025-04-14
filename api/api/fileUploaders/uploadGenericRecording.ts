@@ -739,7 +739,9 @@ export const uploadGenericRecording =
       }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
-      const metadataSupplied = "metadata" in data;
+      // or with supplied tracks to support existing devices
+      const metadataSupplied =  (data.metadata &&         data.metadata.metadata_source) || wouldHaveSuppliedTracks;
+      ;
 
       const wouldHaveSuppliedTracksWithPredictions =
         dataHasSuppliedTracksWithPredictions(data);
@@ -762,7 +764,6 @@ export const uploadGenericRecording =
 
       if (
         metadataSupplied &&
-        data.metadata.metadata_source &&
         data.type === RecordingType.ThermalRaw
       ) {
         recording.additionalMetadata = {

@@ -53,6 +53,7 @@ describe("Recordings - processing tests", () => {
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING)
   );
+  delete templateRecording.metadata.metadata_source;
   delete templateRecording.processingState;
   delete templateRecording.metadata.tracks;
 
@@ -106,12 +107,12 @@ describe("Recordings - processing tests", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        RecordingProcessingState.Tracking
+        RecordingProcessingState.TrackAndAnalyse
       );
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.Audio,
-        RecordingProcessingState.Tracking
+        RecordingProcessingState.TrackAndAnalyse
       );
     });
 
@@ -136,7 +137,8 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Check recording status is 'tracking'");
-        expectedRecording1.processingState = RecordingProcessingState.Tracking;
+        expectedRecording1.processingState =
+          RecordingProcessingState.TrackAndAnalyse;
         expectedRecording1.processing = false;
         cy.apiRecordingCheck(
           "rpGroupAdmin",
@@ -179,9 +181,11 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Check recording status is 'tracking'");
-        expectedRecording1.processingState = RecordingProcessingState.Tracking;
+        expectedRecording1.processingState =
+          RecordingProcessingState.TrackAndAnalyse;
         expectedRecording1.processing = false;
-        expectedProcessing1.processingState = RecordingProcessingState.Tracking;
+        expectedProcessing1.processingState =
+          RecordingProcessingState.TrackAndAnalyse;
         cy.apiRecordingCheck(
           "rpGroupAdmin",
           "rpRecording1",
@@ -195,13 +199,13 @@ describe("Recordings - processing tests", () => {
         cy.processingApiCheck(
           superuser,
           RecordingType.ThermalRaw,
-          RecordingProcessingState.Tracking,
+          RecordingProcessingState.TrackAndAnalyse,
           "rpRecording1",
           expectedProcessing1,
           EXCLUDE_KEYS
         );
 
-        cy.log("Check status (tracking, processing)");
+        cy.log("Check status (TrackAndAnalyse, processing)");
         expectedRecording1b = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording1",
@@ -210,7 +214,8 @@ describe("Recordings - processing tests", () => {
           null,
           recording1
         );
-        expectedRecording1b.processingState = RecordingProcessingState.Tracking;
+        expectedRecording1b.processingState =
+          RecordingProcessingState.TrackAndAnalyse;
         expectedRecording1b.processing = true;
         cy.apiRecordingCheck(
           "rpGroupAdmin",
@@ -220,66 +225,6 @@ describe("Recordings - processing tests", () => {
         );
 
         cy.log("Mark tracking as done");
-        cy.processingApiPut(superuser, "rpRecording1", true, {}, undefined);
-
-        cy.log("Check recording status is 'analyse'");
-        expectedRecording1c = TestCreateExpectedRecordingData(
-          templateExpectedThermalRecording,
-          "rpRecording1",
-          "rpCamera1",
-          "rpGroup",
-          null,
-          recording1
-        );
-        expectedRecording1c.processingState =
-          RecordingProcessingState.AnalyseThermal;
-        expectedRecording1c.processing = false;
-        cy.apiRecordingCheck(
-          "rpGroupAdmin",
-          "rpRecording1",
-          expectedRecording1c,
-          EXCLUDE_ALL_IDS
-        );
-
-        cy.log("Send for processing (analyse)");
-        expectedProcessing1c = TestCreateExpectedProcessingData(
-          templateExpectedProcessing,
-          "rpRecording1",
-          recording1
-        );
-        expectedProcessing1c.processingStartTime = NOT_NULL_STRING;
-        expectedProcessing1c.updatedAt = NOT_NULL_STRING;
-        expectedProcessing1c.processingState =
-          RecordingProcessingState.AnalyseThermal;
-        cy.processingApiCheck(
-          superuser,
-          RecordingType.ThermalRaw,
-          RecordingProcessingState.Analyse,
-          "rpRecording1",
-          expectedProcessing1c,
-          EXCLUDE_KEYS
-        );
-
-        cy.log("Check status (analyse)");
-        expectedRecording1d = TestCreateExpectedRecordingData(
-          templateExpectedThermalRecording,
-          "rpRecording1",
-          "rpCamera1",
-          "rpGroup",
-          null,
-          recording1
-        );
-        expectedRecording1d.processingState =
-          RecordingProcessingState.AnalyseThermal;
-        expectedRecording1d.processing = true;
-        cy.apiRecordingCheck(
-          "rpGroupAdmin",
-          "rpRecording1",
-          expectedRecording1d,
-          EXCLUDE_ALL_IDS
-        );
-
-        cy.log("Mark processing as done");
         cy.processingApiPut(superuser, "rpRecording1", true, {}, undefined);
 
         cy.log("Check status (FINISHED)");
@@ -336,14 +281,14 @@ describe("Recordings - processing tests", () => {
               recording3
             );
             expectedProcessing3.processingState =
-              RecordingProcessingState.Tracking;
+              RecordingProcessingState.TrackAndAnalyse;
             const expectedProcessing4 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
               "rpRecording4",
               recording4
             );
             expectedProcessing4.processingState =
-              RecordingProcessingState.Tracking;
+              RecordingProcessingState.TrackAndAnalyse;
 
             const expectedProcessing5 = TestCreateExpectedProcessingData(
               templateExpectedProcessing,
@@ -351,7 +296,7 @@ describe("Recordings - processing tests", () => {
               recording5
             );
             expectedProcessing5.processingState =
-              RecordingProcessingState.Tracking;
+              RecordingProcessingState.TrackAndAnalyse;
 
             cy.log(
               "Check recordings ordered by recordingDateTime (3,5,4) for TRACKING"
@@ -359,7 +304,7 @@ describe("Recordings - processing tests", () => {
             cy.processingApiCheck(
               superuser,
               RecordingType.ThermalRaw,
-              RecordingProcessingState.Tracking,
+              RecordingProcessingState.TrackAndAnalyse,
               "rpRecording3",
               expectedProcessing3,
               EXCLUDE_KEYS
@@ -367,7 +312,7 @@ describe("Recordings - processing tests", () => {
             cy.processingApiCheck(
               superuser,
               RecordingType.ThermalRaw,
-              RecordingProcessingState.Tracking,
+              RecordingProcessingState.TrackAndAnalyse,
               "rpRecording5",
               expectedProcessing5,
               EXCLUDE_KEYS
@@ -375,7 +320,7 @@ describe("Recordings - processing tests", () => {
             cy.processingApiCheck(
               superuser,
               RecordingType.ThermalRaw,
-              RecordingProcessingState.Tracking,
+              RecordingProcessingState.TrackAndAnalyse,
               "rpRecording4",
               expectedProcessing4,
               EXCLUDE_KEYS
@@ -384,48 +329,7 @@ describe("Recordings - processing tests", () => {
             cy.log("mark as done (tracking->analyse)");
             cy.processingApiPut(superuser, "rpRecording3", true, {}, undefined);
             cy.processingApiPut(superuser, "rpRecording4", true, {}, undefined);
-            cy.processingApiPut(
-              superuser,
-              "rpRecording5",
-              true,
-              {},
-              undefined
-            ).then(() => {
-              expectedProcessing3.processingState =
-                RecordingProcessingState.AnalyseThermal;
-              expectedProcessing4.processingState =
-                RecordingProcessingState.AnalyseThermal;
-              expectedProcessing5.processingState =
-                RecordingProcessingState.AnalyseThermal;
-
-              cy.log(
-                "Check recordings ordered by recordingDateTime (3,5,4) for ANALYSE"
-              );
-              cy.processingApiCheck(
-                superuser,
-                RecordingType.ThermalRaw,
-                RecordingProcessingState.Analyse,
-                "rpRecording3",
-                expectedProcessing3,
-                EXCLUDE_KEYS
-              );
-              cy.processingApiCheck(
-                superuser,
-                RecordingType.ThermalRaw,
-                RecordingProcessingState.Analyse,
-                "rpRecording5",
-                expectedProcessing5,
-                EXCLUDE_KEYS
-              );
-              cy.processingApiCheck(
-                superuser,
-                RecordingType.ThermalRaw,
-                RecordingProcessingState.Analyse,
-                "rpRecording4",
-                expectedProcessing4,
-                EXCLUDE_KEYS
-              );
-            });
+            cy.processingApiPut(superuser, "rpRecording5", true, {}, undefined);
           });
         });
       });
@@ -471,7 +375,7 @@ describe("Recordings - processing tests", () => {
                 recording6
               );
               expectedProcessing6.processingState =
-                RecordingProcessingState.Tracking;
+                RecordingProcessingState.TrackAndAnalyse;
               const expectedProcessing7 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
                 "rpRecording7",
@@ -479,14 +383,14 @@ describe("Recordings - processing tests", () => {
               );
               expectedProcessing7.hasAlert = true;
               expectedProcessing7.processingState =
-                RecordingProcessingState.Tracking;
+                RecordingProcessingState.TrackAndAnalyse;
               const expectedProcessing8 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
                 "rpRecording8",
                 recording8
               );
               expectedProcessing8.processingState =
-                RecordingProcessingState.Tracking;
+                RecordingProcessingState.TrackAndAnalyse;
               const expectedProcessing9 = TestCreateExpectedProcessingData(
                 templateExpectedProcessing,
                 "rpRecording9",
@@ -494,7 +398,7 @@ describe("Recordings - processing tests", () => {
               );
               expectedProcessing9.hasAlert = true;
               expectedProcessing9.processingState =
-                RecordingProcessingState.Tracking;
+                RecordingProcessingState.TrackAndAnalyse;
 
               cy.log(
                 "Check recordings ordered by alerts first, oldest first (9,7,8,6)"
@@ -502,7 +406,7 @@ describe("Recordings - processing tests", () => {
               cy.processingApiCheck(
                 superuser,
                 RecordingType.ThermalRaw,
-                RecordingProcessingState.Tracking,
+                RecordingProcessingState.TrackAndAnalyse,
                 "rpRecording9",
                 expectedProcessing9,
                 EXCLUDE_KEYS
@@ -510,7 +414,7 @@ describe("Recordings - processing tests", () => {
               cy.processingApiCheck(
                 superuser,
                 RecordingType.ThermalRaw,
-                RecordingProcessingState.Tracking,
+                RecordingProcessingState.TrackAndAnalyse,
                 "rpRecording7",
                 expectedProcessing7,
                 EXCLUDE_KEYS
@@ -518,7 +422,7 @@ describe("Recordings - processing tests", () => {
               cy.processingApiCheck(
                 superuser,
                 RecordingType.ThermalRaw,
-                RecordingProcessingState.Tracking,
+                RecordingProcessingState.TrackAndAnalyse,
                 "rpRecording9",
                 expectedProcessing8,
                 EXCLUDE_KEYS
@@ -526,7 +430,7 @@ describe("Recordings - processing tests", () => {
               cy.processingApiCheck(
                 superuser,
                 RecordingType.ThermalRaw,
-                RecordingProcessingState.Tracking,
+                RecordingProcessingState.TrackAndAnalyse,
                 "rpRecording6",
                 expectedProcessing6,
                 EXCLUDE_KEYS
@@ -658,7 +562,7 @@ describe("Recordings - processing tests", () => {
           recording18
         );
         expectedProcessing18.processingState =
-          RecordingProcessingState.Tracking;
+          RecordingProcessingState.TrackAndAnalyse;
         const expectedRecording18 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording18",
@@ -667,19 +571,19 @@ describe("Recordings - processing tests", () => {
           null,
           recording18
         );
-        expectedRecording18.processingState = RecordingProcessingState.Tracking;
+        expectedRecording18.processingState =
+          RecordingProcessingState.TrackAndAnalyse;
         expectedRecording18.processing = true;
 
         cy.log("Send for processing");
         cy.processingApiCheck(
           superuser,
           RecordingType.ThermalRaw,
-          RecordingProcessingState.Tracking,
+          RecordingProcessingState.TrackAndAnalyse,
           "rpRecording18",
           expectedProcessing18,
           EXCLUDE_KEYS
         );
-
         cy.log("Look up algorithm and then post tracks");
         cy.processingApiAlgorithmPost(superuser, {
           "tracking-format": 42,
@@ -693,53 +597,15 @@ describe("Recordings - processing tests", () => {
             algorithmId
           );
 
-          cy.log("Check tracks added to recording");
-          expectedRecording18.processing = true;
-          expectedRecording18.processingState =
-            RecordingProcessingState.Tracking;
-          expectedRecording18.tracks = [
-            {
-              tags: [],
-              start: 1,
-              end: 4,
-              id: 1,
-              //              positions: [],
-              // TODO enable after merge
-              filtered: false,
-            },
-          ];
-          cy.apiRecordingCheck(
-            "rpGroupAdmin",
+          cy.processingApiTracksTagsPost(
+            superuser,
+            "rpTrack18",
             "rpRecording18",
-            expectedRecording18,
-            EXCLUDE_ALL_IDS
+            "possum",
+            0.9,
+            { name: "Master" }
           ).then(() => {
-            expectedProcessing18.processingState =
-              RecordingProcessingState.AnalyseThermal;
-            cy.log("Complete tracking");
-            cy.processingApiPut(
-              superuser,
-              "rpRecording18",
-              true,
-              {},
-              undefined
-            );
-
-            cy.log("Start analyse");
-            cy.processingApiCheck(
-              superuser,
-              RecordingType.ThermalRaw,
-              RecordingProcessingState.Analyse,
-              "rpRecording18",
-              expectedProcessing18,
-              EXCLUDE_KEYS
-            );
-
-            expectedRecording18.processing = true;
-            expectedRecording18.processingState =
-              RecordingProcessingState.AnalyseThermal;
-
-            cy.log("Check tags added to recording/track");
+            cy.log("Check tracks added to recording");
             expectedRecording18.tracks = [
               {
                 tags: [
@@ -756,44 +622,28 @@ describe("Recordings - processing tests", () => {
                 start: 1,
                 end: 4,
                 id: 1,
-                //              positions: [],
-                // TODO enable after merge
                 filtered: false,
               },
             ];
 
-            cy.processingApiTracksTagsPost(
+            expectedRecording18.processingState =
+              RecordingProcessingState.Finished;
+            expectedRecording18.processing = false;
+            cy.log("Complete tracking");
+            cy.processingApiPut(
               superuser,
-              "rpTrack18",
               "rpRecording18",
-              "possum",
-              0.9,
-              { name: "Master" }
+              true,
+              {},
+              undefined
             );
+            cy.log("Check tags added to recording/track");
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording18",
               expectedRecording18,
               EXCLUDE_ALL_IDS
-            ).then(() => {
-              cy.log("set processing to done and recheck tracks");
-              cy.processingApiPut(
-                superuser,
-                "rpRecording18",
-                true,
-                {},
-                undefined
-              );
-              expectedRecording18.processing = false;
-              expectedRecording18.processingState =
-                RecordingProcessingState.Finished;
-              cy.apiRecordingCheck(
-                "rpGroupAdmin",
-                "rpRecording18",
-                expectedRecording18,
-                EXCLUDE_ALL_IDS
-              );
-            });
+            );
           });
         });
       });
@@ -801,6 +651,7 @@ describe("Recordings - processing tests", () => {
 
     it("Tracking stage can delete tracks and tags from the recording", () => {
       const recording19 = TestCreateRecordingData(templateRecording);
+
       cy.apiRecordingAdd(
         "rpCamera1",
         recording19,
@@ -813,7 +664,7 @@ describe("Recordings - processing tests", () => {
           recording19
         );
         expectedProcessing19.processingState =
-          RecordingProcessingState.Tracking;
+          RecordingProcessingState.TrackAndAnalyse;
         const expectedRecording19 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording19",
@@ -827,7 +678,7 @@ describe("Recordings - processing tests", () => {
         cy.processingApiCheck(
           superuser,
           RecordingType.ThermalRaw,
-          RecordingProcessingState.Tracking,
+          RecordingProcessingState.TrackAndAnalyse,
           "rpRecording19",
           expectedProcessing19,
           EXCLUDE_KEYS
@@ -845,29 +696,19 @@ describe("Recordings - processing tests", () => {
             { start_s: 1, end_s: 4 },
             algorithmId
           );
-
-          cy.log("Check tracks added to recording");
-          expectedRecording19.processing = true;
-          expectedRecording19.processingState =
-            RecordingProcessingState.Tracking;
-          expectedRecording19.tracks = [
-            {
-              tags: [],
-              start: 1,
-              end: 4,
-              id: 1,
-              //              positions: [],
-              // TODO enable after merge
-              filtered: false,
-            },
-          ];
-          cy.apiRecordingCheck(
-            "rpGroupAdmin",
+          cy.processingApiTracksTagsPost(
+            superuser,
+            "rpTrack19",
             "rpRecording19",
-            expectedRecording19,
-            EXCLUDE_ALL_IDS
+            "possum",
+            0.9,
+            { name: "Master" }
           ).then(() => {
-            cy.log("Check tags added to recording/track");
+            cy.log("Check tracks added to recording");
+            expectedRecording19.processing = true;
+
+            expectedRecording19.processingState =
+              RecordingProcessingState.TrackAndAnalyse;
             expectedRecording19.tracks = [
               {
                 tags: [
@@ -889,14 +730,7 @@ describe("Recordings - processing tests", () => {
                 filtered: false,
               },
             ];
-            cy.processingApiTracksTagsPost(
-              superuser,
-              "rpTrack19",
-              "rpRecording19",
-              "possum",
-              0.9,
-              { name: "Master" }
-            );
+            cy.log("Check tags added to recording/track");
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording19",
@@ -922,7 +756,7 @@ describe("Recordings - processing tests", () => {
                 );
                 expectedRecording19.processing = false;
                 expectedRecording19.processingState =
-                  RecordingProcessingState.AnalyseThermal;
+                  RecordingProcessingState.Finished;
                 cy.apiRecordingCheck(
                   "rpGroupAdmin",
                   "rpRecording19",
@@ -967,14 +801,14 @@ describe("Recordings - processing tests", () => {
           recording20
         );
         expectedProcessing20.processingState =
-          RecordingProcessingState.Tracking;
+          RecordingProcessingState.TrackAndAnalyse;
         expectedProcessing20.hasAlert = true;
 
         cy.log("Send for processing and check is flagged as hasAlert");
         cy.processingApiCheck(
           superuser,
           RecordingType.ThermalRaw,
-          RecordingProcessingState.Tracking,
+          RecordingProcessingState.TrackAndAnalyse,
           "rpRecording20",
           expectedProcessing20,
           EXCLUDE_KEYS
@@ -990,22 +824,6 @@ describe("Recordings - processing tests", () => {
             "rpRecording20",
             { start_s: 1, end_s: 4 },
             algorithmId
-          );
-          cy.log("set processing to done and recheck tracks");
-          cy.processingApiPut(superuser, "rpRecording20", true, {}, undefined);
-
-          cy.log(
-            "Send for processing (Analyse) and check is flagged as hasAlert"
-          );
-          expectedProcessing20.processingState =
-            RecordingProcessingState.AnalyseThermal;
-          cy.processingApiCheck(
-            superuser,
-            RecordingType.ThermalRaw,
-            RecordingProcessingState.AnalyseThermal,
-            "rpRecording20",
-            expectedProcessing20,
-            EXCLUDE_KEYS
           );
 
           cy.log("Add tags");
@@ -1052,6 +870,8 @@ describe("Recordings - processing tests", () => {
     });
 
     it("Test other metadata can be set by processing", () => {
+      //this test uploads a thermal and changes it to and audio type what is this testing??
+      // TODO
       const fieldUpdates = {
         rawMimeType: "application/test",
         fileMimeType: "application/test2",
@@ -1095,7 +915,7 @@ describe("Recordings - processing tests", () => {
           recording17
         );
         expectedProcessing17.processingState =
-          RecordingProcessingState.Tracking;
+          RecordingProcessingState.TrackAndAnalyse;
         const expectedRecording17 = TestCreateExpectedRecordingData(
           templateExpectedAudioRecording,
           "rpRecording17",
@@ -1105,7 +925,7 @@ describe("Recordings - processing tests", () => {
           recording17
         );
         expectedRecording17.processingState =
-          RecordingProcessingState.AnalyseThermal;
+          RecordingProcessingState.TrackAndAnalyse;
         expectedRecording17.processing = false;
         expectedRecording17.rawMimeType = "application/test";
         expectedRecording17.fileMimeType = "application/test2";
@@ -1135,7 +955,7 @@ describe("Recordings - processing tests", () => {
         cy.processingApiCheck(
           superuser,
           RecordingType.ThermalRaw,
-          RecordingProcessingState.Tracking,
+          RecordingProcessingState.TrackAndAnalyse,
           "rpRecording17",
           expectedProcessing17,
           EXCLUDE_KEYS
@@ -1148,6 +968,7 @@ describe("Recordings - processing tests", () => {
 
           undefined
         );
+        expectedRecording17.processingState = RecordingProcessingState.Finished;
         cy.apiRecordingCheck(
           "rpGroupAdmin",
           "rpRecording17",

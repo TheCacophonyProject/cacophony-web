@@ -436,6 +436,7 @@ export interface ApiRecordingAlgorithm {
 
 // from api/v1/recordings (post)
 export interface ApiRecordingDataMetadata {
+  metadata_source: string;
   tracks?: ApiTrackSet[];
   models?: ApiRecordingModel[];
   algorithm?: ApiRecordingAlgorithm;
