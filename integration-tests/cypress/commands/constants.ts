@@ -4,6 +4,7 @@ export const LATEST_END_USER_AGREEMENT = 3;
 
 //parameter checks - fields we do not check value of by default in 'recording'
 export const EXCLUDE_IDS = [
+  ".additionalMetadata.metadataSource",
   ".tracks[].TrackTags[].TrackId",
   ".tracks[].tags[].id",
   ".tracks[].tags[].path",
