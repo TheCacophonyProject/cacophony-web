@@ -89,11 +89,11 @@ export default {
     async loadDetails() {
       const response = await recordingApi.getTrack(
         this.trackTag.trackId,
-        this.recordingId,
+        this.recordingId
       );
       if (response.success) {
         const tag = response.result.track.tags.find(
-          (tag) => tag.id === this.trackTag.id,
+          (tag) => tag.id === this.trackTag.id
         );
         if (tag) {
           this.localTrackTagData = {

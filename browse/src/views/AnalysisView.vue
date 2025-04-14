@@ -95,7 +95,7 @@ export default {
       let devices = this.allDevices;
       if (this.showGroups !== "all") {
         devices = devices.filter(
-          (device) => device.groupId === this.showGroups,
+          (device) => device.groupId === this.showGroups
         );
       }
       return devices.map((device) => {

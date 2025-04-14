@@ -174,7 +174,7 @@ export default {
         const result = await api.groups.addGroupUser(
           this.groupName,
           userToAdd,
-          this.form.isAdmin,
+          this.form.isAdmin
         );
         if (!result.success) {
           this.formErrorMessage = "The email address couldn't be found";
@@ -201,7 +201,7 @@ export default {
               display: `${userName} ${email && `<${email}>`}`,
               email,
               id,
-            }),
+            })
           );
         }
       }

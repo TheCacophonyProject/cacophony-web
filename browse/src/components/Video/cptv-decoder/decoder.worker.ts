@@ -21,7 +21,7 @@ class Unlocker {
 }
 const FakeReader = (
   bytes: Uint8Array,
-  maxChunkSize = 0,
+  maxChunkSize = 0
 ): ReadableStreamDefaultReader => {
   let state: { offsets: number[]; offset: number; bytes?: Uint8Array } = {
     offsets: [],
@@ -45,7 +45,7 @@ const FakeReader = (
         state.offset += 1;
         const value = (state.bytes as Uint8Array).slice(
           state.offsets[state.offset - 1],
-          state.offsets[state.offset],
+          state.offsets[state.offset]
         );
         resolve({
           value,
@@ -107,7 +107,7 @@ class CptvDecoderInterface {
     id: number,
     apiToken: string,
     apiRoot: string,
-    size?: number,
+    size?: number
   ): Promise<string | boolean | Blob> {
     this.free();
     const unlocker = new Unlocker();
@@ -125,7 +125,7 @@ class CptvDecoderInterface {
       };
       this.response = await fetch(
         `${apiRoot}/api/v1/recordings/raw/${id}`,
-        request as RequestInit,
+        request as RequestInit
       );
       if (this.response.status === 200) {
         if (this.response.body) {
@@ -140,7 +140,7 @@ class CptvDecoderInterface {
               this.response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
             await initWasm();
             this.playerContext = await ThisPlayerContext.newWithStream(
-              this.reader,
+              this.reader
             );
           } else if (this.currentContentType === "image/webp") {
             return await this.response.blob();
@@ -172,7 +172,7 @@ class CptvDecoderInterface {
 
   async initWithCptvUrlAndSize(
     url: string,
-    size?: number,
+    size?: number
   ): Promise<boolean | string> {
     this.free();
     const unlocker = new Unlocker();
@@ -193,7 +193,7 @@ class CptvDecoderInterface {
           this.expectedSize = size;
           await initWasm();
           this.playerContext = await ThisPlayerContext.newWithStream(
-            this.reader,
+            this.reader
           );
           unlocker.unlock();
           this.inited = true;
@@ -233,7 +233,7 @@ class CptvDecoderInterface {
     try {
       await initWasm();
       this.playerContext = await ThisPlayerContext.newWithStream(
-        this.reader as ReadableStreamDefaultReader,
+        this.reader as ReadableStreamDefaultReader
       );
       this.inited = true;
       result = true;
@@ -306,7 +306,7 @@ class CptvDecoderInterface {
   async countTotalFrames() {
     if (!this.reader) {
       console.warn(
-        "You need to initialise the player with the url of a CPTV file",
+        "You need to initialise the player with the url of a CPTV file"
       );
       return 0;
     }
@@ -437,7 +437,7 @@ self.addEventListener("message", async ({ data }) => {
           data.id,
           data.apiToken,
           data.apiRoot,
-          data.size,
+          data.size
         );
         self.postMessage({ type: data.type, data: result });
       }

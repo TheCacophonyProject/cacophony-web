@@ -144,7 +144,7 @@ export default {
     async fetchRecordingCount() {
       this.recordingsCountLoading = true;
       const recordingCountResponse = await api.recording.queryCount(
-        this.recordingQuery(),
+        this.recordingQuery()
       );
       if (recordingCountResponse.success) {
         const {

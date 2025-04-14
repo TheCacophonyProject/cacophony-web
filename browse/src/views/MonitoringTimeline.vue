@@ -51,7 +51,7 @@ export default {
         // eslint-disable-next-line no-unused-vars,@typescript-eslint/no-unused-vars
         ([_a, av]: [string, number], [_b, bv]: [string, number]) => {
           return bv - av;
-        },
+        }
       );
     },
   },
@@ -103,7 +103,7 @@ export default {
       allVisits.push(...visits);
       this.drawHeatMap(
         new Date(params.searchFrom),
-        new Date(params.searchUntil),
+        new Date(params.searchUntil)
       );
     },
   },

@@ -147,7 +147,7 @@ export default {
       const results = await api.monitoring.getAllVisits(
         visitQuery,
         undefined,
-        (val) => (this.exportProgress = val),
+        (val) => (this.exportProgress = val)
       );
       const rows = results.filteredVisits.map((visit) => [
         visit.stationId ? visit.stationName : visit.device,
@@ -175,7 +175,7 @@ export default {
 
       this.createExport(
         header + csvVisits,
-        `visits-${exportType}-${from.toLocaleDateString()}-${to.toLocaleDateString()}.csv`,
+        `visits-${exportType}-${from.toLocaleDateString()}-${to.toLocaleDateString()}.csv`
       );
       this.isExportingCSV = false;
       this.exportInProgress = false;

@@ -65,7 +65,7 @@ const actions = {
         // Persist super user settings so that we can switch user views.
         localStorage.setItem(
           "superUserCreds",
-          JSON.stringify({ ...userData, token }),
+          JSON.stringify({ ...userData, token })
         );
       }
       api.user.persistUser(
@@ -74,7 +74,7 @@ const actions = {
         userData.email,
         userData.globalPermission,
         userData.id,
-        userData.endUserAgreement,
+        userData.endUserAgreement
       );
       commit("receiveLogin", { userData, token });
     }
@@ -83,7 +83,7 @@ const actions = {
   async CHANGE_PASSWORD({ commit }, payload) {
     const changePasswordResponse = await api.user.changePassword(
       payload.token,
-      payload.password,
+      payload.password
     );
     commit("invalidateLogin");
     if (changePasswordResponse.success) {
@@ -94,7 +94,7 @@ const actions = {
         result.userData.email,
         result.userData.globalPermission,
         result.userData.id,
-        result.userData.endUserAgreement,
+        result.userData.endUserAgreement
       );
       (result.userData as any).acceptedEUA = result.userData.endUserAgreement;
       commit("receiveLogin", result);
@@ -108,7 +108,7 @@ const actions = {
       result.userData.email,
       result.userData.globalPermission,
       result.userData.id,
-      result.userData.endUserAgreement,
+      result.userData.endUserAgreement
     );
     commit("receiveLogin", result);
   },
@@ -121,7 +121,7 @@ const actions = {
       payload.userName,
       payload.password,
       payload.email,
-      state.latestEUA,
+      state.latestEUA
     );
     if (success) {
       api.user.persistUser(
@@ -130,7 +130,7 @@ const actions = {
         result.userData.email,
         result.userData.globalPermission,
         result.userData.id,
-        result.userData.endUserAgreement,
+        result.userData.endUserAgreement
       );
       result.userData.acceptedEUA = result.userData.endUserAgreement;
       commit("receiveLogin", result);
@@ -187,7 +187,7 @@ const mutations = {
   },
   receiveLogin(
     state,
-    { userData, token }: { userData: ApiLoggedInUserResponse; token: string },
+    { userData, token }: { userData: ApiLoggedInUserResponse; token: string }
   ) {
     state.JWT = token;
     state.userData = getUserFromLocalStorage();

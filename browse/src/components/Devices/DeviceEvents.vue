@@ -109,7 +109,7 @@ export default {
       try {
         const { result } = await api.device.getLatestEvents(
           this.device.id,
-          params,
+          params
         );
         this.events = result.rows;
         this.count = result.count;

@@ -17,7 +17,7 @@ const getAudioBaitFiles = (): Promise<
 };
 
 const createSchedule = (
-  schedule: ScheduleConfig,
+  schedule: ScheduleConfig
 ): Promise<FetchResult<{ id: ScheduleId }>> => {
   return CacophonyApi.post("/api/v1/schedules", {
     schedule,
@@ -29,7 +29,7 @@ const deleteSchedule = (scheduleId: ScheduleId): Promise<FetchResult<{}>> => {
 };
 
 const uploadAudiobaitFile = (
-  sound: FormData,
+  sound: FormData
 ): Promise<FetchResult<{ id: FileId }>> => {
   return CacophonyApi.postMultipartFormData("/api/v1/files", sound);
 };
@@ -39,7 +39,7 @@ const deleteAudiobaitFile = (fileId: FileId): Promise<FetchResult<{}>> => {
 };
 
 const getAudioBaitFileSource = async (
-  fileId: FileId,
+  fileId: FileId
 ): Promise<
   FetchResult<{ file: ApiAudiobaitFileResponse; fileSize: number; jwt: string }>
 > => {

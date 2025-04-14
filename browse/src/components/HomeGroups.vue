@@ -65,7 +65,7 @@ export default {
               return 1;
             }
             return a.groupName.localeCompare(b.groupName);
-          },
+          }
         );
       },
     },

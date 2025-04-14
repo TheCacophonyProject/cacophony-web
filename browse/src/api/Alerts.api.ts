@@ -4,7 +4,7 @@ import { ApiAlertResponse } from "@typedefs/api/alerts";
 import CacophonyApi from "@api/CacophonyApi";
 
 const getAlertsForStation = async (
-  stationId: StationId,
+  stationId: StationId
 ): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
   return CacophonyApi.get(`/api/v1/alerts/station/${stationId}`);
 };
@@ -15,7 +15,7 @@ const removeAlert = async (alertId: AlertId): Promise<FetchResult<void>> => {
 
 const createAlertForStation = async (
   stationId: StationId,
-  tag: string,
+  tag: string
 ): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
   return CacophonyApi.post(
     `/api/v1/alerts`,
@@ -24,7 +24,7 @@ const createAlertForStation = async (
       conditions: [{ tag, automatic: true }],
       stationId,
     },
-    true,
+    true
   );
 };
 

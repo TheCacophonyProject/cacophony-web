@@ -221,14 +221,14 @@ export default {
     async getDevices() {
       const resultDevices = await api.groups.getDevicesForGroup(
         this.groupId,
-        this.inactiveAndActive,
+        this.inactiveAndActive
       );
       this.devices = resultDevices.result.devices;
     },
     async getStations() {
       const resultStations = await api.groups.getStationsForGroup(
         this.groupId,
-        this.inactiveAndActive,
+        this.inactiveAndActive
       );
       this.stations = resultStations.result.stations;
     },
@@ -242,7 +242,7 @@ export default {
     },
     updateIntervalSelection() {
       const differenceDays = Math.ceil(
-        (this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24),
+        (this.toDate.getTime() - this.fromDate.getTime()) / (1000 * 3600 * 24)
       );
       if (differenceDays < 33) {
         this.intervalOptions = ["hours", "days", "weeks"];

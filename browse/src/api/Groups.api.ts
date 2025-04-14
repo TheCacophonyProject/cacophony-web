@@ -15,14 +15,14 @@ function addNewGroup(groupName): Promise<FetchResult<{ groupId: GroupId }>> {
   return CacophonyApi.post(
     "/api/v1/groups",
     { groupName },
-    suppressGlobalMessaging,
+    suppressGlobalMessaging
   );
 }
 
 function addGroupUser(
   groupName,
   emailOrUserId: string | number,
-  isAdmin,
+  isAdmin
 ): Promise<{ success: boolean; status: number; result: any }> {
   const suppressGlobalMessaging = true;
   const payload = {
@@ -37,7 +37,7 @@ function addGroupUser(
   return CacophonyApi.post(
     "/api/v1/groups/users",
     payload,
-    suppressGlobalMessaging,
+    suppressGlobalMessaging
   );
 }
 
@@ -49,62 +49,62 @@ function removeGroupUser(groupName, userId) {
 }
 
 function getGroup(
-  groupName: string,
+  groupName: string
 ): Promise<FetchResult<{ group: ApiGroupResponse }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupName)}${
       shouldViewAsSuperUser() ? "" : "?view-mode=user"
-    }`,
+    }`
   );
 }
 
 function getGroupById(
-  groupId: GroupId,
+  groupId: GroupId
 ): Promise<FetchResult<{ group: ApiGroupResponse }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${groupId}${
       shouldViewAsSuperUser() ? "" : "?view-mode=user"
-    }`,
+    }`
   );
 }
 
 function getGroups(): Promise<FetchResult<{ groups: ApiGroupResponse[] }>> {
   return CacophonyApi.get(
-    `/api/v1/groups${shouldViewAsSuperUser() ? "" : "?view-mode=user"}`,
+    `/api/v1/groups${shouldViewAsSuperUser() ? "" : "?view-mode=user"}`
   );
 }
 
 function getUsersForGroup(
-  groupNameOrId: string | number,
+  groupNameOrId: string | number
 ): Promise<FetchResult<{ users: ApiGroupUserResponse[] }>> {
   return CacophonyApi.get(
-    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/users`,
+    `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/users`
   );
 }
 
 function getDevicesForGroup(
   groupNameOrId: string | number,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/devices${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
 function getStationsForGroup(
   groupNameOrId: string,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ stations: ApiStationResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/stations${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
@@ -112,7 +112,7 @@ function createStationInGroup(
   groupNameOrId: string | GroupId,
   station: { name: string; lat: number; lng: number },
   applyFromDate?: Date,
-  applyUntilDate?: Date,
+  applyUntilDate?: Date
 ): Promise<FetchResult<{ stationId: StationId }>> {
   const payload: {
     station: string;
@@ -129,18 +129,18 @@ function createStationInGroup(
   }
   return CacophonyApi.post(
     `/api/v1/groups/${encodeURIComponent(groupNameOrId)}/station`,
-    payload,
+    payload
   );
 }
 
 function getStationByNameInGroup(
   groupNameOrId: string | GroupId,
-  stationName: string,
+  stationName: string
 ): Promise<FetchResult<{ station: ApiStationResponse }>> {
   return CacophonyApi.get(
     `/api/v1/groups/${encodeURIComponent(
-      groupNameOrId,
-    )}/station/${encodeURIComponent(stationName)}`,
+      groupNameOrId
+    )}/station/${encodeURIComponent(stationName)}`
   );
 }
 
@@ -148,7 +148,7 @@ function addStationsToGroup(
   groupName: string | number,
   stations: { name: string; lat: number; lng: number }[],
   applyFromDate?: Date,
-  applyUntilDate?: Date,
+  applyUntilDate?: Date
 ) {
   const payload: {
     stations: string;
@@ -165,13 +165,13 @@ function addStationsToGroup(
   }
   return CacophonyApi.post(
     `/api/v1/groups/${encodeURIComponent(groupName)}/stations`,
-    payload,
+    payload
   );
 }
 
 function updateGroupSettings(
   groupName: string | number,
-  settings: ApiGroupSettings,
+  settings: ApiGroupSettings
 ) {
   return CacophonyApi.patch(`/api/v1/groups/${groupName}/group-settings`, {
     settings,

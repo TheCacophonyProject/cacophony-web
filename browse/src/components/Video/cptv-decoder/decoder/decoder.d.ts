@@ -9,7 +9,7 @@ export class CptvPlayerContext {
    * @returns {Promise<CptvPlayerContext>}
    */
   static newWithStream(
-    stream: ReadableStreamDefaultReader,
+    stream: ReadableStreamDefaultReader
   ): Promise<CptvPlayerContext>;
   /**
    * @returns {boolean}

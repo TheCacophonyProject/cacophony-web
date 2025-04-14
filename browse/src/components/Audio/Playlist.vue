@@ -80,7 +80,7 @@ export default defineComponent({
     }>({ next: null, prev: null });
     const stripQuery = (
       query: Query,
-      remove = ["to", "from", "order", "type", "limit", "offset"],
+      remove = ["to", "from", "order", "type", "limit", "offset"]
     ) => {
       const newQuery: Query = {};
       for (const key in query) {
@@ -93,7 +93,7 @@ export default defineComponent({
     };
 
     const queryNextRecording = async (
-      query: Query,
+      query: Query
     ): Promise<ApiRecordingResponse[]> => {
       try {
         const response = await api.recording.query(query);
@@ -111,7 +111,7 @@ export default defineComponent({
 
     const getNextRecordingQuery = (
       direction: QueryDirection,
-      limit = 1,
+      limit = 1
     ): Query => {
       const currentQuery = route.value.query;
       const orderBy = (o: string) => JSON.stringify([["recordingDateTime", o]]);

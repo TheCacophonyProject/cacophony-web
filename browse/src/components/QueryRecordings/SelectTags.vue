@@ -54,7 +54,7 @@ export default defineComponent({
             tags: props.value.tags,
           });
         }
-      },
+      }
     );
     return { typeOptions };
   },

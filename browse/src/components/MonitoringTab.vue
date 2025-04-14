@@ -52,7 +52,7 @@ interface DateSortable {
 const addSupplementaryEvents = (
   visits: DateSortable[],
   devicePowerEvents: DateSortable[],
-  location?: LatLng,
+  location?: LatLng
 ): DateSortable[] => {
   if (visits.length) {
     // Get the days for visits, work out the days covered:
@@ -136,7 +136,7 @@ const addSupplementaryEvents = (
           const times = SunCalc.getTimes(
             nextDayDate,
             location.lat,
-            location.lng,
+            location.lng
           );
           duskDawn.push({
             sortDate: times.sunrise,
@@ -165,7 +165,7 @@ const addSupplementaryEvents = (
 
 const getPowerEventsAndLocationForDevice = async (
   device: number,
-  isFirstPage: boolean,
+  isFirstPage: boolean
 ): Promise<{
   devicePowerEvents: DateSortable[];
   location: LatLng | undefined;
@@ -183,7 +183,7 @@ const getPowerEventsAndLocationForDevice = async (
 
     const endOfCurrentDay = startOfEvening(nextDay);
     const beginningOfDayOfEarliestDay = startOfEvening(
-      new Date(currentVisits[currentVisits.length - 1].timeStart),
+      new Date(currentVisits[currentVisits.length - 1].timeStart)
     );
 
     const eventParams = {
@@ -206,7 +206,7 @@ const getPowerEventsAndLocationForDevice = async (
         sortDate: new Date(row.dateTime),
         timeStart: row.dateTime,
         timeEnd: row.dateTime,
-      })),
+      }))
     );
     if (latestRecordingResponse.success) {
       location = latestRecordingResponse.result.rows[0].location;
@@ -297,12 +297,12 @@ export default {
           // eslint-disable-next-line no-console
           console.assert(
             this.visitsQuery.device.length === 1,
-            "Should only have one device",
+            "Should only have one device"
           );
           const powerEventsAndLocation =
             await getPowerEventsAndLocationForDevice(
               this.visitsQuery.device[0],
-              this.currentPage === 2,
+              this.currentPage === 2
             );
           location = powerEventsAndLocation.location;
           devicePowerEvents = powerEventsAndLocation.devicePowerEvents;
@@ -356,7 +356,7 @@ export default {
             sortDate: new Date(visit.timeStart),
           })),
           devicePowerEvents,
-          location,
+          location
         )
           .sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime())
           .map((o) => Object.freeze(o));

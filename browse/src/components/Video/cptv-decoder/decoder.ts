@@ -60,7 +60,7 @@ export class CptvDecoder {
    */
   async initWithCptvUrlAndKnownSize(
     url: string,
-    size: number,
+    size: number
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithUrlAndSize";
@@ -105,7 +105,7 @@ export class CptvDecoder {
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithLocalCptvFile(
-    fileBytes: Uint8Array,
+    fileBytes: Uint8Array
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithLocalCptvFile";

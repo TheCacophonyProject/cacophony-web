@@ -168,7 +168,7 @@ export default defineComponent({
         (tag) =>
           !tag.automatic &&
           tag.userName === store.state.User.userData.userName &&
-          !uniqueTags.includes(tag.what),
+          !uniqueTags.includes(tag.what)
       );
     };
     const selectedValue = ref<string | null>(getUserTag()?.what ?? "");
@@ -208,7 +208,7 @@ export default defineComponent({
       () => props.tags,
       () => {
         selectedValue.value = getUserTag()?.what ?? "";
-      },
+      }
     );
     return {
       selectedValue,
@@ -237,7 +237,7 @@ export default defineComponent({
       return this.tags.filter(
         (tag) =>
           !tag.automatic &&
-          tag.userName === this.$store.state.User.userData.userName,
+          tag.userName === this.$store.state.User.userData.userName
       );
     },
     taggingPending(): boolean {
@@ -268,7 +268,7 @@ export default defineComponent({
             ...this.animals,
             ...this.pinnedLabels,
             ...otherTags.map((val) => val.value),
-          ].includes(tag.what),
+          ].includes(tag.what)
       );
       if (userTags) {
         userTags.forEach((tag) => {

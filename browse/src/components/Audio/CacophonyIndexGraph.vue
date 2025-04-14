@@ -41,7 +41,7 @@ function createGradient(context: any, min: number, max: number) {
     0,
     chartArea.bottom,
     0,
-    chartArea.top,
+    chartArea.top
   );
   if (top > 0.65) {
     gradient.addColorStop(top, green);
@@ -95,14 +95,14 @@ export default defineComponent({
                 x: end_s - begin_s,
                 y: index_percent,
               };
-            },
+            }
           );
 
           const highestEndVal = props.cacophonyIndex.reduce(
             (highest: number, current: CacophonyIndex) => {
               return current.end_s > highest ? current.end_s : highest;
             },
-            0,
+            0
           );
 
           const minIndexVal = props.cacophonyIndex.reduce(
@@ -111,7 +111,7 @@ export default defineComponent({
                 ? current.index_percent
                 : lowest;
             },
-            100,
+            100
           );
           const maxIndexVal = props.cacophonyIndex.reduce(
             (highest: number, current: CacophonyIndex) => {
@@ -119,7 +119,7 @@ export default defineComponent({
                 ? current.index_percent
                 : highest;
             },
-            0,
+            0
           );
           chartRef.value = new Chart(chart.value, {
             type: "line",
@@ -133,7 +133,7 @@ export default defineComponent({
                     createGradient(
                       context,
                       props.simplify ? minIndexVal : 0,
-                      props.simplify ? maxIndexVal : 100,
+                      props.simplify ? maxIndexVal : 100
                     ),
                   borderWidth: 4,
                   stepped: "middle",
@@ -194,7 +194,7 @@ export default defineComponent({
             },
           });
         },
-        { immediate: true },
+        { immediate: true }
       );
     });
     return { chart };

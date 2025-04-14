@@ -301,7 +301,7 @@ export default {
                 footerClass: "p-2",
                 hideHeaderClose: false,
                 centered: true,
-              },
+              }
             );
             if (shouldDelete) {
               await api.station.deleteStationById(station.id);

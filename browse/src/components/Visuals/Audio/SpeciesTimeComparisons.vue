@@ -213,7 +213,7 @@ export default {
               req["steps"],
               req["interval"],
               false,
-              "audio",
+              "audio"
             );
           } else if (this.groupingSelection == "station") {
             res = await api.station.getStationSpeciesCountBulk(
@@ -222,29 +222,29 @@ export default {
               req["steps"],
               req["interval"],
               false,
-              "audio",
+              "audio"
             );
           }
           return res;
-        }),
+        })
       );
       const stepSizeInMs = this.getStepSizeInMs(
         toDateRounded,
-        this.intervalSelection,
+        this.intervalSelection
       );
       const windowEnds = Array.from(
         { length: steps },
-        (_, i) => new Date(toDateRounded.getTime() - i * stepSizeInMs),
+        (_, i) => new Date(toDateRounded.getTime() - i * stepSizeInMs)
       ).reverse();
       const windowStarts = windowEnds.map(
-        (windowEnd) => new Date(windowEnd.getTime() - stepSizeInMs),
+        (windowEnd) => new Date(windowEnd.getTime() - stepSizeInMs)
       );
 
       const animalList = [
         ...new Set(
           response
             .map((res) => res.result.speciesCountBulk.map((item) => item.what))
-            .reduce((acc, curr) => acc.concat(curr), []),
+            .reduce((acc, curr) => acc.concat(curr), [])
         ),
       ];
 
@@ -277,7 +277,7 @@ export default {
             const index = res.result.speciesCountBulk.findIndex(
               (item) =>
                 item.what === animal &&
-                item.from === windowEnds[i].toISOString(),
+                item.from === windowEnds[i].toISOString()
             );
             if (index !== -1) {
               datasets[animalList.indexOf(animal)].data[i] +=
@@ -353,7 +353,7 @@ export default {
           const currMonthDays = new Date(
             toDateRounded.getFullYear(),
             toDateRounded.getMonth() + 1,
-            0,
+            0
           ).getDate();
           return currMonthDays * 24 * 60 * 60 * 1000;
         }
@@ -361,7 +361,7 @@ export default {
           const currYearDays = new Date(
             toDateRounded.getFullYear(),
             11,
-            31,
+            31
           ).getDate();
           return currYearDays * 24 * 60 * 60 * 1000;
         }

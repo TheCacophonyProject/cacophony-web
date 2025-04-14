@@ -172,17 +172,17 @@ export default {
 
       if (routeQuery.hasOwnProperty("group")) {
         this.selectedGroups = makeArray(routeQuery.group).map((item) =>
-          Number(item),
+          Number(item)
         );
       }
       if (routeQuery.hasOwnProperty("device")) {
         this.selectedDevices = makeArray(routeQuery.device).map((item) =>
-          Number(item),
+          Number(item)
         );
       }
       if (routeQuery.hasOwnProperty("station")) {
         this.selectedStations = makeArray(routeQuery.station).map((item) =>
-          Number(item),
+          Number(item)
         );
       }
 

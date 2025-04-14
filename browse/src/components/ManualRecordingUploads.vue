@@ -88,7 +88,7 @@ export default {
         .filter(
           (device) =>
             device.type === DeviceType.Audio ||
-            device.type === DeviceType.Unknown,
+            device.type === DeviceType.Unknown
         )
         .map((device) => ({
           value: device.id,
@@ -142,7 +142,7 @@ export default {
           time.setFullYear(
             Number(parts[0]),
             Number(parts[1]) - 1,
-            Number(parts[2]),
+            Number(parts[2])
           );
           time.setHours(Number(parts[3]), Number(parts[4]), Number(parts[5]));
           data.recordingDateTime = time.toISOString();
@@ -171,7 +171,7 @@ export default {
           const uploadResponse = await api.recording.addRecording(
             fileItem.file,
             data,
-            this.audioUploadDevice,
+            this.audioUploadDevice
           );
           if (!uploadResponse.success && uploadResponse.status === 403) {
             // No device found for this recording in this group.
@@ -197,7 +197,7 @@ export default {
           const uploadResponse = await api.recording.addRecording(
             fileItem.file,
             data,
-            header.deviceId,
+            header.deviceId
           );
           if (!uploadResponse.success && uploadResponse.status === 403) {
             // No device found for this recording in this group.

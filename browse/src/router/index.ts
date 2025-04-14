@@ -218,7 +218,7 @@ function createRouter() {
           const replaceWith = params[piece.slice(1)];
           output = output.replace(
             piece,
-            replaceWith[0].toUpperCase() + replaceWith.slice(1),
+            replaceWith[0].toUpperCase() + replaceWith.slice(1)
           );
           foundMatch = true;
           break;

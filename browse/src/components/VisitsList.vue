@@ -171,7 +171,7 @@ export default {
           this.atEnd = true;
         }
         this.visitsChunkedByDay.push(
-          ...chunks.filter((chunk) => chunk.length !== 0),
+          ...chunks.filter((chunk) => chunk.length !== 0)
         );
       }
     },

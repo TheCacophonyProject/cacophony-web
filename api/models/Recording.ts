@@ -1302,6 +1302,7 @@ export default function (
     "location",
     "processing",
     "processingFailedCount",
+    "\"additionalMetadata\"->>'metadataSource'"
   ];
 
   return Recording;

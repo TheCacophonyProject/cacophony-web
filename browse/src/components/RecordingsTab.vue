@@ -65,7 +65,7 @@ export default {
       nextQuery.offset = Math.max(0, this.currentPage * LOAD_PER_PAGE_CARDS);
       // Make sure the request wouldn't go past the count?
       const totalPages = Math.ceil(
-        this.totalRecordingCount / LOAD_PER_PAGE_CARDS,
+        this.totalRecordingCount / LOAD_PER_PAGE_CARDS
       );
       if (this.currentPage < totalPages) {
         this.currentPage += 1;
@@ -102,7 +102,7 @@ export default {
         this.loading = true;
         this.recordingsQueued++;
         const recordingsResponse = await api.recording.query(
-          this.recordingsQuery,
+          this.recordingsQuery
         );
         if (recordingsResponse.success) {
           const {

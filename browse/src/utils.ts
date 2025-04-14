@@ -15,7 +15,7 @@ export function shouldViewAsSuperUser(): boolean {
 
 export function changedContext<T>(
   old: Set<T>,
-  curr: Set<T>,
+  curr: Set<T>
 ): { added: Set<T>; deleted: Set<T> } {
   return {
     added: new Set([...curr].filter((x) => !old.has(x))),
@@ -83,7 +83,7 @@ export function createSVGElement(
     attributes?: Object;
     style?: Object;
   },
-  elementType: string,
+  elementType: string
 ): SVGElement {
   const svgns = "http://www.w3.org/2000/svg";
   const svgElement = document.createElementNS(svgns, elementType);

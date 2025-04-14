@@ -258,7 +258,7 @@ export default defineComponent({
 
     const setDefaultRecordingWindows = async () => {
       const response = await DeviceApi.setDefaultRecordingWindows(
-        props.deviceId,
+        props.deviceId
       );
       if (response.success) {
         settings.value = response.result.settings;
@@ -267,7 +267,7 @@ export default defineComponent({
 
     const set24HourRecordingWindows = async () => {
       const response = await DeviceApi.set24HourRecordingWindows(
-        props.deviceId,
+        props.deviceId
       );
       if (response.success) {
         settings.value = response.result.settings;
@@ -309,15 +309,15 @@ export default defineComponent({
     const formatRecordingWindows = (windows: WindowsSettings) => {
       if (!(windows.powerOn && windows.powerOff)) {
         return `Start Recording: ${formatTime(
-          windows.startRecording,
+          windows.startRecording
         )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
       } else {
         return `Power On: ${formatTime(
-          windows.powerOn!,
+          windows.powerOn!
         )}, Power Off: ${formatTime(
-          windows.powerOff!,
+          windows.powerOff!
         )}, Start Recording: ${formatTime(
-          windows.startRecording,
+          windows.startRecording
         )}, Stop Recording: ${formatTime(windows.stopRecording)}`;
       }
     };
@@ -576,7 +576,7 @@ export default defineComponent({
           await DeviceApi.updateDeviceSettings(props.deviceId, settings.value);
           savingAudioSettings.value = false;
         }
-      },
+      }
     );
 
     onMounted(async () => {
@@ -614,7 +614,7 @@ export default defineComponent({
     dayOfSnapshot: function () {
       if (this.software.result.dateTime) {
         return toStringTodayYesterdayOrDate(
-          new Date(this.software.result.dateTime),
+          new Date(this.software.result.dateTime)
         );
       }
     },

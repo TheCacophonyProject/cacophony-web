@@ -211,7 +211,7 @@ export default {
     },
     privacyGroups(): GroupInfo[] {
       return this.groups.filter(
-        (group: ApiGroupResponse) => group.settings?.filterHuman,
+        (group: ApiGroupResponse) => group.settings?.filterHuman
       );
     },
     orderedGroups(): ApiGroupResponse[] {
@@ -245,7 +245,7 @@ export default {
             return 1;
           }
           return a.groupName.localeCompare(b.groupName);
-        },
+        }
       );
     },
   },
@@ -284,12 +284,12 @@ export default {
                 };
                 if (lastAudioRecordingTime) {
                   groups[id].lastAudioRecordingTime = new Date(
-                    lastAudioRecordingTime,
+                    lastAudioRecordingTime
                   );
                 }
                 if (lastThermalRecordingTime) {
                   groups[id].lastThermalRecordingTime = new Date(
-                    lastThermalRecordingTime,
+                    lastThermalRecordingTime
                   );
                 }
               }
@@ -309,7 +309,7 @@ export default {
                   // TODO - Expand group bubble to encompass all devices
                   const location = latLng(
                     device.location.lat,
-                    device.location.lng,
+                    device.location.lng
                   );
                   if (isInNZ(location)) {
                     if (!locations.hasOwnProperty(location.toString())) {
@@ -342,7 +342,7 @@ export default {
           // ...
         }
         this.groups = Object.values(groups).sort((a, b) =>
-          a.groupName.localeCompare(b.groupName),
+          a.groupName.localeCompare(b.groupName)
         );
       }
       this.isLoading = false;

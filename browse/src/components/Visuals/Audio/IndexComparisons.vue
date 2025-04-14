@@ -121,10 +121,10 @@ export default {
     async getDevicesCacophonyIndex() {
       var requests = [];
       var windowSize = Math.ceil(
-        (this.toDate.getTime() - this.fromDate.getTime()) / 3600000,
+        (this.toDate.getTime() - this.fromDate.getTime()) / 3600000
       );
       const audioDevices = this.devices.filter(
-        (device) => device.type == "audio",
+        (device) => device.type == "audio"
       );
       if (this.groupingSelection == "device") {
         for (var device of audioDevices) {
@@ -153,13 +153,13 @@ export default {
             res = await api.device.getDeviceCacophonyIndex(
               req["id"],
               req["from"],
-              req["window-size"],
+              req["window-size"]
             );
           } else if (this.groupingSelection == "station") {
             res = await api.station.getStationCacophonyIndex(
               req["id"],
               req["from"],
-              req["window-size"],
+              req["window-size"]
             );
           }
           var index: number;
@@ -174,7 +174,7 @@ export default {
             from: req["from"],
             "window Size": req["window-size"],
           };
-        }),
+        })
       );
       var data = [];
       var labels = [];

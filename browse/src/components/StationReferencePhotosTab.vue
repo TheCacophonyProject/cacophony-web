@@ -20,10 +20,22 @@
       <div
         v-for="img in stationImages"
         :key="img.key"
-        class="d-flex flex-column justify-content-between px-1 mb-3 align-items-center"
+        class="
+          d-flex
+          flex-column
+          justify-content-between
+          px-1
+          mb-3
+          align-items-center
+        "
       >
         <div
-          class="spinner-container d-flex align-items-center justify-content-center"
+          class="
+            spinner-container
+            d-flex
+            align-items-center
+            justify-content-center
+          "
           v-if="img.loading"
         >
           <b-spinner small />
@@ -67,10 +79,22 @@
       <div
         v-for="img in deviceImages"
         :key="img.key"
-        class="d-flex flex-column justify-content-between px-1 mb-3 align-items-center"
+        class="
+          d-flex
+          flex-column
+          justify-content-between
+          px-1
+          mb-3
+          align-items-center
+        "
       >
         <div
-          class="spinner-container d-flex align-items-center justify-content-center"
+          class="
+            spinner-container
+            d-flex
+            align-items-center
+            justify-content-center
+          "
           v-if="img.loading"
         >
           <b-spinner small />
@@ -196,7 +220,7 @@ export default {
   methods: {
     async deleteStationImage(fileKey: string) {
       this.stationImages = this.stationImages.filter(
-        (img) => img.key !== fileKey,
+        (img) => img.key !== fileKey
       );
       await api.station.deleteReferenceImage(this.station.id, fileKey);
     },
@@ -211,7 +235,7 @@ export default {
 
       const resp = await api.station.uploadReferenceImage(
         this.station.id,
-        resizedBlob,
+        resizedBlob
       );
       if (resp.success) {
         const { fileKey } = resp.result;

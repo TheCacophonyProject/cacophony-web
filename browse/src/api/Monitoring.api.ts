@@ -62,19 +62,19 @@ export type ProgressUpdater = (progress: number) => void;
 const apiPath = "/api/v1/monitoring";
 
 function queryVisitPage(
-  visitQuery: MonitoringRequest,
+  visitQuery: MonitoringRequest
 ): Promise<FetchResult<NewVisitsQueryResult>> {
   return CacophonyApi.get(
     `${apiPath}/page?${querystring.stringify(makeApiQuery(visitQuery))}${
       shouldViewAsSuperUser() ? "" : "&view-mode=user"
-    }`,
+    }`
   );
 }
 
 async function getAllVisits(
   visitQuery: MonitoringRequest,
   visitsFilter?: VisitFilter, // only visits that pass this filter will be returned
-  progress?: ProgressUpdater, // progress updates caller with how far through the request it is[0, 1]
+  progress?: ProgressUpdater // progress updates caller with how far through the request it is[0, 1]
 ): Promise<AllVisitsResults> {
   const returnVisits: NewVisit[] = [];
   let allVisitsCount = 0;

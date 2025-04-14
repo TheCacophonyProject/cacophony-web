@@ -5,7 +5,7 @@ async function fetchJsonWithMethod(
   endpoint,
   method,
   body,
-  suppressGlobalMessaging = false,
+  suppressGlobalMessaging = false
 ) {
   return fetch(
     `${config.api}${endpoint}`,
@@ -16,7 +16,7 @@ async function fetchJsonWithMethod(
       },
       body: JSON.stringify(body),
     },
-    suppressGlobalMessaging,
+    suppressGlobalMessaging
   );
 }
 
@@ -74,12 +74,12 @@ export default {
   postMultipartFormData: async (
     endpoint: string,
     body: FormData,
-    suppressGlobalMessaging = false,
+    suppressGlobalMessaging = false
   ) =>
     fetch(
       `${config.api}${endpoint}`,
       { method: "POST", body },
-      suppressGlobalMessaging,
+      suppressGlobalMessaging
     ),
 
   /**

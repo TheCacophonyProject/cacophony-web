@@ -24,41 +24,41 @@ export interface UserDetails {
 }
 
 function getDevices(
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ devices: ApiDeviceResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/devices${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
 function getUsers(
   deviceId: DeviceId,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ users: ApiGroupUserResponse[] }>> {
   return CacophonyApi.get(
     `/api/v1/devices/users?deviceId=${deviceId}&${
       shouldViewAsSuperUser()
         ? `only-active=${activeAndInactive ? "false" : "true"}`
         : `view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
 function getDevice(
   groupName: string,
   deviceName: string,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${deviceName}/in-group/${groupName}?${
       shouldViewAsSuperUser()
         ? `only-active=${activeAndInactive ? "false" : "true"}`
         : `view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
@@ -66,14 +66,14 @@ function getDeviceCacophonyIndex(
   id: DeviceId,
   from: String,
   windowsize: Number,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ cacophonyIndex: Number }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${id}/cacophony-index?from=${from}&window-size=${windowsize}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
@@ -82,14 +82,14 @@ function getDeviceCacophonyIndexBulk(
   from: String,
   steps: Number,
   interval: String,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ cacophonyIndexBulk: Object }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${id}/cacophony-index-bulk?from=${from}&steps=${steps}&interval=${interval}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
@@ -98,14 +98,14 @@ function getDeviceSpeciesCount(
   from: String,
   windowsize: Number,
   activeAndInactive = false,
-  recordingType = "audio",
+  recordingType = "audio"
 ): Promise<FetchResult<{ speciesCount: Object }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${id}/species-count?from=${from}&window-size=${windowsize}&type=${recordingType}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
@@ -115,44 +115,44 @@ function getDeviceSpeciesCountBulk(
   steps: Number,
   interval: String,
   activeAndInactive = false,
-  recordingType = "audio",
+  recordingType = "audio"
 ): Promise<FetchResult<{ speciesCount: Object }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${id}/species-count-bulk?from=${from}&steps=${steps}&interval=${interval}&type=${recordingType}${
       shouldViewAsSuperUser()
         ? `&only-active=${activeAndInactive ? "false" : "true"}`
         : `&view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
 function getDeviceDaysActive(
   id: DeviceId,
   from: String,
-  windowsize: Number,
+  windowsize: Number
 ): Promise<FetchResult<{ daysActive: Number }>> {
   return CacophonyApi.get(
-    `/api/v1/devices/${id}/days-active?from=${from}&window-size=${windowsize}`,
+    `/api/v1/devices/${id}/days-active?from=${from}&window-size=${windowsize}`
   );
 }
 
 function getDeviceById(
   id: DeviceId,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{ device: ApiDeviceResponse }>> {
   return CacophonyApi.get(
     `/api/v1/devices/${id}${
       shouldViewAsSuperUser()
         ? `?only-active=${activeAndInactive ? "false" : "true"}`
         : `?view-mode=user&only-active=${activeAndInactive ? "false" : "true"}`
-    }`,
+    }`
   );
 }
 
 const assignScheduleToDevice = (
   deviceId: DeviceId,
   scheduleId: ScheduleId,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
@@ -164,14 +164,14 @@ const assignScheduleToDevice = (
     {
       scheduleId,
     },
-    suppressGlobalMessaging,
+    suppressGlobalMessaging
   );
 };
 
 const removeScheduleFromDevice = (
   deviceId: DeviceId,
   scheduleId: ScheduleId,
-  activeAndInactive = false,
+  activeAndInactive = false
 ): Promise<FetchResult<{}>> => {
   const suppressGlobalMessaging = true;
   return CacophonyApi.post(
@@ -183,7 +183,7 @@ const removeScheduleFromDevice = (
     {
       scheduleId,
     },
-    suppressGlobalMessaging,
+    suppressGlobalMessaging
   );
 };
 
@@ -217,7 +217,7 @@ export const DeviceEventTypes = [
 
 type IsoFormattedString = string;
 
-export type DeviceEventType = (typeof DeviceEventTypes)[number];
+export type DeviceEventType = typeof DeviceEventTypes[number];
 
 export interface EventApiParams {
   limit?: number;
@@ -241,17 +241,17 @@ export interface DeviceEvent {
 
 function getLatestEvents(
   deviceId: number,
-  params?: EventApiParams,
+  params?: EventApiParams
 ): Promise<{ result: { rows: DeviceEvent[] } }> {
   return CacophonyApi.get(
     `/api/v1/events?only-active=false&latest=true&deviceId=${deviceId}&${querystring.stringify(
-      params as any,
-    )}`,
+      params as any
+    )}`
   );
 }
 
 async function getType(
-  deviceId: number,
+  deviceId: number
 ): Promise<"AudioRecorder" | "VideoRecorder" | "UnknownDeviceType"> {
   const rec = await recording.latestForDevice(deviceId);
   if (rec.success) {
@@ -266,7 +266,7 @@ async function getType(
 function getSettingsForDevice(
   deviceId: DeviceId,
   atTime?: Date,
-  lastSynced = false,
+  lastSynced = false
 ) {
   const params = new URLSearchParams();
   params.append("at-time", (atTime || new Date()).toISOString());
@@ -275,7 +275,7 @@ function getSettingsForDevice(
   }
   const queryString = params.toString();
   return CacophonyApi.get(
-    `/api/v1/devices/${deviceId}/settings?${queryString}`,
+    `/api/v1/devices/${deviceId}/settings?${queryString}`
   ) as Promise<
     FetchResult<{
       settings: ApiDeviceHistorySettings | null;
@@ -286,7 +286,7 @@ function getSettingsForDevice(
 
 async function updateDeviceSettings(
   deviceId: DeviceId,
-  settings: ApiDeviceHistorySettings,
+  settings: ApiDeviceHistorySettings
 ): Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>> {
   return CacophonyApi.post(`/api/v1/devices/${deviceId}/settings`, {
     settings,
@@ -353,7 +353,7 @@ async function set24HourRecordingWindows(deviceId: DeviceId) {
 
 async function setCustomRecordingWindows(
   deviceId: DeviceId,
-  customSettings: Omit<WindowsSettings, "updated">,
+  customSettings: Omit<WindowsSettings, "updated">
 ) {
   const currentSettingsResponse = await getSettingsForDevice(deviceId);
   if (currentSettingsResponse.success) {
@@ -373,7 +373,7 @@ async function setCustomRecordingWindows(
 
 const getLatestEventsByDeviceId = (
   deviceId: number,
-  eventParams?: EventApiParams,
+  eventParams?: EventApiParams
 ) => {
   const params = new URLSearchParams();
   params.append("deviceId", deviceId.toString());
@@ -399,7 +399,7 @@ const getDeviceNodeGroup = (deviceId: DeviceId) => {
       if (response.success && response.result.rows.length) {
         resolve(
           response.result.rows[0].EventDetail.details.nodegroup ||
-            "unknown channel",
+            "unknown channel"
         );
       } else {
         resolve(false);
@@ -415,8 +415,8 @@ export const getDeviceModel = async (deviceId: DeviceId) => {
       const model = nodegroup.includes("tc2")
         ? "tc2"
         : nodegroup.includes("pi")
-          ? "pi"
-          : null;
+        ? "pi"
+        : null;
       if (model !== null) {
         return model;
       }
@@ -461,7 +461,7 @@ function getReferenceImage(
     atTime?: Date;
     checkExists?: boolean;
     onlyActive?: boolean;
-  },
+  }
 ): Promise<FetchResult<Blob>> {
   const pathSuffix = checkExists ? "/exists" : "";
   const params = new URLSearchParams();
@@ -474,7 +474,7 @@ function getReferenceImage(
   }
 
   return CacophonyApi.getBinary(
-    `/api/v1/devices/${deviceId}/reference-image${pathSuffix}?${params.toString()}`,
+    `/api/v1/devices/${deviceId}/reference-image${pathSuffix}?${params.toString()}`
   );
 }
 
@@ -492,7 +492,7 @@ function deleteReferenceImage(
     type?: "pov" | "in-situ";
     atTime?: Date;
     onlyActive?: boolean;
-  },
+  }
 ): Promise<FetchResult<unknown>> {
   const params = new URLSearchParams();
   if (type) {
@@ -503,7 +503,7 @@ function deleteReferenceImage(
   }
 
   return CacophonyApi.delete(
-    `/api/v1/devices/${deviceId}/reference-image?${params.toString()}`,
+    `/api/v1/devices/${deviceId}/reference-image?${params.toString()}`
   );
 }
 export default {

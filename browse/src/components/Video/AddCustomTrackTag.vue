@@ -65,7 +65,7 @@ export default {
         options.set(option.text, { value: option.value, text: option.text });
       }
       return Array.from(options.values()).sort((a, b) =>
-        a.text.localeCompare(b.text),
+        a.text.localeCompare(b.text)
       );
     },
     pinnedTag() {

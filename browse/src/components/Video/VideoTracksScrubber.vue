@@ -139,7 +139,7 @@ export default {
         0,
         getPositionXForEvent(event) -
           this.scrubber.getBoundingClientRect().x -
-          this.sidePadding,
+          this.sidePadding
       );
       const timeOffset = x / this.scrubberWidth;
       this.$emit("set-playback-time", timeOffset * this.duration);

@@ -169,7 +169,7 @@ export default {
       return (
         Math.ceil(
           this.count /
-            (this.showCards ? LOAD_PER_PAGE_CARDS : LOAD_PER_PAGE_ROWS),
+            (this.showCards ? LOAD_PER_PAGE_CARDS : LOAD_PER_PAGE_ROWS)
         ) + 1
       );
     },
@@ -192,7 +192,7 @@ export default {
       const nextQuery = this.makePaginatedQuery(
         this.serialisedQuery,
         this.currentPage + 1,
-        this.showCards ? LOAD_PER_PAGE_CARDS : LOAD_PER_PAGE_ROWS,
+        this.showCards ? LOAD_PER_PAGE_CARDS : LOAD_PER_PAGE_ROWS
       );
 
       // Make sure the request wouldn't go past the count?
@@ -265,7 +265,7 @@ export default {
       const fullQuery = this.makePaginatedQuery(
         query,
         this.currentPage,
-        this.perPage,
+        this.perPage
       );
       fullQuery.offset = 0;
       this.updateRoute(fullQuery, first);

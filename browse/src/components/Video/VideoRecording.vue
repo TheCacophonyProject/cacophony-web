@@ -345,7 +345,7 @@ export default {
         [];
       newTags.sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       this.localTags = newTags;
     },
@@ -376,7 +376,7 @@ export default {
             "previous",
             resolvedTagMode,
             resolvedTags,
-            true,
+            true
           ),
           this.hasNextRecording("next", resolvedTagMode, resolvedTags, true),
         ]);
@@ -408,7 +408,7 @@ export default {
       direction: "next" | "previous" | "either",
       tagMode: false | string = false,
       tags: false | string[] = false,
-      skipMessage = false,
+      skipMessage = false
     ) {
       this.loadingNext = true;
       const idsList = this.getListOfRecordingsIds();
@@ -423,7 +423,7 @@ export default {
           direction,
           resolvedTagMode,
           resolvedTags,
-          skipMessage,
+          skipMessage
         );
       }
       this.loadingNext = false;
@@ -452,7 +452,7 @@ export default {
           tagMode,
           tags,
           skipMessage,
-          true,
+          true
         )) === true
       );
     },
@@ -461,7 +461,7 @@ export default {
       tagMode: string | false,
       tags: string[] | false,
       skipMessage = false,
-      noNavigate = false,
+      noNavigate = false
     ): Promise<boolean | any> {
       const params = JSON.parse(JSON.stringify(this.$route.query));
       let order;
@@ -484,7 +484,7 @@ export default {
             "previous",
             tagMode,
             tags,
-            skipMessage,
+            skipMessage
           );
         default:
           throw `invalid direction: '${direction}'`;
@@ -534,12 +534,12 @@ export default {
       this.localTags.push(newTag);
       this.localTags.sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
       const addRecordingTagResponse = await api.recording.addRecordingTag(
         tag,
-        this.recordingId,
+        this.recordingId
       );
       if (addRecordingTagResponse.success) {
         const {
@@ -559,11 +559,11 @@ export default {
       const oldLocalTags = [...this.localTags];
       this.localTags.splice(
         this.localTags.findIndex(({ id }) => id === tagId),
-        1,
+        1
       );
       const { success } = await api.recording.deleteRecordingTag(
         tagId,
-        this.recordingId,
+        this.recordingId
       );
       if (!success) {
         // Roll back local change
@@ -586,12 +586,12 @@ export default {
         ...track,
       };
       const targetTrack: ApiTrackResponse = this.tracks.find(
-        (track) => track.id === selectedTrack.trackId,
+        (track) => track.id === selectedTrack.trackId
       );
       if (track.gotoStart) {
         selectedTrack.start = Math.max(
           0,
-          targetTrack.start - this.timespanAdjustment,
+          targetTrack.start - this.timespanAdjustment
         );
       }
       if (track.playToEnd) {
@@ -615,7 +615,7 @@ export default {
       this.header = header;
       if (this.tracks && this.tracks.length) {
         const selectedTrack = this.tracks.find(
-          (track) => track.id === Number(this.$route.params.trackId),
+          (track) => track.id === Number(this.$route.params.trackId)
         );
         if (selectedTrack) {
           await this.trackSelected({
