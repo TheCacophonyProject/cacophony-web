@@ -761,6 +761,11 @@ export const uploadGenericRecording =
         ),
       ]);
 
+      if (data.metadata && data.metadata.source) {
+        recording.additionalMetadata.metadataSource = data.metadata.source;
+        recording.save();
+      }
+
       if (wouldHaveSuppliedTracks) {
         // Now that we have a recording saved to the DB, we can creat./e any associated track items
         await tracksFromMeta(models, recording, data.metadata);
