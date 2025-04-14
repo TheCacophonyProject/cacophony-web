@@ -740,9 +740,9 @@ export const uploadGenericRecording =
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
       // or with supplied tracks to support existing devices
-      const metadataSupplied =  (data.metadata &&         data.metadata.metadata_source) || wouldHaveSuppliedTracks;
-      ;
-
+      const metadataSupplied =
+        (data.metadata && data.metadata.metadata_source) ||
+        wouldHaveSuppliedTracks;
       const wouldHaveSuppliedTracksWithPredictions =
         dataHasSuppliedTracksWithPredictions(data);
       setInitialProcessingState(recordingTemplate, data, metadataSupplied);
@@ -762,10 +762,7 @@ export const uploadGenericRecording =
         ),
       ]);
 
-      if (
-        metadataSupplied &&
-        data.type === RecordingType.ThermalRaw
-      ) {
+      if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
         recording.additionalMetadata = {
           ...recording.additionalMetadata,
           metadataSource: data.metadata.metadata_source,
