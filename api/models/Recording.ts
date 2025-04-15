@@ -288,7 +288,7 @@ interface TagLimitedRecording {
 export interface RecordingStatic extends ModelStaticCommon<Recording> {
   buildSafely: (fields: Record<string, any>) => Recording;
   isValidTagMode: (mode: TagMode) => boolean;
-  processingAttributes: string[];
+  processingAttributes: (string | [Sequelize.Utils.Json, string])[];
   processingStates: {
     [RecordingType.TrailCamImage]: string[];
     [RecordingType.InfraredVideo]: string[];
