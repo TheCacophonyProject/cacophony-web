@@ -13,7 +13,7 @@ import {
 import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
-import ThumbnailInfo from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
+import ThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" assert { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { AuthorizationError, ClientError } from "../customErrors.js";
@@ -576,7 +576,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/fileProcessing/:id/tracks/:trackId/thumbnailInfo Update thumbnail info for a track
+   * @api {post} /api/fileProcessing/:id/tracks/:trackId/thumbnailInfo Update thumbnail info for a track, this will not regenerate the thumbnail (this will be done post processing)
    * @apiName UpdateTrackThumbnail
    * @apiGroup Processing
    *
@@ -600,7 +600,7 @@ export default function (app: Application, baseUrl: string) {
     async (_request: Request, response) => {
       const { data, filtered, AlgorithmId } = response.locals.track;
       const existingData = await getTrackData(response.locals.track.id);
-      existingData.thumbnailInfo = response.locals.data;
+      existingData.thumbnail = response.locals.data;
       console.log("Adding track data of ", response.locals.data);
       await saveTrackData(response.locals.track.id, existingData);
       return successResponse(response, "Track updated");

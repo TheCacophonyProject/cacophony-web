@@ -1302,7 +1302,7 @@ export default function (
     "location",
     "processing",
     "processingFailedCount",
-    "\"additionalMetadata\"->>'metadataSource'",
+    [sequelize.json("additionalMetadata.metadataSource"), "metadataSource"],
   ];
 
   return Recording;
