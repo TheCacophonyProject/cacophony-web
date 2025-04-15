@@ -460,7 +460,8 @@ export default function (
           where: where,
           include: includeQ,
           attributes: [
-            ...(models.Recording as RecordingStatic).processingAttributes,
+            ...((models.Recording as RecordingStatic)
+              .processingAttributes as any),
             [
               Sequelize.literal(`exists(
           	select
