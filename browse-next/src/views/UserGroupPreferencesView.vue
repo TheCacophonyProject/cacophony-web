@@ -263,7 +263,7 @@ const alertItems = computed<AlertItem[]>(() => {
         minimumTimeBetweenTriggers: `${alert.frequencySeconds / 60} mins`,
         __scope: alert.scope,
         _deleteAction: alert.id,
-      }) as AlertItem,
+      } as AlertItem),
   );
 });
 </script>

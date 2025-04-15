@@ -407,11 +407,7 @@ const interpolatedBatteryInfo = computed<BatteryInfoEvent[]>(() => {
     );
     const lastEventTime = new Date(batteryInfo.value[0].dateTime);
     const emptyDaysAtStart = Math.floor(
-      (firstEventTime.getTime() - eightWeeksAgo.getTime()) /
-        1000 /
-        60 /
-        60 /
-        24,
+      (firstEventTime.getTime() - eightWeeksAgo.getTime()) / 1000 / 60 / 60 / 24,
     );
     const emptyDaysAtEnd = Math.floor(
       (now.getTime() - lastEventTime.getTime()) / 1000 / 60 / 60 / 24,

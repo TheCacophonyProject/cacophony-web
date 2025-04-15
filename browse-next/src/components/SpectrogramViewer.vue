@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { type Spectastiq } from "spectastiq";
-//import { type Spectastiq } from "./spectastiq";
+//import { type Spectastiq } from "spectastiq";
+import { type Spectastiq } from "./spectastiq";
 import {
   computed,
   type ComputedRef,
@@ -161,6 +161,13 @@ const minBoxDims = (minDim: number, box: Rectangle): Rectangle => {
   ];
 };
 
+let pointerPositionX = -1;
+let pointerPositionY = -1;
+let regionCreationStartX = -1;
+let regionCreationStartY = -1;
+let regionCreationEndX = -1;
+let regionCreationEndY = -1;
+
 const distanceBetween = (
   x1: number,
   y1: number,
@@ -265,40 +272,353 @@ const selectTrackRegionAndPlay = async (
 watch(() => props.recordingId, loadRecording);
 
 const overlayCanvasContext = ref<CanvasRenderingContext2D>();
+const inCustomInteraction = false;
+let selectedTrackFeature: string | null = null;
+let hoveredTrackFeature: string | null = null;
+let grabOffsetX = 0;
+let grabOffsetY = 0;
+let resizeStartX = 0;
+let resizeStartY = 0;
+const hitTestRegionFeatures = () => {
+  if (overlayCanvasContext.value) {
+    if (
+      !(
+        inRegionResizeMode.value &&
+        pointerPositionX >= 0 &&
+        pointerPositionY >= 0 &&
+        pointerPositionX <= overlayCanvasContext.value.canvas.width &&
+        pointerPositionY <= overlayCanvasContext.value.canvas.height
+      )
+    ) {
+      return null;
+    }
+    // Check distance from each corner of the currently selected track
+    if (props.currentTrack) {
+      const track = tracksIntermediate.value.find(
+        (track) => track.id === props.currentTrack!.id,
+      );
+      if (!track) {
+        return null;
+      }
+      const rangeBegin = selectionRangeStartZeroOne.value;
+      const rangeEnd = selectionRangeEndZeroOne.value;
+      const cWidth = overlayCanvasContext.value.canvas.width;
+      const cHeight = overlayCanvasContext.value.canvas.height;
+
+      const { start, end, minFreq, maxFreq } = track.mutated
+        ? track.mutated
+        : track;
+
+      const minFreqZeroOne =
+        1 - Math.max(0, minFreq || 0) / audioSampleRate.value;
+      const maxFreqZeroOne =
+        1 -
+        Math.min(maxFreq || 0, audioSampleRate.value) / audioSampleRate.value;
+      const trackStartZeroOne = Math.max(0, start / audioDuration.value);
+      const trackEndZeroOne = Math.min(1, end / audioDuration.value);
+      const bounds = getTrackBounds(cWidth, cHeight, rangeBegin, rangeEnd, [
+        trackStartZeroOne,
+        maxFreqZeroOne,
+        trackEndZeroOne,
+        minFreqZeroOne,
+      ]);
+
+      const handleSize = 44 * devicePixelRatio;
+      const handleRadius = handleSize / 2;
+      const [left, top, right, bottom] = bounds;
+      let bestDistance = Number.MAX_SAFE_INTEGER;
+      selectedTrackFeature = null;
+      grabOffsetX = 0;
+      grabOffsetY = 0;
+      resizeStartX = 0;
+      resizeStartY = 0;
+      for (const corner of [
+        [left, top, "top-left"],
+        [right, top, "top-right"],
+        [right, bottom, "bottom-right"],
+        [left, bottom, "bottom-left"],
+      ] as [number, number, string][]) {
+        const [x, y, whichCorner] = corner;
+        const dX = pointerPositionX - x / devicePixelRatio;
+        const dY = pointerPositionY - y / devicePixelRatio;
+
+        const distance = Math.sqrt(dX * dX + dY * dY);
+        if (distance <= handleRadius) {
+          if (distance < bestDistance) {
+            selectedTrackFeature = whichCorner;
+            grabOffsetX = dX;
+            grabOffsetY = dY;
+            resizeStartX = x;
+            resizeStartY = y;
+            bestDistance = distance;
+          }
+        }
+      }
+      if (selectedTrackFeature === null) {
+        // Check if we're in the padded version of the box.
+        const paddedBounds = padDims(bounds, handleSize / 2, handleSize / 2);
+        const left = paddedBounds[0] / devicePixelRatio;
+        const top = paddedBounds[1] / devicePixelRatio;
+        const right = paddedBounds[2] / devicePixelRatio;
+        const bottom = paddedBounds[3] / devicePixelRatio;
+        if (
+          pointIsInExactBox(pointerPositionX, pointerPositionY, [
+            left,
+            top,
+            right,
+            bottom,
+          ])
+        ) {
+          grabOffsetX = pointerPositionX - bounds[0] / devicePixelRatio;
+          grabOffsetY = pointerPositionY - bounds[1] / devicePixelRatio;
+          selectedTrackFeature = "whole-track";
+        }
+      }
+      if (selectedTrackFeature !== null) {
+        return selectedTrackFeature;
+      }
+    }
+  }
+  return null;
+};
+
+const doResize = () => {
+  if (currentTrack.value && overlayCanvasContext.value && spectastiqEl.value) {
+    // Work out what the new track bounds are and re-render
+    const track = currentTrack.value;
+    // Update mutatedStart, mutatedEnd, mutatedMinFreq, mutatedMaxFreq
+    if (!track.mutated) {
+      track.mutated = {
+        start: track.start,
+        end: track.end,
+        minFreq: track.minFreq,
+        maxFreq: track.maxFreq,
+      };
+    }
+
+    const begin = selectionRangeStartZeroOne.value;
+    const end = selectionRangeEndZeroOne.value;
+    const cHeight = overlayCanvasContext.value.canvas.height;
+    const cWidth = overlayCanvasContext.value.canvas.width;
+    const width = cWidth / devicePixelRatio;
+    const height = cHeight / devicePixelRatio;
+    const newX = pointerPositionX - grabOffsetX;
+    const newY = pointerPositionY - grabOffsetY;
+    const offsetX = Math.min(1, Math.max(0, newX / width));
+    const offsetY = Math.min(1, Math.max(0, newY / height));
+    const minFreqDeltaHz = 1000;
+    const minTrackLengthSeconds = 1;
+    const xZeroOne = begin + offsetX * (end - begin);
+    if (
+      selectedTrackFeature === "top-left" ||
+      selectedTrackFeature === "bottom-left"
+    ) {
+      track.mutated.start = Math.min(
+        xZeroOne * audioDuration.value,
+        track.mutated.end - minTrackLengthSeconds,
+      );
+    } else if (
+      selectedTrackFeature === "top-right" ||
+      selectedTrackFeature === "bottom-right"
+    ) {
+      track.mutated.end = Math.max(
+        track.mutated.start + minTrackLengthSeconds,
+        xZeroOne * audioDuration.value,
+      );
+    }
+    if (
+      selectedTrackFeature === "top-left" ||
+      selectedTrackFeature === "top-right"
+    ) {
+      track.mutated.maxFreq = Math.max(
+        spectastiqEl.value.inverseTransformY(offsetY) * audioSampleRate.value,
+        track.mutated.minFreq + minFreqDeltaHz,
+      );
+    } else if (
+      selectedTrackFeature === "bottom-left" ||
+      selectedTrackFeature === "bottom-right"
+    ) {
+      track.mutated.minFreq = Math.min(
+        track.mutated.maxFreq - minFreqDeltaHz,
+        spectastiqEl.value.inverseTransformY(offsetY) * audioSampleRate.value,
+      );
+    }
+    if (selectedTrackFeature === "whole-track") {
+      // Move the whole track around as long as its dimensions can stay the same.
+
+      const newX = pointerPositionX - grabOffsetX;
+      const newY = pointerPositionY - grabOffsetY;
+      const offsetXLeft = newX / width;
+      const offsetYTop = newY / height;
+
+      const yZeroOne =
+        spectastiqEl.value.inverseTransformY(offsetYTop) *
+        audioSampleRate.value;
+      const xZeroOne = begin + offsetXLeft * (end - begin);
+      const trackWidth = track.end - track.start;
+      track.mutated.start = Math.min(
+        Math.max(0, xZeroOne * audioDuration.value),
+        audioDuration.value - trackWidth,
+      );
+
+      track.mutated.end = Math.min(
+        track.mutated.start + (track.end - track.start),
+        audioDuration.value,
+      );
+
+      track.mutated.maxFreq = Math.min(
+        Math.max(0, yZeroOne),
+        audioSampleRate.value,
+      );
+
+      const deltaFreq = track.maxFreq - track.minFreq;
+      track.mutated.minFreq = Math.min(
+        Math.max(0, track.mutated.maxFreq - deltaFreq),
+        audioSampleRate.value - deltaFreq,
+      );
+      track.mutated.maxFreq = track.mutated.minFreq + deltaFreq;
+    }
+    if (overlayCanvasContext.value) {
+      renderOverlay(overlayCanvasContext.value);
+    }
+  }
+};
 
 const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
   const spectastiq = spectastiqEl.value as Spectastiq;
-  spectastiq.addEventListener("region-create", async (e) => {
-    const { start, end, minFreqHz, maxFreqHz } = e.detail;
-    // If the box is too small, don't create a region
-    if (end - start < 0.01 || maxFreqHz - minFreqHz < 1) {
-      inRegionCreationMode.value = false;
-      return;
+  spectastiq.addEventListener("custom-interaction-start", (e) => {
+    pointerPositionX = e.detail.offsetX;
+    pointerPositionY = e.detail.offsetY;
+    if (inRegionResizeMode.value) {
+      selectedTrackFeature = hitTestRegionFeatures();
+      if (selectedTrackFeature !== null) {
+        spectastiq.beginCustomInteraction();
+      }
+    } else if (inRegionCreationMode.value) {
+      regionCreationStartX = pointerPositionX;
+      regionCreationStartY = pointerPositionY;
+      spectastiq.beginCustomInteraction();
     }
+  });
+  spectastiq.addEventListener("custom-interaction-move", (e) => {
+    pointerPositionX = e.detail.offsetX;
+    pointerPositionY = e.detail.offsetY;
+    if (inRegionResizeMode.value) {
+      doResize();
+    } else if (inRegionCreationMode.value) {
+      overlayCanvasContext.value && renderOverlay(overlayCanvasContext.value);
+    }
+  });
+  spectastiq.addEventListener("custom-interaction-end", async (e) => {
+    pointerPositionX = e.detail.offsetX;
+    pointerPositionY = e.detail.offsetY;
+    if (inRegionResizeMode.value) {
+      // Copy mutated track back
+      if (currentTrack.value) {
+        const track = currentTrack.value;
+        if (track.mutated) {
+          track.start = track.mutated.start;
+          track.end = track.mutated.end;
+          track.minFreq = track.mutated.minFreq;
+          track.maxFreq = track.mutated.maxFreq;
+          delete track.mutated;
+        }
+      }
+      spectastiq.endCustomInteraction();
+    } else if (inRegionCreationMode.value && overlayCanvasContext.value) {
+      regionCreationEndX = pointerPositionX;
+      regionCreationEndY = pointerPositionY;
+      spectastiq.endCustomInteraction();
 
-    setTimeout(() => {
-      showClassificationSelector.value = true;
-    }, 200);
-    pendingTrack.value = {
-      id: -1,
-      start,
-      end,
-      minFreq: minFreqHz,
-      maxFreq: maxFreqHz,
-      automatic: false,
-      tags: [{ what: "unnamed", confidence: 0.5, id: -1 } as any],
-    };
+      const left = Math.min(regionCreationEndX, regionCreationStartX);
+      const right = Math.max(regionCreationEndX, regionCreationStartX);
+      const top = Math.min(regionCreationEndY, regionCreationStartY);
+      const bottom = Math.max(regionCreationEndY, regionCreationStartY);
+      const width = overlayCanvasContext.value.canvas.width;
+      const height = overlayCanvasContext.value.canvas.height;
 
-    emit("track-tag-changed", {
-      track: pendingTrack.value,
-      tag: "unnamed",
-      action: "add",
-    });
-    await selectTrackRegionAndPlay(pendingTrack.value, false);
+      const beginRange = selectionRangeStartZeroOne.value;
+      const endRange = selectionRangeEndZeroOne.value;
+      const range = endRange - beginRange;
+      const startZeroOne =
+        beginRange + Math.max(0, left / (width / devicePixelRatio)) * range;
+      const endZeroOne =
+        beginRange + Math.min(1, right / (width / devicePixelRatio)) * range;
+
+      const start = startZeroOne * audioDuration.value;
+      const end = endZeroOne * audioDuration.value;
+      const bottomZeroOne = Math.max(0, bottom / (height / devicePixelRatio));
+      const topZeroOne = Math.min(1, top / (height / devicePixelRatio));
+      const minFreqHz =
+        spectastiq.inverseTransformY(bottomZeroOne) * audioSampleRate.value;
+      const maxFreqHz =
+        spectastiq.inverseTransformY(topZeroOne) * audioSampleRate.value;
+      // If the box is too small, don't create a region
+      if (end - start < 0.01 || maxFreqHz - minFreqHz < 1) {
+        inRegionCreationMode.value = false;
+        return;
+      }
+
+      setTimeout(() => {
+        showClassificationSelector.value = true;
+      }, 200);
+      pendingTrack.value = {
+        id: -1,
+        start,
+        end,
+        minFreq: minFreqHz,
+        maxFreq: maxFreqHz,
+        automatic: false,
+        tags: [{ what: "unnamed", confidence: 0.5, id: -1 } as any],
+      } as any;
+
+      emit("track-tag-changed", {
+        track: pendingTrack.value,
+        tag: "unnamed",
+        action: "add",
+      } as any);
+      // FIXME: Delete pendingTrack once created.
+      await selectTrackRegionAndPlay(pendingTrack.value as any, false);
+
+      // FIXME: When is the proper time to exit the mode?
+      inRegionCreationMode.value = false;
+      spectastiq.exitCustomInteractionMode();
+      if (spectastiqEl.value) {
+        spectastiqEl.value.style.cursor = "auto";
+      }
+    }
+  });
+  spectastiq.addEventListener("move", (e) => {
+    if (inRegionResizeMode.value) {
+      pointerPositionX = e.detail.offsetX;
+      pointerPositionY = e.detail.offsetY;
+      const container = spectastiqEl.value;
+      if (container) {
+        hoveredTrackFeature = hitTestRegionFeatures();
+        if (hoveredTrackFeature !== null) {
+          if (hoveredTrackFeature === "whole-track") {
+            container.style.cursor = "move";
+          } else if (hoveredTrackFeature === "top-left") {
+            container.style.cursor = "nw-resize";
+          } else if (hoveredTrackFeature === "top-right") {
+            container.style.cursor = "ne-resize";
+          } else if (hoveredTrackFeature === "bottom-left") {
+            container.style.cursor = "sw-resize";
+          } else if (hoveredTrackFeature === "bottom-right") {
+            container.style.cursor = "se-resize";
+          }
+        } else {
+          container.style.cursor = "auto";
+        }
+      }
+    }
   });
   spectastiq.addEventListener(
     "select",
     ({ detail: { offsetX: x, offsetY: y } }) => {
+      if (inRegionResizeMode.value) {
+        return;
+      }
       // Check to see if we're intersecting any of our boxes.
       const begin = selectionRangeStartZeroOne.value;
       const end = selectionRangeEndZeroOne.value;
@@ -322,11 +642,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
         );
 
         const d = pointIsInPaddedBox(x, y, hitBox);
-        if (
-          d !== false &&
-          d < bestD &&
-          (!props.currentTrack || track.id !== props.currentTrack.id)
-        ) {
+        if (d !== false && d < bestD && track !== currentTrack.value) {
           bestD = d;
           hitTrack = track;
         }
@@ -389,8 +705,6 @@ const padDims = (
   dims: Rectangle,
   paddingX: number,
   paddingY: number,
-  maxWidth: number,
-  maxHeight: number,
 ): Rectangle => {
   return [
     dims[0] - paddingX,
@@ -406,25 +720,18 @@ const drawRectWithText = (
   dims: Rectangle,
   what: string | null,
   tracks: IntermediateTrack[] | ApiTrackResponse[] = [],
-  currentTrack: ApiTrackResponse | undefined,
+  currentTrack: IntermediateTrack | null,
   pixelRatio: number,
 ) => {
   context.save();
-  const hasSelected = !!currentTrack;
-  const selected = currentTrack?.id === trackId && trackId !== -1;
+  const hasSelected = currentTrack !== null;
+  const selected = hasSelected && currentTrack.id === trackId && trackId !== -1;
+  const drawResizeHandles = selected && inRegionResizeMode.value;
   const trackIndex = tracks.findIndex((track) => track.id === trackId) || 0;
   const lineWidth = (selected ? 2 : 1) * pixelRatio;
   const outlineWidth = lineWidth + 2 * pixelRatio;
   const deviceRatio = pixelRatio;
-  const [left, top, right, bottom] = selected
-    ? padDims(
-        dims,
-        0, // 10 * deviceRatio
-        15 * deviceRatio,
-        context.canvas.width,
-        context.canvas.height,
-      )
-    : dims;
+  const [left, top, right, bottom] = dims;
   const width = right - left;
   const height = bottom - top;
   const x = left;
@@ -484,33 +791,104 @@ const drawRectWithText = (
       context.fillStyle = isDarkTheme.value ? "white" : "black";
       context.fillText(text, textX, textY);
     }
+
+    if (drawResizeHandles) {
+      for (const handle of [
+        "top-left",
+        "top-right",
+        "bottom-left",
+        "bottom-right",
+      ]) {
+        let x = 0;
+        let y = 0;
+        if (handle === "top-left" || handle === "bottom-left") {
+          x = left;
+        } else if (handle === "top-right" || handle === "bottom-right") {
+          x = right;
+        }
+        if (handle === "top-left" || handle === "top-right") {
+          y = top;
+        } else if (handle === "bottom-left" || handle === "bottom-right") {
+          y = bottom;
+        }
+        context.save();
+        {
+          const handleSize = 10 * deviceRatio;
+          context.fillStyle = "black";
+          context.beginPath();
+          context.arc(x, y, handleSize / 2, 0, 2 * Math.PI);
+          context.fill();
+        }
+        context.restore();
+        context.save();
+        {
+          const handleSize = 9 * deviceRatio;
+          context.fillStyle = "white";
+          context.beginPath();
+          context.arc(x, y, handleSize / 2, 0, 2 * Math.PI);
+          context.fill();
+        }
+        context.restore();
+      }
+    }
   }
   context.restore();
 };
 
 const renderOverlay = (ctx: CanvasRenderingContext2D) => {
   if (spectastiqEl.value) {
-    const begin = selectionRangeStartZeroOne.value;
-    const end = selectionRangeEndZeroOne.value;
-    const currentTrack = props.currentTrack;
+    const rangeBegin = selectionRangeStartZeroOne.value;
+    const rangeEnd = selectionRangeEndZeroOne.value;
     const cHeight = ctx.canvas.height;
     const cWidth = ctx.canvas.width;
     ctx.save();
     ctx.clearRect(0, 0, cWidth, cHeight);
     if (props.recording) {
-      for (const track of tracksIntermediate.value) {
+      // TODO: Can we re-implement create track in terms of a custom-interaction
+      if (inRegionResizeMode.value && currentTrack.value) {
+        // Draw background with cutouts
+        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.beginPath();
+        ctx.rect(0, 0, cWidth, cHeight);
+        const track = currentTrack.value;
+        const { start, end, minFreq, maxFreq } = track.mutated
+          ? track.mutated
+          : track;
+
         const minFreqZeroOne =
-          1 - Math.max(0, track.minFreq || 0) / audioSampleRate.value;
+          1 - Math.max(0, minFreq || 0) / audioSampleRate.value;
         const maxFreqZeroOne =
           1 -
-          Math.min(track.maxFreq || 0, audioSampleRate.value) /
-            audioSampleRate.value;
-        const trackStartZeroOne = Math.max(
-          0,
-          track.start / audioDuration.value,
-        );
-        const trackEndZeroOne = Math.min(1, track.end / audioDuration.value);
-        const bounds = getTrackBounds(cWidth, cHeight, begin, end, [
+          Math.min(maxFreq || 0, audioSampleRate.value) / audioSampleRate.value;
+        const trackStartZeroOne = Math.max(0, start / audioDuration.value);
+        const trackEndZeroOne = Math.min(1, end / audioDuration.value);
+        const bounds = getTrackBounds(cWidth, cHeight, rangeBegin, rangeEnd, [
+          trackStartZeroOne,
+          maxFreqZeroOne,
+          trackEndZeroOne,
+          minFreqZeroOne,
+        ]);
+        const [left, top, right, bottom] = bounds;
+        ctx.moveTo(left, top);
+        ctx.lineTo(left, bottom);
+        ctx.lineTo(right, bottom);
+        ctx.lineTo(right, top);
+        ctx.lineTo(left, top);
+
+        ctx.fill();
+      }
+      for (const track of tracksIntermediate.value) {
+        const { start, end, minFreq, maxFreq } = track.mutated
+          ? track.mutated
+          : track;
+        const minFreqZeroOne =
+          1 - Math.max(0, minFreq || 0) / audioSampleRate.value;
+        const maxFreqZeroOne =
+          1 -
+          Math.min(maxFreq || 0, audioSampleRate.value) / audioSampleRate.value;
+        const trackStartZeroOne = Math.max(0, start / audioDuration.value);
+        const trackEndZeroOne = Math.min(1, end / audioDuration.value);
+        const bounds = getTrackBounds(cWidth, cHeight, rangeBegin, rangeEnd, [
           trackStartZeroOne,
           maxFreqZeroOne,
           trackEndZeroOne,
@@ -522,9 +900,31 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
           bounds,
           track.what,
           tracksIntermediate.value,
-          currentTrack,
+          currentTrack.value,
           window.devicePixelRatio,
         );
+      }
+      if (inRegionCreationMode.value && !pendingTrack.value) {
+        const left = Math.max(
+          0,
+          Math.min(pointerPositionX, regionCreationStartX),
+        );
+        const right = Math.max(pointerPositionX, regionCreationStartX);
+        const top = Math.max(
+          0,
+          Math.min(pointerPositionY, regionCreationStartY),
+        );
+        const bottom = Math.max(pointerPositionY, regionCreationStartY);
+        const x = left * devicePixelRatio;
+        const y = top * devicePixelRatio;
+        const width = Math.min((right - left) * devicePixelRatio, cWidth - x);
+        const height = Math.min((bottom - top) * devicePixelRatio, cHeight - y);
+        ctx.save();
+        ctx.setLineDash([5 * devicePixelRatio, 5 * devicePixelRatio]);
+        ctx.lineWidth = 1 * devicePixelRatio;
+        ctx.strokeStyle = "white";
+        ctx.strokeRect(x, y, width, height);
+        ctx.restore();
       }
     }
     ctx.restore();
@@ -578,10 +978,10 @@ onMounted(() => {
       ({ detail: { timeInSeconds } }) => {
         currentTime.value = timeInSeconds;
         if (spectastiqEl.value && audioIsPlaying.value) {
-          if (props.currentTrack && timeInSeconds >= props.currentTrack.end) {
+          if (currentTrack.value && timeInSeconds >= currentTrack.value.end) {
             // Pause at the end of the selected track
             spectastiqEl.value.pause(
-              props.currentTrack.end / audioDuration.value,
+              currentTrack.value.end / audioDuration.value,
             );
           } else if (
             pendingTrack.value &&
@@ -596,6 +996,36 @@ onMounted(() => {
     );
   }
 });
+
+const cancelTrackResizeOperation = () => {
+  if (currentTrack.value && props.currentTrack) {
+    currentTrack.value.start = props.currentTrack.start;
+    currentTrack.value.end = props.currentTrack.end;
+    currentTrack.value.minFreq = props.currentTrack.minFreq!;
+    currentTrack.value.maxFreq = props.currentTrack.maxFreq!;
+    delete currentTrack.value.mutated;
+  }
+  exitResizeMode();
+};
+
+const confirmTrackResizeOperation = () => {
+  // TODO
+
+  exitResizeMode();
+};
+
+const currentTrack = computed<null | IntermediateTrack>(() => {
+  if (props.currentTrack) {
+    const track = props.currentTrack;
+    return tracksIntermediate.value.find((t) => t.id === track.id) || null;
+  }
+  // FIXME: Handle pending track
+  // if (pendingTrack.value) {
+  //   return pendingTrack.value;
+  // }
+  return null;
+});
+
 const currentTime = ref<number>(0);
 const togglePlayback = async () => {
   if (spectastiqEl.value) {
@@ -631,6 +1061,7 @@ const changeVolume = (e: InputEvent) => {
 
 const currentPalette = ref<string>("Viridis");
 const inRegionCreationMode = ref<boolean>(false);
+const inRegionResizeMode = ref<boolean>(false);
 const showClassificationSelector = ref<boolean>(false);
 const selectionPopover = ref<HTMLDivElement>();
 
@@ -738,9 +1169,11 @@ const toggleRegionCreationMode = () => {
   if (spectastiqEl.value) {
     inRegionCreationMode.value = !inRegionCreationMode.value;
     if (inRegionCreationMode.value) {
-      spectastiqEl.value.enterRegionCreationMode();
+      spectastiqEl.value.style.cursor = "crosshair";
+      spectastiqEl.value.enterCustomInteractionMode();
     } else {
-      spectastiqEl.value.exitRegionCreationMode();
+      spectastiqEl.value.style.cursor = "auto";
+      spectastiqEl.value.exitCustomInteractionMode();
     }
   }
 };
@@ -838,6 +1271,12 @@ interface IntermediateTrack {
   end: number;
   maxFreq: number;
   minFreq: number;
+  mutated?: {
+    start: number;
+    end: number;
+    minFreq: number;
+    maxFreq: number;
+  };
   id: TrackId;
 }
 
@@ -901,7 +1340,7 @@ const computeIntermediateTracks = (tracks: ApiTrackResponse[]) => {
   })[] = [];
   if (props.recording) {
     for (const track of tracks) {
-      const { start, end, minFreq, maxFreq, tags, id, automatic } = track;
+      const { start, end, minFreq, maxFreq, tags, id } = track;
       const authTag = masterTag(tags);
       if (authTag !== null) {
         const tag = getAuthoritativeTagForTrack([authTag]);
@@ -999,6 +1438,27 @@ const { height: viewportHeight } = useWindowSize();
 const height = computed<number>(() => {
   return Math.max(250, Math.min(360, viewportHeight.value - 600));
 });
+
+const resizeCurrentlySelectedTrack = () => {
+  if (spectastiqEl.value) {
+    inRegionResizeMode.value = true;
+    spectastiqEl.value.enterCustomInteractionMode();
+    if (overlayCanvasContext.value) {
+      renderOverlay(overlayCanvasContext.value);
+    }
+  }
+};
+const exitResizeMode = () => {
+  inRegionResizeMode.value = false;
+  spectastiqEl.value && spectastiqEl.value.exitCustomInteractionMode();
+  if (overlayCanvasContext.value) {
+    renderOverlay(overlayCanvasContext.value);
+  }
+};
+
+const hasSelectedTrack = computed<boolean>(() => {
+  return !!props.currentTrack;
+});
 </script>
 <template>
   <div class="spectrogram" ref="spectrogramContainer">
@@ -1051,17 +1511,57 @@ const height = computed<number>(() => {
           <!--          <div class="me-1 pe-3 abs-time align-items-end">-->
           <!--            {{ currentAbsoluteTime }}-->
           <!--          </div>-->
-          <div class="border-right pe-3 align-items-end">
-            <button
-              @click.prevent="toggleRegionCreationMode"
-              ref="regionCreationMode"
-              data-tooltip="Create new region"
-            >
-              <font-awesome-icon
-                :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
-              />
-              <span class="ms-2">add track</span>
-            </button>
+          <div v-if="!inRegionResizeMode" class="d-flex align-items-center">
+            <div class="pe-3 align-items-end">
+              <button
+                @click.prevent="toggleRegionCreationMode"
+                ref="regionCreationMode"
+                data-tooltip="Create new region"
+              >
+                <font-awesome-icon
+                  :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
+                />
+                <span class="ms-2">add track</span>
+              </button>
+            </div>
+            <div class="pe-3 align-items-end">
+              <button
+                class="ms-2"
+                @click.prevent="resizeCurrentlySelectedTrack"
+                ref="trackResizeMode"
+                :disabled="!hasSelectedTrack"
+                data-tooltip="Resize track"
+              >
+                <font-awesome-icon icon="expand" />
+                <span class="ms-2">resize</span>
+              </button>
+            </div>
+          </div>
+          <div v-else class="d-flex align-items-center">
+            <div class="pe-3 align-items-end">
+              <button
+                class="ms-2"
+                @click.prevent="confirmTrackResizeOperation"
+                ref="trackResizeModeSave"
+                :disabled="!hasSelectedTrack"
+                data-tooltip="Save track changes"
+              >
+                <font-awesome-icon icon="check" />
+                <span class="ms-2">save</span>
+              </button>
+            </div>
+            <div class="pe-3 align-items-end">
+              <button
+                class="ms-2"
+                @click.prevent="cancelTrackResizeOperation"
+                ref="trackResizeModeCancel"
+                :disabled="!hasSelectedTrack"
+                data-tooltip="Cancel track resizing"
+              >
+                <font-awesome-icon icon="xmark" />
+                <span class="ms-2">cancel</span>
+              </button>
+            </div>
           </div>
           <div class="vertical-divider"></div>
           <button

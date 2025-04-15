@@ -46,7 +46,7 @@ export class Visit {
   constructor(
     stationId: StationId,
     stationName: Station,
-    recording: Recording
+    recording: Recording,
   ) {
     this.recordings = [];
     this.tracks = 0;
@@ -70,7 +70,7 @@ export class Visit {
 
     const cutoff = moment(this.timeEnd).add(
       MAX_SECS_BETWEEN_RECORDINGS,
-      "seconds"
+      "seconds",
     );
     return cutoff.isAfter(recording.recordingDateTime);
   }
@@ -83,7 +83,7 @@ export class Visit {
     this.rawRecordings.push(recording);
     this.timeEnd = moment(recording.recordingDateTime).add(
       recording.duration,
-      "seconds"
+      "seconds",
     );
 
     return true;
@@ -91,7 +91,7 @@ export class Visit {
 
   async calculateTags(aiModel: string, dontSplit: boolean = false) {
     this.recordings = (this.rawRecordings || []).map((rec) =>
-      this.calculateTrackTags(rec, aiModel)
+      this.calculateTrackTags(rec, aiModel),
     );
 
     const allVisitTracks = this.getAllTracks();
@@ -106,7 +106,7 @@ export class Visit {
         if (
           ![...NON_ANIMAL_TAGS, "false-positive"].includes(classification[0]) ||
           [...NON_ANIMAL_TAGS, "false-positive", "none"].includes(
-            aiClassification
+            aiClassification,
           )
         ) {
           // Only prefer human tags for visit labels if they're not false-positives *or* the only AI tags are nothing/false-positive type tags.
@@ -199,7 +199,7 @@ export class Visit {
     for (const track of (recording as any).Tracks) {
       const bestTag = getCanonicalTrackTag(track.TrackTags);
       const aiTag: ApiTrackTagResponse = (track.TrackTags || []).find(
-        (tag) => tag.model === aiModel && tag.automatic
+        (tag) => tag.model === aiModel && tag.automatic,
       );
       const thisTrack: VisitTrack = {
         id: track.id,
@@ -244,7 +244,7 @@ const HUMAN_ONLY = false;
 const AI_ONLY = true;
 
 function getBestGuessFromSpecifiedAi(
-  tracks: VisitTrack[]
+  tracks: VisitTrack[],
 ): [TagName, VisitTrack[]][] {
   const counts = {};
   tracks.forEach((track) => {
@@ -259,7 +259,7 @@ function getBestGuessFromSpecifiedAi(
 
 function getBestGuessOverall(
   allTracks: VisitTrack[],
-  isAi: boolean
+  isAi: boolean,
 ): [TagName, VisitTrack[]][] {
   let tracks: VisitTrack[];
   const nonThingTags = [...NON_ANIMAL_TAGS, "false-positive"];
@@ -268,7 +268,7 @@ function getBestGuessOverall(
     // If a user tags one track as a cat, and two tracks as false positive, we should always say the visit was a cat!
     const userNonFalsePositiveTags = allTracks.filter(
       (track) =>
-        !track.isAITagged && track.tag && !nonThingTags.includes(track.tag)
+        !track.isAITagged && track.tag && !nonThingTags.includes(track.tag),
     );
     if (userNonFalsePositiveTags.length === 0) {
       tracks = allTracks.filter((track) => !track.isAITagged && track.tag);
@@ -278,7 +278,7 @@ function getBestGuessOverall(
   } else {
     // For AI, first prefer non false-positive tags, but if we only have false-positives, then fall back to that.
     tracks = allTracks.filter(
-      (track) => track.isAITagged && !nonThingTags.includes(track.tag)
+      (track) => track.isAITagged && !nonThingTags.includes(track.tag),
     );
     if (tracks.length === 0) {
       tracks = allTracks.filter((track) => track.isAITagged);
@@ -311,7 +311,7 @@ function getBestGuessOverall(
     const commonUserTag = getCanonicalTrackTag(allTrackTags as TrackTag[]);
     if (commonUserTag && commonUserTag.what in counts) {
       return getBestGuess(
-        Object.entries(counts).filter(([key]) => key === commonUserTag.what)
+        Object.entries(counts).filter(([key]) => key === commonUserTag.what),
       );
     }
   }
@@ -319,19 +319,19 @@ function getBestGuessOverall(
 }
 
 function getBestGuess(
-  counts: [TagName, VisitTrack[]][]
+  counts: [TagName, VisitTrack[]][],
 ): [TagName, VisitTrack[]][] {
   const animalOnlyCounts = counts.filter(
-    (tc) => !UNIDENTIFIED_TAGS.includes(tc[TAG])
+    (tc) => !UNIDENTIFIED_TAGS.includes(tc[TAG]),
   );
   if (animalOnlyCounts.length > 0) {
     // there are animal tags
     const maxCount = animalOnlyCounts.reduce(
       (max, item) => Math.max(max, item[COUNT].length),
-      0
+      0,
     );
     const tagsWithMaxCount = animalOnlyCounts.filter(
-      (tc) => tc[COUNT].length === maxCount
+      (tc) => tc[COUNT].length === maxCount,
     );
     return tagsWithMaxCount;
   } else {
@@ -363,15 +363,15 @@ interface VisitTrack {
 export async function generateVisits(
   userId: UserId,
   search: MonitoringPageCriteria,
-  viewAsSuperAdmin: boolean
+  viewAsSuperAdmin: boolean,
 ): Promise<Visit[] | ClientError> {
   const search_start = moment(search.pageFrom).subtract(
     MAX_SECS_BETWEEN_RECORDINGS + MAX_SECS_VIDEO_LENGTH,
-    "seconds"
+    "seconds",
   );
   const search_end = moment(search.pageUntil).add(
     MAX_MINS_AFTER_TIME,
-    "minutes"
+    "minutes",
   );
 
   const recordings = await getRecordings(
@@ -379,23 +379,23 @@ export async function generateVisits(
     search,
     search_start,
     search_end,
-    viewAsSuperAdmin
+    viewAsSuperAdmin,
   );
   if (recordings.length === RECORDINGS_LIMIT) {
     return new ClientError(
-      "Too many recordings to retrieve. Please reduce your page size."
+      "Too many recordings to retrieve. Please reduce your page size.",
     );
   }
   const visits = groupRecordingsIntoVisits(
     recordings,
     moment(search.pageFrom),
     moment(search.pageUntil),
-    search.page === search.pagesEstimate
+    search.page === search.pagesEstimate,
   );
 
   const incompleteCutoff = moment(search_end).subtract(
     MAX_SECS_BETWEEN_RECORDINGS,
-    "seconds"
+    "seconds",
   );
 
   const actualVisits = [];
@@ -408,7 +408,7 @@ export async function generateVisits(
         const userTag = recording.tracks.filter(
           (track) =>
             track.isAITagged === false &&
-            ![...NON_ANIMAL_TAGS, "false-positive"].includes(track.tag)
+            ![...NON_ANIMAL_TAGS, "false-positive"].includes(track.tag),
         );
         // In the case where there are two user tags on a single recording (multiple different animals) we'll
         // generate another visit using the same recording.
@@ -421,7 +421,7 @@ export async function generateVisits(
       }
       for (const recording of (split as Visit).recordings) {
         const userTag = recording.tracks.filter(
-          (track) => track.isAITagged === false
+          (track) => track.isAITagged === false,
         );
         if (userTag.length === 0) {
           // Add the ai-only recording to all user visits
@@ -432,12 +432,12 @@ export async function generateVisits(
       }
       for (const visitRecordings of Object.values(userVisits)) {
         const record = recordings.find(
-          (rec) => rec.id === visitRecordings[0].recId
+          (rec) => rec.id === visitRecordings[0].recId,
         );
         const actualVisit = new Visit(visit.stationId, record.Station, record);
         for (let i = 1; i < (visitRecordings as VisitRecording[]).length; i++) {
           const record = recordings.find(
-            (rec) => rec.id === visitRecordings[i].recId
+            (rec) => rec.id === visitRecordings[i].recId,
           );
           actualVisit.addRecordingIfWithinTimeLimits(record);
         }
@@ -464,7 +464,7 @@ async function getRecordings(
   params: MonitoringPageCriteria,
   from: Moment,
   until: Moment,
-  viewAsSuperUser: boolean
+  viewAsSuperUser: boolean,
 ) {
   const types = [];
   const allowedTypes = [
@@ -504,7 +504,7 @@ function groupRecordingsIntoVisits(
   recordings: Recording[],
   start: Moment,
   end: Moment,
-  isLastPage: boolean
+  isLastPage: boolean,
 ): Visit[] {
   const currentVisitForStation: { [key: number]: Visit } = {};
   const visitsStartingInPeriod: Visit[] = [];
@@ -543,7 +543,7 @@ function groupRecordingsIntoVisits(
 
   if (isLastPage) {
     const overlappingVisits = earlierVisits.filter((visit) =>
-      visit.timeEnd.isAfter(start)
+      visit.timeEnd.isAfter(start),
     );
     return [...overlappingVisits, ...visitsStartingInPeriod];
   }

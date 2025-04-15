@@ -42,7 +42,8 @@ export default [
     rules: {
       "no-prototype-builtins": "off",
       "linebreak-style": ["warn", "unix"],
-      quotes: "off",
+      quotes: ["error", "double", { allowTemplateLiterals: true }],
+      "comma-dangle": ["error", "always-multiline"],
       semi: ["warn", "always"],
       curly: ["warn", "all"],
       "no-console": ["warn", { allow: ["warn", "error", "assert"] }],

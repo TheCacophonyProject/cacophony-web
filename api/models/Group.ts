@@ -34,11 +34,11 @@ import {
 
 export const stationLocationHasChanged = (
   oldStation: Station,
-  newStation: CreateStationData
+  newStation: CreateStationData,
 ) => !locationsAreEqual(oldStation.location, newStation);
 
 export const checkThatStationsAreNotTooCloseTogether = (
-  stations: Array<CreateStationData | Station>
+  stations: Array<CreateStationData | Station>,
 ): string | null => {
   const allStations = stations.map((s) => {
     if (s.hasOwnProperty("lat")) {
@@ -84,7 +84,7 @@ export const checkThatStationsAreNotTooCloseTogether = (
             other.name
           }': ${latLngApproxDistance(
             station,
-            other
+            other,
           )}m apart, must be at least ${MIN_STATION_SEPARATION_METERS}m apart.`;
           pairs[key] = true;
         }
@@ -103,7 +103,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   group: Group,
   fromDate: Date,
   stations: Station[],
-  untilDate?: Date
+  untilDate?: Date,
 ): Promise<Promise<{ station: Station; recording: Recording }>[]> => {
   // Now addedStations are properly resolved with ids:
   // Now we can look for all recordings in the group back to startDate, and check if any of them
@@ -136,7 +136,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
   builder.query.distinct = true;
   delete builder.query.limit;
   const recordingsFromStartDate: Recording[] = await staticRecording.findAll(
-    builder.get()
+    builder.get(),
   );
   const recordingOpPromises = [];
   // Find matching recordings to apply stations to from `applyToRecordingsFromDate`
@@ -145,7 +145,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
     const matchingStation = await tryToMatchRecordingToStation(
       staticGroup,
       recording,
-      stations
+      stations,
     );
     if (matchingStation !== null) {
       recordingOpPromises.push(
@@ -156,7 +156,7 @@ const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
               recording,
             });
           });
-        })
+        }),
       );
     }
   }
@@ -260,7 +260,7 @@ export default function (sequelize, DataTypes): GroupStatic {
     userToAdd,
     admin,
     owner,
-    pending
+    pending,
   ) {
     // Get association if already there and update it.
     const groupUser = await models.GroupUsers.findOne({

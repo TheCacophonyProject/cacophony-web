@@ -563,8 +563,7 @@ const existingNamedLocations = computed<NamedPoint[]>(() => {
   return (previousLocations.value || [])
     .filter((location) => location.location !== undefined)
     .filter(
-      (location) =>
-        location.location?.lat !== 0 && location.location?.lng !== 0,
+      (location) => location.location?.lat !== 0 && location.location?.lng !== 0,
     )
     .map((location) => {
       return {

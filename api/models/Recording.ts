@@ -315,7 +315,7 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
 const Op = Sequelize.Op;
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): RecordingStatic {
   const name = "Recording";
   const maxQueryResults = 10000;
@@ -371,7 +371,7 @@ export default function (
 
   const Recording = sequelize.define(
     name,
-    attributes
+    attributes,
   ) as unknown as RecordingStatic;
 
   //---------------
@@ -381,7 +381,7 @@ export default function (
 
   Recording.buildSafely = function (fields: Record<string, any>): Recording {
     return Recording.build(
-      _.pick(fields, Recording.apiSettableFields)
+      _.pick(fields, Recording.apiSettableFields),
     ) as Recording;
   };
 
@@ -438,7 +438,7 @@ export default function (
     if (state == RecordingProcessingState.Finished) {
       //check if any tracks have been made in the last day by users that haven't had AI run against it
       where[Op.and] = Sequelize.literal(
-        `	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`
+        `	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`,
       );
       includeQ = [
         {
@@ -480,7 +480,7 @@ export default function (
             ["processingFailedCount", "ASC NULLS FIRST"], //only do these after all others
             Sequelize.literal(`"hasAlert" DESC`),
             Sequelize.literal(
-              `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`
+              `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`,
             ),
             ["uploader", "DESC NULLS LAST"],
             ["recordingDateTime", "asc"],
@@ -501,7 +501,7 @@ export default function (
         if (recording.isFailed()) {
           recording.processingState = recording.processingState.replace(
             ".failed",
-            ""
+            "",
           );
         }
 
@@ -644,7 +644,7 @@ export default function (
     if (this.location) {
       this.location.coordinates = reduceLatLonPrecision(
         this.location,
-        options.latLongPrec
+        options.latLongPrec,
       );
     }
   };
@@ -711,7 +711,7 @@ export default function (
 
   // Return a specific track for the recording.
   Recording.prototype.getTrack = async function (
-    trackId: TrackId
+    trackId: TrackId,
   ): Promise<Track | null> {
     const track = await models.Track.findByPk(trackId);
     if (!track) {
@@ -760,7 +760,7 @@ export default function (
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
   Recording.queryBuilder.prototype.init = function (
     userId: UserId,
-    options: RecordingQueryOptions
+    options: RecordingQueryOptions,
   ) {
     const {
       tagMode,
@@ -791,7 +791,7 @@ export default function (
     const constraints = [
       where,
       Sequelize.literal(
-        Recording.queryBuilder.handleTagMode(tagMode, tags, exclusive)
+        Recording.queryBuilder.handleTagMode(tagMode, tags, exclusive),
       ),
     ];
     const noArchived = { archivedAt: null };
@@ -917,7 +917,7 @@ export default function (
   Recording.queryBuilder.handleTagMode = (
     tagMode: AllTagModes,
     tagWhatsIn: string[],
-    exclusive: boolean
+    exclusive: boolean,
   ): SqlString => {
     const tagWhats = tagWhatsIn && tagWhatsIn.length > 0 ? tagWhatsIn : null;
     if (!tagMode) {
@@ -925,21 +925,21 @@ export default function (
     }
 
     // FIXME Seems like we're doing validation here that should be done at the API layer
-    const humanSQL = 'NOT "Tags".automatic';
-    const AISQL = '"Tags".automatic';
+    const humanSQL = "NOT \"Tags\".automatic";
+    const AISQL = "\"Tags\".automatic";
     if (
       (models.Tag as TagStatic).acceptableTags.has(tagMode as AcceptableTag)
     ) {
       let sqlQuery = `((${Recording.queryBuilder.recordingTaggedWith(
         [tagMode],
         null,
-        exclusive
+        exclusive,
       )} limit 1) IS NOT NULL)`;
       if (tagWhats) {
         sqlQuery = `${sqlQuery} AND (${Recording.queryBuilder.trackTaggedWith(
           tagWhats,
           null,
-          exclusive
+          exclusive,
         )}) IS NOT NULL`;
       }
       return sqlQuery;
@@ -960,33 +960,33 @@ export default function (
         return Recording.queryBuilder.notTagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         );
       case TagMode.AutomaticOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           AISQL,
-          exclusive
+          exclusive,
         )} AND ${Recording.queryBuilder.notTagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         )}`;
       case TagMode.HumanOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         )} AND ${Recording.queryBuilder.notTagOfType(
           tagWhats,
           AISQL,
-          exclusive
+          exclusive,
         )}`;
       case TagMode.AutomaticHuman:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive)}`;
       default: {
         throw `invalid tag mode: ${tagMode}`;
@@ -997,24 +997,24 @@ export default function (
   Recording.queryBuilder.tagOfType = (
     tagWhats: string[],
     tagTypeSql: SqlString,
-    exclusive: boolean
+    exclusive: boolean,
   ): SqlString => {
     let query = `((${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
-      exclusive
+      exclusive,
     )}  ${tagTypeSql || !tagWhats ? "LIMIT 1) IS NOT NULL" : ")"}`;
     if (
       !tagWhats ||
       (!tagWhats && tagTypeSql) ||
       tagWhats.find((tag) =>
-        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag)
+        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag),
       )
     ) {
       query += ` OR (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
         tagTypeSql,
-        exclusive
+        exclusive,
       )} LIMIT 1) IS NOT NULL`;
     }
     query += ")";
@@ -1024,24 +1024,24 @@ export default function (
   Recording.queryBuilder.notTagOfType = (
     tagWhats: string[],
     tagTypeSql: SqlString,
-    exclusive: boolean
+    exclusive: boolean,
   ): SqlString => {
     let query = `((${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
-      exclusive
+      exclusive,
     )} LIMIT 1) ${tagTypeSql || !tagWhats ? "IS NULL" : ""}`;
     if (
       !tagWhats ||
       (!tagWhats && tagTypeSql) ||
       tagWhats.find((tag) =>
-        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag)
+        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag),
       )
     ) {
       query += ` AND (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
         tagTypeSql,
-        exclusive
+        exclusive,
       )} LIMIT 1)  ${tagTypeSql || !tagWhats ? "IS NULL" : ""}`;
     }
     query += ")";
@@ -1051,15 +1051,15 @@ export default function (
   Recording.queryBuilder.recordingTaggedWith = (
     tags: (TagMode | AcceptableTag)[],
     tagTypeSql: SqlString,
-    exclusive: boolean
+    exclusive: boolean,
   ) => {
     let sql =
-      'SELECT 1 FROM "Tags" WHERE "Tags"."RecordingId" = "Recording".id';
+      "SELECT 1 FROM \"Tags\" WHERE \"Tags\".\"RecordingId\" = \"Recording\".id";
     if (tags) {
       sql += ` AND (${Recording.queryBuilder.selectByTag(
         tags,
         exclusive,
-        "detail"
+        "detail",
       )})`;
     }
     if (tagTypeSql) {
@@ -1071,7 +1071,7 @@ export default function (
   Recording.queryBuilder.trackTaggedWith = (
     tags?: (TagMode | AcceptableTag)[],
     tagTypeSql?: SqlString,
-    exclusive?: boolean
+    exclusive?: boolean,
   ) => {
     let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags".
     "archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
@@ -1097,7 +1097,7 @@ export default function (
   Recording.queryBuilder.selectByTag = (
     tags: string[],
     exclusive: boolean,
-    tagPath = "what"
+    tagPath = "what",
   ) => {
     if (!tags || tags.length === 0) {
       return null;
@@ -1108,7 +1108,7 @@ export default function (
       const tag = tags[i];
       if (tag === "interesting") {
         parts.push(
-          `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`
+          `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`,
         );
       } else {
         const path = labelPath[tag.toLowerCase()];
@@ -1136,13 +1136,13 @@ export default function (
   // Include details of recent audio bait events in the query output.
   Recording.queryBuilder.prototype.addAudioEvents = function (
     after?: string,
-    before?: string
+    before?: string,
   ) {
     if (!after) {
-      after = '"Recording"."recordingDateTime" - interval \'30 minutes\'';
+      after = "\"Recording\".\"recordingDateTime\" - interval '30 minutes'";
     }
     if (!before) {
-      before = '"Recording"."recordingDateTime"';
+      before = "\"Recording\".\"recordingDateTime\"";
     }
     const deviceInclude = this.findInclude(models.Device as DeviceStatic);
 
@@ -1176,7 +1176,7 @@ export default function (
   };
 
   Recording.queryBuilder.prototype.findInclude = function (
-    modelType: ModelStaticCommon<any>
+    modelType: ModelStaticCommon<any>,
   ): Includeable[] {
     for (const inc of this.query.include) {
       if (inc.model === modelType) {

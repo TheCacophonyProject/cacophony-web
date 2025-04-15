@@ -33,7 +33,7 @@ const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
 const regionsProvided = inject(
   "latestMaskRegions",
   ref<ApiMaskRegionsData | (() => ApiMaskRegionsData)>(
-    () => ({}) as unknown as ApiMaskRegionsData,
+    () => ({} as unknown as ApiMaskRegionsData),
   ),
   true,
 );

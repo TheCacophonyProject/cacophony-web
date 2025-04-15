@@ -61,8 +61,8 @@ export default (app: Application, baseUrl: string) => {
       if (!response.locals.recording.isFailed()) {
         return next(
           new BadRequestError(
-            `Recording is not in a failed state '${response.locals.recording.processingState}'`
-          )
+            `Recording is not in a failed state '${response.locals.recording.processingState}'`,
+          ),
         );
       }
       if (await response.locals.recording.retryFailed()) {
@@ -70,11 +70,11 @@ export default (app: Application, baseUrl: string) => {
       } else {
         return next(
           new BadRequestError(
-            `Could not retry processing of recordings ${response.locals.recording.id}`
-          )
+            `Could not retry processing of recordings ${response.locals.recording.id}`,
+          ),
         );
       }
-    }
+    },
   );
 
   /**
@@ -98,7 +98,7 @@ export default (app: Application, baseUrl: string) => {
     async (_request: Request, response: Response) => {
       await response.locals.recording.reprocess();
       return successResponse(response, "Recording reprocessed");
-    }
+    },
   );
 
   /**
@@ -136,14 +136,14 @@ export default (app: Application, baseUrl: string) => {
         return next(
           new ClientError(
             "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       for (const recording of recordings) {
         await recording.reprocess();
       }
       return successResponse(response, "Recordings scheduled for reprocessing");
-    }
+    },
   );
 };

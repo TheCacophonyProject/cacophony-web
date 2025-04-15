@@ -6,8 +6,8 @@ describe("Group Admin Pages", () => {
 
   let ffcreated = false;
 
-  const adminCol = '[aria-colindex="2"]';
-  const usersTable = 'table[data-cy="users-table"]';
+  const adminCol = "[aria-colindex=\"2\"]";
+  const usersTable = "table[data-cy=\"users-table\"]";
   const trashButton = ".trash-button";
 
   before(() => {
@@ -37,7 +37,7 @@ describe("Group Admin Pages", () => {
     // check what page looks like after groups are added
     cy.get("h1").contains(getTestName(FriendsForever));
     cy.contains("Manage the users associated with this group and view ").should(
-      "be.visible"
+      "be.visible",
     );
 
     // check self is admin
@@ -51,12 +51,12 @@ describe("Group Admin Pages", () => {
 
     cy.get("h1").should("contain", "Your groups");
     cy.contains("Groups link together devices with the users who").should(
-      "be.visible"
+      "be.visible",
     );
     cy.contains("Create group").should("be.visible");
 
     // test navigation to group page
-    cy.get('[data-cy="groups-list"]')
+    cy.get("[data-cy=\"groups-list\"]")
       .contains(getTestName(FriendsForever))
       .click();
 

@@ -22,7 +22,7 @@ const SpecialFormats = {
 const getPathType = (
   item: object,
   path: (string | number)[] | string,
-  instance?: any
+  instance?: any,
 ) => {
   if (item === null) {
     return "'null'";
@@ -40,7 +40,7 @@ const getPathType = (
 const getPathName = (
   item: object,
   path: (string | number)[] | string,
-  instance?: any
+  instance?: any,
 ) => {
   if (path.length === 0) {
     return Array.isArray(instance) ? "array" : instance;
@@ -123,10 +123,10 @@ export const jsonSchemaOf =
                   case "type":
                     return `field '${printPath(
                       path,
-                      requestPath
+                      requestPath,
                     )}' expected ${name} ${argument}, got ${getPathType(
                       val as object,
-                      path
+                      path,
                     )}`;
 
                   case "required":
@@ -140,7 +140,7 @@ export const jsonSchemaOf =
                     }, got ${getPathType(
                       val as object,
                       path,
-                      instance
+                      instance,
                     )} '${printInstance(instance)}'`;
 
                   case "additionalProperties":
@@ -148,7 +148,7 @@ export const jsonSchemaOf =
                       path,
                       property === "instance"
                         ? `${location}.${requestPath}`
-                        : property
+                        : property,
                     )}' is not allowed to have the additional property '${argument}'`;
                   case "enum":
                     return `!!${path}, ${stack}`;
@@ -158,13 +158,13 @@ export const jsonSchemaOf =
                       name,
                       message,
                       property,
-                      argument
+                      argument,
                     );
                     return message;
                 }
-              }
+              },
             )
-            .join("; ")
+            .join("; "),
       );
     }
     return result.valid;

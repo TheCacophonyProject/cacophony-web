@@ -27,10 +27,10 @@ Cypress.Commands.add("addUserToGroup", (userName, groupName, admin = false) => {
   goToGroupPage(groupName);
   cy.contains("Add user").click();
 
-  cy.get('form[data-cy="add-user-form"]').as("adduser");
+  cy.get("form[data-cy=\"add-user-form\"]").as("adduser");
   // eslint-disable-next-line cypress/no-unnecessary-waiting
   cy.wait(1000); // not ideal but popup is causing problems.  To fix later
-  cy.get("@adduser").get('[data-cy="user-name-input').as("usernameInput");
+  cy.get("@adduser").get("[data-cy=\"user-name-input").as("usernameInput");
   cy.get("@usernameInput").type(fullUserName);
   if (admin) {
     cy.get("@adduser").contains("Make this user an administrator").click();
@@ -48,5 +48,5 @@ function goToGroupPage(groupName) {
 
 Cypress.Commands.add("checkDeviceInGroup", (device, group) => {
   goToGroupPage(group);
-  cy.get('[data-cy="devices-table"]').should("contain", getTestName(device));
+  cy.get("[data-cy=\"devices-table\"]").should("contain", getTestName(device));
 });

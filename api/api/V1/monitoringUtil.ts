@@ -37,11 +37,11 @@ export interface MonitoringPageCriteria2 {
 
 export async function generateVisits2(
   search: MonitoringPageCriteria2,
-  logging: (message: string, time: number) => void
+  logging: (message: string, time: number) => void,
 ): Promise<[VisitDef, Recording[]][][]> {
   const from = new Date(search.searchFrom);
   from.setSeconds(
-    from.getSeconds() - (MAX_SECS_BETWEEN_RECORDINGS + MAX_SECS_VIDEO_LENGTH)
+    from.getSeconds() - (MAX_SECS_BETWEEN_RECORDINGS + MAX_SECS_VIDEO_LENGTH),
   );
   const until = new Date(search.searchUntil);
   until.setMinutes(until.getMinutes() + MAX_MINS_AFTER_TIME);
@@ -136,7 +136,7 @@ async function getRecordings2(
   params: MonitoringPageCriteria2,
   from: Date,
   until: Date,
-  logging: (message: string, time: number) => void
+  logging: (message: string, time: number) => void,
 ): Promise<Recording[]> {
   // const where: any = {
   //   duration: { [Op.gte]: 2.5 }, // Ignore our 2 second health-check recordings
@@ -292,7 +292,7 @@ interface VisitDef {
 }
 type TagName = string;
 const getBestGuessFromAi = (
-  tracks: VisitTrack[]
+  tracks: VisitTrack[],
 ): [TagName, VisitTrack[]][] => {
   return getBestGuess2(
     Object.entries(
@@ -303,19 +303,19 @@ const getBestGuessFromAi = (
           acc[tag].push(track);
         }
         return acc;
-      }, {})
-    )
+      }, {}),
+    ),
   );
 };
 
 const classifyCluster = (
-  recordings: Recording[]
+  recordings: Recording[],
 ): [VisitDef, Recording[]][] => {
   // Get all the tracks of all the recordings.
   // Get the canonical track for each recording, and then get the canonical tag for each visit.
   const visitRecordings = recordings.map(calculateTrackTags2);
   const allVisitTracks = visitRecordings.flatMap(
-    (recording) => recording.tracks
+    (recording) => recording.tracks,
   );
   const bestHumanTags = getBestUserGuess(allVisitTracks);
   let classification: string;
@@ -362,7 +362,7 @@ const classifyCluster = (
       if (
         ![...NON_ANIMAL_TAGS, "false-positive"].includes(bestHumanTag[0]) ||
         [...NON_ANIMAL_TAGS, "false-positive", "none"].includes(
-          classificationAi
+          classificationAi,
         )
       ) {
         // Only prefer human tags for visit labels if they're not false-positives *or* the only AI tags are nothing/false-positive type tags.
@@ -425,7 +425,7 @@ const newVisitWithRecording = (recording: Recording): Visit2 => {
 function groupRecordingsIntoVisits2(
   recordings: Recording[],
   start: Date,
-  end: Date
+  end: Date,
   //isLastPage: boolean
 ): Visit2[] {
   const visitsByStation: Record<StationId, Visit2> = {};
@@ -487,7 +487,7 @@ const getBestAiGuess = (allTracks: VisitTrack[]): [TagName, VisitTrack[]][] => {
 
 const getBestGuessOverall2 = (
   allTracks: VisitTrack[],
-  isAi: boolean
+  isAi: boolean,
 ): [TagName, VisitTrack[]][] => {
   const tracks: VisitTrack[] = isAi
     ? aiTracks(allTracks)
@@ -518,7 +518,7 @@ const getBestGuessOverall2 = (
     const commonUserTag = getCanonicalTrackTag2(allTrackTags as TrackTag[]);
     if (commonUserTag && commonUserTag.what in counts) {
       return getBestGuess2(
-        Object.entries(counts).filter(([key]) => key === commonUserTag.what)
+        Object.entries(counts).filter(([key]) => key === commonUserTag.what),
       );
     }
   }
@@ -528,7 +528,7 @@ const getBestGuessOverall2 = (
 const aiTracks = (allTracks: VisitTrack[]): VisitTrack[] => {
   // For AI, first prefer non false-positive tags, but if we only have false-positives, then fall back to that.
   const aiNonFalsePositiveTracks = allTracks.filter(
-    (track) => track.isAITagged && !NON_THING_TAGS.includes(track.tag)
+    (track) => track.isAITagged && !NON_THING_TAGS.includes(track.tag),
   );
   if (aiNonFalsePositiveTracks.length === 0) {
     return allTracks.filter((track) => track.isAITagged);
@@ -541,7 +541,7 @@ const userTracks = (allTracks: VisitTrack[]): VisitTrack[] => {
   // If a user tags one track as a cat, and two tracks as false positive, we should always say the visit was a cat!
   const userNonFalsePositiveTags = allTracks.filter(
     (track) =>
-      !track.isAITagged && track.tag && !NON_THING_TAGS.includes(track.tag)
+      !track.isAITagged && track.tag && !NON_THING_TAGS.includes(track.tag),
   );
   if (userNonFalsePositiveTags.length === 0) {
     return allTracks.filter((track) => !track.isAITagged && track.tag);
@@ -550,7 +550,7 @@ const userTracks = (allTracks: VisitTrack[]): VisitTrack[] => {
 };
 
 const getBestUserGuess = (
-  allTracks: VisitTrack[]
+  allTracks: VisitTrack[],
 ): [TagName, VisitTrack[]][] => {
   const tracks: VisitTrack[] = userTracks(allTracks);
   const counts: Record<string, VisitTrack[]> = tracks.reduce((acc, track) => {
@@ -579,7 +579,7 @@ const getBestUserGuess = (
     const commonUserTag = getCanonicalTrackTag2(allTrackTags as TrackTag[]);
     if (commonUserTag && commonUserTag.what in counts) {
       return getBestGuess2(
-        Object.entries(counts).filter(([key]) => key === commonUserTag.what)
+        Object.entries(counts).filter(([key]) => key === commonUserTag.what),
       );
     }
   }
@@ -589,19 +589,19 @@ const TAG = 0;
 const COUNT = 1;
 
 function getBestGuess2(
-  counts: [TagName, VisitTrack[]][]
+  counts: [TagName, VisitTrack[]][],
 ): [TagName, VisitTrack[]][] {
   const animalOnlyCounts = counts.filter(
-    (tc) => !UNIDENTIFIED_TAGS.includes(tc[TAG])
+    (tc) => !UNIDENTIFIED_TAGS.includes(tc[TAG]),
   );
   if (animalOnlyCounts.length > 0) {
     // there are animal tags
     const maxCount = animalOnlyCounts.reduce(
       (max, item) => Math.max(max, item[COUNT].length),
-      0
+      0,
     );
     const tagsWithMaxCount = animalOnlyCounts.filter(
-      (tc) => tc[COUNT].length === maxCount
+      (tc) => tc[COUNT].length === maxCount,
     );
     return tagsWithMaxCount;
   } else {
@@ -643,7 +643,7 @@ const calculateTrackTags2 = (recording: Recording): VisitRecording => {
 };
 
 const clusterRecordings = (
-  recordings: Recording[]
+  recordings: Recording[],
 ): Record<StationId, Recording[][]> => {
   // Does reduce have deterministic order?
   return recordings.reduce((acc, recording) => {
@@ -671,7 +671,7 @@ const getCanonicalTrackTag2 = (trackTags: TrackTag[]): TrackTag | null => {
     return null;
   }
   const animalTags = trackTags.filter(
-    (tag) => !tag.automatic && !NON_ANIMAL_TAGS.includes(tag.what)
+    (tag) => !tag.automatic && !NON_ANIMAL_TAGS.includes(tag.what),
   );
 
   // NOTE - Conflicting tags aren't actually conflicts if users agree on the super-species of the tag to some extent:
@@ -679,7 +679,7 @@ const getCanonicalTrackTag2 = (trackTags: TrackTag[]): TrackTag | null => {
   const uniqueUserTags = new Set(animalTags.map((tag) => tag.what));
   if (uniqueUserTags.size > 1) {
     const commonAncestor = getCommonAncestorForTags(
-      Array.from(uniqueUserTags.values())
+      Array.from(uniqueUserTags.values()),
     );
     const conflict = {
       what: commonAncestor === "all" ? "conflicting tags" : commonAncestor,
@@ -709,7 +709,7 @@ const endTime = (recording: Recording): Date => {
 };
 const calculateTags = (
   visit: Visit2,
-  ai: string
+  ai: string,
 ): { split: Visit2 } | undefined => {
   return;
 };

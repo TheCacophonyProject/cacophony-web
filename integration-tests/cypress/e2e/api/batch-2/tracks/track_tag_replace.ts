@@ -30,10 +30,10 @@ const EXCLUDE_TRACK_IDS = [
 describe("Track Tags: replaceTag, check, delete", () => {
   //template recording with no tracks - add tracks during test
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
   const templateAudioRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_AUDIO_RECORDING)
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING),
   );
   templateRecording.metadata.tracks = [];
 
@@ -211,7 +211,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
     cy.testCreateUserGroupAndDevice(
       "ttgGroup2Admin",
       "ttgGroup2",
-      "ttgCamera2"
+      "ttgCamera2",
     );
 
     //Create non member user
@@ -235,7 +235,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack1",
       "ttgAlgorithm1",
       track1,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Group admin can tag the track");
@@ -244,7 +244,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording1",
       "ttgTrack1",
       "ttgTag1",
-      tag1
+      tag1,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -252,7 +252,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording1",
       [expectedTrackWithTag],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Delete tag");
@@ -260,7 +260,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording1",
       "ttgTrack1",
-      "ttgTag1"
+      "ttgTag1",
     );
 
     cy.log("Check tag no longer exists");
@@ -268,7 +268,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording1",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -289,7 +289,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack2",
       "ttgAlgorithm2",
       track1,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Can tag the track");
@@ -298,7 +298,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording2",
       "ttgTrack2",
       "ttgTag2",
-      tag1
+      tag1,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -306,7 +306,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupMember",
       "ttgRecording2",
       [expectedTrackWithTag],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Delete tag");
@@ -314,7 +314,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupMember",
       "ttgRecording2",
       "ttgTrack2",
-      "ttgTag2"
+      "ttgTag2",
     );
 
     cy.log("Check tag no longer exists");
@@ -322,7 +322,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupMember",
       "ttgRecording2",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -342,7 +342,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack3",
       "ttgAlgorithm3",
       audioTrack,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Group admin can tag the track");
@@ -351,7 +351,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording3",
       "ttgTrack3",
       "ttgTag3",
-      audioTag
+      audioTag,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -359,7 +359,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording3",
       [expectedTrackWithTag],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Delete tag");
@@ -367,7 +367,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording3",
       "ttgTrack3",
-      "ttgTag3"
+      "ttgTag3",
     );
 
     cy.log("Check tag no longer exists");
@@ -375,7 +375,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording3",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -392,7 +392,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgCamera1",
       recording3,
       undefined,
-      "recordingWithUserData"
+      "recordingWithUserData",
     );
     cy.apiTrackAdd(
       "ttgGroupAdmin",
@@ -400,7 +400,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "trackWithUserData",
       "ttgAlgorithm3",
       audioTrack,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Group admin can tag the track");
@@ -415,12 +415,12 @@ describe("Track Tags: replaceTag, check, delete", () => {
           gender: "male",
           maturity: "adult",
         }),
-      }
+      },
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
     const expectedTrackWithTagWithUserData = JSON.parse(
-      JSON.stringify(expectedAudioTrack)
+      JSON.stringify(expectedAudioTrack),
     );
     expectedTrackWithTagWithUserData.tags = [expectedAudioTag];
     expectedTrackWithTagWithUserData.filtered = false;
@@ -434,7 +434,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "recordingWithUserData",
       [expectedTrackWithTagWithUserData],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Delete tag");
@@ -442,7 +442,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "recordingWithUserData",
       "trackWithUserData",
-      "userDataTag"
+      "userDataTag",
     );
 
     cy.log("Check tag no longer exists");
@@ -450,7 +450,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "recordingWithUserData",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -466,7 +466,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack5",
       "ttgAlgorithm5",
       track1,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Non owner cannot tag the track");
@@ -476,7 +476,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack5",
       "ttgTag5",
       tag1,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("Check tag does not exist");
@@ -484,7 +484,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording5",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -504,14 +504,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack6",
       "ttgAlgorithm6",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroupAdmin",
       "ttgRecording6",
       "ttgTrack6",
       "ttgTag6",
-      tag1
+      tag1,
     );
 
     cy.log("Non member cannot delete tag");
@@ -520,7 +520,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording6",
       "ttgTrack6",
       "ttgTag6",
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("Check tag still exists");
@@ -528,7 +528,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording6",
       [expectedTrackWithTag],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -544,14 +544,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack7",
       "ttgAlgorithm7",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroupAdmin",
       "ttgRecording7",
       "ttgTrack7",
       "ttgTag7",
-      tag1
+      tag1,
     );
 
     cy.log("Another member of same group member can delete another's tag");
@@ -559,7 +559,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupMember",
       "ttgRecording7",
       "ttgTrack7",
-      "ttgTag7"
+      "ttgTag7",
     );
 
     cy.log("Check tag no longer exists");
@@ -567,7 +567,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -592,14 +592,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack7",
       "ttgAlgorithm7",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroupAdmin",
       "ttgRecording7",
       "ttgTrack7",
       "ttgTag7",
-      tag1
+      tag1,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -607,7 +607,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrackWithTag1],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Member can replace their tag with a new one");
@@ -616,7 +616,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording7",
       "ttgTrack7",
       "ttgTag7",
-      tag2
+      tag2,
     );
 
     cy.log("Check new tag has replaced old one");
@@ -624,7 +624,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroupAdmin",
       "ttgRecording7",
       [expectedTrackWithTag2],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -644,14 +644,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack8",
       "ttgAlgorithm8",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "ttgRecording8",
       "ttgTrack8",
       "ttgTag8",
-      tag1
+      tag1,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -659,7 +659,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroup1Member2",
       "ttgRecording8",
       [expectedTrackWithTag1],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Member cannot add duplicated tag");
@@ -668,7 +668,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording8",
       "ttgTrack8",
       "ttgTag8",
-      tag1
+      tag1,
     );
 
     cy.log("Check just one tag shown");
@@ -676,7 +676,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroup1Member2",
       "ttgRecording8",
       [expectedTrackWithTag1],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -708,14 +708,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack9",
       "ttgAlgorithm9",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroupMember",
       "ttgRecording9",
       "ttgTrack9",
       "ttgTag9",
-      tag1a
+      tag1a,
     );
 
     cy.log("Another member can add duplicated tag");
@@ -724,7 +724,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording9",
       "ttgTrack9",
       "ttgTag9",
-      tag1b
+      tag1b,
     );
 
     cy.log("Check both tags shown");
@@ -732,7 +732,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroup1Member2",
       "ttgRecording9",
       [expectedTrackWithTags],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -757,14 +757,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack10",
       "ttgAlgorithm10",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroupMember",
       "ttgRecording10",
       "ttgTrack10",
       "ttgTag10",
-      tag1
+      tag1,
     );
 
     cy.log("Another member can add different tag");
@@ -773,7 +773,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording10",
       "ttgTrack10",
       "ttgTag10",
-      tag2
+      tag2,
     );
 
     cy.log("Check both tags shown");
@@ -781,7 +781,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroup1Member2",
       "ttgRecording10",
       [expectedTrackWithTags],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -811,14 +811,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack11",
       "ttgAlgorithm11",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "ttgRecording11",
       "ttgTrack11",
       "ttgTag11",
-      tag1
+      tag1,
     );
 
     cy.log("Same member can add supplementary tags");
@@ -827,14 +827,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording11",
       "ttgTrack11",
       "ttgTag11",
-      partTag
+      partTag,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "ttgRecording11",
       "ttgTrack11",
       "ttgTag11",
-      poorTrackingTag
+      poorTrackingTag,
     );
 
     cy.log("Check all three tags shown");
@@ -842,7 +842,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroup1Member2",
       "ttgRecording11",
       [expectedTrackWithTags],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -865,14 +865,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack12",
       "ttgAlgorithm12",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "ttgRecording12",
       "ttgTrack12",
       "ttgTag12",
-      tag1
+      tag1,
     );
 
     cy.log("Same member can add supplementary tag");
@@ -881,7 +881,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording12",
       "ttgTrack12",
       "ttgTag12",
-      partTag
+      partTag,
     );
 
     cy.log("But cannot add duplicate supplementary tag");
@@ -890,7 +890,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording12",
       "ttgTrack12",
       "ttgTag12",
-      partTag
+      partTag,
     );
 
     cy.log("Check only two tags shown");
@@ -898,7 +898,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroup1Member2",
       "ttgRecording12",
       [expectedTrackWithTags],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -924,14 +924,14 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack13",
       "ttgAlgorithm13",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagReplaceTag(
       "ttgGroup1Member2",
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
-      tag1
+      tag1,
     );
 
     cy.log("Same member can add supplementary tag");
@@ -940,7 +940,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
-      partTag
+      partTag,
     );
 
     cy.log("And another member can add same suplementary tag");
@@ -949,7 +949,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgRecording13",
       "ttgTrack13",
       "ttgTag13",
-      partTag
+      partTag,
     );
 
     cy.log("Check both duplicate supplementary tags shown (and primary tag)");
@@ -957,7 +957,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgGroup1Member3",
       "ttgRecording13",
       [expectedTrackWithTags],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -972,7 +972,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack14",
       "ttgAlgorithm14",
       track1,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Correct handling of invalid recording id in replace");
@@ -983,7 +983,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag14",
       tag1,
       HttpStatusCode.Forbidden,
-      { useRawRecordingId: true, useRawTrackId: true }
+      { useRawRecordingId: true, useRawTrackId: true },
     );
 
     cy.log("Correct handling of invalid track id in replace");
@@ -994,7 +994,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag14",
       tag1,
       HttpStatusCode.Forbidden,
-      { useRawTrackId: true }
+      { useRawTrackId: true },
     );
 
     cy.log("Correct handling on invalid recording id in delete");
@@ -1004,7 +1004,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "99999",
       "99999",
       HttpStatusCode.Forbidden,
-      { useRawRecordingId: true, useRawTrackId: true, useRawTagId: true }
+      { useRawRecordingId: true, useRawTrackId: true, useRawTagId: true },
     );
 
     cy.log("Correct handling on invalid track id in delete");
@@ -1015,7 +1015,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "99999",
       "99999",
       HttpStatusCode.Forbidden,
-      { useRawTrackId: true, useRawTagId: true }
+      { useRawTrackId: true, useRawTagId: true },
     );
 
     cy.log("Correct handling of invalid tag id in delete");
@@ -1026,7 +1026,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack14",
       "99999",
       HttpStatusCode.Forbidden,
-      { useRawTagId: true }
+      { useRawTagId: true },
     );
   });
 
@@ -1051,7 +1051,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTrack13",
       "ttgAlgorithm13",
       track1,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Missing 'what'");
@@ -1064,7 +1064,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagA,
       HttpStatusCode.Unprocessable,
-      { message: "body.what:" }
+      { message: "body.what:" },
     );
 
     cy.log("Missing 'confidence'");
@@ -1077,7 +1077,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagB,
       HttpStatusCode.Unprocessable,
-      { message: "body.confidence:" }
+      { message: "body.confidence:" },
     );
 
     cy.log("Missing 'automatic'");
@@ -1090,7 +1090,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagC,
       HttpStatusCode.Unprocessable,
-      { message: "body.automatic:" }
+      { message: "body.automatic:" },
     );
 
     cy.log("Invalid confidence");
@@ -1103,7 +1103,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagD,
       HttpStatusCode.Unprocessable,
-      { message: "body.confidence:" }
+      { message: "body.confidence:" },
     );
 
     cy.log("Invalid automatic");
@@ -1116,7 +1116,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagE,
       HttpStatusCode.Unprocessable,
-      { message: "body.automatic:" }
+      { message: "body.automatic:" },
     );
   });
 });

@@ -90,7 +90,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         timeStart: visit.timeStart,
         data: visit,
         date: new Date(visit.timeStart),
-      }) as VisitEventItem,
+      } as VisitEventItem),
   );
   const now = new Date();
   if (props.isNocturnal) {

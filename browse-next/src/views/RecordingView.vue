@@ -636,8 +636,7 @@ const trackTagChanged = async ({
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
         const changedTag = trackToPatch.tags.find(
-          ({ what, userId }) =>
-            what === tag && userId === currentUser.value?.id,
+          ({ what, userId }) => what === tag && userId === currentUser.value?.id,
         );
         if (changedTag) {
           await recalculateCurrentVisit(

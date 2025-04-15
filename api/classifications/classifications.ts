@@ -4,7 +4,7 @@ import type { Classification } from "@typedefs/api/trackTag.js";
 const flattenNodes = (
   acc: Record<string, { label: string; display: string; path: string }>,
   node: Classification,
-  parentPath: string
+  parentPath: string,
 ) => {
   for (const child of node.children || []) {
     acc[child.label] = {
@@ -28,7 +28,7 @@ export const flatClassifications = (() => {
 export const displayLabelForClassificationLabel = (
   label: string,
   aiTag = false,
-  isAudioContext = false
+  isAudioContext = false,
 ) => {
   label = label.toLowerCase();
   if (label === "unclassified") {

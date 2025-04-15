@@ -61,7 +61,7 @@ export const filteredTags = Object.freeze(["false-positive", "noise"]);
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): TrackTagStatic {
   const TrackTag = sequelize.define("TrackTag", {
     what: DataTypes.STRING,
@@ -93,7 +93,7 @@ export default function (
   TrackTag.apiSettableFields = Object.freeze(["what", "confidence", "data"]);
 
   TrackTag.userGetAttributes = Object.freeze(
-    TrackTag.apiSettableFields.concat(["id"])
+    TrackTag.apiSettableFields.concat(["id"]),
   );
   const addPath = (trackTag) => {
     // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
@@ -102,7 +102,7 @@ export default function (
       what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
     sequelize.query(
       `UPDATE "TrackTags" SET "path" = text2ltree(:path) WHERE "id" = :id`,
-      { replacements: { path, id: trackTag.id } }
+      { replacements: { path, id: trackTag.id } },
     );
   };
 

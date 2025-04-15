@@ -77,7 +77,7 @@ describe("Device: fix-location of device and/or recordings", () => {
       expectedAutoStation.needsRename = true;
 
       expectedManualStation = JSON.parse(
-        JSON.stringify(templateExpectedStation)
+        JSON.stringify(templateExpectedStation),
       );
       expectedManualStation.location = newLocation;
       expectedManualStation.activeAt = beforeRecordings.toISOString();
@@ -105,31 +105,31 @@ describe("Device: fix-location of device and/or recordings", () => {
           NOT_NULL_STRING,
           null,
           "register",
-          null
-        )
+          null,
+        ),
       );
 
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: firstTime, noTracks: true },
-        firstName
+        firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: secondTime, noTracks: true },
-            secondName
+            secondName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: thirdTime, noTracks: true },
-            thirdName
+            thirdName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: fourthTime, noTracks: true },
-            fourthName
+            fourthName,
           );
           //Device history for frstTime, oldLocation, autoStation added
           expectedHistory.push(
@@ -139,8 +139,8 @@ describe("Device: fix-location of device and/or recordings", () => {
               firstTime.toISOString(),
               oldLocation,
               "automatic",
-              autoStation.name
-            )
+              autoStation.name,
+            ),
           );
 
           // USER ADDS STATION AND FIXES RECORDINGS
@@ -150,10 +150,10 @@ describe("Device: fix-location of device and/or recordings", () => {
             Josie,
             group,
             { name: manualStationName, ...newLocation },
-            beforeRecordings.toISOString()
+            beforeRecordings.toISOString(),
           ).then((manualStationId: number) => {
             cy.log(
-              "Update first and subsequect recording's location to match manual station"
+              "Update first and subsequect recording's location to match manual station",
             );
             cy.apiDeviceFixLocation(
               Josie,
@@ -162,32 +162,32 @@ describe("Device: fix-location of device and/or recordings", () => {
               manualStationId.toString(),
               null,
               HttpStatusCode.Ok,
-              { messages: ["Updated 4 recording(s)"], useRawStationId: true }
+              { messages: ["Updated 4 recording(s)"], useRawStationId: true },
             ).then(() => {
               cy.log("Check 4 recording reassigned, moved");
               checkRecordingLocationAndStation(
                 Josie,
                 firstName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 secondName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 thirdName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 fourthName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
 
               cy.log("check old station now undefined");
@@ -196,18 +196,18 @@ describe("Device: fix-location of device and/or recordings", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HttpStatusCode.Forbidden
+                HttpStatusCode.Forbidden,
               );
 
               cy.log(
-                "check new station lastThermalRecordingTime now fourthTime"
+                "check new station lastThermalRecordingTime now fourthTime",
               );
               expectedManualStation.lastThermalRecordingTime =
                 fourthTime.toISOString();
               cy.apiStationCheck(
                 Josie,
                 getTestName(manualStationName),
-                expectedManualStation
+                expectedManualStation,
               );
 
               cy.log("check device history updated to new location, station");
@@ -217,7 +217,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 firstTime.toISOString(),
                 newLocation,
                 "user",
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -226,7 +226,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 true,
-                DeviceType.Thermal
+                DeviceType.Thermal,
               );
               expectedDevice.location = newLocation;
               cy.apiDeviceInGroupCheck(
@@ -234,7 +234,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 null,
-                expectedDevice
+                expectedDevice,
               );
             });
           });
@@ -256,31 +256,31 @@ describe("Device: fix-location of device and/or recordings", () => {
           NOT_NULL_STRING,
           null,
           "register",
-          null
-        )
+          null,
+        ),
       );
 
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: firstTime, noTracks: true },
-        firstName
+        firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: secondTime, noTracks: true },
-            secondName
+            secondName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: thirdTime, noTracks: true },
-            thirdName
+            thirdName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: fourthTime, noTracks: true },
-            fourthName
+            fourthName,
           );
           //Device history for frstTime, oldLocation, autoStation added
           expectedHistory.push(
@@ -290,8 +290,8 @@ describe("Device: fix-location of device and/or recordings", () => {
               firstTime.toISOString(),
               oldLocation,
               "automatic",
-              autoStation.name
-            )
+              autoStation.name,
+            ),
           );
 
           // USER ADDS STATION AND FIXES RECORDINGS
@@ -301,13 +301,13 @@ describe("Device: fix-location of device and/or recordings", () => {
             Josie,
             group,
             { name: manualStationName, ...newLocation },
-            afterRecordings.toISOString()
+            afterRecordings.toISOString(),
           ).then((manualStationId: number) => {
             //set expectedStation time to match
             expectedManualStation.activeAt = afterRecordings.toISOString();
 
             cy.log(
-              "Update first and subsequect recording's location to match manual station"
+              "Update first and subsequect recording's location to match manual station",
             );
             cy.apiDeviceFixLocation(
               Josie,
@@ -316,7 +316,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               manualStationId.toString(),
               null,
               HttpStatusCode.Ok,
-              { messages: ["Updated 4 recording(s)"], useRawStationId: true }
+              { messages: ["Updated 4 recording(s)"], useRawStationId: true },
             ).then(() => {
               //check all 4 recordings updated
               cy.log("Check 4 recording reassigned, moved");
@@ -324,25 +324,25 @@ describe("Device: fix-location of device and/or recordings", () => {
                 Josie,
                 firstName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 secondName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 thirdName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 fourthName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
 
               cy.log("check old station now undefined");
@@ -351,11 +351,11 @@ describe("Device: fix-location of device and/or recordings", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HttpStatusCode.Forbidden
+                HttpStatusCode.Forbidden,
               );
 
               cy.log(
-                "check new station lastThermalRecordingTime now fourthTime"
+                "check new station lastThermalRecordingTime now fourthTime",
               );
               cy.log("check new station activeAt now firstTime");
               expectedManualStation.lastThermalRecordingTime =
@@ -364,7 +364,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(manualStationName),
-                expectedManualStation
+                expectedManualStation,
               );
 
               cy.log("check device history updated to new location, station");
@@ -374,7 +374,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 firstTime.toISOString(),
                 newLocation,
                 "user",
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -383,7 +383,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 true,
-                DeviceType.Thermal
+                DeviceType.Thermal,
               );
               expectedDevice.location = newLocation;
               cy.apiDeviceInGroupCheck(
@@ -391,7 +391,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 null,
-                expectedDevice
+                expectedDevice,
               );
             });
           });
@@ -410,24 +410,24 @@ describe("Device: fix-location of device and/or recordings", () => {
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: firstTime, noTracks: true },
-        firstName
+        firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: secondTime, noTracks: true },
-            secondName
+            secondName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: thirdTime, noTracks: true },
-            thirdName
+            thirdName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: fourthTime, noTracks: true },
-            fourthName
+            fourthName,
           );
           //Device history for firstTime, oldLocation, autoStation added
 
@@ -438,33 +438,33 @@ describe("Device: fix-location of device and/or recordings", () => {
             Josie,
             group,
             { name: manualStationName, ...newLocation },
-            afterRecordings.toISOString()
+            afterRecordings.toISOString(),
           ).then((manualStationId: number) => {
             //set expectedStation time to match
             expectedManualStation.activeAt = afterRecordings.toISOString();
 
             cy.log(
               "Add a pre-existing recording to the new station",
-              manualStationId
+              manualStationId,
             );
             cy.testUploadRecording(
               deviceName,
               { ...newLocation, time: fifthTime, noTracks: true },
-              fifthName
+              fifthName,
             ).then(() => {
               cy.log(
-                "Check pre-existing recording is correctly added to manual station"
+                "Check pre-existing recording is correctly added to manual station",
               );
               checkRecordingLocationAndStation(
                 Josie,
                 fifthName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
             });
 
             cy.log(
-              "Update first and subsequent recording's location to match manual station"
+              "Update first and subsequent recording's location to match manual station",
             );
             cy.apiDeviceFixLocation(
               Josie,
@@ -473,7 +473,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               manualStationId.toString(),
               null,
               HttpStatusCode.Ok,
-              { messages: ["Updated 4 recording(s)"], useRawStationId: true }
+              { messages: ["Updated 4 recording(s)"], useRawStationId: true },
             ).then(() => {
               //check all 4 recordings updated
               cy.log("Check 4 recording reassigned, moved");
@@ -481,25 +481,25 @@ describe("Device: fix-location of device and/or recordings", () => {
                 Josie,
                 firstName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 secondName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 thirdName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 fourthName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
 
               //check 5th recording unaffected
@@ -507,7 +507,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 Josie,
                 fifthName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
 
               cy.log("check old station now undefined");
@@ -516,7 +516,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 autoStation.name,
                 undefined,
                 undefined,
-                HttpStatusCode.Forbidden
+                HttpStatusCode.Forbidden,
               );
 
               cy.log("check new station lastThermalRecordingTime unchanged");
@@ -527,7 +527,7 @@ describe("Device: fix-location of device and/or recordings", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(manualStationName),
-                expectedManualStation
+                expectedManualStation,
               );
 
               cy.log("check device history updated to new location, station");
@@ -537,7 +537,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 NOT_NULL_STRING,
                 null,
                 "register",
-                null
+                null,
               );
               expectedHistory[1] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -545,7 +545,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 firstTime.toISOString(),
                 newLocation,
                 "user",
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               expectedHistory[2] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -553,7 +553,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 fifthTime.toISOString(),
                 newLocation,
                 "automatic",
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -562,7 +562,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 true,
-                DeviceType.Thermal
+                DeviceType.Thermal,
               );
               expectedDevice.location = newLocation;
               cy.apiDeviceInGroupCheck(
@@ -570,7 +570,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 null,
-                expectedDevice
+                expectedDevice,
               );
             });
           });
@@ -583,7 +583,7 @@ describe("Device: fix-location of device and/or recordings", () => {
     const deviceName = "new-device-4";
     const manualStationName = "Josie-station-4";
     const expectedIntermediateStation: ApiStationResponse = JSON.parse(
-      JSON.stringify(expectedAutoStation)
+      JSON.stringify(expectedAutoStation),
     );
     expectedIntermediateStation.location = intermediateLocation;
     expectedHistory = [];
@@ -596,14 +596,14 @@ describe("Device: fix-location of device and/or recordings", () => {
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: firstTime, noTracks: true },
-        firstName
+        firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: secondTime, noTracks: true },
-            secondName
+            secondName,
           );
 
           //Device history for firstTime, oldLocation, autoStation added
@@ -612,14 +612,14 @@ describe("Device: fix-location of device and/or recordings", () => {
           cy.testUploadRecording(
             deviceName,
             { ...intermediateLocation, time: thirdTime, noTracks: true },
-            thirdName
+            thirdName,
           )
             .thenCheckStationIsNew(Josie)
             .then((intermediateStation: TestNameAndId) => {
               cy.testUploadRecording(
                 deviceName,
                 { ...intermediateLocation, time: fourthTime, noTracks: true },
-                fourthName
+                fourthName,
               );
               //Device history for thirdTime, intermediateLocation, intermediateStation added
 
@@ -630,13 +630,13 @@ describe("Device: fix-location of device and/or recordings", () => {
                 Josie,
                 group,
                 { name: manualStationName, ...newLocation },
-                beforeRecordings.toISOString()
+                beforeRecordings.toISOString(),
               ).then((manualStationId: number) => {
                 //set expectedStation time to match
                 expectedManualStation.activeAt = beforeRecordings.toISOString();
 
                 cy.log(
-                  "Update first and subsequent recording's location to match manual station"
+                  "Update first and subsequent recording's location to match manual station",
                 );
                 cy.apiDeviceFixLocation(
                   Josie,
@@ -648,33 +648,33 @@ describe("Device: fix-location of device and/or recordings", () => {
                   {
                     messages: ["Updated 2 recording(s)"],
                     useRawStationId: true,
-                  }
+                  },
                 ).then(() => {
                   cy.log("Check 1st 2 recordings moved");
                   checkRecordingLocationAndStation(
                     Josie,
                     firstName,
                     newLocation,
-                    getTestName(manualStationName)
+                    getTestName(manualStationName),
                   );
                   checkRecordingLocationAndStation(
                     Josie,
                     secondName,
                     newLocation,
-                    getTestName(manualStationName)
+                    getTestName(manualStationName),
                   );
                   cy.log("Check last 2 recordings unchanged");
                   checkRecordingLocationAndStation(
                     Josie,
                     thirdName,
                     intermediateLocation,
-                    intermediateStation.name
+                    intermediateStation.name,
                   );
                   checkRecordingLocationAndStation(
                     Josie,
                     fourthName,
                     intermediateLocation,
-                    intermediateStation.name
+                    intermediateStation.name,
                   );
 
                   cy.log("check old station now undefined");
@@ -683,11 +683,11 @@ describe("Device: fix-location of device and/or recordings", () => {
                     autoStation.name,
                     undefined,
                     undefined,
-                    HttpStatusCode.Forbidden
+                    HttpStatusCode.Forbidden,
                   );
 
                   cy.log(
-                    "check intermediate station lastThermalRecordingTime still fourthTime"
+                    "check intermediate station lastThermalRecordingTime still fourthTime",
                   );
                   expectedIntermediateStation.lastThermalRecordingTime =
                     fourthTime.toISOString();
@@ -696,11 +696,11 @@ describe("Device: fix-location of device and/or recordings", () => {
                   cy.apiStationCheck(
                     Josie,
                     intermediateStation.name,
-                    expectedIntermediateStation
+                    expectedIntermediateStation,
                   );
 
                   cy.log(
-                    "check new station lastThermalRecordingTime now secondTime"
+                    "check new station lastThermalRecordingTime now secondTime",
                   );
                   expectedManualStation.lastThermalRecordingTime =
                     secondTime.toISOString();
@@ -709,11 +709,11 @@ describe("Device: fix-location of device and/or recordings", () => {
                   cy.apiStationCheck(
                     Josie,
                     getTestName(manualStationName),
-                    expectedManualStation
+                    expectedManualStation,
                   );
 
                   cy.log(
-                    "check device history updated to reflect the 2 locations, stations"
+                    "check device history updated to reflect the 2 locations, stations",
                   );
                   expectedHistory[0] = TestCreateExpectedHistoryEntry(
                     deviceName,
@@ -721,7 +721,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                     NOT_NULL_STRING,
                     null,
                     "register",
-                    null
+                    null,
                   );
                   expectedHistory[1] = TestCreateExpectedHistoryEntry(
                     deviceName,
@@ -729,7 +729,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                     firstTime.toISOString(),
                     newLocation,
                     "user",
-                    getTestName(manualStationName)
+                    getTestName(manualStationName),
                   );
                   expectedHistory[2] = TestCreateExpectedHistoryEntry(
                     deviceName,
@@ -737,18 +737,18 @@ describe("Device: fix-location of device and/or recordings", () => {
                     thirdTime.toISOString(),
                     intermediateLocation,
                     "automatic",
-                    intermediateStation.name
+                    intermediateStation.name,
                   );
                   cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
                   cy.log(
-                    "check device location unchanged at intermediate location"
+                    "check device location unchanged at intermediate location",
                   );
                   const expectedDevice = TestCreateExpectedDevice(
                     deviceName,
                     group,
                     true,
-                    DeviceType.Thermal
+                    DeviceType.Thermal,
                   );
                   expectedDevice.location = intermediateLocation;
                   cy.apiDeviceInGroupCheck(
@@ -756,7 +756,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                     deviceName,
                     group,
                     null,
-                    expectedDevice
+                    expectedDevice,
                   );
                 });
               });
@@ -774,24 +774,24 @@ describe("Device: fix-location of device and/or recordings", () => {
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: firstTime, noTracks: true },
-        firstName
+        firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: secondTime, noTracks: true },
-            secondName
+            secondName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: thirdTime, noTracks: true },
-            thirdName
+            thirdName,
           );
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: fourthTime, noTracks: true },
-            fourthName
+            fourthName,
           );
 
           // USER ADDS STATION AND FIXES RECORDINGS
@@ -801,13 +801,13 @@ describe("Device: fix-location of device and/or recordings", () => {
             Josie,
             group,
             { name: manualStationName, ...newLocation },
-            beforeRecordings.toISOString()
+            beforeRecordings.toISOString(),
           ).then((manualStationId: number) => {
             //set expectedStation time to match
             expectedManualStation.activeAt = beforeRecordings.toISOString();
 
             cy.log(
-              "Update third subsequent recording's location to match manual station"
+              "Update third subsequent recording's location to match manual station",
             );
             cy.apiDeviceFixLocation(
               Josie,
@@ -816,44 +816,44 @@ describe("Device: fix-location of device and/or recordings", () => {
               manualStationId.toString(),
               null,
               HttpStatusCode.Ok,
-              { messages: ["Updated 2 recording(s)"], useRawStationId: true }
+              { messages: ["Updated 2 recording(s)"], useRawStationId: true },
             ).then(() => {
               cy.log("Check 1st 2 recordings unchanged");
               checkRecordingLocationAndStation(
                 Josie,
                 firstName,
                 oldLocation,
-                autoStation.name
+                autoStation.name,
               );
               checkRecordingLocationAndStation(
                 Josie,
                 secondName,
                 oldLocation,
-                autoStation.name
+                autoStation.name,
               );
               cy.log("Check last 2 recordings reassigned, moved");
               checkRecordingLocationAndStation(
                 Josie,
                 thirdName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               checkRecordingLocationAndStation(
                 Josie,
                 fourthName,
                 newLocation,
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
 
               cy.log(
-                "check old station lastThermalRecordingTime now secondTime"
+                "check old station lastThermalRecordingTime now secondTime",
               );
               expectedAutoStation.lastThermalRecordingTime =
                 secondTime.toISOString();
               cy.apiStationCheck(Josie, autoStation.name, expectedAutoStation);
 
               cy.log(
-                "check new station lastThermalRecordingTime now fourthTime"
+                "check new station lastThermalRecordingTime now fourthTime",
               );
               cy.log("check new station activeAt now firstTime");
               expectedManualStation.lastThermalRecordingTime =
@@ -862,11 +862,11 @@ describe("Device: fix-location of device and/or recordings", () => {
               cy.apiStationCheck(
                 Josie,
                 getTestName(manualStationName),
-                expectedManualStation
+                expectedManualStation,
               );
 
               cy.log(
-                "check new device history entry added for new location, station"
+                "check new device history entry added for new location, station",
               );
               expectedHistory[0] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -874,7 +874,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 NOT_NULL_STRING,
                 null,
                 "register",
-                null
+                null,
               );
               expectedHistory[1] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -882,7 +882,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 firstTime.toISOString(),
                 oldLocation,
                 "automatic",
-                autoStation.name
+                autoStation.name,
               );
               expectedHistory[2] = TestCreateExpectedHistoryEntry(
                 deviceName,
@@ -890,7 +890,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 thirdTime.toISOString(),
                 newLocation,
                 "user",
-                getTestName(manualStationName)
+                getTestName(manualStationName),
               );
               cy.apiDeviceHistoryCheck(Josie, deviceName, expectedHistory);
 
@@ -899,7 +899,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 true,
-                DeviceType.Thermal
+                DeviceType.Thermal,
               );
               expectedDevice.location = newLocation;
               cy.apiDeviceInGroupCheck(
@@ -907,7 +907,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 deviceName,
                 group,
                 null,
-                expectedDevice
+                expectedDevice,
               );
             });
           });
@@ -920,11 +920,11 @@ describe("Device: fix-location of device and/or recordings", () => {
     const deviceName = "new-device-6";
     const manualStationName = "Josie-station-6";
     const expectedIntermediateStation: ApiStationResponse = JSON.parse(
-      JSON.stringify(expectedAutoStation)
+      JSON.stringify(expectedAutoStation),
     );
     expectedIntermediateStation.location = intermediateLocation;
     const expectedElsewhereStation: ApiStationResponse = JSON.parse(
-      JSON.stringify(expectedAutoStation)
+      JSON.stringify(expectedAutoStation),
     );
     expectedElsewhereStation.location = elsewhereLocation;
     expectedElsewhereStation.activeAt = fourthTime.toISOString();
@@ -939,7 +939,7 @@ describe("Device: fix-location of device and/or recordings", () => {
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: firstTime, noTracks: true },
-        firstName
+        firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
@@ -949,21 +949,21 @@ describe("Device: fix-location of device and/or recordings", () => {
           cy.testUploadRecording(
             deviceName,
             { ...intermediateLocation, time: secondTime, noTracks: true },
-            secondName
+            secondName,
           )
             .thenCheckStationIsNew(Josie)
             .then((intermediateStation: TestNameAndId) => {
               cy.testUploadRecording(
                 deviceName,
                 { ...intermediateLocation, time: thirdTime, noTracks: true },
-                thirdName
+                thirdName,
               );
 
               // then one recording elsewhere
               cy.testUploadRecording(
                 deviceName,
                 { ...elsewhereLocation, time: fourthTime, noTracks: true },
-                fourthName
+                fourthName,
               )
                 .thenCheckStationIsNew(Josie)
                 .then((elsewhereStation: TestNameAndId) => {
@@ -977,14 +977,14 @@ describe("Device: fix-location of device and/or recordings", () => {
                     Josie,
                     group,
                     { name: manualStationName, ...newLocation },
-                    beforeRecordings.toISOString()
+                    beforeRecordings.toISOString(),
                   ).then((manualStationId: number) => {
                     //set expectedStation time to match
                     expectedManualStation.activeAt =
                       beforeRecordings.toISOString();
 
                     cy.log(
-                      "Update second and subsequect recording's location to match manual station"
+                      "Update second and subsequect recording's location to match manual station",
                     );
                     cy.apiDeviceFixLocation(
                       Josie,
@@ -996,14 +996,14 @@ describe("Device: fix-location of device and/or recordings", () => {
                       {
                         messages: ["Updated 2 recording(s)"],
                         useRawStationId: true,
-                      }
+                      },
                     ).then(() => {
                       cy.log("Check first recording unchanged");
                       checkRecordingLocationAndStation(
                         Josie,
                         firstName,
                         oldLocation,
-                        autoStation.name
+                        autoStation.name,
                       );
 
                       cy.log("Check 2nd and 3rd recordings moved");
@@ -1011,31 +1011,31 @@ describe("Device: fix-location of device and/or recordings", () => {
                         Josie,
                         secondName,
                         newLocation,
-                        getTestName(manualStationName)
+                        getTestName(manualStationName),
                       );
                       checkRecordingLocationAndStation(
                         Josie,
                         thirdName,
                         newLocation,
-                        getTestName(manualStationName)
+                        getTestName(manualStationName),
                       );
                       cy.log("Check last recording unchanged");
                       checkRecordingLocationAndStation(
                         Josie,
                         fourthName,
                         elsewhereLocation,
-                        elsewhereStation.name
+                        elsewhereStation.name,
                       );
 
                       cy.log(
-                        "check old station lastThermalRecordingTime now firstTime"
+                        "check old station lastThermalRecordingTime now firstTime",
                       );
                       expectedAutoStation.lastThermalRecordingTime =
                         firstTime.toISOString();
                       cy.apiStationCheck(
                         Josie,
                         autoStation.name,
-                        expectedAutoStation
+                        expectedAutoStation,
                       );
 
                       cy.log("check intermediate station now undefined");
@@ -1044,11 +1044,11 @@ describe("Device: fix-location of device and/or recordings", () => {
                         intermediateStation.name,
                         undefined,
                         undefined,
-                        HttpStatusCode.Forbidden
+                        HttpStatusCode.Forbidden,
                       );
 
                       cy.log(
-                        "check new station lastThermalRecordingTime now thirdTime"
+                        "check new station lastThermalRecordingTime now thirdTime",
                       );
                       expectedManualStation.lastThermalRecordingTime =
                         thirdTime.toISOString();
@@ -1057,18 +1057,18 @@ describe("Device: fix-location of device and/or recordings", () => {
                       cy.apiStationCheck(
                         Josie,
                         getTestName(manualStationName),
-                        expectedManualStation
+                        expectedManualStation,
                       );
 
                       cy.log("check elsewhere station unchanged");
                       cy.apiStationCheck(
                         Josie,
                         elsewhereStation.name,
-                        expectedElsewhereStation
+                        expectedElsewhereStation,
                       );
 
                       cy.log(
-                        "check device history updated to new location, station"
+                        "check device history updated to new location, station",
                       );
                       expectedHistory[0] = TestCreateExpectedHistoryEntry(
                         deviceName,
@@ -1076,7 +1076,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                         NOT_NULL_STRING,
                         null,
                         "register",
-                        null
+                        null,
                       );
                       expectedHistory[1] = TestCreateExpectedHistoryEntry(
                         deviceName,
@@ -1084,7 +1084,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                         firstTime.toISOString(),
                         oldLocation,
                         "automatic",
-                        autoStation.name
+                        autoStation.name,
                       );
                       expectedHistory[2] = TestCreateExpectedHistoryEntry(
                         deviceName,
@@ -1092,7 +1092,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                         secondTime.toISOString(),
                         newLocation,
                         "user",
-                        getTestName(manualStationName)
+                        getTestName(manualStationName),
                       );
                       expectedHistory[3] = TestCreateExpectedHistoryEntry(
                         deviceName,
@@ -1100,22 +1100,22 @@ describe("Device: fix-location of device and/or recordings", () => {
                         fourthTime.toISOString(),
                         elsewhereLocation,
                         "automatic",
-                        elsewhereStation.name
+                        elsewhereStation.name,
                       );
                       cy.apiDeviceHistoryCheck(
                         Josie,
                         deviceName,
-                        expectedHistory
+                        expectedHistory,
                       );
 
                       cy.log(
-                        "check device location unchanged at elsewhere location"
+                        "check device location unchanged at elsewhere location",
                       );
                       const expectedDevice = TestCreateExpectedDevice(
                         deviceName,
                         group,
                         true,
-                        DeviceType.Thermal
+                        DeviceType.Thermal,
                       );
                       expectedDevice.location = elsewhereLocation;
                       cy.apiDeviceInGroupCheck(
@@ -1123,7 +1123,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                         deviceName,
                         group,
                         null,
-                        expectedDevice
+                        expectedDevice,
                       );
                     });
                   });
@@ -1139,11 +1139,11 @@ describe("Device: fix-location of device and/or recordings", () => {
     const newStationName = "Josie-station-7-new";
 
     const expectedOldStation: ApiStationResponse = JSON.parse(
-      JSON.stringify(expectedManualStation)
+      JSON.stringify(expectedManualStation),
     );
     expectedOldStation.location = oldLocation;
     const expectedNewStation: ApiStationResponse = JSON.parse(
-      JSON.stringify(expectedManualStation)
+      JSON.stringify(expectedManualStation),
     );
 
     cy.log("Create a device now");
@@ -1155,20 +1155,20 @@ describe("Device: fix-location of device and/or recordings", () => {
         Josie,
         group,
         { name: oldStationName, ...oldLocation },
-        beforeRecordings.toISOString()
+        beforeRecordings.toISOString(),
       ).then((oldStationId: number) => {
         cy.log("Create another new station before all recordings");
         cy.apiGroupStationAdd(
           Josie,
           group,
           { name: newStationName, ...newLocation },
-          beforeRecordings.toISOString()
+          beforeRecordings.toISOString(),
         ).then((newStationId: number) => {
           // 1 recording at old location, 2 at intermediate, then one elsewhere
           cy.testUploadRecording(
             deviceName,
             { ...oldLocation, time: firstTime, noTracks: true },
-            firstName
+            firstName,
           )
             .thenCheckStationIdIs(Josie, oldStationId)
             .then(() => {
@@ -1182,18 +1182,18 @@ describe("Device: fix-location of device and/or recordings", () => {
                 newStationId.toString(),
                 null,
                 HttpStatusCode.Ok,
-                { messages: ["Updated 1 recording(s)"], useRawStationId: true }
+                { messages: ["Updated 1 recording(s)"], useRawStationId: true },
               ).then(() => {
                 cy.log("Check recording moved");
                 checkRecordingLocationAndStation(
                   Josie,
                   firstName,
                   newLocation,
-                  getTestName(newStationName)
+                  getTestName(newStationName),
                 );
 
                 cy.log(
-                  "check new station lastThermalRecordingTime now firstTime"
+                  "check new station lastThermalRecordingTime now firstTime",
                 );
                 expectedNewStation.lastThermalRecordingTime =
                   firstTime.toISOString();
@@ -1201,11 +1201,11 @@ describe("Device: fix-location of device and/or recordings", () => {
                 cy.apiStationCheck(
                   Josie,
                   getTestName(newStationName),
-                  expectedNewStation
+                  expectedNewStation,
                 );
 
                 cy.log(
-                  "check old station still defined, with lastRecordingTime=undefined"
+                  "check old station still defined, with lastRecordingTime=undefined",
                 );
                 delete expectedOldStation.lastThermalRecordingTime;
                 expectedOldStation.activeAt = beforeRecordings.toISOString();
@@ -1213,7 +1213,7 @@ describe("Device: fix-location of device and/or recordings", () => {
                 cy.apiStationCheck(
                   Josie,
                   getTestName(oldStationName),
-                  expectedOldStation
+                  expectedOldStation,
                 );
               });
             });
@@ -1227,7 +1227,7 @@ function checkRecordingLocationAndStation(
   userName: string,
   recordingName: string,
   expectedLocation: LatLng,
-  stationName: string
+  stationName: string,
 ): any {
   checkRecording(userName, getCreds(recordingName).id, (recording: any) => {
     expect(recording.location.lat).to.equal(expectedLocation.lat);

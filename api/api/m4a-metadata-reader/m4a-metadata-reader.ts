@@ -6,17 +6,17 @@ import path from "path";
 let wasmLoaded;
 
 export const tryReadingM4aMetadata = async (
-  stream: ReadableStream
+  stream: ReadableStream,
 ): Promise<Record<string, any> | string> => {
   if (!wasmLoaded) {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     wasmLoaded = await loadWasm(
-      fs.readFileSync(path.join(__dirname, "./m4a_metadata_bg.wasm"))
+      fs.readFileSync(path.join(__dirname, "./m4a_metadata_bg.wasm")),
     );
   }
   const readerContext = M4aReaderContext.newWithReadableStream(
-    stream.getReader()
+    stream.getReader(),
   );
   try {
     const result = await readerContext.getMetadata();

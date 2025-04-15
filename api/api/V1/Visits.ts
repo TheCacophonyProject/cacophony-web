@@ -59,7 +59,7 @@ export const getCommonAncestorForTags = (tags: string[]): string => {
       const piece = path.pop();
       // Only add the piece if all classes agree on it.
       const someOthersAgree = classes.some(
-        (c) => c !== classification && c.path.includes(piece)
+        (c) => c !== classification && c.path.includes(piece),
       );
       if (someOthersAgree) {
         if (commonAncestors.has(piece)) {
@@ -83,16 +83,16 @@ export const getCommonAncestorForTags = (tags: string[]): string => {
 // From all tags return a single tag by precedence:
 // first, this users tag, or any other humans tag, else the original AI
 export function getCanonicalTrackTag(
-  trackTags: TrackTag[]
+  trackTags: TrackTag[],
 ): TrackTag | undefined {
   if (trackTags.length == 0) {
     return null;
   }
   const manualTags = trackTags.filter(
-    (tag) => !tag.automatic && !META_TAGS.includes(tag.what)
+    (tag) => !tag.automatic && !META_TAGS.includes(tag.what),
   );
   const animalTags = manualTags.filter(
-    (tag) => !NON_ANIMAL_TAGS.includes(tag.what)
+    (tag) => !NON_ANIMAL_TAGS.includes(tag.what),
   );
 
   // NOTE - Conflicting tags aren't actually conflicts if users agree on the super-species of the tag to some extent:
@@ -100,7 +100,7 @@ export function getCanonicalTrackTag(
   const uniqueTags = new Set(animalTags.map((tag) => tag.what));
   if (uniqueTags.size > 1) {
     const commonAncestor = getCommonAncestorForTags(
-      Array.from(uniqueTags.values())
+      Array.from(uniqueTags.values()),
     );
     const conflict = {
       what: commonAncestor === "all" ? conflictTag : commonAncestor,
@@ -138,7 +138,7 @@ class DeviceSummary {
         devVisits = new DeviceVisits(
           rec.Device.deviceName,
           rec.Group.groupName,
-          rec.DeviceId
+          rec.DeviceId,
         );
         this.deviceMap[rec.DeviceId] = devVisits;
       }
@@ -253,7 +253,7 @@ class DeviceVisits {
     // eslint-disable-next-line no-unused-vars
     public groupName: string,
     // eslint-disable-next-line no-unused-vars
-    public id: number
+    public id: number,
   ) {
     this.firstVisit = null;
     this.audioFileIds = new Set();
@@ -465,21 +465,21 @@ class Visit {
     // and before the end of the visit
 
     const newEvents = allEvents.filter(
-      (e) => !this.audioBaitEvents.find((existing) => e.id == existing.id)
+      (e) => !this.audioBaitEvents.find((existing) => e.id == existing.id),
     );
     const startDay = this.start.clone().startOf("day");
     const endDay = this.start.clone().endOf("day");
     const audioBaitDay = newEvents.some(
       (e) =>
         moment(e.dateTime).isAfter(startDay) &&
-        moment(e.dateTime).isBefore(endDay)
+        moment(e.dateTime).isBefore(endDay),
     );
     this.audioBaitDay = this.audioBaitDay || audioBaitDay;
 
     const recEvents = newEvents.filter(
       (e) =>
         Math.abs(moment(e.dateTime).diff(this.start, "seconds")) <=
-        audioBaitInterval
+        audioBaitInterval,
     );
     if (recEvents.length > 0) {
       this.audioBaitVisit = true;

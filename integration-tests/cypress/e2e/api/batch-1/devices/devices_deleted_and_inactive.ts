@@ -29,7 +29,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
     cy.apiRecordingAdd(
       device,
       { type: RecordingType.ThermalRaw },
-      "oneframe.cptv"
+      "oneframe.cptv",
     ).then((recordingId) => {
       cy.log("Added recording for device", recordingId);
       cy.apiDeviceDeleteOrSetInactive(adminUser, device, group);
@@ -37,7 +37,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
         (response) => {
           expect(response.body.device.active, "Device should be inactive.").to
             .be.false;
-        }
+        },
       );
     });
   });
@@ -47,7 +47,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       "reactivate the device if the device has not been moved/re-registered",
     () => {
       cy.log(
-        "Recordings uploaded for an inactive device *from the device* make it active again"
+        "Recordings uploaded for an inactive device *from the device* make it active again",
       );
       let originalDeviceId;
       const device = "A002";
@@ -58,7 +58,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.apiRecordingAdd(
         device,
         { type: RecordingType.ThermalRaw },
-        "oneframe.cptv"
+        "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
         cy.log("Setting device inactive");
@@ -71,30 +71,30 @@ describe("Devices deleted, inactive, and reassigned", () => {
             cy.apiRecordingAdd(
               device,
               { type: RecordingType.ThermalRaw },
-              "oneframe.cptv"
+              "oneframe.cptv",
             ).then((recordingId) => {
               cy.log("Added recording for inactive device", recordingId);
               cy.apiDevice(adminUser, device, true, HttpStatusCode.Ok).then(
                 (response) => {
                   expect(
                     response.body.device.active,
-                    "Device should be active."
+                    "Device should be active.",
                   ).to.be.true;
-                }
+                },
               );
             });
-          }
+          },
         );
       });
 
       cy.log(
-        "Recordings uploaded for an inactive device *from the device* which was moved *don't* make it active again"
+        "Recordings uploaded for an inactive device *from the device* which was moved *don't* make it active again",
       );
       const device2 = "A003";
       cy.apiRecordingAdd(
         device,
         { type: RecordingType.ThermalRaw },
-        "oneframe.cptv"
+        "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
         cy.apiDeviceDeleteOrSetInactive(adminUser, device, group);
@@ -107,7 +107,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
               device,
               device2,
               group2,
-              adminUser
+              adminUser,
             ).then((response) => {
               cy.log("Re-registered device", response.body.id);
               expect(response.body.id).to.not.equal(originalDeviceId);
@@ -115,23 +115,23 @@ describe("Devices deleted, inactive, and reassigned", () => {
               cy.apiRecordingAdd(
                 device,
                 { type: RecordingType.ThermalRaw },
-                "oneframe.cptv"
+                "oneframe.cptv",
               ).then((recordingId) => {
                 cy.log("Added recording for original device", recordingId);
                 cy.apiDevice(adminUser, device, true, HttpStatusCode.Ok).then(
                   (response) => {
                     expect(
                       response.body.device.active,
-                      "Device should be inactive."
+                      "Device should be inactive.",
                     ).to.be.false;
-                  }
+                  },
                 );
               });
             });
-          }
+          },
         );
       });
-    }
+    },
   );
 
   it("Recordings uploaded for an inactive device on behalf the device (sidekick) should not reactivate the device", () => {
@@ -141,7 +141,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.apiRecordingAdd(
         device,
         { type: RecordingType.ThermalRaw },
-        "oneframe.cptv"
+        "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
         cy.apiDeviceDeleteOrSetInactive(adminUser, device, group);
@@ -156,18 +156,18 @@ describe("Devices deleted, inactive, and reassigned", () => {
               device,
               { type: RecordingType.ThermalRaw },
               "foo",
-              "oneframe.cptv"
+              "oneframe.cptv",
             ).then(() => {
               cy.apiDevice(adminUser, device, true, HttpStatusCode.Ok).then(
                 (response) => {
                   expect(
                     response.body.device.active,
-                    "Device should still be active."
+                    "Device should still be active.",
                   ).to.be.false;
-                }
+                },
               );
             });
-          }
+          },
         );
       });
     });
@@ -186,7 +186,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.apiRecordingAdd(
         device,
         { type: RecordingType.ThermalRaw },
-        "oneframe.cptv"
+        "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
         cy.log("Setting device inactive");
@@ -200,7 +200,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
               device,
               device,
               group,
-              adminUser
+              adminUser,
             ).then((response) => {
               cy.log("Re-registered device", response.body.id);
               expect(response.body.id).to.equal(originalDeviceId);
@@ -208,17 +208,17 @@ describe("Devices deleted, inactive, and reassigned", () => {
                 (response) => {
                   expect(
                     response.body.device.active,
-                    "Device should be active."
+                    "Device should be active.",
                   ).to.be.true;
-                }
+                },
               );
               cy.log("Device inherits recordings");
               cy.testCheckDeviceHasRecordings(adminUser, device, 1);
             });
-          }
+          },
         );
       });
-    }
+    },
   );
 
   it(
@@ -234,12 +234,12 @@ describe("Devices deleted, inactive, and reassigned", () => {
         cy.apiRecordingAdd(
           deviceDest,
           { type: RecordingType.ThermalRaw },
-          "oneframe.cptv"
+          "oneframe.cptv",
         ).then(() => {
           cy.apiRecordingAdd(
             deviceDest,
             { type: RecordingType.ThermalRaw },
-            "oneframe.cptv"
+            "oneframe.cptv",
           ).then((recordingId) => {
             cy.log("Added recording to device", recordingId);
             cy.log("Setting device inactive");
@@ -248,21 +248,21 @@ describe("Devices deleted, inactive, and reassigned", () => {
               (response) => {
                 expect(
                   response.body.device.active,
-                  "Device should be inactive."
+                  "Device should be inactive.",
                 ).to.be.false;
                 cy.apiDeviceAdd(deviceSource, group).then((deviceId) => {
                   cy.log("Created device in source group", deviceId);
                   cy.apiRecordingAdd(
                     deviceSource,
                     { type: RecordingType.ThermalRaw },
-                    "oneframe.cptv"
+                    "oneframe.cptv",
                   ).then((recordingId) => {
                     // Now move this device from source group to destination
                     cy.apiDeviceReregisterAuthorized(
                       deviceSource,
                       deviceDest,
                       group2,
-                      adminUser
+                      adminUser,
                     ).then((response) => {
                       cy.log("Re-registered device", response.body.id);
                       expect(response.body.id).to.equal(originalDeviceId);
@@ -270,22 +270,22 @@ describe("Devices deleted, inactive, and reassigned", () => {
                         adminUser,
                         deviceDest,
                         true,
-                        HttpStatusCode.Ok
+                        HttpStatusCode.Ok,
                       ).then((response) => {
                         expect(
                           response.body.device.active,
-                          "Dest device should now be active."
+                          "Dest device should now be active.",
                         ).to.be.true;
                       });
                       cy.apiDevice(
                         adminUser,
                         deviceSource,
                         true,
-                        HttpStatusCode.Ok
+                        HttpStatusCode.Ok,
                       ).then((response) => {
                         expect(
                           response.body.device.active,
-                          "Source device should be inactive."
+                          "Source device should be inactive.",
                         ).to.be.false;
                       });
                       cy.log("Device inherits recordings");
@@ -293,12 +293,12 @@ describe("Devices deleted, inactive, and reassigned", () => {
                     });
                   });
                 });
-              }
+              },
             );
           });
         });
       });
-    }
+    },
   );
 
   it("Reassigning a device where there's an active device in the destination group with the same name fails", () => {
@@ -309,7 +309,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.apiRecordingAdd(
         deviceDest,
         { type: RecordingType.ThermalRaw },
-        "oneframe.cptv"
+        "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording to device", recordingId);
         cy.apiDevice(adminUser, deviceDest, true, HttpStatusCode.Ok).then(
@@ -321,10 +321,10 @@ describe("Devices deleted, inactive, and reassigned", () => {
               cy.apiRecordingAdd(
                 deviceSource,
                 { type: RecordingType.ThermalRaw },
-                "oneframe.cptv"
+                "oneframe.cptv",
               ).then(() => {
                 cy.log(
-                  "Attempt to move device from source group to destination"
+                  "Attempt to move device from source group to destination",
                 );
                 cy.apiDeviceReregisterAuthorized(
                   deviceSource,
@@ -332,11 +332,11 @@ describe("Devices deleted, inactive, and reassigned", () => {
                   group2,
                   adminUser,
                   null,
-                  HttpStatusCode.BadRequest
+                  HttpStatusCode.BadRequest,
                 );
               });
             });
-          }
+          },
         );
       });
     });
@@ -355,7 +355,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
         cy.apiRecordingAdd(
           deviceDest,
           { type: RecordingType.ThermalRaw },
-          "oneframe.cptv"
+          "oneframe.cptv",
         ).then((recordingId) => {
           cy.log("Added recording to device", recordingId);
           cy.log("Setting device inactive");
@@ -371,7 +371,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
                   deviceSource,
                   deviceDest,
                   group2,
-                  adminUser
+                  adminUser,
                 ).then((response) => {
                   cy.log("Re-registered device", response.body.id);
                   expect(response.body.id).to.equal(originalDeviceId);
@@ -379,11 +379,11 @@ describe("Devices deleted, inactive, and reassigned", () => {
                     adminUser,
                     deviceDest,
                     true,
-                    HttpStatusCode.Ok
+                    HttpStatusCode.Ok,
                   ).then((response) => {
                     expect(
                       response.body.device.active,
-                      "Dest device should now be active."
+                      "Dest device should now be active.",
                     ).to.be.true;
                   });
                   cy.log("Source device with no recordings should be deleted");
@@ -393,17 +393,17 @@ describe("Devices deleted, inactive, and reassigned", () => {
                     group,
                     null,
                     {},
-                    HttpStatusCode.Forbidden
+                    HttpStatusCode.Forbidden,
                   );
                   cy.log("Device inherits recordings");
                   cy.testCheckDeviceHasRecordings(adminUser, deviceDest, 1);
                 });
               });
-            }
+            },
           );
         });
       });
-    }
+    },
   );
 
   it("To reassign a device, the user must be an admin for both the group being moved from and the destination group.", () => {
@@ -414,7 +414,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.apiRecordingAdd(
         deviceDest,
         { type: RecordingType.ThermalRaw },
-        "oneframe.cptv"
+        "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording to device", recordingId);
         cy.log("Setting device inactive");
@@ -432,10 +432,10 @@ describe("Devices deleted, inactive, and reassigned", () => {
                 group3,
                 adminUser,
                 null,
-                HttpStatusCode.Forbidden
+                HttpStatusCode.Forbidden,
               );
             });
-          }
+          },
         );
       });
     });

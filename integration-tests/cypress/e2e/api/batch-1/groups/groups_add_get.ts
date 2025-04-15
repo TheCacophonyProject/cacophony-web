@@ -55,7 +55,7 @@ describe("Groups - add, get group", () => {
           userName: getTestName("gaGroupAdmin"),
           admin: true,
         };
-      }
+      },
     );
 
     //2nd device in this group
@@ -72,7 +72,7 @@ describe("Groups - add, get group", () => {
       "gaGroupAdmin",
       "gaGroupMember",
       "gaGroup",
-      NOT_ADMIN
+      NOT_ADMIN,
     ).then(() => {
       expectedGroupMemberUser = {
         id: getCreds("gaGroupMember").id,
@@ -131,7 +131,7 @@ describe("Groups - add, get group", () => {
         "gaTestUser",
         "gaTestGroup1",
         [expectedTestGroup],
-        EXCLUDE_CREATED_UPDATED_AT
+        EXCLUDE_CREATED_UPDATED_AT,
       );
     });
   });
@@ -150,7 +150,7 @@ describe("Groups - add, get group", () => {
       "gaGroupAdmin",
       "gaGroup",
       [expectedGroup],
-      EXCLUDE_CREATED_UPDATED_AT
+      EXCLUDE_CREATED_UPDATED_AT,
     );
 
     cy.log("Check member can view group, devices and user");
@@ -159,7 +159,7 @@ describe("Groups - add, get group", () => {
       "gaGroupMember",
       "gaGroup",
       [expectedGroup2],
-      EXCLUDE_CREATED_UPDATED_AT
+      EXCLUDE_CREATED_UPDATED_AT,
     );
   });
 
@@ -177,7 +177,7 @@ describe("Groups - add, get group", () => {
       [expectedGroup],
       EXCLUDE_CREATED_UPDATED_AT,
       HttpStatusCode.Ok,
-      { useRawGroupName: true }
+      { useRawGroupName: true },
     );
   });
 
@@ -192,7 +192,7 @@ describe("Groups - add, get group", () => {
       [],
       [],
       HttpStatusCode.Forbidden,
-      { useRawGroupName: true }
+      { useRawGroupName: true },
     );
   });
 
@@ -205,7 +205,7 @@ describe("Groups - add, get group", () => {
       HttpStatusCode.Forbidden,
       {
         useRawGroupName: true,
-      }
+      },
     );
 
     cy.apiGroupCheck(
@@ -216,7 +216,7 @@ describe("Groups - add, get group", () => {
       HttpStatusCode.Forbidden,
       {
         useRawGroupName: true,
-      }
+      },
     );
   });
 
@@ -226,7 +226,7 @@ describe("Groups - add, get group", () => {
       "gaGroupAdmin",
       "gaGroup",
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("Add duplicate group (different user)");
     cy.apiGroupAdd("gaTestUser", "gaGroup", true, HttpStatusCode.Unprocessable);
@@ -235,7 +235,7 @@ describe("Groups - add, get group", () => {
       "gaGroupAdmin",
       "GAGROUP",
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
   it("Invalid group names rejected", () => {

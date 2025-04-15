@@ -51,14 +51,14 @@ describe("Transactional emails for different user lifecycle actions", () => {
           emailConfirmed: true,
         });
         cy.log(
-          "Add the user to the group, then remove them and check that they get a notification email"
+          "Add the user to the group, then remove them and check that they get a notification email",
         );
         clearMailServerLog();
         cy.apiGroupUserAdd(adminUser, normalUser, group, true);
         cy.apiGroupUserRemove(adminUser, normalUser, group);
         waitForEmail("group remove notification").then((email) => {
           expect(getEmailSubject(email)).to.equal(
-            `❗️You've been removed from '${getTestName(group)}'`
+            `❗️You've been removed from '${getTestName(group)}'`,
           );
           expect(getEmailToAddress(email)).to.equal(getTestEmail(normalUser));
         });
@@ -116,12 +116,12 @@ describe("Transactional emails for different user lifecycle actions", () => {
           LATEST_END_USER_AGREEMENT,
           HttpStatusCode.Ok,
           {},
-          token
+          token,
         ).then((userId) => {
           cy.log("Group invite is automatically accepted upon sign-up");
           waitForEmail("welcome").then((email) => {
             expect(getEmailSubject(email)).to.equal(
-              "🎉 Welcome to your new Cacophony Monitoring account!"
+              "🎉 Welcome to your new Cacophony Monitoring account!",
             );
           });
           cy.apiGroupUsersCheck(adminUser, group, [
@@ -155,7 +155,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
             token,
             false,
             false,
-            HttpStatusCode.Forbidden
+            HttpStatusCode.Forbidden,
           );
         });
       });
@@ -178,7 +178,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
         cy.apiGroupUserRemove(secondAdminUser, secondAdminUser, group);
         pumpSmtp();
         cy.log(
-          "Because the user removes themselves, we don't expect a removal confirmation"
+          "Because the user removes themselves, we don't expect a removal confirmation",
         );
         waitForEmail("group remove confirmation").then((email) => {
           expect(email).to.not.contain("❗️You've been removed from");
@@ -204,19 +204,19 @@ describe("Transactional emails for different user lifecycle actions", () => {
         cy.log("user receives an email saying they've been made an admin");
         waitForEmail("group permissions change confirmation").then((email) => {
           expect(getEmailSubject(email)).to.contain(
-            `Your status in the group '${getTestName(group)}' has changed`
+            `Your status in the group '${getTestName(group)}' has changed`,
           );
           expect(
-            email.includes("You've been made a group administrator")
+            email.includes("You've been made a group administrator"),
           ).to.equal(true);
           expect(email.includes("You've been made a group owner")).to.equal(
-            false
+            false,
           );
           expect(
-            email.includes("You are no longer an administrator of this group")
+            email.includes("You are no longer an administrator of this group"),
           ).to.equal(false);
           expect(
-            email.includes("You are no longer an owner of this group")
+            email.includes("You are no longer an owner of this group"),
           ).to.equal(false);
         });
       });
@@ -241,15 +241,15 @@ describe("Transactional emails for different user lifecycle actions", () => {
           secondAdminUser,
           group,
           false,
-          false
+          false,
         );
         pumpSmtp();
         cy.log(
-          "Because the user changes their own permissions, we don't expect a removal confirmation"
+          "Because the user changes their own permissions, we don't expect a removal confirmation",
         );
         waitForEmail("group status change").then((email) => {
           expect(getEmailSubject(email)).to.not.equal(
-            `Your status in the group '${getTestName(group)}' has changed`
+            `Your status in the group '${getTestName(group)}' has changed`,
           );
         });
       });
@@ -269,13 +269,13 @@ describe("Transactional emails for different user lifecycle actions", () => {
         cy.apiGroupUserAdd(adminUser, normalUser, group);
         waitForEmail("added to group").then((email) => {
           expect(getEmailSubject(email)).to.equal(
-            `👌 You've been accepted to '${getTestName(group)}'`
+            `👌 You've been accepted to '${getTestName(group)}'`,
           );
         });
         cy.apiGroupUserRemove(adminUser, normalUser, group);
         waitForEmail("group remove confirmation").then((email) => {
           expect(getEmailSubject(email)).to.contain(
-            "❗️You've been removed from"
+            "❗️You've been removed from",
           );
         });
       });
@@ -292,7 +292,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
         cy.apiGroupUserInvite(adminUser, getTestEmail(normalUser), group);
         waitForEmail("non-member group invite").then((email) => {
           expect(getEmailSubject(email)).to.equal(
-            "You've been invited to join a group on Cacophony Monitoring"
+            "You've been invited to join a group on Cacophony Monitoring",
           );
         });
       });
@@ -312,24 +312,24 @@ describe("Transactional emails for different user lifecycle actions", () => {
         cy.apiGroupUserRequestInvite(
           getTestEmail(adminUser),
           normalUser,
-          group
+          group,
         );
         waitForEmail("group join request").then((email) => {
           expect(getEmailSubject(email)).to.equal(
             `A Cacophony Monitoring user wants to join your '${getTestName(
-              group
-            )}' group`
+              group,
+            )}' group`,
           );
           expect(getEmailToAddress(email)).to.equal(getTestEmail(adminUser));
           const { token } = extractTokenStartingWith(
             email,
-            JOIN_GROUP_REQUEST_PREFIX
+            JOIN_GROUP_REQUEST_PREFIX,
           );
           cy.log("Admin user accepts request");
           cy.apiGroupUserAcceptInviteRequest(adminUser, token);
           waitForEmail("join request approved").then((email) => {
             expect(getEmailSubject(email)).to.equal(
-              `👌 You've been accepted to '${getTestName(group)}'`
+              `👌 You've been accepted to '${getTestName(group)}'`,
             );
             expect(getEmailToAddress(email)).to.equal(getTestEmail(normalUser));
           });
@@ -368,14 +368,14 @@ describe("Transactional emails for different user lifecycle actions", () => {
         });
         waitForEmail("confirm-new-email").then((email) => {
           expect(getEmailSubject(email)).to.equal(
-            "🔧 Confirm your email change for Cacophony Monitoring"
+            "🔧 Confirm your email change for Cacophony Monitoring",
           );
           expect(getEmailToAddress(email)).to.equal(
-            getTestEmail("new-email-address")
+            getTestEmail("new-email-address"),
           );
           const { payload, token } = extractTokenStartingWith(
             email,
-            CONFIRM_EMAIL_PREFIX
+            CONFIRM_EMAIL_PREFIX,
           );
           expect(payload._type).to.equal("confirm-email");
           return cy.apiConfirmEmailAddress(token);

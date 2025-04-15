@@ -8,7 +8,7 @@ const models = await modelsInit();
 
 export async function powerEventsPerDevice(
   request: { query: any; res: any },
-  admin?: boolean
+  admin?: boolean,
 ): Promise<PowerEvents[]> {
   const query = request.query;
   const options = {} as QueryOptions;
@@ -18,7 +18,7 @@ export async function powerEventsPerDevice(
   const result = await models.Event.latestEvents(
     request.res.locals.requestUser.id,
     query.deviceId,
-    options
+    options,
   );
   const deviceEvents = {};
   for (const event of result) {

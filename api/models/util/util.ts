@@ -181,7 +181,7 @@ export function openS3() {
     uploadStreaming(
       key: string,
       body: Readable | ReadableStream,
-      metadata?: any
+      metadata?: any,
     ) {
       const { client, bucket } = getProviderForParams({ Key: key });
       const payload: PutObjectCommandInput = {
@@ -206,7 +206,7 @@ export function openS3() {
       }
       const { client, bucket } = getProviderForParams(params);
       return client.send(
-        new HeadBucketCommand({ Bucket: bucket } as HeadBucketCommandInput)
+        new HeadBucketCommand({ Bucket: bucket } as HeadBucketCommandInput),
       );
     },
     // createBucket(params: CreateBucketCommandInput) {
@@ -232,7 +232,7 @@ const geometrySetter = (
     | LatLng
     | string
     | undefined
-    | null
+    | null,
 ): { type: "Point"; coordinates: [number, number] } | null => {
   if (val === undefined || val === null || typeof val === "string") {
     return null;

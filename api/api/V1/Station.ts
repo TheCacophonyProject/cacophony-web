@@ -124,7 +124,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got stations", {
         stations: mapStations(response.locals.stations),
       });
-    }
+    },
   );
 
   /**
@@ -152,7 +152,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
-    }
+    },
   );
 
   /**
@@ -214,7 +214,7 @@ export default function (app: Application, baseUrl: string) {
           count: parseInt(c.count),
         })),
       });
-    }
+    },
   );
 
   /**
@@ -250,7 +250,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got recordings count", {
         count,
       });
-    }
+    },
   );
 
   /**
@@ -280,7 +280,7 @@ export default function (app: Application, baseUrl: string) {
       const s3 = openS3();
       await s3.deleteObject(fileKey);
       referenceImages = referenceImages.filter(
-        (imageKey) => imageKey !== fileKey
+        (imageKey) => imageKey !== fileKey,
       );
       await response.locals.station.update({
         settings: {
@@ -289,7 +289,7 @@ export default function (app: Application, baseUrl: string) {
         },
       });
       return successResponse(response, "Removed reference image from station");
-    }
+    },
   );
 
   /**
@@ -323,9 +323,9 @@ export default function (app: Application, baseUrl: string) {
         "reference-image.jpg",
         "image/jpeg",
         response.locals.requestUser.id,
-        response.locals.station.GroupId
+        response.locals.station.GroupId,
       );
-    }
+    },
   );
 
   /**
@@ -353,11 +353,11 @@ export default function (app: Application, baseUrl: string) {
         data,
         keys,
         uploadedFileDatas,
-        locals
+        locals,
       ): Promise<string> => {
         console.assert(
           keys.length === 1,
-          "Only expected 1 file-attachment for this end-point"
+          "Only expected 1 file-attachment for this end-point",
         );
         const key = keys[0];
         const station = locals.station;
@@ -370,8 +370,8 @@ export default function (app: Application, baseUrl: string) {
           settings: stationSettings,
         });
         return key;
-      }
-    )
+      },
+    ),
   );
 
   /**
@@ -433,7 +433,7 @@ export default function (app: Application, baseUrl: string) {
         await models.Station.activeInGroupDuringTimeRange(
           existingStation.GroupId,
           activeAt,
-          retiredAt
+          retiredAt,
         )
       ).filter(({ id }) => id !== existingStation.id);
 
@@ -445,14 +445,14 @@ export default function (app: Application, baseUrl: string) {
         if (activeAt && retiredAt) {
           return next(
             new ClientError(
-              `An active station with the name '${newName}' already exists between ${activeAt.toISOString()} and ${retiredAt.toISOString()}`
-            )
+              `An active station with the name '${newName}' already exists between ${activeAt.toISOString()} and ${retiredAt.toISOString()}`,
+            ),
           );
         } else {
           return next(
             new ClientError(
-              `An active station with the name '${newName}' already exists.`
-            )
+              `An active station with the name '${newName}' already exists.`,
+            ),
           );
         }
       }
@@ -464,7 +464,7 @@ export default function (app: Application, baseUrl: string) {
             MIN_STATION_SEPARATION_METERS
           ) {
             proximityWarnings.push(
-              `Updated station location is too close to ${otherStation.name} (#${otherStation.id}) - recordings may be incorrectly matched`
+              `Updated station location is too close to ${otherStation.name} (#${otherStation.id}) - recordings may be incorrectly matched`,
             );
           }
         }
@@ -506,7 +506,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Updated station", {
         ...(proximityWarnings.length && { warnings: proximityWarnings }),
       });
-    }
+    },
   );
 
   /**
@@ -541,7 +541,7 @@ export default function (app: Application, baseUrl: string) {
           where: {
             stationId: Number(request.params.id),
           },
-        }
+        },
       );
       // FIXME(ManageStationsV2): Should we reassign device history entries to another close-by station, or automatically
       //  create a new station for the entry, or should we just delete the entry?
@@ -561,20 +561,20 @@ export default function (app: Application, baseUrl: string) {
             recording.update({
               deletedAt: deletionTime,
               deletedBy: response.locals.requestUser.id,
-            })
+            }),
           );
         }
         await Promise.all(deleteRecordingPromises);
         await response.locals.station.destroy();
         return successResponse(
           response,
-          `Deleted station and ${recordings.length} associated recordings`
+          `Deleted station and ${recordings.length} associated recordings`,
         );
       } else {
         await response.locals.station.destroy();
         return successResponse(response, "Deleted station");
       }
-    }
+    },
   );
 
   /**
@@ -610,10 +610,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser,
         response.locals.station.id,
         request.query.from as unknown as Date, // Get the current cacophony index
-        request.query["window-size"] as unknown as number
+        request.query["window-size"] as unknown as number,
       );
       return successResponse(response, { cacophonyIndex });
-    }
+    },
   );
 
   /**
@@ -652,10 +652,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.station.id,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String
+        request.query.interval as unknown as String,
       );
       return successResponse(response, { cacophonyIndexBulk });
-    }
+    },
   );
 
   /**
@@ -693,10 +693,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.station.id,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number,
-        request.query.type as unknown as string
+        request.query.type as unknown as string,
       );
       return successResponse(response, { speciesCount });
-    }
+    },
   );
 
   /**
@@ -737,10 +737,10 @@ export default function (app: Application, baseUrl: string) {
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
         request.query.interval as unknown as String,
-        request.query.type as unknown as string
+        request.query.type as unknown as string,
       );
       return successResponse(response, { speciesCountBulk });
-    }
+    },
   );
 
   /**
@@ -810,10 +810,10 @@ export default function (app: Application, baseUrl: string) {
       // We can map them to the standard ApiDeviceResponse format:
       const viewAsSuperUser = res.locals.viewAsSuperUser;
       const devices = (devicesRaw as Device[]).map((dev) =>
-        mapDeviceResponse(dev, viewAsSuperUser)
+        mapDeviceResponse(dev, viewAsSuperUser),
       );
 
       return successResponse(res, "Got devices for station", { devices });
-    }
+    },
   );
 }

@@ -71,7 +71,7 @@ const audioLabels = computed<RecordingLabel[]>(() => {
           text: text,
           description,
           value: (value || text).toLowerCase(),
-        }) as RecordingLabel,
+        } as RecordingLabel),
     )
     .filter((tag) => tag.value !== "note");
 });

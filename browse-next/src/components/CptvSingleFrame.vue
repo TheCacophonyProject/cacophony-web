@@ -32,7 +32,7 @@ const defaultPalette = computed(
   () =>
     ColourMaps.find(([name, _val]) => name === props.palette) as [
       string,
-      Uint32Array,
+      Uint32Array
     ],
 );
 const creds = computed<LoggedInUserAuth | null>(() => {

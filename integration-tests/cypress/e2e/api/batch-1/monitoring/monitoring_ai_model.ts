@@ -52,7 +52,7 @@ describe("Monitoring : evaluate ai model", () => {
           Claris,
           recording.stationId,
           { ai: "Catter" },
-          [{ tag: "possum", aiTag: "cat" }]
+          [{ tag: "possum", aiTag: "cat" }],
         );
       });
     });
@@ -82,7 +82,7 @@ describe("Monitoring : evaluate ai model", () => {
           Claris,
           recording.stationId,
           { ai: "Catter" },
-          [{ tag: "none", aiTag: "cat" }]
+          [{ tag: "none", aiTag: "cat" }],
         );
       });
     });

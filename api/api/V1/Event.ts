@@ -58,7 +58,7 @@ const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 const uploadEvent = async (
   request: Request,
   response: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   let device = response.locals.device || response.locals.requestDevice;
   if (response.locals.requestDevice) {
@@ -83,7 +83,7 @@ const uploadEvent = async (
         logger.error(
           "Failed to parse JSON %s: %s",
           e,
-          typeof description.details
+          typeof description.details,
         );
       }
     }
@@ -95,7 +95,7 @@ const uploadEvent = async (
     delete details.env;
     const detail = await models.DetailSnapshot.getOrCreateMatching(
       description.type,
-      details
+      details,
     );
     detailsId = detail.id;
 
@@ -107,7 +107,7 @@ const uploadEvent = async (
           device,
           { lat: details.location.latitude, lng: details.location.longitude },
           new Date(details.location.updated),
-          "config"
+          "config",
         );
       }
     }
@@ -124,7 +124,7 @@ const uploadEvent = async (
     await models.Event.bulkCreate(eventList);
   } catch (exception) {
     return next(
-      new ClientError(`Failed to record events. ${exception.message}`)
+      new ClientError(`Failed to record events. ${exception.message}`),
     );
   }
   return successResponse(response, "Added events.", {
@@ -155,9 +155,9 @@ const commonEventFields = [
       .bail()
       .custom(
         (description: EventDescription) =>
-          description.type.match(EVENT_TYPE_REGEXP) !== null
+          description.type.match(EVENT_TYPE_REGEXP) !== null,
       )
-      .withMessage("description type contains invalid characters")
+      .withMessage("description type contains invalid characters"),
   ),
   body("dateTimes")
     .exists()
@@ -204,14 +204,14 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       next();
     },
     // Finally, upload event(s)
-    uploadEvent
+    uploadEvent,
   );
 
   /**
@@ -241,11 +241,11 @@ export default function (app: Application, baseUrl: string) {
         data,
         keys,
         _uploadedFileDatas,
-        _locals
+        _locals,
       ): Promise<Event> => {
         console.assert(
           keys.length === 1,
-          "Only expected 1 file attachment for this end-point"
+          "Only expected 1 file attachment for this end-point",
         );
         const key = keys[0];
         // New event
@@ -261,7 +261,7 @@ export default function (app: Application, baseUrl: string) {
         delete description.details.dateTimes;
         const detail = await models.DetailSnapshot.getOrCreateMatching(
           description.type,
-          description.details
+          description.details,
         );
         const dateTime =
           (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
@@ -271,8 +271,8 @@ export default function (app: Application, baseUrl: string) {
           EventDetailId: detail.id,
           dateTime,
         });
-      }
-    )
+      },
+    ),
   );
 
   /**
@@ -297,8 +297,8 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Specified event was not of type 'thumbnail`,
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       await streamS3Object(
@@ -306,9 +306,9 @@ export default function (app: Application, baseUrl: string) {
         response,
         event.EventDetail.details.fileKey,
         `event-thumbnail-${event.id}.png`,
-        "image/png"
+        "image/png",
       );
-    }
+    },
   );
 
   /**
@@ -354,14 +354,14 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a event snapshot with an id of '${request.body.eventDetailId}`,
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       next();
     },
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    uploadEvent
+    uploadEvent,
   );
 
   /**
@@ -418,8 +418,8 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       next();
@@ -444,7 +444,7 @@ export default function (app: Application, baseUrl: string) {
         query.limit as unknown as number,
         query.latest as unknown as boolean,
         options,
-        includeCount
+        includeCount,
       );
       const payload = {
         limit: query.limit,
@@ -459,7 +459,7 @@ export default function (app: Application, baseUrl: string) {
         ).count;
       }
       return successResponse(response, "Completed query.", payload);
-    }
+    },
   );
 
   if (!config.productionEnv) {
@@ -602,8 +602,8 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             `Could not find a device with an id of '${request.query.deviceId} for user`,
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       next();
@@ -612,7 +612,7 @@ export default function (app: Application, baseUrl: string) {
       logger.info(
         "Get power events for %s at time %s",
         response.locals.requestUser,
-        new Date()
+        new Date(),
       );
       const events = await powerEventsPerDevice({
         query: { ...request.query },
@@ -621,7 +621,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Completed query.", {
         events,
       });
-    }
+    },
   );
 
   /**
@@ -641,12 +641,12 @@ export default function (app: Application, baseUrl: string) {
     async (_request: Request, response: Response) => {
       const eventTypes = await models.sequelize.query(
         `select distinct type from "DetailSnapshots"`,
-        { type: QueryTypes.SELECT }
+        { type: QueryTypes.SELECT },
       );
       return successResponse(response, "Got event types", {
         eventTypes: (eventTypes as { type: string }[]).map(({ type }) => type),
       });
-    }
+    },
   );
 
   /**
@@ -675,12 +675,12 @@ export default function (app: Application, baseUrl: string) {
         where e."DeviceId" = ${response.locals.device.id}
         and e."dateTime" > now() - interval '1 month' 
       `,
-        { type: QueryTypes.SELECT }
+        { type: QueryTypes.SELECT },
       );
       return successResponse(response, "Got event types", {
         eventTypes: (eventTypes as { type: string }[]).map(({ type }) => type),
       });
-    }
+    },
   );
 
   /**
@@ -713,6 +713,6 @@ export default function (app: Application, baseUrl: string) {
           dateTime: event.dateTime,
         },
       });
-    }
+    },
   );
 }

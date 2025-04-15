@@ -241,9 +241,7 @@ const devicesList = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const userToFilterProjects = ref<UserId | null>(null);
 const deviceToFilterProjects = ref<DeviceId | null>(null);
 const filterUser = computed(() =>
-  (usersList.value || []).find(
-    (user) => user.id === userToFilterProjects.value,
-  ),
+  (usersList.value || []).find((user) => user.id === userToFilterProjects.value),
 );
 const loadAllUsers = async () => {
   const response = await listUsers();

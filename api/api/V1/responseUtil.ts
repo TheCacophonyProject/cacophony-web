@@ -37,7 +37,7 @@ const INVALID_DATAPOINT_UPDATE_REQUEST =
 
 function send(
   response: Response,
-  data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>
+  data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>,
 ) {
   // Check that the data is valid.
   if (
@@ -134,7 +134,7 @@ export const someResponse = (
   response: Response,
   statusCode: HttpStatusCode,
   messageOrData: string | string[] | Record<string, any> = "",
-  data: Record<string, any> = {}
+  data: Record<string, any> = {},
 ) => {
   const dataMessages = data.messages || [];
   if (typeof messageOrData === "string" || Array.isArray(messageOrData)) {
@@ -159,7 +159,7 @@ export const someResponse = (
 export const successResponse = (
   response: Response,
   messageOrData: string | string[] | Record<string, any> = "",
-  data: Record<string, any> = {}
+  data: Record<string, any> = {},
 ) => someResponse(response, HttpStatusCode.Ok, messageOrData, data);
 
 export const serverErrorResponse = async (
@@ -167,7 +167,7 @@ export const serverErrorResponse = async (
   response: Response,
   error: Error,
   messageOrData: string | string[] | Record<string, any> = "",
-  data: Record<string, any> = {}
+  data: Record<string, any> = {},
 ) => {
   try {
     // If the payload was too large, we'd still like to know who the request is from in the logs.
@@ -180,20 +180,20 @@ export const serverErrorResponse = async (
       error.stack || stack,
       Object.entries(error).flat(),
       token._type,
-      token.id
+      token.id,
     );
   } catch (e) {
     log.error(
       "SERVER ERROR (JWT token): %s, %s",
       error.toString(),
-      error.stack
+      error.stack,
     );
   }
   return someResponse(
     response,
     HttpStatusCode.ServerError,
     messageOrData,
-    data
+    data,
   );
 };
 

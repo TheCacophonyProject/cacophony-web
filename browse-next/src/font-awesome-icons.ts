@@ -87,6 +87,7 @@ import {
   faVolumeUp,
   faSquarePlus as faSquarePlusSolid,
   faComment,
+  faExpand,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -203,6 +204,7 @@ library.add(
   faSquarePlus,
   faSquarePlusSolid,
   faComment,
+  faExpand,
 );
 
 export default FontAwesomeIcon;

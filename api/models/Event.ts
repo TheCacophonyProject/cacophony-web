@@ -99,7 +99,7 @@ export default function (sequelize, DataTypes) {
     limit,
     latestFirst,
     options,
-    includeCount
+    includeCount,
   ): Promise<Event[] | { rows: Event[]; count: number }> {
     const where: any = {};
     offset = offset || 0;
@@ -233,7 +233,7 @@ export default function (sequelize, DataTypes) {
       ],
       attributes: [
         Sequelize.literal(
-          'DISTINCT ON("Event"."DeviceId","EventDetail"."type") 1'
+          "DISTINCT ON(\"Event\".\"DeviceId\",\"EventDetail\".\"type\") 1",
         ), // the 1 is some kind of hack that makes this work in sequelize
         "id",
         "dateTime",

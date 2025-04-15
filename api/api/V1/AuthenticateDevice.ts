@@ -62,19 +62,19 @@ export default function (app: Application) {
       validPasswordOf(body("password")),
       anyOf(
         deprecatedField(validNameOf(body("devicename"))).optional(),
-        validNameOf(body("deviceName")).optional()
+        validNameOf(body("deviceName")).optional(),
       ),
       anyOf(
         deprecatedField(validNameOf(body("groupname"))).optional(),
-        validNameOf(body("groupName")).optional()
+        validNameOf(body("groupName")).optional(),
       ),
       anyOf(
         idOf(body("deviceId")).optional(),
-        deprecatedField(idOf(body("deviceID"))).optional()
+        deprecatedField(idOf(body("deviceID"))).optional(),
       ),
       anyOf(
         query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean()
+        query("only-active").default(false).isBoolean().toBoolean(),
       ),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -86,14 +86,14 @@ export default function (app: Application) {
       } else {
         next(
           new ClientError(
-            "Either a deviceName and groupName is required, or a deviceId"
-          )
+            "Either a deviceName and groupName is required, or a deviceId",
+          ),
         );
       }
     },
     extractUnauthenticatedOptionalDeviceInGroup(
       body(["devicename", "deviceName", "deviceId", "deviceID"]),
-      body(["groupname", "groupName"])
+      body(["groupname", "groupName"]),
     ),
     (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.device) {
@@ -107,21 +107,21 @@ export default function (app: Application) {
           if (group) {
             return next(
               new AuthenticationError(
-                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}') in project '${group}'`
-              )
+                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}') in project '${group}'`,
+              ),
             );
           } else {
             return next(
               new AuthenticationError(
-                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}')`
-              )
+                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}')`,
+              ),
             );
           }
         } else {
           return next(
             new AuthenticationError(
-              "Device not found for supplied deviceName and groupName"
-            )
+              "Device not found for supplied deviceName and groupName",
+            ),
           );
         }
       }
@@ -139,6 +139,6 @@ export default function (app: Application) {
       } else {
         return next(new AuthenticationError("Wrong password or deviceName."));
       }
-    }
+    },
   );
 }

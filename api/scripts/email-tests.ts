@@ -22,7 +22,7 @@ const _sendTestEmails = async () => {
     "jon@hardiesoft.com",
     "My awesome group",
     "Jon Hardie",
-    "jon@cacophony.org.nz"
+    "jon@cacophony.org.nz",
   );
   await sendGroupInviteExistingMemberEmail(
     origin,
@@ -30,7 +30,7 @@ const _sendTestEmails = async () => {
     "jon@hardiesoft.com",
     "My awesome group",
     "Jon Hardie",
-    "jon@cacophony.org.nz"
+    "jon@cacophony.org.nz",
   );
   await sendGroupMembershipRequestEmail(
     origin,
@@ -38,7 +38,7 @@ const _sendTestEmails = async () => {
     "jon@cacophony.org.nz",
     "Jon Hardie",
     "Your awesome group",
-    "jon@hardiesoft.com"
+    "jon@hardiesoft.com",
   );
 
   // Should this just have a recording object, and get the recordingDateTime from there?
@@ -54,6 +54,6 @@ const _sendTestEmails = async () => {
     1234,
     5667,
     "jon@cacophony.org.nz",
-    null
+    null,
   );
 };

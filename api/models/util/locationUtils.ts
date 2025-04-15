@@ -25,7 +25,7 @@ export function latLngApproxDistance(a: LatLng, b: LatLng): number {
   const lat2 = (b.lat * Math.PI) / 180;
   const deltaLng = ((b.lng - a.lng) * Math.PI) / 180;
   const part1 = Math.acos(
-    sinLat1 * Math.sin(lat2) + costLat1 * Math.cos(lat2) * Math.cos(deltaLng)
+    sinLat1 * Math.sin(lat2) + costLat1 * Math.cos(lat2) * Math.cos(deltaLng),
   );
   return part1 * R;
 }
@@ -35,7 +35,7 @@ export async function tryToMatchLocationToStationInGroup(
   location: LatLng,
   groupId: GroupId,
   activeFromDate: Date,
-  lookForwards: boolean = false
+  lookForwards: boolean = false,
 ): Promise<Station | null> {
   // Match the recording to any stations that the group might have:
   let stations;
@@ -44,12 +44,12 @@ export async function tryToMatchLocationToStationInGroup(
       groupId,
       activeFromDate,
       new Date(),
-      lookForwards
+      lookForwards,
     );
   } else {
     stations = await models.Station.activeInGroupAtTime(
       groupId,
-      activeFromDate
+      activeFromDate,
     );
   }
   const stationDistances = [];
@@ -60,7 +60,7 @@ export async function tryToMatchLocationToStationInGroup(
   }
   const validStationDistances = stationDistances.filter(
     ({ distanceToStation }) =>
-      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING
+      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
   );
 
   // There shouldn't really ever be more than one station within our threshold distance,
@@ -79,7 +79,7 @@ export async function tryToMatchLocationToStationInGroup(
 export async function tryToMatchRecordingToStation(
   staticGroup: GroupStatic,
   recording: Recording,
-  stations?: Station[]
+  stations?: Station[],
 ): Promise<Station | null> {
   // If the recording does not yet have a location, return
   if (!recording.location) {
@@ -106,14 +106,14 @@ export async function tryToMatchRecordingToStation(
     // See if any stations match: Looking at the location distance between this recording and the stations.
     const distanceToStation = latLngApproxDistance(
       station.location,
-      recording.location
+      recording.location,
     );
     stationDistances.push({ distanceToStation, station });
   }
   const validStationDistances = stationDistances.filter(
     ({ distanceToStation }) =>
       // eslint-disable-next-line no-undef
-      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING
+      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
   );
 
   // There shouldn't really ever be more than one station within our threshold distance,
@@ -132,7 +132,7 @@ export async function tryToMatchRecordingToStation(
 const EPSILON = 0.000000000001;
 
 export const canonicalLatLng = (
-  location: LatLng | { coordinates: [number, number] } | [number, number]
+  location: LatLng | { coordinates: [number, number] } | [number, number],
 ): LatLng => {
   if (Array.isArray(location)) {
     return { lat: location[0], lng: location[1] };
@@ -177,7 +177,7 @@ export const haversineDistance = (a: LatLng, b: LatLng): number => {
  */
 export const locationsAreEqual = (
   a: LatLng | { coordinates: [number, number] },
-  b: LatLng | { coordinates: [number, number] }
+  b: LatLng | { coordinates: [number, number] },
 ): boolean => {
   const canonicalA = canonicalLatLng(a);
   const canonicalB = canonicalLatLng(b);

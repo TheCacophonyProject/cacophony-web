@@ -14,7 +14,7 @@ export interface TrackTagUserDataStatic
   extends ModelStaticCommon<TrackTagUserData> {}
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): TrackTagUserDataStatic {
   const TrackTagUserData = sequelize.define("TrackTagUserData", {
     TrackTagId: {

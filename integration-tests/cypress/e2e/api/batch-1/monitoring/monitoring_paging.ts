@@ -16,26 +16,26 @@ describe("Monitoring : pagings", () => {
     cy.testAddRecordingsAtTimes(
       camera,
       ["21:03", "21:23", "21:43", "22:03", "22:23", "22:43", "23:03"],
-      { lat: -44.0, lng: 172.7 }
+      { lat: -44.0, lng: 172.7 },
     ).then((recordingIds) => {
       checkRecording(Veronica, recordingIds[0], (recording) => {
         cy.checkMonitoringWithFilter(
           Veronica,
           recording.stationId,
           { "page-size": 3, page: 1 },
-          [{ start: "22:23" }, { start: "22:43" }, { start: "23:03" }]
+          [{ start: "22:23" }, { start: "22:43" }, { start: "23:03" }],
         );
         cy.checkMonitoringWithFilter(
           Veronica,
           recording.stationId,
           { "page-size": 3, page: 2 },
-          [{ start: "21:23" }, { start: "21:43" }, { start: "22:03" }]
+          [{ start: "21:23" }, { start: "21:43" }, { start: "22:03" }],
         );
         cy.checkMonitoringWithFilter(
           Veronica,
           recording.stationId,
           { "page-size": 3, page: 3 },
-          [{ start: "21:03" }]
+          [{ start: "21:03" }],
         );
       });
     });
@@ -54,12 +54,12 @@ describe("Monitoring : pagings", () => {
       cy.testAddRecordingsAtTimes(
         camera1,
         ["21:03", "21:14", "21:25"],
-        location1
+        location1,
       );
       cy.testAddRecordingsAtTimes(
         camera2,
         ["21:13", "21:18", "21:27"],
-        location2
+        location2,
       ); // all one visit
 
       cy.checkMonitoringWithFilter(
@@ -70,13 +70,13 @@ describe("Monitoring : pagings", () => {
           { recordings: 3, start: "21:13" },
           { recordings: 1, start: "21:14" },
           { recordings: 1, start: "21:25" },
-        ]
+        ],
       );
       cy.checkMonitoringWithFilter(
         Henry,
         null,
         { "page-size": 3, page: 2, groups: groupId },
-        [{ recordings: 1, start: "21:03" }]
+        [{ recordings: 1, start: "21:03" }],
       );
     });
   });
@@ -98,7 +98,7 @@ describe("Monitoring : pagings", () => {
       group,
       camera1,
       camera2,
-      camera3
+      camera3,
     ).then(({ groupId }) => {
       cy.testUploadRecording(camera1, { time: visitTime, ...location1 });
       cy.testUploadRecording(camera2, { time: visitTime, ...location2 });
@@ -109,13 +109,13 @@ describe("Monitoring : pagings", () => {
         Bobletta,
         null,
         { "page-size": 2, page: 2, groups: groupId },
-        [{ start: visitTime }, { start: visitTime }, { start: visitTime }]
+        [{ start: visitTime }, { start: visitTime }, { start: visitTime }],
       );
       cy.checkMonitoringWithFilter(
         Bobletta,
         null,
         { "page-size": 2, page: 1, groups: groupId },
-        [{ start: nextVisitTime }]
+        [{ start: nextVisitTime }],
       );
     });
   });
@@ -127,21 +127,21 @@ describe("Monitoring : pagings", () => {
     cy.testAddRecordingsAtTimes(
       camera,
       ["21:03", "21:13", "21:40", "21:45", "22:10", "22:40", "23:10"],
-      location3
+      location3,
     ).then((recordingIds) => {
       checkRecording(Veronica, recordingIds[0], (recording) => {
         cy.checkMonitoringWithFilter(
           Veronica,
           recording.stationId,
           { "page-size": 3, page: 1, from: "21:10" },
-          [{ start: "22:10" }, { start: "22:40" }, { start: "23:10" }]
+          [{ start: "22:10" }, { start: "22:40" }, { start: "23:10" }],
         );
 
         cy.checkMonitoringWithFilter(
           Veronica,
           recording.stationId,
           { "page-size": 3, page: 2, from: "21:10" },
-          [{ start: "21:03", incomplete: "true" }, { start: "21:40" }]
+          [{ start: "21:03", incomplete: "true" }, { start: "21:40" }],
         );
       });
     });

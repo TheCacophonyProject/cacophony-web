@@ -28,7 +28,7 @@ describe("Stations: adding", () => {
         TemplateExpectedStation.groupId = getCreds("staGroup").id;
         TemplateExpectedStation.groupName = getTestName("staGroup");
         TemplateExpectedStation.name = getTestName("staStation1");
-      }
+      },
     );
 
     // second group and device
@@ -41,7 +41,7 @@ describe("Stations: adding", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      1
+      1,
     );
 
     cy.log("Adding station");
@@ -50,7 +50,7 @@ describe("Stations: adding", () => {
       cy.apiStationCheck(
         "staAdmin",
         getTestName("staStation1"),
-        expectedStation1
+        expectedStation1,
       );
     });
   });
@@ -73,7 +73,7 @@ describe("Stations: adding", () => {
       stationWithSameName,
       null,
       null,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -88,12 +88,12 @@ describe("Stations: adding", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      3
+      3,
     );
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      3
+      3,
     );
     expectedStation2.location.lat = -47;
     expectedStation2.location.lng = 177;
@@ -111,7 +111,7 @@ describe("Stations: adding", () => {
       "staAdmin",
       "staGroup",
       "staStation3",
-      expectedStation1
+      expectedStation1,
     );
 
     cy.log("Check station2 exists");
@@ -119,7 +119,7 @@ describe("Stations: adding", () => {
       "staAdmin",
       "staGroup2",
       "staStation3",
-      expectedStation2
+      expectedStation2,
     );
   });
 
@@ -134,12 +134,12 @@ describe("Stations: adding", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      4
+      4,
     );
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      4
+      4,
     );
     expectedStation2.location.lat = -47;
     expectedStation2.location.lng = 177;
@@ -149,7 +149,7 @@ describe("Stations: adding", () => {
       "staAdmin",
       "staGroup",
       station1,
-      "2020-01-01T00:00:00.000Z"
+      "2020-01-01T00:00:00.000Z",
     ).then(() => {
       const station1Id = getCreds(getTestName("staStation4")).id;
 
@@ -157,7 +157,7 @@ describe("Stations: adding", () => {
       cy.testStationRetire(
         "staAdmin",
         "staStation4",
-        "2020-02-01T00:00:00.000Z"
+        "2020-02-01T00:00:00.000Z",
       );
 
       cy.log("Can add duplicate-named station");
@@ -170,14 +170,14 @@ describe("Stations: adding", () => {
         expectedStation1,
         null,
         null,
-        { useRawStationId: true, additionalParams: { "only-active": false } }
+        { useRawStationId: true, additionalParams: { "only-active": false } },
       );
       cy.log("Check station2 exists");
       cy.apiGroupStationCheck(
         "staAdmin",
         "staGroup",
         "staStation4",
-        expectedStation2
+        expectedStation2,
       );
     });
   });
@@ -193,7 +193,7 @@ describe("Stations: adding", () => {
       undefined,
       undefined,
       HttpStatusCode.Ok,
-      { warnings: "none" }
+      { warnings: "none" },
     );
   });
 
@@ -202,14 +202,14 @@ describe("Stations: adding", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      6
+      6,
     );
     const stationTooClose = TestCreateStationData("staStation", 6);
     stationTooClose.name = "stationTooClose6";
     const expectedStationTooClose = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      6
+      6,
     );
     expectedStationTooClose.name = getTestName("stationTooClose6");
 
@@ -227,10 +227,10 @@ describe("Stations: adding", () => {
           {
             warnings: [
               `New station is too close to ${getTestName(
-                station1.name
+                station1.name,
               )} (#${station1Id}) - recordings may be incorrectly matched`,
             ],
-          }
+          },
         );
 
         cy.log("Check stations both exist");
@@ -238,15 +238,15 @@ describe("Stations: adding", () => {
           "staAdmin",
           "staGroup",
           "staStation6",
-          expectedStation1
+          expectedStation1,
         );
         cy.apiGroupStationCheck(
           "staAdmin",
           "staGroup",
           "stationTooClose6",
-          expectedStationTooClose
+          expectedStationTooClose,
         );
-      }
+      },
     );
   });
 
@@ -266,7 +266,7 @@ describe("Stations: adding", () => {
       undefined,
       undefined,
       HttpStatusCode.Ok,
-      { warnings: "none" }
+      { warnings: "none" },
     );
   });
 
@@ -277,25 +277,25 @@ describe("Stations: adding", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "staStation",
-      8
+      8,
     );
     const expectedStationWithSameLocation = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stationWithSameLocation",
-      8
+      8,
     );
 
     cy.apiGroupStationAdd(
       "staAdmin",
       "staGroup",
       station1,
-      "2020-01-01T00:00:00.000Z"
+      "2020-01-01T00:00:00.000Z",
     ).then((firstStationId: number) => {
       cy.log("Retire that station");
       cy.testStationRetire(
         "staAdmin",
         "staStation8",
-        "2020-02-01T00:00:00.000Z"
+        "2020-02-01T00:00:00.000Z",
       );
       expectedStation1.retiredAt = "2020-02-01T00:00:00.000Z";
 
@@ -307,7 +307,7 @@ describe("Stations: adding", () => {
         undefined,
         undefined,
         undefined,
-        { warnings: "none" }
+        { warnings: "none" },
       ).then((secondStationId: number) => {
         cy.log("Check that both stations exist");
         cy.apiStationCheck(
@@ -316,7 +316,7 @@ describe("Stations: adding", () => {
           expectedStation1,
           undefined,
           undefined,
-          { useRawStationId: true }
+          { useRawStationId: true },
         );
         cy.apiStationCheck(
           "staAdmin",
@@ -324,13 +324,13 @@ describe("Stations: adding", () => {
           expectedStationWithSameLocation,
           undefined,
           undefined,
-          { useRawStationId: true }
+          { useRawStationId: true },
         );
         cy.apiGroupStationCheck(
           "staAdmin",
           "staGroup",
           "stationWithSameLocation8",
-          expectedStationWithSameLocation
+          expectedStationWithSameLocation,
         );
       });
     });
