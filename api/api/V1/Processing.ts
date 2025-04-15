@@ -603,7 +603,7 @@ export default function (app: Application, baseUrl: string) {
       existingData.thumbnail = response.locals.data;
       await saveTrackData(response.locals.track.id, existingData);
       return successResponse(response, "Track updated");
-    }
+    },
   );
 
   /**

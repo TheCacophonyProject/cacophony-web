@@ -854,7 +854,7 @@ const dataHasSuppliedTracksWithPredictions = (data: { metadata?: any }) => {
 const setInitialProcessingState = (
   recordingTemplate: Recording,
   data: { processingState?: RecordingProcessingState; type: RecordingType },
-  hasSuppliedMetadata: boolean
+  hasSuppliedMetadata: boolean,
 ) => {
   if (data.processingState) {
     // NOTE: If the processingState field is present when a recording is uploaded, this means that the recording

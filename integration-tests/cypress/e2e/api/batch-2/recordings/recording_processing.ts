@@ -113,12 +113,12 @@ describe("Recordings - processing tests", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        RecordingProcessingState.TrackAndAnalyse
+        RecordingProcessingState.TrackAndAnalyse,
       );
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.Audio,
-        RecordingProcessingState.TrackAndAnalyse
+        RecordingProcessingState.TrackAndAnalyse,
       );
     });
 
@@ -609,7 +609,7 @@ describe("Recordings - processing tests", () => {
             "rpRecording18",
             "possum",
             0.9,
-            { name: "Master" }
+            { name: "Master" },
           ).then(() => {
             cy.log("Check tracks added to recording");
             expectedRecording18.tracks = [
@@ -641,14 +641,14 @@ describe("Recordings - processing tests", () => {
               "rpRecording18",
               true,
               {},
-              undefined
+              undefined,
             );
             cy.log("Check tags added to recording/track");
             cy.apiRecordingCheck(
               "rpGroupAdmin",
               "rpRecording18",
               expectedRecording18,
-              EXCLUDE_ALL_IDS
+              EXCLUDE_ALL_IDS,
             );
           });
         });
@@ -708,7 +708,7 @@ describe("Recordings - processing tests", () => {
             "rpRecording19",
             "possum",
             0.9,
-            { name: "Master" }
+            { name: "Master" },
           ).then(() => {
             cy.log("Check tracks added to recording");
             expectedRecording19.processing = true;
