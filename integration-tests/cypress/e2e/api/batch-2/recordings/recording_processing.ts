@@ -36,7 +36,13 @@ describe("Recordings - processing tests", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".updatedAt", ".id"];
+  const EXCLUDE_KEYS = [
+    ".jobKey",
+    ".rawFileKey",
+    ".updatedAt",
+    ".id",
+    ".metadataSource",
+  ];
 
   const templateExpectedThermalRecording: ApiThermalRecordingResponse =
     JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
