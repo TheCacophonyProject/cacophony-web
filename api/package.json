@@ -79,7 +79,7 @@
     "sharp": "^0.32.1"
   },
   "scripts": {
-    "lint": "eslint --ext .ts --ignore-path .gitignore . || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
+    "lint": "eslint --ext .ts --ignore-path .gitignore . || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false)",
     "lint:fix": "eslint --fix --ext .ts --ignore-path .gitignore .",
     "apidoc": "apidoc -c ./apidoc.json -f \".*\\.ts$\" -i api/V1 -o apidoc/",
     "db-migrate": "sequelize db:migrate",

@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "scripts": {
         "generate-schemas": "./node_modules/.bin/tsc && node build-schemas.js",
-        "lint": "./node_modules/.bin/eslint ./ --ext .ts || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
+        "lint": "./node_modules/.bin/eslint ./ --ext .ts || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false)",
         "lint:fix": "./node_modules/.bin/eslint ./ --fix --ext .ts"
     },
     "dependencies": {
