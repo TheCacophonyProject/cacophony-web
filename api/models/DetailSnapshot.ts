@@ -50,7 +50,7 @@ export default function (sequelize, DataTypes): DetailSnapshotStatic {
   const DetailSnapshot = sequelize.define(
     name,
     attributes,
-    options
+    options,
   ) as unknown as DetailSnapshotStatic;
 
   const models = sequelize.models;
@@ -68,7 +68,7 @@ export default function (sequelize, DataTypes): DetailSnapshotStatic {
 
   DetailSnapshot.getOrCreateMatching = async function (
     searchType: string,
-    searchDetails: any
+    searchDetails: any,
   ): Promise<DetailSnapShot> {
     if (!searchDetails) {
       searchDetails = {

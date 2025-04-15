@@ -82,9 +82,9 @@ export default (app: Application, baseUrl: string) => {
       return successResponse(
         response,
         "Retrieved classification.json",
-        classification
+        classification,
       );
-    }
+    },
   );
 
   /**
@@ -114,11 +114,11 @@ export default (app: Application, baseUrl: string) => {
         uploadingUser,
         data,
         keys,
-        uploadedFileDatas
+        uploadedFileDatas,
       ): Promise<File> => {
         console.assert(
           keys.length === 1,
-          "Only expected 1 file attachment for this end-point"
+          "Only expected 1 file attachment for this end-point",
         );
         const dbRecord = models.File.buildSafely(data);
         dbRecord.UserId = (uploadingUser as User).id;
@@ -126,8 +126,8 @@ export default (app: Application, baseUrl: string) => {
         dbRecord.fileSize = uploadedFileDatas[0].data.length;
         await dbRecord.save();
         return dbRecord;
-      }
-    )
+      },
+    ),
   );
 
   /**
@@ -149,13 +149,13 @@ export default (app: Application, baseUrl: string) => {
           type: { [Op.eq]: request.query.type },
         },
         0,
-        1000
+        1000,
       );
       return successResponse(response, "Completed query.", {
         count: result.count,
         files: mapAudiobaitFiles(result.rows),
       });
-    }
+    },
   );
 
   /**
@@ -202,7 +202,7 @@ export default (app: Application, baseUrl: string) => {
           expiresIn: 60 * 10,
         }),
       });
-    }
+    },
   );
 
   /**
@@ -233,11 +233,11 @@ export default (app: Application, baseUrl: string) => {
       } else {
         return next(
           new AuthorizationError(
-            "The user does not own that file and is not a global admin!"
-          )
+            "The user does not own that file and is not a global admin!",
+          ),
         );
       }
       return successResponse(response, "Deleted file.");
-    }
+    },
   );
 };

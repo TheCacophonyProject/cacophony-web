@@ -49,10 +49,10 @@ describe("Recordings query using where", () => {
   }
 
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
   );
   const templateExpectedAudioRecording: ApiAudioRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE)
+    JSON.stringify(TEMPLATE_AUDIO_RECORDING_RESPONSE),
   );
 
   const track1 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
@@ -131,13 +131,13 @@ describe("Recordings query using where", () => {
           "rqGroup",
           null,
           recording1,
-          false
+          false,
         );
         cy.apiRecordingAdd(
           "rqCamera1",
           recording2,
           undefined,
-          "rqRecording2"
+          "rqRecording2",
         ).then(() => {
           expectedRecording2 = TestCreateExpectedRecordingData(
             templateExpectedRecording,
@@ -146,7 +146,7 @@ describe("Recordings query using where", () => {
             "rqGroup",
             null,
             recording2,
-            false
+            false,
           );
           expectedRecording2.processingState = RecordingProcessingState.Corrupt;
 
@@ -154,7 +154,7 @@ describe("Recordings query using where", () => {
             "rqCamera1b",
             recording3,
             undefined,
-            "rqRecording3"
+            "rqRecording3",
           ).then(() => {
             expectedRecording3 = TestCreateExpectedRecordingData(
               templateExpectedAudioRecording,
@@ -163,7 +163,7 @@ describe("Recordings query using where", () => {
               "rqGroup",
               null,
               recording3,
-              false
+              false,
             );
             // TODO Issue 103:These parameters missing from result. If we
             // never return them, why do we have them?
@@ -181,7 +181,7 @@ describe("Recordings query using where", () => {
               "rqCamera1b",
               recording4,
               undefined,
-              "rqRecording4"
+              "rqRecording4",
             ).then(() => {
               expectedRecording4 = TestCreateExpectedRecordingData(
                 templateExpectedRecording,
@@ -190,7 +190,7 @@ describe("Recordings query using where", () => {
                 "rqGroup",
                 null,
                 recording4,
-                false
+                false,
               );
 
               expectedRecording4.processingState =
@@ -199,7 +199,7 @@ describe("Recordings query using where", () => {
                 getCreds("rqRecording4").id,
                 0,
                 "rqGroupAdmin",
-                "possum"
+                "possum",
               );
 
               expectedRecording4.tracks[0].tags = [
@@ -229,30 +229,30 @@ describe("Recordings query using where", () => {
                 "rqGroupAdmin",
                 { where: { id: getCreds("rqRecording1").id } },
                 [expectedRecording1],
-                EXCLUDE_PARAMS
+                EXCLUDE_PARAMS,
               );
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
                 { where: { id: getCreds("rqRecording2").id } },
                 [expectedRecording2],
-                EXCLUDE_PARAMS
+                EXCLUDE_PARAMS,
               );
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
                 { where: { id: getCreds("rqRecording3").id } },
                 [expectedRecording3],
-                EXCLUDE_PARAMS
+                EXCLUDE_PARAMS,
               );
               cy.apiRecordingsQueryCheck(
                 "rqGroupAdmin",
                 { where: { id: getCreds("rqRecording4").id } },
                 [expectedRecording4],
-                EXCLUDE_PARAMS
+                EXCLUDE_PARAMS,
               );
             });
           });
         });
-      }
+      },
     );
     for (let count = 0; count < 20; count++) {
       const tempRecording = JSON.parse(JSON.stringify(recording1));
@@ -263,7 +263,7 @@ describe("Recordings query using where", () => {
         "rqCamera2",
         tempRecording,
         undefined,
-        "rqRecordingB" + count.toString()
+        "rqRecordingB" + count.toString(),
       ).then(() => {
         expectedRecording[count] = TestCreateExpectedRecordingData(
           templateExpectedRecording,
@@ -272,7 +272,7 @@ describe("Recordings query using where", () => {
           "rqGroup2",
           null,
           tempRecording,
-          false
+          false,
         );
         // TODO Issue 104:  positions returned as [] blank even
         // where they exist.  If we don't support this parameter, do
@@ -289,13 +289,13 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { id: getCreds("rqRecording1").id } },
       [expectedRecording1],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.log("Check recording count can be viewed correctly");
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { id: getCreds("rqRecording1").id } },
-      1
+      1,
     );
   });
 
@@ -305,13 +305,13 @@ describe("Recordings query using where", () => {
       "rqGroupMember",
       { where: { id: getCreds("rqRecording1").id } },
       [expectedRecording1],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.log("Check recording count can be viewed correctly");
     cy.apiRecordingsCountCheck(
       "rqGroupMember",
       { where: { id: getCreds("rqRecording1").id } },
-      1
+      1,
     );
   });
 
@@ -321,13 +321,13 @@ describe("Recordings query using where", () => {
       "rqGroup2Admin",
       { where: { id: getCreds("rqRecording1").id } },
       [],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.log("Check recording count can be viewed correctly");
     cy.apiRecordingsCountCheck(
       "rqGroup2Admin",
       { where: { id: getCreds("rqRecording1").id } },
-      0
+      0,
     );
   });
 
@@ -339,40 +339,40 @@ describe("Recordings query using where", () => {
     cy.log("Get first page, setting limit");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
+      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"ASC\"]]" },
       expectedRecording.slice(0, 3),
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
-      20
+      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      20,
     );
 
     cy.log("Get intermediate page, setting limit");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 3, order: '[["id", "ASC"]]' },
+      { where: {}, offset: 3, limit: 3, order: "[[\"id\", \"ASC\"]]" },
       expectedRecording.slice(3, 6),
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 3, order: '[["id", "ASC"]]' },
-      20
+      { where: {}, offset: 3, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      20,
     );
 
     cy.log("Get final (part) page, setting limit");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 18, limit: 3, order: '[["id", "ASC"]]' },
+      { where: {}, offset: 18, limit: 3, order: "[[\"id\", \"ASC\"]]" },
       expectedRecording.slice(18, 20),
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 18, limit: 3, order: '[["id", "ASC"]]' },
-      20
+      { where: {}, offset: 18, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      20,
     );
 
     //note slice() has to be used to stop .reverse() modifying original array in-place - crazy.
@@ -380,32 +380,32 @@ describe("Recordings query using where", () => {
     cy.log("Reverse sort order, first page");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: '[["id", "DESC"]]' },
+      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"DESC\"]]" },
       expectedRecording.slice().reverse().slice(0, 3),
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.log("Reverse sort order, intermediate page");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 3, order: '[["id", "DESC"]]' },
+      { where: {}, offset: 3, limit: 3, order: "[[\"id\", \"DESC\"]]" },
       expectedRecording.slice().reverse().slice(3, 6),
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.log("Reverse sort order, last (part) page");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 18, limit: 3, order: '[["id", "DESC"]]' },
+      { where: {}, offset: 18, limit: 3, order: "[[\"id\", \"DESC\"]]" },
       expectedRecording.slice().reverse().slice(18, 20),
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
 
     cy.log("Verify sort on a different parameter (recordingDateTime)");
     //recordingDateTime order is opposite to id order, so compare with reverse of original array
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 30, order: '[["id", "DESC"]]' },
+      { where: {}, offset: 3, limit: 30, order: "[[\"id\", \"DESC\"]]" },
       expectedRecording.slice().reverse().slice(3, 30),
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
   });
 
@@ -415,12 +415,12 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { id: getCreds("rqRecording2").id } },
       [expectedRecording2],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { id: getCreds("rqRecording2").id } },
-      1
+      1,
     );
 
     cy.log("recordingDateTime");
@@ -428,12 +428,12 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { recordingDateTime: recording3.recordingDateTime } },
       [expectedRecording3],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { recordingDateTime: recording3.recordingDateTime } },
-      1
+      1,
     );
 
     cy.log("DeviceId");
@@ -441,33 +441,33 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { DeviceId: getCreds("rqCamera1").id },
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
       },
       [expectedRecording1, expectedRecording2],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { DeviceId: getCreds("rqCamera1").id } },
-      2
+      2,
     );
 
     cy.log("GroupId");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: { GroupId: getCreds("rqGroup").id }, order: '[["id", "ASC"]]' },
+      { where: { GroupId: getCreds("rqGroup").id }, order: "[[\"id\", \"ASC\"]]" },
       [
         expectedRecording1,
         expectedRecording2,
         expectedRecording3,
         expectedRecording4,
       ],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { GroupId: getCreds("rqGroup").id } },
-      4
+      4,
     );
 
     cy.log("type");
@@ -475,12 +475,12 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { type: RecordingType.Audio } },
       [expectedRecording3],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { type: RecordingType.Audio } },
-      1
+      1,
     );
 
     cy.log("processingState");
@@ -488,12 +488,12 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { processingState: RecordingProcessingState.Corrupt } },
       [expectedRecording2],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { processingState: RecordingProcessingState.Corrupt } },
-      1
+      1,
     );
 
     cy.log("duration");
@@ -501,7 +501,7 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { duration: 60 } },
       [expectedRecording3],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck("rqGroupAdmin", { where: { duration: 60 } }, 1);
 
@@ -515,12 +515,12 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { duration: { $gt: 40 } } },
       [expectedRecording3],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { duration: { $gt: 40 } } },
-      1
+      1,
     );
 
     cy.log("Less than");
@@ -528,25 +528,25 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       { where: { duration: { $lt: 40 } } },
       [expectedRecording1],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { duration: { $lt: 40 } } },
-      1
+      1,
     );
 
     cy.log("Less than equal");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: { duration: { $lte: 40 } }, order: '[["id", "ASC"]]' },
+      { where: { duration: { $lte: 40 } }, order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording1, expectedRecording2, expectedRecording4],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { duration: { $lte: 40 } } },
-      3
+      3,
     );
   });
 
@@ -557,15 +557,15 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { "Device.deviceName": getTestName("rqCamera1") },
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
       },
       [expectedRecording1, expectedRecording2],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { "Device.deviceName": getTestName("rqCamera1") } },
-      2
+      2,
     );
 
     cy.log("Group.groupName");
@@ -573,15 +573,15 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { "Group.groupName": getTestName("rqGroup") },
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
       },
       [expectedRecording1, expectedRecording2, expectedRecording3],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: { "Group.groupName": getTestName("rqGroup") } },
-      3
+      3,
     );
 
     cy.log("Station.stationName");
@@ -595,18 +595,18 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { DeviceId: getCreds("rqCamera1").id, duration: { $gte: 40 } },
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
       },
       [expectedRecording2],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       {
         where: { DeviceId: getCreds("rqCamera1").id, duration: { $gte: 40 } },
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
       },
-      1
+      1,
     );
   });
 
@@ -615,86 +615,86 @@ describe("Recordings query using where", () => {
     cy.log("Tagged as possum");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tags: '["possum"]', order: '[["id", "ASC"]]' },
+      { where: {}, tags: "[\"possum\"]", order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording2, expectedRecording4],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tags: '["possum"]', order: '[["id", "ASC"]]'}, 1);
 
     cy.log("Tagged as possum or cat");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tags: '["possum", "cat"]', order: '[["id", "ASC"]]' },
+      { where: {}, tags: "[\"possum\", \"cat\"]", order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording1, expectedRecording2, expectedRecording4],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tags: '["possum", "cat"]', order: '[["id", "ASC"]]'}, 2);
 
     cy.log("'Any' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "any", order: '[["id", "ASC"]]' },
+      { where: {}, tagMode: "any", order: "[[\"id\", \"ASC\"]]" },
       [
         expectedRecording1,
         expectedRecording2,
         expectedRecording3,
         expectedRecording4,
       ],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "any", order:   '[["id", "ASC"]]'}, 4);
 
     cy.log("'untagged' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "untagged", order: '[["id", "ASC"]]' },
+      { where: {}, tagMode: "untagged", order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording3],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "untagged", order:   '[["id", "ASC"]]'}, 1);
 
     cy.log("'tagged' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "tagged", order: '[["id", "ASC"]]' },
+      { where: {}, tagMode: "tagged", order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording1, expectedRecording2, expectedRecording4],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "tagged", order:   '[["id", "ASC"]]'}, 3);
 
     cy.log("'no-human' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "no-human", order: '[["id", "ASC"]]' },
+      { where: {}, tagMode: "no-human", order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording1, expectedRecording2, expectedRecording3],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "no-human", order:   '[["id", "ASC"]]'}, 3);
 
     cy.log("'automatic-only' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "automatic-only", order: '[["id", "ASC"]]' },
+      { where: {}, tagMode: "automatic-only", order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording1, expectedRecording2],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "automatic-only", order:   '[["id", "ASC"]]'}, 2);
 
     cy.log("'human-only' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "human-only", order: '[["id", "ASC"]]' },
+      { where: {}, tagMode: "human-only", order: "[[\"id\", \"ASC\"]]" },
       [expectedRecording4],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "human-only", order:   '[["id", "ASC"]]'}, 1);
 
     cy.log("'automatic+human' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "automatic+human", order: '[["id", "ASC"]]' },
+      { where: {}, tagMode: "automatic+human", order: "[[\"id\", \"ASC\"]]" },
       [],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "automatic+human", order:   '[["id", "ASC"]]'}, 0);
 
@@ -704,11 +704,11 @@ describe("Recordings query using where", () => {
       {
         where: {},
         tagMode: "automatic-only",
-        tags: '["possum"]',
-        order: '[["id", "ASC"]]',
+        tags: "[\"possum\"]",
+        order: "[[\"id\", \"ASC\"]]",
       },
       [expectedRecording2],
-      EXCLUDE_PARAMS
+      EXCLUDE_PARAMS,
     );
     //cy.apiRecordingsCountCheck( "rqGroupAdmin", {where: {}, tagMode: "automatic-only", tags: '["possum"]', order:   '[["id", "ASC"]]'}, 1);
   });
@@ -724,13 +724,13 @@ describe("Recordings query using where", () => {
       { where: {}, tagMode: "rubbish value" },
       [],
       EXCLUDE_PARAMS,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
       { where: {}, tagMode: "rubbish value" },
       undefined,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     //cy.log("order");
     //cy.apiRecordingsQueryCheck( "rqGroupAdmin", {where: {}, order: '["badParameter"]'}, [], EXCLUDE_PARAMS, HttpStatusCode.Unprocessable);
@@ -752,19 +752,19 @@ describe("Recordings query using where", () => {
         false,
         true,
         HttpStatusCode.Ok,
-        { useRawUserName: true }
+        { useRawUserName: true },
       );
 
       cy.apiRecordingsQueryCheck(
         superuser,
-        { where: {}, "view-mode": "user", order: '[["id", "ASC"]]' },
+        { where: {}, "view-mode": "user", order: "[[\"id\", \"ASC\"]]" },
         [
           expectedRecording1,
           expectedRecording2,
           expectedRecording3,
           expectedRecording4,
         ],
-        EXCLUDE_PARAMS
+        EXCLUDE_PARAMS,
       );
       //cy.apiRecordingsCountCheck( superuser, {where: {}, "view-mode":'user'}, 2);
       cy.apiGroupUserRemove(
@@ -774,7 +774,7 @@ describe("Recordings query using where", () => {
         HttpStatusCode.Ok,
         {
           useRawUserName: true,
-        }
+        },
       );
     });
   } else {
@@ -790,17 +790,17 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 0,
         limit: 3,
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
         countAll: true,
       },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
-      { count: 20 }
+      { count: 20 },
     );
 
     cy.log(
-      "Get intermediate page, setting limit - expect count of ALL results"
+      "Get intermediate page, setting limit - expect count of ALL results",
     );
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
@@ -808,17 +808,17 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 3,
         limit: 3,
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
         countAll: true,
       },
       expectedRecording.slice(3, 6),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
-      { count: 20 }
+      { count: 20 },
     );
 
     cy.log(
-      "Get final (part) page, setting limit - expect count of ALL results"
+      "Get final (part) page, setting limit - expect count of ALL results",
     );
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
@@ -826,13 +826,13 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 19,
         limit: 3,
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
         countAll: true,
       },
       expectedRecording.slice(19, 20),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
-      { count: 20 }
+      { count: 20 },
     );
   });
 
@@ -845,17 +845,17 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 0,
         limit: 3,
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
         countAll: false,
       },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
-      { count: 3 }
+      { count: 3 },
     );
 
     cy.log(
-      "Get intermediate page, setting limit - expect count of this page only"
+      "Get intermediate page, setting limit - expect count of this page only",
     );
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
@@ -863,17 +863,17 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 3,
         limit: 3,
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
         countAll: false,
       },
       expectedRecording.slice(3, 6),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
-      { count: 3 }
+      { count: 3 },
     );
 
     cy.log(
-      "Get final (part) page, setting limit - expect count of this page only"
+      "Get final (part) page, setting limit - expect count of this page only",
     );
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
@@ -881,13 +881,13 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 19,
         limit: 3,
-        order: '[["id", "ASC"]]',
+        order: "[[\"id\", \"ASC\"]]",
         countAll: false,
       },
       expectedRecording.slice(19, 20),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
-      { count: 1 }
+      { count: 1 },
     );
   });
 
@@ -895,11 +895,11 @@ describe("Recordings query using where", () => {
     cy.log("Get first page, setting limit - expect count to count ALL results");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
+      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"ASC\"]]" },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
-      { count: 20 }
+      { count: 20 },
     );
   });
 

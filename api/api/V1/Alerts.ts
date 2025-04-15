@@ -127,7 +127,7 @@ export default function (app: Application, baseUrl: string) {
       anyOf(
         idOf(body("deviceId")),
         idOf(body("stationId")),
-        idOf(body("projectId"))
+        idOf(body("projectId")),
       ),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -135,19 +135,19 @@ export default function (app: Application, baseUrl: string) {
         await fetchAuthorizedRequiredDeviceById(body("deviceId"))(
           request,
           response,
-          next
+          next,
         );
       } else if (request.body.stationId) {
         await fetchAuthorizedRequiredStationById(body("stationId"))(
           request,
           response,
-          next
+          next,
         );
       } else if (request.body.projectId) {
         await fetchAuthorizedRequiredGroupById(body("projectId"))(
           request,
           response,
-          next
+          next,
         );
       }
     },
@@ -171,7 +171,7 @@ export default function (app: Application, baseUrl: string) {
       logger.warning("Alert %s", JSON.stringify(alert, null, "\t"));
       const { id } = await models.Alert.create(alert);
       return successResponse(response, "Created new Alert.", { id });
-    }
+    },
   );
 
   /**
@@ -204,11 +204,11 @@ export default function (app: Application, baseUrl: string) {
           response.locals.device.id,
           response.locals.requestUser.id,
           null,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         )
       ).map(mapAlertResponse);
       return successResponse(response, { alerts });
-    }
+    },
   );
 
   /**
@@ -241,11 +241,11 @@ export default function (app: Application, baseUrl: string) {
           response.locals.station.id,
           response.locals.requestUser.id,
           null,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         )
       ).map(mapAlertResponse);
       return successResponse(response, { alerts });
-    }
+    },
   );
 
   /**
@@ -278,11 +278,11 @@ export default function (app: Application, baseUrl: string) {
           response.locals.group.id,
           response.locals.requestUser.id,
           null,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         )
       ).map(mapAlertResponse);
       return successResponse(response, { alerts });
-    }
+    },
   );
 
   /**
@@ -315,7 +315,7 @@ export default function (app: Application, baseUrl: string) {
         alerts = (await models.Alert.findAll()).map(mapAlertResponse);
       }
       return successResponse(response, { alerts });
-    }
+    },
   );
 
   /**
@@ -340,6 +340,6 @@ export default function (app: Application, baseUrl: string) {
     async (_request: Request, response: Response) => {
       await response.locals.alert.destroy();
       return successResponse(response, "Deleted alert");
-    }
+    },
   );
 }

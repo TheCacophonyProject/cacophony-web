@@ -133,13 +133,13 @@ export default function (sequelize, DataTypes): AlertStatic {
     deviceId: DeviceId,
     userId: UserId | null,
     trackTag: TrackTag | null = null,
-    asAdmin: boolean = false
+    asAdmin: boolean = false,
   ): Promise<Alert[]> => {
     return Alert.query(
       { DeviceId: deviceId },
       userId,
       (trackTag && trackTag.path) || null,
-      asAdmin
+      asAdmin,
     );
   };
 
@@ -147,13 +147,13 @@ export default function (sequelize, DataTypes): AlertStatic {
     stationId: StationId,
     userId: UserId | null,
     trackTag: TrackTag | null = null,
-    asAdmin: boolean = false
+    asAdmin: boolean = false,
   ): Promise<Alert[]> => {
     return Alert.query(
       { StationId: stationId },
       userId,
       (trackTag && trackTag.path) || null,
-      asAdmin
+      asAdmin,
     );
   };
 
@@ -161,13 +161,13 @@ export default function (sequelize, DataTypes): AlertStatic {
     projectId: GroupId,
     userId: UserId | null,
     trackTag: TrackTag | null = null,
-    asAdmin: boolean = false
+    asAdmin: boolean = false,
   ): Promise<Alert[]> => {
     return Alert.query(
       { GroupId: projectId },
       userId,
       (trackTag && trackTag.path) || null,
-      asAdmin
+      asAdmin,
     );
   };
 
@@ -175,11 +175,11 @@ export default function (sequelize, DataTypes): AlertStatic {
     where: any,
     userId: UserId | null,
     tagPath: string | null = null,
-    asAdmin: boolean = false
+    asAdmin: boolean = false,
   ): Promise<Alert[]> {
     if (userId === null && !asAdmin) {
       logger.warning(
-        "Alert.query called without userId specified, as non-admin"
+        "Alert.query called without userId specified, as non-admin",
       );
       return [];
     }
@@ -204,8 +204,8 @@ export default function (sequelize, DataTypes): AlertStatic {
       // check that any of the alert conditions are met
       return alerts.filter(({ conditions }) =>
         conditions.some(({ tag }) =>
-          tagPath.split(".").includes(tag.replace(/-/g, "").replace(/ /g, "_"))
-        )
+          tagPath.split(".").includes(tag.replace(/-/g, "").replace(/ /g, "_")),
+        ),
       );
     }
     return alerts;
@@ -217,7 +217,7 @@ export default function (sequelize, DataTypes): AlertStatic {
     tagPath: string,
     deviceId?: DeviceId,
     stationId?: StationId,
-    groupId?: GroupId
+    groupId?: GroupId,
   ): Promise<Alert[]> {
     const deviceOrLocationOrProject = [];
     if (deviceId) {
@@ -236,14 +236,14 @@ export default function (sequelize, DataTypes): AlertStatic {
           [Op.or]: {
             [Op.eq]: null,
             [Op.lt]: Sequelize.literal(
-              `now() - "frequencySeconds" * INTERVAL '1 second'`
+              `now() - "frequencySeconds" * INTERVAL '1 second'`,
             ),
           },
         },
       },
       null,
       tagPath,
-      true
+      true,
     );
   };
 
@@ -252,7 +252,7 @@ export default function (sequelize, DataTypes): AlertStatic {
     track: Track,
     tag: TrackTag,
     alertOn: "station" | "device" | "project",
-    thumbnail?: EmailImageAttachment
+    thumbnail?: EmailImageAttachment,
   ) {
     const subject = `${this.name}  - ${tag.what} Detected`;
     const [html, text] = alertBody(
@@ -263,7 +263,7 @@ export default function (sequelize, DataTypes): AlertStatic {
       alertOn === "device" ? recording.Device?.deviceName : undefined,
       ["project", "station"].includes(alertOn)
         ? recording.Station?.name
-        : undefined
+        : undefined,
     );
     const alertTime = new Date().toISOString();
     const result = await sendEmail(
@@ -271,7 +271,7 @@ export default function (sequelize, DataTypes): AlertStatic {
       text,
       this.User.email,
       subject,
-      thumbnail && [thumbnail]
+      thumbnail && [thumbnail],
     );
     const detail = await models.DetailSnapshot.getOrCreateMatching("alert", {
       alertId: this.id,

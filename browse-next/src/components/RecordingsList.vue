@@ -280,7 +280,7 @@ const props = withDefaults(
     canonicalLocation: LatLng;
     currentlySelectedRecordingId: RecordingId | null;
   }>(),
-  { currentlySelectedRecordingId: null }
+  { currentlySelectedRecordingId: null },
 );
 
 const emit = defineEmits<{
@@ -321,17 +321,17 @@ const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
 
 const specialLabels = ["cool", "requires review", "note"];
 const regularLabelsForRecording = (
-  recording: ApiRecordingResponse
+  recording: ApiRecordingResponse,
 ): TagItem[] => {
   return labelsForRecording(recording).filter(
-    (label) => !specialLabels.includes(label.what)
+    (label) => !specialLabels.includes(label.what),
   );
 };
 const specialLabelsForRecording = (
-  recording: ApiRecordingResponse
+  recording: ApiRecordingResponse,
 ): TagItem[] => {
   return labelsForRecording(recording).filter((label) =>
-    specialLabels.includes(label.what)
+    specialLabels.includes(label.what),
   );
 };
 
@@ -346,7 +346,7 @@ const tagsForTrack = (track: ApiTrackResponse): ApiTrackTag[] => {
 const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
   const nonFalsePositiveTrack = recording.tracks.filter((track) => {
     return tagsForTrack(track).some(
-      (tag) => !["false-positive", "unidentified"].includes(tag.what)
+      (tag) => !["false-positive", "unidentified"].includes(tag.what),
     );
   });
 
@@ -375,7 +375,7 @@ const highlightedLocation = (item: RecordingItem | SunItem) => {
   if (item.type === "recording") {
     emit(
       "change-highlighted-location",
-      (item.data as ApiRecordingResponse).stationId as number
+      (item.data as ApiRecordingResponse).stationId as number,
     );
   }
 };

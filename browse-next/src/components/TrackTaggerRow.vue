@@ -93,15 +93,15 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
         GenericCardTableValue<string | ApiTrackTagResponse> | string
       > = {
         tag: capitalize(
-          displayLabelForClassificationLabel(tag.what, tag.automatic)
+          displayLabelForClassificationLabel(tag.what, tag.automatic),
         ),
         tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(
           " ",
-          "&nbsp;"
+          "&nbsp;",
         ),
         confidence: tag.automatic
           ? Math.round(
-              (props.isAudioRecording ? 1 : 100) * tag.confidence
+              (props.isAudioRecording ? 1 : 100) * tag.confidence,
             ).toString() + "%"
           : "",
       };
@@ -113,7 +113,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
       }
       return item;
     });
-  }
+  },
 );
 
 const route = useRoute();
@@ -152,7 +152,7 @@ watch(
     if (next) {
       show();
     }
-  }
+  },
 );
 const resizeElementToContents = (el: HTMLElement) => {
   if (el.childNodes.length && expandedInternal.value) {
@@ -191,7 +191,7 @@ const uniqueUserTags = computed<string[]>(() => {
           getClassificationForLabel(item.what)?.label || item.what;
         acc[mappedWhat] = true;
         return acc;
-      }, {})
+      }, {}),
   );
 });
 
@@ -205,7 +205,7 @@ const consensusUserTag = computed<string | null>(() => {
 });
 
 const getAuthoritativeTagsForTrack = (
-  trackTags: ApiTrackTagResponse[]
+  trackTags: ApiTrackTagResponse[],
 ): string[] => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   const authTags = [];
@@ -214,7 +214,7 @@ const getAuthoritativeTagsForTrack = (
   } else {
     // NOTE: For audio, there can be multiple authoritative tags for a single track, until a user confirms one.
     const masterTags = trackTags.filter(
-      (tag) => tag.automatic && tag.model === "Master"
+      (tag) => tag.automatic && tag.model === "Master",
     );
     const isNoise = (tag: ApiTrackTagResponse) =>
       tag.what === "noise" || tag.what === "false-positive";
@@ -232,7 +232,7 @@ const getAuthoritativeTagsForTrack = (
 const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
   // If there are multiple AI master tags, as there seem to be for audio, find the most specific one.
   const masterTags = props.track.tags.filter(
-    (tag) => tag.automatic && tag.model === "Master"
+    (tag) => tag.automatic && tag.model === "Master",
   );
   let tag;
   if (masterTags.length === 1) {
@@ -287,9 +287,9 @@ const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(
   () =>
     (CurrentUser.value &&
       humanTags.value.find(
-        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id,
       )) ||
-    undefined
+    undefined,
 );
 
 const selectedUserTagLabel = computed<string[]>({
@@ -297,7 +297,7 @@ const selectedUserTagLabel = computed<string[]>({
     const label =
       CurrentUser.value &&
       humanTags.value.find(
-        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id,
       );
     if (label) {
       return [label.what];
@@ -322,7 +322,7 @@ const trackWasCreatedByUser = (track: ApiTrackResponse): boolean => {
   if (CurrentUser.value) {
     return track.tags.every(
       (tag) =>
-        !tag.automatic && tag.userId === (CurrentUser.value as LoggedInUser).id
+        !tag.automatic && tag.userId === (CurrentUser.value as LoggedInUser).id,
     );
   }
   return false;
@@ -334,11 +334,11 @@ const otherUserTags = computed<string[]>(
       humanTags.value
         .filter((tag) => tag.userId !== (CurrentUser.value as LoggedInUser).id)
         .map(({ what }) => what)) ||
-    []
+    [],
 );
 
 const thisUsersTagAgreesWithAiClassification = computed<boolean>(
-  () => thisUserTag.value?.what === masterTag.value?.what
+  () => thisUserTag.value?.what === masterTag.value?.what,
 );
 
 // Default tags is computed from a default list, with overrides coming from the group admin level, and the user group level.
@@ -386,7 +386,7 @@ const userDefinedTags = computed<Record<string, boolean>>(() => {
   return tags;
 });
 const userDefinedTagLabels = computed<string[]>(() =>
-  Object.keys(userDefinedTags.value)
+  Object.keys(userDefinedTags.value),
 );
 
 const availableTags = computed<{ label: string; display: string }[]>(() => {
@@ -412,7 +412,7 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
       flatClassifications.value[tag] || {
         label: tag,
         display: `${tag}_not_found`,
-      }
+      },
   )) {
     if (tag.label === "human") {
       tag.display = "human";
@@ -477,7 +477,7 @@ const pinCustomTag = async (classification: Classification) => {
       const tags = userProjectSettings.audioTags || [];
       if (tags.includes(classification.label)) {
         userProjectSettings.audioTags = tags.filter(
-          (tag) => tag !== classification.label
+          (tag) => tag !== classification.label,
         );
       } else {
         userProjectSettings.audioTags = userProjectSettings.audioTags || [];
@@ -487,7 +487,7 @@ const pinCustomTag = async (classification: Classification) => {
       const tags = userProjectSettings.tags || [];
       if (tags.includes(classification.label)) {
         userProjectSettings.tags = tags.filter(
-          (tag) => tag !== classification.label
+          (tag) => tag !== classification.label,
         );
       } else {
         userProjectSettings.tags = userProjectSettings.tags || [];
@@ -503,7 +503,7 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
     return false;
   }
   return !defaultTags.value.includes(
-    (thisUserTag.value as ApiHumanTrackTagResponse).what
+    (thisUserTag.value as ApiHumanTrackTagResponse).what,
   );
 });
 const addCustomTag = () => {
@@ -512,7 +512,7 @@ const addCustomTag = () => {
 };
 
 const processingIsAnalysing = computed<boolean>(
-  () => props.processingState === RecordingProcessingState.Analyse
+  () => props.processingState === RecordingProcessingState.Analyse,
 );
 
 const row = ref<HTMLDivElement>();

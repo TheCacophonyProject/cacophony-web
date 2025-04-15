@@ -19,13 +19,13 @@ async function main() {
     const earliestDateTimeAtLocation =
       await models.DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
         deviceId,
-        groupId
+        groupId,
       );
     if (earliestDateTimeAtLocation) {
       const rodentQ = await getRodentData(
         deviceId,
         location,
-        earliestDateTimeAtLocation
+        earliestDateTimeAtLocation,
       );
       let currentDevice = null;
       if (rodentQ.length === 0) {
@@ -40,7 +40,7 @@ async function main() {
       }
       const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
         deviceId,
-        groupId
+        groupId,
       );
       const latestRatThreshTime =
         (latestDeviceHistoryEntry.settings &&
@@ -49,13 +49,13 @@ async function main() {
       if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
         // Update the ratThresh
         const gridData = [...Array(rows)].map((_e) =>
-          [...Array(columns)].map((_e) => Array())
+          [...Array(columns)].map((_e) => Array()),
         );
         // get x, y values for each track
         for (const rodentRec of rodentQ) {
           rodentRec["data"] = await getTrackData(rodentRec["id"]);
           const positions = rodentRec["data"]["positions"].filter(
-            (x) => x["mass"] > 0 && !x["blank"]
+            (x) => x["mass"] > 0 && !x["blank"],
           );
           if (!currentDevice) {
             currentDevice = {
@@ -65,7 +65,7 @@ async function main() {
                 rodentRec["id"],
                 rodentRec["what"],
                 positions,
-                gridData
+                gridData,
               ),
             };
           } else {
@@ -74,7 +74,7 @@ async function main() {
               rodentRec["id"],
               rodentRec["what"],
               positions,
-              currentDevice.trackData
+              currentDevice.trackData,
             );
           }
         }
@@ -94,7 +94,7 @@ async function main() {
               thresholds,
             },
           },
-          setBy
+          setBy,
         );
       }
     }
@@ -130,7 +130,7 @@ function getThresholds(gridData) {
         const prevMedian = quantile(
           sorted.slice(0, i).map((data) => data.threshold),
           0.5,
-          true
+          true,
         );
         if (
           i == ratStart ||
@@ -174,7 +174,7 @@ const quantile = (arr, q, isSorted = false) => {
 };
 function getGridData(u_id: number, tag: string, positions, existingGridData) {
   const gridData = [...Array(rows)].map((_e) =>
-    [...Array(columns)].map((_e) => Array())
+    [...Array(columns)].map((_e) => Array()),
   );
 
   for (const p of positions) {
@@ -225,14 +225,14 @@ async function getDeviceLocation(): Promise<DeviceHistoryItem[]> {
       dh."uuid" ,
       dh."fromDateTime" desc
   `,
-    { type: QueryTypes.SELECT }
+    { type: QueryTypes.SELECT },
   ) as Promise<DeviceHistoryItem[]>;
 }
 
 async function getRodentData(
   deviceId: DeviceId,
   location: { type: "Point"; coordinates: [number, number] },
-  fromDateTime: Date
+  fromDateTime: Date,
 ) {
   const locQuery = `ST_Y(r."location") = ${location.coordinates[1]} and ST_X(r."location") = ${location.coordinates[0]}`;
   return await models.sequelize.query(
@@ -260,7 +260,7 @@ async function getRodentData(
       r."DeviceId",
       r."recordingDateTime" desc
     `,
-    { type: QueryTypes.SELECT }
+    { type: QueryTypes.SELECT },
   );
 }
 

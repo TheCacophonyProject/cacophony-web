@@ -28,7 +28,7 @@ const props = withDefaults(
     selectedItems: () => [],
     openOnMount: true,
     disabledTags: () => [],
-  }
+  },
 );
 
 // Elements
@@ -101,19 +101,19 @@ watch(
     const nextSelections = [];
     for (const label of nextSelected) {
       const canonicalClassification = getClassificationForLabel(
-        label.toLowerCase()
+        label.toLowerCase(),
       );
       nextSelections.push(canonicalClassification);
     }
     selections.value = nextSelections.filter((x) => !!x);
-  }
+  },
 );
 
 onMounted(() => {
   const nextSelections = [];
   for (const label of props.selectedItems) {
     const canonicalClassification = getClassificationForLabel(
-      label.toLowerCase()
+      label.toLowerCase(),
     );
     nextSelections.push(canonicalClassification);
   }
@@ -135,7 +135,7 @@ watch(
     } else if (props.openOnMount) {
       openSelect();
     }
-  }
+  },
 );
 
 // Breadth-first search for options matching the search term and "label" property, and "children" as nodes.
@@ -178,7 +178,7 @@ const optionsMap = computed<Map<string, PathOption>>(
     };
     navigate(props.options, []);
     return map;
-  }
+  },
 );
 
 const hasSelection = computed<boolean>(() => {
@@ -234,7 +234,7 @@ const removeSelectedOption = (option: Classification) => {
 const singleSelectionIsPinned = computed<boolean>(
   () =>
     selections.value.length === 1 &&
-    props.pinnedItems.includes(selections.value[0].label)
+    props.pinnedItems.includes(selections.value[0].label),
 );
 
 const setToPath = (label: string) => {
@@ -248,8 +248,8 @@ const displayedOptions = computed<Classification[]>(() => {
     // Get all the options that relate to the search term.
     const searchResults = searchOptions(
       (props.options.children as Classification[]).filter(
-        (item) => item.label !== "animal"
-      )
+        (item) => item.label !== "animal",
+      ),
     );
     if (searchResults.length !== 0) {
       return searchResults;
@@ -260,7 +260,7 @@ const displayedOptions = computed<Classification[]>(() => {
     let node = props.options;
     for (const pathComponent of currPath.value.slice(1)) {
       const foundNode = node.children?.find(
-        ({ label }) => label === pathComponent
+        ({ label }) => label === pathComponent,
       );
       if (!foundNode) {
         break;
@@ -274,7 +274,7 @@ const displayedOptions = computed<Classification[]>(() => {
 
 watch(
   () => displayedOptions.value.length,
-  () => emit("options-change")
+  () => emit("options-change"),
 );
 
 onClickOutside(optionsContainerRef, () => {

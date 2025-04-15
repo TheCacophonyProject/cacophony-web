@@ -105,18 +105,18 @@ export const setLoggedInUserCreds = (creds: LoggedInUserAuth, dev = false) => {
 };
 
 export const persistUserProjectSettings = async (
-  userSettings: ApiProjectUserSettings
+  userSettings: ApiProjectUserSettings,
 ) => {
   if (currentSelectedProject.value) {
     const localProjectToUpdate = nonPendingUserProjects.value.find(
-      ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
+      ({ id }) => id === (currentSelectedProject.value as SelectedProject).id,
     );
     if (localProjectToUpdate) {
       localProjectToUpdate.userSettings = userSettings;
       await saveProjectUserSettings(localProjectToUpdate.id, userSettings);
     } else if (isViewingAsSuperUser.value) {
       const nonUserProjectToUpdate = (NonUserProjects.value || []).find(
-        ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
+        ({ id }) => id === (currentSelectedProject.value as SelectedProject).id,
       );
       if (nonUserProjectToUpdate) {
         nonUserProjectToUpdate.userSettings = userSettings;
@@ -128,7 +128,7 @@ export const persistUserProjectSettings = async (
 export const persistProjectSettings = async (settings: ApiProjectSettings) => {
   if (currentSelectedProject.value) {
     const localProjectToUpdate = nonPendingUserProjects.value.find(
-      ({ id }) => id === (currentSelectedProject.value as SelectedProject).id
+      ({ id }) => id === (currentSelectedProject.value as SelectedProject).id,
     );
     if (localProjectToUpdate) {
       localProjectToUpdate.settings = settings;
@@ -139,7 +139,7 @@ export const persistProjectSettings = async (settings: ApiProjectSettings) => {
 
 const userSettingsHaveChanged = (
   prevSettings: ApiUserSettings | undefined,
-  newSettings: ApiUserSettings
+  newSettings: ApiUserSettings,
 ): boolean => {
   if (!prevSettings && newSettings) {
     return true;
@@ -172,7 +172,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
       if (
         userSettingsHaveChanged(
           prevUserData.settings,
-          user.settings as ApiUserSettings
+          user.settings as ApiUserSettings,
         )
       ) {
         // TODO: If something not allowed in user settings schema makes it into settings, we need to remove
@@ -194,7 +194,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
 export const login = async (
   userEmailAddress: string,
   userPassword: string,
-  signInInProgress: PendingRequest
+  signInInProgress: PendingRequest,
 ) => {
   const emailAddress = userEmailAddress.trim().toLowerCase();
   const password = userPassword.trim();
@@ -224,7 +224,7 @@ export const login = async (
           refreshToken: signedInUser.refreshToken,
           refreshingToken: false,
         },
-        true
+        true,
       );
     } else {
       // console.log("Sign in error for dev account", loggedInUserResponse.result);
@@ -237,7 +237,7 @@ export const login = async (
 export const persistUser = (currentUser: LoggedInUser) => {
   window.localStorage.setItem(
     "saved-login-user-data",
-    JSON.stringify(currentUser)
+    JSON.stringify(currentUser),
   );
 };
 
@@ -246,19 +246,19 @@ export const persistCreds = (creds: LoggedInUserAuth, dev = false) => {
     // NOTE: These credentials have already been validated.
     window.localStorage.setItem(
       "saved-login-credentials",
-      JSON.stringify(creds)
+      JSON.stringify(creds),
     );
   } else {
     window.localStorage.setItem(
       "saved-login-credentials-dev",
-      JSON.stringify(creds)
+      JSON.stringify(creds),
     );
   }
 };
 
 export const refreshLocallyStoredUserActivation = (): boolean => {
   const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-user-data"
+    "saved-login-user-data",
   );
   if (rememberedCredentials) {
     let currentUser;
@@ -280,7 +280,7 @@ export const refreshLocallyStoredUserActivation = (): boolean => {
 };
 
 export const refreshLocallyStoredUser = (
-  refreshedUserData?: ApiLoggedInUserResponse
+  refreshedUserData?: ApiLoggedInUserResponse,
 ): boolean => {
   if (refreshedUserData) {
     setLoggedInUserData({
@@ -289,7 +289,7 @@ export const refreshLocallyStoredUser = (
     return true;
   }
   const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-user-data"
+    "saved-login-user-data",
   );
   if (rememberedCredentials) {
     let currentUser;
@@ -315,7 +315,7 @@ const refreshCredentials = async () => {
   // NOTE: Because this can be shared between browser windows/tabs,
   //  always pull out the localStorage version before refreshing
   const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-credentials"
+    "saved-login-credentials",
   );
   if (rememberedCredentials) {
     if (!import.meta.env.DEV) {
@@ -347,14 +347,14 @@ const refreshCredentials = async () => {
   }
   if (import.meta.env.DEV) {
     const rememberedCredentialsDev = window.localStorage.getItem(
-      "saved-login-credentials-dev"
+      "saved-login-credentials-dev",
     );
     if (rememberedCredentialsDev) {
       let currentUserCreds;
       const now = new Date();
       try {
         currentUserCreds = JSON.parse(
-          rememberedCredentialsDev
+          rememberedCredentialsDev,
         ) as LoggedInUserAuth;
         const currentToken = currentUserCreds.apiToken;
         const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
@@ -477,7 +477,7 @@ export const currentSelectedProject = computed<SelectedProject | false>(() => {
       const potentialGroupId =
         currentUserSettings.value.currentSelectedGroup.id;
       let matchedProject = nonPendingUserProjects.value.find(
-        ({ id }) => id === potentialGroupId
+        ({ id }) => id === potentialGroupId,
       );
       if (matchedProject) {
         isViewingAsSuperUser.value = false;
@@ -542,7 +542,7 @@ export const userIsAdminForCurrentSelectedProject = computed<boolean>(() => {
       ({ id }) =>
         id ===
         (currentSelectedProject.value as { groupName: string; id: ProjectId })
-          .id
+          .id,
     );
     return (currentGroup && !!currentGroup.admin) || false;
   }
@@ -580,7 +580,7 @@ export const urlNormalisedCurrentProjectName = computed<string>(
   () =>
     (currentSelectedProject.value &&
       urlNormaliseName(currentSelectedProject.value.groupName)) ||
-    ""
+    "",
 );
 
 export const isResumingSession = ref(false);
@@ -603,8 +603,8 @@ export const refreshUserProjects = async () => {
       NonUserProjects.value = reactive(
         (allProjectsResponse.result.groups || []).filter(
           (project) =>
-            !(UserProjects.value || []).map((p) => p.id).includes(project.id)
-        )
+            !(UserProjects.value || []).map((p) => p.id).includes(project.id),
+        ),
       );
     }
   }
@@ -645,7 +645,7 @@ export const rafFps = ref(60);
 {
   if (typeof window !== "undefined") {
     const rememberedCredentials = window.localStorage.getItem(
-      "saved-login-credentials"
+      "saved-login-credentials",
     );
     if (rememberedCredentials) {
       let currentUser;
@@ -653,7 +653,7 @@ export const rafFps = ref(60);
         currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
         window.localStorage.setItem(
           "saved-login-credentials",
-          JSON.stringify({ ...currentUser, refreshingToken: false })
+          JSON.stringify({ ...currentUser, refreshingToken: false }),
         );
       } catch (e) {
         forgetUserOnCurrentDevice();

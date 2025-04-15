@@ -33,9 +33,9 @@ const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
 const regionsProvided = inject(
   "latestMaskRegions",
   ref<ApiMaskRegionsData | (() => ApiMaskRegionsData)>(
-    () => ({} as unknown as ApiMaskRegionsData)
+    () => ({} as unknown as ApiMaskRegionsData),
   ),
-  true
+  true,
 );
 
 const regions = ref<
@@ -56,7 +56,7 @@ const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
       devices.value.find(
-        (device: ApiDeviceResponse) => device.id === deviceId
+        (device: ApiDeviceResponse) => device.id === deviceId,
       )) ||
     null
   );
@@ -99,7 +99,7 @@ const devices = inject(selectedProjectDevices) as Ref<
 const copyRegionsFromProvider = () => {
   if ((regionsProvided.value as ApiMaskRegionsData).maskRegions) {
     regions.value = JSON.parse(
-      JSON.stringify((regionsProvided.value as ApiMaskRegionsData).maskRegions)
+      JSON.stringify((regionsProvided.value as ApiMaskRegionsData).maskRegions),
     );
   }
 };
@@ -117,7 +117,7 @@ const distance = (
   a: Point,
   b: Point,
   width: number,
-  height: number
+  height: number,
 ): number => {
   const x = a.x * width - b.x * width;
   const y = a.y * height - b.y * height;
@@ -136,7 +136,7 @@ const addPoint = (event: MouseEvent) => {
       left,
       top,
       width,
-      height
+      height,
     );
 
     // If point is within tolerance, snap point to start and close polygon
@@ -178,7 +178,7 @@ const mapRange = (
   sMin: number,
   sMax: number,
   tMin: number,
-  tMax: number
+  tMax: number,
 ): number => {
   return ((x - sMin) / (sMax - sMin)) * (tMax - tMin) + tMin;
 };
@@ -188,16 +188,16 @@ const mapPoint = (
   left: number,
   top: number,
   width: number,
-  height: number
+  height: number,
 ): Point => {
   // We have a 5% apron to allow us to define points outside the frame.
   const x = Math.max(
     -0.05,
-    Math.min(1.05, mapRange(cX - left, 0, width, -0.05, 1.05))
+    Math.min(1.05, mapRange(cX - left, 0, width, -0.05, 1.05)),
   );
   const y = Math.max(
     -0.05,
-    Math.min(1.05, mapRange(cY - top, 0, height, -0.05, 1.05))
+    Math.min(1.05, mapRange(cY - top, 0, height, -0.05, 1.05)),
   );
   return {
     x,
@@ -215,7 +215,7 @@ const speculativePoint = (event: PointerEvent) => {
       left,
       top,
       width,
-      height
+      height,
     );
     point.temp = true;
     if (points.length > 0) {
@@ -392,7 +392,7 @@ const drawRegions = () => {
       ctx.fillText(
         text,
         centerX - textMetrics.width / 2,
-        centerY + fontSize / 2
+        centerY + fontSize / 2,
       );
     }
   }
@@ -419,12 +419,12 @@ const needsValidationAndIsValidRegionName = computed<FormInputValidationState>(
     } else {
       return newRegionName.touched ? isValidRegionName.value : undefined;
     }
-  }
+  },
 );
 
 const lineSegmentsIntersect = (
   a: [Point, Point],
-  b: [Point, Point]
+  b: [Point, Point],
 ): boolean => {
   const dx0 = a[1].x - a[0].x;
   const dx1 = b[1].x - b[0].x;
@@ -478,7 +478,7 @@ watch(
     if (!editMode.value) {
       requestAnimationFrame(drawRegions);
     }
-  }
+  },
 );
 </script>
 <template>

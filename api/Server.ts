@@ -79,7 +79,7 @@ export const userShouldBeRateLimited = (requesterId: UserId): boolean => {
       }
       return acc;
     },
-    0
+    0,
   );
   const numRequesters = RequesterStore.size;
   if (numUserRequesters > 2 || numRequesters > 10) {
@@ -139,7 +139,7 @@ const grafanaLabelRestart = async () => {
     } catch (e) {
       log.warning(
         "Failed to set restart annotation in grafana: %s",
-        e.toString()
+        e.toString(),
       );
     }
   }
@@ -224,7 +224,7 @@ const grafanaLabelRestart = async () => {
 
         const routeParts = [];
         for (const part of (request.method + request.url.split("?")[0]).split(
-          "/"
+          "/",
         )) {
           if (Number(part).toString() === part) {
             routeParts.push("XXX");
@@ -268,14 +268,14 @@ const grafanaLabelRestart = async () => {
           wasRateLimited ? ", was rate limited" : ""
         }]`;
       },
-    })
+    }),
   );
   app.use(
     express.raw({
       inflate: true,
       limit: "50Mb",
       type: "application/octet-stream",
-    })
+    }),
   );
   app.use(express.urlencoded({ extended: false, limit: "50Mb" }));
   app.use(express.json({ limit: "50Mb" }));
@@ -290,11 +290,11 @@ const grafanaLabelRestart = async () => {
     response.header("Access-Control-Allow-Origin", request.headers.origin);
     response.header(
       "Access-Control-Allow-Methods",
-      "PUT, GET, POST, DELETE, OPTIONS, PATCH"
+      "PUT, GET, POST, DELETE, OPTIONS, PATCH",
     );
     response.header(
       "Access-Control-Allow-Headers",
-      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control"
+      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control",
     );
     response.header("Cross-Origin-Resource-Policy", "cross-origin");
 
@@ -334,7 +334,7 @@ const grafanaLabelRestart = async () => {
               acc.system += timing.system;
               return acc;
             },
-            { user: 0, system: 0 }
+            { user: 0, system: 0 },
           ),
           detail: timings,
         });
@@ -369,7 +369,7 @@ const grafanaLabelRestart = async () => {
               acc.system += timing.system;
               return acc;
             },
-            { user: 0, system: 0 }
+            { user: 0, system: 0 },
           ),
           detail: timings,
         });
@@ -414,7 +414,7 @@ const grafanaLabelRestart = async () => {
       // fine to preload and cache that information up front.
       log.notice("Preload and cache super user permissions.");
       log.notice(
-        "If super-user permissions are changed, manually restart API server."
+        "If super-user permissions are changed, manually restart API server.",
       );
       const superUsers = await models.User.findAll({
         where: { globalPermission: { [Op.ne]: "off" } },

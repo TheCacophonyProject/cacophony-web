@@ -47,7 +47,7 @@ watch(
       }, 1000) as unknown as number;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>
 

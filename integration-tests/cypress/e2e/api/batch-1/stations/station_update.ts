@@ -32,7 +32,7 @@ describe("Stations: updating", () => {
         TemplateExpectedStation.groupId = getCreds("stuGroup").id;
         TemplateExpectedStation.groupName = getTestName("stuGroup");
         TemplateExpectedStation.name = getTestName("stuStation1");
-      }
+      },
     );
 
     // second group and device
@@ -49,7 +49,7 @@ describe("Stations: updating", () => {
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuUpdateStation",
-      1
+      1,
     );
 
     cy.log("Adding station");
@@ -63,7 +63,7 @@ describe("Stations: updating", () => {
       "stuAdmin",
       "stuGroup",
       "stuUpdateStation1",
-      expectedStation2
+      expectedStation2,
     );
 
     cy.log("Check old station name no longer present");
@@ -73,7 +73,7 @@ describe("Stations: updating", () => {
       "stuStation1",
       undefined,
       undefined,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -84,7 +84,7 @@ describe("Stations: updating", () => {
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      2
+      2,
     );
     expectedStation2.location = { lat: -47, lng: 177 };
 
@@ -99,7 +99,7 @@ describe("Stations: updating", () => {
       "stuAdmin",
       "stuGroup",
       "stuStation2",
-      expectedStation2
+      expectedStation2,
     );
   });
 
@@ -110,7 +110,7 @@ describe("Stations: updating", () => {
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuUpdateStation",
-      4
+      4,
     );
 
     cy.log("Adding station");
@@ -124,7 +124,7 @@ describe("Stations: updating", () => {
       "stuAdmin",
       "stuGroup",
       "stuUpdateStation4",
-      expectedStation2
+      expectedStation2,
     );
 
     cy.log("Check old station name no longer present");
@@ -134,7 +134,7 @@ describe("Stations: updating", () => {
       "stuStation3",
       undefined,
       undefined,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -158,7 +158,7 @@ describe("Stations: updating", () => {
       null,
       null,
       null,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -171,12 +171,12 @@ describe("Stations: updating", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      7
+      7,
     );
     const expectedStationWithSameName = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      8
+      8,
     );
     expectedStationWithSameName.name = getTestName("stuStation7");
     expectedStationWithSameName.groupId = getCreds("stuGroup2").id;
@@ -196,7 +196,7 @@ describe("Stations: updating", () => {
       "stuAdmin",
       "stuGroup",
       "stuStation7",
-      expectedStation1
+      expectedStation1,
     );
 
     cy.log("Check station2 exists");
@@ -204,7 +204,7 @@ describe("Stations: updating", () => {
       "stuAdmin",
       "stuGroup2",
       "stuStation7",
-      expectedStationWithSameName
+      expectedStationWithSameName,
     );
   });
 
@@ -217,12 +217,12 @@ describe("Stations: updating", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      9
+      9,
     );
     const expectedStationWithSameName = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      10
+      10,
     );
     expectedStationWithSameName.name = getTestName("stuStation9");
 
@@ -231,7 +231,7 @@ describe("Stations: updating", () => {
       "stuAdmin",
       "stuGroup",
       station1,
-      "2020-01-01T00:00:00.000Z"
+      "2020-01-01T00:00:00.000Z",
     ).then(() => {
       const station1Id = getCreds(getTestName("stuStation9")).id;
 
@@ -242,7 +242,7 @@ describe("Stations: updating", () => {
       cy.testStationRetire(
         "stuAdmin",
         "stuStation9",
-        "2020-02-01T00:00:00.000Z"
+        "2020-02-01T00:00:00.000Z",
       );
 
       cy.log("Can update station2 to have same name as retired station1");
@@ -255,14 +255,14 @@ describe("Stations: updating", () => {
         expectedStation1,
         null,
         null,
-        { useRawStationId: true, additionalParams: { "only-active": false } }
+        { useRawStationId: true, additionalParams: { "only-active": false } },
       );
       cy.log("Check station2 exists");
       cy.apiGroupStationCheck(
         "stuAdmin",
         "stuGroup",
         "stuStation9",
-        expectedStationWithSameName
+        expectedStationWithSameName,
       );
     });
   });
@@ -283,7 +283,7 @@ describe("Stations: updating", () => {
       undefined,
       undefined,
       HttpStatusCode.Ok,
-      { warnings: "none" }
+      { warnings: "none" },
     );
   });
 
@@ -292,7 +292,7 @@ describe("Stations: updating", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      13
+      13,
     );
     const station2 = TestCreateStationData("stuStation", 14);
     const stationTooClose = TestCreateStationData("stuStation", 13);
@@ -301,7 +301,7 @@ describe("Stations: updating", () => {
     const expectedStationTooClose = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      13
+      13,
     );
     expectedStationTooClose.name = getTestName("stationTooClose14");
 
@@ -323,10 +323,10 @@ describe("Stations: updating", () => {
           {
             warnings: [
               `Updated station location is too close to ${getTestName(
-                station1.name
+                station1.name,
               )} (#${station1Id}) - recordings may be incorrectly matched`,
             ],
-          }
+          },
         );
 
         cy.log("Check stations both exist");
@@ -334,15 +334,15 @@ describe("Stations: updating", () => {
           "stuAdmin",
           "stuGroup",
           "stuStation13",
-          expectedStation1
+          expectedStation1,
         );
         cy.apiGroupStationCheck(
           "stuAdmin",
           "stuGroup",
           "stationTooClose14",
-          expectedStationTooClose
+          expectedStationTooClose,
         );
-      }
+      },
     );
   });
 
@@ -359,7 +359,7 @@ describe("Stations: updating", () => {
     cy.apiGroupStationAdd("stuAdmin", "stuGroup2", station2);
 
     cy.log(
-      "Can udpdate station2 to same posn as station1 in different group without warning"
+      "Can udpdate station2 to same posn as station1 in different group without warning",
     );
     cy.apiStationUpdate(
       "stuAdmin",
@@ -369,7 +369,7 @@ describe("Stations: updating", () => {
       undefined,
       undefined,
       HttpStatusCode.Ok,
-      { warnings: "none" }
+      { warnings: "none" },
     );
   });
 
@@ -382,15 +382,15 @@ describe("Stations: updating", () => {
     const expectedStation1 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      17
+      17,
     );
     const expectedStationWithSameLocation = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stationWithSameLocation",
-      17
+      17,
     );
     expectedStationWithSameLocation.name = getTestName(
-      "stationWithSameLocation18"
+      "stationWithSameLocation18",
     );
 
     cy.log("Add station1");
@@ -398,7 +398,7 @@ describe("Stations: updating", () => {
       "stuAdmin",
       "stuGroup",
       station1,
-      "2020-01-01T00:00:00.000Z"
+      "2020-01-01T00:00:00.000Z",
     ).then(() => {
       cy.log("Add station2");
       cy.apiGroupStationAdd("stuAdmin", "stuGroup", station2);
@@ -407,7 +407,7 @@ describe("Stations: updating", () => {
       cy.testStationRetire(
         "stuAdmin",
         "stuStation17",
-        "2020-02-01T00:00:00.000Z"
+        "2020-02-01T00:00:00.000Z",
       );
       expectedStation1.retiredAt = "2020-02-01T00:00:00.000Z";
 
@@ -420,7 +420,7 @@ describe("Stations: updating", () => {
         undefined,
         undefined,
         undefined,
-        { warnings: "none" }
+        { warnings: "none" },
       );
 
       cy.log("Check that both stations exist");
@@ -430,13 +430,13 @@ describe("Stations: updating", () => {
         expectedStation1,
         undefined,
         undefined,
-        { additionalParams: { "only-active": false } }
+        { additionalParams: { "only-active": false } },
       );
       cy.apiGroupStationCheck(
         "stuAdmin",
         "stuGroup",
         "stationWithSameLocation18",
-        expectedStationWithSameLocation
+        expectedStationWithSameLocation,
       );
     });
   });
@@ -448,14 +448,14 @@ describe("Stations: updating", () => {
       TemplateExpectedStation,
       19,
       "stuCamera1",
-      recordingTime.toISOString()
+      recordingTime.toISOString(),
     );
     expectedStation1.needsRename = true;
 
     const expectedStation2 = TestCreateExpectedStation(
       TemplateExpectedStation,
       "stuStation",
-      20
+      20,
     );
     expectedStation2.lastThermalRecordingTime = recordingTime.toISOString();
     const thisLocation = TestGetLocation(19);
@@ -463,7 +463,7 @@ describe("Stations: updating", () => {
     cy.testUploadRecording(
       "stuCamera1",
       { ...thisLocation, time: recordingTime, noTracks: true },
-      "saRecording1"
+      "saRecording1",
     )
       .thenCheckStationIsNew("stuAdmin")
       .then(() => {
@@ -475,7 +475,7 @@ describe("Stations: updating", () => {
           expectedStation1,
           undefined,
           undefined,
-          { useRawStationName: true }
+          { useRawStationName: true },
         ).then((stationId: number) => {
           cy.log("Update automatic station");
           cy.apiStationUpdate(
@@ -486,7 +486,7 @@ describe("Stations: updating", () => {
             undefined,
             undefined,
             undefined,
-            { useRawStationId: true }
+            { useRawStationId: true },
           );
 
           cy.log("Check updated station");
@@ -496,7 +496,7 @@ describe("Stations: updating", () => {
             expectedStation2,
             undefined,
             undefined,
-            { useRawStationId: true }
+            { useRawStationId: true },
           );
         });
       });
@@ -504,7 +504,7 @@ describe("Stations: updating", () => {
 
   //TODO write this
   it.skip(
-    "fromDate and untilDate applied to station as activeAt and retiredAt"
+    "fromDate and untilDate applied to station as activeAt and retiredAt",
   );
 
   //TODO write this

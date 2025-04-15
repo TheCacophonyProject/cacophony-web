@@ -38,7 +38,7 @@ export const streamS3Object = async (
   mimeType: string,
   userId?: UserId,
   groupId?: GroupId,
-  fileSize?: number
+  fileSize?: number,
 ) => {
   // NOTE: The internal NodeJS writable stream that is in an express object
   //  doesn't allow you to set a lower highwaterMark to allow a bit of back-pressure
@@ -81,7 +81,7 @@ export const streamS3Object = async (
       response.setHeader("Content-Length", totalLength);
       response.setHeader(
         "Content-Range",
-        `bytes ${start}-${end}/${totalLength}`
+        `bytes ${start}-${end}/${totalLength}`,
       );
       response.setHeader("Accept-Ranges", "bytes");
     }
@@ -204,8 +204,8 @@ export default function (app: Application, baseUrl: string) {
         fileName,
         mimeType,
         userId,
-        groupId
+        groupId,
       );
-    })
+    }),
   );
 }

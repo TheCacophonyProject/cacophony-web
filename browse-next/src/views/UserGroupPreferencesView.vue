@@ -162,7 +162,7 @@ const alertBelongsToCurrentProject = (alert: ApiAlertResponse): boolean => {
     return alert.scopeId === currentProject.value.id;
   } else if (alert.scope === "location") {
     return !!activeLocations.value.find(
-      (location) => location.id === alert.scopeId
+      (location) => location.id === alert.scopeId,
     );
   } else if (alert.scope === "device") {
     return (
@@ -205,7 +205,7 @@ const saveAlert = async () => {
     alertScope.value,
     scopeId.value as number,
     alertOnTags.value,
-    Math.max(1, maxAlertFrequencyMins.value) * 60
+    Math.max(1, maxAlertFrequencyMins.value) * 60,
   );
   resetFormFields();
   await loadAlerts();
@@ -222,7 +222,7 @@ interface AlertItem {
 }
 
 const getAlertScope = (
-  alert: ApiAlertResponse
+  alert: ApiAlertResponse,
 ): "This project" | ApiDeviceResponse | ApiLocationResponse | null => {
   if (alert.scope === "project") {
     return "This project";
@@ -232,7 +232,7 @@ const getAlertScope = (
     activeDevices.value.length !== 0
   ) {
     const device = activeDevices.value.find(
-      (device) => device.id === alert.scopeId
+      (device) => device.id === alert.scopeId,
     );
     if (device) {
       return device;
@@ -240,7 +240,7 @@ const getAlertScope = (
     return null;
   } else if (alert.scope === "location" && activeLocations.value.length !== 0) {
     const location = activeLocations.value.find(
-      (location) => location.id === alert.scopeId
+      (location) => location.id === alert.scopeId,
     );
     if (location) {
       return location;
@@ -263,7 +263,7 @@ const alertItems = computed<AlertItem[]>(() => {
         minimumTimeBetweenTriggers: `${alert.frequencySeconds / 60} mins`,
         __scope: alert.scope,
         _deleteAction: alert.id,
-      } as AlertItem)
+      } as AlertItem),
   );
 });
 </script>

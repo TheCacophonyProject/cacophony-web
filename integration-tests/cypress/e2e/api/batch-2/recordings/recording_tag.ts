@@ -16,7 +16,7 @@ const EXCLUDE_TAG_IDS = ["[].id"];
 
 describe("Recordings: tag", () => {
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
 
   const tag1: ApiRecordingTagRequest = {
@@ -47,7 +47,7 @@ describe("Recordings: tag", () => {
     cy.testCreateUserGroupAndDevice(
       "tagGroup2Admin",
       "tagGroup2",
-      "tagCamera2"
+      "tagCamera2",
     );
   });
 
@@ -68,7 +68,7 @@ describe("Recordings: tag", () => {
       "tagGroupAdmin",
       "tagRecording1",
       [expectedTag],
-      EXCLUDE_TAG_IDS
+      EXCLUDE_TAG_IDS,
     );
     cy.log("Delete tag");
     cy.apiRecordingTagDelete("tagGroupAdmin", "tagRecording1", "tagTag1");
@@ -94,7 +94,7 @@ describe("Recordings: tag", () => {
       "tagGroupMember",
       "tagRecording2",
       [expectedTag],
-      EXCLUDE_TAG_IDS
+      EXCLUDE_TAG_IDS,
     );
     cy.log("Delete tag");
     cy.apiRecordingTagDelete("tagGroupMember", "tagRecording2", "tagTag2");
@@ -115,7 +115,7 @@ describe("Recordings: tag", () => {
       "tagRecording5",
       null,
       tag1,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("Check tag was not created");
@@ -139,7 +139,7 @@ describe("Recordings: tag", () => {
       "tagGroupAdmin",
       "tagRecording6",
       "tagTag6",
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("Check recording tag was not deleted");
@@ -147,7 +147,7 @@ describe("Recordings: tag", () => {
       "tagGroup2Admin",
       "tagRecording6",
       [expectedTag],
-      EXCLUDE_TAG_IDS
+      EXCLUDE_TAG_IDS,
     );
   });
 
@@ -175,7 +175,7 @@ describe("Recordings: tag", () => {
       null,
       tag1,
       HttpStatusCode.Forbidden,
-      { useRawRecordingId: true }
+      { useRawRecordingId: true },
     );
   });
 
@@ -215,7 +215,7 @@ describe("Recordings: tag", () => {
       "tagGroupAdmin",
       "tagRecording9",
       [expectedTag],
-      EXCLUDE_TAG_IDS
+      EXCLUDE_TAG_IDS,
     );
     cy.log("Delete tag");
     cy.apiRecordingTagDelete("tagGroupAdmin", "tagRecording9", "tagTag9");
@@ -253,7 +253,7 @@ describe("Recordings: tag", () => {
       "tagRecording10",
       "tagTag10",
       ft2,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
 
     cy.log("Bad value");
@@ -264,7 +264,7 @@ describe("Recordings: tag", () => {
       "tagRecording10",
       "tagTag10",
       ft3,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 });

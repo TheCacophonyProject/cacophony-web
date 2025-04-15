@@ -20,7 +20,7 @@ const props = withDefaults(
     location: LatLng;
     highlightedLocation: LocationId | null;
   }>(),
-  { highlightedLocation: null }
+  { highlightedLocation: null },
 );
 const emit = defineEmits<{
   (e: "selected-visit", payload: ApiVisitResponse): void;
@@ -28,7 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const isNocturnal = computed<boolean>(() =>
-  visitsAreNocturnalOnlyAtLocation(props.visits, props.location)
+  visitsAreNocturnalOnlyAtLocation(props.visits, props.location),
 );
 
 const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {

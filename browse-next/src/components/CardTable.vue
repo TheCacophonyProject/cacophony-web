@@ -130,7 +130,7 @@ const props = withDefaults(
     sortDimensions: () => ({}),
     compact: false,
     items: () => [],
-  }
+  },
 );
 
 const eq = (a: GenericCardTableValue<any>, b: GenericCardTableValue<any>) => {
@@ -222,7 +222,7 @@ enum SortDirection {
 onBeforeMount(() => {
   // Setup sorts
   for (const [columnName, sortDimension] of Object.entries(
-    props.sortDimensions
+    props.sortDimensions,
   )) {
     sorts[splitCamelCase(columnName)] = {
       fn:
@@ -258,7 +258,7 @@ const toggleSorting = (dimensionName: string) => {
 
 const sortedItems = computed<CardTableRows<any>>(() => {
   const activeSort = Object.values(sorts).find(
-    (sort) => sort.direction !== SortDirection.None
+    (sort) => sort.direction !== SortDirection.None,
   );
 
   const itemsCopied = [...props.items];
@@ -284,12 +284,12 @@ const displayedItems = computed<{
     headings: headings.value
       .filter((heading) => !heading.startsWith("__"))
       .map((heading) =>
-        heading.startsWith("_") ? "" : splitCamelCase(heading)
+        heading.startsWith("_") ? "" : splitCamelCase(heading),
       ),
     values: sortedItems.value.map((row) =>
       Object.entries(row)
         .filter(([heading, _value]) => !heading.startsWith("__"))
-        .map(([_heading, value]) => value)
+        .map(([_heading, value]) => value),
     ),
   };
 });

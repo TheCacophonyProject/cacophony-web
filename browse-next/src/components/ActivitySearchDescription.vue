@@ -33,15 +33,15 @@ const upperFirst = (str: string): string => {
 
 const allTagsAreLeafNodes = (tags: string[]): boolean => {
   return !tags.some(
-    (tag) => !!flatClassifications.value[tag]?.node.children?.length
+    (tag) => !!flatClassifications.value[tag]?.node.children?.length,
   );
 };
 
 const hasStarred = computed<boolean>(
-  () => props.searchParams.labelledWith?.includes(COOL) || false
+  () => props.searchParams.labelledWith?.includes(COOL) || false,
 );
 const hasFlagged = computed<boolean>(
-  () => props.searchParams.labelledWith?.includes(FLAG) || false
+  () => props.searchParams.labelledWith?.includes(FLAG) || false,
 );
 
 const timespan = computed<string>(() => {
@@ -63,14 +63,14 @@ const timespan = computed<string>(() => {
       if (from.getMonth() === until.getMonth()) {
         fromString = `the ${dateSuffix(from.getDate())}`;
         untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
-          until.getMonth()
+          until.getMonth(),
         )}`;
       } else {
         fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
-          from.getDate()
+          from.getDate(),
         )}`;
         untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
-          until.getDate()
+          until.getDate(),
         )}`;
       }
     } else {
@@ -80,20 +80,20 @@ const timespan = computed<string>(() => {
       ) {
         fromString = `the ${dateSuffix(from.getDate())}`;
         untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
-          until.getMonth()
+          until.getMonth(),
         )} ${until.getFullYear()}`;
       } else {
         fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
-          from.getDate()
+          from.getDate(),
         )} ${from.getFullYear()}`;
         untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
-          until.getDate()
+          until.getDate(),
         )} ${until.getFullYear()}`;
       }
     }
     if (isSameDay(from, until)) {
       timespan = `on the ${dateSuffix(from.getDate())} of ${fullMonthName(
-        from.getMonth()
+        from.getMonth(),
       )}`;
       if (from.getFullYear() !== new Date().getFullYear()) {
         timespan += ` ${from.getFullYear()}`;
@@ -111,8 +111,8 @@ const timespan = computed<string>(() => {
 const otherLabels = computed<string[]>(
   () =>
     props.searchParams.labelledWith?.filter(
-      (label) => label !== COOL && label !== FLAG
-    ) || []
+      (label) => label !== COOL && label !== FLAG,
+    ) || [],
 );
 </script>
 

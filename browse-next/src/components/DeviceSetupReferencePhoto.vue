@@ -21,7 +21,7 @@ import type { LoadedResource } from "@api/types.ts";
  */
 const convertImageDataToWebP = (
   imageData: ImageData,
-  quality: number = 0.9
+  quality: number = 0.9,
 ): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const tempCanvas = document.createElement("canvas");
@@ -42,7 +42,7 @@ const convertImageDataToWebP = (
         }
       },
       "image/webp",
-      quality
+      quality,
     );
   });
 };
@@ -161,7 +161,7 @@ watch(singleFrame, (newVal) => {
 const constrainHandle = (
   handle: HTMLDivElement,
   clientX?: number,
-  clientY?: number
+  clientY?: number,
 ) => {
   const {
     width: handleW,
@@ -184,11 +184,11 @@ const constrainHandle = (
 
   let x = Math.min(
     width - handleW,
-    Math.max(0, clientX - parentX - grabOffsetX)
+    Math.max(0, clientX - parentX - grabOffsetX),
   );
   let y = Math.min(
     height - handleW,
-    Math.max(0, clientY - parentY - grabOffsetY)
+    Math.max(0, clientY - parentY - grabOffsetY),
   );
   const dim = handleW / 2;
 
@@ -301,7 +301,7 @@ const renderSkewedImage = () => {
     drawSkewedImage(
       ctx,
       [handle0.value, handle1.value, handle2.value, handle3.value],
-      referenceImage.value
+      referenceImage.value,
     );
     ctx.restore();
 
@@ -325,7 +325,7 @@ const renderSkewedImage = () => {
         singleFrameBounds.left - parentX,
         singleFrameBounds.top - parentY,
         singleFrameBounds.width,
-        singleFrameBounds.height
+        singleFrameBounds.height,
       );
       ctx.restore();
 
@@ -336,25 +336,25 @@ const renderSkewedImage = () => {
         0,
         0,
         ctx.canvas.width,
-        (singleFrameBounds.top - parentY) * ratio
+        (singleFrameBounds.top - parentY) * ratio,
       );
       ctx.fillRect(
         0,
         (singleFrameBounds.top - parentY) * ratio,
         (singleFrameBounds.left - parentX) * ratio,
-        singleFrameBounds.height * ratio
+        singleFrameBounds.height * ratio,
       );
       ctx.fillRect(
         (singleFrameBounds.right - parentX) * ratio,
         (singleFrameBounds.top - parentY) * ratio,
         ctx.canvas.width - (singleFrameBounds.right - parentX) * ratio,
-        singleFrameBounds.height * ratio
+        singleFrameBounds.height * ratio,
       );
       ctx.fillRect(
         0,
         (singleFrameBounds.bottom - parentY) * ratio,
         ctx.canvas.width,
-        ctx.canvas.height - (singleFrameBounds.bottom - parentY) * ratio
+        ctx.canvas.height - (singleFrameBounds.bottom - parentY) * ratio,
       );
       ctx.restore();
     }
@@ -477,9 +477,9 @@ const moveRevealHandle = (event: PointerEvent) => {
     const x = Math.min(
       Math.max(
         -(handleBounds.width / 2),
-        event.clientX - parentBounds.left - revealGrabOffsetX
+        event.clientX - parentBounds.left - revealGrabOffsetX,
       ),
-      parentBounds.width - handleBounds.width / 2
+      parentBounds.width - handleBounds.width / 2,
     );
     if (revealSlider.value) {
       revealSlider.value.style.width = `${x + handleBounds.width / 2}px`;
@@ -527,7 +527,7 @@ const saveReferenceImage = async () => {
     (singleFrameBounds.left - parentX) * ratio,
     (singleFrameBounds.top - parentY) * ratio,
     singleFrameBounds.width * ratio,
-    singleFrameBounds.height * ratio
+    singleFrameBounds.height * ratio,
   );
   ctx.restore();
 
@@ -537,7 +537,7 @@ const saveReferenceImage = async () => {
   const webp = await convertImageDataToWebP(imageData);
   const response = await updateReferenceImageForDeviceAtCurrentLocation(
     device.value!.id,
-    webp
+    webp,
   );
   if (response.success) {
     // Create a local blob URL to show the updated image immediately

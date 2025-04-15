@@ -14,7 +14,7 @@ export const checkDeviceNameIsUniqueInGroup =
   async (
     request: Request,
     response: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> => {
     const deviceName = extractValFromRequest(request, device);
     const group = response.locals.group;
@@ -23,13 +23,13 @@ export const checkDeviceNameIsUniqueInGroup =
     }
     let nameIsFree = await models.Device.freeDeviceName(
       deviceName,
-      response.locals.group.id
+      response.locals.group.id,
     );
     if (nameIsFree) {
       // Check the url normalised version
       nameIsFree = await models.Device.freeDeviceName(
         urlNormaliseName(deviceName),
-        response.locals.group.id
+        response.locals.group.id,
       );
     }
 
@@ -76,12 +76,12 @@ export const deprecatedField = (field: ValidationChain): ValidationChain => {
 
 export const integerOfWithDefault = (
   field: ValidationChain,
-  defaultVal: number
+  defaultVal: number,
 ): ValidationChain => integerOf(field, defaultVal);
 
 export const integerOf = (
   field: ValidationChain,
-  defaultVal?: number
+  defaultVal?: number,
 ): ValidationChain => {
   if (defaultVal) {
     return field
@@ -103,11 +103,11 @@ export const validNameOf = (field: ValidationChain): ValidationChain =>
   nameOf(field)
     .isLength({ min: 3 })
     .matches(
-      /(?=.*[A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō])^[A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō0-9]+([_ \-A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō0-9])*$/
+      /(?=.*[A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō])^[A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō0-9]+([_ \-A-Za-zÀ-ÖØ-Ýā-ōĀ-Ō0-9])*$/,
     )
     .withMessage(
       (val, { path }) =>
-        `'${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`
+        `'${path}' must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`,
     );
 
 export const validPasswordOf = (field: ValidationChain): ValidationChain =>
@@ -117,7 +117,7 @@ export const validPasswordOf = (field: ValidationChain): ValidationChain =>
 
 export const booleanOf = (
   field: ValidationChain,
-  defaultVal?: boolean
+  defaultVal?: boolean,
 ): ValidationChain => {
   if (defaultVal) {
     return field
@@ -214,6 +214,6 @@ const intOrString = (val: number | string, { req, location, path }) => {
 };
 
 export const nameOrIdOf = (
-  field: ValidationChain
+  field: ValidationChain,
 ): Middleware & { run: (req: Request) => Promise<Result> } =>
   field.custom(intOrString);

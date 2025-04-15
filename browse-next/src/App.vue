@@ -53,21 +53,21 @@ const fallibleCurrentUser = inject(currentUser) as Ref<
 const userIsLoggedIn = inject(hasLoggedInUser) as ComputedRef<boolean>;
 const userHasProjects = inject(hasProjects) as ComputedRef<boolean>;
 const fallibleCurrentSelectedProject = inject(
-  currentSelectedProject
+  currentSelectedProject,
 ) as ComputedRef<SelectedProject | false>;
 
 const globalSideNav = ref<HTMLDivElement>();
 
 const BlockingUserActionRequiredModal = defineAsyncComponent(
-  () => import("@/components/BlockingUserActionRequiredModal.vue")
+  () => import("@/components/BlockingUserActionRequiredModal.vue"),
 );
 
 const CreateProjectModal = defineAsyncComponent(
-  () => import("@/components/CreateProjectModal.vue")
+  () => import("@/components/CreateProjectModal.vue"),
 );
 
 const JoinExistingProjectModal = defineAsyncComponent(
-  () => import("@/components/JoinExistingProjectModal.vue")
+  () => import("@/components/JoinExistingProjectModal.vue"),
 );
 
 const _userIsSuperAdmin = false;

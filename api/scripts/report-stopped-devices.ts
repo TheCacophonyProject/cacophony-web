@@ -86,7 +86,7 @@ async function main() {
       stoppedEvents.find(
         (event) =>
           event.DeviceId === device.id &&
-          event.dateTime > device.lastConnectionTime
+          event.dateTime > device.lastConnectionTime,
       ) !== undefined;
     return !hasAlerted;
   });
@@ -107,7 +107,7 @@ async function main() {
       config.server.browse_url.replace("https://", ""),
       group.groupName,
       stoppedDevices.map((device) => device.deviceName),
-      userEmails
+      userEmails,
     );
     for (let i = 0; i < successes.length; i++) {
       if (!successes[i]) {
@@ -119,13 +119,13 @@ async function main() {
   if (failedEmails.length) {
     log.error(
       "Failed sending stopped devices email to %s",
-      failedEmails.join(", ")
+      failedEmails.join(", "),
     );
   }
 
   const detail = await models.DetailSnapshot.getOrCreateMatching(
     "stop-reported",
-    {}
+    {},
   );
   const detailsId = detail.id;
   const eventList = [];

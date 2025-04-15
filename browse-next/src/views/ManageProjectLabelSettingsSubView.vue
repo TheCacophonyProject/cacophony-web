@@ -168,7 +168,7 @@ const addPendingAudioLabel = async () => {
 
 const canReset = (
   labels: RecordingLabel[],
-  defaultLabels: RecordingLabel[]
+  defaultLabels: RecordingLabel[],
 ) => {
   if (labels.length !== defaultLabels.length) {
     return true;

@@ -31,20 +31,20 @@ const lastSeenAt = (location: ApiLocationResponse): string => {
   return noWrap(
     lastTime
       ? (DateTime.fromJSDate(lastTime).toRelative(relativeUnits) as string)
-      : "never (empty location)"
+      : "never (empty location)",
   );
 };
 
 const activeBetween = (station: ApiLocationResponse): string => {
   const startRelUnits = noWrap(
-    DateTime.fromJSDate(new Date(station.activeAt)).toRelative() || ""
+    DateTime.fromJSDate(new Date(station.activeAt)).toRelative() || "",
   );
   const endRelUnits = lastSeenAt(station);
   if (startRelUnits === endRelUnits) {
     return `Over ${startRelUnits}`;
   }
   return `${DateTime.fromJSDate(
-    new Date(station.activeAt)
+    new Date(station.activeAt),
   ).toRelative()} &ndash; ${lastSeenAt(station)}`;
 };
 

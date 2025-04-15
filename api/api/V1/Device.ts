@@ -99,7 +99,7 @@ const models = await modelsInit();
 
 export const mapDeviceResponse = (
   device: Device,
-  viewAsSuperUser: boolean
+  viewAsSuperUser: boolean,
 ): ApiDeviceResponse => {
   try {
     const mapped: ApiDeviceResponse = {
@@ -155,7 +155,7 @@ export const mapLegacyDevicesResponse = (devices: ApiDeviceResponse[]) =>
 
 export const mapDevicesResponse = (
   devices: Device[],
-  viewAsSuperUser: boolean
+  viewAsSuperUser: boolean,
 ): ApiDeviceResponse[] =>
   devices.map((device) => mapDeviceResponse(device, viewAsSuperUser));
 
@@ -309,7 +309,7 @@ export default function (app: Application, baseUrl: string) {
         saltId: device.saltId,
         token: `JWT ${createEntityJWT(device)}`,
       });
-    }
+    },
   );
 
   /**
@@ -363,7 +363,7 @@ export default function (app: Application, baseUrl: string) {
       } catch (e) {
         console.log(e);
       }
-    }
+    },
   );
 
   /**
@@ -417,7 +417,7 @@ export default function (app: Application, baseUrl: string) {
           id: deviceId,
         });
       }
-    }
+    },
   );
 
   /**
@@ -441,7 +441,7 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(body("group")),
       anyOf(
         query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean()
+        query("only-active").default(false).isBoolean().toBoolean(),
       ),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
@@ -454,7 +454,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Set device active", {
         id: deviceId,
       });
-    }
+    },
   );
 
   /**
@@ -485,7 +485,7 @@ export default function (app: Application, baseUrl: string) {
       anyOf(
         query("onlyActive").optional().isBoolean().toBoolean(),
         query("only-active").optional().isBoolean().toBoolean(),
-        query("stationId").optional().isInt().toInt()
+        query("stationId").optional().isInt().toInt(),
       ),
     ]),
     fetchAuthorizedRequiredDevices,
@@ -496,8 +496,8 @@ export default function (app: Application, baseUrl: string) {
             rows: mapLegacyDevicesResponse(
               mapDevicesResponse(
                 response.locals.devices,
-                response.locals.viewAsSuperUser
-              )
+                response.locals.viewAsSuperUser,
+              ),
             ),
           },
         });
@@ -505,10 +505,10 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Completed get devices query.", {
         devices: mapDevicesResponse(
           response.locals.devices,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         ),
       });
-    }
+    },
   );
 
   app.get(
@@ -517,13 +517,13 @@ export default function (app: Application, baseUrl: string) {
     async function (request: Request, response: Response) {
       const result = await (
         await fetch(
-          "https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json"
+          "https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json",
         )
       ).json();
       return successResponse(response, "Got latest software versions.", {
         versions: result,
       });
-    }
+    },
   );
 
   /**
@@ -575,7 +575,7 @@ export default function (app: Application, baseUrl: string) {
       deprecatedField(query("where")), // Sidekick
       anyOf(
         query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean()
+        query("only-active").default(false).isBoolean().toBoolean(),
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -583,10 +583,10 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Completed get device query.", {
         device: mapDeviceResponse(
           response.locals.device,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         ),
       });
-    }
+    },
   );
 
   // Alias of /api/v1/devices/:deviceId for consistency reasons
@@ -599,7 +599,7 @@ export default function (app: Application, baseUrl: string) {
       deprecatedField(query("where")), // Sidekick
       anyOf(
         query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean()
+        query("only-active").default(false).isBoolean().toBoolean(),
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -607,10 +607,10 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Completed get device query.", {
         device: mapDeviceResponse(
           response.locals.device,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         ),
       });
-    }
+    },
   );
   /**
    * @api {get} /api/v1/devices/:deviceId/location Get the location for a device at a given time
@@ -670,9 +670,9 @@ export default function (app: Application, baseUrl: string) {
         });
       }
       return next(
-        new UnprocessableError("No location recorded for device at time")
+        new UnprocessableError("No location recorded for device at time"),
       );
-    }
+    },
   );
 
   app.get(
@@ -733,13 +733,13 @@ export default function (app: Application, baseUrl: string) {
 
       const tracksById = new Map();
       for (const userTrack of tracks.filter(
-        (track) => !track["TrackTags.automatic"]
+        (track) => !track["TrackTags.automatic"],
       )) {
         tracksById.set(userTrack.id, userTrack);
       }
       for (const autoTrack of tracks.filter(
         (track) =>
-          track["TrackTags.automatic"] && track["TrackTags.what"] === tag
+          track["TrackTags.automatic"] && track["TrackTags.what"] === tag,
       )) {
         if (
           !(
@@ -751,12 +751,12 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       const filteredTracks = Array.from(tracksById.values()).filter(
-        (track) => track["TrackTags.what"] === tag
+        (track) => track["TrackTags.what"] === tag,
       );
       return successResponse(response, "Got tracks with tag", {
         tracks: filteredTracks.map((x) => mapTrack(x)),
       });
-    }
+    },
   );
 
   // Use this with device location history to work out what animals a device has seen in a given time window, and/or at a given station.
@@ -818,12 +818,12 @@ export default function (app: Application, baseUrl: string) {
 
       const tracksById = new Map();
       for (const userTrack of tracks.filter(
-        (track) => !track["TrackTags.automatic"]
+        (track) => !track["TrackTags.automatic"],
       )) {
         tracksById.set(userTrack.id, userTrack);
       }
       for (const autoTrack of tracks.filter(
-        (track) => track["TrackTags.automatic"]
+        (track) => track["TrackTags.automatic"],
       )) {
         if (
           !(
@@ -847,7 +847,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got used track-tags", {
         trackTags: Object.values(uniqueTags),
       });
-    }
+    },
   );
 
   /**
@@ -890,6 +890,7 @@ export default function (app: Application, baseUrl: string) {
                 attributes: ["groupName"],
               },
             ],
+            required: true,
           },
         ],
         order: [["fromDateTime", "DESC"]],
@@ -904,22 +905,22 @@ export default function (app: Application, baseUrl: string) {
           .reduce((acc, item) => {
             acc[item.location.id] = item;
             return acc;
-          }, {})
+          }, {}),
       ).sort(
         (
           a: { fromDateTime: Date; location: ApiStationResponse },
-          b: { fromDateTime: Date; location: ApiStationResponse }
+          b: { fromDateTime: Date; location: ApiStationResponse },
         ) => {
           return (
             new Date(b.fromDateTime).getTime() -
             new Date(a.fromDateTime).getTime()
           );
-        }
+        },
       );
       return successResponse(response, "Got locations for device", {
         locations,
       });
-    }
+    },
   );
   const ALLOWED_MIME_TYPES = [
     "image/jpeg",
@@ -985,13 +986,13 @@ export default function (app: Application, baseUrl: string) {
         atTime,
         {
           [query]: { [Op.ne]: null },
-        }
+        },
       );
       if (!deviceHistoryEntry) {
         return next(
           new UnprocessableError(
-            "No reference image available for device at time"
-          )
+            "No reference image available for device at time",
+          ),
         );
       }
       if (device.kind === DeviceType.TrailCam) {
@@ -1002,8 +1003,8 @@ export default function (app: Application, baseUrl: string) {
         if (!fromTime) {
           return next(
             new UnprocessableError(
-              "No reference image available for device at time"
-            )
+              "No reference image available for device at time",
+            ),
           );
         }
         let recording: any;
@@ -1018,11 +1019,11 @@ export default function (app: Application, baseUrl: string) {
               },
               models.sequelize.where(
                 Sequelize.fn("ST_X", Sequelize.col("location")),
-                { [Op.ne]: deviceHistoryEntry.location.lng }
+                { [Op.ne]: deviceHistoryEntry.location.lng },
               ),
               models.sequelize.where(
                 Sequelize.fn("ST_Y", Sequelize.col("location")),
-                { [Op.ne]: deviceHistoryEntry.location.lat }
+                { [Op.ne]: deviceHistoryEntry.location.lat },
               ),
             ] as any,
             order: [["fromDateTime", "ASC"]],
@@ -1061,7 +1062,7 @@ export default function (app: Application, baseUrl: string) {
           where 
           limit 1
           `,
-            options
+            options,
           );
           if (!recording.length) {
             recording = await models.sequelize.query(
@@ -1078,7 +1079,7 @@ export default function (app: Application, baseUrl: string) {
           order by "recordingDateTime" desc
           limit 1
           `,
-              options
+              options,
             );
           }
         } else {
@@ -1105,7 +1106,7 @@ export default function (app: Application, baseUrl: string) {
           order by "recordingDateTime" desc
           limit 1
       `,
-            options
+            options,
           );
           if (!recording.length) {
             recording = await models.sequelize.query(
@@ -1121,7 +1122,7 @@ export default function (app: Application, baseUrl: string) {
           order by "recordingDateTime" desc
           limit 1
       `,
-              options
+              options,
             );
           }
         }
@@ -1130,7 +1131,7 @@ export default function (app: Application, baseUrl: string) {
             return successResponse(
               response,
               "Reference image exists at supplied time",
-              payload
+              payload,
             );
           } else {
             // Actually return the image.
@@ -1149,14 +1150,14 @@ export default function (app: Application, baseUrl: string) {
               mimeType,
               response.locals.requestUser.id,
               device.GroupId,
-              recording[0].fileSize
+              recording[0].fileSize,
             );
           }
         } else {
           return next(
             new UnprocessableError(
-              "No reference image available for device at time"
-            )
+              "No reference image available for device at time",
+            ),
           );
         }
       } else if (
@@ -1196,7 +1197,7 @@ export default function (app: Application, baseUrl: string) {
             return successResponse(
               response,
               "Reference image exists at supplied time",
-              payload
+              payload,
             );
           } else {
             // Actually return the image
@@ -1225,24 +1226,24 @@ export default function (app: Application, baseUrl: string) {
               validatedMimeType,
               response.locals.requestUser.id,
               device.GroupId,
-              referenceImageFileSize
+              referenceImageFileSize,
             );
           }
         }
 
         return next(
           new UnprocessableError(
-            "No reference image available for device at time"
-          )
+            "No reference image available for device at time",
+          ),
         );
       } else {
         return next(
           new UnprocessableError(
-            `Reference images not supported for ${device.kind} devices.`
-          )
+            `Reference images not supported for ${device.kind} devices.`,
+          ),
         );
       }
-    }
+    },
   );
 
   /**
@@ -1283,9 +1284,9 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new FatalError(
             `Unsupported image type. Allowed types: ${ALLOWED_MIME_TYPES.join(
-              ", "
-            )}`
-          )
+              ", ",
+            )}`,
+          ),
         );
       }
       // Set the reference image.
@@ -1307,7 +1308,7 @@ export default function (app: Application, baseUrl: string) {
       if (!previousDeviceHistoryEntry) {
         // We can't add an image, because we don't have a device location.
         return next(
-          new UnprocessableError("No location for device to tag with reference")
+          new UnprocessableError("No location for device to tag with reference"),
         );
       }
 
@@ -1360,11 +1361,11 @@ export default function (app: Application, baseUrl: string) {
               DeviceId: device.id,
               GroupId: device.GroupId,
             },
-          }
+          },
         );
       }
       return successResponse(response, { key, size });
-    }
+    },
   );
 
   /**
@@ -1454,12 +1455,12 @@ export default function (app: Application, baseUrl: string) {
 
         return successResponse(
           response,
-          "Reference image deleted successfully"
+          "Reference image deleted successfully",
         );
       } catch (error) {
         next(new FatalError("Failed to delete reference image"));
       }
-    }
+    },
   );
 
   /**
@@ -1502,8 +1503,8 @@ export default function (app: Application, baseUrl: string) {
         if (!deviceHistoryEntry) {
           return next(
             new ClientError(
-              "No device history settings entry found to add mask regions"
-            )
+              "No device history settings entry found to add mask regions",
+            ),
           );
         }
         const newSettings: ApiDeviceHistorySettings = {
@@ -1538,18 +1539,18 @@ export default function (app: Application, baseUrl: string) {
                 DeviceId: device.id,
                 GroupId: device.GroupId,
               },
-            }
+            },
           );
         }
         return successResponse(response, "Mask regions added successfully");
       } catch (e) {
         return next(
           new UnprocessableError(
-            "An error occurred while processing the request"
-          )
+            "An error occurred while processing the request",
+          ),
         );
       }
-    }
+    },
   );
 
   /**
@@ -1608,12 +1609,12 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(
           response,
           "Device mask-regions retrieved successfully",
-          { maskRegions: deviceSettings.settings.maskRegions }
+          { maskRegions: deviceSettings.settings.maskRegions },
         );
       } else {
         return next(new UnprocessableError("No device mask-regions found"));
       }
-    }
+    },
   );
 
   /**
@@ -1654,13 +1655,13 @@ export default function (app: Application, baseUrl: string) {
             atTime,
             {
               "settings.synced": true,
-            }
+            },
           );
         } else {
           deviceSettings = await models.DeviceHistory.latest(
             device.id,
             device.GroupId,
-            atTime
+            atTime,
           );
         }
         if (deviceSettings) {
@@ -1674,7 +1675,7 @@ export default function (app: Application, baseUrl: string) {
             {
               settings,
               location: deviceSettings.location,
-            }
+            },
           );
         } else {
           return next(new UnprocessableError("Could not get settings"));
@@ -1682,7 +1683,7 @@ export default function (app: Application, baseUrl: string) {
       } catch (e) {
         return next(new FatalError(e.message ?? "Could not get settings"));
       }
-    }
+    },
   );
 
   /**
@@ -1736,7 +1737,7 @@ export default function (app: Application, baseUrl: string) {
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
         const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
           device.id,
-          device.GroupId
+          device.GroupId,
         );
         // Update device location and create DeviceHistory entry if new location is provided and different
         if (newLocation) {
@@ -1752,7 +1753,7 @@ export default function (app: Application, baseUrl: string) {
             models,
             newLocation,
             device.GroupId,
-            new Date()
+            new Date(),
           );
           if (
             !latestDeviceHistoryEntry ||
@@ -1761,7 +1762,7 @@ export default function (app: Application, baseUrl: string) {
             (latestDeviceHistoryEntry &&
               !locationsAreEqual(
                 latestDeviceHistoryEntry.location,
-                newLocation
+                newLocation,
               ))
           ) {
             await models.DeviceHistory.create({
@@ -1791,13 +1792,13 @@ export default function (app: Application, baseUrl: string) {
             device.id,
             device.GroupId,
             newSettings,
-            setBy
+            setBy,
           );
         } else {
           // Fetch the latest settings entry if no new settings are provided
           updatedEntry = await models.DeviceHistory.latest(
             device.id,
-            device.GroupId
+            device.GroupId,
           );
         }
 
@@ -1809,7 +1810,7 @@ export default function (app: Application, baseUrl: string) {
       } catch (e) {
         return next(new FatalError(`Failed to update device1: ${e.message}`));
       }
-    }
+    },
   );
 
   /**
@@ -1846,7 +1847,7 @@ export default function (app: Application, baseUrl: string) {
       } catch (e) {
         return;
       }
-    }
+    },
   );
 
   /**
@@ -1874,7 +1875,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       body("setStationAtTime").custom(
-        jsonSchemaOf(ApiDeviceLocationFixupSchema)
+        jsonSchemaOf(ApiDeviceLocationFixupSchema),
       ),
       booleanOf(query("only-active"), false),
     ]),
@@ -1883,15 +1884,15 @@ export default function (app: Application, baseUrl: string) {
     async (request, response, next) => {
       // Now make sure we have access to the station.
       await fetchAuthorizedRequiredStationById(
-        response.locals.setStationAtTime.stationId
+        response.locals.setStationAtTime.stationId,
       )(request, response, next);
     },
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.device.GroupId !== response.locals.station.GroupId) {
         return next(
           new ClientError(
-            "Supplied station doesn't belong to the same group as supplied device"
-          )
+            "Supplied station doesn't belong to the same group as supplied device",
+          ),
         );
       }
       const { stationId, fromDateTime, location } =
@@ -1904,8 +1905,8 @@ export default function (app: Application, baseUrl: string) {
       } catch (e) {
         return next(
           new UnprocessableError(
-            "Supplied fromDateTime is not a valid timestamp"
-          )
+            "Supplied fromDateTime is not a valid timestamp",
+          ),
         );
       }
       if (fromDateTimeParsed < station.activeAt) {
@@ -1993,7 +1994,7 @@ export default function (app: Application, baseUrl: string) {
             acc[recording.StationId] = true;
           }
           return acc;
-        }, {})
+        }, {}),
       ).map(Number);
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2004,7 +2005,7 @@ export default function (app: Application, baseUrl: string) {
         },
         {
           where: recordingTimeWindow,
-        }
+        },
       );
       let stationsToUpdateLatestRecordingFor = [];
       if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
@@ -2111,7 +2112,7 @@ export default function (app: Application, baseUrl: string) {
         "Updated device station at time.",
         `Updated ${affectedCount} recording(s)`,
       ]);
-    }
+    },
   );
 
   /**
@@ -2166,16 +2167,16 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
       param("deviceName"),
-      param("groupIdOrName")
+      param("groupIdOrName"),
     ),
     async (request: Request, response: Response) => {
       return successResponse(response, "Request successful", {
         device: mapDeviceResponse(
           response.locals.device,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         ),
       });
-    }
+    },
   );
 
   const getUsersFns = [
@@ -2183,7 +2184,7 @@ export default function (app: Application, baseUrl: string) {
       await fetchAuthorizedRequiredGroupById(response.locals.device.GroupId)(
         request,
         response,
-        next
+        next,
       );
     },
     async (request: Request, response: Response) => {
@@ -2238,7 +2239,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(query("deviceId")),
-    ...getUsersFns
+    ...getUsersFns,
   );
 
   // Alias of /api/v1/devices/users for consistency reasons
@@ -2252,7 +2253,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     // Should this require admin access to the device?
     fetchAdminAuthorizedRequiredDeviceById(param("deviceId")),
-    ...getUsersFns
+    ...getUsersFns,
   );
 
   /**
@@ -2293,8 +2294,8 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             "Schedule doesn't belong to user",
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
     },
@@ -2303,7 +2304,7 @@ export default function (app: Application, baseUrl: string) {
         ScheduleId: response.locals.schedule.id,
       });
       return successResponse(response, "schedule assigned");
-    }
+    },
   );
 
   /**
@@ -2344,8 +2345,8 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             "Schedule doesn't belong to user",
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
     },
@@ -2354,7 +2355,7 @@ export default function (app: Application, baseUrl: string) {
         ScheduleId: null,
       });
       return successResponse(response, "schedule removed");
-    }
+    },
   );
 
   /**
@@ -2387,27 +2388,27 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
       const requestDevice: Device = await models.Device.findByPk(
-        response.locals.requestDevice.id
+        response.locals.requestDevice.id,
       );
 
       const device = await requestDevice.reRegister(
         models,
         request.body.newName,
         response.locals.group,
-        request.body.newPassword
+        request.body.newPassword,
       );
       if (device === false) {
         return next(
           new ClientError(
-            `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`
-          )
+            `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`,
+          ),
         );
       }
       return successResponse(response, "Registered the device again.", {
         id: device.id,
         token: `JWT ${createEntityJWT(device)}`,
       });
-    }
+    },
   );
 
   /**
@@ -2443,10 +2444,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser,
         response.locals.device,
         request.query.from as unknown as Date, // Get the current cacophony index
-        request.query["window-size"] as unknown as number
+        request.query["window-size"] as unknown as number,
       );
       return successResponse(response, { cacophonyIndex });
-    }
+    },
   );
 
   /**
@@ -2481,20 +2482,20 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       // The user should be the admin of both groups
       const requestDevice: Device = await models.Device.findByPk(
-        response.locals.requestDevice.id
+        response.locals.requestDevice.id,
       );
       if (!requestDevice) {
         return next(
           new ClientError(
-            `device not found: ${response.locals.requestDevice.id}`
-          )
+            `device not found: ${response.locals.requestDevice.id}`,
+          ),
         );
       }
       response.locals.requestDevice = requestDevice;
       response.locals.destGroup = response.locals.group;
       if (response.locals.group.id !== response.locals.requestDevice.GroupId) {
         await fetchAdminAuthorizedRequiredGroupByNameOrId(
-          requestDevice.GroupId
+          requestDevice.GroupId,
         )(request, response, next);
       } else {
         return next();
@@ -2506,13 +2507,13 @@ export default function (app: Application, baseUrl: string) {
         request.body.newName,
         response.locals.destGroup,
         request.body.newPassword,
-        true
+        true,
       );
       if (newDevice === false) {
         return next(
           new ClientError(
-            `already a device in group '${response.locals.destGroup.groupName}' with the name '${request.body.newName}'`
-          )
+            `already a device in group '${response.locals.destGroup.groupName}' with the name '${request.body.newName}'`,
+          ),
         );
       }
       const token = `JWT ${createEntityJWT(newDevice)}`;
@@ -2520,7 +2521,7 @@ export default function (app: Application, baseUrl: string) {
         id: newDevice.id,
         token,
       });
-    }
+    },
   );
 
   /**
@@ -2559,10 +2560,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.device,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String
+        request.query.interval as unknown as String,
       );
       return successResponse(response, { cacophonyIndexBulk });
-    }
+    },
   );
 
   /**
@@ -2598,10 +2599,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date, // Get the current cacophony index
-        request.query["window-size"] as unknown as number
+        request.query["window-size"] as unknown as number,
       );
       return successResponse(response, { cacophonyIndex });
-    }
+    },
   );
 
   /**
@@ -2639,10 +2640,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.device.id,
         request.query.from as unknown as Date,
         request.query["window-size"] as unknown as number,
-        request.query.type as unknown as string
+        request.query.type as unknown as string,
       );
       return successResponse(response, { speciesCount });
-    }
+    },
   );
 
   /**
@@ -2683,10 +2684,10 @@ export default function (app: Application, baseUrl: string) {
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
         request.query.interval as unknown as String,
-        request.query.type as unknown as string
+        request.query.type as unknown as string,
       );
       return successResponse(response, { speciesCountBulk });
-    }
+    },
   );
 
   /**
@@ -2719,10 +2720,10 @@ export default function (app: Application, baseUrl: string) {
         response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date,
-        request.query["window-size"] as unknown as number
+        request.query["window-size"] as unknown as number,
       );
       return successResponse(response, { activeDaysCount });
-    }
+    },
   );
 
   /**
@@ -2743,11 +2744,11 @@ export default function (app: Application, baseUrl: string) {
     validateFields([body("nextHeartbeat").isISO8601().toDate()]),
     async function (request: Request, response: Response) {
       const requestDevice = (await models.Device.findByPk(
-        response.locals.requestDevice.id
+        response.locals.requestDevice.id,
       )) as Device;
       await requestDevice.updateHeartbeat(models, request.body.nextHeartbeat);
       return successResponse(response, "Heartbeat updated.");
-    }
+    },
   );
 
   if (!config.productionEnv) {
@@ -2780,7 +2781,7 @@ export default function (app: Application, baseUrl: string) {
           order: [["fromDateTime", "ASC"]],
         });
         return successResponse(response, "Got device history", { history });
-      }
+      },
     );
   }
 }

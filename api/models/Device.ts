@@ -139,7 +139,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
 
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): DeviceStatic {
   const name = "Device";
 
@@ -198,7 +198,7 @@ export default function (
   const Device = sequelize.define(
     name,
     attributes,
-    options
+    options,
   ) as unknown as DeviceStatic;
 
   //---------------
@@ -230,7 +230,7 @@ export default function (
     deviceID,
     deviceName,
     groupName,
-    password
+    password,
   ) {
     // attempts to find a unique device by groupName, then deviceId (deviceName if int),
     // then deviceName, finally password
@@ -277,7 +277,7 @@ export default function (
     } else {
       if (validDevices.length > 1) {
         throw new Error(
-          format("Multiple devices match %s and supplied password", name)
+          format("Multiple devices match %s and supplied password", name),
         );
       }
       return null;
@@ -316,7 +316,7 @@ export default function (
     `,
       {
         type: QueryTypes.SELECT,
-      }
+      },
     );
 
     oneDayAgo.setHours(oneDayAgo.getHours() - 25);
@@ -366,7 +366,7 @@ export default function (
     authUser,
     device,
     from,
-    windowSizeInHours
+    windowSizeInHours,
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
@@ -380,7 +380,7 @@ export default function (
 where
 	"DeviceId" = ${device.id}
 	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`
+	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`,
     )) as [{ index: number }[], unknown];
     const index = result[0].index;
     if (index !== null) {
@@ -394,7 +394,7 @@ where
     device,
     from,
     steps,
-    interval
+    interval,
   ): Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]> {
     const counts = [];
     let stepSizeInMs;
@@ -412,7 +412,7 @@ where
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
-          0
+          0,
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
@@ -433,7 +433,7 @@ where
         authUser,
         device,
         windowEnd,
-        stepSizeInHours
+        stepSizeInHours,
       );
       counts.push({
         deviceId: device.id,
@@ -448,7 +448,7 @@ where
     authUser,
     deviceId,
     from,
-    windowSizeInHours
+    windowSizeInHours,
   ): Promise<{ hour: number; index: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
@@ -486,7 +486,7 @@ order by hour;
     deviceId,
     from,
     windowSizeInHours,
-    recordingType
+    recordingType,
   ): Promise<{ what: string; count: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
@@ -517,7 +517,7 @@ order by hour;
     from,
     steps,
     interval,
-    recordingType
+    recordingType,
   ): Promise<
     { deviceId: DeviceId; from: string; what: string; count: number }[]
   > {
@@ -537,7 +537,7 @@ order by hour;
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
-          0
+          0,
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
@@ -558,7 +558,7 @@ order by hour;
         deviceId,
         windowEnd,
         stepSizeInHours,
-        recordingType
+        recordingType,
       );
       counts.push(
         ...result.map((item) => ({
@@ -566,7 +566,7 @@ order by hour;
           from: windowEnd.toISOString(),
           what: item.what,
           count: item.count,
-        }))
+        })),
       );
     }
     return counts;
@@ -576,7 +576,7 @@ order by hour;
     authUser,
     deviceId,
     from,
-    windowSizeInHours
+    windowSizeInHours,
   ): Promise<number> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
@@ -645,7 +645,7 @@ order by hour;
     newName: string,
     newGroup: Group,
     newPassword: string,
-    reassign = false
+    reassign = false,
   ): Promise<Device | false> {
     let newDevice: Device;
     const now = new Date();
@@ -662,7 +662,7 @@ order by hour;
         models,
         this.location,
         newGroup.id,
-        now
+        now,
       );
     }
     try {
@@ -739,7 +739,7 @@ order by hour;
                     kind: newKind,
                     active: true,
                   },
-                  { transaction: t }
+                  { transaction: t },
                 );
                 newDevice = conflictingDevice;
               } else {
@@ -757,7 +757,7 @@ order by hour;
                   },
                   {
                     transaction: t,
-                  }
+                  },
                 )) as Device;
               }
             } else {
@@ -777,7 +777,7 @@ order by hour;
                     kind: newKind,
                     active: true,
                   },
-                  { transaction: t }
+                  { transaction: t },
                 );
                 shouldDeleteExistingDevice = false;
                 newDevice = conflictingDevice;
@@ -797,14 +797,14 @@ order by hour;
                   },
                   {
                     transaction: t,
-                  }
+                  },
                 )) as Device;
               }
             }
           } else {
             if (conflictingDevice !== null) {
               throw new ClientError(
-                `A device with the name '${newName}' already exists in '${newGroup.groupName}'`
+                `A device with the name '${newName}' already exists in '${newGroup.groupName}'`,
               );
             }
             if (deviceHasRecordingsInCurrentGroup) {
@@ -830,7 +830,7 @@ order by hour;
               },
               {
                 transaction: t,
-              }
+              },
             )) as Device;
           }
 
@@ -856,7 +856,7 @@ order by hour;
                 needsRename: true,
                 GroupId: newGroup.id,
               },
-              { transaction: t }
+              { transaction: t },
             )) as Station;
           }
           if (stationToAssign) {
@@ -875,13 +875,13 @@ order by hour;
             // Delete every recording properly
             await models.Recording.update(
               { deletedAt: new Date() },
-              { where: { DeviceId: this.id }, transaction: t }
+              { where: { DeviceId: this.id }, transaction: t },
             );
             await this.destroy({ transaction: t });
           } else if (shouldDeleteExistingDevice) {
             await this.destroy({ transaction: t });
           }
-        }
+        },
       );
     } catch (e) {
       logger.error("Failed to re-register device %s: %s", this.deviceName, e);
@@ -892,7 +892,7 @@ order by hour;
 
   Device.prototype.updateHeartbeat = async function (
     models: ModelsDictionary,
-    nextHeartbeat: Date
+    nextHeartbeat: Date,
   ) {
     const now = new Date();
     if (this.location && this.kind !== DeviceType.Unknown) {
@@ -901,7 +901,7 @@ order by hour;
         models,
         this.location,
         this.GroupId,
-        now
+        now,
       );
       if (station) {
         if (this.kind === DeviceType.Thermal) {

@@ -89,7 +89,7 @@ const models = await modelsInit();
       item["DeviceId"],
       item["GroupId"],
       settings,
-      "user"
+      "user",
     );
   }
 })()

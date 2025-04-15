@@ -41,7 +41,7 @@ export class CptvDecoder {
       };
 
       this.decoder = new Worker(
-        new URL("./decoder.worker.js", import.meta.url)
+        new URL("./decoder.worker.js", import.meta.url),
       );
       this.decoder.addListener.bind(this.decoder)("message", onMessage);
       await this.waitForMessage("init");
@@ -55,7 +55,7 @@ export class CptvDecoder {
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithReadableStream(
-    stream: ReadableStream
+    stream: ReadableStream,
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithReadableStream";
@@ -72,7 +72,7 @@ export class CptvDecoder {
    * @returns {CptvHeader} on success, or an error string on failure
    */
   async getStreamMetadata(
-    stream: ReadableStream
+    stream: ReadableStream,
   ): Promise<CptvHeader | string> {
     await this.init();
     const type = "getStreamMetadata";
@@ -88,7 +88,7 @@ export class CptvDecoder {
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithLocalCptvFile(
-    fileBytes: Uint8Array
+    fileBytes: Uint8Array,
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithLocalCptvFile";

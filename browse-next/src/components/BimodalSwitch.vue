@@ -30,7 +30,7 @@ const props = withDefaults(
     modes: [string, string];
     spread?: boolean;
   }>(),
-  { spread: false }
+  { spread: false },
 );
 
 const mode = ref<boolean>(false);

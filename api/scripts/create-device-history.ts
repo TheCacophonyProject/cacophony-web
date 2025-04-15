@@ -21,7 +21,7 @@ async function main() {
   const pgClient = new pg.Client(dbOptions(config.database));
   await pgClient.connect();
   const saltIds = await pgClient.query(
-    `select distinct "saltId" from "Devices";`
+    `select distinct "saltId" from "Devices";`,
   );
 
   // Set all already created stations creation date back to "Cacophony Epoch"
@@ -31,7 +31,7 @@ async function main() {
     },
     {
       where: {},
-    }
+    },
   );
 
   const allConfigUpdatesToLocation = await pgClient.query(`
@@ -73,7 +73,7 @@ async function main() {
     `);
     if (firstLocationRecordingTimeForDevice.rows.length) {
       deviceAndTime.time = new Date(
-        firstLocationRecordingTimeForDevice.rows[0].recordingDateTime
+        firstLocationRecordingTimeForDevice.rows[0].recordingDateTime,
       ).getTime();
     }
   }
@@ -85,7 +85,7 @@ async function main() {
   for (const device of devicesAndTimes.map(({ device }) => device)) {
     // For each device, find any "config" events.  Apply locations from those events.
     const configChangesForDevice = allConfigUpdatesToLocation.rows.filter(
-      ({ device_id }) => device_id === device.id
+      ({ device_id }) => device_id === device.id,
     );
     for (const configChangeForDevice of configChangesForDevice) {
       if (
@@ -100,7 +100,7 @@ async function main() {
             lng: configChangeForDevice.lng,
           },
           new Date(configChangeForDevice.updated_at),
-          "config"
+          "config",
         );
       }
     }
@@ -138,7 +138,7 @@ async function main() {
             lng: automaticLocationChangeForDevice.lng,
           },
           new Date(automaticLocationChangeForDevice.recordingDateTime),
-          "automatic"
+          "automatic",
         );
       }
     }
@@ -175,7 +175,7 @@ async function main() {
             location: { [Op.ne]: null },
             recordingDateTime: recordingTimeWindow,
           },
-        }
+        },
       );
     }
     // Update device lastRecordingTime and kind
@@ -212,13 +212,13 @@ async function main() {
       await pgClient.query(
         `update "Stations" set "lastThermalRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
           recording.StationId
-        }`
+        }`,
       );
     } else if (recording.type === RecordingType.Audio) {
       await pgClient.query(
         `update "Stations" set "lastAudioRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
           recording.StationId
-        }`
+        }`,
       );
     }
   }
@@ -241,13 +241,13 @@ async function main() {
       await pgClient.query(
         `update "Groups" set "lastThermalRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
           recording.GroupId
-        }`
+        }`,
       );
     } else if (recording.type === RecordingType.Audio) {
       await pgClient.query(
         `update "Groups" set "lastAudioRecordingTime" = '${recording.recordingDateTime.toISOString()}' where "id" = ${
           recording.GroupId
-        }`
+        }`,
       );
     }
   }

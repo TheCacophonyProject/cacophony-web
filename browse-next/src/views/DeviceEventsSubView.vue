@@ -19,7 +19,7 @@ import { DateTime } from "luxon";
 
 const route = useRoute();
 const deviceId = computed<DeviceId>(
-  () => Number(route.params.deviceId) as DeviceId
+  () => Number(route.params.deviceId) as DeviceId,
 );
 const loadedDeviceEvents = ref<LoadedResource<DeviceEvent[]>>(null);
 const deviceEvents = computed<DeviceEvent[]>(() => {
@@ -75,7 +75,7 @@ const knownEventTypesOptions = computed<{ value: string; label: string }[]>(
         label: homogeniseLabel(key),
       }))
       .sort((a, b) => (a.label > b.label ? 1 : -1));
-  }
+  },
 );
 
 const loadingEvents = ref<boolean>(false);
@@ -173,7 +173,7 @@ onUpdated(() => {
                 break;
               }
             }
-          }
+          },
         );
       }
     }

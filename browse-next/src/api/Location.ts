@@ -12,7 +12,7 @@ export const createNewLocationForProject = async (
   location: LatLng,
   automatic = false,
   applyFromDate?: Date,
-  applyUntilDate?: Date
+  applyUntilDate?: Date,
 ): Promise<LoadedResource<{ locationId: LocationId }>> => {
   const payload: {
     station: string;
@@ -38,7 +38,7 @@ export const createNewLocationForProject = async (
   return new Promise((resolve, reject) => {
     return CacophonyApi.post(
       `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/station`,
-      payload
+      payload,
     ).then((result) => {
       const thisResult = result as FetchResult<{ stationId: LocationId }>;
       if (thisResult.success) {

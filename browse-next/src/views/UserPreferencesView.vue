@@ -58,17 +58,17 @@ const userNameFieldValidationError = computed<
     updateUserErrorMessage.value &&
     updateUserErrorMessage.value.errorType === "validation" &&
     (updateUserErrorMessage.value.errors as FieldValidationError[])?.find(
-      ({ param }) => param === "userName"
-    )
+      ({ param }) => param === "userName",
+    ),
 );
 const userNameFieldValidationErrorMessage = computed<string>(() => {
   return (userNameFieldValidationError.value as FieldValidationError).msg;
 });
 const userNameIsTooShort = computed<boolean>(
-  () => userName.value.trim().length < 3
+  () => userName.value.trim().length < 3,
 );
 const userNameInUse = computed<boolean>(
-  () => !!userNameFieldValidationError.value
+  () => !!userNameFieldValidationError.value,
 );
 const isValidUserName = computed<boolean>(() => {
   if (
@@ -81,7 +81,7 @@ const isValidUserName = computed<boolean>(() => {
   return isValidName(userName.value.trim());
 });
 const needsValidationAndIsValidUserName = computed<FormInputValidationState>(
-  () => (userName.touched ? isValidUserName.value : undefined)
+  () => (userName.touched ? isValidUserName.value : undefined),
 );
 
 // ---------- email ------------
@@ -92,7 +92,7 @@ const emailFieldValidationError = computed(() => {
     updateUserErrorMessage.value &&
     updateUserErrorMessage.value.errorType === "validation" &&
     (updateUserErrorMessage.value.errors as FieldValidationError[])?.find(
-      ({ param }) => param === "email"
+      ({ param }) => param === "email",
     )
   );
 });
@@ -100,7 +100,7 @@ const emailFieldValidationErrorMessage = computed<string>(() => {
   return (emailFieldValidationError.value as FieldValidationError).msg;
 });
 const emailIsTooShort = computed<boolean>(
-  () => userEmailAddress.value.trim().length < 3
+  () => userEmailAddress.value.trim().length < 3,
 );
 const isValidEmailAddress = computed<boolean>(() => {
   if (
@@ -116,7 +116,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    userEmailAddress.touched ? isValidEmailAddress.value : undefined
+    userEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 
 const resetFormFields = () => {

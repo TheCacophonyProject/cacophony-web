@@ -92,7 +92,7 @@ const props = withDefaults(
     hasPrev: false,
     hasReferencePhoto: false,
     displayHeaderInfo: false,
-  }
+  },
 );
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
@@ -123,7 +123,7 @@ watch(pixelRatio, () => {
 
 const exportProgressZeroOne = ref<number>(0);
 const exportProgress = computed<number>(
-  () => exportProgressZeroOne.value * 100
+  () => exportProgressZeroOne.value * 100,
 );
 watch(
   () => props.exportRequested,
@@ -135,7 +135,7 @@ watch(
         // Wait for user input
       }
     }
-  }
+  },
 );
 
 const playbackTimeChanged = (offset: number) => {
@@ -163,8 +163,8 @@ const playbackTimeZeroOne = computed<number>(() => {
     0,
     Math.min(
       1,
-      targetFrameNum.value / (totalPlayableFrames.value - 1) + fractionalFrame
-    )
+      targetFrameNum.value / (totalPlayableFrames.value - 1) + fractionalFrame,
+    ),
   );
 });
 
@@ -216,7 +216,7 @@ watch(
       }
     }
     updateOverlayCanvas(frameNum.value);
-  }
+  },
 );
 
 watch(
@@ -228,7 +228,7 @@ watch(
   },
   {
     deep: true, // If tags change, we'd like to know about it
-  }
+  },
 );
 
 const container = ref<HTMLDivElement | null>(null);
@@ -272,7 +272,7 @@ const persistentBooleanPref = (
   key: string,
   propertyName: string,
   forceReRender = false,
-  defaultValue = false
+  defaultValue = false,
 ): Ref<boolean> => {
   const initValue =
     (localStorage.getItem(key) && localStorage.getItem(key) === "true") ||
@@ -292,45 +292,45 @@ const showDebugTools = persistentBooleanPref("show-debug-tools", "Debug tools");
 const silhouetteMode = persistentBooleanPref(
   "silhouette-mode",
   "Silhouette mode",
-  true
+  true,
 );
 const polygonEditMode = persistentBooleanPref(
   "polygon-edit-mode",
-  "Polygon edit mode"
+  "Polygon edit mode",
 );
 const motionPathMode = persistentBooleanPref(
   "motion-path-mode",
   "Motion paths",
-  true
+  true,
 );
 const trackHighlightMode = persistentBooleanPref(
   "track-highlight-mode",
   "Track focus",
-  true
+  true,
 );
 const videoSmoothing = persistentBooleanPref(
   "video-smoothing",
   "Smoothing",
   true,
-  true
+  true,
 );
 
 const speedMultiplierIndex = ref<number>(
   Math.max(
     PlaybackSpeeds.indexOf(
-      Number(localStorage.getItem("video-playback-speed")) || 1
+      Number(localStorage.getItem("video-playback-speed")) || 1,
     ),
-    0
-  )
+    0,
+  ),
 );
 
 const paletteIndex = ref<number>(
   Math.max(
     ColourMaps.findIndex(
-      ([name]) => name === localStorage.getItem("video-palette")
+      ([name]) => name === localStorage.getItem("video-palette"),
     ),
-    0
-  )
+    0,
+  ),
 );
 const colourMap = ref<[string, Uint32Array]>(ColourMaps[paletteIndex.value]);
 const messageTimeout = ref<number | null>(null);
@@ -366,15 +366,15 @@ const setTimeAndRedraw = async ({
         targetFrameNum.value = Math.floor(
           Math.min(
             totalPlayableFrames.value - 1,
-            timeZeroOne * (totalPlayableFrames.value - 1)
-          )
+            timeZeroOne * (totalPlayableFrames.value - 1),
+          ),
         );
       } else {
         targetFrameNum.value = frameNumToDraw || 0;
       }
       const gotFrame = await seekToSpecifiedFrameAndRender(
         true,
-        targetFrameNum.value
+        targetFrameNum.value,
       );
       if (gotFrame) {
         frameNum.value = targetFrameNum.value;
@@ -410,7 +410,7 @@ const selectTrack = async (
   track: ApiTrackResponse,
   force = false,
   shouldPlay = false,
-  userSelected = false
+  userSelected = false,
 ) => {
   if ((!playing.value || force) && props.recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
@@ -513,7 +513,7 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
 let cNum = 0;
 const setCurrentFrameAndRender = (
   force: boolean,
-  frameNumToRender?: number
+  frameNumToRender?: number,
 ) => {
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
@@ -535,7 +535,7 @@ const setCurrentFrameAndRender = (
 
 const seekToSpecifiedFrameAndRender = async (
   force = false,
-  frameNumToRender?: number
+  frameNumToRender?: number,
 ): Promise<boolean> => {
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
@@ -576,7 +576,7 @@ const frameHeight = computed<number>(() => {
 const renderFrame = (
   frameData: CptvFrame,
   frameNumToRender: number,
-  force = false
+  force = false,
 ) => {
   if (canvas.value && header.value && canvasContext.value) {
     let min;
@@ -597,11 +597,11 @@ const renderFrame = (
         // );
 
         const trackBoxes = Object.values(
-          framesByTrack.value[props.currentTrack.id]
+          framesByTrack.value[props.currentTrack.id],
         );
         [min, max] = minMaxForTrack(
           trackBoxes,
-          loadedFramesForTrack(props.currentTrack.id)
+          loadedFramesForTrack(props.currentTrack.id),
         );
       } else if (numTracks === 1) {
         // There's only one track, so highlight it all the time.
@@ -615,7 +615,7 @@ const renderFrame = (
           const trackBoxes = Object.values(framesByTrack.value[trackId]);
           [min, max] = minMaxForTrack(
             trackBoxes,
-            loadedFramesForTrack(trackId)
+            loadedFramesForTrack(trackId),
           );
         } else {
           // Get the min/max for the first frame of the track, or maybe one in the middle.
@@ -636,7 +636,7 @@ const renderFrame = (
           const trackBoxes = Object.values(framesByTrack.value[trackId]);
           [min, max] = minMaxForTrack(
             trackBoxes,
-            loadedFramesForTrack(trackId)
+            loadedFramesForTrack(trackId),
           );
         }
 
@@ -714,7 +714,7 @@ const renderFrame = (
         canvasContext.value,
         new ImageData(frameBuffer, frameWidth.value, frameHeight.value),
         frameNumToRender,
-        force
+        force,
       );
     });
   }
@@ -788,9 +788,9 @@ const totalPlayableFrames = computed<number>(() => {
           (props.recording || { duration: 0 }).duration * fps.value -
             backgroundAdjust,
           ...(props.recording || { tracks: [] }).tracks.map(
-            ({ end }) => end * fps.value - backgroundAdjust
-          )
-        )
+            ({ end }) => end * fps.value - backgroundAdjust,
+          ),
+        ),
       );
     }
   }
@@ -798,7 +798,7 @@ const totalPlayableFrames = computed<number>(() => {
 });
 
 const actualDuration = computed<number>(
-  () => totalPlayableFrames.value / fps.value
+  () => totalPlayableFrames.value / fps.value,
 );
 
 const currentTime = computed<number>(() => {
@@ -822,7 +822,7 @@ const elapsedTime = computed<string>(() => {
 const headerInfo = computed(() => formatHeaderInfo(header.value));
 const loadDateTime = ref<Date>(new Date());
 const getAuthoritativeTagForTrack = (
-  trackTags: ApiTrackTagResponse[]
+  trackTags: ApiTrackTagResponse[],
 ): [string, boolean, boolean] | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
@@ -845,7 +845,7 @@ const getAuthoritativeTagForTrack = (
 const getPositions = (
   positions: ApiTrackPosition[],
   timeOffset: number,
-  frameTimeSeconds: number
+  frameTimeSeconds: number,
 ): [FrameNum, Rectangle][] => {
   const frameAtTime = (time: number) => {
     return Math.round(time / frameTimeSeconds);
@@ -885,7 +885,7 @@ const tracksIntermediate = computed<IntermediateTrack[]>(() => {
         positions: getPositions(
           positions as ApiTrackPosition[],
           timeAdjustmentForBackgroundFrame.value,
-          frameTimeSeconds.value
+          frameTimeSeconds.value,
         ),
         id,
       };
@@ -894,7 +894,7 @@ const tracksIntermediate = computed<IntermediateTrack[]>(() => {
     (track) =>
       userProjectSettings.value.showFalseTriggers ||
       (!userProjectSettings.value.showFalseTriggers &&
-        (track.what !== "false-positive" || track.justTaggedFalseTrigger))
+        (track.what !== "false-positive" || track.justTaggedFalseTrigger)),
   );
 });
 
@@ -913,7 +913,7 @@ const tracksByFrame = computed<Record<FrameNum, [TrackId, TrackBox][]>>(() => {
       }
       return acc;
     },
-    {}
+    {},
   );
 });
 
@@ -931,7 +931,7 @@ const mergedTracks = computed(() => {
 
   const mergeCandidates: Record<string, boolean> = {};
   for (const [_frameNum, tracks] of Object.entries(tracksByFrame.value).filter(
-    ([_, tracks]) => tracks.length > 1
+    ([_, tracks]) => tracks.length > 1,
   )) {
     for (const [trackA, trackABox] of tracks) {
       for (const [trackId, trackBox] of tracks) {
@@ -958,7 +958,7 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
     return tracksIntermediate.value.reduce(
       (
         acc: Record<TrackId, Record<FrameNum, TrackBox>>,
-        { id, what, positions }
+        { id, what, positions },
       ) => {
         acc[id] = acc[id] || {};
         for (const [frameNum, trackBox] of positions) {
@@ -969,9 +969,9 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
         }
         return acc;
       },
-      {}
+      {},
     );
-  }
+  },
 );
 
 const isExporting = ref<boolean>(false);
@@ -1060,7 +1060,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       for (const { includeInExportTime, trackId } of options) {
         if (includeInExportTime) {
           const track = (props.recording as ApiRecordingResponse).tracks.find(
-            (track) => track.id === trackId
+            (track) => track.id === trackId,
           );
           if (track) {
             firstFrameNumForTrack(trackId);
@@ -1068,7 +1068,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
             startFrame = Math.min(startFrame, firstFrameNumForTrack(trackId));
             onePastLastFrame = Math.max(
               onePastLastFrame,
-              onePastLastFrameNumForTrack(trackId)
+              onePastLastFrameNumForTrack(trackId),
             );
           }
         }
@@ -1084,13 +1084,13 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         frameData.imageData,
         colourMap.value[1],
         min,
-        max
+        max,
       );
       const thisHeader = header.value as CptvHeader;
       videoContext.putImageData(
         new ImageData(frameBuffer, thisHeader.width, thisHeader.height),
         0,
-        0
+        0,
       );
       renderContext.imageSmoothingEnabled = videoSmoothing.value;
       if (videoSmoothing.value) {
@@ -1105,7 +1105,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         0,
         0,
         renderCanvas.width,
-        renderCanvas.height
+        renderCanvas.height,
       );
 
       // Draw the overlay
@@ -1128,11 +1128,11 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         1,
         tracksByFrame.value,
         framesByTrack.value,
-        useExportOptions
+        useExportOptions,
       );
 
       await encoder.encodeFrame(
-        renderContext.getImageData(0, 0, targetWidth, targetHeight).data
+        renderContext.getImageData(0, 0, targetWidth, targetHeight).data,
       );
       if (!props.exportRequested) {
         encoder.close();
@@ -1155,7 +1155,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     trackExportOptions.value = exportOptions.value;
 
     let date: DateTime = DateTime.fromJSDate(
-      new Date((header.value as CptvHeader).timestamp / 1000)
+      new Date((header.value as CptvHeader).timestamp / 1000),
     );
     if (props.recording && props.recording.location) {
       const zone = timezoneForLatLng(props.recording.location);
@@ -1163,13 +1163,13 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         new Date((header.value as CptvHeader).timestamp / 1000),
         {
           zone,
-        }
+        },
       );
     }
 
     download(
       URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
-      `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`
+      `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`,
     );
     isExporting.value = false;
     emit("export-completed");
@@ -1186,7 +1186,7 @@ const download = (url: string, filename: string) => {
 const _ambientTemperature = computed<string | null>(() => {
   if (frameHeader.value && (frameHeader.value as CptvFrameHeader).frameTempC) {
     return `About ${Math.round(
-      (frameHeader.value as CptvFrameHeader).frameTempC || 0
+      (frameHeader.value as CptvFrameHeader).frameTempC || 0,
     )}ºC`;
   }
   return null;
@@ -1222,7 +1222,7 @@ const drawTrailcamImageAndOverlay = () => {
       0,
       offsetY / pixelRatio.value,
       canvasWidth / pixelRatio.value,
-      restrictedHeight / pixelRatio.value
+      restrictedHeight / pixelRatio.value,
     );
     if (props.recording && props.recording.tracks) {
       for (const track of props.recording.tracks) {
@@ -1251,7 +1251,7 @@ const drawTrailcamImageAndOverlay = () => {
               track,
               pixelRatio.value,
               1,
-              restrictedHeight
+              restrictedHeight,
             );
           }
         }
@@ -1276,24 +1276,24 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
         pixelRatio.value,
         tracksByFrame.value,
         framesByTrack.value,
-        trackExportOptions.value
+        trackExportOptions.value,
       );
 
       {
         const time = `${elapsedTime.value} / ${formatTime(
-          Math.max(currentTime.value, actualDuration.value)
+          Math.max(currentTime.value, actualDuration.value),
         )}`;
         drawBottomRightOverlayLabel(
           time,
           overlayContext.value,
-          pixelRatio.value
+          pixelRatio.value,
         );
         // Draw time and temperature in
         // overlayContext.
         drawBottomLeftOverlayLabel(
           currentAbsoluteTime.value,
           overlayContext.value,
-          pixelRatio.value
+          pixelRatio.value,
         );
       }
     } else {
@@ -1310,7 +1310,7 @@ const ticksBetweenDraws = computed<number>(() => {
   // One tick represents 1000 / fps * multiplier
   return Math.max(
     1,
-    Math.floor(raqFps.value / (fps.value * speedMultiplier.value))
+    Math.floor(raqFps.value / (fps.value * speedMultiplier.value)),
   );
 });
 
@@ -1389,11 +1389,11 @@ const toggleReferencePhotoComparison = async () => {
     const referenceImageResponse = await getReferenceImageForDeviceAtTime(
       rec.deviceId,
       new Date(rec.recordingDateTime),
-      true
+      true,
     );
     if (referenceImageResponse.success) {
       referenceImageURL.value = URL.createObjectURL(
-        referenceImageResponse.result
+        referenceImageResponse.result,
       );
     }
   }
@@ -1432,7 +1432,7 @@ const incrementSpeed = () => {
   setPlayerMessage(`Speed ${speedMultiplier.value}x`);
   localStorage.setItem(
     "video-playback-speed",
-    speedMultiplier.value.toString()
+    speedMultiplier.value.toString(),
   );
 };
 
@@ -1462,7 +1462,7 @@ const canvasContext = computed<CanvasRenderingContext2D | null>(() => {
 
 const canStepBackward = computed<boolean>(() => frameNum.value > 0);
 const canStepForward = computed<boolean>(
-  () => frameNum.value < totalPlayableFrames.value - 1
+  () => frameNum.value < totalPlayableFrames.value - 1,
 );
 
 const stepBackward = async () => {
@@ -1472,7 +1472,7 @@ const stepBackward = async () => {
   targetFrameNum.value = Math.max(frameNum.value - 1, 0);
   const couldStep = await seekToSpecifiedFrameAndRender(
     true,
-    Math.max(frameNum.value - 1, 0)
+    Math.max(frameNum.value - 1, 0),
   );
   if (couldStep) {
     // Actually advance
@@ -1489,7 +1489,7 @@ const stepForward = async () => {
   targetFrameNum.value = frameNum.value + 1;
   const couldStep = await seekToSpecifiedFrameAndRender(
     true,
-    targetFrameNum.value
+    targetFrameNum.value,
   );
   if (couldStep) {
     // Actually advance
@@ -1525,20 +1525,20 @@ const toggleBackground = async (): Promise<void> => {
         background.imageData,
         colourMap.value[1],
         min,
-        max
+        max,
       );
       const thisHeader = header.value as CptvHeader;
       (canvasContext.value as CanvasRenderingContext2D).putImageData(
         new ImageData(frameBuffer, thisHeader.width, thisHeader.height),
         0,
-        0
+        0,
       );
       cancelAnimationFrame(animationFrame.value);
       if (clearOverlay(overlayContext.value, pixelRatio.value)) {
         drawBottomLeftOverlayLabel(
           "Background frame",
           overlayContext.value,
-          pixelRatio.value
+          pixelRatio.value,
         );
       }
     }
@@ -1557,7 +1557,7 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
         {
           rect: [left, top, right, bottom],
         },
-      ]) => left <= x && right > x && top <= y && bottom > y
+      ]) => left <= x && right > x && top <= y && bottom > y,
     );
   return (trackId && trackId[0]) || null;
 };
@@ -1587,7 +1587,7 @@ const currentVisibleFrame = computed<CptvFrame>(() => {
   } else {
     console.assert(
       frameNum.value <= frames.length - 1,
-      "Tried to read past loaded frames"
+      "Tried to read past loaded frames",
     );
     return frames[frameNum.value];
   }
@@ -1696,7 +1696,7 @@ onMounted(async () => {
     () => {
       return;
     },
-    false
+    false,
   );
 
   if (canvas.value) {
@@ -1720,7 +1720,7 @@ onBeforeUnmount(() => {
 const loadedNextRecordingData = async () => {
   if (props.currentTrack && framesByTrack.value[props.currentTrack.id]) {
     const firstFrameForTrack = Number(
-      Object.keys(framesByTrack.value[props.currentTrack.id])[0]
+      Object.keys(framesByTrack.value[props.currentTrack.id])[0],
     );
     targetFrameNum.value = firstFrameForTrack;
     await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
@@ -1735,7 +1735,7 @@ watch(
       trackExportOptions.value = exportOptions.value;
       await loadedNextRecordingData();
     }
-  }
+  },
 );
 
 const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
@@ -1771,7 +1771,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     console.warn(
       "Can merge",
       Object.values(framesByTrack.value).length,
-      Object.keys(mergedTracks.value)
+      Object.keys(mergedTracks.value),
     );
   }
   // Our api token could be out of date
@@ -1781,7 +1781,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
       nextRecordingId,
       props.cptvSize || 0,
-      (creds.value as LoggedInUserAuth).apiToken
+      (creds.value as LoggedInUserAuth).apiToken,
     );
   }
 
@@ -1806,7 +1806,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         !frameBuffer
       ) {
         frameBuffer = new Uint8ClampedArray(
-          thisHeader.width * thisHeader.height * 4
+          thisHeader.width * thisHeader.height * 4,
         );
         thisCanvas.width = thisHeader.width;
         thisCanvas.height = thisHeader.height;
@@ -1869,7 +1869,7 @@ watch(
     if (nextRecordingId && prevRecordingId !== nextRecordingId) {
       await loadNextRecording(nextRecordingId);
     }
-  }
+  },
 );
 
 const clearCanvases = () => {
@@ -1927,7 +1927,7 @@ const drawFrame = async (
   context: CanvasRenderingContext2D | null,
   imgData: ImageData,
   frameNumToRender: number,
-  force = false
+  force = false,
 ): Promise<void> => {
   if (context) {
     if (force) {
@@ -1955,7 +1955,7 @@ const drawFrame = async (
           targetFrameNum.value = frameNumToRender + 1;
           didAdvance = await seekToSpecifiedFrameAndRender(
             false,
-            targetFrameNum.value
+            targetFrameNum.value,
           );
         }
         if (didAdvance) {
@@ -1978,7 +1978,7 @@ const drawFrame = async (
         animationTick.value++;
         // NOTE: Don't request a next frame if we're paused.
         animationFrame.value = requestAnimationFrame(() =>
-          drawFrame(context, imgData, frameNumToRender)
+          drawFrame(context, imgData, frameNumToRender),
         ) as number;
       }
     }
@@ -1993,7 +1993,7 @@ const revealSlider = ref<HTMLDivElement>();
 const referenceImageContainer = ref<HTMLDivElement>();
 const referenceImage = ref<HTMLImageElement>();
 const { width: referenceImageContainerWidth } = useElementSize(
-  referenceImageContainer
+  referenceImageContainer,
 );
 watch(referenceImageContainerWidth, (width) => {
   if (referenceImage.value) {
@@ -2025,9 +2025,9 @@ const moveRevealHandle = (event: PointerEvent) => {
     const x = Math.min(
       Math.max(
         -(handleBounds.width / 2),
-        event.clientX - parentBounds.left - revealGrabOffsetX
+        event.clientX - parentBounds.left - revealGrabOffsetX,
       ),
-      parentBounds.width - handleBounds.width / 2
+      parentBounds.width - handleBounds.width / 2,
     );
     if (revealSlider.value) {
       (revealSlider.value as HTMLDivElement).style.width = `${
@@ -2043,7 +2043,7 @@ watch(
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
     }
-  }
+  },
 );
 </script>
 <template>

@@ -28,7 +28,7 @@ function errorHandler(
   request: Request,
   response: Response,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  next: NextFunction
+  next: NextFunction,
 ) {
   if (
     err instanceof SyntaxError &&
@@ -55,7 +55,7 @@ function errorHandler(
       {
         ...error,
         requestId,
-      }
+      },
     );
   }
   return serverErrorResponse(
@@ -66,7 +66,7 @@ function errorHandler(
     {
       errorType: "server",
       requestId,
-    }
+    },
   );
 }
 
@@ -74,7 +74,7 @@ export class CustomError extends Error {
   statusCode: HttpStatusCode;
   constructor(
     message: string = "Internal server error.",
-    statusCode: HttpStatusCode = HttpStatusCode.ServerError
+    statusCode: HttpStatusCode = HttpStatusCode.ServerError,
   ) {
     super();
     this.name = this.constructor.name;
@@ -163,7 +163,7 @@ export class FatalError extends CustomError {
 export class ClientError extends CustomError {
   constructor(
     message: string,
-    statusCode: HttpStatusCode = HttpStatusCode.BadRequest
+    statusCode: HttpStatusCode = HttpStatusCode.BadRequest,
   ) {
     super(message, statusCode);
   }

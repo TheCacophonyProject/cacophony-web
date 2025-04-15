@@ -33,7 +33,7 @@ onMounted(async () => {
         nonPendingUserProjects.value.find(({ id }) => id === jwtToken.group);
       if (!alreadyAddedToProject) {
         const validateTokenResponse = await acceptProjectInvitation(
-          jwtToken.group
+          jwtToken.group,
         );
         if (!validateTokenResponse.success) {
           if (
@@ -50,7 +50,7 @@ onMounted(async () => {
         } else {
           await refreshUserProjects();
           const nextProject = nonPendingUserProjects.value.find(
-            ({ id }) => id === jwtToken.group
+            ({ id }) => id === jwtToken.group,
           );
           let nextProjectName = urlNormalisedCurrentProjectName.value;
           if (nextProject) {

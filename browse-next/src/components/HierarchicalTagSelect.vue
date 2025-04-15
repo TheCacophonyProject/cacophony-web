@@ -42,7 +42,7 @@ const props = withDefaults(
     openOnMount: true,
     disabledTags: () => [],
     modelValue: () => [],
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -53,7 +53,7 @@ const emit = defineEmits<{
 const updateModel = (val: Classification[]) => {
   emit(
     "update:modelValue",
-    val.map(({ label }) => label)
+    val.map(({ label }) => label),
   );
 };
 
@@ -79,7 +79,7 @@ const setClassifications = (classifications: Classification) => {
 onMounted(async () => {
   // Get our own copy of classifications since we're going to mutate it.
   const classifications = (await getClassifications(
-    setClassifications
+    setClassifications,
   )) as Classification;
   setClassifications(classifications);
 });

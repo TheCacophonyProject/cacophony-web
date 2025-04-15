@@ -72,7 +72,7 @@ dbConfig.benchmark = true;
               .replace("Executed (default): ", "")
               .replace(/\n/g, "")
               .replace(/\t/, " ")
-              .replace(/\s+/g, " ")
+              .replace(/\s+/g, " "),
           );
         }
       }
@@ -172,7 +172,7 @@ export default async function () {
           $all: Op.all,
         },
         ...poolOptions,
-      }
+      },
     );
 
     const db: Record<string, any> = {};

@@ -61,7 +61,7 @@ const devices = computed<ApiDeviceResponse[]>(() => {
       return allProjectDevices.value as ApiDeviceResponse[];
     }
     return (allProjectDevices.value as ApiDeviceResponse[]).filter(
-      (device) => device.active
+      (device) => device.active,
     );
   }
   if (activeProjectDevices.value && !showInactiveDevices.value) {
@@ -84,7 +84,7 @@ const showInactiveDevices = computed<boolean>(() => {
 });
 const showInactiveDevicesInternal = ref<boolean>(showInactiveDevices.value);
 const showInactiveDevicesInternalCheck = ref<boolean>(
-  showInactiveDevices.value
+  showInactiveDevices.value,
 );
 
 const toggleActiveAndInactive = async () => {
@@ -126,12 +126,12 @@ watch(route, async (next) => {
 const reloadAllDevices = async () => {
   const devicesResponse = await getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
-    true
+    true,
   );
   if (devicesResponse) {
     allProjectDevices.value = devicesResponse;
     DevicesForCurrentProject.value = devicesResponse.filter(
-      (device) => device.active
+      (device) => device.active,
     );
   }
   showCreateProxyDevicePrompt.value = false;
@@ -203,7 +203,7 @@ onBeforeMount(async () => {
 type DeviceStatus = "online" | "standby" | "stopped or offline" | "-";
 const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
-    (poweredDevice) => poweredDevice.id === device.id
+    (poweredDevice) => poweredDevice.id === device.id,
   );
   return device.hasOwnProperty("isHealthy") &&
     device.active &&
@@ -217,7 +217,7 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
 };
 
 const batteryLevelForDevice = async (
-  device: ApiDeviceResponse
+  device: ApiDeviceResponse,
 ): Promise<"unknown" | number> => {
   const status = statusForDevice(device);
   if (status === "online" || status == "standby") {
@@ -273,9 +273,9 @@ const tableItems = computed<
         lastSeen: noWrap(
           device.lastConnectionTime
             ? (DateTime.fromJSDate(
-                new Date(device.lastConnectionTime)
+                new Date(device.lastConnectionTime),
               ).toRelative() as string)
-            : "never (offline device)"
+            : "never (offline device)",
         ),
         status: statusForDevice(device),
         batteryLevel: device,
@@ -297,7 +297,7 @@ const deviceLocations = computed<NamedPoint[]>(() => {
   return devices.value
     .filter((device) => device.location !== undefined)
     .filter(
-      (device) => device.location?.lat !== 0 && device.location?.lng !== 0
+      (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
     )
     .map((device) => {
       const { deviceName, location, groupName, id } = device;
@@ -321,11 +321,11 @@ const devicesSeenInThePast24Hours = computed<NamedPoint[]>(() => {
     .filter(
       (device) =>
         device.lastConnectionTime &&
-        new Date(device.lastConnectionTime) > oneDayAgo
+        new Date(device.lastConnectionTime) > oneDayAgo,
     )
     .filter((device) => device.location !== undefined)
     .filter(
-      (device) => device.location?.lat !== 0 && device.location?.lng !== 0
+      (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
     )
     .map((device) => {
       const { deviceName, location, groupName, id } = device;
@@ -361,7 +361,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
   const device = devices.value.find(
     ({ id }) =>
       highlightedDeviceInternal.value &&
-      Number((highlightedDeviceInternal.value as DeviceTableItem).__id) === id
+      Number((highlightedDeviceInternal.value as DeviceTableItem).__id) === id,
   );
   if (device && device.location) {
     const point = {
@@ -378,14 +378,14 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 const highlightedDevice = computed<CardTableRow<string> | null>(() => {
   if (route.name !== "devices" && route.params.deviceId) {
     const device = tableItems.value.find(
-      ({ __id: id }) => Number(route.params.deviceId) === Number(id)
+      ({ __id: id }) => Number(route.params.deviceId) === Number(id),
     );
     return (device && (device as CardTableRow<string>)) || null;
   } else if (highlightedPointInternal.value) {
     const device = tableItems.value.find(
       ({ __id: id }) =>
         highlightedPointInternal.value &&
-        highlightedPointInternal.value.id === Number(id)
+        highlightedPointInternal.value.id === Number(id),
     );
     return (device && (device as CardTableRow<string>)) || null;
   } else {
@@ -422,8 +422,8 @@ const showCreateProxyDevicePrompt = ref<boolean>(false);
 const someDevicesHaveKnownLocations = computed<boolean>(() =>
   devices.value.some(
     (device) =>
-      device.location && device.location.lat !== 0 && device.location.lng !== 0
-  )
+      device.location && device.location.lat !== 0 && device.location.lng !== 0,
+  ),
 );
 
 const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
@@ -437,7 +437,7 @@ const unarchiveDevice = async (deviceId: DeviceId) => {
 };
 
 const deleteConfirmationLabelForDevice = (
-  device: ApiDeviceResponse
+  device: ApiDeviceResponse,
 ): string => {
   if (!!device.lastConnectionTime && !!device.lastRecordingTime) {
     return `Set <strong><em>${device.deviceName}</em></strong> inactive`;
@@ -447,7 +447,7 @@ const deleteConfirmationLabelForDevice = (
 };
 
 const unarchiveConfirmationLabelForDevice = (
-  device: ApiDeviceResponse
+  device: ApiDeviceResponse,
 ): string => {
   return `Set <strong><em>${device.deviceName}</em></strong> active`;
 };
@@ -466,7 +466,7 @@ const getSelectedDeviceLocation = async () => {
   if (selectedDevice.value?.location) {
     deviceLocation.value = await getDeviceLocationAtTime(
       selectedDevice.value.id,
-      true
+      true,
     );
   }
 };
@@ -499,7 +499,7 @@ const selectedDeviceLatestRecordingDateTime = computed<Date | null>(() => {
   if (selectedDevice.value && deviceLocation.value) {
     return latestRecordingTimeForDeviceAtLocation(
       selectedDevice.value,
-      deviceLocation.value
+      deviceLocation.value,
     );
   }
   return null;

@@ -76,7 +76,7 @@ const props = withDefaults(
     rotate: null,
     placement: "left",
     boundaryPadding: true,
-  }
+  },
 );
 
 // :delay="{ show: 0, hide: 0 }"

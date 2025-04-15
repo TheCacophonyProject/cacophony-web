@@ -40,12 +40,12 @@ async function main() {
        ) d
        WHERE d.rownum > 1
      ) RETURNING id, "DeviceId", "type", "recordingDateTime"
-    `
+    `,
   );
   for (const row of res.rows) {
     const ts = row.recordingDateTime!.toISOString();
     console.log(
-      `deleted ${row.id}: device=${row.DeviceId} type=${row.type} ts=${ts}`
+      `deleted ${row.id}: device=${row.DeviceId} type=${row.type} ts=${ts}`,
     );
   }
   if (args.delete) {
@@ -54,7 +54,7 @@ async function main() {
   } else {
     await client.query("ROLLBACK");
     console.log(
-      `${res.rows.length} duplicate recording(s) would be deleted (pass --delete to remove)`
+      `${res.rows.length} duplicate recording(s) would be deleted (pass --delete to remove)`,
     );
   }
 }

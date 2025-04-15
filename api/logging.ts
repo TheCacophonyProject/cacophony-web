@@ -21,7 +21,7 @@ export const consoleTransport = new winston.transports.Console({
     format.colorize(),
 
     format.splat(),
-    format.simple()
+    format.simple(),
   ),
   handleExceptions: true,
 });

@@ -47,7 +47,7 @@ export const saveTrackTagData = async (
   trackTagId: TrackTagId,
   newData: TrackTagData,
   existingData = {},
-  client: S3Client | null = null
+  client: S3Client | null = null,
 ) => {
   const updatedData = {
     ...(typeof existingData !== "string" && existingData),
@@ -72,7 +72,7 @@ export const saveTrackTagData = async (
       userData,
       " for TrackTagId: ",
       trackTagId,
-      ""
+      "",
     );
     await models.TrackTagUserData.create({
       TrackTagId: trackTagId,
@@ -110,7 +110,7 @@ export const saveTrackData = async (
   trackId: TrackId,
   newData: any,
   existingData = {},
-  client: S3Client | null = null
+  client: S3Client | null = null,
 ) => {
   if (typeof newData !== "object") {
     return;
@@ -182,7 +182,7 @@ export interface TrackStatic extends ModelStaticCommon<Track> {
 
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): TrackStatic {
   const Track = sequelize.define("Track", {
     archivedAt: DataTypes.DATE,
@@ -226,14 +226,14 @@ export default function (
   Track.apiSettableFields = Object.freeze(["algorithm", "archivedAt"]);
 
   Track.userGetAttributes = Object.freeze(
-    Track.apiSettableFields.concat(["id"])
+    Track.apiSettableFields.concat(["id"]),
   );
 
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
   Track.prototype.replaceTag = async function (
     tag: TrackTag,
-    userData?: any
+    userData?: any,
   ): Promise<TrackTag | void> {
     const trackId = this.id;
     const trackTag = await sequelize.transaction(async function (t) {
@@ -246,13 +246,13 @@ export default function (
         transaction: t,
       })) as TrackTag[];
       const existingTag = trackTags.find(
-        (uTag: TrackTag) => uTag.what === tag.what
+        (uTag: TrackTag) => uTag.what === tag.what,
       );
       if (existingTag) {
         return;
       } else if (trackTags.length > 0 && !tag.isAdditionalTag()) {
         const existingAnimalTags = trackTags.filter(
-          (uTag) => !uTag.isAdditionalTag()
+          (uTag) => !uTag.isAdditionalTag(),
         );
         for (let i = 0; i < existingAnimalTags.length; i++) {
           await existingAnimalTags[i].destroy({ transaction: t });
@@ -270,7 +270,7 @@ export default function (
   // Update tag data
   Track.prototype.updateTag = async function (
     tagId: TrackTagId,
-    data: TrackTagData
+    data: TrackTagData,
   ): Promise<TrackTag | void> {
     const trackId = this.id;
     const tag = (await models.TrackTag.findByPk(tagId)) as TrackTag;
@@ -289,7 +289,7 @@ export default function (
     automatic: boolean,
     data: TrackTagData | "",
     userId = null,
-    updateFiltered = true
+    updateFiltered = true,
   ): Promise<TrackTag> {
     const modelName =
       data !== "" && typeof data === "object" && data.hasOwnProperty("name")
@@ -407,7 +407,7 @@ export default function (
           TrackId: this.id,
           automatic: true,
         },
-      }
+      },
     );
     await this.updateIsFiltered();
   };
@@ -427,7 +427,7 @@ const isFiltered = (tags: TrackTag[]): boolean => {
     if (
       userTags.some(
         (tag) =>
-          !additionalTags.includes(tag.what) && !filteredTags.includes(tag.what)
+          !additionalTags.includes(tag.what) && !filteredTags.includes(tag.what),
       )
     ) {
       return false;
@@ -440,7 +440,7 @@ const isFiltered = (tags: TrackTag[]): boolean => {
   }
   // if ai master tag is filtered this track is filtered
   const masterTag = tags.find(
-    (tag) => tag.automatic && tag.model === AI_MASTER
+    (tag) => tag.automatic && tag.model === AI_MASTER,
   );
   if (masterTag) {
     return filteredTags.some((filteredTag) => filteredTag === masterTag.what);

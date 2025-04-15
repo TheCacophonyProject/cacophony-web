@@ -23,7 +23,7 @@ const props = withDefaults(
   defineProps<{
     recording?: ApiRecordingResponse | null;
   }>(),
-  { recording: null }
+  { recording: null },
 );
 
 const emit = defineEmits<{
@@ -51,7 +51,7 @@ const tableItems = computed<CardTableRows<ApiRecordingTagResponse | string>>(
       _deleteAction: { value: tag, cellClasses: ["text-end"] },
       __sort: { value: new Date(tag.createdAt).getTime().toString() },
     }));
-  }
+  },
 );
 
 const cameraLabels = computed<RecordingLabel[]>(() => {
@@ -71,7 +71,7 @@ const audioLabels = computed<RecordingLabel[]>(() => {
           text: text,
           description,
           value: (value || text).toLowerCase(),
-        } as RecordingLabel)
+        } as RecordingLabel),
     )
     .filter((tag) => tag.value !== "note");
 });
@@ -93,7 +93,7 @@ const recordingTypeIsAudio = computed<boolean>(() => {
 const unusedLabels = computed(() => {
   // Filter out labels that have already been added
   return labels.value.filter(
-    (label) => !props.recording?.tags.some((tag) => tag.detail === label.value)
+    (label) => !props.recording?.tags.some((tag) => tag.detail === label.value),
   );
 });
 
@@ -120,7 +120,7 @@ const removeLabel = async (id: TagId) => {
     removingLabelInProgress.value = true;
     const removeLabelResponse = await removeRecordingLabel(
       props.recording.id,
-      id
+      id,
     );
     if (removeLabelResponse.success) {
       emit("removed-recording-label", id);
@@ -134,7 +134,7 @@ const doAddLabel = async () => {
     addingLabelInProgress.value = true;
     const addLabelResponse = await addRecordingLabel(
       props.recording.id,
-      selectedLabel.value
+      selectedLabel.value,
     );
     if (addLabelResponse.success && CurrentUser.value) {
       // Emit tag change event, patch upstream recording.

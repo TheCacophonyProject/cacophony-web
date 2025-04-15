@@ -3,7 +3,7 @@ const render = (
   context: CanvasRenderingContext2D,
   wireframe: boolean,
   image: ImageBitmap,
-  tri: Triangle
+  tri: Triangle,
 ) => {
   if (wireframe) {
     context.strokeStyle = "black";
@@ -31,14 +31,14 @@ const render = (
       tri.t1.u,
       tri.t1.v,
       tri.t2.u,
-      tri.t2.v
+      tri.t2.v,
     );
   }
 };
 export const drawSkewedImage = (
   ctx: CanvasRenderingContext2D,
   controls: HTMLDivElement[],
-  image: ImageBitmap
+  image: ImageBitmap,
 ) => {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   const canvasOnScreenWidth = ctx.canvas.getBoundingClientRect().width;
@@ -46,7 +46,7 @@ export const drawSkewedImage = (
   const triangles = calculateGeometry(
     controls,
     image.width / ratio,
-    image.height / ratio
+    image.height / ratio,
   );
   for (const triangle of triangles) {
     render(ctx, false, image, triangle);
@@ -78,13 +78,13 @@ class Triangle {
     public p2: Point,
     public t0: TextCoord,
     public t1: TextCoord,
-    public t2: TextCoord
+    public t2: TextCoord,
   ) {}
 }
 const calculateGeometry = (
   controls: HTMLDivElement[],
   imgW: number,
-  imgH: number
+  imgH: number,
 ): Triangle[] => {
   // clear triangles out
   const triangles = [];
@@ -98,7 +98,7 @@ const calculateGeometry = (
   const bounds = controls.map((c) => c.getBoundingClientRect());
   const points = bounds.map(
     (b) =>
-      new Point(b.left + b.width / 2 - parentX, b.top + b.height / 2 - parentY)
+      new Point(b.left + b.width / 2 - parentX, b.top + b.height / 2 - parentY),
   );
   const p1 = points[0];
   const p2 = points[1];
@@ -158,7 +158,7 @@ const calculateGeometry = (
         new Point(p4x, p4y),
         new TextCoord(u1, v1),
         new TextCoord(u2, v2),
-        new TextCoord(u1, v2)
+        new TextCoord(u1, v2),
       );
 
       const triangle2 = new Triangle(
@@ -167,7 +167,7 @@ const calculateGeometry = (
         new Point(p3x, p3y),
         new TextCoord(u1, v1),
         new TextCoord(u2, v1),
-        new TextCoord(u2, v2)
+        new TextCoord(u2, v2),
       );
 
       triangles.push(triangle1);
@@ -192,7 +192,7 @@ const drawTriangle = (
   sx1: number,
   sy1: number,
   sx2: number,
-  sy2: number
+  sy2: number,
 ) => {
   const canvasOnScreenWidth = ctx.canvas.getBoundingClientRect().width;
   const ratio = ctx.canvas.width / canvasOnScreenWidth;

@@ -49,7 +49,7 @@ const tagPrecedence = [
 })();
 
 export const visitsByLocation = (
-  visits: ApiVisitResponse[]
+  visits: ApiVisitResponse[],
 ): Record<number, ApiVisitResponse[]> =>
   visits.reduce((acc, visit) => {
     acc[visit.stationId] = acc[visit.stationId] || [];
@@ -77,20 +77,20 @@ export const VisitProcessingStates = [
   RecordingProcessingState.Analyse,
 ];
 export const someRecordingStillProcessing = (
-  visit: ApiVisitResponse
+  visit: ApiVisitResponse,
 ): boolean => {
   // TODO: Poll to see if processing has finished
   return visit.recordings.some((rec) =>
-    VisitProcessingStates.includes(rec.processingState)
+    VisitProcessingStates.includes(rec.processingState),
   );
 };
 export const visitsBySpecies = (
-  visits: ApiVisitResponse[]
+  visits: ApiVisitResponse[],
 ): [string, ApiVisitResponse[]][] => {
   const summary = visits.reduce(
     (
       acc: Record<string, ApiVisitResponse[]>,
-      currentValue: ApiVisitResponse
+      currentValue: ApiVisitResponse,
     ) => {
       if (someRecordingStillProcessing(currentValue)) {
         acc["unclassified"] = acc["unclassified"] || [];
@@ -102,14 +102,14 @@ export const visitsBySpecies = (
       }
       return acc;
     },
-    {}
+    {},
   );
   // NOTE: Order by "badness" of predator
   return Object.entries(summary).sort(([a], [b]) => sortTagPrecedence(a, b));
 };
 
 export const visitsCountBySpecies = (
-  visits: ApiVisitResponse[]
+  visits: ApiVisitResponse[],
 ): [string, string, number][] =>
   (
     visitsBySpecies(visits).map(([classification, visits]) => [
@@ -128,17 +128,17 @@ export const visitsCountBySpecies = (
 
 export const eventsAreNocturnalOnlyAtLocation = (
   eventDates: Date[],
-  location: LatLng
+  location: LatLng,
 ): boolean => {
   for (const eventDate of eventDates) {
     const visitDay = new Date(eventDate);
     const { sunrise, sunset } = sunCalc.getTimes(
       visitDay,
       location.lat,
-      location.lng
+      location.lng,
     );
     sunrise.setMinutes(
-      sunrise.getMinutes() + MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
+      sunrise.getMinutes() + MINUTES_BEFORE_DUSK_AND_AFTER_DAWN,
     );
     sunset.setMinutes(sunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN);
     if (eventDate > sunrise && eventDate < sunset) {
@@ -150,16 +150,16 @@ export const eventsAreNocturnalOnlyAtLocation = (
 
 export const visitsAreNocturnalOnlyAtLocation = (
   visits: ApiVisitResponse[],
-  location: LatLng
+  location: LatLng,
 ) =>
   eventsAreNocturnalOnlyAtLocation(
     visits.map(({ timeStart }) => new Date(timeStart)),
-    location
+    location,
   );
 
 export const visitsByNightAtLocation = (
   visits: ApiVisitResponse[],
-  location: LatLng
+  location: LatLng,
 ): [DateTime, ApiVisitResponse[]][] => {
   const zone = timezoneForLatLng(location);
   const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
@@ -170,7 +170,7 @@ export const visitsByNightAtLocation = (
     const { sunset } = sunCalc.getTimes(visitDay, location.lat, location.lng);
     let visitSunset = new Date(sunset);
     visitSunset.setMinutes(
-      visitSunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
+      visitSunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN,
     );
     if (visitDay < visitSunset) {
       // Attribute the visit to the previous day
@@ -179,14 +179,14 @@ export const visitsByNightAtLocation = (
       const { sunset } = sunCalc.getTimes(
         yesterday,
         location.lat,
-        location.lng
+        location.lng,
       );
       visitSunset = sunset;
     } else {
       visitSunset = sunset;
     }
     visitSunset.setMinutes(
-      visitSunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN
+      visitSunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN,
     );
     let lastDateTime: DateTime;
     if (visitsChunked.length) {
@@ -206,7 +206,7 @@ export const visitsByNightAtLocation = (
 
 export const visitsByDayAtLocation = (
   visits: ApiVisitResponse[],
-  location: LatLng
+  location: LatLng,
 ): [DateTime, ApiVisitResponse[]][] => {
   // Chunk visits from midnight to midnight at the given location.
   // Visits are ordered from oldest to most recent in each day.
@@ -249,11 +249,11 @@ export const timezoneForLocation = (station: ApiStationResponse) =>
 
 export const formatDuration = (
   milliseconds: number,
-  longForm = false
+  longForm = false,
 ): string => {
   const minsSecs = Duration.fromMillis(milliseconds).shiftTo(
     "minutes",
-    "seconds"
+    "seconds",
   );
   if (minsSecs.minutes > 0) {
     if (Math.floor(minsSecs.seconds) > 0) {
@@ -271,7 +271,7 @@ export const formatDuration = (
 };
 export const visitDuration = (
   visit: ApiVisitResponse,
-  longForm = false
+  longForm = false,
 ): string => {
   const millis =
     new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
@@ -279,7 +279,7 @@ export const visitDuration = (
 };
 export const timeAtLocation = (
   timeIsoString: string,
-  location: LatLng
+  location: LatLng,
 ): string => {
   const zone = timezoneForLatLng(location);
   const localTime = DateTime.fromISO(timeIsoString, { zone });
@@ -294,7 +294,7 @@ export const timeAtLocation = (
 
 export const dayAndTimeAtLocation = (
   timeIsoString: string,
-  location: LatLng
+  location: LatLng,
 ): string => {
   const zone = timezoneForLatLng(location);
   const localTime = DateTime.fromISO(timeIsoString, { zone });

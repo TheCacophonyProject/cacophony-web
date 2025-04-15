@@ -11,7 +11,7 @@ import { displayLabelForClassificationLabel } from "@api/Classifications";
 import type { StationId as LocationId } from "@typedefs/api/common";
 
 const currentlyHighlightedLocation = inject(
-  "currentlyHighlightedLocation"
+  "currentlyHighlightedLocation",
 ) as Ref<LocationId | null>;
 
 const props = withDefaults(
@@ -21,7 +21,7 @@ const props = withDefaults(
     activeLocations: ApiLocationResponse[];
     visits: ApiVisitResponse[];
   }>(),
-  { locations: null }
+  { locations: null },
 );
 
 const visitsForLocation = computed<ApiVisitResponse[]>(() => {
@@ -69,13 +69,13 @@ const thisLocationPoint = computed<NamedPoint>(() => ({
 }));
 
 const speciesSummary = computed<[string, string, number][]>(() =>
-  visitsCountBySpecies(visitsForLocation.value)
+  visitsCountBySpecies(visitsForLocation.value),
 );
 
 const highlightedPoint = computed<NamedPoint | null>(() => {
   if (props.locations && currentlyHighlightedLocation.value) {
     const location = props.locations.find(
-      ({ id }) => id === currentlyHighlightedLocation.value
+      ({ id }) => id === currentlyHighlightedLocation.value,
     );
     if (location) {
       return {

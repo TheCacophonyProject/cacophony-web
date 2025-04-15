@@ -19,7 +19,7 @@ const absoluteTime = (timeStr: string, relativeTo: Date): Date => {
 };
 export const deviceScheduledPowerOnTime = (
   device: ApiDeviceResponse,
-  config: DeviceConfigDetail
+  config: DeviceConfigDetail,
 ): Date | null => {
   if (device.location) {
     const windows = config.windows;
@@ -27,7 +27,7 @@ export const deviceScheduledPowerOnTime = (
     const { sunset } = sunCalc.getTimes(
       new Date(),
       device.location.lat,
-      device.location.lng
+      device.location.lng,
     );
     return absoluteTime(start, sunset);
   }
@@ -36,7 +36,7 @@ export const deviceScheduledPowerOnTime = (
 
 export const deviceScheduledPowerOffTime = (
   device: ApiDeviceResponse,
-  config: DeviceConfigDetail
+  config: DeviceConfigDetail,
 ): Date | null => {
   const windows = config.windows;
   const end = (windows && windows["power-off"]) || "+30m";
@@ -44,7 +44,7 @@ export const deviceScheduledPowerOffTime = (
     const { sunrise } = sunCalc.getTimes(
       new Date(),
       device.location.lat,
-      device.location.lng
+      device.location.lng,
     );
     const off = absoluteTime(end, sunrise);
     const scheduledPowerOnTime = deviceScheduledPowerOnTime(device, config);
@@ -56,7 +56,7 @@ export const deviceScheduledPowerOffTime = (
       const { sunrise } = sunCalc.getTimes(
         tomorrow,
         device.location.lat,
-        device.location.lng
+        device.location.lng,
       );
       return absoluteTime(end, sunrise);
     }

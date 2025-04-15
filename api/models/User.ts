@@ -78,7 +78,7 @@ export interface UserStatic extends ModelStaticCommon<User> {
 
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): UserStatic {
   const name = "User";
   const attributes: ModelAttributes = {
@@ -140,7 +140,7 @@ export default function (
   const User = sequelize.define(
     name,
     attributes,
-    options
+    options,
   ) as unknown as UserStatic;
 
   User.publicFields = Object.freeze(["id", "userName"]);
@@ -195,7 +195,7 @@ export default function (
 
   User.prototype.hasGlobalRead = function () {
     return [UserGlobalPermission.Read, UserGlobalPermission.Write].includes(
-      this.globalPermission
+      this.globalPermission,
     );
   };
 
@@ -289,7 +289,7 @@ export default function (
   };
 
   User.prototype.comparePassword = function (
-    password: string
+    password: string,
   ): Promise<boolean> {
     const user = this;
     return new Promise(function (resolve, reject) {

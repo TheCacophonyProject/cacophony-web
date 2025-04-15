@@ -55,7 +55,7 @@ provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
 
 const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
-  null
+  null,
 );
 
 const visitIsTombstoned = (visit: ApiVisitResponse): boolean => {
@@ -70,7 +70,7 @@ const currentVisitsFilterComputed = computed<
   } else {
     return (visit) =>
       (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
-        visit
+        visit,
       ) &&
       !visitIsTombstoned(visit) &&
       !visitorIsIgnored(visit);
@@ -79,7 +79,7 @@ const currentVisitsFilterComputed = computed<
 
 const dashboardVisits = computed<ApiVisitResponse[]>(() => {
   return ((visitsContext.value || []) as ApiVisitResponse[]).filter(
-    (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit)
+    (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit),
   );
 });
 
@@ -89,7 +89,7 @@ const dashboardVisits = computed<ApiVisitResponse[]>(() => {
 const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
   if (visitsContext.value) {
     return (visitsContext.value as ApiVisitResponse[]).filter(
-      currentVisitsFilterComputed.value
+      currentVisitsFilterComputed.value,
     );
   }
   return [];
@@ -184,15 +184,15 @@ watch(
             rec.tracks.some(
               (track) =>
                 track.tag === visit.classification ||
-                (!track.tag && track.aiTag === visit.classification)
-            )
+                (!track.tag && track.aiTag === visit.classification),
+            ),
         );
         if (firstRecordingWithVisitClassification) {
           firstRec = firstRecordingWithVisitClassification;
           firstTrack = firstRec.tracks.find(
             (track) =>
               track.tag === visit.classification ||
-              (!track.tag && track.aiTag === visit.classification)
+              (!track.tag && track.aiTag === visit.classification),
           );
         }
       }
@@ -213,7 +213,7 @@ watch(
       // We've stopped having a selected visit modal
       currentVisitsFilter.value = null;
     }
-  }
+  },
 );
 
 watch(route, () => {
@@ -241,13 +241,13 @@ const speciesSummary = computed<Record<string, number>>(() => {
       }
       return acc;
     },
-    {}
+    {},
   );
 });
 
 const speciesSummarySorted = computed(() => {
   return Object.entries(speciesSummary.value).sort(
-    ([a]: [string, number], [b]: [string, number]) => sortTagPrecedence(a, b)
+    ([a]: [string, number], [b]: [string, number]) => sortTagPrecedence(a, b),
   );
 });
 
@@ -277,7 +277,7 @@ const loadVisits = async () => {
       (val) => {
         // TODO - Do we want to display loading progress via the UI?
         loadingVisitsProgress.value = val;
-      }
+      },
     );
     visitsContext.value = allVisits.visits;
   }
@@ -334,7 +334,7 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
 
 provide(
   activeLocations,
-  locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+  locationsWithOnlineOrActiveDevicesInSelectedTimeWindow,
 );
 
 const allLocations = computed<ApiLocationResponse[]>(() => {
@@ -346,13 +346,13 @@ const loadLocations = async () => {
     locations.value = null;
     locations.value = await getLocationsForProject(
       (currentProject.value as SelectedProject).id.toString(),
-      true
+      true,
     );
   }
 };
 
 const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
-  locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+  locationsWithOnlineOrActiveDevicesInSelectedTimeWindow,
 );
 
 // TODO - Maybe this should be some global context variable too.
@@ -367,7 +367,7 @@ onMounted(async () => {
 });
 
 const isLoading = computed<boolean>(
-  () => locations.value === null || visitsContext.value === null
+  () => locations.value === null || visitsContext.value === null,
 );
 
 const currentSelectedProjectHasAudio = computed<boolean>(() => {

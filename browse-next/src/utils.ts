@@ -60,7 +60,7 @@ export const capitalize = (str: string): string =>
 export const delayMsThen = async <T>(
   delayInMs: number,
   callback: () => T,
-  networkConnectionError?: NetworkConnectionErrorSignal
+  networkConnectionError?: NetworkConnectionErrorSignal,
 ) =>
   new Promise((resolve) => {
     let unwatch: WatchStopHandle;
@@ -77,7 +77,7 @@ export const delayMsThen = async <T>(
             networkConnectionError.control = false;
             resolve(callback());
           }
-        }
+        },
       );
     }
 
@@ -131,7 +131,7 @@ export const locationsAreEqual = (a: LatLng, b: LatLng) => {
 };
 
 export const lastActiveLocationTime = (
-  location: ApiLocationResponse
+  location: ApiLocationResponse,
 ): Date | null => {
   const lastThermal =
     (location.lastActiveThermalTime &&
@@ -207,7 +207,7 @@ const getNZTMProjection = () =>
     lto: number,
     fe: number,
     fn: number,
-    utom: number
+    utom: number,
   ): TmProjection => {
     let f = 0;
     if (rf !== 0) {
@@ -236,12 +236,12 @@ const getNZTMProjection = () =>
     NZTM_OLAT / rad2deg,
     NZTM_FE,
     NZTM_FN,
-    1.0
+    1.0,
   );
 
 export const convertLatLngToNZTM = (
   lngDegrees: number,
-  latDegrees: number
+  latDegrees: number,
 ): { easting: number; northing: number } => {
   const lng = lngDegrees * degToRad;
   const lat = latDegrees * degToRad;
@@ -341,7 +341,7 @@ const footPointLat = (f: number, a: number, m: number) => {
 
 export const convertNZTMToLatLng = (
   eastingMetres: number,
-  northingMetres: number
+  northingMetres: number,
 ): LatLng => {
   const { falsen, falsee, scalef, e2, a, meridian, om, utom, f } =
     getNZTMProjection();

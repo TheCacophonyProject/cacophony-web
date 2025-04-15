@@ -18,7 +18,6 @@ module.exports = {
   rules: {
     "no-prototype-builtins": "off",
     "linebreak-style": ["error", "unix"],
-    quotes: "off",
     semi: ["error", "always"],
     curly: ["warn", "all"],
     "no-console": ["off"],
@@ -26,6 +25,8 @@ module.exports = {
     "no-undef": ["warn"],
     "no-var": ["error"],
     "no-unused-vars": ["off"],
+    quotes: ["error", "double", { allowTemplateLiterals: true }],
+    "comma-dangle": ["error", "always-multiline"],
     "@typescript-eslint/no-unused-vars": [
       "warn",
       {
@@ -37,10 +38,13 @@ module.exports = {
     ],
     "brace-style": ["warn"],
     "prefer-const": ["error"],
-    "@typescript-eslint/consistent-type-imports": ["error", {
-      prefer: "type-imports",
-      fixStyle: "separate-type-imports"
-    }],
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      {
+        prefer: "type-imports",
+        fixStyle: "separate-type-imports",
+      },
+    ],
     "@typescript-eslint/no-import-type-side-effects": "error",
   },
 };

@@ -21,7 +21,7 @@ class Unlocker {
 // For use in nodejs to wrap an already loaded array buffer into a Reader interface
 const FakeReader = (
   bytes: Uint8Array,
-  maxChunkSize = 0
+  maxChunkSize = 0,
 ): ReadableStreamDefaultReader => {
   let state: { offsets: number[]; offset: number; bytes?: Uint8Array } = {
     offsets: [],
@@ -45,7 +45,7 @@ const FakeReader = (
         state.offset += 1;
         const value = state.bytes.slice(
           state.offsets[state.offset - 1],
-          state.offsets[state.offset]
+          state.offsets[state.offset],
         );
         resolve({
           value,
@@ -118,11 +118,11 @@ class CptvDecoderInterface {
       // eslint-disable-next-line no-undef
       const __dirname = path.dirname(__filename);
       const wasm = readFileSync(
-        path.join(__dirname, "./decoder/cptv_decoder_bg.wasm")
+        path.join(__dirname, "./decoder/cptv_decoder_bg.wasm"),
       );
       await init(wasm);
       this.playerContext = CptvDecoderContext.newWithReadableStream(
-        this.reader
+        this.reader,
       );
       this.inited = true;
       result = true;
@@ -150,12 +150,12 @@ class CptvDecoderInterface {
         // eslint-disable-next-line no-undef
         const __dirname = path.dirname(__filename);
         wasmBytes = readFileSync(
-          path.join(__dirname, "./decoder/cptv_decoder_bg.wasm")
+          path.join(__dirname, "./decoder/cptv_decoder_bg.wasm"),
         );
       }
       await init(wasmBytes);
       this.playerContext = CptvDecoderContext.newWithReadableStream(
-        this.reader
+        this.reader,
       );
       this.inited = true;
       result = true;

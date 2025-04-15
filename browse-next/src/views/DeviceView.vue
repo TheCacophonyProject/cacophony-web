@@ -51,7 +51,7 @@ const loadDevice = async (deviceId: DeviceId) => {
   await Promise.all([userProjectsLoaded(), projectDevicesLoaded()]);
   if (projectDevices.value) {
     const targetDevice = (projectDevices.value as ApiDeviceResponse[]).find(
-      ({ id }) => id === deviceId
+      ({ id }) => id === deviceId,
     );
     if (targetDevice) {
       device.value = targetDevice;
@@ -80,7 +80,7 @@ const loadReferenceImage = (deviceId: DeviceId) => {
       } else {
         latestReferenceImageURL.value = false;
       }
-    }
+    },
   );
 };
 
@@ -95,7 +95,7 @@ onBeforeMount(async () => {
     //  TODO: Use meta/status to get low power 2s recordings
     getLatestStatusRecordingForDevice(
       device.value.id,
-      device.value.groupId
+      device.value.groupId,
     ).then((result) => (latestStatusRecording.value = result));
     loadReferenceImage(device.value.id);
     getMaskRegionsForDevice(device.value.id, true).then(
@@ -107,7 +107,7 @@ onBeforeMount(async () => {
         } else {
           latestMaskRegions.value = false;
         }
-      }
+      },
     );
   }
 });

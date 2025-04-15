@@ -6,7 +6,7 @@ import { computed, ref } from "vue";
 
 const apiGetClassifications = (version?: string) =>
   CacophonyApi.get(
-    `/api/v1/files/classifications${version ? `?version=${version}` : ""}`
+    `/api/v1/files/classifications${version ? `?version=${version}` : ""}`,
   ) as Promise<FetchResult<ApiClassificationResponse>>;
 
 const loadedClassificationsThisSession = ref(false);
@@ -17,7 +17,7 @@ const flattenNodes = (
     string,
     { label: string; display: string; path: string; node: Classification }
   >,
-  node: Classification
+  node: Classification,
 ) => {
   for (const child of node.children || []) {
     const parent = acc[node.label];
@@ -74,10 +74,10 @@ const getFreshClassifications = async (): Promise<Classification> => {
       "pest",
     ];
     const otherChildren = other?.children?.filter((item) =>
-      otherChildLabels.includes(item.label)
+      otherChildLabels.includes(item.label),
     ) as Classification[];
     const animalChildren = [mammals, birds].filter(
-      (item) => !!item
+      (item) => !!item,
     ) as Classification[];
     children.push({
       label: "animal",
@@ -90,7 +90,7 @@ const getFreshClassifications = async (): Promise<Classification> => {
         label,
         children,
         version,
-      })
+      }),
     );
     loadedClassificationsThisSession.value = true;
     return {
@@ -103,7 +103,7 @@ const getFreshClassifications = async (): Promise<Classification> => {
 };
 
 export const getClassifications = async (
-  cb?: (classifications: Classification) => void
+  cb?: (classifications: Classification) => void,
 ): Promise<Classification> => {
   if (classifications.value === null) {
     const cached = localStorage.getItem("classifications");
@@ -130,7 +130,7 @@ export const getClassifications = async (
 export const displayLabelForClassificationLabel = (
   label: string,
   aiTag = false,
-  isAudioContext = false
+  isAudioContext = false,
 ) => {
   if (!label) {
     debugger;

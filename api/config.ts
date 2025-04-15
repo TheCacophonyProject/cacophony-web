@@ -26,7 +26,7 @@ function getConfigPathFromArgs(strict: boolean = false): string {
       configPath = process.argv[i];
     } else if (strict) {
       throw new Error(
-        `Cannot parse '${val}'.  The only accepted parameter is --config=<path-to-config-file>`
+        `Cannot parse '${val}'.  The only accepted parameter is --config=<path-to-config-file>`,
       );
     }
   }

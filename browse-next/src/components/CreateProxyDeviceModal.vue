@@ -14,7 +14,7 @@ import { currentSelectedProject } from "@models/provides";
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const newDeviceName = formFieldInputText();
 const isValidDeviceName = computed<boolean>(
-  () => newDeviceName.value.trim().length >= 3
+  () => newDeviceName.value.trim().length >= 3,
 );
 const needsValidationAndIsValidDeviceName = computed<FormInputValidationState>(
   () => {
@@ -27,7 +27,7 @@ const needsValidationAndIsValidDeviceName = computed<FormInputValidationState>(
     } else {
       return newDeviceName.touched ? isValidDeviceName.value : undefined;
     }
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -47,7 +47,7 @@ const createNewProxyDevice = async () => {
   const projectName = selectedProject.value.groupName;
   const createProxyDeviceResponse = await createProxyDevice(
     projectName,
-    deviceName
+    deviceName,
   );
   if (createProxyDeviceResponse.success) {
     emit("proxy-device-created", createProxyDeviceResponse.result.id);

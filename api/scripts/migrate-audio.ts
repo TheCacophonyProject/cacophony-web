@@ -69,14 +69,14 @@ async function main() {
 async function updateTrack(client, t_id, data) {
   const res = await client.query(
     `update "Tracks" set "data" = $1 where "id"= $2`,
-    [data, t_id]
+    [data, t_id],
   );
   return res;
 }
 
 async function geTracks(client, r_id) {
   const res = await client.query(
-    `select id,data from "Tracks" t where "RecordingId" = '${r_id}'`
+    `select id,data from "Tracks" t where "RecordingId" = '${r_id}'`,
   );
   return res;
 }
@@ -95,7 +95,7 @@ async function pgConnect() {
 async function loadAudioIds(client) {
   const keys = new Set();
   const res = await client.query(
-    `select "id" from "Recordings" where type='audio' order by id desc`
+    `select "id" from "Recordings" where type='audio' order by id desc`,
   );
   for (const row of res.rows) {
     keys.add(row["id"]);

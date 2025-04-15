@@ -42,7 +42,7 @@ app.provide(allHistoricLocations, LocationsForCurrentProject);
 app.provide(currentSelectedProject, fallibleCurrentSelectedProject);
 app.provide(
   urlNormalisedCurrentSelectedProjectName,
-  urlNormalisedCurrentProjectName
+  urlNormalisedCurrentProjectName,
 );
 app.provide(currentUser, CurrentUser);
 app.provide(currentUserCreds, CurrentUserCreds);

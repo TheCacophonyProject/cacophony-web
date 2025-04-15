@@ -81,12 +81,12 @@ export default function (app: Application, baseUrl: string) {
         models,
         response.locals.requestUser,
         response.locals.recording.id,
-        request.body.tag
+        request.body.tag,
       );
       return successResponse(response, "Added new tag.", {
         tagId: tagInstance.id,
       });
-    }
+    },
   );
 
   /**
@@ -113,7 +113,7 @@ export default function (app: Application, baseUrl: string) {
         await fetchAuthorizedRequiredFlatRecordingById(tag.recordingId)(
           request,
           response,
-          next
+          next,
         );
       } else {
         next(new ClientError("Failed to delete tag."));
@@ -123,6 +123,6 @@ export default function (app: Application, baseUrl: string) {
       // There is a matching tag, and the user has access to the corresponding recording.
       await response.locals.tag.destroy();
       return successResponse(response, "Deleted tag.");
-    }
+    },
   );
 }

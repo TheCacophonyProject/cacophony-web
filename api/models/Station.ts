@@ -110,7 +110,7 @@ export interface StationStatic extends ModelStaticCommon<Station> {
 }
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): StationStatic {
   const name = "Station";
   const attributes: ModelAttributes = {
@@ -171,7 +171,7 @@ export default function (
   // Define table
   const Station = sequelize.define(
     name,
-    attributes
+    attributes,
   ) as unknown as StationStatic;
 
   //---------------
@@ -189,7 +189,7 @@ export default function (
 
   Station.activeInGroupAtTime = async function (
     groupId: GroupId,
-    atDateTime: Date
+    atDateTime: Date,
   ): Promise<Station[]> {
     return await this.findAll({
       where: {
@@ -210,7 +210,7 @@ export default function (
     groupId: GroupId,
     fromTime: Date = new Date(),
     untilTime: Date = new Date(),
-    orAutomatic: boolean = false
+    orAutomatic: boolean = false,
   ): Promise<Station[]> {
     const findClause = [
       {
@@ -242,7 +242,7 @@ export default function (
     authUser,
     stationId,
     from,
-    windowSizeInHours
+    windowSizeInHours,
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
@@ -255,7 +255,7 @@ export default function (
   where
     "StationId" = ${stationId}
     and "type" = 'audio'
-    and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`
+    and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`,
     )) as [{ index: number }[], unknown];
     return result[0].index;
   };
@@ -265,7 +265,7 @@ export default function (
     stationId,
     from,
     steps,
-    interval
+    interval,
   ): Promise<{ stationId: StationId; from: string; cacophonyIndex: number }[]> {
     const counts = [];
     let stepSizeInMs;
@@ -283,7 +283,7 @@ export default function (
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
-          0
+          0,
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
@@ -304,7 +304,7 @@ export default function (
         authUser,
         stationId,
         windowEnd,
-        stepSizeInHours
+        stepSizeInHours,
       );
       counts.push({
         stationId: stationId,
@@ -320,7 +320,7 @@ export default function (
     stationId,
     from,
     windowSizeInHours,
-    type
+    type,
   ): Promise<{ what: string; count: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
@@ -351,7 +351,7 @@ export default function (
     from,
     steps,
     interval,
-    type
+    type,
   ): Promise<
     { stationId: StationId; from: string; what: string; count: number }[]
   > {
@@ -371,7 +371,7 @@ export default function (
         const currMonthDays = new Date(
           from.getFullYear(),
           from.getMonth() + 1,
-          0
+          0,
         ).getDate();
         stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
         break;
@@ -393,7 +393,7 @@ export default function (
         stationId,
         windowEnd,
         stepSizeInHours,
-        type
+        type,
       );
       counts.push(
         ...result.map((item) => ({
@@ -401,7 +401,7 @@ export default function (
           from: windowEnd.toISOString(),
           what: item.what,
           count: item.count,
-        }))
+        })),
       );
     }
     this.getDaysActive(authUser, 2, new Date("2023-04-20T05:02:07.000Z"), 168);
@@ -412,7 +412,7 @@ export default function (
     authUser,
     stationId,
     from,
-    windowSizeInHours
+    windowSizeInHours,
   ): Promise<number> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);

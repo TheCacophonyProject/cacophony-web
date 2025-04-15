@@ -30,7 +30,7 @@ export const getFirstPass = (
   automatic: boolean | null,
   from: Date | undefined,
   until: Date | undefined,
-  direction: "asc" | "desc" = "desc"
+  direction: "asc" | "desc" = "desc",
 ) => {
   const requiresTags = [
     TagMode.HumanTagged,
@@ -72,11 +72,11 @@ export const getFirstPass = (
           ? [
               {
                 [Op.or]: [
-                  sequelize.where(sequelize.col('"Tracks".id'), Op.eq, null),
+                  sequelize.where(sequelize.col("\"Tracks\".id"), Op.eq, null),
                   sequelize.where(
-                    sequelize.col('"Tracks->TrackTags".id'),
+                    sequelize.col("\"Tracks->TrackTags\".id"),
                     Op.eq,
-                    null
+                    null,
                   ),
                 ],
               },
@@ -85,16 +85,16 @@ export const getFirstPass = (
           ? [
               {
                 [Op.or]: [
-                  sequelize.where(sequelize.col('"Tracks->TrackTags".what'), {
+                  sequelize.where(sequelize.col("\"Tracks->TrackTags\".what"), {
                     [Op.in]: taggedWith,
                   }),
                   ...(subClassTags
                     ? taggedWith.map((tag) =>
                         sequelize.where(
-                          sequelize.col('"Tracks->TrackTags".path'),
+                          sequelize.col("\"Tracks->TrackTags\".path"),
                           "~",
-                          `*.${tag.replace(/-/g, "_")}.*`
-                        )
+                          `*.${tag.replace(/-/g, "_")}.*`,
+                        ),
                       )
                     : []),
                 ],
@@ -103,14 +103,14 @@ export const getFirstPass = (
           : []),
         ...(labelledWith.length !== 0
           ? [
-              sequelize.where(sequelize.col('"Tags".detail'), {
+              sequelize.where(sequelize.col("\"Tags\".detail"), {
                 [Op.in]: labelledWith,
               }),
             ]
           : []),
         ...(!includeFilteredTracks && !requiresTags
           ? [
-              sequelize.where(sequelize.col('"Tracks".filtered'), {
+              sequelize.where(sequelize.col("\"Tracks\".filtered"), {
                 [Op.eq]: false,
               }),
             ]
@@ -169,9 +169,9 @@ export const getFirstPass = (
     attributes: [
       "id",
       "recordingDateTime",
-      sequelize.col('"Tracks->TrackTags".automatic'),
-      sequelize.col('"Tracks->TrackTags".what'),
-      sequelize.col('"Tracks->TrackTags".path'),
+      sequelize.col("\"Tracks->TrackTags\".automatic"),
+      sequelize.col("\"Tracks->TrackTags\".what"),
+      sequelize.col("\"Tracks->TrackTags\".path"),
     ],
     order: [["recordingDateTime", direction]],
   };
@@ -196,7 +196,7 @@ export const getSelfJoinForTagMode = (
   subClassTags: boolean,
   maxResults: number,
   includeFilteredTracks: boolean,
-  direction: "asc" | "desc" = "desc"
+  direction: "asc" | "desc" = "desc",
 ) => {
   const limit = (tableName?: string) => {
     if (!tableName) {
@@ -411,7 +411,7 @@ export const sqlDebugOutput = (
   queryTimes: number[],
   queriesSQL: string[],
   totalTime: number,
-  records?: any[]
+  records?: any[],
 ): string => {
   const queryTime = queryTimes.reduce((acc, num) => acc + num, 0);
 
@@ -421,7 +421,7 @@ export const sqlDebugOutput = (
     <pre style="background: black;" class="language-json theme-atom-one-dark"><code class="code">${JSON.stringify(
       records,
       null,
-      "\t"
+      "\t",
     )}</code></pre>
     `;
   }
@@ -433,12 +433,12 @@ export const sqlDebugOutput = (
           <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>       
           <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
             <h1 style="color: white;">${numResults} recordings, DB: ${queryTime}ms (${queryTimes.join(
-    "ms, "
+    "ms, ",
   )}ms), Sequelize: ${Math.round(totalTime - queryTime)}ms</h1>
             <pre style="background: black;" class="language-json theme-atom-one-dark"><code class="code">${JSON.stringify(
               queryParams,
               null,
-              "\t"
+              "\t",
             )}</code></pre>     
             ${recordsOutput}    
             ${queriesSQL
@@ -448,7 +448,7 @@ export const sqlDebugOutput = (
               <pre style="background: black;" class="language-sql theme-atom-one-dark"><code class="code">${query}</code></pre>
               <button class="btn" style="position: absolute; right: 20px; top: 20px;">Copy (${queryTimes[index]}ms)</button>
             </div>
-            `
+            `,
               )
               .join("")}
           </body>
@@ -492,7 +492,7 @@ export const queryRecordingsInProject = async (
   fromDate: Date | undefined,
   untilDate: Date | undefined,
   logging: (message: string, time: number) => void,
-  direction: "desc" | "asc" = "desc"
+  direction: "desc" | "asc" = "desc",
 ): Promise<{ id: RecordingId; recordingDateTime: Date }[]> => {
   const tagged = tagMode !== TagMode.UnTagged && taggedWith.length !== 0;
   const labelled = labelledWith.length !== 0;
@@ -518,7 +518,7 @@ export const queryRecordingsInProject = async (
       automatic,
       fromDate,
       untilDate,
-      direction
+      direction,
     );
   const tagReplacements = {};
   for (let i = 0; i < taggedWith.length; i++) {
@@ -533,18 +533,18 @@ export const queryRecordingsInProject = async (
       subClassTags,
       limit,
       includeFilteredTracks,
-      direction
+      direction,
     ),
     {
       logging,
       type: QueryTypes.SELECT,
       replacements: { taggedWith, ...tagReplacements },
-    }
+    },
   );
   return (recordings as { id: RecordingId; recordingDateTime: Date }[]).map(
     ({ id, recordingDateTime }) => ({
       id,
       recordingDateTime: new Date(recordingDateTime),
-    })
+    }),
   );
 };

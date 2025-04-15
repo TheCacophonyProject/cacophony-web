@@ -31,7 +31,7 @@ const levelWeight = (level: LogLevel) => {
 
 const fuzzyErrorMatchScore = (
   existingLog: LogLine[],
-  log: LogLine[]
+  log: LogLine[],
 ): number => {
   // NOTE: The last line (where the error cause usually is)
   //  must have similarity > 0.6, otherwise it's not a match.
@@ -149,7 +149,7 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
       bestExistingErrorMatch.count++;
       if (
         !bestExistingErrorMatch.devices.find(
-          ({ id }) => id === errorEvent.DeviceId
+          ({ id }) => id === errorEvent.DeviceId,
         )
       ) {
         bestExistingErrorMatch.devices.push({
@@ -182,7 +182,7 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
 const getDevicesFailingSaltUpdatesInReportingPeriod = async (
   fromDate: Date,
   untilDate: Date,
-  ignoredNodeGroups: string[]
+  ignoredNodeGroups: string[],
 ): Promise<Record<string, { id: DeviceId; name: string }[]>> => {
   const ignoredDevices = config.deviceErrorIgnoreList || [];
   const saltEvents = await models.Event.findAll({
@@ -225,7 +225,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
         .reduce((acc, curr) => {
           acc[curr.id] = curr;
           return acc;
-        }, {})
+        }, {}),
     );
   const stillFailingPromises = [];
   for (const device of failingDevices) {
@@ -247,7 +247,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
           },
         ],
         attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      })
+      }),
     );
   }
   const stillFailingEvents = await Promise.all(stillFailingPromises);
@@ -255,7 +255,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
     if (event.EventDetail.details.success !== false) {
       // The latest event for the device shows that salt succeeded eventually.
       failingDevices = failingDevices.filter(
-        (device) => device.id !== event.DeviceId
+        (device) => device.id !== event.DeviceId,
       );
     }
   }
@@ -268,7 +268,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
 
 const groupedSystemErrors = async (
   fromDate?: Date,
-  untilDate?: Date
+  untilDate?: Date,
 ): Promise<GroupedServiceErrorsByNodeGroup> => {
   const where: any = {};
   if (fromDate || untilDate) {
@@ -308,7 +308,7 @@ const groupedSystemErrors = async (
     .filter(
       (event) =>
         "unitName" in event.EventDetail.details &&
-        "logs" in event.EventDetail.details
+        "logs" in event.EventDetail.details,
     )
     .filter((event) => !ignoredDevices.includes(event.DeviceId));
 
@@ -356,7 +356,7 @@ const groupedSystemErrors = async (
           },
         ],
         attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      })
+      }),
     );
 
     versionUpdates.push(
@@ -381,7 +381,7 @@ const groupedSystemErrors = async (
           },
         ],
         attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      })
+      }),
     );
   }
   const saltEvents: Event[] = await Promise.all(saltUpdates);
@@ -391,7 +391,7 @@ const groupedSystemErrors = async (
     if (!versionDataEvents[i]) {
       // Never got version data for this device.
       for (const event of serviceErrorEvents.filter(
-        (event) => event.DeviceId === deviceId
+        (event) => event.DeviceId === deviceId,
       )) {
         (event as any).unitVersion = "unknown-version";
       }
@@ -399,11 +399,11 @@ const groupedSystemErrors = async (
     }
     const versionDataEvent = versionDataEvents[i];
     for (const event of serviceErrorEvents.filter(
-      (event) => event.DeviceId === deviceId
+      (event) => event.DeviceId === deviceId,
     )) {
       const eventUnit = event.EventDetail.details.unitName.replace(
         ".service",
-        ""
+        "",
       );
       if (eventUnit in versionDataEvent.EventDetail.details) {
         (event as any).unitVersion =
@@ -422,7 +422,7 @@ const groupedSystemErrors = async (
       // All events for this device belong in this nodegroup:
       eventsByNodeGroup[nodeGroup] = eventsByNodeGroup[nodeGroup] || [];
       eventsByNodeGroup[nodeGroup].push(
-        ...serviceErrorEvents.filter((event) => event.DeviceId === deviceId)
+        ...serviceErrorEvents.filter((event) => event.DeviceId === deviceId),
       );
       continue;
     }
@@ -465,8 +465,8 @@ const groupedSystemErrors = async (
             ...serviceErrorEvents.filter(
               (event) =>
                 event.DeviceId === saltEvent.DeviceId &&
-                event.dateTime > saltEvent.dateTime
-            )
+                event.dateTime > saltEvent.dateTime,
+            ),
           );
 
           eventsByNodeGroup[olderNodeGroup] =
@@ -475,8 +475,8 @@ const groupedSystemErrors = async (
             ...serviceErrorEvents.filter(
               (event) =>
                 event.DeviceId === saltEvent.DeviceId &&
-                event.dateTime < saltEvent.dateTime
-            )
+                event.dateTime < saltEvent.dateTime,
+            ),
           );
           continue;
         }
@@ -487,14 +487,14 @@ const groupedSystemErrors = async (
     eventsByNodeGroup[nodeGroup] = eventsByNodeGroup[nodeGroup] || [];
     eventsByNodeGroup[nodeGroup].push(
       ...serviceErrorEvents.filter(
-        (event) => event.DeviceId === saltEvent.DeviceId
-      )
+        (event) => event.DeviceId === saltEvent.DeviceId,
+      ),
     );
   }
   const groupedErrorsByNodeGroup = {};
   for (const nodeGroupEvents of Object.entries(eventsByNodeGroup)) {
     groupedErrorsByNodeGroup[nodeGroupEvents[0]] = groupSystemErrors(
-      nodeGroupEvents[1] as Event[]
+      nodeGroupEvents[1] as Event[],
     );
   }
   return groupedErrorsByNodeGroup;
@@ -521,7 +521,7 @@ async function main() {
 
   const groupedServiceErrorsByNodeGroup = await groupedSystemErrors(
     startDate,
-    endDate
+    endDate,
   );
   for (const ignoredNodeGroup of ignoredSaltNodeGroups) {
     delete groupedServiceErrorsByNodeGroup[ignoredNodeGroup];
@@ -530,7 +530,7 @@ async function main() {
     await getDevicesFailingSaltUpdatesInReportingPeriod(
       startDate,
       endDate,
-      ignoredSaltNodeGroups
+      ignoredSaltNodeGroups,
     );
   if (Object.keys(groupedServiceErrorsByNodeGroup).length === 0) {
     log.info("No service errors in the last 24 hours");
@@ -542,7 +542,7 @@ async function main() {
     startDate,
     endDate,
     groupedServiceErrorsByNodeGroup,
-    failingSaltUpdates
+    failingSaltUpdates,
   );
 }
 

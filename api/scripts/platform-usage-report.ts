@@ -14,7 +14,7 @@ const CACOPHONY_USERS = config.cacophonyUserIds || [];
 const weeksAgo = (
   numWeeksAgo: number,
   dateField: string,
-  now: Date
+  now: Date,
 ): string => {
   return `and "${dateField}" > timestamp '${now.toISOString()}' - interval '${numWeeksAgo} week' and "${dateField}" < timestamp '${now.toISOString()}' - interval '${
     numWeeksAgo - 1
@@ -25,118 +25,118 @@ const newUserSignupsForWeekEnding = (now: Date, nWeeksAgo: number): string => {
   return `select count(*) from "Users" where "emailConfirmed" = true and "Users"."endUserAgreement" is not null ${weeksAgo(
     nWeeksAgo,
     "createdAt",
-    now
+    now,
   )};`;
 };
 
 const camerasActiveForWeekEnding = (now: Date, nWeeksAgo: number): string => {
   return `select count(distinct uuid) from "Devices" inner join "Recordings" on "Recordings"."DeviceId" = "Devices".id where "Recordings"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}) and "Recordings"."type" = 'thermalRaw' ${weeksAgo(
     nWeeksAgo,
     "recordingDateTime",
-    now
+    now,
   )};`;
 };
 
 const totalRegisteredCamerasForWeekEnding = (
   now: Date,
-  nWeeksAgo: number
+  nWeeksAgo: number,
 ): string => {
   return `select count(*) from (select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid from "DeviceHistory" inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid where "Devices".kind = 'thermal'  and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}) and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' order by uuid, "fromDateTime" desc) as a;`;
 };
 
 const birdMonitorsActiveForWeekEnding = (
   now: Date,
-  nWeeksAgo: number
+  nWeeksAgo: number,
 ): string => {
   return `select count(distinct uuid) from "Devices" inner join "Recordings" on "Recordings"."DeviceId" = "Devices".id where "Recordings"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}) and "Recordings"."type" = 'audio' ${weeksAgo(
     nWeeksAgo,
     "recordingDateTime",
-    now
+    now,
   )};`;
 };
 
 const totalRegisteredBirdMonitorsForWeekEnding = (
   now: Date,
-  nWeeksAgo: number
+  nWeeksAgo: number,
 ): string => {
   return `select count(*) from (select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid from "DeviceHistory" inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid where "Devices".kind = 'audio'  and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}) and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' order by uuid, "fromDateTime" desc) as a;`;
 };
 
 const activeUserSessions = (now: Date, nWeeksAgo: number): string => {
   return `select count(distinct "userId") from "UserSessions" where "userId" not in (${CACOPHONY_USERS.join(
-    ", "
+    ", ",
   )}) ${weeksAgo(nWeeksAgo, "updatedAt", now)};`;
 };
 const projectsCreated = (now: Date, nWeeksAgo: number): string => {
   return `select count(distinct query."GroupId") from (select * from "Groups" inner join "GroupUsers" on "GroupUsers"."GroupId" = "Groups".id inner join "Users" on "GroupUsers"."UserId" = "Users".id where "emailConfirmed" is true and "Users".id not in (${CACOPHONY_USERS.join(
-    ", "
+    ", ",
   )}) ${weeksAgo(nWeeksAgo, `Groups"."createdAt`, now)}) as query;`;
 };
 
 const devicesRegistered = (now: Date, nWeeksAgo: number): string => {
   return `select count(id) from "Devices" where "GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}) ${weeksAgo(nWeeksAgo, "createdAt", now)}`;
 };
 const activeProjectsForWeekEnding = (now: Date, nWeeksAgo: number): string => {
   return `select count(distinct "GroupId") from "Recordings" where "GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}) ${weeksAgo(nWeeksAgo, "recordingDateTime", now)};`;
 };
 
 const eventsForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
-  eventType: string
+  eventType: string,
 ): string => {
   return `select count(*) from "Events" inner join "DetailSnapshots" on "Events"."EventDetailId" = "DetailSnapshots".id where "DetailSnapshots".type = '${eventType}' ${weeksAgo(
     nWeeksAgo,
     `Events"."createdAt`,
-    now
+    now,
   )} and "Events"."DeviceId" not in (select id from "Devices" where "GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}));`;
 };
 const trackTagsAddedForWeekEnding = (now: Date, nWeeksAgo: number): string => {
   return `select count(*) from "TrackTags" where automatic is false ${weeksAgo(
     nWeeksAgo,
     "createdAt",
-    now
+    now,
   )} and "UserId" not in (${CACOPHONY_USERS.join(", ")});`;
 };
 const activeTaggersForWeekEnding = (now: Date, nWeeksAgo: number): string => {
   return `select count(distinct "UserId") from "TrackTags" where automatic is false ${weeksAgo(
     nWeeksAgo,
     "createdAt",
-    now
+    now,
   )} and "UserId" not in (${CACOPHONY_USERS.join(", ")})`;
 };
 const recordingsForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
-  recordingType: string
+  recordingType: string,
 ): string => {
   return `select count(*) from "Recordings" where "type" = '${recordingType}' ${weeksAgo(
     nWeeksAgo,
     "recordingDateTime",
-    now
+    now,
   )} and "GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", "
+    ", ",
   )}) and "deletedAt" is null;`;
 };
 const queryPrevXWeeks = async (
   fn: (n: Date, i: number) => string,
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ): Promise<number[]> => {
   const weeks: Promise<QueryResult>[] = [];
   for (let i = numPrevWeeks; i > 0; i--) {
@@ -154,98 +154,98 @@ const queryPrevXWeeks = async (
 const totalRegisteredBirdMonitorsForPrevXWeeks = (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) =>
   queryPrevXWeeks(
     totalRegisteredBirdMonitorsForWeekEnding,
     numPrevWeeks,
     now,
-    conn
+    conn,
   );
 const birdMonitorsActiveForPrevXWeeks = (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(birdMonitorsActiveForWeekEnding, numPrevWeeks, now, conn);
 const camerasActiveForPrevXWeeks = (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(camerasActiveForWeekEnding, numPrevWeeks, now, conn);
 const newUserSignupsForPrevXWeeks = async (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(newUserSignupsForWeekEnding, numPrevWeeks, now, conn);
 const totalRegisteredCamerasForPrevXWeeks = (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) =>
   queryPrevXWeeks(totalRegisteredCamerasForWeekEnding, numPrevWeeks, now, conn);
 const activeUserSessionsPrev1Week = async (
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(activeUserSessions, 1, now, conn);
 const devicesRegisteredPrev1Week = async (
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(devicesRegistered, 1, now, conn);
 const projectsCreatedPrev1Week = async (
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(projectsCreated, 1, now, conn);
 const activeProjectsPrevXWeeks = (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(activeProjectsForWeekEnding, numPrevWeeks, now, conn);
 const eventsForPrevXWeeks = async (
   numPrevWeeks: number,
   now: Date,
   eventType: string,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) =>
   queryPrevXWeeks(
     (now: Date, numPrevWeeks: number) =>
       eventsForWeekEnding(now, numPrevWeeks, eventType),
     numPrevWeeks,
     now,
-    conn
+    conn,
   );
 const trackTagsAddedPrevXWeeks = (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(trackTagsAddedForWeekEnding, numPrevWeeks, now, conn);
 const taggersPrevXWeeks = (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) => queryPrevXWeeks(activeTaggersForWeekEnding, numPrevWeeks, now, conn);
 const thermalRecordingsPrevXWeeks = async (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) =>
   queryPrevXWeeks(
     (now: Date, numPrevWeeks: number) =>
       recordingsForWeekEnding(now, numPrevWeeks, "thermalRaw"),
     numPrevWeeks,
     now,
-    conn
+    conn,
   );
 const birdRecordingsPrevXWeeks = async (
   numPrevWeeks: number,
   now: Date,
-  conn: PgClient | undefined
+  conn: PgClient | undefined,
 ) =>
   queryPrevXWeeks(
     (now: Date, numPrevWeeks: number) =>
       recordingsForWeekEnding(now, numPrevWeeks, "audio"),
     numPrevWeeks,
     now,
-    conn
+    conn,
   );
 // TODO: Can we distinguish a tc2 cam from a classic cam via the API?
 // Possibly get sidekick stats via https://developer.apple.com/help/app-store-connect/reference/sales-and-trends-reports-availability
@@ -266,7 +266,7 @@ async function pgConnect(): Promise<PgClient> {
 const svg = (
   contents: string,
   width: number,
-  height: { height: number }
+  height: { height: number },
 ): string => {
   return `
         <svg 
@@ -282,7 +282,7 @@ const curvedLine = (
   width: number,
   height: number | { height: number },
   max: number,
-  colour: number[]
+  colour: number[],
 ): string => {
   // Actually a curve-fitting algorithm would be better here?  Though that could over/undershoot actual values.
   let h = 0;
@@ -382,7 +382,7 @@ const lineGraph = (
   values: number[],
   width = 135,
   height = 50,
-  colour: number[]
+  colour: number[],
 ) => {
   const max = values.reduce((prev, curr) => Math.max(prev, curr));
   const heightTrack = { height };
@@ -396,7 +396,7 @@ const lineGraph = (
         ${axis}
     `,
     width,
-    heightTrack
+    heightTrack,
   );
 };
 
@@ -405,7 +405,7 @@ const xAxis = (
   numWeeks: number,
   width: number,
   height: number,
-  colour: number[]
+  colour: number[],
 ): string => {
   const numValues = numWeeks - 1;
   const dates = [];
@@ -448,7 +448,7 @@ const stackedGraph = (
   now: Date,
   allSeries: [string, number[], number[]][],
   width = 135,
-  height = 50
+  height = 50,
 ): [string, string] => {
   const colours = [];
   for (let i = 0; i < allSeries.length; i++) {
@@ -458,7 +458,7 @@ const stackedGraph = (
   for (const [_, series] of allSeries) {
     max = Math.max(
       series.reduce((prev, curr) => Math.max(prev, curr)),
-      max
+      max,
     );
   }
   const heightTrack = { height };
@@ -470,7 +470,7 @@ const stackedGraph = (
       width,
       heightTrack,
       max,
-      colours[i % colours.length]
+      colours[i % colours.length],
     );
   }
   const axis = xAxis(
@@ -478,7 +478,7 @@ const stackedGraph = (
     allSeries[0][1].length,
     width,
     height,
-    colours[colours.length - 1]
+    colours[colours.length - 1],
   );
   heightTrack.height += 13;
 
@@ -488,7 +488,7 @@ const stackedGraph = (
     legend += `         
           <div>
             <div style="background-color: ${colourRgb(
-              colours[i % colours.length]
+              colours[i % colours.length],
             )}; width: 13px; height: 13px; margin-left: 20px; margin-right: 7px; display: inline-block;"></div><span>${label}</span>
           </div>
         `;
@@ -502,7 +502,7 @@ const stackedGraph = (
         ${axis}
     `,
       width,
-      heightTrack
+      heightTrack,
     ),
     legend,
   ];
@@ -525,74 +525,74 @@ async function main() {
   const newUserSignups = await newUserSignupsForPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const camerasActive = await camerasActiveForPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const totalCamerasRegistered = await totalRegisteredCamerasForPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const birdMonitorsActive = await birdMonitorsActiveForPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const totalBirdMonitorsRegistered =
     await totalRegisteredBirdMonitorsForPrevXWeeks(
       numPrevWeeks,
       weekEndDate,
-      pgClient
+      pgClient,
     );
   const activeUsers = last(
-    await activeUserSessionsPrev1Week(weekEndDate, pgClient)
+    await activeUserSessionsPrev1Week(weekEndDate, pgClient),
   );
   const newDevices = last(
-    await devicesRegisteredPrev1Week(weekEndDate, pgClient)
+    await devicesRegisteredPrev1Week(weekEndDate, pgClient),
   );
   const projectsStarted = last(
-    await projectsCreatedPrev1Week(weekEndDate, pgClient)
+    await projectsCreatedPrev1Week(weekEndDate, pgClient),
   );
   const systemErrors = await eventsForPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
     "systemError",
-    pgClient
+    pgClient,
   );
   const animalAlertEmails = await eventsForPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
     "alert",
-    pgClient
+    pgClient,
   );
   const trackTagsAdded = await trackTagsAddedPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const activeProjects = await activeProjectsPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const thermalRecordings = await thermalRecordingsPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const audioRecordings = await birdRecordingsPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const activeTaggers = await taggersPrevXWeeks(
     numPrevWeeks,
     weekEndDate,
-    pgClient
+    pgClient,
   );
   const cacophonyGreen = [89, 189, 15];
   const darkerGreen = [13, 115, 38];
@@ -603,7 +603,7 @@ async function main() {
       ["Active cameras", camerasActive, cacophonyGreen],
     ],
     250,
-    50
+    50,
   );
   const [activeBirdMonitorsSvg, activeBirdMonitorsLegend] = stackedGraph(
     weekEndDate,
@@ -616,65 +616,65 @@ async function main() {
       ["Active bird monitors", birdMonitorsActive, cacophonyGreen],
     ],
     250,
-    50
+    50,
   );
   const imageAttachments: EmailImageAttachment[] = [];
   const activeCamerasGraph = await embedImage(
     "active-cameras-graph",
     imageAttachments,
-    activeCamerasSvg
+    activeCamerasSvg,
   );
   const activeBirdMonitorsGraph = await embedImage(
     "active-bird-monitors-graph",
     imageAttachments,
-    activeBirdMonitorsSvg
+    activeBirdMonitorsSvg,
   );
   const signupsPerWeekGraph = await embedImage(
     "weekly-signups-graph",
     imageAttachments,
-    lineGraph(weekEndDate, newUserSignups, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, newUserSignups, 250, 50, cacophonyGreen),
   );
   const activeProjectsGraph = await embedImage(
     "active-projects-graph",
     imageAttachments,
-    lineGraph(weekEndDate, activeProjects, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, activeProjects, 250, 50, cacophonyGreen),
   );
   const activeTaggersGraph = await embedImage(
     "active-taggers-graph",
     imageAttachments,
-    lineGraph(weekEndDate, activeTaggers, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, activeTaggers, 250, 50, cacophonyGreen),
   );
   const addedTagsGraph = await embedImage(
     "added-tags-graph",
     imageAttachments,
-    lineGraph(weekEndDate, trackTagsAdded, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, trackTagsAdded, 250, 50, cacophonyGreen),
   );
   const emailAlertsGraph = await embedImage(
     "email-alerts-graph",
     imageAttachments,
-    lineGraph(weekEndDate, animalAlertEmails, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, animalAlertEmails, 250, 50, cacophonyGreen),
   );
   const thermalRecordingsGraph = await embedImage(
     "thermal-recordings-graph",
     imageAttachments,
-    lineGraph(weekEndDate, thermalRecordings, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, thermalRecordings, 250, 50, cacophonyGreen),
   );
   const audioRecordingsGraph = await embedImage(
     "audio-recordings-graph",
     imageAttachments,
-    lineGraph(weekEndDate, audioRecordings, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, audioRecordings, 250, 50, cacophonyGreen),
   );
   const systemErrorsGraph = await embedImage(
     "system-errors-graph",
     imageAttachments,
-    lineGraph(weekEndDate, systemErrors, 250, 50, cacophonyGreen)
+    lineGraph(weekEndDate, systemErrors, 250, 50, cacophonyGreen),
   );
   const maybePlural = (v: number) => (v !== 1 ? "s" : "");
   const column = (
     num: number,
     str: string,
     numColumns: number,
-    totalWidth: number
+    totalWidth: number,
   ): string => {
     const width = 100 / numColumns;
     const absWidth = totalWidth / numColumns;
@@ -692,7 +692,7 @@ async function main() {
                     <td valign="top" style="text-align: center;">
                         <span class="columnContent" style="display: inline-block; margin-left: 10px;margin-right: 10px;">${str.replace(
                           / /g,
-                          "&nbsp;"
+                          "&nbsp;",
                         )}</span>
                     </td>
                 </tr>
@@ -721,107 +721,107 @@ async function main() {
             [newDevices, `new device${maybePlural(newDevices)}`],
             [projectsStarted, `new project${maybePlural(projectsStarted)}`],
           ],
-          600
+          600,
         )}
         <br><br><br>       
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          newUserSignups
+          newUserSignups,
         )}</span> new user sign-up${maybePlural(
-    last(newUserSignups)
+    last(newUserSignups),
   )}</p>        
         <img alt="Signups per week: ${newUserSignups.join(
-          ", "
+          ", ",
         )}" src='${signupsPerWeekGraph}' width='100%' height='auto' />
         <br><br><br>
         
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          activeProjects
+          activeProjects,
         )}</span> active project${maybePlural(last(activeProjects))}</p>
         <img alt="Active projects per week: ${activeProjects.join(
-          ", "
+          ", ",
         )}" src='${activeProjectsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          camerasActive
+          camerasActive,
         )}</span> camera${maybePlural(
-    last(camerasActive)
+    last(camerasActive),
   )} recording, out of <strong>${last(
-    totalCamerasRegistered
+    totalCamerasRegistered,
   )}</strong> total registered camera${maybePlural(
-    last(totalCamerasRegistered)
+    last(totalCamerasRegistered),
   )}</p>
         <img alt="Weekly active cameras: ${camerasActive.join(
-          ", "
+          ", ",
         )}" src='${activeCamerasGraph}' width='100%' height='auto' />
         ${activeCamerasLegend}
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          thermalRecordings
+          thermalRecordings,
         )}</span> thermal recording${maybePlural(last(thermalRecordings))}</p>
         <img alt="Thermal recordings per week: ${thermalRecordings.join(
-          ", "
+          ", ",
         )}" src='${thermalRecordingsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          birdMonitorsActive
+          birdMonitorsActive,
         )}</span> bird monitor${maybePlural(
-    last(birdMonitorsActive)
+    last(birdMonitorsActive),
   )} recording, out of <strong>${last(
-    totalBirdMonitorsRegistered
+    totalBirdMonitorsRegistered,
   )}</strong> total registered bird monitor${maybePlural(
-    last(totalBirdMonitorsRegistered)
+    last(totalBirdMonitorsRegistered),
   )}</p>
         <img alt="Weekly active bird monitors: ${birdMonitorsActive.join(
-          ", "
+          ", ",
         )}" src='${activeBirdMonitorsGraph}' width='100%' height='auto' />
         ${activeBirdMonitorsLegend}
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          audioRecordings
+          audioRecordings,
         )}</span> bird recording${maybePlural(last(audioRecordings))}</p>
         <img alt="Bird recordings per week: ${audioRecordings.join(
-          ", "
+          ", ",
         )}" src='${audioRecordingsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          activeTaggers
+          activeTaggers,
         )}</span> active tagger${maybePlural(last(activeTaggers))}</p>
         <img alt="Active taggers per week: ${activeTaggers.join(
-          ", "
+          ", ",
         )}" src='${activeTaggersGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          trackTagsAdded
+          trackTagsAdded,
         )}</span> user classification${maybePlural(
-    last(trackTagsAdded)
+    last(trackTagsAdded),
   )} added</p>
         <img alt="Added tags per week: ${trackTagsAdded.join(
-          ", "
+          ", ",
         )}" src='${addedTagsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          animalAlertEmails
+          animalAlertEmails,
         )}</span> alert notification${maybePlural(
-    last(animalAlertEmails)
+    last(animalAlertEmails),
   )} sent</p>
         <img alt="Alerts per week: ${animalAlertEmails.join(
-          ", "
+          ", ",
         )}" src='${emailAlertsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-          systemErrors
+          systemErrors,
         )}</span> device error${maybePlural(last(systemErrors))} reported</p>
         <img alt="Device errors per week: ${systemErrors.join(
-          ", "
+          ", ",
         )}" src='${systemErrorsGraph}' width='100%' height='auto' />
         <br><br>
     </div>
@@ -831,7 +831,7 @@ async function main() {
     config.smtpDetails.platformUsageEmail,
     weekEndDate,
     emailHtml,
-    imageAttachments
+    imageAttachments,
   );
 }
 

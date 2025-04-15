@@ -93,7 +93,7 @@ export default function (app: Application, baseUrl: string) {
         log.debug(
           "No file to be processed for '%s' in state '%s.",
           type,
-          state
+          state,
         );
         // FIXME - Do we really want this status code/response?
         return response.status(HttpStatusCode.OkNoContent).json();
@@ -101,7 +101,7 @@ export default function (app: Application, baseUrl: string) {
         const rawJWT = signedToken(
           recording.rawFileKey,
           recording.getRawFileName(),
-          recording.rawMimeType
+          recording.rawMimeType,
         );
         const rec = (recording as any).dataValues;
         if (rec.location) {
@@ -113,7 +113,7 @@ export default function (app: Application, baseUrl: string) {
           rawJWT,
         });
       }
-    })
+    }),
   );
 
   /**
@@ -136,11 +136,11 @@ export default function (app: Application, baseUrl: string) {
         // Expect only one file to be uploaded at a time
         console.assert(
           keys.length === 1,
-          "Only expected 1 file attachment for this end-point"
+          "Only expected 1 file attachment for this end-point",
         );
         return keys[0];
-      }
-    )
+      },
+    ),
   );
 
   /**
@@ -175,13 +175,13 @@ export default function (app: Application, baseUrl: string) {
       if (!recording) {
         return next(
           new ClientError(
-            `Recording ${request.body.id} not found for jobKey ${request.body.jobKey}`
-          )
+            `Recording ${request.body.id} not found for jobKey ${request.body.jobKey}`,
+          ),
         );
       } else {
         if (recording.jobKey !== request.body.jobKey) {
           return next(
-            new ClientError("'jobKey' given did not match the database.")
+            new ClientError("'jobKey' given did not match the database."),
           );
         }
         response.locals.recording = recording;
@@ -283,14 +283,14 @@ export default function (app: Application, baseUrl: string) {
                 y: 0,
                 height: 120,
                 width: 160,
-              }
+              },
             );
             if (results) {
               for (const result of results) {
                 if (result instanceof Error) {
                   log.warning(
                     "Failed to upload thumbnail for %s",
-                    `${recording.rawFileKey}-thumb`
+                    `${recording.rawFileKey}-thumb`,
                   );
                   log.error("Reason: %s", result.message);
                 }
@@ -324,7 +324,7 @@ export default function (app: Application, baseUrl: string) {
         // FIXME, should this be an error response?
         return successResponse(response, "Processing failed.");
       }
-    }
+    },
   );
 
   /**
@@ -351,7 +351,7 @@ export default function (app: Application, baseUrl: string) {
     parseJSONField(body("metadata")),
     async (_request: Request, response: Response) => {
       await updateMetadata(response.locals.recording, response.locals.metadata);
-    }
+    },
   );
 
   /**
@@ -385,8 +385,8 @@ export default function (app: Application, baseUrl: string) {
       if (!recording) {
         return next(
           new AuthorizationError(
-            `Could not find a Recording with an id of '${request.params.id}'`
-          )
+            `Could not find a Recording with an id of '${request.params.id}'`,
+          ),
         );
       }
       const deviceId = recording.DeviceId;
@@ -403,7 +403,7 @@ export default function (app: Application, baseUrl: string) {
             deviceId,
             groupId,
             atTime,
-            positions
+            positions,
           );
         }
       }
@@ -428,7 +428,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Track added.", {
         trackId,
       });
-    }
+    },
   );
 
   /**
@@ -463,7 +463,7 @@ export default function (app: Application, baseUrl: string) {
       }
       await Promise.allSettled(promises);
       return successResponse(response, "Tracks cleared.");
-    }
+    },
   );
 
   /**
@@ -511,7 +511,7 @@ export default function (app: Application, baseUrl: string) {
           true,
           response.locals.data,
           null,
-          false
+          false,
         );
         return successResponse(response, "Track tag added.", {
           trackTagId: tag.id,
@@ -521,7 +521,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Track tag added.", {
         trackTagId: 1,
       });
-    }
+    },
   );
 
   /**
@@ -545,12 +545,12 @@ export default function (app: Application, baseUrl: string) {
     async (_request, response) => {
       const algorithm = await models.DetailSnapshot.getOrCreateMatching(
         "algorithm",
-        response.locals.algorithm
+        response.locals.algorithm,
       );
       return successResponse(response, "Algorithm key retrieved.", {
         algorithmId: algorithm.id,
       });
-    }
+    },
   );
 
   /**
@@ -570,7 +570,7 @@ export default function (app: Application, baseUrl: string) {
     async (_request: Request, response) => {
       await response.locals.track.update({ archivedAt: Date.now() });
       return successResponse(response, "Track archived");
-    }
+    },
   );
 
   /**
@@ -634,7 +634,7 @@ export default function (app: Application, baseUrl: string) {
       await saveTrackData(response.locals.track.id, newData);
 
       return successResponse(response, "Track updated");
-    }
+    },
   );
 
   /**
@@ -681,7 +681,7 @@ export default function (app: Application, baseUrl: string) {
               Sequelize.fn(
                 "json_build_object",
                 "ratThresh",
-                Sequelize.literal(`"DeviceHistory"."settings"#>'{ratThresh}'`)
+                Sequelize.literal(`"DeviceHistory"."settings"#>'{ratThresh}'`),
               ),
               "settings",
             ],
@@ -690,6 +690,6 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got device history", {
         deviceHistoryEntry,
       });
-    }
+    },
   );
 }

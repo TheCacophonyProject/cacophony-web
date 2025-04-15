@@ -23,7 +23,7 @@ export const minMaxForFrame = (frame: CptvFrame): [number, number] => {
 
 export const minMaxForTrackBox = (
   trackBox: TrackBox,
-  frame: CptvFrame
+  frame: CptvFrame,
 ): [number, number] => {
   if (frame.isBackgroundFrame) {
     return [minValue, maxValue];
@@ -61,7 +61,7 @@ export const accumulateMinMaxForFrame = (frame: CptvFrame) => {
     const AVERAGE_HEADROOM_OVER_BACKGROUND = 300;
     maxValue = Math.max(
       Math.max(maxValue, frameMaxValue),
-      Math.min(1 << 16, minValue + AVERAGE_HEADROOM_OVER_BACKGROUND)
+      Math.min(1 << 16, minValue + AVERAGE_HEADROOM_OVER_BACKGROUND),
     );
   }
 };
@@ -73,7 +73,7 @@ export const resetRecordingNormalisation = () => {
 
 export const minMaxForTracks = (
   trackBoxes: [FrameNum, Rectangle][][],
-  frameToCheck: CptvFrame
+  frameToCheck: CptvFrame,
 ): [number, number] => {
   // Usage: maybe just pass in the background frame here, and all the tracks?
   let min = Number.MAX_VALUE;
@@ -99,7 +99,7 @@ export const minMaxForTracks = (
 
 export const minMaxForTrack = (
   trackBoxes: TrackBox[],
-  framesToCheck: CptvFrame[]
+  framesToCheck: CptvFrame[],
 ): [number, number] => {
   let min = Number.MAX_VALUE;
   let max = Number.MIN_VALUE;
