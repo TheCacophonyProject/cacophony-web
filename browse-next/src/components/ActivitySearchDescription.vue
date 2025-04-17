@@ -148,7 +148,7 @@ const otherLabels = computed<string[]>(
         across
         <span
           :key="index"
-          v-for="(loc, index) in (selectedLocations as ApiLocationResponse[])"
+          v-for="(loc, index) in selectedLocations as ApiLocationResponse[]"
         >
           <strong class="fw-semibold">{{ loc.name }}</strong
           ><span v-if="index === selectedLocations.length - 2"> and </span

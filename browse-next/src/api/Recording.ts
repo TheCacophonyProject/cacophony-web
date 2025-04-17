@@ -350,10 +350,19 @@ export const uploadRecording = (
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
 };
 
-export const getRawRecording = async (recordingId: RecordingId) => {
+export const getRawRecording = (recordingId: RecordingId) => {
   const ABORTABLE = true;
   return CacophonyApi.get(
     `/api/v1/recordings/raw/${recordingId}`,
     ABORTABLE,
   ) as Promise<FetchResult<Blob>>;
+};
+
+export const updateResizedTrack = (recordingId: RecordingId, trackId: TrackId, startSeconds: number, endSeconds: number, minFreqHz: number, maxFreqHz: number) => {
+  return CacophonyApi.patch(`/api/v1/recordings/${recordingId}/tracks/${trackId}/update-data`, {
+    start_s: startSeconds,
+    end_s: endSeconds,
+    minFreq: minFreqHz,
+    maxFreq: maxFreqHz,
+  }) as Promise<FetchResult<void>>;
 };

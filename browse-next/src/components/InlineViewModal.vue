@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { inject, ref, watch } from "vue";
 import type { ComputedRef } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { inject, ref, watch } from "vue";
 import type { RouteRecordName } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { BModal } from "bootstrap-vue-next";
 import { urlNormalisedCurrentSelectedProjectName } from "@models/provides";
 import type { RecordingId } from "@typedefs/api/common";
+import { RecordingType } from "@typedefs/api/consts.ts";
+
 const route = useRoute();
 const router = useRouter();
 const emit = defineEmits(["close", "shown"]);
@@ -65,8 +67,11 @@ const onShown = () => {
   }, 100);
   emit("shown");
 };
-
+const recordingType = ref<RecordingType>(RecordingType.ThermalRaw);
 const updatedRecording = (recordingId: RecordingId, action: string) => {};
+const loadedRecording = (type: RecordingType) => {
+  recordingType.value = type;
+};
 
 const isBusy = ref<boolean>(false);
 </script>
@@ -84,7 +89,7 @@ const isBusy = ref<boolean>(false);
       @hidden="closedModal"
       @shown="onShown"
       :cancel-disabled="isBusy"
-      :no-close-on-backdrop="isBusy || noCloseOnBackdrop"
+      :no-close-on-backdrop="recordingType === RecordingType.Audio || isBusy || noCloseOnBackdrop"
       :no-close-on-esc="isBusy"
       body-class="p-0"
       :content-class="{
@@ -105,6 +110,7 @@ const isBusy = ref<boolean>(false);
         @start-blocking-work="isBusy = true"
         @end-blocking-work="isBusy = false"
         @recording-updated="updatedRecording"
+        @loaded-recording="loadedRecording"
       />
     </b-modal>
   </router-view>

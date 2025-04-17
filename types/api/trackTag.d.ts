@@ -55,6 +55,7 @@ export type Classification = {
   label: string;
   aliases?: string[];
   display?: string;
+  displayAudio?: string;
   children?: Classification[];
   path?: string | string[];
 };

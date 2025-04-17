@@ -82,6 +82,7 @@ const emit = defineEmits<{
   (e: "close"): void;
   (e: "start-blocking-work"): void;
   (e: "end-blocking-work"): void;
+  (e: "loaded-recording", type: RecordingType): void;
   (e: "recording-updated", recordingId: RecordingId, action: string): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
@@ -816,6 +817,7 @@ const loadRecording = async () => {
       }
 
       const rec = recording.value as ApiRecordingResponse;
+      emit("loaded-recording", rec.type);
       prevRecordingType.value = rec.type;
 
       if (recordingIsProcessing.value) {
@@ -1311,7 +1313,7 @@ const inlineModal = ref<boolean>(false);
           >
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
-          <span class="recording-header-label fw-bold text-capitalize">{{
+          <span class="recording-header-label fw-bold text-capitalize" v-if="isInVisitContext">{{
             visitForRecording
           }}</span>
           <span
@@ -1529,6 +1531,7 @@ const inlineModal = ref<boolean>(false);
               @track-removed="trackRemoved"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"
+              @delete-recording="deleteRecording"
             />
           </div>
           <!-- Mobile view only -->
@@ -1540,6 +1543,7 @@ const inlineModal = ref<boolean>(false);
             @track-removed="trackRemoved"
             @track-selected="selectedTrackWrap"
             @added-recording-label="addedRecordingLabel"
+            @delete-recording="deleteRecording"
           />
           <div
             class="recording-info-mobile p-3 flex-grow-1"
@@ -1651,6 +1655,7 @@ const inlineModal = ref<boolean>(false);
         @track-deselected="deselectedTrack"
         @track-tag-changed="trackTagChanged"
         @track-removed="trackRemoved"
+        @delete-recording="deleteRecording"
         :current-track="currentTrack"
       />
     </div>
@@ -1732,6 +1737,7 @@ const inlineModal = ref<boolean>(false);
             @track-removed="trackRemoved"
             @added-recording-label="addedRecordingLabel"
             @removed-recording-label="removedRecordingLabel"
+            @delete-recording="deleteRecording"
           />
           <recording-view-tracks
             v-if="isMobileView && recording"
@@ -1741,6 +1747,7 @@ const inlineModal = ref<boolean>(false);
             @track-removed="trackRemoved"
             @track-selected="selectedTrackWrap"
             @added-recording-label="addedRecordingLabel"
+            @delete-recording="deleteRecording"
           />
           <div class="recording-info-mobile p-3" v-if="isMobileView">
             <div

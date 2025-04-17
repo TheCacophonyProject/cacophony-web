@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-//import { type Spectastiq } from "spectastiq";
-import { type Spectastiq } from "./spectastiq";
+import { type Spectastiq } from "spectastiq";
+//import { type Spectastiq } from "./spectastiq";
 import {
   computed,
   type ComputedRef,
@@ -13,7 +13,7 @@ import {
   watch,
   type WatchStopHandle,
 } from "vue";
-import { createUserDefinedTrack, replaceTrackTag } from "@api/Recording.ts";
+import {createUserDefinedTrack, replaceTrackTag, updateResizedTrack} from "@api/Recording.ts";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { TagColours } from "@/consts.ts";
 import type { RecordingId, TrackId, UserId } from "@typedefs/api/common";
@@ -37,7 +37,7 @@ import {
 } from "@models/LoggedInUser.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
-import { getClassificationForLabel } from "@api/Classifications.ts";
+import {displayLabelForClassificationLabel, getClassificationForLabel} from "@api/Classifications.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { LoadedResource } from "@api/types.ts";
 import { API_ROOT } from "@api/root.ts";
@@ -74,6 +74,7 @@ const emit = defineEmits<{
     }
   ): void;
   (e: "track-removed", payload: { trackId: TrackId }): void;
+  (e: "delete-recording"): void;
 }>();
 
 const loadRecording = async () => {
@@ -226,8 +227,9 @@ watch(
     if (spectastiqEl.value) {
       if (!nextTrack && prevTrack) {
         // Deselected track
-        await spectastiqEl.value.pause();
+        spectastiqEl.value.pause();
         spectastiqEl.value.removePlaybackFrequencyBandPass();
+        spectastiqEl.value.setGain(1);
         await spectastiqEl.value.selectRegionOfInterest(0, 1, 0, 1);
       }
     }
@@ -258,13 +260,16 @@ const selectTrackRegionAndPlay = async (
           minFreqZeroOne,
           maxFreqZeroOne,
         );
+
+        const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+        spectastiqEl.value.setGain(newGain);
       }
       currentTime.value = trackStartZeroOne;
       spectastiqEl.value.setPlaybackFrequencyBandPass(
         minFreqZeroOne * audioSampleRate.value,
         maxFreqZeroOne * audioSampleRate.value,
       );
-      await spectastiqEl.value.play(trackStartZeroOne);
+      await spectastiqEl.value.play(trackStartZeroOne, trackEndZeroOne);
     }
   }
 };
@@ -272,7 +277,6 @@ const selectTrackRegionAndPlay = async (
 watch(() => props.recordingId, loadRecording);
 
 const overlayCanvasContext = ref<CanvasRenderingContext2D>();
-const inCustomInteraction = false;
 let selectedTrackFeature: string | null = null;
 let hoveredTrackFeature: string | null = null;
 let grabOffsetX = 0;
@@ -579,9 +583,6 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
       } as any);
       // FIXME: Delete pendingTrack once created.
       await selectTrackRegionAndPlay(pendingTrack.value as any, false);
-
-      // FIXME: When is the proper time to exit the mode?
-      inRegionCreationMode.value = false;
       spectastiq.exitCustomInteractionMode();
       if (spectastiqEl.value) {
         spectastiqEl.value.style.cursor = "auto";
@@ -589,29 +590,7 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
     }
   });
   spectastiq.addEventListener("move", (e) => {
-    if (inRegionResizeMode.value) {
-      pointerPositionX = e.detail.offsetX;
-      pointerPositionY = e.detail.offsetY;
-      const container = spectastiqEl.value;
-      if (container) {
-        hoveredTrackFeature = hitTestRegionFeatures();
-        if (hoveredTrackFeature !== null) {
-          if (hoveredTrackFeature === "whole-track") {
-            container.style.cursor = "move";
-          } else if (hoveredTrackFeature === "top-left") {
-            container.style.cursor = "nw-resize";
-          } else if (hoveredTrackFeature === "top-right") {
-            container.style.cursor = "ne-resize";
-          } else if (hoveredTrackFeature === "bottom-left") {
-            container.style.cursor = "sw-resize";
-          } else if (hoveredTrackFeature === "bottom-right") {
-            container.style.cursor = "se-resize";
-          }
-        } else {
-          container.style.cursor = "auto";
-        }
-      }
-    }
+
   });
   spectastiq.addEventListener(
     "select",
@@ -693,6 +672,36 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
         container.classList.remove("cursor-pointer");
       }
     }
+
+    if (inRegionResizeMode.value) {
+      pointerPositionX = e.detail.offsetX;
+      pointerPositionY = e.detail.offsetY;
+      const container = spectastiqEl.value;
+      if (container) {
+        const prevFeature = hoveredTrackFeature;
+        hoveredTrackFeature = hitTestRegionFeatures();
+        if (hoveredTrackFeature !== null) {
+          if (hoveredTrackFeature === "whole-track") {
+            container.style.cursor = "move";
+          } else if (hoveredTrackFeature === "top-left") {
+            container.style.cursor = "nw-resize";
+          } else if (hoveredTrackFeature === "top-right") {
+            container.style.cursor = "ne-resize";
+          } else if (hoveredTrackFeature === "bottom-left") {
+            container.style.cursor = "sw-resize";
+          } else if (hoveredTrackFeature === "bottom-right") {
+            container.style.cursor = "se-resize";
+          }
+        } else {
+          container.style.cursor = "auto";
+        }
+        if (hoveredTrackFeature !== prevFeature) {
+          if (overlayCanvasContext.value) {
+            renderOverlay(overlayCanvasContext.value);
+          }
+        }
+      }
+    }
   });
 };
 
@@ -748,9 +757,10 @@ const drawRectWithText = (
   const r = parseInt(color.slice(1, 3), 16);
   const g = parseInt(color.slice(3, 5), 16);
   const b = parseInt(color.slice(5), 16);
-  context.strokeStyle = `rgba(${r}, ${g}, ${b}, ${
+  const strokeStyle = `rgba(${r}, ${g}, ${b}, ${
     selected ? 1.0 : hasSelected ? 0.5 : 1.0
   })`;
+  context.strokeStyle = strokeStyle;
   context.lineWidth = lineWidth;
   context.beginPath();
   context.strokeRect(x, y, width, height);
@@ -760,7 +770,7 @@ const drawRectWithText = (
     (left < context.canvas.width || right < context.canvas.width)
   ) {
     if (what !== null) {
-      const text = what;
+      const text = displayLabelForClassificationLabel(what, false, true);
       const textHeight = 9 * deviceRatio;
       const marginX = 3 * deviceRatio;
       const marginTop = 3 * deviceRatio;
@@ -812,8 +822,9 @@ const drawRectWithText = (
           y = bottom;
         }
         context.save();
+        const hovered = hoveredTrackFeature === handle;
         {
-          const handleSize = 10 * deviceRatio;
+          const handleSize = (hovered ? 15: 10) * deviceRatio;
           context.fillStyle = "black";
           context.beginPath();
           context.arc(x, y, handleSize / 2, 0, 2 * Math.PI);
@@ -822,8 +833,8 @@ const drawRectWithText = (
         context.restore();
         context.save();
         {
-          const handleSize = 9 * deviceRatio;
-          context.fillStyle = "white";
+          const handleSize = (hovered ? 14 : 9) * deviceRatio;
+          context.fillStyle = handle === hoveredTrackFeature ? "white" : strokeStyle;
           context.beginPath();
           context.arc(x, y, handleSize / 2, 0, 2 * Math.PI);
           context.fill();
@@ -977,23 +988,20 @@ onMounted(() => {
       "playhead-update",
       ({ detail: { timeInSeconds } }) => {
         currentTime.value = timeInSeconds;
-        if (spectastiqEl.value && audioIsPlaying.value) {
-          if (currentTrack.value && timeInSeconds >= currentTrack.value.end) {
-            // Pause at the end of the selected track
-            spectastiqEl.value.pause(
-              currentTrack.value.end / audioDuration.value,
-            );
-          } else if (
-            pendingTrack.value &&
-            timeInSeconds >= pendingTrack.value.end
-          ) {
-            spectastiqEl.value.pause(
-              pendingTrack.value.end / audioDuration.value,
-            );
-          }
-        }
       },
     );
+    spectastiq.addEventListener("double-click", async ({ detail: { audioOffsetZeroOne }}) => {
+      if (currentTrack.value) {
+        const currentTrackEndZeroOne = currentTrack.value.end / audioDuration.value;
+        if (currentTrackEndZeroOne > audioOffsetZeroOne) {
+          await spectastiq.play(audioOffsetZeroOne, currentTrackEndZeroOne);
+        } else {
+          await spectastiq.play(audioOffsetZeroOne);
+        }
+      } else {
+        await spectastiq.play(audioOffsetZeroOne);
+      }
+    });
   }
 });
 
@@ -1008,10 +1016,16 @@ const cancelTrackResizeOperation = () => {
   exitResizeMode();
 };
 
-const confirmTrackResizeOperation = () => {
-  // TODO
+const updateInProgress = ref<boolean>(false);
 
+const confirmTrackResizeOperation = async () => {
+  updateInProgress.value = true;
+  if (currentTrack.value) {
+    const {id, start, end, minFreq, maxFreq} = currentTrack.value;
+    await updateResizedTrack(props.recordingId, id, start, end, minFreq, maxFreq);
+  }
   exitResizeMode();
+  updateInProgress.value = false;
 };
 
 const currentTrack = computed<null | IntermediateTrack>(() => {
@@ -1019,10 +1033,6 @@ const currentTrack = computed<null | IntermediateTrack>(() => {
     const track = props.currentTrack;
     return tracksIntermediate.value.find((t) => t.id === track.id) || null;
   }
-  // FIXME: Handle pending track
-  // if (pendingTrack.value) {
-  //   return pendingTrack.value;
-  // }
   return null;
 });
 
@@ -1036,25 +1046,14 @@ const togglePlayback = async () => {
     ) {
       await spectastiqEl.value.play(
         props.currentTrack.start / audioDuration.value,
+        props.currentTrack.end / audioDuration.value,
       );
     } else {
       if (audioIsPlaying.value) {
-        await spectastiqEl.value.pause();
+        spectastiqEl.value.pause();
       } else {
         await spectastiqEl.value.play();
       }
-    }
-  }
-};
-
-const showAdvancedControls = ref<boolean>(false);
-const volume = ref<number>(0.5);
-const volumeMuted = ref<boolean>(false);
-const changeVolume = (e: InputEvent) => {
-  if (e.target) {
-    if (spectastiqEl.value) {
-      const newVolume = parseFloat((e.target as HTMLInputElement).value);
-      volume.value = spectastiqEl.value.setGain(newVolume * 2) / 2;
     }
   }
 };
@@ -1083,7 +1082,7 @@ const cancelledCustomRegionCreation = async () => {
     pendingTrackClass.value = [];
     pendingTrack.value = null;
     if (spectastiqEl.value) {
-      await spectastiqEl.value.pause();
+      spectastiqEl.value.pause();
       spectastiqEl.value.removePlaybackFrequencyBandPass();
     }
   }, 300);
@@ -1109,42 +1108,56 @@ watch(pendingTrackClass, async (classification: string[]) => {
     pendingTrack.value.tags[0].createdAt = new Date().toISOString();
     pendingTrack.value.tags[0].userId = currentUser.value?.id;
     pendingTrack.value.tags[0].userName = currentUser.value?.userName;
-    emit("track-tag-changed", {
-      track: pendingTrack.value as ApiTrackResponse,
-      tag: classification[0] || "",
-      action: "add",
-      userId: currentUser.value?.id,
-    });
 
-    const payload = {
-      start_s: pendingTrack.value.start,
-      end_s: pendingTrack.value.end,
-      minFreq: pendingTrack.value.minFreq,
-      maxFreq: pendingTrack.value.maxFreq,
-      automatic: false,
-    };
-
-    const response = await createUserDefinedTrack(props.recording, payload);
-    if (response.success) {
-      emit("track-selected", {
-        trackId: response.result.trackId,
-        automatically: false,
-      });
-
+    let willDeleteRecording = false;
+    if (classification[0] === "human" && currentProject.value && currentProject.value.settings?.filterHuman) {
+      willDeleteRecording = confirm("Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?");
+      if (willDeleteRecording) {
+        emit("delete-recording");
+      }
+    }
+    if (!willDeleteRecording) {
       emit("track-tag-changed", {
-        track: pendingTrack.value,
-        tag: classification[0],
+        track: pendingTrack.value as ApiTrackResponse,
+        tag: classification[0] || "",
         action: "add",
-        newId: response.result.trackId,
         userId: currentUser.value?.id,
       });
-      await replaceTrackTag(
-        tagToReplace,
-        props.recording.id,
-        response.result.trackId,
-      );
+
+      const payload = {
+        start_s: pendingTrack.value.start,
+        end_s: pendingTrack.value.end,
+        minFreq: pendingTrack.value.minFreq,
+        maxFreq: pendingTrack.value.maxFreq,
+        automatic: false,
+      };
+
+      const response = await createUserDefinedTrack(props.recording, payload);
+      if (response.success) {
+        emit("track-selected", {
+          trackId: response.result.trackId,
+          automatically: false,
+        });
+
+        emit("track-tag-changed", {
+          track: pendingTrack.value,
+          tag: classification[0],
+          action: "add",
+          newId: response.result.trackId,
+          userId: currentUser.value?.id,
+        });
+
+        await replaceTrackTag(
+            tagToReplace,
+            props.recording.id,
+            response.result.trackId,
+        );
+        pendingTrackClass.value = [];
+        pendingTrack.value = null;
+        inRegionCreationMode.value = false;
+      }
+      // Then select newly created tag
     }
-    // Then select newly created tag
   }
 });
 
@@ -1181,16 +1194,6 @@ const toggleRegionCreationMode = () => {
 const isDarkTheme = computed<boolean>(() => {
   return currentPalette.value !== "Grayscale";
 });
-const toggleVolumeMuted = () => {
-  if (spectastiqEl.value) {
-    volumeMuted.value = !volumeMuted.value;
-    if (volumeMuted.value) {
-      spectastiqEl.value.setGain(0);
-    } else {
-      spectastiqEl.value.setGain(volume.value * 2);
-    }
-  }
-};
 
 const recordingDateTime = computed<DateTime | null>(() => {
   if (props.recording) {
@@ -1470,6 +1473,7 @@ const hasSelectedTrack = computed<boolean>(() => {
       :color-scheme="currentPalette"
       :height="height"
       frequency-scale
+      delegate-double-click
     >
       <div
         slot="player-controls"
@@ -1484,38 +1488,18 @@ const hasSelectedTrack = computed<boolean>(() => {
             <font-awesome-icon v-if="!audioIsPlaying" icon="play" />
             <font-awesome-icon v-else icon="pause" />
           </button>
-          <div class="d-flex volume-selection">
-            <button @click="toggleVolumeMuted">
-              <font-awesome-icon v-if="volumeMuted" icon="volume-mute" />
-              <font-awesome-icon v-else icon="volume-up" />
-            </button>
-            <input
-              :disabled="volumeMuted"
-              id="volume-slider"
-              class="volume-slider"
-              type="range"
-              min="0"
-              max="4"
-              step="0.01"
-              :value="volume"
-              @input="changeVolume"
-            />
-          </div>
-          <div class="vertical-divider ms-2"></div>
+          <div class="vertical-divider"></div>
           <div class="ps-3 align-items-end">
             {{ formatTime(currentTime) }} / {{ formatTime(audioDuration) }}
           </div>
         </div>
-
         <div class="d-flex align-items-center">
-          <!--          <div class="me-1 pe-3 abs-time align-items-end">-->
-          <!--            {{ currentAbsoluteTime }}-->
-          <!--          </div>-->
           <div v-if="!inRegionResizeMode" class="d-flex align-items-center">
             <div class="pe-3 align-items-end">
               <button
                 @click.prevent="toggleRegionCreationMode"
                 ref="regionCreationMode"
+                :disabled="pendingTrack !== null"
                 data-tooltip="Create new region"
               >
                 <font-awesome-icon
@@ -1529,7 +1513,7 @@ const hasSelectedTrack = computed<boolean>(() => {
                 class="ms-2"
                 @click.prevent="resizeCurrentlySelectedTrack"
                 ref="trackResizeMode"
-                :disabled="!hasSelectedTrack"
+                :disabled="!hasSelectedTrack || inRegionCreationMode"
                 data-tooltip="Resize track"
               >
                 <font-awesome-icon icon="expand" />
@@ -1543,7 +1527,7 @@ const hasSelectedTrack = computed<boolean>(() => {
                 class="ms-2"
                 @click.prevent="confirmTrackResizeOperation"
                 ref="trackResizeModeSave"
-                :disabled="!hasSelectedTrack"
+                :disabled="!hasSelectedTrack || updateInProgress"
                 data-tooltip="Save track changes"
               >
                 <font-awesome-icon icon="check" />
@@ -1555,7 +1539,7 @@ const hasSelectedTrack = computed<boolean>(() => {
                 class="ms-2"
                 @click.prevent="cancelTrackResizeOperation"
                 ref="trackResizeModeCancel"
-                :disabled="!hasSelectedTrack"
+                :disabled="!hasSelectedTrack || updateInProgress"
                 data-tooltip="Cancel track resizing"
               >
                 <font-awesome-icon icon="xmark" />

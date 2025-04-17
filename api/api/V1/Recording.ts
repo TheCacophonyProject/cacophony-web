@@ -2091,6 +2091,12 @@ export default (app: Application, baseUrl: string) => {
           const track: Track = response.locals.track;
           const updatedData = { ...track.data, ...request.body.data };
           await saveTrackData(track.id, updatedData);
+          await track.update({
+            minFreqHz: updatedData.minFreq || null,
+            maxFreqHz: updatedData.maxFreq || null,
+            startSeconds: updatedData.start_s || null,
+            endSeconds: updatedData.end_s || null,
+          });
           return successResponse(response, "Track data updated.");
         } catch (e) {
           return next(

@@ -3,6 +3,7 @@ import globals from "globals";
 import jsLint from "@eslint/js";
 import tsLint from "typescript-eslint";
 import vueLint from "eslint-plugin-vue";
+import stylistic from "@stylistic/eslint-plugin";
 import { includeIgnoreFile } from "@eslint/compat";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +40,7 @@ export default [
   ...tsLint.configs.recommended,
   ...vueLint.configs["flat/essential"],
   {
+    plugins: { "@stylistic": stylistic },
     rules: {
       "no-prototype-builtins": "off",
       "linebreak-style": ["warn", "unix"],
@@ -57,6 +59,19 @@ export default [
       "vue/no-setup-props-destructure": ["off"],
       "vue/no-deprecated-slot-attribute": ["off"],
       "@typescript-eslint/no-unused-expressions": ["off"],
+      "@stylistic/member-delimiter-style": [
+        "warn",
+        {
+          multiline: {
+            delimiter: "semi",
+            requireLast: true,
+          },
+          singleline: {
+            delimiter: "semi",
+            requireLast: false,
+          },
+        },
+      ],
       "@typescript-eslint/no-unused-vars": [
         "off",
         {

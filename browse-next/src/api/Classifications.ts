@@ -15,7 +15,7 @@ export const classifications = ref<Classification | null>(null);
 const flattenNodes = (
   acc: Record<
     string,
-    { label: string; display: string; path: string; node: Classification }
+    { label: string; display: string; path: string; node: Classification; displayAudio: string }
   >,
   node: Classification,
 ) => {
@@ -27,6 +27,7 @@ const flattenNodes = (
     acc[child.label] = {
       label: child.label,
       display: child.display || child.label,
+      displayAudio: child.displayAudio || child.display || child.label,
       node: child,
       path,
     };
@@ -44,7 +45,7 @@ const flattenNodes = (
 export const flatClassifications = computed<
   Record<
     string,
-    { label: string; display: string; path: string; node: Classification }
+    { label: string; display: string; displayAudio: string; path: string; node: Classification }
   >
 >(() => {
   if (classifications.value) {
@@ -143,10 +144,7 @@ export const displayLabelForClassificationLabel = (
     return "Unidentified";
   }
   const classifications = flatClassifications.value || {};
-  if ((label === "human" || label === "person") && !isAudioContext) {
-    return "human";
-  }
-  return (classifications[label] && classifications[label].display) || label;
+  return (classifications[label] && (isAudioContext ? classifications[label].displayAudio || classifications[label].display : classifications[label].display)) || label;
 };
 
 export const getPathForLabel = (label: string): string => {

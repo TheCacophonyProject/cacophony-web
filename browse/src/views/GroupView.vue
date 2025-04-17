@@ -25,11 +25,11 @@
         </p>
         <p class="text-secondary" v-if="filterHuman">
           Filtering Audio Recordings of Human Speech.
-          <Help>Contant your group admin to change this setting.</Help>
+          <Help>Contact your group admin to change this setting.</Help>
         </p>
         <p class="text-secondary" v-else>
           Not Filtering Audio Recordings of Human Speech.
-          <Help>Contant your group admin to change this setting.</Help>
+          <Help>Contact your group admin to change this setting.</Help>
         </p>
       </div>
     </b-jumbotron>

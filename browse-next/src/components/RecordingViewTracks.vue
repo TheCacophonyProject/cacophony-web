@@ -89,6 +89,7 @@ const emit = defineEmits<{
   ): void;
   (e: "track-removed", track: { trackId: TrackId }): void;
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
+  (e: "delete-recording"): void;
 }>();
 
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
@@ -159,7 +160,6 @@ const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
       id: track.id,
       end: track.end,
       start: track.start,
-      automatic: track.automatic,
       tags: JSON.parse(JSON.stringify(track.tags)),
       filtered: track.filtered,
     }));
@@ -249,6 +249,13 @@ const removedTrack = async ({ trackId }: { trackId: TrackId }) => {
 
 const updatingTags = ref<boolean>(false);
 
+const groupSettingsRedactHumanSpeech = computed<boolean>(() => {
+  if (currentProject.value) {
+    return currentProject.value.settings?.filterHuman || false;
+  }
+  return false;
+});
+
 const mapTrack = (track: ApiTrackResponse): ApiTrackDataRequest => {
   const mappedTrack: ApiTrackDataRequest = {
     end_s: track.end,
@@ -272,6 +279,7 @@ const addOrRemoveUserTag = async ({
       (track) => track.id === trackId,
     );
     let trackWasCreated = false;
+    let willDeleteRecording = false;
     if (track) {
       if (track.id === -1) {
         // This is a dummy track and needs to be created via the API before we can actually tag it.
@@ -378,26 +386,37 @@ const addOrRemoveUserTag = async ({
           createdAt: new Date().toISOString(),
         };
         track.tags.push(interimTag);
-        const newTagResponse = await replaceTrackTag(
-          {
-            what: tag,
-            confidence: 0.85,
-          },
-          props.recording.id,
-          trackId,
-        );
-        if (newTagResponse.success && newTagResponse.result.trackTagId) {
-          interimTag.id = newTagResponse.result.trackTagId;
-          if (!tagAlreadyExists) {
-            emit("track-tag-changed", { track, tag, action: "add" });
-          }
+
+
+        if (tag === "human" && recordingType.value === RecordingType.Audio && groupSettingsRedactHumanSpeech.value) {
+          // Offer to delete the recording, using built in confirmation because it's blocking and easy for this edge case.
+          willDeleteRecording = confirm("Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?");
+        }
+        if (willDeleteRecording) {
+          // Do delete
+          emit("delete-recording");
         } else {
-          // Remove the interim tag
-          track.tags.pop();
+          const newTagResponse = await replaceTrackTag(
+              {
+                what: tag,
+                confidence: 0.85,
+              },
+              props.recording.id,
+              trackId,
+          );
+          if (newTagResponse.success && newTagResponse.result.trackTagId) {
+            interimTag.id = newTagResponse.result.trackTagId;
+            if (!tagAlreadyExists) {
+              emit("track-tag-changed", {track, tag, action: "add"});
+            }
+          } else {
+            // Remove the interim tag
+            track.tags.pop();
+          }
         }
       }
     }
-    if (trackWasCreated) {
+    if (trackWasCreated && !willDeleteRecording) {
       emit("track-selected", { trackId, automatically: false });
     }
     updatingTags.value = false;

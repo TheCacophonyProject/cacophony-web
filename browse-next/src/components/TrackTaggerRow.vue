@@ -93,7 +93,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
         GenericCardTableValue<string | ApiTrackTagResponse> | string
       > = {
         tag: capitalize(
-          displayLabelForClassificationLabel(tag.what, tag.automatic),
+          displayLabelForClassificationLabel(tag.what, tag.automatic, props.isAudioRecording),
         ),
         tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(
           " ",
@@ -200,7 +200,7 @@ const consensusUserTag = computed<string | null>(() => {
     return null;
   }
   return (
-    displayLabelForClassificationLabel(uniqueUserTags.value[0] || "") || null
+    displayLabelForClassificationLabel(uniqueUserTags.value[0] || "", false, props.isAudioRecording) || null
   );
 });
 
@@ -389,13 +389,13 @@ const userDefinedTagLabels = computed<string[]>(() =>
   Object.keys(userDefinedTags.value),
 );
 
-const availableTags = computed<{ label: string; display: string }[]>(() => {
+const availableTags = computed<{ label: string; display: string; displayAudio: string }[]>(() => {
   // TODO: These should be different for audio and camera
 
   // TODO: These can be changed at a group preferences level by group admins,
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
-  const tags: Record<string, { label: string; display: string }> = {};
+  const tags: Record<string, { label: string; display: string; displayAudio: string }> = {};
   const allTags = [
     ...defaultTags.value,
     ...userDefinedTagLabels.value,
@@ -412,11 +412,9 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
       flatClassifications.value[tag] || {
         label: tag,
         display: `${tag}_not_found`,
+        displayAudio: `${tag}_not_found`,
       },
   )) {
-    if (tag.label === "human") {
-      tag.display = "human";
-    }
     tags[tag.label] = tag;
   }
   return Object.values(tags);
@@ -555,7 +553,7 @@ onMounted(async () => {
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="masterTag"
-          >{{ displayLabelForClassificationLabel(masterTag.what) }}</span
+          >{{ displayLabelForClassificationLabel(masterTag.what, true, isAudioRecording) }}</span
         >
       </div>
       <span v-else-if="hasUserTag" class="d-flex flex-column">
@@ -565,7 +563,7 @@ onMounted(async () => {
           v-if="
             consensusUserTag &&
             masterTag &&
-            displayLabelForClassificationLabel(masterTag.what) ===
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording) ===
               consensusUserTag
           "
           >{{ consensusUserTag }}
@@ -576,12 +574,12 @@ onMounted(async () => {
           v-else-if="
             consensusUserTag &&
             masterTag &&
-            displayLabelForClassificationLabel(masterTag.what) !==
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording) !==
               consensusUserTag
           "
           >{{ consensusUserTag }}
           <span class="strikethrough">{{
-            displayLabelForClassificationLabel(masterTag.what)
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording)
           }}</span></span
         >
         <!-- Controversial tag, should be automatically flagged for review. -->
@@ -594,11 +592,11 @@ onMounted(async () => {
           "
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag))
+              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
               .join(", ")
           }}
           <span class="strikethrough conflicting-tags">{{
-            displayLabelForClassificationLabel(masterTag.what)
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording)
           }}</span></span
         >
         <span
@@ -606,7 +604,7 @@ onMounted(async () => {
           v-else-if="!consensusUserTag && masterTag"
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag))
+              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
               .join(", ")
           }}</span
         >
@@ -616,7 +614,7 @@ onMounted(async () => {
           v-else-if="consensusUserTag && !hasAiTag"
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag))
+              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
               .join(", ")
           }}</span
         >
@@ -762,7 +760,8 @@ onMounted(async () => {
           height="24"
           :class="{ selected: thisUserTag && tag.label === thisUserTag.what }"
         />
-        <span>{{ tag.display }}</span>
+        <span v-if="isAudioRecording">{{ tag.displayAudio }}</span>
+        <span v-else>{{ tag.display }}</span>
       </button>
       <button
         type="button"

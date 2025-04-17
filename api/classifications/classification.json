@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "fdfe5a24-89fc-42ff-ac36-d8b799f5a5ea",
+  "version": "fdfe5a24-89fc-4200-ac36-d8b799f5a5ea",
   "children": [
     {
       "label": "mammal",
@@ -38,7 +38,8 @@
         {
           "label": "human",
           "aliases": ["person"],
-          "display": "human/human speech"
+          "display": "human",
+          "displayAudio": "human speech"
         },
         {
           "label": "kangaroo",
