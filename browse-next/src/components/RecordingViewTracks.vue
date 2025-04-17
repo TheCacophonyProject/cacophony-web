@@ -81,11 +81,11 @@ const currentTrack = ref<ApiTrackResponse | null>(null);
 const emit = defineEmits<{
   (
     e: "track-tag-changed",
-    payload: { track: ApiTrackResponse; tag: string; action: "add" | "remove" }
+    payload: { track: ApiTrackResponse; tag: string; action: "add" | "remove" },
   ): void;
   (
     e: "track-selected",
-    track: { trackId: TrackId; automatically: boolean }
+    track: { trackId: TrackId; automatically: boolean },
   ): void;
   (e: "track-removed", track: { trackId: TrackId }): void;
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;

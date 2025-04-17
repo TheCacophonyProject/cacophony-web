@@ -361,7 +361,7 @@ const beginUploadJob = async () => {
         }
       }
       const resolver = messageQueue[threadIndex][type] as (
-        data: unknown
+        data: unknown,
       ) => void;
       delete messageQueue[threadIndex][type];
       messageQueue[threadIndex].busy = false;

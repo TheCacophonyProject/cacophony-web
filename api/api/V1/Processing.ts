@@ -13,6 +13,7 @@ import {
 import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
+import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" assert { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { AuthorizationError, ClientError } from "../customErrors.js";
@@ -79,6 +80,7 @@ export default function (app: Application, baseUrl: string) {
           query("state").isIn([
             RecordingProcessingState.Reprocess,
             RecordingProcessingState.AnalyseThermal,
+            RecordingProcessingState.TrackAndAnalyse,
             RecordingProcessingState.Tracking,
             RecordingProcessingState.ReTrack,
           ]),
@@ -570,6 +572,37 @@ export default function (app: Application, baseUrl: string) {
     async (_request: Request, response) => {
       await response.locals.track.update({ archivedAt: Date.now() });
       return successResponse(response, "Track archived");
+    },
+  );
+
+  /**
+   * @api {post} /api/fileProcessing/:id/tracks/:trackId/thumbnailInfo Update thumbnail info for a track, this will not regenerate the thumbnail (this will be done post processing)
+   * @apiName UpdateTrackThumbnail
+   * @apiGroup Processing
+   *
+   * @apiParam {JSON} data Data which defines the thumbnail info.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiuse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/thumbnailInfo`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("data").custom(jsonSchemaOf(ApiThumbnailInfo)),
+    ]),
+    fetchUnauthorizedRequiredFlatRecordingById(param("id")),
+    fetchUnauthorizedRequiredTrackById(param("trackId")),
+    parseJSONField(body("data")),
+    async (_request: Request, response) => {
+      const { data, filtered, AlgorithmId } = response.locals.track;
+      const existingData = await getTrackData(response.locals.track.id);
+      existingData.thumbnail = response.locals.data;
+      await saveTrackData(response.locals.track.id, existingData);
+      return successResponse(response, "Track updated");
     },
   );
 

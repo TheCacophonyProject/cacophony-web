@@ -312,10 +312,10 @@ const permissionsOptions = computed(() => [
             userIsCurrentUser(card._deleteAction.value)
               ? 'Leave group'
               : card._deleteAction.value.pending === 'requested'
-              ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join project`
-              : card._deleteAction.value.pending === 'invited'
-              ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
-              : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
+                ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join project`
+                : card._deleteAction.value.pending === 'invited'
+                  ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
+                  : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
           "
           alignment="right"
         />
@@ -395,10 +395,10 @@ const permissionsOptions = computed(() => [
           userIsCurrentUser(cell.value)
             ? 'Leave group'
             : cell.value.pending === 'requested'
-            ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join project`
-            : cell.value.pending === 'invited'
-            ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
-            : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
+              ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join project`
+              : cell.value.pending === 'invited'
+                ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
+                : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
         "
         alignment="right"
       />

@@ -43,6 +43,7 @@ import { isLatLon } from "@models/util/validation.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import logger from "@log";
+import type { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -738,13 +739,13 @@ export const uploadGenericRecording =
       }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
+      // or with supplied tracks to support existing devices
+      const metadataSupplied =
+        (data.metadata && data.metadata.metadata_source) ||
+        wouldHaveSuppliedTracks;
       const wouldHaveSuppliedTracksWithPredictions =
         dataHasSuppliedTracksWithPredictions(data);
-      setInitialProcessingState(
-        recordingTemplate,
-        data,
-        wouldHaveSuppliedTracks,
-      );
+      setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
       const [recording, _station] = await Promise.all([
         recordingTemplate.save(),
@@ -760,6 +761,14 @@ export const uploadGenericRecording =
           recordingGroup,
         ),
       ]);
+
+      if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
+        recording.additionalMetadata = {
+          ...recording.additionalMetadata,
+          metadataSource: data.metadata.metadata_source,
+        };
+        await recording.save();
+      }
 
       if (wouldHaveSuppliedTracks) {
         // Now that we have a recording saved to the DB, we can creat./e any associated track items
@@ -818,7 +827,7 @@ const recordingUploadedState = (type: RecordingType) => {
   if (type === RecordingType.Audio) {
     return RecordingProcessingState.Analyse;
   } else if (type === RecordingType.ThermalRaw) {
-    return RecordingProcessingState.Tracking;
+    return RecordingProcessingState.TrackAndAnalyse;
   } else if (type === RecordingType.InfraredVideo) {
     return RecordingProcessingState.Tracking;
   } else if (type == RecordingType.TrailCamImage) {
@@ -845,7 +854,7 @@ const dataHasSuppliedTracksWithPredictions = (data: { metadata?: any }) => {
 const setInitialProcessingState = (
   recordingTemplate: Recording,
   data: { processingState?: RecordingProcessingState; type: RecordingType },
-  hasSuppliedTracks: boolean,
+  hasSuppliedMetadata: boolean,
 ) => {
   if (data.processingState) {
     // NOTE: If the processingState field is present when a recording is uploaded, this means that the recording
@@ -859,14 +868,11 @@ const setInitialProcessingState = (
       recordingTemplate.processingState !== RecordingProcessingState.Corrupt
     ) {
       if (
-        hasSuppliedTracks &&
+        hasSuppliedMetadata &&
         (recordingTemplate.type === RecordingType.ThermalRaw ||
           recordingTemplate.type === RecordingType.InfraredVideo)
       ) {
-        // NOTE: If there are supplied tracks, we have already done tracking on the device, so do post processing if required.
-        // FIXME: Once we have re-processing working correctly
-        //  recordingTemplate.processingState = RecordingProcessingState.ReTrack;
-        recordingTemplate.processingState = RecordingProcessingState.Finished;
+        recordingTemplate.processingState = RecordingProcessingState.Analyse;
       } else {
         recordingTemplate.processingState = recordingUploadedState(data.type);
       }

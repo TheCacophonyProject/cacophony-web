@@ -60,7 +60,7 @@ const maxFrequency = 48000 / 2;
 const emit = defineEmits<{
   (
     e: "track-selected",
-    payload: { trackId: TrackId; automatically: boolean }
+    payload: { trackId: TrackId; automatically: boolean },
   ): void;
   (e: "track-deselected"): void;
   (
@@ -71,7 +71,7 @@ const emit = defineEmits<{
       newId?: TrackId;
       userId?: UserId;
       action: "add" | "remove";
-    }
+    },
   ): void;
   (e: "track-removed", payload: { trackId: TrackId }): void;
   (e: "delete-recording"): void;

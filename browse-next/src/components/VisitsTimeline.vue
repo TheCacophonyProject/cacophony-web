@@ -189,12 +189,12 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
             left: `${getLeft(
               minTime,
               new Date(visit.timeStart).getTime(),
-              maxTime
+              maxTime,
             )}%`,
             right: `${getRight(
               minTime,
               new Date(visit.timeEnd).getTime(),
-              maxTime
+              maxTime,
             )}%`,
           }"
           :class="[
@@ -236,7 +236,7 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
           right: `${getRight(
             minTime,
             dates[Math.min(1, dates.length - 1)].toMillis(),
-            maxTime
+            maxTime,
           )}%`,
         }"
       ></div>

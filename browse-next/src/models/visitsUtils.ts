@@ -51,11 +51,14 @@ const tagPrecedence = [
 export const visitsByLocation = (
   visits: ApiVisitResponse[],
 ): Record<number, ApiVisitResponse[]> =>
-  visits.reduce((acc, visit) => {
-    acc[visit.stationId] = acc[visit.stationId] || [];
-    acc[visit.stationId].push(visit);
-    return acc;
-  }, {} as Record<number, ApiVisitResponse[]>);
+  visits.reduce(
+    (acc, visit) => {
+      acc[visit.stationId] = acc[visit.stationId] || [];
+      acc[visit.stationId].push(visit);
+      return acc;
+    },
+    {} as Record<number, ApiVisitResponse[]>,
+  );
 
 export const sortTagPrecedence = (a: string, b: string): number => {
   const aPriority = tagPrecedence.indexOf(a);

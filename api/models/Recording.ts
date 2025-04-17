@@ -288,7 +288,7 @@ interface TagLimitedRecording {
 export interface RecordingStatic extends ModelStaticCommon<Recording> {
   buildSafely: (fields: Record<string, any>) => Recording;
   isValidTagMode: (mode: TagMode) => boolean;
-  processingAttributes: string[];
+  processingAttributes: (string | [Sequelize.Utils.Json, string])[];
   processingStates: {
     [RecordingType.TrailCamImage]: string[];
     [RecordingType.InfraredVideo]: string[];
@@ -460,7 +460,8 @@ export default function (
           where: where,
           include: includeQ,
           attributes: [
-            ...(models.Recording as RecordingStatic).processingAttributes,
+            ...((models.Recording as RecordingStatic)
+              .processingAttributes as any),
             [
               Sequelize.literal(`exists(
           	select
@@ -549,6 +550,10 @@ export default function (
       nextState = Recording.finishedState(this.type);
     } else if (this.processingState == RecordingProcessingState.ReTrack) {
       nextState = RecordingProcessingState.Analyse;
+    } else if (
+      this.processingState == RecordingProcessingState.TrackAndAnalyse
+    ) {
+      nextState = RecordingProcessingState.Finished;
     } else {
       const job_index = jobs.indexOf(this.processingState);
       if (job_index == -1) {
@@ -1259,6 +1264,7 @@ export default function (
     ],
     thermalRaw: [
       RecordingProcessingState.ReTrack,
+      RecordingProcessingState.TrackAndAnalyse,
       RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,
@@ -1273,15 +1279,11 @@ export default function (
     if (type == RecordingType.Audio || type == RecordingType.TrailCamImage) {
       return RecordingProcessingState.Analyse;
     } else {
-      return RecordingProcessingState.Tracking;
+      return RecordingProcessingState.TrackAndAnalyse;
     }
   };
   Recording.finishedState = function (type: RecordingType) {
-    if (type == RecordingType.Audio) {
-      return RecordingProcessingState.Finished;
-    } else {
-      return RecordingProcessingState.Finished;
-    }
+    return RecordingProcessingState.Finished;
   };
   Recording.processingAttributes = [
     "id",
@@ -1301,6 +1303,7 @@ export default function (
     "location",
     "processing",
     "processingFailedCount",
+    [sequelize.json("additionalMetadata.metadataSource"), "metadataSource"],
   ];
 
   return Recording;

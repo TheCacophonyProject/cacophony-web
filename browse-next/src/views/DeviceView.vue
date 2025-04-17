@@ -151,7 +151,13 @@ const _deviceType = computed<string>(() => {
       <!--        >Events</router-link-->
       <!--      >-->
       <router-link
-        v-if="currentUserIsSuperUser && device?.active && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
+        v-if="
+          currentUserIsSuperUser &&
+          device?.active &&
+          [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes(
+            (device as ApiDeviceResponse).type,
+          )
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-events') },
@@ -163,7 +169,12 @@ const _deviceType = computed<string>(() => {
         >Events</router-link
       >
       <router-link
-        v-if="device?.active && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"
+        v-if="
+          device?.active &&
+          [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes(
+            (device as ApiDeviceResponse).type,
+          )
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-diagnostics') },
@@ -175,7 +186,13 @@ const _deviceType = computed<string>(() => {
         >Diagnostics</router-link
       >
       <router-link
-        v-if="device?.active && [DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
+        v-if="
+          device?.active &&
+          [DeviceType.Hybrid, DeviceType.Thermal].includes(
+            (device as ApiDeviceResponse).type,
+          ) &&
+          (device as ApiDeviceResponse).location
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-setup') },
@@ -187,7 +204,13 @@ const _deviceType = computed<string>(() => {
         >Setup</router-link
       >
       <router-link
-        v-if="device?.active && [DeviceType.Hybrid, DeviceType.Thermal].includes((device as ApiDeviceResponse).type) && (device as ApiDeviceResponse).location"
+        v-if="
+          device?.active &&
+          [DeviceType.Hybrid, DeviceType.Thermal].includes(
+            (device as ApiDeviceResponse).type,
+          ) &&
+          (device as ApiDeviceResponse).location
+        "
         :class="[
           ...navLinkClasses,
           { active: activeTabPath.includes('device-insights') },

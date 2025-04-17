@@ -54,7 +54,10 @@ export const drawSkewedImage = (
 };
 
 class Point {
-  constructor(public x: number = 0, public y: number = 0) {}
+  constructor(
+    public x: number = 0,
+    public y: number = 0,
+  ) {}
 
   length(point: Point = new Point()) {
     let xs = 0;
@@ -68,7 +71,10 @@ class Point {
 }
 
 class TextCoord {
-  constructor(public u: number, public v: number) {}
+  constructor(
+    public u: number,
+    public v: number,
+  ) {}
 }
 
 class Triangle {

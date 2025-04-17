@@ -556,16 +556,20 @@ const isDevicesRoot = computed(() => {
             class="ms-4 align-items-center d-none d-md-flex"
             variant="outline-secondary"
             :to="{
-          name: 'activity',
-          query: {
-            devices: [selectedDevice.id],
-            //locations: [deviceLocation.id],
-            until: ((selectedDeviceLatestRecordingDateTime || new Date()) as Date).toISOString(),
-            from: ((selectedDeviceActiveFrom || cacophonyEpoch) as Date).toISOString(),
-            'display-mode': 'recordings',
-            'recording-mode': deviceRecordingMode
-          },
-        }"
+              name: 'activity',
+              query: {
+                devices: [selectedDevice.id],
+                //locations: [deviceLocation.id],
+                until: (
+                  (selectedDeviceLatestRecordingDateTime || new Date()) as Date
+                ).toISOString(),
+                from: (
+                  (selectedDeviceActiveFrom || cacophonyEpoch) as Date
+                ).toISOString(),
+                'display-mode': 'recordings',
+                'recording-mode': deviceRecordingMode,
+              },
+            }"
             ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
             <font-awesome-icon
               icon="arrow-turn-down"

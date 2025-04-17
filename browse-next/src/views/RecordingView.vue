@@ -1998,7 +1998,7 @@ const inlineModal = ref<boolean>(false);
               <span class="fs-9" v-if="previousVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
-                    previousVisit.classification as string
+                    previousVisit.classification as string,
                   )
                 }}</span
                 >,&nbsp;<span
@@ -2127,7 +2127,7 @@ const inlineModal = ref<boolean>(false);
               <span class="fs-9" v-if="nextVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
-                    nextVisit.classification as string
+                    nextVisit.classification as string,
                   )
                 }}</span
                 >,&nbsp;<span

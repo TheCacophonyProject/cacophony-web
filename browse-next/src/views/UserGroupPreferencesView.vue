@@ -292,8 +292,8 @@ const alertItems = computed<AlertItem[]>(() => {
         cell,
         row,
       }: {
-        row: AlertItem,
-        cell: string | ApiDeviceResponse | ApiLocationResponse,
+        row: AlertItem;
+        cell: string | ApiDeviceResponse | ApiLocationResponse;
       }"
     >
       <div v-if="row.__scope === 'project'">{{ cell }}</div>

@@ -53,11 +53,11 @@ const emit = defineEmits<{
   (e: "selected-track", trackId: TrackId, forceReplay?: boolean): void;
   (
     e: "add-or-remove-user-tag",
-    payload: { trackId: TrackId; tag: string }
+    payload: { trackId: TrackId; tag: string },
   ): void;
   (
     e: "remove-tag",
-    payload: { trackId: TrackId; trackTagId: TrackTagId }
+    payload: { trackId: TrackId; trackTagId: TrackTagId },
   ): void;
   (e: "removed-track", payload: { trackId: TrackId }): void;
 }>();
@@ -903,7 +903,8 @@ onMounted(async () => {
   }
   &.selected-by-other-user {
     background: #eee;
-    box-shadow: inset 0 1px 10px 3px rgba(144, 238, 144, 0.4),
+    box-shadow:
+      inset 0 1px 10px 3px rgba(144, 238, 144, 0.4),
       inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
   }
   &.pinned {

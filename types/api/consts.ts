@@ -29,6 +29,7 @@ export enum TagMode {
 export enum RecordingProcessingState {
   Corrupt = "CORRUPT",
   Tracking = "tracking",
+  TrackAndAnalyse = "trackAndAnalyse",
   ReTrack = "retrack",
   AnalyseThermal = "analyse",
   Finished = "FINISHED",

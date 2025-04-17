@@ -59,7 +59,7 @@ const emit = defineEmits<{
   (e: "hide-rename-hint"): void;
   (
     e: "updated-location-name",
-    payload: { newName: string; id: LocationId }
+    payload: { newName: string; id: LocationId },
   ): void;
 }>();
 const enteredTableItem = (item: ApiLocationResponse) => {

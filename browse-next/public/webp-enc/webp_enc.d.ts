@@ -33,7 +33,7 @@ export interface WebPModule extends EmscriptenWasm.Module {
     data: BufferSource,
     width: number,
     height: number,
-    options: EncodeOptions
+    options: EncodeOptions,
   ): Uint8Array | null;
 }
 

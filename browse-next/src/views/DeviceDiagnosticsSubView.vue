@@ -623,7 +623,7 @@ const hoveredPointValue = computed<number>(() => {
           Camera view from
           {{
             DateTime.fromJSDate(
-              new Date(latestStatusRecording.recordingDateTime)
+              new Date(latestStatusRecording.recordingDateTime),
             ).toRelative()
           }}:
         </h6>
@@ -804,7 +804,7 @@ const hoveredPointValue = computed<number>(() => {
           #version="{
             cell: versionInfo,
           }: {
-            cell: { version: string, latestVersion: string },
+            cell: { version: string; latestVersion: string };
           }"
         >
           <span
@@ -828,9 +828,9 @@ const hoveredPointValue = computed<number>(() => {
             card,
           }: {
             card: {
-              package: string,
-              version: { version: string, latestVersion: string },
-            },
+              package: string;
+              version: { version: string; latestVersion: string };
+            };
           }"
         >
           <div class="d-flex justify-content-between">

@@ -464,9 +464,10 @@ const isStillProcessing = computed<boolean>(() => {
                 class="visit-species-tag px-1 mb-1 text-capitalize d-inline-flex align-items-center"
                 :class="[
                   visit.name,
-                  ...(getClassificationForLabel(visit.name)?.path as string || '').split(
-                    '.'
-                  ),
+                  ...(
+                    (getClassificationForLabel(visit.name)?.path as string) ||
+                    ''
+                  ).split('.'),
                 ]"
                 ><b-spinner
                   small

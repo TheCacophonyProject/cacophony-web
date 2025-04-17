@@ -39,7 +39,7 @@ describe("Recordings - reprocessing tests", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
+  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".metadataSource"];
 
   const templateRecording: ApiRecordingSet = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING),

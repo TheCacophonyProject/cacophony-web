@@ -52,7 +52,6 @@ Cypress.Commands.add(
           type: type,
           processingState: state,
         }).then((recordingIds) => {
-          console.log(recordingIds);
           recordingIds.forEach((recordingId) => {
             cy.apiRecordingDelete(
               superuser,

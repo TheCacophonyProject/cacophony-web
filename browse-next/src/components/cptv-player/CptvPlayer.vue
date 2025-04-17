@@ -175,7 +175,7 @@ const emit = defineEmits<{
   (e: "request-next-visit"): void;
   (
     e: "track-selected",
-    payload: { trackId: TrackId; automatically: boolean }
+    payload: { trackId: TrackId; automatically: boolean },
   ): void;
   (e: "ready-to-play", header: CptvHeader): void;
   (e: "export-completed"): void;
@@ -2417,7 +2417,7 @@ watch(
           >Track {{ index + 1 }} ({{
             displayLabelForClassificationLabel(
               framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
-                .what || ""
+                .what || "",
             )
           }})</b-form-checkbox
         >
@@ -2430,7 +2430,7 @@ watch(
           >Track {{ index + 1 }} ({{
             displayLabelForClassificationLabel(
               framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
-                .what || ""
+                .what || "",
             )
           }})</b-form-checkbox
         >

@@ -123,7 +123,11 @@
               <div class="d-flex flex-wrap">
                 <span
                   class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
-                  v-if="processingInProgress.includes((item.data as ApiRecordingResponse).processingState)"
+                  v-if="
+                    processingInProgress.includes(
+                      (item.data as ApiRecordingResponse).processingState,
+                    )
+                  "
                   ><b-spinner small variant="secondary" /><span class="ms-1"
                     >AI Queued</span
                   ></span
@@ -137,7 +141,7 @@
                     ><span class="me-1">{{
                       displayLabelForClassificationLabel(
                         tag.what,
-                        tag.automatic && !tag.human
+                        tag.automatic && !tag.human,
                       )
                     }}</span
                     ><font-awesome-icon
@@ -165,7 +169,9 @@
                   class="visit-species-tag px-1 mb-1 text-capitalize me-1"
                   :class="[label.what.toLowerCase().split(' ').join('-')]"
                   :key="label.what"
-                  v-for="label in regularLabelsForRecording((item as RecordingItem).data)"
+                  v-for="label in regularLabelsForRecording(
+                    (item as RecordingItem).data,
+                  )"
                   >{{ label.what }}
                 </span>
               </div>
@@ -174,22 +180,24 @@
                   class="px-1 mb-1 me-1"
                   :class="[label.what]"
                   :key="label.what"
-                  v-for="label in specialLabelsForRecording((item as RecordingItem).data)"
+                  v-for="label in specialLabelsForRecording(
+                    (item as RecordingItem).data,
+                  )"
                 >
                   <font-awesome-icon
                     :icon="
                       label.what === 'cool'
                         ? ['fas', 'star']
                         : label.what === 'requires review'
-                        ? ['fas', 'flag']
-                        : ['fas', 'comment']
+                          ? ['fas', 'flag']
+                          : ['fas', 'comment']
                     "
                     :color="
                       label.what === 'cool'
                         ? 'goldenrod'
                         : label.what === 'requires review'
-                        ? '#ad0707'
-                        : '#3279ed'
+                          ? '#ad0707'
+                          : '#3279ed'
                     "
                   />
                 </span>

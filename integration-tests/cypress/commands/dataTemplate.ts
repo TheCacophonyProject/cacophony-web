@@ -306,7 +306,12 @@ export const TEMPLATE_THERMAL_RECORDING_RESPONSE: ApiThermalRecordingResponse =
     recordingDateTime: "2021-07-17T20:13:17.248Z",
     location: { lat: -45.29115, lng: 169.30845 },
     type: RecordingType.ThermalRaw,
-    additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 4 },
+    additionalMetadata: {
+      algorithm: 31143,
+      previewSecs: 5,
+      totalFrames: 4,
+      metadataSource: "PI",
+    },
     //additionalMetadata: { algorithm: 31143, previewSecs: 5, totalFrames: 141 },
     groupId: 246,
     stationId: NOT_NULL,
@@ -329,6 +334,7 @@ export const TEMPLATE_THERMAL_RECORDING: ApiRecordingSet = {
     totalFrames: 4,
   },
   metadata: {
+    metadata_source: "PI",
     tracks: [TEMPLATE_TRACK],
     algorithm: {
       tracker_version: 10,

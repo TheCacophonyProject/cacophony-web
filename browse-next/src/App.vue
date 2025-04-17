@@ -671,7 +671,9 @@ onMounted(() => {
   width: @global-side-nav-collapsed-width;
   overflow: hidden;
   user-select: none;
-  transition: width 0.2s, transform 0.2s;
+  transition:
+    width 0.2s,
+    transform 0.2s;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1021;
 

@@ -32,7 +32,7 @@ var HME = (function (A) {
             I,
             function (B) {
               return A[B];
-            }.bind(null, I)
+            }.bind(null, I),
           );
       return g;
     }),
@@ -150,7 +150,7 @@ var HME = (function (A) {
         if ("number" == typeof A) {
           if ("string" == typeof B)
             throw new Error(
-              "If encoding is specified then the first argument must be a string"
+              "If encoding is specified then the first argument must be a string",
             );
           return s(this, A);
         }
@@ -169,46 +169,46 @@ var HME = (function (A) {
                 void 0 === Q && void 0 === g
                   ? new Uint8Array(B)
                   : void 0 === g
-                  ? new Uint8Array(B, Q)
-                  : new Uint8Array(B, Q, g);
+                    ? new Uint8Array(B, Q)
+                    : new Uint8Array(B, Q, g);
               t.TYPED_ARRAY_SUPPORT
                 ? ((A = B).__proto__ = t.prototype)
                 : (A = r(A, B));
               return A;
             })(A, B, Q, g)
           : "string" == typeof B
-          ? (function (A, B, Q) {
-              ("string" == typeof Q && "" !== Q) || (Q = "utf8");
-              if (!t.isEncoding(Q))
+            ? (function (A, B, Q) {
+                ("string" == typeof Q && "" !== Q) || (Q = "utf8");
+                if (!t.isEncoding(Q))
+                  throw new TypeError(
+                    '"encoding" must be a valid string encoding',
+                  );
+                var g = 0 | n(B, Q),
+                  I = (A = C(A, g)).write(B, Q);
+                I !== g && (A = A.slice(0, I));
+                return A;
+              })(A, B, Q)
+            : (function (A, B) {
+                if (t.isBuffer(B)) {
+                  var Q = 0 | h(B.length);
+                  return 0 === (A = C(A, Q)).length || B.copy(A, 0, 0, Q), A;
+                }
+                if (B) {
+                  if (
+                    ("undefined" != typeof ArrayBuffer &&
+                      B.buffer instanceof ArrayBuffer) ||
+                    "length" in B
+                  )
+                    return "number" != typeof B.length || (g = B.length) != g
+                      ? C(A, 0)
+                      : r(A, B);
+                  if ("Buffer" === B.type && E(B.data)) return r(A, B.data);
+                }
+                var g;
                 throw new TypeError(
-                  '"encoding" must be a valid string encoding'
+                  "First argument must be a string, Buffer, ArrayBuffer, Array, or array-like object.",
                 );
-              var g = 0 | n(B, Q),
-                I = (A = C(A, g)).write(B, Q);
-              I !== g && (A = A.slice(0, I));
-              return A;
-            })(A, B, Q)
-          : (function (A, B) {
-              if (t.isBuffer(B)) {
-                var Q = 0 | h(B.length);
-                return 0 === (A = C(A, Q)).length || B.copy(A, 0, 0, Q), A;
-              }
-              if (B) {
-                if (
-                  ("undefined" != typeof ArrayBuffer &&
-                    B.buffer instanceof ArrayBuffer) ||
-                  "length" in B
-                )
-                  return "number" != typeof B.length || (g = B.length) != g
-                    ? C(A, 0)
-                    : r(A, B);
-                if ("Buffer" === B.type && E(B.data)) return r(A, B.data);
-              }
-              var g;
-              throw new TypeError(
-                "First argument must be a string, Buffer, ArrayBuffer, Array, or array-like object."
-              );
-            })(A, B);
+              })(A, B);
       }
       function o(A) {
         if ("number" != typeof A)
@@ -231,7 +231,7 @@ var HME = (function (A) {
           throw new RangeError(
             "Attempt to allocate Buffer larger than maximum size: 0x" +
               i().toString(16) +
-              " bytes"
+              " bytes",
           );
         return 0 | A;
       }
@@ -310,8 +310,8 @@ var HME = (function (A) {
           ("string" == typeof Q
             ? ((g = Q), (Q = 0))
             : Q > 2147483647
-            ? (Q = 2147483647)
-            : Q < -2147483648 && (Q = -2147483648),
+              ? (Q = 2147483647)
+              : Q < -2147483648 && (Q = -2147483648),
           (Q = +Q),
           isNaN(Q) && (Q = I ? 0 : A.length - 1),
           Q < 0 && (Q = A.length + Q),
@@ -398,7 +398,7 @@ var HME = (function (A) {
           })(B),
           A,
           Q,
-          g
+          g,
         );
       }
       function F(A, B, Q, g) {
@@ -424,7 +424,7 @@ var HME = (function (A) {
           })(B, A.length - Q),
           A,
           Q,
-          g
+          g,
         );
       }
       function U(A, B, Q) {
@@ -548,10 +548,10 @@ var HME = (function (A) {
               B <= 0
                 ? C(A, B)
                 : void 0 !== Q
-                ? "string" == typeof g
-                  ? C(A, B).fill(Q, g)
-                  : C(A, B).fill(Q)
-                : C(A, B)
+                  ? "string" == typeof g
+                    ? C(A, B).fill(Q, g)
+                    : C(A, B).fill(Q)
+                  : C(A, B)
             );
           })(null, A, B, Q);
         }),
@@ -610,7 +610,7 @@ var HME = (function (A) {
             var i = A[Q];
             if (!t.isBuffer(i))
               throw new TypeError(
-                '"list" argument must be an Array of Buffers'
+                '"list" argument must be an Array of Buffers',
               );
             i.copy(g, I), (I += i.length);
           }
@@ -649,8 +649,8 @@ var HME = (function (A) {
           return 0 === A
             ? ""
             : 0 === arguments.length
-            ? N(this, 0, A)
-            : a.apply(this, arguments);
+              ? N(this, 0, A)
+              : a.apply(this, arguments);
         }),
         (t.prototype.equals = function (A) {
           if (!t.isBuffer(A)) throw new TypeError("Argument must be a Buffer");
@@ -712,7 +712,7 @@ var HME = (function (A) {
           else {
             if (!isFinite(B))
               throw new Error(
-                "Buffer.write(string, encoding, offset[, length]) is no longer supported"
+                "Buffer.write(string, encoding, offset[, length]) is no longer supported",
               );
             (B |= 0),
               isFinite(Q)
@@ -1205,7 +1205,7 @@ var HME = (function (A) {
               (Q >> 18) | 240,
               ((Q >> 12) & 63) | 128,
               ((Q >> 6) & 63) | 128,
-              (63 & Q) | 128
+              (63 & Q) | 128,
             );
           }
         }
@@ -1222,7 +1222,7 @@ var HME = (function (A) {
               return "";
             for (; A.length % 4 != 0; ) A += "=";
             return A;
-          })(A)
+          })(A),
         );
       }
       function x(A, B, Q, g) {
@@ -1458,18 +1458,18 @@ var HME = (function (A) {
       return 7 === A.length
         ? "0" + A
         : 6 === A.length
-        ? "00" + A
-        : 5 === A.length
-        ? "000" + A
-        : 4 === A.length
-        ? "0000" + A
-        : 3 === A.length
-        ? "00000" + A
-        : 2 === A.length
-        ? "000000" + A
-        : 1 === A.length
-        ? "0000000" + A
-        : A;
+          ? "00" + A
+          : 5 === A.length
+            ? "000" + A
+            : 4 === A.length
+              ? "0000" + A
+              : 3 === A.length
+                ? "00000" + A
+                : 2 === A.length
+                  ? "000000" + A
+                  : 1 === A.length
+                    ? "0000000" + A
+                    : A;
     }
     (B.inherits = I),
       (B.toArray = function (A, B) {
@@ -1493,17 +1493,19 @@ var HME = (function (A) {
               i < 128
                 ? (Q[g++] = i)
                 : i < 2048
-                ? ((Q[g++] = (i >> 6) | 192), (Q[g++] = (63 & i) | 128))
-                : E(A, I)
-                ? ((i =
-                    65536 + ((1023 & i) << 10) + (1023 & A.charCodeAt(++I))),
-                  (Q[g++] = (i >> 18) | 240),
-                  (Q[g++] = ((i >> 12) & 63) | 128),
-                  (Q[g++] = ((i >> 6) & 63) | 128),
-                  (Q[g++] = (63 & i) | 128))
-                : ((Q[g++] = (i >> 12) | 224),
-                  (Q[g++] = ((i >> 6) & 63) | 128),
-                  (Q[g++] = (63 & i) | 128));
+                  ? ((Q[g++] = (i >> 6) | 192), (Q[g++] = (63 & i) | 128))
+                  : E(A, I)
+                    ? ((i =
+                        65536 +
+                        ((1023 & i) << 10) +
+                        (1023 & A.charCodeAt(++I))),
+                      (Q[g++] = (i >> 18) | 240),
+                      (Q[g++] = ((i >> 12) & 63) | 128),
+                      (Q[g++] = ((i >> 6) & 63) | 128),
+                      (Q[g++] = (63 & i) | 128))
+                    : ((Q[g++] = (i >> 12) | 224),
+                      (Q[g++] = ((i >> 6) & 63) | 128),
+                      (Q[g++] = (63 & i) | 128));
             }
         else for (I = 0; I < A.length; I++) Q[I] = 0 | A[I];
         return Q;
@@ -1665,8 +1667,8 @@ var HME = (function (A) {
                 i >= 49 && i <= 54
                   ? i - 49 + 10
                   : i >= 17 && i <= 22
-                  ? i - 17 + 10
-                  : 15 & i);
+                    ? i - 17 + 10
+                    : 15 & i);
           }
           return g;
         }
@@ -1708,11 +1710,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -1920,9 +1922,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -2149,10 +2151,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -2762,37 +2767,37 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? h(this, A, B)
               : Q < 63
-              ? r(this, A, B)
-              : Q < 1024
-              ? (function (A, B, Q) {
-                  (Q.negative = B.negative ^ A.negative),
-                    (Q.length = A.length + B.length);
-                  for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
-                    var i = I;
-                    I = 0;
-                    for (
-                      var C = 67108863 & g,
-                        t = Math.min(E, B.length - 1),
-                        e = Math.max(0, E - A.length + 1);
-                      e <= t;
-                      e++
-                    ) {
-                      var o = E - e,
-                        s = (0 | A.words[o]) * (0 | B.words[e]),
-                        r = 67108863 & s;
-                      (C = 67108863 & (r = (r + C) | 0)),
-                        (I +=
-                          (i =
-                            ((i = (i + ((s / 67108864) | 0)) | 0) +
-                              (r >>> 26)) |
-                            0) >>> 26),
-                        (i &= 67108863);
-                    }
-                    (Q.words[E] = C), (g = i), (i = I);
-                  }
-                  return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
-                })(this, A, B)
-              : n(this, A, B);
+                ? r(this, A, B)
+                : Q < 1024
+                  ? (function (A, B, Q) {
+                      (Q.negative = B.negative ^ A.negative),
+                        (Q.length = A.length + B.length);
+                      for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
+                        var i = I;
+                        I = 0;
+                        for (
+                          var C = 67108863 & g,
+                            t = Math.min(E, B.length - 1),
+                            e = Math.max(0, E - A.length + 1);
+                          e <= t;
+                          e++
+                        ) {
+                          var o = E - e,
+                            s = (0 | A.words[o]) * (0 | B.words[e]),
+                            r = 67108863 & s;
+                          (C = 67108863 & (r = (r + C) | 0)),
+                            (I +=
+                              (i =
+                                ((i = (i + ((s / 67108864) | 0)) | 0) +
+                                  (r >>> 26)) |
+                                0) >>> 26),
+                            (i &= 67108863);
+                        }
+                        (Q.words[E] = C), (g = i), (i = I);
+                      }
+                      return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
+                    })(this, A, B)
+                  : n(this, A, B);
           }),
           (a.prototype.makeRBT = function (A) {
             for (
@@ -3049,7 +3054,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -3074,15 +3079,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) < A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) < A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -3185,32 +3190,33 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? { div: null, mod: new E(this.modn(A.words[0])) }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -3233,8 +3239,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modn = function (A) {
             g(A <= 67108863);
@@ -3445,7 +3451,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -3557,28 +3563,28 @@ var HME = (function (A) {
           y.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function u() {
           y.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function f() {
           y.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function w() {
           y.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function F(A) {
@@ -3617,10 +3623,10 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : void 0 !== Q.strip
-                ? Q.strip()
-                : Q._strip(),
+                  ? Q.isub(this.p)
+                  : void 0 !== Q.strip
+                    ? Q.strip()
+                    : Q._strip(),
               Q
             );
           }),
@@ -3965,14 +3971,14 @@ var HME = (function (A) {
       I && "function" == typeof I.ownKeys
         ? I.ownKeys
         : Object.getOwnPropertySymbols
-        ? function (A) {
-            return Object.getOwnPropertyNames(A).concat(
-              Object.getOwnPropertySymbols(A)
-            );
-          }
-        : function (A) {
-            return Object.getOwnPropertyNames(A);
-          };
+          ? function (A) {
+              return Object.getOwnPropertyNames(A).concat(
+                Object.getOwnPropertySymbols(A),
+              );
+            }
+          : function (A) {
+              return Object.getOwnPropertyNames(A);
+            };
     var i =
       Number.isNaN ||
       function (A) {
@@ -3991,7 +3997,7 @@ var HME = (function (A) {
       if ("function" != typeof A)
         throw new TypeError(
           'The "listener" argument must be of type Function. Received type ' +
-            typeof A
+            typeof A,
         );
     }
     function o(A) {
@@ -4016,8 +4022,8 @@ var HME = (function (A) {
         ("function" == typeof i
           ? (i = E[B] = g ? [Q, i] : [i, Q])
           : g
-          ? i.unshift(Q)
-          : i.push(Q),
+            ? i.unshift(Q)
+            : i.push(Q),
         (I = o(A)) > 0 && i.length > I && !i.warned)
       ) {
         i.warned = !0;
@@ -4026,7 +4032,7 @@ var HME = (function (A) {
             i.length +
             " " +
             String(B) +
-            " listeners added. Use emitter.setMaxListeners() to increase limit"
+            " listeners added. Use emitter.setMaxListeners() to increase limit",
         );
         (t.name = "MaxListenersExceededWarning"),
           (t.emitter = A),
@@ -4059,16 +4065,16 @@ var HME = (function (A) {
       return void 0 === I
         ? []
         : "function" == typeof I
-        ? Q
-          ? [I.listener || I]
-          : [I]
-        : Q
-        ? (function (A) {
-            for (var B = new Array(A.length), Q = 0; Q < B.length; ++Q)
-              B[Q] = A[Q].listener || A[Q];
-            return B;
-          })(I)
-        : c(I, I.length);
+          ? Q
+            ? [I.listener || I]
+            : [I]
+          : Q
+            ? (function (A) {
+                for (var B = new Array(A.length), Q = 0; Q < B.length; ++Q)
+                  B[Q] = A[Q].listener || A[Q];
+                return B;
+              })(I)
+            : c(I, I.length);
     }
     function a(A) {
       var B = this._events;
@@ -4093,7 +4099,7 @@ var HME = (function (A) {
           throw new RangeError(
             'The value of "defaultMaxListeners" is out of range. It must be a non-negative number. Received ' +
               A +
-              "."
+              ".",
           );
         t = A;
       },
@@ -4109,7 +4115,7 @@ var HME = (function (A) {
           throw new RangeError(
             'The value of "n" is out of range. It must be a non-negative number. Received ' +
               A +
-              "."
+              ".",
           );
         return (this._maxListeners = A), this;
       }),
@@ -4126,7 +4132,7 @@ var HME = (function (A) {
           var i;
           if ((B.length > 0 && (i = B[0]), i instanceof Error)) throw i;
           var C = new Error(
-            "Unhandled error." + (i ? " (" + i.message + ")" : "")
+            "Unhandled error." + (i ? " (" + i.message + ")" : ""),
           );
           throw ((C.context = i), C);
         }
@@ -4306,14 +4312,14 @@ var HME = (function (A) {
       return A <= 127
         ? 0
         : A >> 5 == 6
-        ? 2
-        : A >> 4 == 14
-        ? 3
-        : A >> 3 == 30
-        ? 4
-        : A >> 6 == 2
-        ? -1
-        : -2;
+          ? 2
+          : A >> 4 == 14
+            ? 3
+            : A >> 3 == 30
+              ? 4
+              : A >> 6 == 2
+                ? -1
+                : -2;
     }
     function C(A) {
       var B = this.lastTotal - this.lastNeed,
@@ -4328,10 +4334,10 @@ var HME = (function (A) {
       return void 0 !== Q
         ? Q
         : this.lastNeed <= A.length
-        ? (A.copy(this.lastChar, B, 0, this.lastNeed),
-          this.lastChar.toString(this.encoding, 0, this.lastTotal))
-        : (A.copy(this.lastChar, B, 0, A.length),
-          void (this.lastNeed -= A.length));
+          ? (A.copy(this.lastChar, B, 0, this.lastNeed),
+            this.lastChar.toString(this.encoding, 0, this.lastTotal))
+          : (A.copy(this.lastChar, B, 0, A.length),
+            void (this.lastNeed -= A.length));
     }
     function t(A, B) {
       if ((A.length - B) % 2 == 0) {
@@ -4431,7 +4437,7 @@ var HME = (function (A) {
               this.lastChar,
               this.lastTotal - this.lastNeed,
               0,
-              this.lastNeed
+              this.lastNeed,
             ),
             this.lastChar.toString(this.encoding, 0, this.lastTotal)
           );
@@ -4524,7 +4530,7 @@ var HME = (function (A) {
           })
         : (A.exports = function () {
             throw new Error(
-              "Secure random number generation is not supported by this browser.\nUse Chrome, Firefox or Internet Explorer 11"
+              "Secure random number generation is not supported by this browser.\nUse Chrome, Firefox or Internet Explorer 11",
             );
           });
     }).call(this, Q(4), Q(3));
@@ -4542,7 +4548,7 @@ var HME = (function (A) {
               this,
               (function (A, Q, g) {
                 return "string" == typeof B ? B : B(A, Q, g);
-              })(Q, g, I)
+              })(Q, g, I),
             ) || this
           );
         }
@@ -4568,8 +4574,8 @@ var HME = (function (A) {
                 .concat(B, " ")
                 .concat(A.slice(0, Q - 1).join(", "), ", or ") + A[Q - 1]
             : 2 === Q
-            ? "one of ".concat(B, " ").concat(A[0], " or ").concat(A[1])
-            : "of ".concat(B, " ").concat(A[0])
+              ? "one of ".concat(B, " ").concat(A[0], " or ").concat(A[1])
+              : "of ".concat(B, " ").concat(A[0])
         );
       }
       return "of ".concat(B, " ").concat(String(A));
@@ -4579,7 +4585,7 @@ var HME = (function (A) {
       function (A, B) {
         return 'The value "' + B + '" is invalid for option "' + A + '"';
       },
-      TypeError
+      TypeError,
     ),
       I(
         "ERR_INVALID_ARG_TYPE",
@@ -4615,7 +4621,7 @@ var HME = (function (A) {
           }
           return (C += ". Received type ".concat(typeof Q));
         },
-        TypeError
+        TypeError,
       ),
       I("ERR_STREAM_PUSH_AFTER_EOF", "stream.push() after EOF"),
       I("ERR_METHOD_NOT_IMPLEMENTED", function (A) {
@@ -4631,18 +4637,18 @@ var HME = (function (A) {
       I(
         "ERR_STREAM_NULL_VALUES",
         "May not write null values to stream",
-        TypeError
+        TypeError,
       ),
       I(
         "ERR_UNKNOWN_ENCODING",
         function (A) {
           return "Unknown encoding: " + A;
         },
-        TypeError
+        TypeError,
       ),
       I(
         "ERR_STREAM_UNSHIFT_AFTER_END_EVENT",
-        "stream.unshift() after end event"
+        "stream.unshift() after end event",
       ),
       (A.exports.codes = g);
   },
@@ -4779,7 +4785,7 @@ var HME = (function (A) {
               this,
               (function (A, Q, g) {
                 return "string" == typeof B ? B : B(A, Q, g);
-              })(Q, g, I)
+              })(Q, g, I),
             ) || this
           );
         }
@@ -4805,8 +4811,8 @@ var HME = (function (A) {
                 .concat(B, " ")
                 .concat(A.slice(0, Q - 1).join(", "), ", or ") + A[Q - 1]
             : 2 === Q
-            ? "one of ".concat(B, " ").concat(A[0], " or ").concat(A[1])
-            : "of ".concat(B, " ").concat(A[0])
+              ? "one of ".concat(B, " ").concat(A[0], " or ").concat(A[1])
+              : "of ".concat(B, " ").concat(A[0])
         );
       }
       return "of ".concat(B, " ").concat(String(A));
@@ -4816,7 +4822,7 @@ var HME = (function (A) {
       function (A, B) {
         return 'The value "' + B + '" is invalid for option "' + A + '"';
       },
-      TypeError
+      TypeError,
     ),
       I(
         "ERR_INVALID_ARG_TYPE",
@@ -4852,7 +4858,7 @@ var HME = (function (A) {
           }
           return (C += ". Received type ".concat(typeof Q));
         },
-        TypeError
+        TypeError,
       ),
       I("ERR_STREAM_PUSH_AFTER_EOF", "stream.push() after EOF"),
       I("ERR_METHOD_NOT_IMPLEMENTED", function (A) {
@@ -4868,18 +4874,18 @@ var HME = (function (A) {
       I(
         "ERR_STREAM_NULL_VALUES",
         "May not write null values to stream",
-        TypeError
+        TypeError,
       ),
       I(
         "ERR_UNKNOWN_ENCODING",
         function (A) {
           return "Unknown encoding: " + A;
         },
-        TypeError
+        TypeError,
       ),
       I(
         "ERR_STREAM_UNSHIFT_AFTER_END_EVENT",
-        "stream.unshift() after end event"
+        "stream.unshift() after end event",
       ),
       (A.exports.codes = g);
   },
@@ -4976,8 +4982,8 @@ var HME = (function (A) {
         return "md5" === (A = A.toLowerCase())
           ? new I()
           : "rmd160" === A || "ripemd160" === A
-          ? new E()
-          : new t(i(A));
+            ? new E()
+            : new t(i(A));
       });
   },
   function (A, B, Q) {
@@ -5361,7 +5367,7 @@ var HME = (function (A) {
           this._keySchedule,
           t.SUB_MIX,
           t.SBOX,
-          this._nRounds
+          this._nRounds,
         );
       }),
       (e.prototype.encryptBlock = function (A) {
@@ -5383,7 +5389,7 @@ var HME = (function (A) {
             this._invKeySchedule,
             t.INV_SUB_MIX,
             t.INV_SBOX,
-            this._nRounds
+            this._nRounds,
           ),
           E = g.allocUnsafe(16);
         return (
@@ -5514,8 +5520,8 @@ var HME = (function (A) {
                   ? t.mixedAdd(I[(o - 1) >> 1])
                   : t.mixedAdd(I[(-o - 1) >> 1].neg())
                 : o > 0
-                ? t.add(I[(o - 1) >> 1])
-                : t.add(I[(-o - 1) >> 1].neg()));
+                  ? t.add(I[(o - 1) >> 1])
+                  : t.add(I[(-o - 1) >> 1].neg()));
         }
         return "affine" === A.type ? t.toP() : t;
       }),
@@ -5541,10 +5547,10 @@ var HME = (function (A) {
               ? ((a[1] = B[h].add(B[n])),
                 (a[2] = B[h].toJ().mixedAdd(B[n].neg())))
               : 0 === B[h].y.cmp(B[n].y.redNeg())
-              ? ((a[1] = B[h].toJ().mixedAdd(B[n])),
-                (a[2] = B[h].add(B[n].neg())))
-              : ((a[1] = B[h].toJ().mixedAdd(B[n])),
-                (a[2] = B[h].toJ().mixedAdd(B[n].neg())));
+                ? ((a[1] = B[h].toJ().mixedAdd(B[n])),
+                  (a[2] = B[h].add(B[n].neg())))
+                : ((a[1] = B[h].toJ().mixedAdd(B[n])),
+                  (a[2] = B[h].toJ().mixedAdd(B[n].neg())));
             var c = [-3, -1, -5, -7, 0, 7, 5, 1, 3],
               y = i(Q[h], Q[n]);
             (o = Math.max(y[0].length, o)),
@@ -5706,7 +5712,7 @@ var HME = (function (A) {
               return (
                 (e.algorithm.params.pub_key = g.DSAparam.decode(
                   e.subjectPublicKey.data,
-                  "der"
+                  "der",
                 )),
                 { type: "dsa", data: e.algorithm.params }
               );
@@ -5719,7 +5725,7 @@ var HME = (function (A) {
             var Q = A.algorithm.decrypt.kde.kdeparams.salt,
               g = parseInt(
                 A.algorithm.decrypt.kde.kdeparams.iters.toString(),
-                10
+                10,
               ),
               E = I[A.algorithm.decrypt.cipher.algo.join(".")],
               e = A.algorithm.decrypt.cipher.iv,
@@ -5733,7 +5739,7 @@ var HME = (function (A) {
         case "PRIVATE KEY":
           switch (
             (Q = (e = g.PrivateKey.decode(r, "der")).algorithm.algorithm.join(
-              "."
+              ".",
             ))
           ) {
             case "1.2.840.113549.1.1.1":
@@ -5748,7 +5754,7 @@ var HME = (function (A) {
               return (
                 (e.algorithm.params.priv_key = g.DSAparam.decode(
                   e.subjectPrivateKey,
-                  "der"
+                  "der",
                 )),
                 { type: "dsa", params: e.algorithm.params }
               );
@@ -5831,7 +5837,7 @@ var HME = (function (A) {
             E,
             A[1],
             4129170786,
-            5
+            5,
           )),
           (E = o(E, Q, g, I, A[6], 3225465664, 9)),
           (I = o(I, E, Q, g, A[11], 643717713, 14)),
@@ -5854,7 +5860,7 @@ var HME = (function (A) {
             E,
             A[5],
             4294588738,
-            4
+            4,
           )),
           (E = s(E, Q, g, I, A[8], 2272392833, 11)),
           (I = s(I, E, Q, g, A[11], 1839030562, 16)),
@@ -5877,7 +5883,7 @@ var HME = (function (A) {
             E,
             A[0],
             4096336452,
-            6
+            6,
           )),
           (E = r(E, Q, g, I, A[7], 1126891415, 10)),
           (I = r(I, E, Q, g, A[14], 2878612391, 15)),
@@ -5989,9 +5995,9 @@ var HME = (function (A) {
             ? ((B._readableState && B._readableState.ended) || (A = new g()),
               E.call(B, A))
             : C && !e
-            ? ((B._writableState && B._writableState.ended) || (A = new g()),
-              E.call(B, A))
-            : void 0;
+              ? ((B._writableState && B._writableState.ended) || (A = new g()),
+                E.call(B, A))
+              : void 0;
         },
         a = function () {
           B.req.on("finish", o);
@@ -6105,16 +6111,16 @@ var HME = (function (A) {
             ? ((N = a(Q, g, I, E, h, A[C[U]], s[0], e[U])),
               (H = u(f, w, F, d, l, A[t[U]], r[0], o[U])))
             : U < 32
-            ? ((N = c(Q, g, I, E, h, A[C[U]], s[1], e[U])),
-              (H = D(f, w, F, d, l, A[t[U]], r[1], o[U])))
-            : U < 48
-            ? ((N = y(Q, g, I, E, h, A[C[U]], s[2], e[U])),
-              (H = y(f, w, F, d, l, A[t[U]], r[2], o[U])))
-            : U < 64
-            ? ((N = D(Q, g, I, E, h, A[C[U]], s[3], e[U])),
-              (H = c(f, w, F, d, l, A[t[U]], r[3], o[U])))
-            : ((N = u(Q, g, I, E, h, A[C[U]], s[4], e[U])),
-              (H = a(f, w, F, d, l, A[t[U]], r[4], o[U]))),
+              ? ((N = c(Q, g, I, E, h, A[C[U]], s[1], e[U])),
+                (H = D(f, w, F, d, l, A[t[U]], r[1], o[U])))
+              : U < 48
+                ? ((N = y(Q, g, I, E, h, A[C[U]], s[2], e[U])),
+                  (H = y(f, w, F, d, l, A[t[U]], r[2], o[U])))
+                : U < 64
+                  ? ((N = D(Q, g, I, E, h, A[C[U]], s[3], e[U])),
+                    (H = c(f, w, F, d, l, A[t[U]], r[3], o[U])))
+                  : ((N = u(Q, g, I, E, h, A[C[U]], s[4], e[U])),
+                    (H = a(f, w, F, d, l, A[t[U]], r[4], o[U]))),
             (Q = h),
             (h = E),
             (E = n(I, 10)),
@@ -6400,7 +6406,7 @@ var HME = (function (A) {
                   return this.getBuffer();
                 },
                 "_writableState.buffer is deprecated. Use _writableState.getBuffer instead.",
-                "DEP0003"
+                "DEP0003",
               ),
             });
           } catch (A) {}
@@ -6449,13 +6455,13 @@ var HME = (function (A) {
                     return (
                       null === Q
                         ? (i = new TypeError(
-                            "May not write null values to stream"
+                            "May not write null values to stream",
                           ))
                         : "string" == typeof Q ||
                           void 0 === Q ||
                           B.objectMode ||
                           (i = new TypeError(
-                            "Invalid non-string/buffer chunk"
+                            "Invalid non-string/buffer chunk",
                           )),
                       i && (A.emit("error", i), E.nextTick(g, i), (I = !1)),
                       I
@@ -6592,8 +6598,8 @@ var HME = (function (A) {
         return 0 === A.length
           ? []
           : "decrypt" === this.type
-          ? this._updateDecrypt(A)
-          : this._updateEncrypt(A);
+            ? this._updateDecrypt(A)
+            : this._updateEncrypt(A);
       }),
       (I.prototype._buffer = function (A, B) {
         for (
@@ -6728,14 +6734,14 @@ var HME = (function (A) {
             return self.crypto.getRandomValues(B), B;
           })
         : self.msCrypto && self.msCrypto.getRandomValues
-        ? (I.prototype._rand = function (A) {
-            var B = new Uint8Array(A);
-            return self.msCrypto.getRandomValues(B), B;
-          })
-        : "object" == typeof window &&
-          (I.prototype._rand = function () {
-            throw new Error("Not implemented yet");
-          });
+          ? (I.prototype._rand = function (A) {
+              var B = new Uint8Array(A);
+              return self.msCrypto.getRandomValues(B), B;
+            })
+          : "object" == typeof window &&
+            (I.prototype._rand = function () {
+              throw new Error("Not implemented yet");
+            });
     else
       try {
         var E = Q(152);
@@ -6790,9 +6796,9 @@ var HME = (function (A) {
             ? ((B._readableState && B._readableState.ended) || (A = new g()),
               E.call(B, A))
             : C && !e
-            ? ((B._writableState && B._writableState.ended) || (A = new g()),
-              E.call(B, A))
-            : void 0;
+              ? ((B._writableState && B._writableState.ended) || (A = new g()),
+                E.call(B, A))
+              : void 0;
         },
         a = function () {
           B.req.on("finish", o);
@@ -6889,8 +6895,8 @@ var HME = (function (A) {
       "short" === A.type
         ? (this.curve = new i.short(A))
         : "edwards" === A.type
-        ? (this.curve = new i.edwards(A))
-        : (this.curve = new i.mont(A)),
+          ? (this.curve = new i.edwards(A))
+          : (this.curve = new i.mont(A)),
         (this.g = this.curve.g),
         (this.n = this.curve.n),
         (this.hash = A.hash),
@@ -7099,8 +7105,8 @@ var HME = (function (A) {
                 i >= 49 && i <= 54
                   ? i - 49 + 10
                   : i >= 17 && i <= 22
-                  ? i - 17 + 10
-                  : 15 & i);
+                    ? i - 17 + 10
+                    : 15 & i);
           }
           return g;
         }
@@ -7142,11 +7148,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -7354,9 +7360,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -7583,10 +7589,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -8196,37 +8205,37 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? h(this, A, B)
               : Q < 63
-              ? r(this, A, B)
-              : Q < 1024
-              ? (function (A, B, Q) {
-                  (Q.negative = B.negative ^ A.negative),
-                    (Q.length = A.length + B.length);
-                  for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
-                    var i = I;
-                    I = 0;
-                    for (
-                      var C = 67108863 & g,
-                        t = Math.min(E, B.length - 1),
-                        e = Math.max(0, E - A.length + 1);
-                      e <= t;
-                      e++
-                    ) {
-                      var o = E - e,
-                        s = (0 | A.words[o]) * (0 | B.words[e]),
-                        r = 67108863 & s;
-                      (C = 67108863 & (r = (r + C) | 0)),
-                        (I +=
-                          (i =
-                            ((i = (i + ((s / 67108864) | 0)) | 0) +
-                              (r >>> 26)) |
-                            0) >>> 26),
-                        (i &= 67108863);
-                    }
-                    (Q.words[E] = C), (g = i), (i = I);
-                  }
-                  return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
-                })(this, A, B)
-              : n(this, A, B);
+                ? r(this, A, B)
+                : Q < 1024
+                  ? (function (A, B, Q) {
+                      (Q.negative = B.negative ^ A.negative),
+                        (Q.length = A.length + B.length);
+                      for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
+                        var i = I;
+                        I = 0;
+                        for (
+                          var C = 67108863 & g,
+                            t = Math.min(E, B.length - 1),
+                            e = Math.max(0, E - A.length + 1);
+                          e <= t;
+                          e++
+                        ) {
+                          var o = E - e,
+                            s = (0 | A.words[o]) * (0 | B.words[e]),
+                            r = 67108863 & s;
+                          (C = 67108863 & (r = (r + C) | 0)),
+                            (I +=
+                              (i =
+                                ((i = (i + ((s / 67108864) | 0)) | 0) +
+                                  (r >>> 26)) |
+                                0) >>> 26),
+                            (i &= 67108863);
+                        }
+                        (Q.words[E] = C), (g = i), (i = I);
+                      }
+                      return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
+                    })(this, A, B)
+                  : n(this, A, B);
           }),
           (a.prototype.makeRBT = function (A) {
             for (
@@ -8483,7 +8492,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -8508,15 +8517,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) < A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) < A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -8619,32 +8628,33 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? { div: null, mod: new E(this.modn(A.words[0])) }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -8667,8 +8677,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modn = function (A) {
             g(A <= 67108863);
@@ -8879,7 +8889,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -8991,28 +9001,28 @@ var HME = (function (A) {
           y.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function u() {
           y.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function f() {
           y.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function w() {
           y.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function F(A) {
@@ -9051,8 +9061,8 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : Q.strip(),
+                  ? Q.isub(this.p)
+                  : Q.strip(),
               Q
             );
           }),
@@ -9311,8 +9321,8 @@ var HME = (function (A) {
           "." === I
             ? A.splice(g, 1)
             : ".." === I
-            ? (A.splice(g, 1), Q++)
-            : Q && (A.splice(g, 1), Q--);
+              ? (A.splice(g, 1), Q++)
+              : Q && (A.splice(g, 1), Q--);
         }
         if (B) for (; Q--; Q) A.unshift("..");
         return A;
@@ -9336,7 +9346,7 @@ var HME = (function (A) {
               g(B.split("/"), function (A) {
                 return !!A;
               }),
-              !I
+              !I,
             ).join("/")) || "."
         );
       }),
@@ -9348,7 +9358,7 @@ var HME = (function (A) {
               g(A.split("/"), function (A) {
                 return !!A;
               }),
-              !E
+              !E,
             ).join("/")) ||
               E ||
               (A = "."),
@@ -9366,7 +9376,7 @@ var HME = (function (A) {
               if ("string" != typeof A)
                 throw new TypeError("Arguments to path.join must be strings");
               return A;
-            }).join("/")
+            }).join("/"),
           );
         }),
         (B.relative = function (A, Q) {
@@ -9417,8 +9427,8 @@ var HME = (function (A) {
               ? "/"
               : "."
             : Q && 1 === g
-            ? "/"
-            : A.slice(0, g);
+              ? "/"
+              : A.slice(0, g);
         }),
         (B.basename = function (A, B) {
           var Q = (function (A) {
@@ -9750,31 +9760,31 @@ var HME = (function (A) {
         return A <= 0 || (0 === B.length && B.ended)
           ? 0
           : B.objectMode
-          ? 1
-          : A != A
-          ? B.flowing && B.length
-            ? B.buffer.head.data.length
-            : B.length
-          : (A > B.highWaterMark &&
-              (B.highWaterMark = (function (A) {
-                return (
-                  A >= 1073741824
-                    ? (A = 1073741824)
-                    : (A--,
-                      (A |= A >>> 1),
-                      (A |= A >>> 2),
-                      (A |= A >>> 4),
-                      (A |= A >>> 8),
-                      (A |= A >>> 16),
-                      A++),
-                  A
-                );
-              })(A)),
-            A <= B.length
-              ? A
-              : B.ended
-              ? B.length
-              : ((B.needReadable = !0), 0));
+            ? 1
+            : A != A
+              ? B.flowing && B.length
+                ? B.buffer.head.data.length
+                : B.length
+              : (A > B.highWaterMark &&
+                  (B.highWaterMark = (function (A) {
+                    return (
+                      A >= 1073741824
+                        ? (A = 1073741824)
+                        : (A--,
+                          (A |= A >>> 1),
+                          (A |= A >>> 2),
+                          (A |= A >>> 4),
+                          (A |= A >>> 8),
+                          (A |= A >>> 16),
+                          A++),
+                      A
+                    );
+                  })(A)),
+                A <= B.length
+                  ? A
+                  : B.ended
+                    ? B.length
+                    : ((B.needReadable = !0), 0));
       }
       function Y(A) {
         var B = A._readableState;
@@ -9839,13 +9849,13 @@ var HME = (function (A) {
           : (B.objectMode
               ? (Q = B.buffer.shift())
               : !A || A >= B.length
-              ? ((Q = B.decoder
-                  ? B.buffer.join("")
-                  : 1 === B.buffer.length
-                  ? B.buffer.first()
-                  : B.buffer.concat(B.length)),
-                B.buffer.clear())
-              : (Q = B.buffer.consume(A, B.decoder)),
+                ? ((Q = B.decoder
+                    ? B.buffer.join("")
+                    : 1 === B.buffer.length
+                      ? B.buffer.first()
+                      : B.buffer.concat(B.length)),
+                  B.buffer.clear())
+                : (Q = B.buffer.consume(A, B.decoder)),
             Q);
         var Q;
       }
@@ -10215,8 +10225,8 @@ var HME = (function (A) {
                         B.nextTick(Q, i, A))
                     : B.nextTick(Q, i, A)
                   : E
-                  ? (B.nextTick(g, i), E(A))
-                  : B.nextTick(g, i);
+                    ? (B.nextTick(g, i), E(A))
+                    : B.nextTick(g, i);
               }),
               this);
         },
@@ -10392,8 +10402,8 @@ var HME = (function (A) {
           B.destroyed
             ? B.onwrite(new D("write"))
             : Q
-            ? A._writev(I, B.onwrite)
-            : A._write(I, E, B.onwrite),
+              ? A._writev(I, B.onwrite)
+              : A._write(I, E, B.onwrite),
           (B.sync = !1);
       }
       function H(A, B, Q, g) {
@@ -10493,7 +10503,7 @@ var HME = (function (A) {
                   return this.getBuffer();
                 },
                 "_writableState.buffer is deprecated. Use _writableState.getBuffer instead.",
-                "DEP0003"
+                "DEP0003",
               ),
             });
           } catch (A) {}
@@ -11209,29 +11219,29 @@ var HME = (function (A) {
             E
               ? A.emit("error", E)
               : i.objectMode || (B && B.length > 0)
-              ? ("string" == typeof B ||
-                  i.objectMode ||
-                  Object.getPrototypeOf(B) === e.prototype ||
-                  (B = (function (A) {
-                    return e.from(A);
-                  })(B)),
-                g
-                  ? i.endEmitted
-                    ? A.emit(
-                        "error",
-                        new Error("stream.unshift() after end event")
-                      )
-                    : w(A, i, B, !0)
-                  : i.ended
-                  ? A.emit("error", new Error("stream.push() after EOF"))
-                  : ((i.reading = !1),
-                    i.decoder && !Q
-                      ? ((B = i.decoder.write(B)),
-                        i.objectMode || 0 !== B.length
-                          ? w(A, i, B, !1)
-                          : U(A, i))
-                      : w(A, i, B, !1)))
-              : g || (i.reading = !1));
+                ? ("string" == typeof B ||
+                    i.objectMode ||
+                    Object.getPrototypeOf(B) === e.prototype ||
+                    (B = (function (A) {
+                      return e.from(A);
+                    })(B)),
+                  g
+                    ? i.endEmitted
+                      ? A.emit(
+                          "error",
+                          new Error("stream.unshift() after end event"),
+                        )
+                      : w(A, i, B, !0)
+                    : i.ended
+                      ? A.emit("error", new Error("stream.push() after EOF"))
+                      : ((i.reading = !1),
+                        i.decoder && !Q
+                          ? ((B = i.decoder.write(B)),
+                            i.objectMode || 0 !== B.length
+                              ? w(A, i, B, !1)
+                              : U(A, i))
+                          : w(A, i, B, !1)))
+                : g || (i.reading = !1));
         return (function (A) {
           return (
             !A.ended &&
@@ -11293,31 +11303,31 @@ var HME = (function (A) {
         return A <= 0 || (0 === B.length && B.ended)
           ? 0
           : B.objectMode
-          ? 1
-          : A != A
-          ? B.flowing && B.length
-            ? B.buffer.head.data.length
-            : B.length
-          : (A > B.highWaterMark &&
-              (B.highWaterMark = (function (A) {
-                return (
-                  A >= 8388608
-                    ? (A = 8388608)
-                    : (A--,
-                      (A |= A >>> 1),
-                      (A |= A >>> 2),
-                      (A |= A >>> 4),
-                      (A |= A >>> 8),
-                      (A |= A >>> 16),
-                      A++),
-                  A
-                );
-              })(A)),
-            A <= B.length
-              ? A
-              : B.ended
-              ? B.length
-              : ((B.needReadable = !0), 0));
+            ? 1
+            : A != A
+              ? B.flowing && B.length
+                ? B.buffer.head.data.length
+                : B.length
+              : (A > B.highWaterMark &&
+                  (B.highWaterMark = (function (A) {
+                    return (
+                      A >= 8388608
+                        ? (A = 8388608)
+                        : (A--,
+                          (A |= A >>> 1),
+                          (A |= A >>> 2),
+                          (A |= A >>> 4),
+                          (A |= A >>> 8),
+                          (A |= A >>> 16),
+                          A++),
+                      A
+                    );
+                  })(A)),
+                A <= B.length
+                  ? A
+                  : B.ended
+                    ? B.length
+                    : ((B.needReadable = !0), 0));
       }
       function d(A) {
         var B = A._readableState;
@@ -11367,73 +11377,73 @@ var HME = (function (A) {
           : (B.objectMode
               ? (Q = B.buffer.shift())
               : !A || A >= B.length
-              ? ((Q = B.decoder
-                  ? B.buffer.join("")
-                  : 1 === B.buffer.length
-                  ? B.buffer.head.data
-                  : B.buffer.concat(B.length)),
-                B.buffer.clear())
-              : (Q = (function (A, B, Q) {
-                  var g;
-                  A < B.head.data.length
-                    ? ((g = B.head.data.slice(0, A)),
-                      (B.head.data = B.head.data.slice(A)))
-                    : (g =
-                        A === B.head.data.length
-                          ? B.shift()
-                          : Q
-                          ? (function (A, B) {
-                              var Q = B.head,
-                                g = 1,
-                                I = Q.data;
-                              A -= I.length;
-                              for (; (Q = Q.next); ) {
-                                var E = Q.data,
-                                  i = A > E.length ? E.length : A;
-                                if (
-                                  (i === E.length
-                                    ? (I += E)
-                                    : (I += E.slice(0, A)),
-                                  0 === (A -= i))
-                                ) {
-                                  i === E.length
-                                    ? (++g,
-                                      Q.next
-                                        ? (B.head = Q.next)
-                                        : (B.head = B.tail = null))
-                                    : ((B.head = Q), (Q.data = E.slice(i)));
-                                  break;
-                                }
-                                ++g;
-                              }
-                              return (B.length -= g), I;
-                            })(A, B)
-                          : (function (A, B) {
-                              var Q = e.allocUnsafe(A),
-                                g = B.head,
-                                I = 1;
-                              g.data.copy(Q), (A -= g.data.length);
-                              for (; (g = g.next); ) {
-                                var E = g.data,
-                                  i = A > E.length ? E.length : A;
-                                if (
-                                  (E.copy(Q, Q.length - A, 0, i),
-                                  0 === (A -= i))
-                                ) {
-                                  i === E.length
-                                    ? (++I,
-                                      g.next
-                                        ? (B.head = g.next)
-                                        : (B.head = B.tail = null))
-                                    : ((B.head = g), (g.data = E.slice(i)));
-                                  break;
-                                }
-                                ++I;
-                              }
-                              return (B.length -= I), Q;
-                            })(A, B));
-                  return g;
-                })(A, B.buffer, B.decoder)),
+                ? ((Q = B.decoder
+                    ? B.buffer.join("")
+                    : 1 === B.buffer.length
+                      ? B.buffer.head.data
+                      : B.buffer.concat(B.length)),
+                  B.buffer.clear())
+                : (Q = (function (A, B, Q) {
+                    var g;
+                    A < B.head.data.length
+                      ? ((g = B.head.data.slice(0, A)),
+                        (B.head.data = B.head.data.slice(A)))
+                      : (g =
+                          A === B.head.data.length
+                            ? B.shift()
+                            : Q
+                              ? (function (A, B) {
+                                  var Q = B.head,
+                                    g = 1,
+                                    I = Q.data;
+                                  A -= I.length;
+                                  for (; (Q = Q.next); ) {
+                                    var E = Q.data,
+                                      i = A > E.length ? E.length : A;
+                                    if (
+                                      (i === E.length
+                                        ? (I += E)
+                                        : (I += E.slice(0, A)),
+                                      0 === (A -= i))
+                                    ) {
+                                      i === E.length
+                                        ? (++g,
+                                          Q.next
+                                            ? (B.head = Q.next)
+                                            : (B.head = B.tail = null))
+                                        : ((B.head = Q), (Q.data = E.slice(i)));
+                                      break;
+                                    }
+                                    ++g;
+                                  }
+                                  return (B.length -= g), I;
+                                })(A, B)
+                              : (function (A, B) {
+                                  var Q = e.allocUnsafe(A),
+                                    g = B.head,
+                                    I = 1;
+                                  g.data.copy(Q), (A -= g.data.length);
+                                  for (; (g = g.next); ) {
+                                    var E = g.data,
+                                      i = A > E.length ? E.length : A;
+                                    if (
+                                      (E.copy(Q, Q.length - A, 0, i),
+                                      0 === (A -= i))
+                                    ) {
+                                      i === E.length
+                                        ? (++I,
+                                          g.next
+                                            ? (B.head = g.next)
+                                            : (B.head = B.tail = null))
+                                        : ((B.head = g), (g.data = E.slice(i)));
+                                      break;
+                                    }
+                                    ++I;
+                                  }
+                                  return (B.length -= I), Q;
+                                })(A, B));
+                    return g;
+                  })(A, B.buffer, B.decoder)),
             Q);
         var Q;
       }
@@ -11556,7 +11566,7 @@ var HME = (function (A) {
                   !r &&
                   (h(
                     "false write response, pause",
-                    Q._readableState.awaitDrain
+                    Q._readableState.awaitDrain,
                   ),
                   Q._readableState.awaitDrain++,
                   (n = !0)),
@@ -11765,7 +11775,7 @@ var HME = (function (A) {
       if (!g)
         return this.emit(
           "error",
-          new Error("write callback called multiple times")
+          new Error("write callback called multiple times"),
         );
       (Q.writechunk = null),
         (Q.writecb = null),
@@ -11889,8 +11899,8 @@ var HME = (function (A) {
         return "rmd160" === (A = A.toLowerCase()) || "ripemd160" === A
           ? new s("rmd160", B)
           : "md5" === A
-          ? new I(C, B)
-          : new s(A, B);
+            ? new I(C, B)
+            : new s(A, B);
       });
   },
   function (A, B, Q) {
@@ -11901,7 +11911,7 @@ var HME = (function (A) {
   },
   function (A) {
     A.exports = JSON.parse(
-      '{"sha224WithRSAEncryption":{"sign":"rsa","hash":"sha224","id":"302d300d06096086480165030402040500041c"},"RSA-SHA224":{"sign":"ecdsa/rsa","hash":"sha224","id":"302d300d06096086480165030402040500041c"},"sha256WithRSAEncryption":{"sign":"rsa","hash":"sha256","id":"3031300d060960864801650304020105000420"},"RSA-SHA256":{"sign":"ecdsa/rsa","hash":"sha256","id":"3031300d060960864801650304020105000420"},"sha384WithRSAEncryption":{"sign":"rsa","hash":"sha384","id":"3041300d060960864801650304020205000430"},"RSA-SHA384":{"sign":"ecdsa/rsa","hash":"sha384","id":"3041300d060960864801650304020205000430"},"sha512WithRSAEncryption":{"sign":"rsa","hash":"sha512","id":"3051300d060960864801650304020305000440"},"RSA-SHA512":{"sign":"ecdsa/rsa","hash":"sha512","id":"3051300d060960864801650304020305000440"},"RSA-SHA1":{"sign":"rsa","hash":"sha1","id":"3021300906052b0e03021a05000414"},"ecdsa-with-SHA1":{"sign":"ecdsa","hash":"sha1","id":""},"sha256":{"sign":"ecdsa","hash":"sha256","id":""},"sha224":{"sign":"ecdsa","hash":"sha224","id":""},"sha384":{"sign":"ecdsa","hash":"sha384","id":""},"sha512":{"sign":"ecdsa","hash":"sha512","id":""},"DSA-SHA":{"sign":"dsa","hash":"sha1","id":""},"DSA-SHA1":{"sign":"dsa","hash":"sha1","id":""},"DSA":{"sign":"dsa","hash":"sha1","id":""},"DSA-WITH-SHA224":{"sign":"dsa","hash":"sha224","id":""},"DSA-SHA224":{"sign":"dsa","hash":"sha224","id":""},"DSA-WITH-SHA256":{"sign":"dsa","hash":"sha256","id":""},"DSA-SHA256":{"sign":"dsa","hash":"sha256","id":""},"DSA-WITH-SHA384":{"sign":"dsa","hash":"sha384","id":""},"DSA-SHA384":{"sign":"dsa","hash":"sha384","id":""},"DSA-WITH-SHA512":{"sign":"dsa","hash":"sha512","id":""},"DSA-SHA512":{"sign":"dsa","hash":"sha512","id":""},"DSA-RIPEMD160":{"sign":"dsa","hash":"rmd160","id":""},"ripemd160WithRSA":{"sign":"rsa","hash":"rmd160","id":"3021300906052b2403020105000414"},"RSA-RIPEMD160":{"sign":"rsa","hash":"rmd160","id":"3021300906052b2403020105000414"},"md5WithRSAEncryption":{"sign":"rsa","hash":"md5","id":"3020300c06082a864886f70d020505000410"},"RSA-MD5":{"sign":"rsa","hash":"md5","id":"3020300c06082a864886f70d020505000410"}}'
+      '{"sha224WithRSAEncryption":{"sign":"rsa","hash":"sha224","id":"302d300d06096086480165030402040500041c"},"RSA-SHA224":{"sign":"ecdsa/rsa","hash":"sha224","id":"302d300d06096086480165030402040500041c"},"sha256WithRSAEncryption":{"sign":"rsa","hash":"sha256","id":"3031300d060960864801650304020105000420"},"RSA-SHA256":{"sign":"ecdsa/rsa","hash":"sha256","id":"3031300d060960864801650304020105000420"},"sha384WithRSAEncryption":{"sign":"rsa","hash":"sha384","id":"3041300d060960864801650304020205000430"},"RSA-SHA384":{"sign":"ecdsa/rsa","hash":"sha384","id":"3041300d060960864801650304020205000430"},"sha512WithRSAEncryption":{"sign":"rsa","hash":"sha512","id":"3051300d060960864801650304020305000440"},"RSA-SHA512":{"sign":"ecdsa/rsa","hash":"sha512","id":"3051300d060960864801650304020305000440"},"RSA-SHA1":{"sign":"rsa","hash":"sha1","id":"3021300906052b0e03021a05000414"},"ecdsa-with-SHA1":{"sign":"ecdsa","hash":"sha1","id":""},"sha256":{"sign":"ecdsa","hash":"sha256","id":""},"sha224":{"sign":"ecdsa","hash":"sha224","id":""},"sha384":{"sign":"ecdsa","hash":"sha384","id":""},"sha512":{"sign":"ecdsa","hash":"sha512","id":""},"DSA-SHA":{"sign":"dsa","hash":"sha1","id":""},"DSA-SHA1":{"sign":"dsa","hash":"sha1","id":""},"DSA":{"sign":"dsa","hash":"sha1","id":""},"DSA-WITH-SHA224":{"sign":"dsa","hash":"sha224","id":""},"DSA-SHA224":{"sign":"dsa","hash":"sha224","id":""},"DSA-WITH-SHA256":{"sign":"dsa","hash":"sha256","id":""},"DSA-SHA256":{"sign":"dsa","hash":"sha256","id":""},"DSA-WITH-SHA384":{"sign":"dsa","hash":"sha384","id":""},"DSA-SHA384":{"sign":"dsa","hash":"sha384","id":""},"DSA-WITH-SHA512":{"sign":"dsa","hash":"sha512","id":""},"DSA-SHA512":{"sign":"dsa","hash":"sha512","id":""},"DSA-RIPEMD160":{"sign":"dsa","hash":"rmd160","id":""},"ripemd160WithRSA":{"sign":"rsa","hash":"rmd160","id":"3021300906052b2403020105000414"},"RSA-RIPEMD160":{"sign":"rsa","hash":"rmd160","id":"3021300906052b2403020105000414"},"md5WithRSAEncryption":{"sign":"rsa","hash":"md5","id":"3020300c06082a864886f70d020505000410"},"RSA-MD5":{"sign":"rsa","hash":"md5","id":"3020300c06082a864886f70d020505000410"}}',
     );
   },
   function (A, B, Q) {
@@ -11964,8 +11974,8 @@ var HME = (function (A) {
                 return new I().update(A).digest();
               }
             : "md5" === A
-            ? g
-            : B;
+              ? g
+              : B;
         })(A),
         C = "sha512" === A || "sha384" === A ? 128 : 64;
       B.length > C ? (B = i(B)) : B.length < C && (B = t.concat([B, e], C));
@@ -12253,7 +12263,7 @@ var HME = (function (A) {
   },
   function (A) {
     A.exports = JSON.parse(
-      '{"aes-128-ecb":{"cipher":"AES","key":128,"iv":0,"mode":"ECB","type":"block"},"aes-192-ecb":{"cipher":"AES","key":192,"iv":0,"mode":"ECB","type":"block"},"aes-256-ecb":{"cipher":"AES","key":256,"iv":0,"mode":"ECB","type":"block"},"aes-128-cbc":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes-192-cbc":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes-256-cbc":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes128":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes192":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes256":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes-128-cfb":{"cipher":"AES","key":128,"iv":16,"mode":"CFB","type":"stream"},"aes-192-cfb":{"cipher":"AES","key":192,"iv":16,"mode":"CFB","type":"stream"},"aes-256-cfb":{"cipher":"AES","key":256,"iv":16,"mode":"CFB","type":"stream"},"aes-128-cfb8":{"cipher":"AES","key":128,"iv":16,"mode":"CFB8","type":"stream"},"aes-192-cfb8":{"cipher":"AES","key":192,"iv":16,"mode":"CFB8","type":"stream"},"aes-256-cfb8":{"cipher":"AES","key":256,"iv":16,"mode":"CFB8","type":"stream"},"aes-128-cfb1":{"cipher":"AES","key":128,"iv":16,"mode":"CFB1","type":"stream"},"aes-192-cfb1":{"cipher":"AES","key":192,"iv":16,"mode":"CFB1","type":"stream"},"aes-256-cfb1":{"cipher":"AES","key":256,"iv":16,"mode":"CFB1","type":"stream"},"aes-128-ofb":{"cipher":"AES","key":128,"iv":16,"mode":"OFB","type":"stream"},"aes-192-ofb":{"cipher":"AES","key":192,"iv":16,"mode":"OFB","type":"stream"},"aes-256-ofb":{"cipher":"AES","key":256,"iv":16,"mode":"OFB","type":"stream"},"aes-128-ctr":{"cipher":"AES","key":128,"iv":16,"mode":"CTR","type":"stream"},"aes-192-ctr":{"cipher":"AES","key":192,"iv":16,"mode":"CTR","type":"stream"},"aes-256-ctr":{"cipher":"AES","key":256,"iv":16,"mode":"CTR","type":"stream"},"aes-128-gcm":{"cipher":"AES","key":128,"iv":12,"mode":"GCM","type":"auth"},"aes-192-gcm":{"cipher":"AES","key":192,"iv":12,"mode":"GCM","type":"auth"},"aes-256-gcm":{"cipher":"AES","key":256,"iv":12,"mode":"GCM","type":"auth"}}'
+      '{"aes-128-ecb":{"cipher":"AES","key":128,"iv":0,"mode":"ECB","type":"block"},"aes-192-ecb":{"cipher":"AES","key":192,"iv":0,"mode":"ECB","type":"block"},"aes-256-ecb":{"cipher":"AES","key":256,"iv":0,"mode":"ECB","type":"block"},"aes-128-cbc":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes-192-cbc":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes-256-cbc":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes128":{"cipher":"AES","key":128,"iv":16,"mode":"CBC","type":"block"},"aes192":{"cipher":"AES","key":192,"iv":16,"mode":"CBC","type":"block"},"aes256":{"cipher":"AES","key":256,"iv":16,"mode":"CBC","type":"block"},"aes-128-cfb":{"cipher":"AES","key":128,"iv":16,"mode":"CFB","type":"stream"},"aes-192-cfb":{"cipher":"AES","key":192,"iv":16,"mode":"CFB","type":"stream"},"aes-256-cfb":{"cipher":"AES","key":256,"iv":16,"mode":"CFB","type":"stream"},"aes-128-cfb8":{"cipher":"AES","key":128,"iv":16,"mode":"CFB8","type":"stream"},"aes-192-cfb8":{"cipher":"AES","key":192,"iv":16,"mode":"CFB8","type":"stream"},"aes-256-cfb8":{"cipher":"AES","key":256,"iv":16,"mode":"CFB8","type":"stream"},"aes-128-cfb1":{"cipher":"AES","key":128,"iv":16,"mode":"CFB1","type":"stream"},"aes-192-cfb1":{"cipher":"AES","key":192,"iv":16,"mode":"CFB1","type":"stream"},"aes-256-cfb1":{"cipher":"AES","key":256,"iv":16,"mode":"CFB1","type":"stream"},"aes-128-ofb":{"cipher":"AES","key":128,"iv":16,"mode":"OFB","type":"stream"},"aes-192-ofb":{"cipher":"AES","key":192,"iv":16,"mode":"OFB","type":"stream"},"aes-256-ofb":{"cipher":"AES","key":256,"iv":16,"mode":"OFB","type":"stream"},"aes-128-ctr":{"cipher":"AES","key":128,"iv":16,"mode":"CTR","type":"stream"},"aes-192-ctr":{"cipher":"AES","key":192,"iv":16,"mode":"CTR","type":"stream"},"aes-256-ctr":{"cipher":"AES","key":256,"iv":16,"mode":"CTR","type":"stream"},"aes-128-gcm":{"cipher":"AES","key":128,"iv":12,"mode":"GCM","type":"auth"},"aes-192-gcm":{"cipher":"AES","key":192,"iv":12,"mode":"GCM","type":"auth"},"aes-256-gcm":{"cipher":"AES","key":256,"iv":12,"mode":"GCM","type":"auth"}}',
     );
   },
   function (A, B, Q) {
@@ -12317,7 +12327,7 @@ var HME = (function (A) {
           throw new Error("Unsupported state or unable to authenticate data");
         var A = t(
           this._ghash.final(8 * this._alen, 8 * this._len),
-          this._cipher.encryptBlock(this._finID)
+          this._cipher.encryptBlock(this._finID),
         );
         if (
           this._decrypt &&
@@ -12467,8 +12477,8 @@ var HME = (function (A) {
                 i >= 49 && i <= 54
                   ? i - 49 + 10
                   : i >= 17 && i <= 22
-                  ? i - 17 + 10
-                  : 15 & i);
+                    ? i - 17 + 10
+                    : 15 & i);
           }
           return g;
         }
@@ -12510,11 +12520,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -12722,9 +12732,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -12951,10 +12961,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -13564,37 +13577,37 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? h(this, A, B)
               : Q < 63
-              ? r(this, A, B)
-              : Q < 1024
-              ? (function (A, B, Q) {
-                  (Q.negative = B.negative ^ A.negative),
-                    (Q.length = A.length + B.length);
-                  for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
-                    var i = I;
-                    I = 0;
-                    for (
-                      var C = 67108863 & g,
-                        t = Math.min(E, B.length - 1),
-                        e = Math.max(0, E - A.length + 1);
-                      e <= t;
-                      e++
-                    ) {
-                      var o = E - e,
-                        s = (0 | A.words[o]) * (0 | B.words[e]),
-                        r = 67108863 & s;
-                      (C = 67108863 & (r = (r + C) | 0)),
-                        (I +=
-                          (i =
-                            ((i = (i + ((s / 67108864) | 0)) | 0) +
-                              (r >>> 26)) |
-                            0) >>> 26),
-                        (i &= 67108863);
-                    }
-                    (Q.words[E] = C), (g = i), (i = I);
-                  }
-                  return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
-                })(this, A, B)
-              : n(this, A, B);
+                ? r(this, A, B)
+                : Q < 1024
+                  ? (function (A, B, Q) {
+                      (Q.negative = B.negative ^ A.negative),
+                        (Q.length = A.length + B.length);
+                      for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
+                        var i = I;
+                        I = 0;
+                        for (
+                          var C = 67108863 & g,
+                            t = Math.min(E, B.length - 1),
+                            e = Math.max(0, E - A.length + 1);
+                          e <= t;
+                          e++
+                        ) {
+                          var o = E - e,
+                            s = (0 | A.words[o]) * (0 | B.words[e]),
+                            r = 67108863 & s;
+                          (C = 67108863 & (r = (r + C) | 0)),
+                            (I +=
+                              (i =
+                                ((i = (i + ((s / 67108864) | 0)) | 0) +
+                                  (r >>> 26)) |
+                                0) >>> 26),
+                            (i &= 67108863);
+                        }
+                        (Q.words[E] = C), (g = i), (i = I);
+                      }
+                      return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
+                    })(this, A, B)
+                  : n(this, A, B);
           }),
           (a.prototype.makeRBT = function (A) {
             for (
@@ -13851,7 +13864,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -13876,15 +13889,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) < A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) < A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -13987,32 +14000,33 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? { div: null, mod: new E(this.modn(A.words[0])) }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -14035,8 +14049,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modn = function (A) {
             g(A <= 67108863);
@@ -14247,7 +14261,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -14359,28 +14373,28 @@ var HME = (function (A) {
           y.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function u() {
           y.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function f() {
           y.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function w() {
           y.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function F(A) {
@@ -14419,8 +14433,8 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : Q.strip(),
+                  ? Q.isub(this.p)
+                  : Q.strip(),
               Q
             );
           }),
@@ -14923,31 +14937,31 @@ var HME = (function (A) {
         return A <= 0 || (0 === B.length && B.ended)
           ? 0
           : B.objectMode
-          ? 1
-          : A != A
-          ? B.flowing && B.length
-            ? B.buffer.head.data.length
-            : B.length
-          : (A > B.highWaterMark &&
-              (B.highWaterMark = (function (A) {
-                return (
-                  A >= 1073741824
-                    ? (A = 1073741824)
-                    : (A--,
-                      (A |= A >>> 1),
-                      (A |= A >>> 2),
-                      (A |= A >>> 4),
-                      (A |= A >>> 8),
-                      (A |= A >>> 16),
-                      A++),
-                  A
-                );
-              })(A)),
-            A <= B.length
-              ? A
-              : B.ended
-              ? B.length
-              : ((B.needReadable = !0), 0));
+            ? 1
+            : A != A
+              ? B.flowing && B.length
+                ? B.buffer.head.data.length
+                : B.length
+              : (A > B.highWaterMark &&
+                  (B.highWaterMark = (function (A) {
+                    return (
+                      A >= 1073741824
+                        ? (A = 1073741824)
+                        : (A--,
+                          (A |= A >>> 1),
+                          (A |= A >>> 2),
+                          (A |= A >>> 4),
+                          (A |= A >>> 8),
+                          (A |= A >>> 16),
+                          A++),
+                      A
+                    );
+                  })(A)),
+                A <= B.length
+                  ? A
+                  : B.ended
+                    ? B.length
+                    : ((B.needReadable = !0), 0));
       }
       function Y(A) {
         var B = A._readableState;
@@ -15012,13 +15026,13 @@ var HME = (function (A) {
           : (B.objectMode
               ? (Q = B.buffer.shift())
               : !A || A >= B.length
-              ? ((Q = B.decoder
-                  ? B.buffer.join("")
-                  : 1 === B.buffer.length
-                  ? B.buffer.first()
-                  : B.buffer.concat(B.length)),
-                B.buffer.clear())
-              : (Q = B.buffer.consume(A, B.decoder)),
+                ? ((Q = B.decoder
+                    ? B.buffer.join("")
+                    : 1 === B.buffer.length
+                      ? B.buffer.first()
+                      : B.buffer.concat(B.length)),
+                  B.buffer.clear())
+                : (Q = B.buffer.consume(A, B.decoder)),
             Q);
         var Q;
       }
@@ -15388,8 +15402,8 @@ var HME = (function (A) {
                         B.nextTick(Q, i, A))
                     : B.nextTick(Q, i, A)
                   : E
-                  ? (B.nextTick(g, i), E(A))
-                  : B.nextTick(g, i);
+                    ? (B.nextTick(g, i), E(A))
+                    : B.nextTick(g, i);
               }),
               this);
         },
@@ -15565,8 +15579,8 @@ var HME = (function (A) {
           B.destroyed
             ? B.onwrite(new D("write"))
             : Q
-            ? A._writev(I, B.onwrite)
-            : A._write(I, E, B.onwrite),
+              ? A._writev(I, B.onwrite)
+              : A._write(I, E, B.onwrite),
           (B.sync = !1);
       }
       function H(A, B, Q, g) {
@@ -15666,7 +15680,7 @@ var HME = (function (A) {
                   return this.getBuffer();
                 },
                 "_writableState.buffer is deprecated. Use _writableState.getBuffer instead.",
-                "DEP0003"
+                "DEP0003",
               ),
             });
           } catch (A) {}
@@ -15999,10 +16013,10 @@ var HME = (function (A) {
       return 0 === A
         ? I(B, Q, g)
         : 1 === A || 3 === A
-        ? i(B, Q, g)
-        : 2 === A
-        ? E(B, Q, g)
-        : void 0;
+          ? i(B, Q, g)
+          : 2 === A
+            ? E(B, Q, g)
+            : void 0;
     }),
       (B.ch32 = I),
       (B.maj32 = E),
@@ -16341,8 +16355,8 @@ var HME = (function (A) {
                 e >= 49 && e <= 54
                   ? e - 49 + 10
                   : e >= 17 && e <= 22
-                  ? e - 17 + 10
-                  : e),
+                    ? e - 17 + 10
+                    : e),
               (i |= t);
           }
           return g(!(240 & i), "Invalid character in " + A), I;
@@ -16397,11 +16411,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -16582,9 +16596,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -16861,10 +16875,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -17501,10 +17518,10 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? a(this, A, B)
               : Q < 63
-              ? n(this, A, B)
-              : Q < 1024
-              ? c(this, A, B)
-              : y(this, A, B);
+                ? n(this, A, B)
+                : Q < 1024
+                  ? c(this, A, B)
+                  : y(this, A, B);
           }),
           (D.prototype.makeRBT = function (A) {
             for (
@@ -17765,7 +17782,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -17790,15 +17807,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) <= A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) <= A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -17901,32 +17918,36 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modrn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modrn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? {
+                                  div: null,
+                                  mod: new E(this.modrn(A.words[0])),
+                                }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modrn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -17949,8 +17970,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modrn = function (A) {
             var B = A < 0;
@@ -18166,7 +18187,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -18278,28 +18299,28 @@ var HME = (function (A) {
           f.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function F() {
           f.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function d() {
           f.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function l() {
           f.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function U(A) {
@@ -18338,8 +18359,8 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : Q._strip(),
+                  ? Q.isub(this.p)
+                  : Q._strip(),
               Q
             );
           }),
@@ -18662,8 +18683,8 @@ var HME = (function (A) {
               : ("number" == typeof this.value
                   ? (A[B] = this.value)
                   : "string" == typeof this.value
-                  ? A.write(this.value, B)
-                  : E.isBuffer(this.value) && this.value.copy(A, B),
+                    ? A.write(this.value, B)
+                    : E.isBuffer(this.value) && this.value.copy(A, B),
                 (B += this.length))),
           A
         );
@@ -18759,7 +18780,7 @@ var HME = (function (A) {
         var E = A.save(),
           i = this._skipUntilEnd(
             A,
-            'Failed to skip indefinite length body: "' + this.tag + '"'
+            'Failed to skip indefinite length body: "' + this.tag + '"',
           );
         return A.isError(i)
           ? i
@@ -18819,7 +18840,7 @@ var HME = (function (A) {
           return this._isPrintstr(C)
             ? C
             : A.error(
-                "Decoding of string type: printstr unsupported characters"
+                "Decoding of string type: printstr unsupported characters",
               );
         }
         return /str$/.test(B)
@@ -18941,25 +18962,25 @@ var HME = (function (A) {
           ? this._isNumstr(A)
             ? this._createEncoderBuffer(A)
             : this.reporter.error(
-                "Encoding of string type: numstr supports only digits and space"
+                "Encoding of string type: numstr supports only digits and space",
               )
           : "printstr" === B
-          ? this._isPrintstr(A)
-            ? this._createEncoderBuffer(A)
-            : this.reporter.error(
-                "Encoding of string type: printstr supports only latin upper and lower case letters, digits, space, apostrophe, left and rigth parenthesis, plus sign, comma, hyphen, dot, slash, colon, equal sign, question mark"
-              )
-          : /str$/.test(B) || "objDesc" === B
-          ? this._createEncoderBuffer(A)
-          : this.reporter.error(
-              "Encoding of string type: " + B + " unsupported"
-            );
+            ? this._isPrintstr(A)
+              ? this._createEncoderBuffer(A)
+              : this.reporter.error(
+                  "Encoding of string type: printstr supports only latin upper and lower case letters, digits, space, apostrophe, left and rigth parenthesis, plus sign, comma, hyphen, dot, slash, colon, equal sign, question mark",
+                )
+            : /str$/.test(B) || "objDesc" === B
+              ? this._createEncoderBuffer(A)
+              : this.reporter.error(
+                  "Encoding of string type: " + B + " unsupported",
+                );
       }),
       (e.prototype._encodeObjid = function (A, B, Q) {
         if ("string" == typeof A) {
           if (!B)
             return this.reporter.error(
-              "string objid given, but no values map found"
+              "string objid given, but no values map found",
             );
           if (!B.hasOwnProperty(A))
             return this.reporter.error("objid not found in values map");
@@ -18972,7 +18993,7 @@ var HME = (function (A) {
         if (!Array.isArray(A))
           return this.reporter.error(
             "objid() should be either array or string, got: " +
-              JSON.stringify(A)
+              JSON.stringify(A),
           );
         if (!Q) {
           if (A[1] >= 40)
@@ -19007,18 +19028,18 @@ var HME = (function (A) {
                 "Z",
               ].join(""))
             : "utctime" === B
-            ? (Q = [
-                o(g.getFullYear() % 100),
-                o(g.getUTCMonth() + 1),
-                o(g.getUTCDate()),
-                o(g.getUTCHours()),
-                o(g.getUTCMinutes()),
-                o(g.getUTCSeconds()),
-                "Z",
-              ].join(""))
-            : this.reporter.error(
-                "Encoding " + B + " time is not supported yet"
-              ),
+              ? (Q = [
+                  o(g.getFullYear() % 100),
+                  o(g.getUTCMonth() + 1),
+                  o(g.getUTCDate()),
+                  o(g.getUTCHours()),
+                  o(g.getUTCMinutes()),
+                  o(g.getUTCSeconds()),
+                  "Z",
+                ].join(""))
+              : this.reporter.error(
+                  "Encoding " + B + " time is not supported yet",
+                ),
           this._encodeStr(Q, "octstr")
         );
       }),
@@ -19029,11 +19050,11 @@ var HME = (function (A) {
         if ("string" == typeof A) {
           if (!B)
             return this.reporter.error(
-              "String int or enum given, but no values map"
+              "String int or enum given, but no values map",
             );
           if (!B.hasOwnProperty(A))
             return this.reporter.error(
-              "Values map doesn't contain: " + JSON.stringify(A)
+              "Values map doesn't contain: " + JSON.stringify(A),
             );
           A = B[A];
         }
@@ -19083,7 +19104,7 @@ var HME = (function (A) {
   },
   function (A) {
     A.exports = JSON.parse(
-      '{"1.3.132.0.10":"secp256k1","1.3.132.0.33":"p224","1.2.840.10045.3.1.1":"p192","1.2.840.10045.3.1.7":"p256","1.3.132.0.34":"p384","1.3.132.0.35":"p521"}'
+      '{"1.3.132.0.10":"secp256k1","1.3.132.0.33":"p224","1.2.840.10045.3.1.1":"p192","1.2.840.10045.3.1.7":"p256","1.3.132.0.34":"p384","1.3.132.0.35":"p521"}',
     );
   },
   function (A, B, Q) {
@@ -19114,7 +19135,7 @@ var HME = (function (A) {
         A.toRed(g.mont(B.modulus))
           .redPow(new g(B.publicExponent))
           .fromRed()
-          .toArray()
+          .toArray(),
       );
     };
   },
@@ -19180,57 +19201,58 @@ var HME = (function (A) {
                   return "[Emscripten Module object]";
                 }))
               : r
-              ? ("undefined" != typeof read &&
-                  (n = function (A) {
-                    var B = AQ(A);
-                    return B ? PB(B) : read(A);
-                  }),
-                (a = function (A) {
-                  var B;
-                  return (B = AQ(A))
-                    ? B
-                    : "function" == typeof readbuffer
-                    ? new Uint8Array(readbuffer(A))
-                    : (N("object" == typeof (B = read(A, "binary"))), B);
-                }),
-                "undefined" != typeof print &&
-                  ("undefined" == typeof console && (console = {}),
-                  (console.log = print),
-                  (console.warn = console.error =
-                    "undefined" != typeof printErr ? printErr : print)))
-              : (e || o) &&
-                (o
-                  ? (D = self.location.href)
-                  : document.currentScript && (D = document.currentScript.src),
-                i && (D = i),
-                (D =
-                  0 !== D.indexOf("blob:")
-                    ? D.substr(0, D.lastIndexOf("/") + 1)
-                    : ""),
-                (n = function (A) {
-                  try {
-                    var B = new XMLHttpRequest();
-                    return B.open("GET", A, !1), B.send(null), B.responseText;
-                  } catch (B) {
-                    if ((A = AQ(A))) return PB(A);
-                    throw B;
-                  }
-                }),
-                o &&
+                ? ("undefined" != typeof read &&
+                    (n = function (A) {
+                      var B = AQ(A);
+                      return B ? PB(B) : read(A);
+                    }),
                   (a = function (A) {
+                    var B;
+                    return (B = AQ(A))
+                      ? B
+                      : "function" == typeof readbuffer
+                        ? new Uint8Array(readbuffer(A))
+                        : (N("object" == typeof (B = read(A, "binary"))), B);
+                  }),
+                  "undefined" != typeof print &&
+                    ("undefined" == typeof console && (console = {}),
+                    (console.log = print),
+                    (console.warn = console.error =
+                      "undefined" != typeof printErr ? printErr : print)))
+                : (e || o) &&
+                  (o
+                    ? (D = self.location.href)
+                    : document.currentScript &&
+                      (D = document.currentScript.src),
+                  i && (D = i),
+                  (D =
+                    0 !== D.indexOf("blob:")
+                      ? D.substr(0, D.lastIndexOf("/") + 1)
+                      : ""),
+                  (n = function (A) {
                     try {
                       var B = new XMLHttpRequest();
-                      return (
-                        B.open("GET", A, !1),
-                        (B.responseType = "arraybuffer"),
-                        B.send(null),
-                        new Uint8Array(B.response)
-                      );
+                      return B.open("GET", A, !1), B.send(null), B.responseText;
                     } catch (B) {
-                      if ((A = AQ(A))) return A;
+                      if ((A = AQ(A))) return PB(A);
                       throw B;
                     }
-                  }));
+                  }),
+                  o &&
+                    (a = function (A) {
+                      try {
+                        var B = new XMLHttpRequest();
+                        return (
+                          B.open("GET", A, !1),
+                          (B.responseType = "arraybuffer"),
+                          B.send(null),
+                          new Uint8Array(B.response)
+                        );
+                      } catch (B) {
+                        if ((A = AQ(A))) return A;
+                        throw B;
+                      }
+                    }));
             var u = B.print || console.log.bind(console),
               f = B.printErr || console.warn.bind(console);
             for (C in t) t.hasOwnProperty(C) && (B[C] = t[C]);
@@ -19280,7 +19302,7 @@ var HME = (function (A) {
                       : ((I -= 65536),
                         (g += String.fromCharCode(
                           55296 | (I >> 10),
-                          56320 | (1023 & I)
+                          56320 | (1023 & I),
                         )));
                   }
                 } else g += String.fromCharCode(I);
@@ -19383,7 +19405,7 @@ var HME = (function (A) {
                     ? ((g -= 65536),
                       (Q += String.fromCharCode(
                         55296 | (g >> 10),
-                        56320 | (1023 & g)
+                        56320 | (1023 & g),
                       )))
                     : (Q += String.fromCharCode(g));
               }
@@ -19486,7 +19508,7 @@ var HME = (function (A) {
                 f(A),
                 (U = !0),
                 new WebAssembly.RuntimeError(
-                  "abort(" + A + "). Build with -s ASSERTIONS=1 for more info."
+                  "abort(" + A + "). Build with -s ASSERTIONS=1 for more info.",
                 ))
               );
             }
@@ -19545,8 +19567,8 @@ var HME = (function (A) {
                 "." === I
                   ? A.splice(g, 1)
                   : ".." === I
-                  ? (A.splice(g, 1), Q++)
-                  : Q && (A.splice(g, 1), Q--);
+                    ? (A.splice(g, 1), Q++)
+                    : Q && (A.splice(g, 1), Q--);
               }
               if (B) for (; Q; Q--) A.unshift("..");
               return A;
@@ -19559,7 +19581,7 @@ var HME = (function (A) {
                   A.split("/").filter(function (A) {
                     return !!A;
                   }),
-                  !B
+                  !B,
                 ).join("/")) ||
                   B ||
                   (A = "."),
@@ -19598,7 +19620,7 @@ var HME = (function (A) {
               ) {
                 if ("string" != typeof (B = 0 <= Q ? arguments[Q] : VA.cwd()))
                   throw new TypeError(
-                    "Arguments to path.resolve must be strings"
+                    "Arguments to path.resolve must be strings",
                   );
                 if (!B) return "";
                 (A = B + "/" + A), (B = "/" === B.charAt(0));
@@ -19609,7 +19631,7 @@ var HME = (function (A) {
                     A.split("/").filter(function (A) {
                       return !!A;
                     }),
-                    !B
+                    !B,
                   ).join("/")) || "."
               );
             }
@@ -19775,14 +19797,14 @@ var HME = (function (A) {
                         (Q.h = JA.M.dir.stream),
                         (Q.f = {}))
                       : VA.isFile(Q.mode)
-                      ? ((Q.g = JA.M.file.node),
-                        (Q.h = JA.M.file.stream),
-                        (Q.l = 0),
-                        (Q.f = null))
-                      : VA.ma(Q.mode)
-                      ? ((Q.g = JA.M.link.node), (Q.h = JA.M.link.stream))
-                      : VA.ya(Q.mode) &&
-                        ((Q.g = JA.M.gb.node), (Q.h = JA.M.gb.stream)),
+                        ? ((Q.g = JA.M.file.node),
+                          (Q.h = JA.M.file.stream),
+                          (Q.l = 0),
+                          (Q.f = null))
+                        : VA.ma(Q.mode)
+                          ? ((Q.g = JA.M.link.node), (Q.h = JA.M.link.stream))
+                          : VA.ya(Q.mode) &&
+                            ((Q.g = JA.M.gb.node), (Q.h = JA.M.gb.stream)),
                     (Q.timestamp = Date.now()),
                     A && (A.f[B] = Q),
                     Q
@@ -19839,10 +19861,10 @@ var HME = (function (A) {
                       VA.v(A.mode)
                         ? (B.size = 4096)
                         : VA.isFile(A.mode)
-                        ? (B.size = A.l)
-                        : VA.ma(A.mode)
-                        ? (B.size = A.link.length)
-                        : (B.size = 0),
+                          ? (B.size = A.l)
+                          : VA.ma(A.mode)
+                            ? (B.size = A.link.length)
+                            : (B.size = 0),
                       (B.atime = new Date(A.timestamp)),
                       (B.mtime = new Date(A.timestamp)),
                       (B.ctime = new Date(A.timestamp)),
@@ -20016,7 +20038,7 @@ var HME = (function (A) {
                     A.split("/").filter(function (A) {
                       return !!A;
                     }),
-                    !1
+                    !1,
                   );
                   var I = VA.root;
                   for (g = "/", Q = 0; Q < A.length; Q++) {
@@ -20174,8 +20196,8 @@ var HME = (function (A) {
                     ? VA.ma(A.mode)
                       ? 32
                       : VA.v(A.mode) && ("r" !== VA.mb(B) || 512 & B)
-                      ? 31
-                      : VA.Z(A, VA.mb(B))
+                        ? 31
+                        : VA.Z(A, VA.mb(B))
                     : 44;
                 },
                 Bb: 4096,
@@ -20256,7 +20278,7 @@ var HME = (function (A) {
                       f(
                         "warning: " +
                           VA.Fa +
-                          " FS.syncfs operations in flight at once, probably just doing extra work"
+                          " FS.syncfs operations in flight at once, probably just doing extra work",
                       );
                   var I = VA.pb(VA.root.s),
                     E = 0;
@@ -20381,7 +20403,7 @@ var HME = (function (A) {
                           "', '" +
                           B +
                           "') threw an exception: " +
-                          Q.message
+                          Q.message,
                       );
                     }
                     VA.tb(i);
@@ -20401,7 +20423,7 @@ var HME = (function (A) {
                           "', '" +
                           B +
                           "') threw an exception: " +
-                          Q.message
+                          Q.message,
                       );
                     }
                   }
@@ -20421,7 +20443,7 @@ var HME = (function (A) {
                       "FS.trackingDelegate['willDeletePath']('" +
                         A +
                         "') threw an exception: " +
-                        B.message
+                        B.message,
                     );
                   }
                   B.g.rmdir(B, Q), VA.La(g);
@@ -20432,7 +20454,7 @@ var HME = (function (A) {
                       "FS.trackingDelegate['onDeletePath']('" +
                         A +
                         "') threw an exception: " +
-                        B.message
+                        B.message,
                     );
                   }
                 },
@@ -20456,7 +20478,7 @@ var HME = (function (A) {
                       "FS.trackingDelegate['willDeletePath']('" +
                         A +
                         "') threw an exception: " +
-                        B.message
+                        B.message,
                     );
                   }
                   B.g.unlink(B, Q), VA.La(g);
@@ -20467,7 +20489,7 @@ var HME = (function (A) {
                       "FS.trackingDelegate['onDeletePath']('" +
                         A +
                         "') threw an exception: " +
-                        B.message
+                        B.message,
                     );
                   }
                 },
@@ -20583,7 +20605,7 @@ var HME = (function (A) {
                         error: !1,
                       },
                       I,
-                      E
+                      E,
                     )).h.open && I.h.open(I),
                     !B.logReadFiles ||
                       1 & Q ||
@@ -20602,7 +20624,7 @@ var HME = (function (A) {
                       "FS.trackingDelegate['onOpenFile']('" +
                         A +
                         "', flags) threw an exception: " +
-                        B.message
+                        B.message,
                     );
                   }
                   return I;
@@ -20661,7 +20683,7 @@ var HME = (function (A) {
                       "FS.trackingDelegate['onWriteToFile']('" +
                         A.path +
                         "') threw an exception: " +
-                        B.message
+                        B.message,
                     );
                   }
                   return B;
@@ -20812,7 +20834,7 @@ var HME = (function (A) {
                         },
                       },
                       {},
-                      "/proc/self/fd"
+                      "/proc/self/fd",
                     );
                 },
                 Rb: function () {
@@ -21026,11 +21048,11 @@ var HME = (function (A) {
                   var B = !0;
                   if ("undefined" != typeof XMLHttpRequest)
                     throw Error(
-                      "Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread."
+                      "Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.",
                     );
                   if (!n)
                     throw Error(
-                      "Cannot load without read() or XMLHttpRequest."
+                      "Cannot load without read() or XMLHttpRequest.",
                     );
                   try {
                     (A.f = _B(n(A.url), !0)), (A.l = A.f.length);
@@ -21064,7 +21086,7 @@ var HME = (function (A) {
                         ))
                       )
                         throw Error(
-                          "Couldn't load " + Q + ". Status: " + A.status
+                          "Couldn't load " + Q + ". Status: " + A.status,
                         );
                       var B,
                         g = Number(A.getResponseHeader("Content-length")),
@@ -21088,13 +21110,13 @@ var HME = (function (A) {
                                 B +
                                 ", " +
                                 I +
-                                ") or no bytes requested!"
+                                ") or no bytes requested!",
                             );
                           if (I > g - 1)
                             throw Error(
                               "only " +
                                 g +
-                                " bytes available! programmer error!"
+                                " bytes available! programmer error!",
                             );
                           var t = new XMLHttpRequest();
                           if (
@@ -21102,13 +21124,13 @@ var HME = (function (A) {
                             g !== E &&
                               t.setRequestHeader(
                                 "Range",
-                                "bytes=" + B + "-" + I
+                                "bytes=" + B + "-" + I,
                               ),
                             "undefined" != typeof Uint8Array &&
                               (t.responseType = "arraybuffer"),
                             t.overrideMimeType &&
                               t.overrideMimeType(
-                                "text/plain; charset=x-user-defined"
+                                "text/plain; charset=x-user-defined",
                               ),
                             t.send(null),
                             !(
@@ -21117,7 +21139,7 @@ var HME = (function (A) {
                             ))
                           )
                             throw Error(
-                              "Couldn't load " + Q + ". Status: " + t.status
+                              "Couldn't load " + Q + ". Status: " + t.status,
                             );
                           (B =
                             void 0 !== t.response
@@ -21132,7 +21154,7 @@ var HME = (function (A) {
                           ((E = g = 1),
                           (E = g = this.rb(0).length),
                           u(
-                            "LazyFiles on gzip forces download of the whole file when length is accessed"
+                            "LazyFiles on gzip forces download of the whole file when length is accessed",
                           )),
                         (this.Fb = g),
                         (this.Eb = E),
@@ -21212,7 +21234,7 @@ var HME = (function (A) {
                           function (A) {
                             s(A);
                           },
-                          C
+                          C,
                         )
                       : s(g);
                 },
@@ -21338,7 +21360,7 @@ var HME = (function (A) {
                   "body",
                   "return function " +
                     A +
-                    '() {\n    "use strict";    return body.apply(this, arguments);\n};\n'
+                    '() {\n    "use strict";    return body.apply(this, arguments);\n};\n',
                 )(B)
               );
             }
@@ -21398,7 +21420,7 @@ var HME = (function (A) {
             function EB(A, B, Q) {
               if (((Q = Q || {}), !("argPackAdvance" in B)))
                 throw new TypeError(
-                  "registerType registeredInstance requires argPackAdvance"
+                  "registerType registeredInstance requires argPackAdvance",
                 );
               var g = B.name;
               if (
@@ -21406,7 +21428,7 @@ var HME = (function (A) {
                   BB(
                     'type "' +
                       g +
-                      '" must have a positive integer typeid pointer'
+                      '" must have a positive integer typeid pointer',
                   ),
                 TA.hasOwnProperty(A))
               ) {
@@ -21484,7 +21506,7 @@ var HME = (function (A) {
                           arguments.length +
                           ") - expects one of (" +
                           A[B].N +
-                          ")!"
+                          ")!",
                       ),
                     A[B].N[arguments.length].apply(this, arguments)
                   );
@@ -21511,7 +21533,7 @@ var HME = (function (A) {
                     "Expected null or instance of " +
                       Q.name +
                       ", got an instance of " +
-                      B.name
+                      B.name,
                   ),
                   (A = B.ta(A)),
                   (B = B.G);
@@ -21524,7 +21546,7 @@ var HME = (function (A) {
                   B.c.j ||
                     BB(
                       "Cannot pass deleted object as a pointer of type " +
-                        this.name
+                        this.name,
                     ),
                   uB(B.c.j, B.c.o.i, this.i));
             }
@@ -21543,7 +21565,7 @@ var HME = (function (A) {
                 B.c.j ||
                   BB(
                     "Cannot pass deleted object as a pointer of type " +
-                      this.name
+                      this.name,
                   ),
                 !this.za &&
                   B.c.o.za &&
@@ -21551,7 +21573,7 @@ var HME = (function (A) {
                     "Cannot convert argument of type " +
                       (B.c.F ? B.c.F.name : B.c.o.name) +
                       " to parameter type " +
-                      this.name
+                      this.name,
                   ),
                 (Q = uB(B.c.j, B.c.o.i, this.i)),
                 this.Ba)
@@ -21568,7 +21590,7 @@ var HME = (function (A) {
                           "Cannot convert argument of type " +
                             (B.c.F ? B.c.F.name : B.c.o.name) +
                             " to parameter type " +
-                            this.name
+                            this.name,
                         );
                     break;
                   case 1:
@@ -21582,7 +21604,7 @@ var HME = (function (A) {
                         Q,
                         SB(function () {
                           g.delete();
-                        })
+                        }),
                       )),
                         null !== A && A.push(this.$, Q);
                     }
@@ -21599,14 +21621,14 @@ var HME = (function (A) {
                   B.c.j ||
                     BB(
                       "Cannot pass deleted object as a pointer of type " +
-                        this.name
+                        this.name,
                     ),
                   B.c.o.za &&
                     BB(
                       "Cannot convert argument of type " +
                         B.c.o.name +
                         " to parameter type " +
-                        this.name
+                        this.name,
                     ),
                   uB(B.c.j, B.c.o.i, this.i));
             }
@@ -21662,7 +21684,7 @@ var HME = (function (A) {
                   typeof (g = new Function(
                     "dynCall",
                     "rawFunction",
-                    E + "};\n"
+                    E + "};\n",
                   )(g, Q)) &&
                   BB("unknown function pointer with signature " + A + ": " + Q),
                 g
@@ -21702,13 +21724,13 @@ var HME = (function (A) {
                   BB(
                     Q +
                       ' incompatible with "this" of type ' +
-                      A.constructor.name
+                      A.constructor.name,
                   ),
                 A.c.j ||
                   BB(
                     "cannot call emscripten binding method " +
                       Q +
-                      " on deleted object"
+                      " on deleted object",
                   ),
                 uB(A.c.j, A.c.o.i, B.i)
               );
@@ -21912,7 +21934,7 @@ var HME = (function (A) {
                 var A = sB(
                   Object.create(Object.getPrototypeOf(this), {
                     c: { value: iB(this.c) },
-                  })
+                  }),
                 );
                 return (A.c.count.value += 1), (A.c.aa = !1), A;
               }),
@@ -21974,14 +21996,14 @@ var HME = (function (A) {
                   return Q === g
                     ? B
                     : void 0 === g.G || null === (B = A(B, Q, g.G))
-                    ? null
-                    : g.Tb(B);
+                      ? null
+                      : g.Tb(B);
                 })(Q, this.i, g.i);
                 return null === I
                   ? B.call(this)
                   : this.Ba
-                  ? UB(g.i.U, { o: g, j: I, F: this, D: A })
-                  : UB(g.i.U, { o: g, j: I });
+                    ? UB(g.i.U, { o: g, j: I, F: this, D: A })
+                    : UB(g.i.U, { o: g, j: I });
               }),
               (B.getInheritedInstanceCount = function () {
                 return Object.keys(lB).length;
@@ -22017,19 +22039,19 @@ var HME = (function (A) {
                     do {
                       var g =
                           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".indexOf(
-                            A.charAt(Q++)
+                            A.charAt(Q++),
                           ),
                         I =
                           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".indexOf(
-                            A.charAt(Q++)
+                            A.charAt(Q++),
                           ),
                         E =
                           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".indexOf(
-                            A.charAt(Q++)
+                            A.charAt(Q++),
                           ),
                         i =
                           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=".indexOf(
-                            A.charAt(Q++)
+                            A.charAt(Q++),
                           );
                       (g = (g << 2) | (I >> 4)),
                         (I = ((15 & I) << 4) | (E >> 2));
@@ -22071,7 +22093,7 @@ var HME = (function (A) {
                         B ? Y(B) : "unknown filename",
                         Q,
                         g ? Y(g) : "unknown function",
-                      ]
+                      ],
                   );
                 },
                 __cxa_allocate_exception: function (A) {
@@ -22368,7 +22390,7 @@ var HME = (function (A) {
                       else {
                         if (4 !== Q)
                           throw new TypeError(
-                            "Unknown boolean type size: " + B
+                            "Unknown boolean type size: " + B,
                           );
                         g = b;
                       }
@@ -22390,7 +22412,7 @@ var HME = (function (A) {
                   o,
                   s,
                   r,
-                  h
+                  h,
                 ) {
                   (s = WA(s)),
                     (i = HB(E, i)),
@@ -22404,7 +22426,7 @@ var HME = (function (A) {
                         yB(B, A, A),
                         B.hasOwnProperty(void 0) &&
                           BB(
-                            "Cannot register multiple overloads of a function with the same number of arguments (undefined)!"
+                            "Cannot register multiple overloads of a function with the same number of arguments (undefined)!",
                           ),
                         (B[A].N[void 0] = Q))
                       : (B[A] = Q);
@@ -22430,7 +22452,7 @@ var HME = (function (A) {
                               arguments.length +
                               ") - expected (" +
                               Object.keys(e.V).toString() +
-                              ") parameters instead!"
+                              ") parameters instead!",
                           );
                         return A.apply(this, arguments);
                       });
@@ -22458,7 +22480,7 @@ var HME = (function (A) {
                   Q,
                   g,
                   I,
-                  E
+                  E,
                 ) {
                   N(0 < B);
                   var i = RB(B, Q);
@@ -22476,7 +22498,7 @@ var HME = (function (A) {
                           (B - 1) +
                           ") for class '" +
                           A.name +
-                          "'! Overload resolution is currently only performed using the parameter count, not actual type info!"
+                          "'! Overload resolution is currently only performed using the parameter count, not actual type info!",
                       );
                     return (
                       (A.i.V[B - 1] = function () {
@@ -22484,7 +22506,7 @@ var HME = (function (A) {
                           "Cannot construct " +
                             A.name +
                             " due to unbound types",
-                          i
+                          i,
                         );
                       }),
                       IB([], i, function (g) {
@@ -22496,7 +22518,7 @@ var HME = (function (A) {
                                   " called with " +
                                   arguments.length +
                                   " arguments, expected " +
-                                  (B - 1)
+                                  (B - 1),
                               ),
                               (t.length = 0),
                               (C.length = B);
@@ -22523,7 +22545,7 @@ var HME = (function (A) {
                   I,
                   E,
                   i,
-                  C
+                  C,
                 ) {
                   var t = RB(Q, g);
                   (B = WA(B)),
@@ -22550,7 +22572,7 @@ var HME = (function (A) {
                             s = g.length;
                           2 > s &&
                             BB(
-                              "argTypes array size mismatch! Must at least get return value and 'this' types!"
+                              "argTypes array size mismatch! Must at least get return value and 'this' types!",
                             );
                           var r = null !== g[1] && null !== t,
                             h = !1;
@@ -22583,7 +22605,7 @@ var HME = (function (A) {
                           for (
                             a =
                               "throwBindingError invoker fn runDestructors retType classParam".split(
-                                " "
+                                " ",
                               ),
                               o = [BB, o, i, pB, g[0], g[1]],
                               r &&
@@ -22649,11 +22671,11 @@ var HME = (function (A) {
                                 throw new TypeError(
                                   "new_ called with constructor type " +
                                     typeof B +
-                                    " which is not a function"
+                                    " which is not a function",
                                 );
                               var Q = PA(
                                 B.name || "unknownFunctionName",
-                                function () {}
+                                function () {},
                               );
                               return (
                                 (Q.prototype = B.prototype),
@@ -22681,7 +22703,7 @@ var HME = (function (A) {
                   i,
                   C,
                   t,
-                  e
+                  e,
                 ) {
                   (B = WA(B)),
                     (I = HB(g, I)),
@@ -22702,7 +22724,7 @@ var HME = (function (A) {
                           ? function () {
                               LB(
                                 "Cannot access " + g + " due to unbound types",
-                                [Q, i]
+                                [Q, i],
                               );
                             }
                           : function () {
@@ -22763,7 +22785,7 @@ var HME = (function (A) {
                       toWireType: function (A, B) {
                         if ("number" != typeof B && "boolean" != typeof B)
                           throw new TypeError(
-                            'Cannot convert "' + bB(B) + '" to ' + this.name
+                            'Cannot convert "' + bB(B) + '" to ' + this.name,
                           );
                         return B;
                       },
@@ -22791,7 +22813,7 @@ var HME = (function (A) {
                     toWireType: function (A, Q) {
                       if ("number" != typeof Q && "boolean" != typeof Q)
                         throw new TypeError(
-                          'Cannot convert "' + bB(Q) + '" to ' + this.name
+                          'Cannot convert "' + bB(Q) + '" to ' + this.name,
                         );
                       if (Q < g || Q > I)
                         throw new TypeError(
@@ -22803,7 +22825,7 @@ var HME = (function (A) {
                             g +
                             ", " +
                             I +
-                            "]!"
+                            "]!",
                         );
                       return t ? Q >>> 0 : 0 | Q;
                     },
@@ -22835,7 +22857,7 @@ var HME = (function (A) {
                       argPackAdvance: 8,
                       readValueFromPointer: g,
                     },
-                    { Zb: !0 }
+                    { Zb: !0 },
                   );
                 },
                 _embind_register_std_string: function (A, B) {
@@ -22890,7 +22912,7 @@ var HME = (function (A) {
                           255 < i &&
                             (EQ(E),
                             BB(
-                              "String has UTF-16 code units that do not fit in 8 bits"
+                              "String has UTF-16 code units that do not fit in 8 bits",
                             )),
                             (m[E + 4 + g] = i);
                         }
@@ -22991,7 +23013,7 @@ var HME = (function (A) {
                       try {
                         d.grow(
                           (Math.min(2147483648, g) - p.byteLength + 65535) >>>
-                            16
+                            16,
                         ),
                           X(d.buffer);
                         var I = 1;
@@ -23091,7 +23113,7 @@ var HME = (function (A) {
                           M,
                           b[(B + 8 * E) >> 2],
                           b[(B + (8 * E + 4)) >> 2],
-                          void 0
+                          void 0,
                         );
                         if (0 > i) {
                           var C = -1;
@@ -23246,7 +23268,7 @@ var HME = (function (A) {
                   t,
                   e,
                   o,
-                  s
+                  s,
                 ) {
                   var r = qQ();
                   try {
@@ -23269,7 +23291,7 @@ var HME = (function (A) {
                   e,
                   o,
                   s,
-                  r
+                  r,
                 ) {
                   var h = qQ();
                   try {
@@ -23412,7 +23434,7 @@ var HME = (function (A) {
                   r,
                   h,
                   n,
-                  a
+                  a,
                 ) {
                   var c = qQ();
                   try {
@@ -23561,11 +23583,11 @@ var HME = (function (A) {
                       Q = Q.replace(new RegExp(o, "g"), e[o]);
                     var s =
                         "Sunday Monday Tuesday Wednesday Thursday Friday Saturday".split(
-                          " "
+                          " ",
                         ),
                       r =
                         "January February March April May June July August September October November December".split(
-                          " "
+                          " ",
                         );
                     for (o in (e = {
                       "%a": function (A) {
@@ -23607,7 +23629,7 @@ var HME = (function (A) {
                       "%j": function (A) {
                         return E(
                           A.sa + qB(ZB(A.C + 1900) ? OB : jB, A.fa - 1),
-                          3
+                          3,
                         );
                       },
                       "%m": function (A) {
@@ -23641,17 +23663,17 @@ var HME = (function (A) {
                                   Q.getDate() +
                                   (qB(
                                     ZB(A.getFullYear()) ? OB : jB,
-                                    A.getMonth() - 1
+                                    A.getMonth() - 1,
                                   ) -
                                     31) +
                                   A.getDate()) /
-                                  7
+                                  7,
                               ),
-                              2
+                              2,
                             )
                           : 0 === i(Q, B)
-                          ? "01"
-                          : "00";
+                            ? "01"
+                            : "00";
                       },
                       "%V": function (A) {
                         var B = new Date(A.C + 1901, 0, 4),
@@ -23661,15 +23683,15 @@ var HME = (function (A) {
                         return 0 > i(g, Q)
                           ? "53"
                           : 0 >= i(B, g)
-                          ? "01"
-                          : E(
-                              Math.ceil(
-                                (Q.getFullYear() < A.C + 1900
-                                  ? A.Ia + 32 - Q.getDate()
-                                  : A.Ia + 1 - Q.getDate()) / 7
-                              ),
-                              2
-                            );
+                            ? "01"
+                            : E(
+                                Math.ceil(
+                                  (Q.getFullYear() < A.C + 1900
+                                    ? A.Ia + 32 - Q.getDate()
+                                    : A.Ia + 1 - Q.getDate()) / 7,
+                                ),
+                                2,
+                              );
                       },
                       "%w": function (A) {
                         return A.Ha;
@@ -23681,7 +23703,7 @@ var HME = (function (A) {
                               ? B
                               : WB(
                                   B,
-                                  0 === B.getDay() ? 1 : 7 - B.getDay() + 1
+                                  0 === B.getDay() ? 1 : 7 - B.getDay() + 1,
                                 );
                         return 0 > i(Q, (A = new Date(A.C + 1900, A.fa, A.sa)))
                           ? E(
@@ -23690,17 +23712,17 @@ var HME = (function (A) {
                                   Q.getDate() +
                                   (qB(
                                     ZB(A.getFullYear()) ? OB : jB,
-                                    A.getMonth() - 1
+                                    A.getMonth() - 1,
                                   ) -
                                     31) +
                                   A.getDate()) /
-                                  7
+                                  7,
                               ),
-                              2
+                              2,
                             )
                           : 0 === i(Q, B)
-                          ? "01"
-                          : "00";
+                            ? "01"
+                            : "00";
                       },
                       "%y": function (A) {
                         return (A.C + 1900).toString().substring(2);
@@ -23714,7 +23736,7 @@ var HME = (function (A) {
                           (A = Math.abs(A) / 60),
                           (B ? "+" : "-") +
                             String("0000" + ((A / 60) * 100 + (A % 60))).slice(
-                              -4
+                              -4,
                             )
                         );
                       },
@@ -23779,7 +23801,7 @@ var HME = (function (A) {
                     return (
                       f(
                         "Module.instantiateWasm callback failed with error: " +
-                          A
+                          A,
                       ),
                       !1
                     );
@@ -23794,18 +23816,18 @@ var HME = (function (A) {
                       "function" != typeof fetch
                     )
                       return g(Q);
-                    fetch(yA, { credentials: "same-origin" }).then(function (
-                      A
-                    ) {
-                      return WebAssembly.instantiateStreaming(A, I).then(
-                        Q,
-                        function (A) {
-                          f("wasm streaming compile failed: " + A),
-                            f("falling back to ArrayBuffer instantiation"),
-                            g(Q);
-                        }
-                      );
-                    });
+                    fetch(yA, { credentials: "same-origin" }).then(
+                      function (A) {
+                        return WebAssembly.instantiateStreaming(A, I).then(
+                          Q,
+                          function (A) {
+                            f("wasm streaming compile failed: " + A),
+                              f("falling back to ArrayBuffer instantiation"),
+                              g(Q);
+                          },
+                        );
+                      },
+                    );
                   })(),
                   {}
                 );
@@ -23828,7 +23850,7 @@ var HME = (function (A) {
               CQ = (B._setThrew = function () {
                 return (CQ = B._setThrew = B.asm.setThrew).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               tQ = (B.__ZSt18uncaught_exceptionv = function () {
@@ -23838,7 +23860,7 @@ var HME = (function (A) {
               eQ = (B.___cxa_can_catch = function () {
                 return (eQ = B.___cxa_can_catch = B.asm.__cxa_can_catch).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               oQ = (B.___cxa_is_pointer_type = function () {
@@ -23848,56 +23870,56 @@ var HME = (function (A) {
               sQ = (B.___getTypeName = function () {
                 return (sQ = B.___getTypeName = B.asm.__getTypeName).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               });
             B.___embind_register_native_and_builtin_types = function () {
               return (B.___embind_register_native_and_builtin_types =
                 B.asm.__embind_register_native_and_builtin_types).apply(
                 null,
-                arguments
+                arguments,
               );
             };
             var rQ = (B.dynCall_v = function () {
                 return (rQ = B.dynCall_v = B.asm.dynCall_v).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               hQ = (B.dynCall_vi = function () {
                 return (hQ = B.dynCall_vi = B.asm.dynCall_vi).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               nQ = (B.dynCall_vii = function () {
                 return (nQ = B.dynCall_vii = B.asm.dynCall_vii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               aQ = (B.dynCall_viii = function () {
                 return (aQ = B.dynCall_viii = B.asm.dynCall_viii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               cQ = (B.dynCall_viiii = function () {
                 return (cQ = B.dynCall_viiii = B.asm.dynCall_viiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               yQ = (B.dynCall_viiiii = function () {
                 return (yQ = B.dynCall_viiiii = B.asm.dynCall_viiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               DQ = (B.dynCall_viiiiiii = function () {
                 return (DQ = B.dynCall_viiiiiii = B.asm.dynCall_viiiiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               uQ = (B.dynCall_viiiiiiiiii = function () {
@@ -23911,67 +23933,67 @@ var HME = (function (A) {
               wQ = (B.dynCall_viiiijji = function () {
                 return (wQ = B.dynCall_viiiijji = B.asm.dynCall_viiiijji).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               FQ = (B.dynCall_viijii = function () {
                 return (FQ = B.dynCall_viijii = B.asm.dynCall_viijii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               dQ = (B.dynCall_viji = function () {
                 return (dQ = B.dynCall_viji = B.asm.dynCall_viji).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               lQ = (B.dynCall_i = function () {
                 return (lQ = B.dynCall_i = B.asm.dynCall_i).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               UQ = (B.dynCall_ii = function () {
                 return (UQ = B.dynCall_ii = B.asm.dynCall_ii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               NQ = (B.dynCall_iii = function () {
                 return (NQ = B.dynCall_iii = B.asm.dynCall_iii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               HQ = (B.dynCall_iiii = function () {
                 return (HQ = B.dynCall_iiii = B.asm.dynCall_iiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               GQ = (B.dynCall_iiiii = function () {
                 return (GQ = B.dynCall_iiiii = B.asm.dynCall_iiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               YQ = (B.dynCall_iiiiii = function () {
                 return (YQ = B.dynCall_iiiiii = B.asm.dynCall_iiiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               LQ = (B.dynCall_iiiiiii = function () {
                 return (LQ = B.dynCall_iiiiiii = B.asm.dynCall_iiiiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               RQ = (B.dynCall_iiiiiiii = function () {
                 return (RQ = B.dynCall_iiiiiiii = B.asm.dynCall_iiiiiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               pQ = (B.dynCall_iiiiiiiiiii = function () {
@@ -23989,13 +24011,13 @@ var HME = (function (A) {
               kQ = (B.dynCall_iiiiij = function () {
                 return (kQ = B.dynCall_iiiiij = B.asm.dynCall_iiiiij).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               SQ = (B.dynCall_iiiiid = function () {
                 return (SQ = B.dynCall_iiiiid = B.asm.dynCall_iiiiid).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               bQ = (B.dynCall_iiijiiiiii = function () {
@@ -24005,43 +24027,43 @@ var HME = (function (A) {
               vQ = (B.dynCall_iij = function () {
                 return (vQ = B.dynCall_iij = B.asm.dynCall_iij).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               JQ = (B.dynCall_iif = function () {
                 return (JQ = B.dynCall_iif = B.asm.dynCall_iif).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               VQ = (B.dynCall_jii = function () {
                 return (VQ = B.dynCall_jii = B.asm.dynCall_jii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               KQ = (B.dynCall_jiiii = function () {
                 return (KQ = B.dynCall_jiiii = B.asm.dynCall_jiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               xQ = (B.dynCall_fiii = function () {
                 return (xQ = B.dynCall_fiii = B.asm.dynCall_fiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               ZQ = (B.dynCall_diii = function () {
                 return (ZQ = B.dynCall_diii = B.asm.dynCall_diii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               qQ = (B.stackSave = function () {
                 return (qQ = B.stackSave = B.asm.stackSave).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               });
             B.stackAlloc = function () {
@@ -24051,7 +24073,7 @@ var HME = (function (A) {
               jQ = (B.stackRestore = function () {
                 return (jQ = B.stackRestore = B.asm.stackRestore).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               });
             function WQ() {
@@ -24102,49 +24124,49 @@ var HME = (function (A) {
               ((B.__growWasmMemory = function () {
                 return (B.__growWasmMemory = B.asm.__growWasmMemory).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.dynCall_iiijij = function () {
                 return (B.dynCall_iiijij = B.asm.dynCall_iiijij).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.dynCall_jiji = function () {
                 return (B.dynCall_jiji = B.asm.dynCall_jiji).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.dynCall_iidiiii = function () {
                 return (B.dynCall_iidiiii = B.asm.dynCall_iidiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.dynCall_iiiiiiiii = function () {
                 return (B.dynCall_iiiiiiiii = B.asm.dynCall_iiiiiiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.dynCall_iiiiijj = function () {
                 return (B.dynCall_iiiiijj = B.asm.dynCall_iiiiijj).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.dynCall_iiiiiijj = function () {
                 return (B.dynCall_iiiiiijj = B.asm.dynCall_iiiiiijj).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.dynCall_viiiiii = function () {
                 return (B.dynCall_viiiiii = B.asm.dynCall_viiiiii).apply(
                   null,
-                  arguments
+                  arguments,
                 );
               }),
               (B.asm = QQ),
@@ -24243,7 +24265,7 @@ var HME = (function (A) {
           t = new E(
             (function (A, B, Q) {
               return (3 * (B + Q)) / 4 - Q;
-            })(0, i, C)
+            })(0, i, C),
           ),
           o = 0,
           s = C > 0 ? i - 4 : i;
@@ -24310,7 +24332,7 @@ var HME = (function (A) {
             g[((E = I) >> 18) & 63] +
               g[(E >> 12) & 63] +
               g[(E >> 6) & 63] +
-              g[63 & E]
+              g[63 & E],
           );
       return i.join("");
     }
@@ -24366,8 +24388,8 @@ var HME = (function (A) {
                 i + s >= o
                   ? ((C = 0), (i = o))
                   : i + s >= 1
-                  ? ((C = (B * t - 1) * Math.pow(2, I)), (i += s))
-                  : ((C = B * Math.pow(2, s - 1) * Math.pow(2, I)), (i = 0)));
+                    ? ((C = (B * t - 1) * Math.pow(2, I)), (i += s))
+                    : ((C = B * Math.pow(2, s - 1) * Math.pow(2, I)), (i = 0)));
           I >= 8;
           A[Q + h] = 255 & C, h += n, C /= 256, I -= 8
         );
@@ -24438,7 +24460,7 @@ var HME = (function (A) {
             "sorry, createCredentials is not implemented yet",
             "we accept pull requests",
             "https://github.com/crypto-browserify/crypto-browserify",
-          ].join("\n")
+          ].join("\n"),
         );
       }),
       (B.constants = {
@@ -24645,8 +24667,8 @@ var HME = (function (A) {
                       A === this.head.data.length
                         ? this.shift()
                         : B
-                        ? this._getString(A)
-                        : this._getBuffer(A)),
+                          ? this._getString(A)
+                          : this._getBuffer(A)),
                 Q
               );
             },
@@ -24719,20 +24741,20 @@ var HME = (function (A) {
                           I(A, B, Q[B]);
                         })
                       : Object.getOwnPropertyDescriptors
-                      ? Object.defineProperties(
-                          A,
-                          Object.getOwnPropertyDescriptors(Q)
-                        )
-                      : g(Object(Q)).forEach(function (B) {
-                          Object.defineProperty(
+                        ? Object.defineProperties(
                             A,
-                            B,
-                            Object.getOwnPropertyDescriptor(Q, B)
-                          );
-                        });
+                            Object.getOwnPropertyDescriptors(Q),
+                          )
+                        : g(Object(Q)).forEach(function (B) {
+                            Object.defineProperty(
+                              A,
+                              B,
+                              Object.getOwnPropertyDescriptor(Q, B),
+                            );
+                          });
                   }
                   return A;
-                })({}, B, { depth: 0, customInspect: !1 })
+                })({}, B, { depth: 0, customInspect: !1 }),
               );
             },
           },
@@ -24810,7 +24832,7 @@ var HME = (function (A) {
                           B[e] ? Q(h(void 0, !0)) : B[s](Q, g);
                         }, g);
                       };
-                    })(I, this)
+                    })(I, this),
                   );
                 else {
                   var E = this[r].read();
@@ -24823,7 +24845,7 @@ var HME = (function (A) {
             Symbol.asyncIterator,
             function () {
               return this;
-            }
+            },
           ),
           I(g, "return", function () {
             var A = this;
@@ -24834,7 +24856,7 @@ var HME = (function (A) {
             });
           }),
           g),
-          c
+          c,
         );
       A.exports = function (A) {
         var B,
@@ -24854,7 +24876,7 @@ var HME = (function (A) {
               },
               writable: !0,
             }),
-            B)
+            B),
           );
         return (
           (Q[o] = null),
@@ -24931,8 +24953,8 @@ var HME = (function (A) {
             })(A)
               ? A.abort()
               : "function" == typeof A.destroy
-              ? A.destroy()
-              : void E(B || new i("pipe"))
+                ? A.destroy()
+                : void E(B || new i("pipe"))
           );
       };
     }
@@ -24981,8 +25003,8 @@ var HME = (function (A) {
       return 0 === A
         ? (B & Q) | (~B & g)
         : 2 === A
-        ? (B & Q) | (B & g) | (Q & g)
-        : B ^ Q ^ g;
+          ? (B & Q) | (B & g) | (Q & g)
+          : B ^ Q ^ g;
     }
     g(t, I),
       (t.prototype.init = function () {
@@ -25055,8 +25077,8 @@ var HME = (function (A) {
       return 0 === A
         ? (B & Q) | (~B & g)
         : 2 === A
-        ? (B & Q) | (B & g) | (Q & g)
-        : B ^ Q ^ g;
+          ? (B & Q) | (B & g) | (Q & g)
+          : B ^ Q ^ g;
     }
     g(t, I),
       (t.prototype.init = function () {
@@ -25401,54 +25423,56 @@ var HME = (function (A) {
                   });
                 })
               : !(function () {
-                  if (A.postMessage && !A.importScripts) {
-                    var B = !0,
-                      Q = A.onmessage;
-                    return (
-                      (A.onmessage = function () {
-                        B = !1;
-                      }),
-                      A.postMessage("", "*"),
-                      (A.onmessage = Q),
-                      B
-                    );
-                  }
-                })()
-              ? A.MessageChannel
-                ? (((E = new MessageChannel()).port1.onmessage = function (A) {
-                    n(A.data);
-                  }),
-                  (g = function (A) {
-                    E.port2.postMessage(A);
-                  }))
-                : s && "onreadystatechange" in s.createElement("script")
-                ? ((I = s.documentElement),
-                  (g = function (A) {
-                    var B = s.createElement("script");
-                    (B.onreadystatechange = function () {
-                      n(A),
-                        (B.onreadystatechange = null),
-                        I.removeChild(B),
-                        (B = null);
+                    if (A.postMessage && !A.importScripts) {
+                      var B = !0,
+                        Q = A.onmessage;
+                      return (
+                        (A.onmessage = function () {
+                          B = !1;
+                        }),
+                        A.postMessage("", "*"),
+                        (A.onmessage = Q),
+                        B
+                      );
+                    }
+                  })()
+                ? A.MessageChannel
+                  ? (((E = new MessageChannel()).port1.onmessage = function (
+                      A,
+                    ) {
+                      n(A.data);
                     }),
-                      I.appendChild(B);
-                  }))
-                : (g = function (A) {
-                    setTimeout(n, 0, A);
-                  })
-              : ((i = "setImmediate$" + Math.random() + "$"),
-                (C = function (B) {
-                  B.source === A &&
-                    "string" == typeof B.data &&
-                    0 === B.data.indexOf(i) &&
-                    n(+B.data.slice(i.length));
-                }),
-                A.addEventListener
-                  ? A.addEventListener("message", C, !1)
-                  : A.attachEvent("onmessage", C),
-                (g = function (B) {
-                  A.postMessage(i + B, "*");
-                })),
+                    (g = function (A) {
+                      E.port2.postMessage(A);
+                    }))
+                  : s && "onreadystatechange" in s.createElement("script")
+                    ? ((I = s.documentElement),
+                      (g = function (A) {
+                        var B = s.createElement("script");
+                        (B.onreadystatechange = function () {
+                          n(A),
+                            (B.onreadystatechange = null),
+                            I.removeChild(B),
+                            (B = null);
+                        }),
+                          I.appendChild(B);
+                      }))
+                    : (g = function (A) {
+                        setTimeout(n, 0, A);
+                      })
+                : ((i = "setImmediate$" + Math.random() + "$"),
+                  (C = function (B) {
+                    B.source === A &&
+                      "string" == typeof B.data &&
+                      0 === B.data.indexOf(i) &&
+                      n(+B.data.slice(i.length));
+                  }),
+                  A.addEventListener
+                    ? A.addEventListener("message", C, !1)
+                    : A.attachEvent("onmessage", C),
+                  (g = function (B) {
+                    A.postMessage(i + B, "*");
+                  })),
             (r.setImmediate = function (A) {
               "function" != typeof A && (A = new Function("" + A));
               for (
@@ -25592,7 +25616,7 @@ var HME = (function (A) {
             return e.deriveBits(
               { name: "PBKDF2", salt: B, iterations: Q, hash: { name: I } },
               A,
-              g << 3
+              g << 3,
             );
           })
           .then(function (A) {
@@ -25627,7 +25651,7 @@ var HME = (function (A) {
                 g.nextTick(function () {
                   B(A);
                 });
-              }
+              },
             );
           })(
             (function (A) {
@@ -25646,7 +25670,7 @@ var HME = (function (A) {
             })(y).then(function (B) {
               return B ? r(A, Q, h, n, y) : C(A, Q, h, n, a);
             }),
-            c
+            c,
           );
       };
     }).call(this, Q(4), Q(3));
@@ -25870,8 +25894,8 @@ var HME = (function (A) {
       return "stream" === C.type
         ? new i(C.module, B, Q)
         : "auth" === C.type
-        ? new I(C.module, B, Q)
-        : new o(C.module, B, Q);
+          ? new I(C.module, B, Q)
+          : new o(C.module, B, Q);
     }
     (o.prototype._final = function () {
       var A = this._cache.flush();
@@ -26112,8 +26136,8 @@ var HME = (function (A) {
       return "stream" === C.type
         ? new i(C.module, B, Q, !0)
         : "auth" === C.type
-        ? new g(C.module, B, Q, !0)
-        : new o(C.module, B, Q);
+          ? new g(C.module, B, Q, !0)
+          : new o(C.module, B, Q);
     }
     Q(0)(o, C),
       (o.prototype._update = function (A) {
@@ -26248,8 +26272,8 @@ var HME = (function (A) {
                 i >= 49 && i <= 54
                   ? i - 49 + 10
                   : i >= 17 && i <= 22
-                  ? i - 17 + 10
-                  : 15 & i);
+                    ? i - 17 + 10
+                    : 15 & i);
           }
           return g;
         }
@@ -26291,11 +26315,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -26503,9 +26527,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -26732,10 +26756,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -27345,37 +27372,37 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? h(this, A, B)
               : Q < 63
-              ? r(this, A, B)
-              : Q < 1024
-              ? (function (A, B, Q) {
-                  (Q.negative = B.negative ^ A.negative),
-                    (Q.length = A.length + B.length);
-                  for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
-                    var i = I;
-                    I = 0;
-                    for (
-                      var C = 67108863 & g,
-                        t = Math.min(E, B.length - 1),
-                        e = Math.max(0, E - A.length + 1);
-                      e <= t;
-                      e++
-                    ) {
-                      var o = E - e,
-                        s = (0 | A.words[o]) * (0 | B.words[e]),
-                        r = 67108863 & s;
-                      (C = 67108863 & (r = (r + C) | 0)),
-                        (I +=
-                          (i =
-                            ((i = (i + ((s / 67108864) | 0)) | 0) +
-                              (r >>> 26)) |
-                            0) >>> 26),
-                        (i &= 67108863);
-                    }
-                    (Q.words[E] = C), (g = i), (i = I);
-                  }
-                  return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
-                })(this, A, B)
-              : n(this, A, B);
+                ? r(this, A, B)
+                : Q < 1024
+                  ? (function (A, B, Q) {
+                      (Q.negative = B.negative ^ A.negative),
+                        (Q.length = A.length + B.length);
+                      for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
+                        var i = I;
+                        I = 0;
+                        for (
+                          var C = 67108863 & g,
+                            t = Math.min(E, B.length - 1),
+                            e = Math.max(0, E - A.length + 1);
+                          e <= t;
+                          e++
+                        ) {
+                          var o = E - e,
+                            s = (0 | A.words[o]) * (0 | B.words[e]),
+                            r = 67108863 & s;
+                          (C = 67108863 & (r = (r + C) | 0)),
+                            (I +=
+                              (i =
+                                ((i = (i + ((s / 67108864) | 0)) | 0) +
+                                  (r >>> 26)) |
+                                0) >>> 26),
+                            (i &= 67108863);
+                        }
+                        (Q.words[E] = C), (g = i), (i = I);
+                      }
+                      return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
+                    })(this, A, B)
+                  : n(this, A, B);
           }),
           (a.prototype.makeRBT = function (A) {
             for (
@@ -27632,7 +27659,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -27657,15 +27684,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) < A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) < A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -27768,32 +27795,33 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? { div: null, mod: new E(this.modn(A.words[0])) }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -27816,8 +27844,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modn = function (A) {
             g(A <= 67108863);
@@ -28028,7 +28056,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -28140,28 +28168,28 @@ var HME = (function (A) {
           y.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function u() {
           y.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function f() {
           y.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function w() {
           y.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function F(A) {
@@ -28200,8 +28228,8 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : Q.strip(),
+                  ? Q.isub(this.p)
+                  : Q.strip(),
               Q
             );
           }),
@@ -28448,7 +28476,7 @@ var HME = (function (A) {
   function (A, B) {},
   function (A) {
     A.exports = JSON.parse(
-      '{"modp1":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a63a3620ffffffffffffffff"},"modp2":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece65381ffffffffffffffff"},"modp5":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff"},"modp14":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aacaa68ffffffffffffffff"},"modp15":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a93ad2caffffffffffffffff"},"modp16":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c934063199ffffffffffffffff"},"modp17":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dcc4024ffffffffffffffff"},"modp18":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dbe115974a3926f12fee5e438777cb6a932df8cd8bec4d073b931ba3bc832b68d9dd300741fa7bf8afc47ed2576f6936ba424663aab639c5ae4f5683423b4742bf1c978238f16cbe39d652de3fdb8befc848ad922222e04a4037c0713eb57a81a23f0c73473fc646cea306b4bcbc8862f8385ddfa9d4b7fa2c087e879683303ed5bdd3a062b3cf5b3a278a66d2a13f83f44f82ddf310ee074ab6a364597e899a0255dc164f31cc50846851df9ab48195ded7ea1b1d510bd7ee74d73faf36bc31ecfa268359046f4eb879f924009438b481c6cd7889a002ed5ee382bc9190da6fc026e479558e4475677e9aa9e3050e2765694dfc81f56e880b96e7160c980dd98edd3dfffffffffffffffff"}}'
+      '{"modp1":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a63a3620ffffffffffffffff"},"modp2":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece65381ffffffffffffffff"},"modp5":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca237327ffffffffffffffff"},"modp14":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aacaa68ffffffffffffffff"},"modp15":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a93ad2caffffffffffffffff"},"modp16":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c934063199ffffffffffffffff"},"modp17":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dcc4024ffffffffffffffff"},"modp18":{"gen":"02","prime":"ffffffffffffffffc90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b22514a08798e3404ddef9519b3cd3a431b302b0a6df25f14374fe1356d6d51c245e485b576625e7ec6f44c42e9a637ed6b0bff5cb6f406b7edee386bfb5a899fa5ae9f24117c4b1fe649286651ece45b3dc2007cb8a163bf0598da48361c55d39a69163fa8fd24cf5f83655d23dca3ad961c62f356208552bb9ed529077096966d670c354e4abc9804f1746c08ca18217c32905e462e36ce3be39e772c180e86039b2783a2ec07a28fb5c55df06f4c52c9de2bcbf6955817183995497cea956ae515d2261898fa051015728e5a8aaac42dad33170d04507a33a85521abdf1cba64ecfb850458dbef0a8aea71575d060c7db3970f85a6e1e4c7abf5ae8cdb0933d71e8c94e04a25619dcee3d2261ad2ee6bf12ffa06d98a0864d87602733ec86a64521f2b18177b200cbbe117577a615d6c770988c0bad946e208e24fa074e5ab3143db5bfce0fd108e4b82d120a92108011a723c12a787e6d788719a10bdba5b2699c327186af4e23c1a946834b6150bda2583e9ca2ad44ce8dbbbc2db04de8ef92e8efc141fbecaa6287c59474e6bc05d99b2964fa090c3a2233ba186515be7ed1f612970cee2d7afb81bdd762170481cd0069127d5b05aa993b4ea988d8fddc186ffb7dc90a6c08f4df435c93402849236c3fab4d27c7026c1d4dcb2602646dec9751e763dba37bdf8ff9406ad9e530ee5db382f413001aeb06a53ed9027d831179727b0865a8918da3edbebcf9b14ed44ce6cbaced4bb1bdb7f1447e6cc254b332051512bd7af426fb8f401378cd2bf5983ca01c64b92ecf032ea15d1721d03f482d7ce6e74fef6d55e702f46980c82b5a84031900b1c9e59e7c97fbec7e8f323a97a7e36cc88be0f1d45b7ff585ac54bd407b22b4154aacc8f6d7ebf48e1d814cc5ed20f8037e0a79715eef29be32806a1d58bb7c5da76f550aa3d8a1fbff0eb19ccb1a313d55cda56c9ec2ef29632387fe8d76e3c0468043e8f663f4860ee12bf2d5b0b7474d6e694f91e6dbe115974a3926f12fee5e438777cb6a932df8cd8bec4d073b931ba3bc832b68d9dd300741fa7bf8afc47ed2576f6936ba424663aab639c5ae4f5683423b4742bf1c978238f16cbe39d652de3fdb8befc848ad922222e04a4037c0713eb57a81a23f0c73473fc646cea306b4bcbc8862f8385ddfa9d4b7fa2c087e879683303ed5bdd3a062b3cf5b3a278a66d2a13f83f44f82ddf310ee074ab6a364597e899a0255dc164f31cc50846851df9ab48195ded7ea1b1d510bd7ee74d73faf36bc31ecfa268359046f4eb879f924009438b481c6cd7889a002ed5ee382bc9190da6fc026e479558e4475677e9aa9e3050e2765694dfc81f56e880b96e7160c980dd98edd3dfffffffffffffffff"}}',
     );
   },
   function (A, B, Q) {
@@ -28785,8 +28813,8 @@ var HME = (function (A) {
                       A === this.head.data.length
                         ? this.shift()
                         : B
-                        ? this._getString(A)
-                        : this._getBuffer(A)),
+                          ? this._getString(A)
+                          : this._getBuffer(A)),
                 Q
               );
             },
@@ -28859,20 +28887,20 @@ var HME = (function (A) {
                           I(A, B, Q[B]);
                         })
                       : Object.getOwnPropertyDescriptors
-                      ? Object.defineProperties(
-                          A,
-                          Object.getOwnPropertyDescriptors(Q)
-                        )
-                      : g(Object(Q)).forEach(function (B) {
-                          Object.defineProperty(
+                        ? Object.defineProperties(
                             A,
-                            B,
-                            Object.getOwnPropertyDescriptor(Q, B)
-                          );
-                        });
+                            Object.getOwnPropertyDescriptors(Q),
+                          )
+                        : g(Object(Q)).forEach(function (B) {
+                            Object.defineProperty(
+                              A,
+                              B,
+                              Object.getOwnPropertyDescriptor(Q, B),
+                            );
+                          });
                   }
                   return A;
-                })({}, B, { depth: 0, customInspect: !1 })
+                })({}, B, { depth: 0, customInspect: !1 }),
               );
             },
           },
@@ -28950,7 +28978,7 @@ var HME = (function (A) {
                           B[e] ? Q(h(void 0, !0)) : B[s](Q, g);
                         }, g);
                       };
-                    })(I, this)
+                    })(I, this),
                   );
                 else {
                   var E = this[r].read();
@@ -28963,7 +28991,7 @@ var HME = (function (A) {
             Symbol.asyncIterator,
             function () {
               return this;
-            }
+            },
           ),
           I(g, "return", function () {
             var A = this;
@@ -28974,7 +29002,7 @@ var HME = (function (A) {
             });
           }),
           g),
-          c
+          c,
         );
       A.exports = function (A) {
         var B,
@@ -28994,7 +29022,7 @@ var HME = (function (A) {
               },
               writable: !0,
             }),
-            B)
+            B),
           );
         return (
           (Q[o] = null),
@@ -29071,8 +29099,8 @@ var HME = (function (A) {
             })(A)
               ? A.abort()
               : "function" == typeof A.destroy
-              ? A.destroy()
-              : void E(B || new i("pipe"))
+                ? A.destroy()
+                : void E(B || new i("pipe"))
           );
       };
     }
@@ -29268,8 +29296,8 @@ var HME = (function (A) {
                 i >= 49 && i <= 54
                   ? i - 49 + 10
                   : i >= 17 && i <= 22
-                  ? i - 17 + 10
-                  : 15 & i);
+                    ? i - 17 + 10
+                    : 15 & i);
           }
           return g;
         }
@@ -29311,11 +29339,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -29523,9 +29551,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -29752,10 +29780,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -30365,37 +30396,37 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? h(this, A, B)
               : Q < 63
-              ? r(this, A, B)
-              : Q < 1024
-              ? (function (A, B, Q) {
-                  (Q.negative = B.negative ^ A.negative),
-                    (Q.length = A.length + B.length);
-                  for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
-                    var i = I;
-                    I = 0;
-                    for (
-                      var C = 67108863 & g,
-                        t = Math.min(E, B.length - 1),
-                        e = Math.max(0, E - A.length + 1);
-                      e <= t;
-                      e++
-                    ) {
-                      var o = E - e,
-                        s = (0 | A.words[o]) * (0 | B.words[e]),
-                        r = 67108863 & s;
-                      (C = 67108863 & (r = (r + C) | 0)),
-                        (I +=
-                          (i =
-                            ((i = (i + ((s / 67108864) | 0)) | 0) +
-                              (r >>> 26)) |
-                            0) >>> 26),
-                        (i &= 67108863);
-                    }
-                    (Q.words[E] = C), (g = i), (i = I);
-                  }
-                  return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
-                })(this, A, B)
-              : n(this, A, B);
+                ? r(this, A, B)
+                : Q < 1024
+                  ? (function (A, B, Q) {
+                      (Q.negative = B.negative ^ A.negative),
+                        (Q.length = A.length + B.length);
+                      for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
+                        var i = I;
+                        I = 0;
+                        for (
+                          var C = 67108863 & g,
+                            t = Math.min(E, B.length - 1),
+                            e = Math.max(0, E - A.length + 1);
+                          e <= t;
+                          e++
+                        ) {
+                          var o = E - e,
+                            s = (0 | A.words[o]) * (0 | B.words[e]),
+                            r = 67108863 & s;
+                          (C = 67108863 & (r = (r + C) | 0)),
+                            (I +=
+                              (i =
+                                ((i = (i + ((s / 67108864) | 0)) | 0) +
+                                  (r >>> 26)) |
+                                0) >>> 26),
+                            (i &= 67108863);
+                        }
+                        (Q.words[E] = C), (g = i), (i = I);
+                      }
+                      return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
+                    })(this, A, B)
+                  : n(this, A, B);
           }),
           (a.prototype.makeRBT = function (A) {
             for (
@@ -30652,7 +30683,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -30677,15 +30708,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) < A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) < A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -30788,32 +30819,33 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? { div: null, mod: new E(this.modn(A.words[0])) }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -30836,8 +30868,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modn = function (A) {
             g(A <= 67108863);
@@ -31048,7 +31080,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -31160,28 +31192,28 @@ var HME = (function (A) {
           y.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function u() {
           y.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function f() {
           y.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function w() {
           y.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function F(A) {
@@ -31220,8 +31252,8 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : Q.strip(),
+                  ? Q.isub(this.p)
+                  : Q.strip(),
               Q
             );
           }),
@@ -31467,7 +31499,7 @@ var HME = (function (A) {
   function (A, B) {},
   function (A) {
     A.exports = JSON.parse(
-      '{"_args":[["elliptic@6.5.3","/home/user"]],"_development":true,"_from":"elliptic@6.5.3","_id":"elliptic@6.5.3","_inBundle":false,"_integrity":"sha512-IMqzv5wNQf+E6aHeIqATs0tOLeOTwj1QKbRcS3jBbYkl5oLAserA8yJTT7/VyHUYG91PRmPyeQDObKLPpeS4dw==","_location":"/elliptic","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"elliptic@6.5.3","name":"elliptic","escapedName":"elliptic","rawSpec":"6.5.3","saveSpec":null,"fetchSpec":"6.5.3"},"_requiredBy":["/browserify-sign","/create-ecdh"],"_resolved":"https://registry.npmjs.org/elliptic/-/elliptic-6.5.3.tgz","_spec":"6.5.3","_where":"/home/user","author":{"name":"Fedor Indutny","email":"fedor@indutny.com"},"bugs":{"url":"https://github.com/indutny/elliptic/issues"},"dependencies":{"bn.js":"^4.4.0","brorand":"^1.0.1","hash.js":"^1.0.0","hmac-drbg":"^1.0.0","inherits":"^2.0.1","minimalistic-assert":"^1.0.0","minimalistic-crypto-utils":"^1.0.0"},"description":"EC cryptography","devDependencies":{"brfs":"^1.4.3","coveralls":"^3.0.8","grunt":"^1.0.4","grunt-browserify":"^5.0.0","grunt-cli":"^1.2.0","grunt-contrib-connect":"^1.0.0","grunt-contrib-copy":"^1.0.0","grunt-contrib-uglify":"^1.0.1","grunt-mocha-istanbul":"^3.0.1","grunt-saucelabs":"^9.0.1","istanbul":"^0.4.2","jscs":"^3.0.7","jshint":"^2.10.3","mocha":"^6.2.2"},"files":["lib"],"homepage":"https://github.com/indutny/elliptic","keywords":["EC","Elliptic","curve","Cryptography"],"license":"MIT","main":"lib/elliptic.js","name":"elliptic","repository":{"type":"git","url":"git+ssh://git@github.com/indutny/elliptic.git"},"scripts":{"jscs":"jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js","jshint":"jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js","lint":"npm run jscs && npm run jshint","test":"npm run lint && npm run unit","unit":"istanbul test _mocha --reporter=spec test/index.js","version":"grunt dist && git add dist/"},"version":"6.5.3"}'
+      '{"_args":[["elliptic@6.5.3","/home/user"]],"_development":true,"_from":"elliptic@6.5.3","_id":"elliptic@6.5.3","_inBundle":false,"_integrity":"sha512-IMqzv5wNQf+E6aHeIqATs0tOLeOTwj1QKbRcS3jBbYkl5oLAserA8yJTT7/VyHUYG91PRmPyeQDObKLPpeS4dw==","_location":"/elliptic","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"elliptic@6.5.3","name":"elliptic","escapedName":"elliptic","rawSpec":"6.5.3","saveSpec":null,"fetchSpec":"6.5.3"},"_requiredBy":["/browserify-sign","/create-ecdh"],"_resolved":"https://registry.npmjs.org/elliptic/-/elliptic-6.5.3.tgz","_spec":"6.5.3","_where":"/home/user","author":{"name":"Fedor Indutny","email":"fedor@indutny.com"},"bugs":{"url":"https://github.com/indutny/elliptic/issues"},"dependencies":{"bn.js":"^4.4.0","brorand":"^1.0.1","hash.js":"^1.0.0","hmac-drbg":"^1.0.0","inherits":"^2.0.1","minimalistic-assert":"^1.0.0","minimalistic-crypto-utils":"^1.0.0"},"description":"EC cryptography","devDependencies":{"brfs":"^1.4.3","coveralls":"^3.0.8","grunt":"^1.0.4","grunt-browserify":"^5.0.0","grunt-cli":"^1.2.0","grunt-contrib-connect":"^1.0.0","grunt-contrib-copy":"^1.0.0","grunt-contrib-uglify":"^1.0.1","grunt-mocha-istanbul":"^3.0.1","grunt-saucelabs":"^9.0.1","istanbul":"^0.4.2","jscs":"^3.0.7","jshint":"^2.10.3","mocha":"^6.2.2"},"files":["lib"],"homepage":"https://github.com/indutny/elliptic","keywords":["EC","Elliptic","curve","Cryptography"],"license":"MIT","main":"lib/elliptic.js","name":"elliptic","repository":{"type":"git","url":"git+ssh://git@github.com/indutny/elliptic.git"},"scripts":{"jscs":"jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js","jshint":"jscs benchmarks/*.js lib/*.js lib/**/*.js lib/**/**/*.js test/index.js","lint":"npm run jscs && npm run jshint","test":"npm run lint && npm run unit","unit":"istanbul test _mocha --reporter=spec test/index.js","version":"grunt dist && git add dist/"},"version":"6.5.3"}',
     );
   },
   function (A, B) {},
@@ -31761,10 +31793,10 @@ var HME = (function (A) {
           this.isInfinity()
             ? this
             : this._hasDoubles(A)
-            ? this.curve._fixedNafMul(this, A)
-            : this.curve.endo
-            ? this.curve._endoWnafMulAdd([this], [A])
-            : this.curve._wnafMul(this, A)
+              ? this.curve._fixedNafMul(this, A)
+              : this.curve.endo
+                ? this.curve._endoWnafMulAdd([this], [A])
+                : this.curve._wnafMul(this, A)
         );
       }),
       (e.prototype.mulAdd = function (A, B, Q) {
@@ -31905,10 +31937,10 @@ var HME = (function (A) {
         return this.isInfinity()
           ? this
           : this.curve.zeroA
-          ? this._zeroDbl()
-          : this.curve.threeA
-          ? this._threeDbl()
-          : this._dbl();
+            ? this._zeroDbl()
+            : this.curve.threeA
+              ? this._threeDbl()
+              : this._dbl();
       }),
       (o.prototype._zeroDbl = function () {
         var A, B, Q;
@@ -32001,7 +32033,7 @@ var HME = (function (A) {
           E = I.redSqr(),
           i = this.x.redAdd(B).redSqr().redISub(A).redISub(g),
           C = (i = (i = (i = i.redIAdd(i)).redAdd(i).redIAdd(i)).redISub(
-            E
+            E,
           )).redSqr(),
           t = g.redIAdd(g);
         t = (t = (t = t.redIAdd(t)).redIAdd(t)).redIAdd(t);
@@ -32333,8 +32365,8 @@ var HME = (function (A) {
         return this.isInfinity()
           ? this
           : this.curve.extended
-          ? this._extDbl()
-          : this._projDbl();
+            ? this._extDbl()
+            : this._projDbl();
       }),
       (e.prototype._extAdd = function (A) {
         var B = this.y.redSub(this.x).redMul(A.y.redSub(A.x)),
@@ -32380,10 +32412,10 @@ var HME = (function (A) {
         return this.isInfinity()
           ? A
           : A.isInfinity()
-          ? this
-          : this.curve.extended
-          ? this._extAdd(A)
-          : this._projAdd(A);
+            ? this
+            : this.curve.extended
+              ? this._extAdd(A)
+              : this._projAdd(A);
       }),
       (e.prototype.mul = function (A) {
         return this._hasDoubles(A)
@@ -32413,7 +32445,7 @@ var HME = (function (A) {
           this.x.redNeg(),
           this.y,
           this.z,
-          this.t && this.t.redNeg()
+          this.t && this.t.redNeg(),
         );
       }),
       (e.prototype.getX = function () {
@@ -32564,34 +32596,34 @@ var HME = (function (A) {
       return A <= 15
         ? B ^ Q ^ g
         : A <= 31
-        ? (B & Q) | (~B & g)
-        : A <= 47
-        ? (B | ~Q) ^ g
-        : A <= 63
-        ? (B & g) | (Q & ~g)
-        : B ^ (Q | ~g);
+          ? (B & Q) | (~B & g)
+          : A <= 47
+            ? (B | ~Q) ^ g
+            : A <= 63
+              ? (B & g) | (Q & ~g)
+              : B ^ (Q | ~g);
     }
     function r(A) {
       return A <= 15
         ? 0
         : A <= 31
-        ? 1518500249
-        : A <= 47
-        ? 1859775393
-        : A <= 63
-        ? 2400959708
-        : 2840853838;
+          ? 1518500249
+          : A <= 47
+            ? 1859775393
+            : A <= 63
+              ? 2400959708
+              : 2840853838;
     }
     function h(A) {
       return A <= 15
         ? 1352829926
         : A <= 31
-        ? 1548603684
-        : A <= 47
-        ? 1836072691
-        : A <= 63
-        ? 2053994217
-        : 0;
+          ? 1548603684
+          : A <= 47
+            ? 1836072691
+            : A <= 63
+              ? 2053994217
+              : 0;
     }
     g.inherits(o, e),
       (B.ripemd160 = o),
@@ -33649,7 +33681,7 @@ var HME = (function (A) {
         g = I.toArray(A.pers, A.persEnc || "hex");
       E(
         B.length >= this.minEntropy / 8,
-        "Not enough entropy. Minimum is: " + this.minEntropy + " bits"
+        "Not enough entropy. Minimum is: " + this.minEntropy + " bits",
       ),
         this._init(B, Q, g);
     }
@@ -33686,7 +33718,7 @@ var HME = (function (A) {
           (Q = I.toArray(Q, g)),
           E(
             A.length >= this.minEntropy / 8,
-            "Not enough entropy. Minimum is: " + this.minEntropy + " bits"
+            "Not enough entropy. Minimum is: " + this.minEntropy + " bits",
           ),
           this._update(A.concat(Q || [])),
           (this._reseed = 1);
@@ -33726,10 +33758,10 @@ var HME = (function (A) {
         return A.isInfinity()
           ? { result: !1, reason: "Invalid public key" }
           : A.validate()
-          ? A.mul(this.ec.curve.n).isInfinity()
-            ? { result: !0, reason: null }
-            : { result: !1, reason: "Public key * N != O" }
-          : { result: !1, reason: "Public key is not a point" };
+            ? A.mul(this.ec.curve.n).isInfinity()
+              ? { result: !0, reason: null }
+              : { result: !1, reason: "Public key * N != O" }
+            : { result: !1, reason: "Public key is not a point" };
       }),
       (E.prototype.getPublic = function (A, B) {
         return (
@@ -34061,21 +34093,21 @@ var HME = (function (A) {
         this.key("prime2").int(),
         this.key("exponent1").int(),
         this.key("exponent2").int(),
-        this.key("coefficient").int()
+        this.key("coefficient").int(),
       );
     });
     B.RSAPrivateKey = I;
     var E = g.define("RSAPublicKey", function () {
       this.seq().obj(
         this.key("modulus").int(),
-        this.key("publicExponent").int()
+        this.key("publicExponent").int(),
       );
     });
     B.RSAPublicKey = E;
     var i = g.define("SubjectPublicKeyInfo", function () {
       this.seq().obj(
         this.key("algorithm").use(C),
-        this.key("subjectPublicKey").bitstr()
+        this.key("subjectPublicKey").bitstr(),
       );
     });
     B.PublicKey = i;
@@ -34087,14 +34119,14 @@ var HME = (function (A) {
           this.key("params")
             .seq()
             .obj(this.key("p").int(), this.key("q").int(), this.key("g").int())
-            .optional()
+            .optional(),
         );
       }),
       t = g.define("PrivateKeyInfo", function () {
         this.seq().obj(
           this.key("version").int(),
           this.key("algorithm").use(C),
-          this.key("subjectPrivateKey").octstr()
+          this.key("subjectPrivateKey").octstr(),
         );
       });
     B.PrivateKey = t;
@@ -34113,14 +34145,14 @@ var HME = (function (A) {
                     this.key("id").objid(),
                     this.key("kdeparams")
                       .seq()
-                      .obj(this.key("salt").octstr(), this.key("iters").int())
+                      .obj(this.key("salt").octstr(), this.key("iters").int()),
                   ),
                 this.key("cipher")
                   .seq()
-                  .obj(this.key("algo").objid(), this.key("iv").octstr())
-              )
+                  .obj(this.key("algo").objid(), this.key("iv").octstr()),
+              ),
           ),
-        this.key("subjectPrivateKey").octstr()
+        this.key("subjectPrivateKey").octstr(),
       );
     });
     B.EncryptedPrivateKey = e;
@@ -34131,7 +34163,7 @@ var HME = (function (A) {
         this.key("q").int(),
         this.key("g").int(),
         this.key("pub_key").int(),
-        this.key("priv_key").int()
+        this.key("priv_key").int(),
       );
     });
     (B.DSAPrivateKey = o),
@@ -34143,7 +34175,7 @@ var HME = (function (A) {
         this.key("version").int(),
         this.key("privateKey").octstr(),
         this.key("parameters").optional().explicit(0).use(r),
-        this.key("publicKey").optional().explicit(1).bitstr()
+        this.key("publicKey").optional().explicit(1).bitstr(),
       );
     });
     B.ECPrivateKey = s;
@@ -34193,8 +34225,8 @@ var HME = (function (A) {
                 i >= 49 && i <= 54
                   ? i - 49 + 10
                   : i >= 17 && i <= 22
-                  ? i - 17 + 10
-                  : 15 & i);
+                    ? i - 17 + 10
+                    : 15 & i);
           }
           return g;
         }
@@ -34236,11 +34268,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -34448,9 +34480,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -34677,10 +34709,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -35290,37 +35325,37 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? h(this, A, B)
               : Q < 63
-              ? r(this, A, B)
-              : Q < 1024
-              ? (function (A, B, Q) {
-                  (Q.negative = B.negative ^ A.negative),
-                    (Q.length = A.length + B.length);
-                  for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
-                    var i = I;
-                    I = 0;
-                    for (
-                      var C = 67108863 & g,
-                        t = Math.min(E, B.length - 1),
-                        e = Math.max(0, E - A.length + 1);
-                      e <= t;
-                      e++
-                    ) {
-                      var o = E - e,
-                        s = (0 | A.words[o]) * (0 | B.words[e]),
-                        r = 67108863 & s;
-                      (C = 67108863 & (r = (r + C) | 0)),
-                        (I +=
-                          (i =
-                            ((i = (i + ((s / 67108864) | 0)) | 0) +
-                              (r >>> 26)) |
-                            0) >>> 26),
-                        (i &= 67108863);
-                    }
-                    (Q.words[E] = C), (g = i), (i = I);
-                  }
-                  return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
-                })(this, A, B)
-              : n(this, A, B);
+                ? r(this, A, B)
+                : Q < 1024
+                  ? (function (A, B, Q) {
+                      (Q.negative = B.negative ^ A.negative),
+                        (Q.length = A.length + B.length);
+                      for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
+                        var i = I;
+                        I = 0;
+                        for (
+                          var C = 67108863 & g,
+                            t = Math.min(E, B.length - 1),
+                            e = Math.max(0, E - A.length + 1);
+                          e <= t;
+                          e++
+                        ) {
+                          var o = E - e,
+                            s = (0 | A.words[o]) * (0 | B.words[e]),
+                            r = 67108863 & s;
+                          (C = 67108863 & (r = (r + C) | 0)),
+                            (I +=
+                              (i =
+                                ((i = (i + ((s / 67108864) | 0)) | 0) +
+                                  (r >>> 26)) |
+                                0) >>> 26),
+                            (i &= 67108863);
+                        }
+                        (Q.words[E] = C), (g = i), (i = I);
+                      }
+                      return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
+                    })(this, A, B)
+                  : n(this, A, B);
           }),
           (a.prototype.makeRBT = function (A) {
             for (
@@ -35577,7 +35612,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -35602,15 +35637,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) < A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) < A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -35713,32 +35748,33 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? { div: null, mod: new E(this.modn(A.words[0])) }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -35761,8 +35797,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modn = function (A) {
             g(A <= 67108863);
@@ -35973,7 +36009,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -36085,28 +36121,28 @@ var HME = (function (A) {
           y.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function u() {
           y.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function f() {
           y.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function w() {
           y.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function F(A) {
@@ -36145,8 +36181,8 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : Q.strip(),
+                  ? Q.isub(this.p)
+                  : Q.strip(),
               Q
             );
           }),
@@ -36408,7 +36444,7 @@ var HME = (function (A) {
           B = Q(191).runInThisContext(
             "(function " +
               this.name +
-              "(entity) {\n  this._initNamed(entity);\n})"
+              "(entity) {\n  this._initNamed(entity);\n})",
           );
         } catch (A) {
           B = function (A) {
@@ -36651,7 +36687,7 @@ var HME = (function (A) {
                   })
                   .join(""),
                 A.message || A,
-                A.stack
+                A.stack,
               )),
           !Q.options.partial)
         )
@@ -36898,7 +36934,7 @@ var HME = (function (A) {
           this._useArgs(
             Object.keys(A).map(function (B) {
               return A[B];
-            })
+            }),
           ),
           this
         );
@@ -36920,8 +36956,8 @@ var HME = (function (A) {
             (null !== Q.explicit
               ? (t = Q.explicit)
               : null !== Q.implicit
-              ? (t = Q.implicit)
-              : null !== Q.tag && (t = Q.tag),
+                ? (t = Q.implicit)
+                : null !== Q.tag && (t = Q.tag),
             null !== t || Q.any)
           ) {
             if (((i = this._peekTag(A, t, Q.any)), A.isError(i))) return i;
@@ -36950,7 +36986,7 @@ var HME = (function (A) {
             var r = this._decodeTag(
               A,
               null !== Q.implicit ? Q.implicit : Q.tag,
-              Q.any
+              Q.any,
             );
             if (A.isError(r)) return r;
             Q.any ? (I = A.raw(e)) : (A = r);
@@ -36967,8 +37003,8 @@ var HME = (function (A) {
             (I = Q.any
               ? I
               : null === Q.choice
-              ? this._decodeGeneric(Q.tag, A, B)
-              : this._decodeChoice(A, B)),
+                ? this._decodeGeneric(Q.tag, A, B)
+                : this._decodeChoice(A, B)),
             A.isError(I))
           )
             return I;
@@ -36998,26 +37034,29 @@ var HME = (function (A) {
         return "seq" === A || "set" === A
           ? null
           : "seqof" === A || "setof" === A
-          ? this._decodeList(B, A, g.args[0], Q)
-          : /str$/.test(A)
-          ? this._decodeStr(B, A, Q)
-          : "objid" === A && g.args
-          ? this._decodeObjid(B, g.args[0], g.args[1], Q)
-          : "objid" === A
-          ? this._decodeObjid(B, null, null, Q)
-          : "gentime" === A || "utctime" === A
-          ? this._decodeTime(B, A, Q)
-          : "null_" === A
-          ? this._decodeNull(B, Q)
-          : "bool" === A
-          ? this._decodeBool(B, Q)
-          : "objDesc" === A
-          ? this._decodeStr(B, A, Q)
-          : "int" === A || "enum" === A
-          ? this._decodeInt(B, g.args && g.args[0], Q)
-          : null !== g.use
-          ? this._getUse(g.use, B._reporterState.obj)._decode(B, Q)
-          : B.error("unknown tag: " + A);
+            ? this._decodeList(B, A, g.args[0], Q)
+            : /str$/.test(A)
+              ? this._decodeStr(B, A, Q)
+              : "objid" === A && g.args
+                ? this._decodeObjid(B, g.args[0], g.args[1], Q)
+                : "objid" === A
+                  ? this._decodeObjid(B, null, null, Q)
+                  : "gentime" === A || "utctime" === A
+                    ? this._decodeTime(B, A, Q)
+                    : "null_" === A
+                      ? this._decodeNull(B, Q)
+                      : "bool" === A
+                        ? this._decodeBool(B, Q)
+                        : "objDesc" === A
+                          ? this._decodeStr(B, A, Q)
+                          : "int" === A || "enum" === A
+                            ? this._decodeInt(B, g.args && g.args[0], Q)
+                            : null !== g.use
+                              ? this._getUse(
+                                  g.use,
+                                  B._reporterState.obj,
+                                )._decode(B, Q)
+                              : B.error("unknown tag: " + A);
       }),
       (e.prototype._getUse = function (A, B) {
         var Q = this._baseState;
@@ -37102,7 +37141,7 @@ var HME = (function (A) {
               A.map(function (Q) {
                 var g = this._baseState;
                 return this._getUse(g.args[0], A)._encode(Q, B);
-              }, t)
+              }, t),
             ));
         } else
           null !== I.use
@@ -37128,7 +37167,7 @@ var HME = (function (A) {
           g ||
             i(
               !1,
-              A.type + " not found in " + JSON.stringify(Object.keys(Q.choice))
+              A.type + " not found in " + JSON.stringify(Object.keys(Q.choice)),
             ),
           g._encode(A.value, B)
         );
@@ -37276,13 +37315,13 @@ var HME = (function (A) {
         this.seq().obj(
           this.key("algorithm").objid(),
           this.key("parameters").optional(),
-          this.key("curve").objid().optional()
+          this.key("curve").objid().optional(),
         );
       }),
       C = g.define("SubjectPublicKeyInfo", function () {
         this.seq().obj(
           this.key("algorithm").use(i),
-          this.key("subjectPublicKey").bitstr()
+          this.key("subjectPublicKey").bitstr(),
         );
       }),
       t = g.define("RelativeDistinguishedName", function () {
@@ -37297,14 +37336,14 @@ var HME = (function (A) {
       s = g.define("Validity", function () {
         this.seq().obj(
           this.key("notBefore").use(I),
-          this.key("notAfter").use(I)
+          this.key("notAfter").use(I),
         );
       }),
       r = g.define("Extension", function () {
         this.seq().obj(
           this.key("extnID").objid(),
           this.key("critical").bool().def(!1),
-          this.key("extnValue").octstr()
+          this.key("extnValue").octstr(),
         );
       }),
       h = g.define("TBSCertificate", function () {
@@ -37318,21 +37357,21 @@ var HME = (function (A) {
           this.key("subjectPublicKeyInfo").use(C),
           this.key("issuerUniqueID").implicit(1).bitstr().optional(),
           this.key("subjectUniqueID").implicit(2).bitstr().optional(),
-          this.key("extensions").explicit(3).seqof(r).optional()
+          this.key("extensions").explicit(3).seqof(r).optional(),
         );
       }),
       n = g.define("X509Certificate", function () {
         this.seq().obj(
           this.key("tbsCertificate").use(h),
           this.key("signatureAlgorithm").use(i),
-          this.key("signatureValue").bitstr()
+          this.key("signatureValue").bitstr(),
         );
       });
     A.exports = n;
   },
   function (A) {
     A.exports = JSON.parse(
-      '{"2.16.840.1.101.3.4.1.1":"aes-128-ecb","2.16.840.1.101.3.4.1.2":"aes-128-cbc","2.16.840.1.101.3.4.1.3":"aes-128-ofb","2.16.840.1.101.3.4.1.4":"aes-128-cfb","2.16.840.1.101.3.4.1.21":"aes-192-ecb","2.16.840.1.101.3.4.1.22":"aes-192-cbc","2.16.840.1.101.3.4.1.23":"aes-192-ofb","2.16.840.1.101.3.4.1.24":"aes-192-cfb","2.16.840.1.101.3.4.1.41":"aes-256-ecb","2.16.840.1.101.3.4.1.42":"aes-256-cbc","2.16.840.1.101.3.4.1.43":"aes-256-ofb","2.16.840.1.101.3.4.1.44":"aes-256-cfb"}'
+      '{"2.16.840.1.101.3.4.1.1":"aes-128-ecb","2.16.840.1.101.3.4.1.2":"aes-128-cbc","2.16.840.1.101.3.4.1.3":"aes-128-ofb","2.16.840.1.101.3.4.1.4":"aes-128-cfb","2.16.840.1.101.3.4.1.21":"aes-192-ecb","2.16.840.1.101.3.4.1.22":"aes-192-cbc","2.16.840.1.101.3.4.1.23":"aes-192-ofb","2.16.840.1.101.3.4.1.24":"aes-192-cfb","2.16.840.1.101.3.4.1.41":"aes-256-ecb","2.16.840.1.101.3.4.1.42":"aes-256-cbc","2.16.840.1.101.3.4.1.43":"aes-256-ofb","2.16.840.1.101.3.4.1.44":"aes-256-cfb"}',
     );
   },
   function (A, B, Q) {
@@ -37382,7 +37421,7 @@ var HME = (function (A) {
           var g = C[Q.data.algorithm.curve.join(".")];
           if (!g)
             throw new Error(
-              "unknown curve " + Q.data.algorithm.curve.join(".")
+              "unknown curve " + Q.data.algorithm.curve.join("."),
             );
           var I = new E(g),
             i = Q.data.subjectPrivateKey.data;
@@ -37491,7 +37530,7 @@ var HME = (function (A) {
                 .mul(this.keys.getPrivate())
                 .getX(),
               g,
-              this.curveType.byteLength
+              this.curveType.byteLength,
             )
           );
         }),
@@ -37564,8 +37603,8 @@ var HME = (function (A) {
                 i >= 49 && i <= 54
                   ? i - 49 + 10
                   : i >= 17 && i <= 22
-                  ? i - 17 + 10
-                  : 15 & i);
+                    ? i - 17 + 10
+                    : 15 & i);
           }
           return g;
         }
@@ -37607,11 +37646,11 @@ var HME = (function (A) {
               A < 67108864
                 ? ((this.words = [67108863 & A]), (this.length = 1))
                 : A < 4503599627370496
-                ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
-                  (this.length = 2))
-                : (g(A < 9007199254740992),
-                  (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
-                  (this.length = 3)),
+                  ? ((this.words = [67108863 & A, (A / 67108864) & 67108863]),
+                    (this.length = 2))
+                  : (g(A < 9007199254740992),
+                    (this.words = [67108863 & A, (A / 67108864) & 67108863, 1]),
+                    (this.length = 3)),
               "le" === Q && this._initArray(this.toArray(), B, Q);
           }),
           (E.prototype._initArray = function (A, B, Q) {
@@ -37819,9 +37858,9 @@ var HME = (function (A) {
               2 === this.length
                 ? (A += 67108864 * this.words[1])
                 : 3 === this.length && 1 === this.words[2]
-                ? (A += 4503599627370496 + 67108864 * this.words[1])
-                : this.length > 2 &&
-                  g(!1, "Number can only safely store up to 53 bits"),
+                  ? (A += 4503599627370496 + 67108864 * this.words[1])
+                  : this.length > 2 &&
+                    g(!1, "Number can only safely store up to 53 bits"),
               0 !== this.negative ? -A : A
             );
           }),
@@ -38048,10 +38087,13 @@ var HME = (function (A) {
             return 0 !== A.negative && 0 === this.negative
               ? ((A.negative = 0), (B = this.sub(A)), (A.negative ^= 1), B)
               : 0 === A.negative && 0 !== this.negative
-              ? ((this.negative = 0), (B = A.sub(this)), (this.negative = 1), B)
-              : this.length > A.length
-              ? this.clone().iadd(A)
-              : A.clone().iadd(this);
+                ? ((this.negative = 0),
+                  (B = A.sub(this)),
+                  (this.negative = 1),
+                  B)
+                : this.length > A.length
+                  ? this.clone().iadd(A)
+                  : A.clone().iadd(this);
           }),
           (E.prototype.isub = function (A) {
             if (0 !== A.negative) {
@@ -38661,37 +38703,37 @@ var HME = (function (A) {
             return 10 === this.length && 10 === A.length
               ? h(this, A, B)
               : Q < 63
-              ? r(this, A, B)
-              : Q < 1024
-              ? (function (A, B, Q) {
-                  (Q.negative = B.negative ^ A.negative),
-                    (Q.length = A.length + B.length);
-                  for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
-                    var i = I;
-                    I = 0;
-                    for (
-                      var C = 67108863 & g,
-                        t = Math.min(E, B.length - 1),
-                        e = Math.max(0, E - A.length + 1);
-                      e <= t;
-                      e++
-                    ) {
-                      var o = E - e,
-                        s = (0 | A.words[o]) * (0 | B.words[e]),
-                        r = 67108863 & s;
-                      (C = 67108863 & (r = (r + C) | 0)),
-                        (I +=
-                          (i =
-                            ((i = (i + ((s / 67108864) | 0)) | 0) +
-                              (r >>> 26)) |
-                            0) >>> 26),
-                        (i &= 67108863);
-                    }
-                    (Q.words[E] = C), (g = i), (i = I);
-                  }
-                  return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
-                })(this, A, B)
-              : n(this, A, B);
+                ? r(this, A, B)
+                : Q < 1024
+                  ? (function (A, B, Q) {
+                      (Q.negative = B.negative ^ A.negative),
+                        (Q.length = A.length + B.length);
+                      for (var g = 0, I = 0, E = 0; E < Q.length - 1; E++) {
+                        var i = I;
+                        I = 0;
+                        for (
+                          var C = 67108863 & g,
+                            t = Math.min(E, B.length - 1),
+                            e = Math.max(0, E - A.length + 1);
+                          e <= t;
+                          e++
+                        ) {
+                          var o = E - e,
+                            s = (0 | A.words[o]) * (0 | B.words[e]),
+                            r = 67108863 & s;
+                          (C = 67108863 & (r = (r + C) | 0)),
+                            (I +=
+                              (i =
+                                ((i = (i + ((s / 67108864) | 0)) | 0) +
+                                  (r >>> 26)) |
+                                0) >>> 26),
+                            (i &= 67108863);
+                        }
+                        (Q.words[E] = C), (g = i), (i = I);
+                      }
+                      return 0 !== g ? (Q.words[E] = g) : Q.length--, Q.strip();
+                    })(this, A, B)
+                  : n(this, A, B);
           }),
           (a.prototype.makeRBT = function (A) {
             for (
@@ -38948,7 +38990,7 @@ var HME = (function (A) {
             if (
               (g(
                 0 === this.negative,
-                "imaskn works only with positive numbers"
+                "imaskn works only with positive numbers",
               ),
               this.length <= Q)
             )
@@ -38973,15 +39015,15 @@ var HME = (function (A) {
               A < 0
                 ? this.isubn(-A)
                 : 0 !== this.negative
-                ? 1 === this.length && (0 | this.words[0]) < A
-                  ? ((this.words[0] = A - (0 | this.words[0])),
-                    (this.negative = 0),
-                    this)
-                  : ((this.negative = 0),
-                    this.isubn(A),
-                    (this.negative = 1),
-                    this)
-                : this._iaddn(A)
+                  ? 1 === this.length && (0 | this.words[0]) < A
+                    ? ((this.words[0] = A - (0 | this.words[0])),
+                      (this.negative = 0),
+                      this)
+                    : ((this.negative = 0),
+                      this.isubn(A),
+                      (this.negative = 1),
+                      this)
+                  : this._iaddn(A)
             );
           }),
           (E.prototype._iaddn = function (A) {
@@ -39084,32 +39126,33 @@ var HME = (function (A) {
               this.isZero()
                 ? { div: new E(0), mod: new E(0) }
                 : 0 !== this.negative && 0 === A.negative
-                ? ((C = this.neg().divmod(A, B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
-                  { div: I, mod: i })
-                : 0 === this.negative && 0 !== A.negative
-                ? ((C = this.divmod(A.neg(), B)),
-                  "mod" !== B && (I = C.div.neg()),
-                  { div: I, mod: C.mod })
-                : 0 != (this.negative & A.negative)
-                ? ((C = this.neg().divmod(A.neg(), B)),
-                  "div" !== B &&
-                    ((i = C.mod.neg()), Q && 0 !== i.negative && i.isub(A)),
-                  { div: C.div, mod: i })
-                : A.length > this.length || this.cmp(A) < 0
-                ? { div: new E(0), mod: this }
-                : 1 === A.length
-                ? "div" === B
-                  ? { div: this.divn(A.words[0]), mod: null }
-                  : "mod" === B
-                  ? { div: null, mod: new E(this.modn(A.words[0])) }
-                  : {
-                      div: this.divn(A.words[0]),
-                      mod: new E(this.modn(A.words[0])),
-                    }
-                : this._wordDiv(A, B)
+                  ? ((C = this.neg().divmod(A, B)),
+                    "mod" !== B && (I = C.div.neg()),
+                    "div" !== B &&
+                      ((i = C.mod.neg()), Q && 0 !== i.negative && i.iadd(A)),
+                    { div: I, mod: i })
+                  : 0 === this.negative && 0 !== A.negative
+                    ? ((C = this.divmod(A.neg(), B)),
+                      "mod" !== B && (I = C.div.neg()),
+                      { div: I, mod: C.mod })
+                    : 0 != (this.negative & A.negative)
+                      ? ((C = this.neg().divmod(A.neg(), B)),
+                        "div" !== B &&
+                          ((i = C.mod.neg()),
+                          Q && 0 !== i.negative && i.isub(A)),
+                        { div: C.div, mod: i })
+                      : A.length > this.length || this.cmp(A) < 0
+                        ? { div: new E(0), mod: this }
+                        : 1 === A.length
+                          ? "div" === B
+                            ? { div: this.divn(A.words[0]), mod: null }
+                            : "mod" === B
+                              ? { div: null, mod: new E(this.modn(A.words[0])) }
+                              : {
+                                  div: this.divn(A.words[0]),
+                                  mod: new E(this.modn(A.words[0])),
+                                }
+                          : this._wordDiv(A, B)
             );
             var I, i, C;
           }),
@@ -39132,8 +39175,8 @@ var HME = (function (A) {
             return E < 0 || (1 === I && 0 === E)
               ? B.div
               : 0 !== B.div.negative
-              ? B.div.isubn(1)
-              : B.div.iaddn(1);
+                ? B.div.isubn(1)
+                : B.div.iaddn(1);
           }),
           (E.prototype.modn = function (A) {
             g(A <= 67108863);
@@ -39344,7 +39387,7 @@ var HME = (function (A) {
             return (
               g(
                 this.red,
-                "fromRed works only with numbers in reduction context"
+                "fromRed works only with numbers in reduction context",
               ),
               this.red.convertFrom(this)
             );
@@ -39456,28 +39499,28 @@ var HME = (function (A) {
           y.call(
             this,
             "k256",
-            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f"
+            "ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff fffffffe fffffc2f",
           );
         }
         function u() {
           y.call(
             this,
             "p224",
-            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001"
+            "ffffffff ffffffff ffffffff ffffffff 00000000 00000000 00000001",
           );
         }
         function f() {
           y.call(
             this,
             "p192",
-            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff"
+            "ffffffff ffffffff ffffffff fffffffe ffffffff ffffffff",
           );
         }
         function w() {
           y.call(
             this,
             "25519",
-            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed"
+            "7fffffffffffffff ffffffffffffffff ffffffffffffffff ffffffffffffffed",
           );
         }
         function F(A) {
@@ -39516,8 +39559,8 @@ var HME = (function (A) {
               0 === g
                 ? ((Q.words[0] = 0), (Q.length = 1))
                 : g > 0
-                ? Q.isub(this.p)
-                : Q.strip(),
+                  ? Q.isub(this.p)
+                  : Q.strip(),
               Q
             );
           }),
@@ -39905,7 +39948,7 @@ var HME = (function (A) {
     (function (A, g) {
       function I() {
         throw new Error(
-          "secure random number generation not supported by this browser\nuse chrome, FireFox or Internet Explorer 11"
+          "secure random number generation not supported by this browser\nuse chrome, FireFox or Internet Explorer 11",
         );
       }
       var E = Q(1),
@@ -39949,7 +39992,7 @@ var HME = (function (A) {
         ? ((B.randomFill = function (B, Q, g, I) {
             if (!(C.isBuffer(B) || B instanceof A.Uint8Array))
               throw new TypeError(
-                '"buf" argument must be a Buffer or Uint8Array'
+                '"buf" argument must be a Buffer or Uint8Array',
               );
             if ("function" == typeof Q) (I = Q), (Q = 0), (g = B.length);
             else if ("function" == typeof g) (I = g), (g = B.length - Q);
@@ -39961,7 +40004,7 @@ var HME = (function (A) {
             void 0 === Q && (Q = 0);
             if (!(C.isBuffer(B) || B instanceof A.Uint8Array))
               throw new TypeError(
-                '"buf" argument must be a Buffer or Uint8Array'
+                '"buf" argument must be a Buffer or Uint8Array',
               );
             s(Q, B.length), void 0 === g && (g = B.length - Q);
             return r(g, Q, B.length), h(B, Q, g);

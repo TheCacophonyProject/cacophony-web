@@ -436,6 +436,7 @@ export interface ApiRecordingAlgorithm {
 
 // from api/v1/recordings (post)
 export interface ApiRecordingDataMetadata {
+  metadata_source: string;
   tracks?: ApiTrackSet[];
   models?: ApiRecordingModel[];
   algorithm?: ApiRecordingAlgorithm;
@@ -479,7 +480,7 @@ export interface ApiRecordingTrackData {
 //from api/v1/recordings (post)
 export interface ApiTrackSet {
   id?: TrackId;
-  tracker_version?: number;
+  tracker_version?: number | string;
   num_frames?: number;
   positions?: any;
   start_s: number;

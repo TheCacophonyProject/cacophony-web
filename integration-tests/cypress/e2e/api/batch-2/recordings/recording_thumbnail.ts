@@ -24,7 +24,7 @@ describe("Recording thumbnails", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
+  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".metadataSource"];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),

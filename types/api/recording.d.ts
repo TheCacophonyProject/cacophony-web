@@ -46,6 +46,7 @@ export interface ApiThermalRecordingMetadataResponse {
     height: number;
     frameNumber: number;
   };
+  metadataSource?: string;
 }
 
 export interface ApiTrailCamImageMetadataResponse {

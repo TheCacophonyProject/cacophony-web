@@ -1494,8 +1494,8 @@ const createVisitsCsv = (data: ApiVisitResponse[]): string => {
         ? "User & AI"
         : "User"
       : visit.classificationAi
-      ? "AI"
-      : "unknown";
+        ? "AI"
+        : "unknown";
     const location = (locations.value || []).find(
       ({ id }) => id === visit.stationId,
     );

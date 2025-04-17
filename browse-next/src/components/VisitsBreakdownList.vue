@@ -55,7 +55,9 @@ const hasVisits = computed<boolean>(() => props.visits.length !== 0);
       :is-nocturnal="isNocturnal"
       :location="location"
       :currently-highlighed-location="highlightedLocation"
-      @selected-visit="(visit: ApiVisitResponse) => emit('selected-visit', visit)"
+      @selected-visit="
+        (visit: ApiVisitResponse) => emit('selected-visit', visit)
+      "
       @change-highlighted-location="
         (loc: LocationId | null) => emit('change-highlighted-location', loc)
       "
