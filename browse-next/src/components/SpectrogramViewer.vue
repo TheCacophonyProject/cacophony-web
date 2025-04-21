@@ -43,7 +43,7 @@ import type { LoadedResource } from "@api/types.ts";
 import { API_ROOT } from "@api/root.ts";
 import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 import { decodeJWT } from "@/utils.ts";
-import { useWindowSize } from "@vueuse/core";
+import { useMediaQuery, useWindowSize } from "@vueuse/core";
 
 const props = defineProps<{
   userSelectedTrack?: ApiTrackResponse;
@@ -589,9 +589,6 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
       }
     }
   });
-  spectastiq.addEventListener("move", (e) => {
-
-  });
   spectastiq.addEventListener(
     "select",
     ({ detail: { offsetX: x, offsetY: y } }) => {
@@ -1039,21 +1036,27 @@ const currentTrack = computed<null | IntermediateTrack>(() => {
 const currentTime = ref<number>(0);
 const togglePlayback = async () => {
   if (spectastiqEl.value) {
-    if (
-      !audioIsPlaying.value &&
-      props.currentTrack &&
-      currentTime.value >= props.currentTrack.end
-    ) {
-      await spectastiqEl.value.play(
-        props.currentTrack.start / audioDuration.value,
-        props.currentTrack.end / audioDuration.value,
-      );
-    } else {
-      if (audioIsPlaying.value) {
-        spectastiqEl.value.pause();
+    if (!audioIsPlaying.value) {
+      if (props.currentTrack) {
+        if (currentTime.value >= props.currentTrack.end) {
+          // Play from the current time until the end of the track
+          await spectastiqEl.value.play(
+            props.currentTrack.start / audioDuration.value,
+            props.currentTrack.end / audioDuration.value,
+          );
+        } else if (currentTime.value > props.currentTrack.start) {
+          // Play until the end of the current track
+          await spectastiqEl.value.play(currentTime.value / audioDuration.value, props.currentTrack.end / audioDuration.value);
+        } else {
+          // Continue playing normally until the end of the recording
+          await spectastiqEl.value.play();
+        }
       } else {
+        // Play from the current time
         await spectastiqEl.value.play();
       }
+    } else {
+      spectastiqEl.value.pause();
     }
   }
 };
@@ -1462,6 +1465,12 @@ const exitResizeMode = () => {
 const hasSelectedTrack = computed<boolean>(() => {
   return !!props.currentTrack;
 });
+
+
+const desktop = useMediaQuery("(min-width: 1040px)");
+const isMobileView = computed<boolean>(() => {
+  return !desktop.value;
+});
 </script>
 <template>
   <div class="spectrogram" ref="spectrogramContainer">
@@ -1505,7 +1514,7 @@ const hasSelectedTrack = computed<boolean>(() => {
                 <font-awesome-icon
                   :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
                 />
-                <span class="ms-2">add track</span>
+                <span class="ms-2">add<span v-if="!isMobileView"> track</span></span>
               </button>
             </div>
             <div class="pe-3 align-items-end">
