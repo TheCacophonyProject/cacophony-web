@@ -101,7 +101,7 @@ const eventsForWeekEnding = (
     nWeeksAgo,
     `Events"."createdAt`,
     now,
-  )} and "Events"."DeviceId" not in (select id from "Devices" where "GroupId" not in (${CACOPHONY_GROUPS.join(
+  )} and "Events"."DeviceId" not in (select id from "Devices" where "GroupId" in (${CACOPHONY_GROUPS.join(
     ", ",
   )}));`;
 };
