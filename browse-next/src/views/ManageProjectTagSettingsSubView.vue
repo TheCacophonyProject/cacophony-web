@@ -170,7 +170,7 @@ const cameraTagTableItems = computed<CardTableRows<string>>(() => {
 const audioTagTableItems = computed<CardTableRows<string>>(() => {
   return customAudioTags.value.map((tag: string) => ({
     tag: {
-      value: capitalize(displayLabelForClassificationLabel(tag)),
+      value: capitalize(displayLabelForClassificationLabel(tag, false, true)),
       cellClasses: ["w-100"],
     },
     _moveUp: {

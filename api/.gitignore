@@ -4,6 +4,7 @@ testconfig.json
 /dist/
 ../.idea
 api/**/*.js
+classifications/*.js
 scripts/**/*.js
 models/**/*.js
 json-schemas/*

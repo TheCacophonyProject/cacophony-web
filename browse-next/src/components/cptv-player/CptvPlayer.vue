@@ -852,7 +852,7 @@ const getPositions = (
   };
   // Add a bit of breathing room around our boxes
   const padding = 0; // 5
-  return (positions as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
+  return ((positions || []) as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
     position.order ||
       (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
       0,

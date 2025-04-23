@@ -7,6 +7,7 @@
     :pinned-items="pinnedItems"
     :placeholder="placeholder"
     :multiselect="multiselect"
+    :with-audio-context="withAudioContext"
     :selected-items="modelValue"
     :open-on-mount="openOnMount"
     @change="updateModel"
@@ -27,6 +28,7 @@ const props = withDefaults(
     placeholder?: string;
     multiselect?: boolean;
     canBePinned?: boolean;
+    withAudioContext?: boolean;
     pinnedItems?: string[];
     openOnMount?: boolean;
     disabledTags?: string[];
@@ -37,6 +39,7 @@ const props = withDefaults(
     exclude: () => [],
     placeholder: "Search Tags...",
     multiselect: false,
+    withAudioContext: false,
     canBePinned: false,
     pinnedItems: () => [],
     openOnMount: true,

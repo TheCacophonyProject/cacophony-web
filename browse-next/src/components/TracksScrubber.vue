@@ -94,23 +94,25 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
   const uniqueYSlots: Record<number, boolean> = {};
   if (props.totalFrames !== 0) {
     for (let i = 0; i < tracks.length; i++) {
-      const thisLeft = tracks[i].positions[0][0] / props.totalFrames;
-      const thisRight =
-        tracks[i].positions[tracks[i].positions.length - 1][0] /
-        props.totalFrames;
-      const yOffset = getOffsetYForTrack(
-        i,
-        tracks,
-        dimensions,
-        thisLeft,
-        thisRight,
-      );
-      dimensions.push({
-        top: yOffset,
-        right: thisRight,
-        left: thisLeft,
-      });
-      uniqueYSlots[yOffset] = true;
+      if (tracks[i].positions.length !== 0) {
+        const thisLeft = tracks[i].positions[0][0] / props.totalFrames;
+        const thisRight =
+          tracks[i].positions[tracks[i].positions.length - 1][0] /
+          props.totalFrames;
+        const yOffset = getOffsetYForTrack(
+          i,
+          tracks,
+          dimensions,
+          thisLeft,
+          thisRight,
+        );
+        dimensions.push({
+          top: yOffset,
+          right: thisRight,
+          left: thisLeft,
+        });
+        uniqueYSlots[yOffset] = true;
+      }
     }
     trackDimensions.value = dimensions;
   }

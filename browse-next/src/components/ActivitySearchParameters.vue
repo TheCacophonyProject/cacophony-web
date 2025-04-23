@@ -417,6 +417,7 @@ const starredLabel = ref<boolean>(false);
 const flaggedLabel = ref<boolean>(false);
 const showFilteredFalsePositivesAndNones = ref<boolean>(false);
 const showUntaggedOnly = ref<boolean>(false);
+const showUntaggedByHumanOnly = ref<boolean>(false);
 const FLAG = "requires review";
 const COOL = "cool";
 const selectedLabelGetterSetter = (label: string) => ({
@@ -558,6 +559,7 @@ const getCurrentQuery = (): LocationQuery => {
       )
         .map(({ id }) => id)
         .join(",");
+  console.log("Tag mode", tagMode.value);
   const query: LocationQuery = {
     ...route.query,
     "display-mode": displayMode.value,
@@ -568,7 +570,7 @@ const getCurrentQuery = (): LocationQuery => {
     "no-false-positives":
       (!showFilteredFalsePositivesAndNones.value).toString(),
   };
-  if (tagMode.value === TagMode.Tagged && !selectedTags.value.includes("any")) {
+  if ([TagMode.Tagged, TagMode.NoHuman].includes(tagMode.value) && !selectedTags.value.includes("any")) {
     query["tagged-with"] = selectedTags.value.join(",");
   } else {
     if (tagMode.value === TagMode.Tagged) {
@@ -593,6 +595,9 @@ const getCurrentQuery = (): LocationQuery => {
     query["display-mode"] = ActivitySearchDisplayMode.Recordings;
   }
   if (query["display-mode"] === "visits") {
+    starredLabel.value = false;
+    flaggedLabel.value = false;
+    selectedLabels.value = [];
     delete query["tag-mode"];
     delete query["labelled-with"];
     delete query["no-false-positives"];
@@ -678,8 +683,8 @@ const arrayContentsAreTheSame = (
   return true;
 };
 
-const updateTagsRoute = async (next: string[], prev: string[] | undefined) => {
-  if (!arrayContentsAreTheSame(prev || [], next)) {
+const updateTagsRoute = async (next: string[], prev: string[] | undefined, force: boolean = false) => {
+  if (force || !arrayContentsAreTheSame(prev || [], next)) {
     const query = getCurrentQuery();
     await router.replace({
       query,
@@ -691,10 +696,8 @@ const updateLabelsRoute = async (
   next: string[],
   prev: string[] | undefined,
 ) => {
-  console.log("update labels", next, prev);
   if (!arrayContentsAreTheSame(prev || [], next)) {
     const query = getCurrentQuery();
-    console.log("replacing query", query);
     await router.replace({
       query,
     });
@@ -735,12 +738,14 @@ const syncParams = (
   displayMode.value = next.displayMode;
   recordingMode.value = next.recordingMode;
   tagMode.value = next.tagMode;
-  if (tagMode.value === TagMode.Tagged) {
+  console.log("Tag mode", tagMode.value);
+  if (tagMode.value === TagMode.Tagged || tagMode.value === TagMode.NoHuman) {
     selectedTags.value = next.taggedWith;
   } else {
     selectedTags.value = [];
   }
   showUntaggedOnly.value = tagMode.value === TagMode.UnTagged;
+  showUntaggedByHumanOnly.value = tagMode.value === TagMode.NoHuman;
   if (next.labelledWith && next.labelledWith.length) {
     starredLabel.value = next.labelledWith.includes(COOL);
     flaggedLabel.value = next.labelledWith.includes(FLAG);
@@ -811,6 +816,7 @@ const watchSelectedLocations = ref<WatchStopHandle | null>(null);
 const watchTagMode = ref<WatchStopHandle | null>(null);
 const watchProps = ref<WatchStopHandle | null>(null);
 const watchUntaggedOnly = ref<WatchStopHandle | null>(null);
+const watchUntaggedByHumanOnly = ref<WatchStopHandle | null>(null);
 const watchSelectedTags = ref<WatchStopHandle | null>(null);
 const watchFilterFalsePositivesAndNones = ref<WatchStopHandle | null>(null);
 const watchStarred = ref<WatchStopHandle | null>(null);
@@ -858,23 +864,37 @@ onBeforeMount(() => {
       }
     }
   });
+
+  watchUntaggedByHumanOnly.value = watch(showUntaggedByHumanOnly, (next: boolean) => {
+    if (next) {
+      tagMode.value = TagMode.NoHuman;
+    } else {
+      tagMode.value = TagMode.Any;
+    }
+  });
+
   watchSelectedTags.value = watch(
     selectedTags,
     (next: string[], prev: string[]) => {
+      const initialTagMode = tagMode.value;
       if (!next.length) {
         if (showUntaggedOnly.value) {
           tagMode.value = TagMode.UnTagged;
+        } else if (showUntaggedByHumanOnly.value) {
+          tagMode.value = TagMode.NoHuman;
         } else {
           tagMode.value = TagMode.Any;
         }
       } else {
         if (showUntaggedOnly.value) {
           tagMode.value = TagMode.UnTagged;
+        } else if (showUntaggedByHumanOnly.value) {
+          tagMode.value = TagMode.NoHuman;
         } else {
           tagMode.value = TagMode.Tagged;
         }
       }
-      updateTagsRoute(next, prev);
+      updateTagsRoute(next, prev, initialTagMode !== tagMode.value);
     },
   );
   watchSubClassToggle.value = watch(includeSubSpeciesTags, updateRoute);
@@ -1094,8 +1114,11 @@ const scrolledToStickyPosition = computed<boolean>(() => {
     "
   >
     <div class="mt-2">
-      <b-form-checkbox v-model="showUntaggedOnly" switch
-        >Untagged recordings only</b-form-checkbox
+      <b-form-checkbox v-model="showUntaggedOnly" switch :disabled="showUntaggedByHumanOnly"
+        >Untagged only</b-form-checkbox
+      >
+      <b-form-checkbox v-model="showUntaggedByHumanOnly" switch :disabled="showUntaggedOnly"
+      >Untagged <em>by humans</em> only</b-form-checkbox
       >
       <div class="mt-2">
         <hierarchical-tag-select

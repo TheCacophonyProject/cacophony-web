@@ -397,6 +397,11 @@ describe("Recordings query using improved query API", () => {
         },
       );
 
+      // Recording with 2 tracks, both AI tagged, and then 1 confirmed by user
+      cy.apiRecordingAddWithTracks(group2Device1, [["cat"], ["cat"]]).then((id) => {
+        cy.testUserAddTagRecording(id, 0, group2Admin, "cat");
+      });
+
       // Recording with 1 non-false-positive track, corrected by user.
       cy.apiRecordingAddWithTracks(group2Device1, [["dog"]]).then((id) => {
         cy.testUserAddTagRecording(id, 0, group2Admin, "rodent");
@@ -1069,7 +1074,7 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        "num-results": 6,
+        "num-results": 7,
       },
     );
 
@@ -1083,7 +1088,7 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        "num-results": 12,
+        "num-results": 13,
       },
     );
   });
@@ -1216,9 +1221,10 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        "num-results": 1,
+        "num-results": 2,
       },
     );
+
   });
 
   it("Group member can view deleted recordings", () => {
@@ -1235,7 +1241,7 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        "num-results": 2,
+        "num-results": 3,
       },
     );
   });
@@ -1304,7 +1310,7 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        "num-results": 5,
+        "num-results": 6,
       },
     );
   });
@@ -1322,7 +1328,7 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        "num-results": 4,
+        "num-results": 5,
       },
     );
   });
@@ -1356,7 +1362,7 @@ describe("Recordings query using improved query API", () => {
       EXCLUDE_PARAMS,
       200,
       {
-        "num-results": 2,
+        "num-results": 3,
       },
     );
   });
@@ -1388,7 +1394,7 @@ describe("Recordings query using improved query API", () => {
       [],
       200,
       {
-        "num-results": 6,
+        "num-results": 7,
       },
     );
     cy.apiRecordingsQueryV2Check(

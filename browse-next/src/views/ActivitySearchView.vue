@@ -2029,7 +2029,7 @@ onBeforeUnmount(() => {
             @selected-recording="selectedRecording"
             :currently-selected-recording-id="currentlySelectedRecording"
             :canonical-location="canonicalLatLngForActiveLocations"
-            :devices="devices"
+            :devices="devices || []"
           />
           <visits-breakdown-list
             v-else-if="inVisitsMode"

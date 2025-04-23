@@ -81,7 +81,7 @@ import {
   fetchAuthorizedRequiredFullRecordingById,
   fetchAuthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredFlatRecordingById,
-  fetchUnauthorizedRequiredFullRecordingById,
+  fetchUnauthorizedRequiredFullRecordingById, fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
@@ -2690,6 +2690,7 @@ export default (app: Application, baseUrl: string) => {
         // NOTE: Earliest time in Cacophony DB
         const earliestAllowedDate = new Date("2017-11-01 17:06:58.015 +1300");
         if (!untilDate) {
+
           // NOTE: In order to do less queries when an until date isn't supplied,
           //  we do an initial query with a limit of 1 where we find the latest result for the query.
           const rec = await queryRecordingsInProject(

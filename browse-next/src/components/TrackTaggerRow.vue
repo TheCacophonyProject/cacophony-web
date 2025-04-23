@@ -132,7 +132,7 @@ const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = `${
-        (trackDetails.value as HTMLDivElement).scrollHeight
+        (trackDetails.value as HTMLDivElement).scrollHeight + (expandedOnce.value ? 0 : 10)
       }px`;
     }
     expandedOnce.value = true;
@@ -729,7 +729,7 @@ onMounted(async () => {
   </div>
   <div
     :class="[{ expanded, mounting }]"
-    class="track-details px-2 pe-2"
+    class="track-details px-2"
     ref="trackDetails"
   >
     <div class="classification-btns">
@@ -800,7 +800,6 @@ onMounted(async () => {
       <card-table
         v-if="showTaggerDetails && taggerDetails.length !== 0"
         :items="taggerDetails"
-        class="mb-2"
         compact
         :max-card-width="0"
       >
@@ -846,28 +845,28 @@ onMounted(async () => {
     transition: height 0.2s ease-in-out;
   }
   height: 0;
-  overflow: hidden;
+  overflow-y: hidden;
 }
 .classification-btns {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   @media screen and (min-width: 430px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   @media screen and (min-width: 530px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
   @media screen and (min-width: 630px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
   @media screen and (min-width: 730px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
   @media screen and (min-width: 830px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
   }
   @media screen and (min-width: 1041px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   column-gap: 7px;
   row-gap: 5px;
@@ -915,6 +914,11 @@ onMounted(async () => {
       right: 4px;
       transform: rotate(30deg);
     }
+  }
+  padding-left: 3px;
+  padding-right: 3px;
+  > span {
+    word-break: break-word;
   }
 }
 

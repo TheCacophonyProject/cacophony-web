@@ -1319,7 +1319,11 @@ const inlineModal = ref<boolean>(false);
           <span
             v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
-            class="ms-sm-3 ms-2 recording-header-time"
+            class="recording-header-time"
+            :class="{
+              'ms-sm-3': isInVisitContext,
+              'ms-2': isInVisitContext,
+            }"
             style="color: #444"
           />
         </div>

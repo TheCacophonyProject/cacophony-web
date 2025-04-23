@@ -72,9 +72,9 @@ export const getFirstPass = (
           ? [
               {
                 [Op.or]: [
-                  sequelize.where(sequelize.col("\"Tracks\".id"), Op.eq, null),
+                  sequelize.where(sequelize.col(`"Tracks".id`), Op.eq, null),
                   sequelize.where(
-                    sequelize.col("\"Tracks->TrackTags\".id"),
+                    sequelize.col(`"Tracks->TrackTags".id`),
                     Op.eq,
                     null,
                   ),
@@ -85,7 +85,7 @@ export const getFirstPass = (
           ? [
               {
                 [Op.or]: [
-                  sequelize.where(sequelize.col("\"Tracks->TrackTags\".what"), {
+                  sequelize.where(sequelize.col(`"Tracks->TrackTags".what`), {
                     [Op.in]: taggedWith,
                   }),
                   ...(subClassTags
@@ -103,14 +103,14 @@ export const getFirstPass = (
           : []),
         ...(labelledWith.length !== 0
           ? [
-              sequelize.where(sequelize.col("\"Tags\".detail"), {
+              sequelize.where(sequelize.col(`"Tags".detail`), {
                 [Op.in]: labelledWith,
               }),
             ]
-          : []),
+           : []),
         ...(!includeFilteredTracks && !requiresTags
           ? [
-              sequelize.where(sequelize.col("\"Tracks\".filtered"), {
+              sequelize.where(sequelize.col(`"Tracks".filtered`), {
                 [Op.eq]: false,
               }),
             ]
@@ -169,9 +169,9 @@ export const getFirstPass = (
     attributes: [
       "id",
       "recordingDateTime",
-      sequelize.col("\"Tracks->TrackTags\".automatic"),
-      sequelize.col("\"Tracks->TrackTags\".what"),
-      sequelize.col("\"Tracks->TrackTags\".path"),
+      sequelize.col(`"Tracks->TrackTags".automatic`),
+      sequelize.col(`"Tracks->TrackTags".what`),
+      sequelize.col(`"Tracks->TrackTags".path`),
     ],
     order: [["recordingDateTime", direction]],
   };
@@ -246,7 +246,7 @@ export const getSelfJoinForTagMode = (
     }
     case TagMode.HumanOnly: {
       // NOTE: Recordings that are tagged by *only* a human.
-      //  Query needs to check that there's not also an AI tag for this recording.
+      //  FIXME: Query needs to check that there's not also an AI tag for this recording.
       const automaticSql = getRawSql(models, options(false, true));
       const humanSql = getRawSql(models, options(true, false));
       return `
@@ -298,22 +298,26 @@ export const getSelfJoinForTagMode = (
     }
     case TagMode.AutomaticOnly: {
       // NOTE: Recordings that are tagged by *only* an AI.
-      //  Query needs to check that there's not also a human tag for this recording.
       // TODO: False-positive filtering?
       const automaticSql = getRawSql(models, options(true, true));
       const humanSql = getRawSql(models, options(true, false));
-      return `
-        select ${recordingIds("automatic_recordings")} 
+
+      return `with all_recs as (
+        select 
+          distinct(automatic_recordings.id),
+          automatic_recordings.automatic as automatic,
+          not human_recordings.automatic as human,
+          automatic_recordings."recordingDateTime"
         from 
         (${automaticSql}) as automatic_recordings 
         left join 
         (${humanSql}) as human_recordings 
-        on automatic_recordings.id = human_recordings.id 
-        where 
-        automatic_recordings.automatic is true and 
-        human_recordings.automatic is null
-        ${limit("automatic_recordings")}            
-      `;
+        on automatic_recordings.id = human_recordings.id)
+        select ${recordingIds("t1")} from all_recs t1
+          where not exists (
+            select 1 from all_recs t2 where t1.id = t2.id and t2.human = true 
+          )
+          ${limit("t1")}`;
     }
     case TagMode.Tagged: {
       // NOTE: Recordings that are tagged by either of or both a human and AI.
@@ -352,18 +356,22 @@ export const getSelfJoinForTagMode = (
       const automaticSql = getRawSql(models, options(true, true));
       const humanSql = getRawSql(models, options(false, false));
       return `
-        select ${recordingIds("automatic_recordings")} 
+        with all_recs as (
+        select 
+          distinct(automatic_recordings.id),
+          automatic_recordings.automatic as automatic,
+          not human_recordings.automatic as human,
+          automatic_recordings."recordingDateTime"
         from 
         (${automaticSql}) as automatic_recordings 
         left join 
         (${humanSql}) as human_recordings 
-        on automatic_recordings.id = human_recordings.id 
-        where
-        (automatic_recordings.automatic = true
-        or automatic_recordings.automatic is null
-        ) 
-        and human_recordings.automatic is null                                      
-        ${limit("automatic_recordings")}       
+        on automatic_recordings.id = human_recordings.id)
+        select ${recordingIds("t1")} from all_recs t1
+          where not exists (
+            select 1 from all_recs t2 where t1.id = t2.id and t2.human = true
+          )
+          ${limit("t1")}
       `;
     }
     case TagMode.Any: {

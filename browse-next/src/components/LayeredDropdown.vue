@@ -15,6 +15,7 @@ const props = withDefaults(
     multiselect: boolean;
     placeholder: string;
     canBePinned: boolean;
+    withAudioContext: boolean;
     pinnedItems: string[];
     selectedItems: string[];
     openOnMount?: boolean;
@@ -23,6 +24,7 @@ const props = withDefaults(
     disabled: false,
     multiselect: false,
     canBePinned: false,
+    withAudioContext: false,
     pinnedItems: () => [],
     placeholder: "Search",
     selectedItems: () => [],
@@ -383,12 +385,12 @@ defineExpose({
             :disabled="disabledTags.includes(option.label)"
           >
             <span style="vertical-align: middle">{{
-              displayLabelForClassificationLabel(option.label)
+              displayLabelForClassificationLabel(option.label, false, withAudioContext)
             }}</span
             ><span
               v-if="
                 option.display &&
-                displayLabelForClassificationLabel(option.label) !==
+                displayLabelForClassificationLabel(option.label, false, withAudioContext) !==
                   option.label
               "
               class="fs-7 text-black-50"
