@@ -482,6 +482,19 @@ const doResize = () => {
       );
       track.mutated.maxFreq = track.mutated.minFreq + deltaFreq;
     }
+    {
+      const minFreqZeroOne =
+        Math.max(0, track.mutated.minFreq || 0) / audioSampleRate.value;
+      const maxFreqZeroOne =
+        Math.min(
+          track.mutated.maxFreq || audioSampleRate.value,
+          audioSampleRate.value,
+        ) / audioSampleRate.value;
+      spectastiqEl.value.setPlaybackFrequencyBandPass(
+        minFreqZeroOne * audioSampleRate.value,
+        maxFreqZeroOne * audioSampleRate.value,
+      );
+    }
     if (overlayCanvasContext.value) {
       renderOverlay(overlayCanvasContext.value);
     }
@@ -526,7 +539,22 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
           track.minFreq = track.mutated.minFreq;
           track.maxFreq = track.mutated.maxFreq;
           delete track.mutated;
+          if (spectastiqEl.value) {
+            // Set gain for new track
+            const trackStartZeroOne = track.start / audioDuration.value;
+            const trackEndZeroOne = track.end / audioDuration.value;
+            const minFreqZeroOne =
+              Math.max(0, track.minFreq || 0) / audioSampleRate.value;
+            const maxFreqZeroOne =
+              Math.min(
+                track.maxFreq || audioSampleRate.value,
+                audioSampleRate.value,
+              ) / audioSampleRate.value;
+            const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+            spectastiqEl.value.setGain(newGain);
+          }
         }
+
       }
       spectastiq.endCustomInteraction();
     } else if (inRegionCreationMode.value && overlayCanvasContext.value) {
@@ -1009,6 +1037,26 @@ const cancelTrackResizeOperation = () => {
     currentTrack.value.minFreq = props.currentTrack.minFreq!;
     currentTrack.value.maxFreq = props.currentTrack.maxFreq!;
     delete currentTrack.value.mutated;
+
+
+    if (spectastiqEl.value) {
+      // Set gain and bandpass for original unchanged track.
+      const trackStartZeroOne = currentTrack.value.start / audioDuration.value;
+      const trackEndZeroOne = currentTrack.value.end / audioDuration.value;
+      const minFreqZeroOne =
+        Math.max(0, currentTrack.value.minFreq || 0) / audioSampleRate.value;
+      const maxFreqZeroOne =
+        Math.min(
+          currentTrack.value.maxFreq || audioSampleRate.value,
+          audioSampleRate.value,
+        ) / audioSampleRate.value;
+      const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+      spectastiqEl.value.setGain(newGain);
+      spectastiqEl.value.setPlaybackFrequencyBandPass(
+        minFreqZeroOne * audioSampleRate.value,
+        maxFreqZeroOne * audioSampleRate.value,
+      );
+    }
   }
   exitResizeMode();
 };
@@ -1037,16 +1085,33 @@ const currentTime = ref<number>(0);
 const togglePlayback = async () => {
   if (spectastiqEl.value) {
     if (!audioIsPlaying.value) {
-      if (props.currentTrack) {
-        if (currentTime.value >= props.currentTrack.end) {
-          // Play from the current time until the end of the track
+      const currentIntermediateTrack = currentTrack.value;
+      if (currentIntermediateTrack) {
+        const trackStartZeroOne = currentIntermediateTrack.start / audioDuration.value;
+        const trackEndZeroOne = currentIntermediateTrack.end / audioDuration.value;
+        const minFreqZeroOne =
+          Math.max(0, currentIntermediateTrack.minFreq || 0) / audioSampleRate.value;
+        const maxFreqZeroOne =
+          Math.min(
+            currentIntermediateTrack.maxFreq || audioSampleRate.value,
+            audioSampleRate.value,
+          ) / audioSampleRate.value;
+
+        spectastiqEl.value.setPlaybackFrequencyBandPass(
+          minFreqZeroOne * audioSampleRate.value,
+          maxFreqZeroOne * audioSampleRate.value,
+        );
+        const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+        spectastiqEl.value.setGain(newGain);
+
+        if (currentTime.value >= currentIntermediateTrack.end) {
           await spectastiqEl.value.play(
-            props.currentTrack.start / audioDuration.value,
-            props.currentTrack.end / audioDuration.value,
+            trackStartZeroOne,
+            trackEndZeroOne,
           );
-        } else if (currentTime.value > props.currentTrack.start) {
+        } else if (currentTime.value > currentIntermediateTrack.start) {
           // Play until the end of the current track
-          await spectastiqEl.value.play(currentTime.value / audioDuration.value, props.currentTrack.end / audioDuration.value);
+          await spectastiqEl.value.play(currentTime.value / audioDuration.value, trackEndZeroOne);
         } else {
           // Continue playing normally until the end of the recording
           await spectastiqEl.value.play();

@@ -360,9 +360,11 @@ export const getRawRecording = (recordingId: RecordingId) => {
 
 export const updateResizedTrack = (recordingId: RecordingId, trackId: TrackId, startSeconds: number, endSeconds: number, minFreqHz: number, maxFreqHz: number) => {
   return CacophonyApi.patch(`/api/v1/recordings/${recordingId}/tracks/${trackId}/update-data`, {
-    start_s: startSeconds,
-    end_s: endSeconds,
-    minFreq: minFreqHz,
-    maxFreq: maxFreqHz,
+    data: {
+      start_s: startSeconds,
+      end_s: endSeconds,
+      minFreq: minFreqHz,
+      maxFreq: maxFreqHz,
+    },
   }) as Promise<FetchResult<void>>;
 };
