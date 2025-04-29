@@ -746,8 +746,8 @@ onMounted(async () => {
           },
           { pinned: !!userDefinedTags[tag.label] },
         ]"
-        :key="index"
-        v-for="(tag, index) in availableTags"
+        :key="tag.label"
+        v-for="(tag, _index) in availableTags"
         @click="(e) => toggleTag(tag.label)"
       >
         <span v-if="!!userDefinedTags[tag.label]" class="pinned-tag"

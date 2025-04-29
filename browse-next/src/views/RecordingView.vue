@@ -1553,9 +1553,22 @@ const inlineModal = ref<boolean>(false);
             class="recording-info-mobile p-3 flex-grow-1"
             v-if="isMobileView"
           >
+            <recording-view-labels
+              :recording="recording as ApiRecordingResponse"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              v-if="isMobileView"
+            />
+            <recording-view-notes
+              :recording="recording as ApiRecordingResponse"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              v-if="isMobileView"
+            />
             <div
               class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
             >
+
               <map-with-points
                 class="recording-location-map"
                 :points="mapPointForRecording"
@@ -1629,18 +1642,7 @@ const inlineModal = ref<boolean>(false);
                 </div>
               </div>
             </div>
-            <recording-view-labels
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-            <recording-view-notes
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
+
           </div>
         </div>
       </div>

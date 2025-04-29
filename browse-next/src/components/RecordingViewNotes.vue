@@ -109,7 +109,18 @@ const doAddNote = async () => {
 </script>
 <template>
   <div v-if="recording" class="recording-labels d-flex flex-column">
+    <div class="d-flex align-items-center mt-2">
     <h2 class="recording-labels-title fs-6">Notes</h2>
+      <div class="d-md-none d-flex justify-content-end flex-grow-1">
+        <button
+          type="button"
+          class="btn btn-outline-secondary align-self-end add-label-btn d-flex align-items-center"
+          @click="addNote"
+        >
+          <font-awesome-icon icon="plus" /><span> Add note</span>
+        </button>
+      </div>
+    </div>
     <card-table :items="tableItems" compact>
       <template #_deleteAction="{ cell }">
         <button
@@ -142,10 +153,10 @@ const doAddNote = async () => {
         </div>
       </template>
     </card-table>
-    <div class="d-flex justify-content-end flex-grow-1">
+    <div class="d-none d-md-flex justify-content-end flex-grow-1 my-2">
       <button
         type="button"
-        class="btn btn-outline-secondary my-2 align-self-end add-label-btn d-flex align-items-center"
+        class="btn btn-outline-secondary align-self-end add-label-btn d-flex align-items-center"
         @click="addNote"
       >
         <font-awesome-icon icon="plus" /><span> Add note</span>
@@ -189,7 +200,7 @@ const doAddNote = async () => {
 .recording-labels-title {
   display: none;
   @media screen and (max-width: 1040px) {
-    display: block;
+    display: inline;
   }
 }
 .recording-label {
