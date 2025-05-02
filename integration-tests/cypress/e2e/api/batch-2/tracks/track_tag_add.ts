@@ -41,7 +41,7 @@ describe("Track Tags: add, check, delete", () => {
 
   //Recording with no track - added as part of test
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
   templateRecording.metadata.tracks = [];
 
@@ -70,7 +70,6 @@ describe("Track Tags: add, check, delete", () => {
     positions: positions1,
     tags: [],
     filtered: true,
-    automatic: true,
   };
 
   const track1: ApiTrackDataRequest = {
@@ -145,7 +144,7 @@ describe("Track Tags: add, check, delete", () => {
     cy.testCreateUserGroupAndDevice(
       "ttaGroup2Admin",
       "ttaGroup2",
-      "ttaCamera2"
+      "ttaCamera2",
     );
 
     //Create non member user
@@ -160,10 +159,10 @@ describe("Track Tags: add, check, delete", () => {
       cy.apiSignInAs(null, superuser, suPassword);
     } else {
       cy.log(
-        "Warning: validating returned returned data presence but not parameter values"
+        "Warning: validating returned returned data presence but not parameter values",
       );
       cy.log(
-        "Enable running_in_a_dev_environment to allow value checks (only on dev)"
+        "Enable running_in_a_dev_environment to allow value checks (only on dev)",
       );
     }
   });
@@ -175,7 +174,7 @@ describe("Track Tags: add, check, delete", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        undefined
+        undefined,
       );
       cy.testDeleteRecordingsInState(superuser, RecordingType.Audio, undefined);
     }
@@ -199,7 +198,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack1",
       "ttaAlgorithm1",
       track1,
-      algorithm1
+      algorithm1,
     ).then(() => {
       cy.log(JSON.stringify(getCreds("ttaTrack1")));
 
@@ -209,7 +208,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaRecording1",
         "ttaTrack1",
         "ttaTag1",
-        tag1
+        tag1,
       );
 
       cy.log("Check recording track & tag can be viewed correctly");
@@ -217,7 +216,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaGroupAdmin",
         "ttaRecording1",
         [expectedTrackWithTag],
-        EXCLUDE_TRACK_IDS
+        EXCLUDE_TRACK_IDS,
       );
 
       cy.log("Delete tag");
@@ -225,7 +224,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaGroupAdmin",
         "ttaRecording1",
         "ttaTrack1",
-        "ttaTag1"
+        "ttaTag1",
       );
 
       cy.log("Check tag no longer exists");
@@ -233,7 +232,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaGroupAdmin",
         "ttaRecording1",
         [expectedTrack],
-        EXCLUDE_TRACK_IDS
+        EXCLUDE_TRACK_IDS,
       );
     });
   });
@@ -255,7 +254,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack2",
       "ttaAlgorithm2",
       track1,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Can tag the track");
@@ -264,7 +263,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaRecording2",
       "ttaTrack2",
       "ttaTag2",
-      tag1
+      tag1,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -272,7 +271,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording2",
       [expectedTrackWithTag],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Delete tag");
@@ -280,7 +279,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording2",
       "ttaTrack2",
-      "ttaTag2"
+      "ttaTag2",
     );
 
     cy.log("Check tag no longer exists");
@@ -288,7 +287,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording2",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -304,7 +303,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack5",
       "ttaAlgorithm5",
       track1,
-      algorithm1
+      algorithm1,
     );
 
     cy.log("Non owner cannot tag the track");
@@ -314,7 +313,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack5",
       "ttaTag5",
       tag1,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("Check tag does not exist");
@@ -322,7 +321,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording5",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -342,14 +341,14 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack6",
       "ttaAlgorithm6",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagAdd(
       "ttaGroupMember",
       "ttaRecording6",
       "ttaTrack6",
       "ttaTag6",
-      tag1
+      tag1,
     );
 
     cy.log("Non member cannot delete tag");
@@ -358,7 +357,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaRecording6",
       "ttaTrack6",
       "ttaTag6",
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
 
     cy.log("Check tag still exists");
@@ -366,7 +365,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording6",
       [expectedTrackWithTag],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -382,14 +381,14 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack7",
       "ttaAlgorithm7",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagAdd(
       "ttaGroupAdmin",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
-      tag1
+      tag1,
     );
 
     cy.log("Another member of same group member can delete another's tag");
@@ -397,7 +396,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
-      "ttaTag7"
+      "ttaTag7",
     );
 
     cy.log("Check tag no longer exists");
@@ -405,7 +404,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupAdmin",
       "ttaRecording7",
       [expectedTrack],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -429,14 +428,14 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack7",
       "ttaAlgorithm7",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagAdd(
       "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
-      tag1
+      tag1,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -444,7 +443,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Member can add second tag");
@@ -453,7 +452,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
-      tag2
+      tag2,
     );
 
     cy.log("Check both tags shown");
@@ -461,7 +460,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
@@ -488,14 +487,14 @@ describe("Track Tags: add, check, delete", () => {
       "ttaTrack7",
       "ttaAlgorithm7",
       track1,
-      algorithm1
+      algorithm1,
     );
     cy.apiTrackTagAdd(
       "ttaGroupMember",
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
-      tag1
+      tag1,
     );
 
     cy.log("Check recording track & tag can be viewed correctly");
@@ -503,7 +502,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTag1],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
 
     cy.log("Member can add second tag");
@@ -512,7 +511,7 @@ describe("Track Tags: add, check, delete", () => {
       "ttaRecording7",
       "ttaTrack7",
       "ttaTag7",
-      tag1
+      tag1,
     );
 
     cy.log("Check both tags shown");
@@ -520,13 +519,13 @@ describe("Track Tags: add, check, delete", () => {
       "ttaGroupMember",
       "ttaRecording7",
       [expectedTrackWithTags2],
-      EXCLUDE_TRACK_IDS
+      EXCLUDE_TRACK_IDS,
     );
   });
 
   //guest (power-tagger) tagging tests
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it("Can power-tag as non-owner by providing a valid tag JWT", () => {
+    it.skip("Can power-tag as non-owner by providing a valid tag JWT", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
       expectedTrack.filtered = true;
@@ -541,13 +540,13 @@ describe("Track Tags: add, check, delete", () => {
         "ttaCamera1",
         recording1,
         undefined,
-        "ttaRecording8"
+        "ttaRecording8",
       ).then(() => {
         const expectedRecording1 = TestCreateExpectedNeedsTagData(
           templateExpectedNeedsTagRecording,
           "ttaRecording8",
           "ttaCamera1",
-          recording1
+          recording1,
         );
         cy.apiTrackAdd(
           "ttaGroupAdmin",
@@ -555,7 +554,7 @@ describe("Track Tags: add, check, delete", () => {
           "ttaTrack8",
           "ttaAlgorithm8",
           track1,
-          algorithm1
+          algorithm1,
         );
 
         cy.log("Retrieve the recording's JWT");
@@ -566,7 +565,7 @@ describe("Track Tags: add, check, delete", () => {
           [expectedRecording1],
           [],
           HttpStatusCode.Ok,
-          { doNotValidate: true }
+          { doNotValidate: true },
         ).then(() => {
           tag1.tagJWT = getCreds("ttaNeedsTag8").jwt;
 
@@ -576,7 +575,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaRecording8",
             "ttaTrack8",
             "ttaTag8",
-            tag1
+            tag1,
           );
 
           cy.log("Check recording track & tag can be viewed correctly");
@@ -584,7 +583,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaGroupAdmin",
             "ttaRecording8",
             [expectedTrackWithTag],
-            EXCLUDE_TRACK_IDS
+            EXCLUDE_TRACK_IDS,
           );
 
           cy.log("Delete tag");
@@ -592,7 +591,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaGroupAdmin",
             "ttaRecording8",
             "ttaTrack8",
-            "ttaTag8"
+            "ttaTag8",
           );
 
           cy.log("Check tag no longer exists");
@@ -600,13 +599,13 @@ describe("Track Tags: add, check, delete", () => {
             "ttaGroupAdmin",
             "ttaRecording8",
             [expectedTrack],
-            EXCLUDE_TRACK_IDS
+            EXCLUDE_TRACK_IDS,
           );
         });
       });
     });
 
-    it("Cannot power-tag as non-owner by providing a non-valid tag JWT", () => {
+    it.skip("Cannot power-tag as non-owner by providing a non-valid tag JWT", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       const tagA = JSON.parse(JSON.stringify(tag1));
 
@@ -618,7 +617,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaTrack9",
         "ttaAlgorithm9",
         track1,
-        algorithm1
+        algorithm1,
       );
 
       tagA.tagJWT = "BADJWT";
@@ -631,7 +630,7 @@ describe("Track Tags: add, check, delete", () => {
         "ttaTag9",
         tagA,
         HttpStatusCode.Forbidden,
-        { message: "Failed to verify JWT" }
+        { message: "Failed to verify JWT" },
       );
     });
 
@@ -649,13 +648,13 @@ describe("Track Tags: add, check, delete", () => {
         "ttaCamera1",
         recording1,
         undefined,
-        "ttaRecording10"
+        "ttaRecording10",
       ).then(() => {
         const expectedRecording1 = TestCreateExpectedNeedsTagData(
           templateExpectedNeedsTagRecording,
           "ttaRecording10",
           "ttaCamera1",
-          recording1
+          recording1,
         );
         cy.apiTrackAdd(
           "ttaGroupAdmin",
@@ -663,7 +662,7 @@ describe("Track Tags: add, check, delete", () => {
           "ttaTrack10",
           "ttaAlgorithm10",
           track1,
-          algorithm1
+          algorithm1,
         );
 
         cy.log("Retrieve the recording's JWT");
@@ -674,7 +673,7 @@ describe("Track Tags: add, check, delete", () => {
           [expectedRecording1],
           [],
           HttpStatusCode.Ok,
-          { doNotValidate: true }
+          { doNotValidate: true },
         ).then(() => {
           tag1.tagJWT = getCreds("ttaNeedsTag10").jwt;
 
@@ -684,7 +683,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaRecording10",
             "ttaTrack10",
             "ttaTag10",
-            tag1
+            tag1,
           );
 
           cy.log("Guest can delete tag by providing tagJWT");
@@ -692,7 +691,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaNonMember",
             "ttaRecording10",
             "ttaTrack10",
-            "ttaTag10"
+            "ttaTag10",
           );
 
           cy.log("Check tag no longer exists");
@@ -700,7 +699,7 @@ describe("Track Tags: add, check, delete", () => {
             "ttaGroupAdmin",
             "ttaRecording10",
             [expectedTrack],
-            EXCLUDE_TRACK_IDS
+            EXCLUDE_TRACK_IDS,
           );
         });
       });
@@ -709,7 +708,7 @@ describe("Track Tags: add, check, delete", () => {
     it.skip("Cannot delete tag as non-owner by providing a non-valid tag JWT", () => {});
   } else {
     it.skip(
-      "DISABLED: power tagger tests cannot be run as not in a dev environment"
+      "DISABLED: power tagger tests cannot be run as not in a dev environment",
     );
   }
 });

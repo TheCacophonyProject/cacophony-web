@@ -27,7 +27,7 @@ describe("User: manage global access permissions", () => {
           isHealthy: false,
         };
         cy.apiUserAdd("gapUser3");
-      }
+      },
     );
   });
 
@@ -53,7 +53,7 @@ describe("User: manage global access permissions", () => {
           "gapCamera2",
           "gapGroup2",
           null,
-          expectedDevice2
+          expectedDevice2,
         );
 
         cy.log("Cannot elevate own permisssions");
@@ -61,7 +61,7 @@ describe("User: manage global access permissions", () => {
           "gapUser1",
           "gapUser1",
           "write",
-          HttpStatusCode.Forbidden
+          HttpStatusCode.Forbidden,
         );
 
         cy.log("Check cannot write globally");
@@ -72,7 +72,7 @@ describe("User: manage global access permissions", () => {
           false,
           false,
           false,
-          HttpStatusCode.Forbidden
+          HttpStatusCode.Forbidden,
         );
 
         cy.log("Set back to default (off)");
@@ -85,7 +85,7 @@ describe("User: manage global access permissions", () => {
             null,
             undefined,
             {},
-            HttpStatusCode.Forbidden
+            HttpStatusCode.Forbidden,
           );
         });
       });
@@ -111,7 +111,7 @@ describe("User: manage global access permissions", () => {
           "gapCamera2",
           "gapGroup2",
           null,
-          expectedDevice2
+          expectedDevice2,
         );
 
         cy.log("Check can write globally");
@@ -128,7 +128,7 @@ describe("User: manage global access permissions", () => {
             null,
             undefined,
             {},
-            HttpStatusCode.Forbidden
+            HttpStatusCode.Forbidden,
           );
         });
       });
@@ -145,7 +145,7 @@ describe("User: manage global access permissions", () => {
         getCreds("gapUser1").id.toString(),
         "write",
         HttpStatusCode.Ok,
-        { useRawUserName: true }
+        { useRawUserName: true },
       ).then(() => {
         cy.log("Check can write globally");
         cy.apiGroupUserAdd("gapUser1", "gapUser3", "gapGroup2", false, false);
@@ -157,7 +157,7 @@ describe("User: manage global access permissions", () => {
           getCreds("gapUser1").id.toString(),
           "off",
           HttpStatusCode.Ok,
-          { useRawUserName: true }
+          { useRawUserName: true },
         );
       });
     });
@@ -174,14 +174,14 @@ describe("User: manage global access permissions", () => {
         HttpStatusCode.Forbidden,
         {
           message: "Could not find a user with a name",
-        }
+        },
       );
       cy.apiAdminUpdate(
         superuser,
         "gapUser1",
         "badPermission",
         HttpStatusCode.Unprocessable,
-        { message: "body.permission: Invalid value" }
+        { message: "body.permission: Invalid value" },
       );
     });
   } else {
@@ -197,14 +197,14 @@ describe("User: manage global access permissions", () => {
         HttpStatusCode.Forbidden,
         {
           message: "Could not find a user with a name",
-        }
+        },
       );
       cy.apiAdminUpdate(
         superuser,
         "gapUser1",
         "badPermission",
         HttpStatusCode.Unprocessable,
-        { message: "body.permission: Invalid value" }
+        { message: "body.permission: Invalid value" },
       );
     });
   } else {
@@ -220,7 +220,7 @@ describe("User: manage global access permissions", () => {
       HttpStatusCode.Forbidden,
       {
         message: "User is not an admin",
-      }
+      },
     );
 
     cy.log("Check cannot read globally");
@@ -231,7 +231,7 @@ describe("User: manage global access permissions", () => {
       null,
       undefined,
       null,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 });

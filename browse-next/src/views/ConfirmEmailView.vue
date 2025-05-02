@@ -46,7 +46,7 @@ onBeforeMount(async () => {
     }
 
     const validateTokenResponse = await validateEmailConfirmationToken(
-      validateToken.value
+      validateToken.value,
     );
     if (!validateTokenResponse.success) {
       if (validateTokenResponse.status === HttpStatusCode.AuthorizationError) {

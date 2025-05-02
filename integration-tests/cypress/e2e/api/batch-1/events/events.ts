@@ -31,12 +31,12 @@ describe("Events - add event as a device", () => {
     cy.apiEventsAdd("evCamera", eventDetails1, [time1]).then(
       (response: number) => {
         eventDetailsId1 = response;
-      }
+      },
     );
     cy.apiEventsAdd("evCamera", eventDetails2, [time2]).then(
       (response: number) => {
         eventDetailsId2 = response;
-      }
+      },
     );
   });
 
@@ -54,13 +54,14 @@ describe("Events - add event as a device", () => {
       dateTime: timeNow,
       Device: { deviceName: getTestName("evCamera2") },
       EventDetail: eventDetails1c,
+      env: "unknown",
     };
     cy.apiEventsCheck(
       "evGroupAdmin2",
       "evCamera2",
       {},
       [expectedEvent1c],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -69,27 +70,27 @@ describe("Events - add event as a device", () => {
     const time4 = "2018-01-04T07:22:56.000Z";
 
     cy.log(
-      "check we can resue same eventDetailsIds from past event by specifying same description"
+      "check we can resue same eventDetailsIds from past event by specifying same description",
     );
     cy.apiEventsAdd("evCamera", eventDetails2, [time3]).then(
       (response: number) => {
         expect(
           response,
-          `event details ID should match previous identical event ${eventDetailsId2}`
+          `event details ID should match previous identical event ${eventDetailsId2}`,
         ).to.equal(eventDetailsId2);
-      }
+      },
     );
 
     cy.log(
-      "check we can resue same eventDetailsIds by specifying eventDetailsId"
+      "check we can resue same eventDetailsIds by specifying eventDetailsId",
     );
     cy.apiEventsAdd("evCamera", undefined, [time4], eventDetailsId1).then(
       (response: number) => {
         expect(
           response,
-          `event details ID should match previous identical event ${eventDetailsId1}`
+          `event details ID should match previous identical event ${eventDetailsId1}`,
         ).to.equal(eventDetailsId1);
-      }
+      },
     );
 
     cy.log("check all events are listed");
@@ -100,6 +101,7 @@ describe("Events - add event as a device", () => {
       dateTime: time1,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7b = {
       id: null,
@@ -108,6 +110,7 @@ describe("Events - add event as a device", () => {
       dateTime: time2,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7c = {
       id: null,
@@ -116,6 +119,7 @@ describe("Events - add event as a device", () => {
       dateTime: time3,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7d = {
       id: null,
@@ -124,13 +128,14 @@ describe("Events - add event as a device", () => {
       dateTime: time4,
       Device: { deviceName: getTestName("evCamera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     cy.apiEventsCheck(
       "evGroupAdmin",
       "evCamera",
       {},
       [expectedEvent7a, expectedEvent7b, expectedEvent7c, expectedEvent7d],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -153,6 +158,7 @@ describe("Events - add event as a device", () => {
       dateTime: time11,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8b = {
       id: null,
@@ -161,6 +167,7 @@ describe("Events - add event as a device", () => {
       dateTime: time12,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8c = {
       id: null,
@@ -169,6 +176,7 @@ describe("Events - add event as a device", () => {
       dateTime: time13,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8d = {
       id: null,
@@ -177,6 +185,7 @@ describe("Events - add event as a device", () => {
       dateTime: time14,
       Device: { deviceName: getTestName("evCamera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
 
     cy.apiEventsCheck(
@@ -184,7 +193,7 @@ describe("Events - add event as a device", () => {
       "evCamera8",
       {},
       [expectedEvent8a, expectedEvent8b, expectedEvent8c, expectedEvent8d],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -195,7 +204,7 @@ describe("Events - add event as a device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -207,7 +216,7 @@ describe("Events - add event as a device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("description missing type");
     cy.apiEventsAdd(
@@ -216,7 +225,7 @@ describe("Events - add event as a device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -228,7 +237,7 @@ describe("Events - add event as a device", () => {
       [time1],
       null,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("eventDetailsId=non-existent event detail record");
     cy.apiEventsAdd(
@@ -237,7 +246,7 @@ describe("Events - add event as a device", () => {
       [time1],
       9999999,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -249,7 +258,7 @@ describe("Events - add event as a device", () => {
       [],
       null,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("blank time");
     cy.apiEventsAdd(
@@ -258,7 +267,7 @@ describe("Events - add event as a device", () => {
       [""],
       null,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("invalid time");
     cy.apiEventsAdd(
@@ -267,7 +276,7 @@ describe("Events - add event as a device", () => {
       ["bad time"],
       null,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("list containing invaid time");
     cy.apiEventsAdd(
@@ -276,7 +285,7 @@ describe("Events - add event as a device", () => {
       [time1, time2, "bad time"],
       null,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -299,7 +308,7 @@ describe("Events - add event as a device", () => {
       data.type,
       data,
       "@addEventThumbnail",
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     ).then((p) => {
       const x = p as unknown as { id: EventId };
       // Now make sure we can access the event thumbnail:
@@ -310,7 +319,7 @@ describe("Events - add event as a device", () => {
           url: v1ApiPath(`events/${eventId}/thumbnail`),
         },
         "evGroupAdmin2",
-        HttpStatusCode.Ok
+        HttpStatusCode.Ok,
       );
       makeAuthorizedRequestWithStatus(
         {
@@ -318,7 +327,7 @@ describe("Events - add event as a device", () => {
           url: v1ApiPath(`events/${eventId}`),
         },
         "evGroupAdmin2",
-        HttpStatusCode.Ok
+        HttpStatusCode.Ok,
       ).then((response) => {
         cy.log(response.body);
       });

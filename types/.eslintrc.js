@@ -18,7 +18,8 @@ module.exports = {
   rules: {
     "no-prototype-builtins": "off",
     "linebreak-style": ["error", "unix"],
-    quotes: "off",
+    quotes: ["error", "double", { allowTemplateLiterals: true }],
+    "comma-dangle": ["error", "always-multiline"],
     semi: ["error", "always"],
     curly: ["warn", "all"],
     "no-console": ["off"],

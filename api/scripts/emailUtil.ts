@@ -34,7 +34,7 @@ async function sendResetEmail(user: User, password: string): Promise<boolean> {
     html,
     text,
     user.email,
-    "Your request to reset your Cacophony account password"
+    "Your request to reset your Cacophony account password",
   );
 }
 

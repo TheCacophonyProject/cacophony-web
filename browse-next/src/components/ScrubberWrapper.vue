@@ -9,7 +9,7 @@ import { onMounted, ref, watch } from "vue";
 import { useElementBounding, useElementSize } from "@vueuse/core";
 
 const getXOffsetForPointerEvent = (
-  e: MouseEvent | PointerEvent | TouchEvent
+  e: MouseEvent | PointerEvent | TouchEvent,
 ): number => {
   if ((e as PointerEvent).clientX !== undefined) {
     return (e as PointerEvent).clientX;
@@ -23,7 +23,7 @@ const getXOffsetForPointerEvent = (
 };
 
 const getYOffsetForPointerEvent = (
-  e: MouseEvent | PointerEvent | TouchEvent
+  e: MouseEvent | PointerEvent | TouchEvent,
 ): number => {
   if ((e as PointerEvent).clientY !== undefined) {
     return (e as PointerEvent).clientY;
@@ -100,7 +100,7 @@ const onScrubMove = (e: MouseEvent | TouchEvent) => {
     if (Math.abs(newYOffset - scrubberStartTopOffset) < 44) {
       progressZeroToOne.value = Math.min(
         1,
-        Math.max(0, xOffset / scrubberWidth.value)
+        Math.max(0, xOffset / scrubberWidth.value),
       );
       emit("change", progressZeroToOne.value);
     } else {

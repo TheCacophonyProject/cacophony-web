@@ -14,7 +14,7 @@ export function alertBody(
   alert: Alert,
   hasThumbnail: boolean,
   camera?: string,
-  station?: string
+  station?: string,
 ): string[] {
   const dateTime = moment(recording.recordingDateTime)
     .tz(config.timeZone)
@@ -50,7 +50,7 @@ export async function sendEmail(
   to: string,
   subject: string,
   imageAttachments: EmailImageAttachment[] = [],
-  adminEmails: string[] = []
+  adminEmails: string[] = [],
 ): Promise<boolean> {
   const client = new SMTPClient(config.smtpDetails);
   log.info(`Sending email with subject ${subject} to ${to}`);

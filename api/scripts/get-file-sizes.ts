@@ -63,14 +63,14 @@ const checkOnlyInstanceOfScriptRunning = async () => {
 
   if (!Config.hasOwnProperty("s3Archive")) {
     log.warning(
-      "An archive target and bucket needs to be configured in config/app.js in order to archive old recordings"
+      "An archive target and bucket needs to be configured in config/app.js in order to archive old recordings",
     );
     process.exit(0);
   }
 
   if (!Config.s3Local.hasOwnProperty("rootPath")) {
     log.warning(
-      "No object storage 'rootPath' property found in s3Local config - this is a required field"
+      "No object storage 'rootPath' property found in s3Local config - this is a required field",
     );
     process.exit(0);
   }
@@ -95,14 +95,14 @@ const checkOnlyInstanceOfScriptRunning = async () => {
         const length = stats[i].ContentLength;
         j.push(
           client.query(
-            `update "Recordings" set "rawFileSize" = ${length} where id = ${result.rows[i]["id"]}`
-          )
+            `update "Recordings" set "rawFileSize" = ${length} where id = ${result.rows[i]["id"]}`,
+          ),
         );
         log.info(
           "Set rawFileSize %s for %s, %s",
           length,
           result.rows[i]["id"],
-          result.rows[i]["rawFileKey"]
+          result.rows[i]["rawFileKey"],
         );
       }
       await Promise.all(j);

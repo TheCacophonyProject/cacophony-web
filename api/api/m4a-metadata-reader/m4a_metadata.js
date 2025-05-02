@@ -50,7 +50,7 @@ function getUint8ArrayMemory0() {
 function getStringFromWasm0(ptr, len) {
   ptr = ptr >>> 0;
   return cachedTextDecoder.decode(
-    getUint8ArrayMemory0().subarray(ptr, ptr + len)
+    getUint8ArrayMemory0().subarray(ptr, ptr + len),
   );
 }
 
@@ -239,10 +239,10 @@ function makeMutClosure(arg0, arg1, dtor, f) {
   return real;
 }
 function __wbg_adapter_22(arg0, arg1, arg2) {
-  wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h99011da901f2b23b(
+  wasm._dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__ha68e04f5e444495f(
     arg0,
     arg1,
-    addHeapObject(arg2)
+    addHeapObject(arg2),
   );
 }
 
@@ -253,12 +253,12 @@ function handleError(f, args) {
     wasm.__wbindgen_exn_store(addHeapObject(e));
   }
 }
-function __wbg_adapter_55(arg0, arg1, arg2, arg3) {
-  wasm.wasm_bindgen__convert__closures__invoke2_mut__h695f61305e585c80(
+function __wbg_adapter_45(arg0, arg1, arg2, arg3) {
+  wasm.wasm_bindgen__convert__closures__invoke2_mut__h252cc0cb81a95e18(
     arg0,
     arg1,
     addHeapObject(arg2),
-    addHeapObject(arg3)
+    addHeapObject(arg3),
   );
 }
 
@@ -266,7 +266,7 @@ const M4aReaderContextFinalization =
   typeof FinalizationRegistry === "undefined"
     ? { register: () => {}, unregister: () => {} }
     : new FinalizationRegistry((ptr) =>
-        wasm.__wbg_m4areadercontext_free(ptr >>> 0, 1)
+        wasm.__wbg_m4areadercontext_free(ptr >>> 0, 1),
       );
 /**
  */
@@ -296,7 +296,7 @@ export class M4aReaderContext {
    */
   static newWithReadableStream(stream) {
     const ret = wasm.m4areadercontext_newWithReadableStream(
-      addHeapObject(stream)
+      addHeapObject(stream),
     );
     return M4aReaderContext.__wrap(ret);
   }
@@ -318,7 +318,7 @@ async function __wbg_load(module, imports) {
         if (module.headers.get("Content-Type") != "application/wasm") {
           console.warn(
             "`WebAssembly.instantiateStreaming` failed because your server does not serve wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n",
-            e
+            e,
           );
         } else {
           throw e;
@@ -367,7 +367,7 @@ function __wbg_get_imports() {
     const ptr1 = passStringToWasm0(
       ret,
       wasm.__wbindgen_malloc,
-      wasm.__wbindgen_realloc
+      wasm.__wbindgen_realloc,
     );
     const len1 = WASM_VECTOR_LEN;
     getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
@@ -384,6 +384,17 @@ function __wbg_get_imports() {
       wasm.__wbindgen_free(deferred0_0, deferred0_1, 1);
     }
   };
+  imports.wbg.__wbg_queueMicrotask_48421b3cc9052b68 = function (arg0) {
+    const ret = getObject(arg0).queueMicrotask;
+    return addHeapObject(ret);
+  };
+  imports.wbg.__wbindgen_is_function = function (arg0) {
+    const ret = typeof getObject(arg0) === "function";
+    return ret;
+  };
+  imports.wbg.__wbg_queueMicrotask_12a30234db4045d3 = function (arg0) {
+    queueMicrotask(getObject(arg0));
+  };
   imports.wbg.__wbindgen_cb_drop = function (arg0) {
     const obj = takeObject(arg0).original;
     if (obj.cnt-- == 1) {
@@ -393,35 +404,9 @@ function __wbg_get_imports() {
     const ret = false;
     return ret;
   };
-  imports.wbg.__wbg_queueMicrotask_12a30234db4045d3 = function (arg0) {
-    queueMicrotask(getObject(arg0));
-  };
-  imports.wbg.__wbg_queueMicrotask_48421b3cc9052b68 = function (arg0) {
-    const ret = getObject(arg0).queueMicrotask;
-    return addHeapObject(ret);
-  };
-  imports.wbg.__wbindgen_is_function = function (arg0) {
-    const ret = typeof getObject(arg0) === "function";
-    return ret;
-  };
   imports.wbg.__wbg_read_e48a676fb81ea800 = function (arg0) {
     const ret = getObject(arg0).read();
     return addHeapObject(ret);
-  };
-  imports.wbg.__wbg_debug_5a33c41aeac15ee6 = function (arg0) {
-    console.debug(getObject(arg0));
-  };
-  imports.wbg.__wbg_error_09480e4aadca50ad = function (arg0) {
-    console.error(getObject(arg0));
-  };
-  imports.wbg.__wbg_info_c261acb2deacd903 = function (arg0) {
-    console.info(getObject(arg0));
-  };
-  imports.wbg.__wbg_log_b103404cc5920657 = function (arg0) {
-    console.log(getObject(arg0));
-  };
-  imports.wbg.__wbg_warn_2b3adb99ce26c314 = function (arg0) {
-    console.warn(getObject(arg0));
   };
   imports.wbg.__wbg_newnoargs_76313bd6ff35d0f2 = function (arg0, arg1) {
     const ret = new Function(getStringFromWasm0(arg0, arg1));
@@ -474,7 +459,7 @@ function __wbg_get_imports() {
         const a = state0.a;
         state0.a = 0;
         try {
-          return __wbg_adapter_55(a, state0.b, arg0, arg1);
+          return __wbg_adapter_45(a, state0.b, arg0, arg1);
         } finally {
           state0.a = a;
         }
@@ -537,7 +522,7 @@ function __wbg_get_imports() {
       const ret = Reflect.set(
         getObject(arg0),
         getObject(arg1),
-        getObject(arg2)
+        getObject(arg2),
       );
       return ret;
     }, arguments);
@@ -547,7 +532,7 @@ function __wbg_get_imports() {
     const ptr1 = passStringToWasm0(
       ret,
       wasm.__wbindgen_malloc,
-      wasm.__wbindgen_realloc
+      wasm.__wbindgen_realloc,
     );
     const len1 = WASM_VECTOR_LEN;
     getDataViewMemory0().setInt32(arg0 + 4 * 1, len1, true);
@@ -560,8 +545,8 @@ function __wbg_get_imports() {
     const ret = wasm.memory;
     return addHeapObject(ret);
   };
-  imports.wbg.__wbindgen_closure_wrapper216 = function (arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 35, __wbg_adapter_22);
+  imports.wbg.__wbindgen_closure_wrapper205 = function (arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 26, __wbg_adapter_22);
     return addHeapObject(ret);
   };
 
@@ -587,6 +572,10 @@ function initSync(module) {
     Object.getPrototypeOf(module) === Object.prototype
   )
     ({ module } = module);
+  else
+    console.warn(
+      "using deprecated parameters for `initSync()`; pass a single object instead",
+    );
 
   const imports = __wbg_get_imports();
 
@@ -609,6 +598,10 @@ async function __wbg_init(module_or_path) {
     Object.getPrototypeOf(module_or_path) === Object.prototype
   )
     ({ module_or_path } = module_or_path);
+  else
+    console.warn(
+      "using deprecated parameters for the initialization function; pass a single object instead",
+    );
 
   if (typeof module_or_path === "undefined") {
     module_or_path = new URL("m4a_metadata_bg.wasm", import.meta.url);

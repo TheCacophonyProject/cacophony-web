@@ -36,7 +36,7 @@ const emit = defineEmits<{
   (e: "hide-rename-hint"): void;
   (
     e: "changed-location-name",
-    payload: { newName: string; id: LocationId }
+    payload: { newName: string; id: LocationId },
   ): void;
 }>();
 const showRenameHint = (e: MouseEvent) => {

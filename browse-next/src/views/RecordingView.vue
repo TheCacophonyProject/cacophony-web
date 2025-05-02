@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import type { RouteParams } from "vue-router";
 import { useRoute } from "vue-router";
-import type { ComputedRef, Ref } from "vue";
-import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  type ComputedRef,
+  inject,
+  nextTick,
+  onMounted,
+  type Ref,
+  ref,
+  watch,
+} from "vue";
 import type {
   DeviceId,
   LatLng,
@@ -20,8 +28,8 @@ import {
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
 import {
-  getRecordingById,
   deleteRecording as apiDeleteRecording,
+  getRecordingById,
 } from "@api/Recording";
 import type {
   ApiVisitResponse,
@@ -35,8 +43,6 @@ import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { useElementSize, useMediaQuery } from "@vueuse/core";
-import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
-import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
 import { displayLabelForClassificationLabel } from "@api/Classifications";
 import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
@@ -56,14 +62,19 @@ import {
 import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
 import { urlNormaliseName } from "@/utils.ts";
+import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
+import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
+import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
+import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
+import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 
 const selectedVisit = inject(
-  "currentlySelectedVisit"
+  "currentlySelectedVisit",
 ) as Ref<ApiVisitResponse | null>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 const visitsContext = inject("visitsContext") as Ref<ApiVisitResponse[] | null>;
 const currentUserCreds = inject(
-  currentUserCredentials
+  currentUserCredentials,
 ) as Ref<LoggedInUserAuth | null>;
 
 const route = useRoute();
@@ -71,6 +82,7 @@ const emit = defineEmits<{
   (e: "close"): void;
   (e: "start-blocking-work"): void;
   (e: "end-blocking-work"): void;
+  (e: "loaded-recording", type: RecordingType): void;
   (e: "recording-updated", recordingId: RecordingId, action: string): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
@@ -89,41 +101,41 @@ const locations: Ref<ApiLocationResponse[] | null> =
 
 const loadedRecordingIds = inject(
   "loadedRecordingIds",
-  computed(() => [])
+  computed(() => []),
 ) as ComputedRef<RecordingId[]>;
 const loadedRecordings = inject("loadedRecordings") as Ref<
   ApiRecordingResponse[]
 >;
 const canLoadMoreRecordingsInPast = inject(
   "canLoadMoreRecordingsInPast",
-  ref(false)
+  ref(false),
 ) as ComputedRef<boolean>;
 const requestLoadMoreRecordingsInPast = inject(
   "requestLoadMoreRecordingsInPast",
   () => {
     //
-  }
+  },
 ) as () => Promise<void>;
 const currentRecordingCount = inject(
   "currentRecordingCount",
-  ref(0)
+  ref(0),
 ) as ComputedRef<number>;
 const canExpandCurrentQueryIntoPast = inject(
   "canExpandCurrentQueryInPast",
-  computed(() => false)
+  computed(() => false),
 ) as ComputedRef<boolean>;
 const updatedRecording = inject(
   "updatedRecording",
   (recording: ApiRecordingResponse, recordingWasDeleted = false) => {
     //
-  }
+  },
 ) as (recording: ApiRecordingResponse, recordingWasDeleted?: boolean) => void;
 
 const recordingIds = ref(
   (() => {
     const ids = route.params.recordingIds;
     return (ids && (ids as string).split(",").map(Number)) || [];
-  })()
+  })(),
 );
 
 const allRecordingIds = computed<RecordingId[]>(() => {
@@ -150,6 +162,7 @@ const recordingIsProcessing = computed<boolean>(() => {
       RecordingProcessingState.ReTrackFailed,
       RecordingProcessingState.TrackingFailed,
       RecordingProcessingState.AnalyseThermalFailed,
+      RecordingProcessingState.FinishedFailed,
       RecordingProcessingState.AnalyseFailed,
       RecordingProcessingState.ReprocessFailed,
       RecordingProcessingState.Finished,
@@ -163,18 +176,18 @@ watch(
   (nextRecordingId, prev) => {
     currentRecordingId.value = Number(nextRecordingId);
     loadRecording();
-  }
+  },
 );
 
 watch(
   () => route.params.trackId,
-  (nextTrackId) => {
+  (nextTrackId, prevTrackId) => {
     if (recording.value) {
       currentTrack.value = (
         recording.value as ApiRecordingResponse
       ).tracks.find(({ id }) => id == Number(nextTrackId));
     }
-  }
+  },
 );
 
 watch(locations, (nextStations) => {
@@ -187,7 +200,7 @@ watch(
   () => route.params.visitLabel,
   (nextVisitLabel) => {
     visitLabel.value = nextVisitLabel as string;
-  }
+  },
 );
 
 watch(
@@ -198,7 +211,7 @@ watch(
     } else {
       recordingIds.value = [];
     }
-  }
+  },
 );
 
 const nextVisit = computed<ApiVisitResponse | null>(() => {
@@ -435,7 +448,7 @@ const visitForRecording = computed<string>(() => {
       let bestHumanTag;
       // If there's anything human tagged that's not false-positive or unidentified, use that first.
       for (const [tag, count] of humanTagCounts.filter(
-        ([tag, _]) => !["false-positive", "unidentified"].includes(tag)
+        ([tag, _]) => !["false-positive", "unidentified"].includes(tag),
       )) {
         if (count > bestHumanTagCount) {
           bestHumanTagCount = count;
@@ -492,9 +505,9 @@ const negativeThingTags = [
 const recalculateCurrentVisit = async (
   track: ApiTrackResponse,
   addedTag?: ApiHumanTrackTagResponse,
-  removedTag?: string
+  removedTag?: string,
 ) => {
-  if (recording.value) {
+  if (recording.value && isInVisitContext.value) {
     // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
     // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
     const recordingId = (recording.value as ApiRecordingResponse).id;
@@ -502,14 +515,14 @@ const recalculateCurrentVisit = async (
     const targetVisit =
       visitsContext.value &&
       (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-        visit.recordings.find(({ recId }) => recId === recordingId)
+        visit.recordings.find(({ recId }) => recId === recordingId),
       );
     if (targetVisit) {
       const targetVisitRecording = targetVisit.recordings.find(
-        ({ recId }) => recId === recordingId
+        ({ recId }) => recId === recordingId,
       ) as { recId: number; start: string; tracks: VisitRecordingTag[] };
       const targetTrack = targetVisitRecording.tracks.find(
-        ({ id }) => id === track.id
+        ({ id }) => id === track.id,
       );
       if (targetTrack) {
         if (removedTag) {
@@ -582,40 +595,60 @@ const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
   });
 };
 
+const trackRemoved = ({ trackId }: { trackId: TrackId }) => {
+  if (recording.value) {
+    const index = recording.value.tracks.findIndex(({ id }) => id === trackId);
+    recording.value.tracks.splice(index, 1);
+    if (currentTrack.value && currentTrack.value.id === trackId) {
+      currentTrack.value = undefined;
+      deselectedTrack();
+    }
+  }
+};
+
 const trackTagChanged = async ({
   track,
   tag,
+  newId,
   action,
 }: {
   track: ApiTrackResponse;
   tag: string;
+  newId?: TrackId;
   action: "add" | "remove";
 }) => {
   if (recording.value) {
     let trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
-      ({ id }) => id === track.id
+      ({ id }) => id === track.id,
     );
     if (
       !trackToPatch &&
-      (recording.value as ApiRecordingResponse).tracks.length === 0
+      ((recording.value as ApiRecordingResponse).tracks.length === 0 ||
+        recordingType.value === RecordingType.Audio)
     ) {
       // This track was probably just created, so add it.
       (recording.value as ApiRecordingResponse).tracks.push(track);
       trackToPatch = track;
     }
     if (trackToPatch) {
+      if (newId) {
+        trackToPatch.id = newId;
+      }
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
         const changedTag = trackToPatch.tags.find(
-          ({ what, userId }) => what === tag && userId === currentUser.value?.id
+          ({ what, userId }) => what === tag && userId === currentUser.value?.id,
         );
         if (changedTag) {
           await recalculateCurrentVisit(
             track,
-            changedTag as ApiHumanTrackTagResponse
+            changedTag as ApiHumanTrackTagResponse,
           );
         } else {
           console.error("Failed to find changed tag", tag);
+        }
+        if (trackToPatch.id === -1) {
+          await selectedTrack(-1, true);
         }
       } else if (action === "remove") {
         await recalculateCurrentVisit(track, undefined, tag);
@@ -648,7 +681,7 @@ const removedRecordingLabel = (labelId: TagId) => {
 };
 
 const locationContext: ComputedRef<LatLng> | undefined = inject(
-  latLngForActiveLocations
+  latLngForActiveLocations,
 );
 
 const isInGreaterVisitContext = computed<boolean>(() => {
@@ -666,7 +699,18 @@ const tracks = computed<ApiTrackResponse[]>(() => {
 
 const tags = computed<ApiRecordingTagResponse[]>(() => {
   if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tags;
+    return (recording.value as ApiRecordingResponse).tags.filter(
+      (tag) => tag.detail !== "note",
+    );
+  }
+  return [];
+});
+
+const notes = computed<ApiRecordingTagResponse[]>(() => {
+  if (recording.value) {
+    return (recording.value as ApiRecordingResponse).tags.filter(
+      (tag) => tag.detail === "note",
+    );
   }
   return [];
 });
@@ -698,7 +742,7 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     const matchingTimespan = (validTimespans as Timespan[]).find(
       (timespan) =>
         timespan.fromDateTime < atTime &&
-        (!timespan.untilDateTime || timespan.untilDateTime > atTime)
+        (!timespan.untilDateTime || timespan.untilDateTime > atTime),
     );
     if (matchingTimespan) {
       deviceHasReferencePhotoAtRecordingTime.value = true;
@@ -708,7 +752,8 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
 
   const hasReferenceResponse = await hasReferenceImageForDeviceAtTime(
     deviceId,
-    atTime
+    atTime,
+    true,
   );
   if (
     // We know the earliest time for the reference image, and the location.
@@ -739,7 +784,7 @@ const isNightTime = (date: Date, location: LatLng): boolean => {
   const { sunrise, sunset } = sunCalc.getTimes(
     date,
     location.lat,
-    location.lng
+    location.lng,
   );
 
   const hourMin = date.getHours() * 60 + date.getMinutes();
@@ -750,13 +795,30 @@ const isNightTime = (date: Date, location: LatLng): boolean => {
 };
 
 const loadRecording = async () => {
-  recording.value = null;
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
     recording.value = await getRecordingById(currentRecordingId.value);
     if (recording.value) {
+      if (
+        (recording.value.type === RecordingType.ThermalRaw &&
+          recording.value.duration < 2.5 &&
+          recording.value.duration > 1.8) ||
+        (recording.value.type === RecordingType.Audio &&
+          recording.value.duration > 9.8 &&
+          recording.value.duration < 11)
+      ) {
+        recording.value.tags.push({
+          id: -1,
+          confidence: 1,
+          detail: "Test recording",
+          createdAt: recording.value.recordingDateTime,
+        });
+      }
+
       const rec = recording.value as ApiRecordingResponse;
+      emit("loaded-recording", rec.type);
+      prevRecordingType.value = rec.type;
 
       if (recordingIsProcessing.value) {
         setTimeout(loadRecording, 30000);
@@ -764,14 +826,14 @@ const loadRecording = async () => {
 
       if (
         [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-          rec.type
+          rec.type,
         )
       ) {
         // If not already known, check if there is a reference image for the recording device at the time
         // the recording was made.
         const _ = checkReferencePhotoAtTime(
           rec.deviceId,
-          new Date(rec.recordingDateTime)
+          new Date(rec.recordingDateTime),
         );
       }
 
@@ -783,18 +845,18 @@ const loadRecording = async () => {
         ).tracks.find(({ id }) => id == Number(route.params.trackId));
       }
 
-      if (
-        !route.params.trackId ||
-        (route.params.trackId && !currentTrack.value)
-      ) {
-        // set the default track if not set
-        if ((recording.value as ApiRecordingResponse).tracks.length) {
-          await selectedTrack(
-            (recording.value as ApiRecordingResponse).tracks[0].id,
-            true
-          );
-        }
-      }
+      // if (
+      //   !route.params.trackId ||
+      //   (route.params.trackId && !currentTrack.value)
+      // ) {
+      //   // set the default track if not set
+      //   if ((recording.value as ApiRecordingResponse).tracks.length) {
+      //     await selectedTrack(
+      //       (recording.value as ApiRecordingResponse).tracks[0].id,
+      //       true
+      //     );
+      //   }
+      // }
     } else {
       console.log("Recording load failed");
       // TODO Handle failure to get recording
@@ -802,6 +864,17 @@ const loadRecording = async () => {
   } else {
     console.log("No recording id??");
   }
+};
+
+const deselectedTrack = async () => {
+  await nextTick(() => {
+    userSelectedTrack.value = undefined;
+  });
+  await router.replace({
+    name: route.name as string,
+    params: {},
+    query: route.query,
+  });
 };
 
 const selectedTrackWrap = (payload: {
@@ -813,28 +886,32 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
     ...route.params,
     trackId,
   };
-
-  if (!automatically) {
-    // Make the player start playing at the beginning of the selected track,
-    // and stop when it reaches the end of that track.
-    if (recording.value) {
-      userSelectedTrack.value = (
-        recording.value as ApiRecordingResponse
-      ).tracks.find(({ id }) => id === trackId);
-      await nextTick(() => {
-        userSelectedTrack.value = undefined;
-      });
+  if (
+    recording.value &&
+    recording.value.tracks.find(({ id }) => id == trackId)
+  ) {
+    if (!automatically) {
+      // Make the player start playing at the beginning of the selected track,
+      // and stop when it reaches the end of that track.
+      if (recording.value) {
+        userSelectedTrack.value = (
+          recording.value as ApiRecordingResponse
+        ).tracks.find(({ id }) => id === trackId);
+        await nextTick(() => {
+          userSelectedTrack.value = undefined;
+        });
+      }
+    } else {
+      // TODO: Should this automatically get removed if the selectedTrack has changed due to
+      //  the recording playing onto a new track
+      delete (params as Record<string, string | number>).detail;
     }
-  } else {
-    // TODO: Should this automatically get removed if the selectedTrack has changed due to
-    //  the recording playing onto a new track
-    delete (params as Record<string, string | number>).detail;
+    await router.replace({
+      name: route.name as string,
+      params,
+      query: route.query,
+    });
   }
-  await router.replace({
-    name: route.name as string,
-    params,
-    query: route.query,
-  });
 };
 const selectedTrackWrapped = ({
   trackId,
@@ -873,13 +950,13 @@ const recordingDurationString = computed<string>(() => {
     const duration = formatDuration(durationMs, true);
     let visitStart = timeAtLocation(
       rec.recordingDateTime,
-      locationContext.value
+      rec.location || locationContext.value,
     );
     const visitEnd = timeAtLocation(
       new Date(
-        new Date(rec.recordingDateTime).getTime() + durationMs
+        new Date(rec.recordingDateTime).getTime() + durationMs,
       ).toISOString(),
-      locationContext.value
+      rec.location || locationContext.value,
     );
     if (visitStart === visitEnd) {
       return `${visitStart} (${duration})`;
@@ -962,6 +1039,9 @@ const activeTabName = computed(() => {
 const desktop = useMediaQuery("(min-width: 1040px)");
 const isMobileView = computed<boolean>(() => {
   return !desktop.value;
+
+  // ||
+  //   (!!recordingType.value && recordingType.value === RecordingType.Audio)
 });
 
 const recordingViewContext: string = (route.meta as Record<string, string>)
@@ -974,8 +1054,10 @@ const playerHeight = useElementSize(playerContainer);
 watch(playerHeight.height, (newHeight) => {
   if (recordingInfo.value) {
     const recordingInfoEl = recordingInfo.value as HTMLDivElement;
-    if (desktop.value) {
+    if (desktop.value && recordingType.value !== RecordingType.Audio) {
       recordingInfoEl.style.maxHeight = `${newHeight}px`;
+    } else if (desktop.value && recordingType.value === RecordingType.Audio) {
+      recordingInfoEl.removeAttribute("style");
     } else {
       recordingInfoEl.style.maxHeight = "auto";
     }
@@ -1048,6 +1130,7 @@ const getExtensionForMimeType = (mimeType: string): string => {
 const requestedDownload = async () => {
   if (recording.value) {
     const rec = recording.value as ApiRecordingResponse;
+    await maybeRefreshStaleCredentials();
     const request = {
       mode: "cors",
       cache: "no-cache",
@@ -1067,17 +1150,17 @@ const requestedDownload = async () => {
     const downloadedFileResponse = await window.fetch(
       `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
       // eslint-disable-next-line no-undef
-      request as RequestInit
+      request as RequestInit,
     );
+    const mimeType =
+      downloadedFileResponse.headers.get("Content-Type") ||
+      "application/octet-stream";
     const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
-    const mimeType = downloadedFileResponse.headers.has("content-type")
-      ? (downloadedFileResponse.headers.get("content-type") as string)
-      : "application/octet-stream";
     download(
       URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
       `recording-${recordingId}-${DateTime.fromJSDate(
-        new Date(rec.recordingDateTime)
-      ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`
+        new Date(rec.recordingDateTime),
+      ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`,
     );
   }
 };
@@ -1094,9 +1177,19 @@ const recordingHasRealDuration = computed<boolean>(() => {
   return false;
 });
 
+const prevRecordingType = ref<RecordingType | null>(null);
+
 const recordingType = computed<RecordingType | null>(() => {
-  if (recording.value) {
+  if (recording.value && !!recording.value) {
     return (recording.value as ApiRecordingResponse).type;
+  } else if (prevRecordingType.value) {
+    return prevRecordingType.value;
+  } else if (route.query["recording-mode"]) {
+    if (route.query["recording-mode"] === "audio") {
+      return RecordingType.Audio;
+    } else {
+      return RecordingType.ThermalRaw;
+    }
   }
   return null;
 });
@@ -1150,11 +1243,11 @@ const deleteRecording = async () => {
         const targetVisit =
           visitsContext.value &&
           (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-            visit.recordings.find(({ recId }) => recId === recordingIdToDelete)
+            visit.recordings.find(({ recId }) => recId === recordingIdToDelete),
           );
         if (targetVisit) {
           const targetVisitRecordingIndex = targetVisit.recordings.findIndex(
-            ({ recId }) => recId === recordingIdToDelete
+            ({ recId }) => recId === recordingIdToDelete,
           );
           targetVisit.recordings.splice(targetVisitRecordingIndex, 1);
           if (targetVisit.recordings.length !== 0) {
@@ -1165,7 +1258,7 @@ const deleteRecording = async () => {
         }
       } else {
         const targetRecording = (loadedRecordings.value || []).find(
-          (rec) => rec.id === recordingIdToDelete
+          (rec) => rec.id === recordingIdToDelete,
         );
         if (targetRecording) {
           (targetRecording as MaybeDeletedRecording).tombstoned = true;
@@ -1175,13 +1268,15 @@ const deleteRecording = async () => {
   }
 };
 const inlineModal = ref<boolean>(false);
-
-// TODO: When we scroll down, can we keep the player at the top of the screen for a while, but reduce the height of it?
 </script>
 <template>
   <div
     class="recording-view d-flex flex-column"
-    :class="{ dimmed: inlineModal }"
+    :class="{
+      dimmed: inlineModal,
+      'recording-type-audio':
+        recordingType && recordingType === RecordingType.Audio,
+    }"
   >
     <header
       class="recording-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
@@ -1212,15 +1307,23 @@ const inlineModal = ref<boolean>(false);
             "
             >Trailcam image</span
           >
+          <span
+            v-else-if="recordingType && recordingType === RecordingType.Audio"
+            >Audio recording</span
+          >
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
-          <span class="recording-header-label fw-bold text-capitalize">{{
+          <span class="recording-header-label fw-bold text-capitalize" v-if="isInVisitContext">{{
             visitForRecording
           }}</span>
           <span
             v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
-            class="ms-sm-3 ms-2 recording-header-time"
+            class="recording-header-time"
+            :class="{
+              'ms-sm-3': isInVisitContext,
+              'ms-2': isInVisitContext,
+            }"
             style="color: #444"
           />
         </div>
@@ -1233,32 +1336,36 @@ const inlineModal = ref<boolean>(false);
         <font-awesome-icon icon="xmark" />
       </button>
     </header>
-    <div class="player-overflow flex-grow-1">
+
+    <!--  Camera recording  -->
+    <div class="player-overflow" v-if="recordingType !== RecordingType.Audio">
       <div class="player-and-tagging d-flex">
-        <div class="player-container" ref="playerContainer">
-          <cptv-player
-            :recording="recording as ApiRecordingResponse"
-            :recording-id="currentRecordingId"
-            :current-track="currentTrack"
-            :has-next="hasNextRecording || hasNextVisit"
-            :has-prev="hasPreviousRecording || hasPreviousVisit"
-            :user-selected-track="userSelectedTrack"
-            :export-requested="exportRequested"
-            :display-header-info="showHeaderInfo"
-            :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
-            @export-completed="exportCompleted"
-            @request-next-recording="
-              async () => await gotoNextRecordingOrVisit()
-            "
-            @request-prev-recording="
-              async () => await gotoPreviousRecordingOrVisit()
-            "
-            @request-next-visit="async () => await gotoNextVisit()"
-            @request-prev-visit="async () => await gotoPreviousVisit()"
-            @request-header-info-display="requestedHeaderInfoDisplay"
-            @dismiss-header-info="dismissHeaderInfo"
-            @track-selected="selectedTrackWrap"
-          />
+        <div class="player-container">
+          <div ref="playerContainer">
+            <cptv-player
+              :recording="recording as ApiRecordingResponse"
+              :recording-id="currentRecordingId"
+              :current-track="currentTrack"
+              :has-next="hasNextRecording || hasNextVisit"
+              :has-prev="hasPreviousRecording || hasPreviousVisit"
+              :user-selected-track="userSelectedTrack"
+              :export-requested="exportRequested"
+              :display-header-info="showHeaderInfo"
+              :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
+              @export-completed="exportCompleted"
+              @request-next-recording="
+                async () => await gotoNextRecordingOrVisit()
+              "
+              @request-prev-recording="
+                async () => await gotoPreviousRecordingOrVisit()
+              "
+              @request-next-visit="async () => await gotoNextVisit()"
+              @request-prev-visit="async () => await gotoPreviousVisit()"
+              @request-header-info-display="requestedHeaderInfoDisplay"
+              @dismiss-header-info="dismissHeaderInfo"
+              @track-selected="selectedTrackWrap"
+            />
+          </div>
         </div>
         <div class="recording-info d-flex flex-column" ref="recordingInfo">
           <!-- Desktop view only -->
@@ -1287,21 +1394,7 @@ const inlineModal = ref<boolean>(false);
                 }"
               >
                 <div
-                  class="station-name pt-3 px-3 text-truncate d-inline-flex"
-                  :class="{ 'is-truncated': stationNameIsTruncated }"
-                >
-                  <font-awesome-icon
-                    icon="map-marker-alt"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />
-                  <span class="text-truncate" ref="stationNameSpan">
-                    {{ currentLocationName }}
-                  </span>
-                </div>
-                <div
-                  class="device-name pt-3 pe-2 text-truncate d-inline-flex"
+                  class="device-name pt-3 px-3 text-truncate d-inline-flex"
                   :class="{ 'is-truncated': deviceNameIsTruncated }"
                 >
                   <font-awesome-icon
@@ -1324,6 +1417,20 @@ const inlineModal = ref<boolean>(false);
                   >
                     {{ currentDeviceName }}
                   </router-link>
+                </div>
+                <div
+                  class="station-name pt-3 pe-2 text-truncate d-inline-flex"
+                  :class="{ 'is-truncated': stationNameIsTruncated }"
+                >
+                  <font-awesome-icon
+                    icon="map-marker-alt"
+                    size="xs"
+                    class="me-2"
+                    color="rgba(0, 0, 0, 0.7)"
+                  />
+                  <span class="text-truncate" ref="stationNameSpan">
+                    {{ currentLocationName }}
+                  </span>
                 </div>
               </div>
               <div class="recording-date-time fs-7 d-flex px-3 mt-1">
@@ -1373,6 +1480,7 @@ const inlineModal = ref<boolean>(false);
                   ...route.params,
                   trackId: currentTrack?.id || tracks[0]?.id,
                 },
+                query: route.query,
               }"
               >Tracks
               <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
@@ -1391,10 +1499,30 @@ const inlineModal = ref<boolean>(false);
                   ...route.params,
                   trackId: currentTrack?.id || tracks[0]?.id,
                 },
+                query: route.query,
               }"
               >Labels
               <span v-if="activeTabName !== `${recordingViewContext}-labels`"
                 >({{ tags.length }})</span
+              ></router-link
+            >
+            <router-link
+              :class="[
+                ...navLinkClasses,
+                { active: activeTabName === `${recordingViewContext}-notes` },
+              ]"
+              title="Notes"
+              :to="{
+                name: `${recordingViewContext}-notes`,
+                params: {
+                  ...route.params,
+                  trackId: currentTrack?.id || tracks[0]?.id,
+                },
+                query: route.query,
+              }"
+              >Notes
+              <span v-if="activeTabName !== `${recordingViewContext}-notes`"
+                >({{ notes.length }})</span
               ></router-link
             >
           </ul>
@@ -1404,8 +1532,10 @@ const inlineModal = ref<boolean>(false);
               :recording="recording"
               @track-tag-changed="trackTagChanged"
               @track-selected="selectedTrackWrapped"
+              @track-removed="trackRemoved"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"
+              @delete-recording="deleteRecording"
             />
           </div>
           <!-- Mobile view only -->
@@ -1414,16 +1544,31 @@ const inlineModal = ref<boolean>(false);
             :recording="recording"
             class="recording-tracks"
             @track-tag-changed="trackTagChanged"
+            @track-removed="trackRemoved"
             @track-selected="selectedTrackWrap"
             @added-recording-label="addedRecordingLabel"
+            @delete-recording="deleteRecording"
           />
           <div
             class="recording-info-mobile p-3 flex-grow-1"
             v-if="isMobileView"
           >
+            <recording-view-labels
+              :recording="recording as ApiRecordingResponse"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              v-if="isMobileView"
+            />
+            <recording-view-notes
+              :recording="recording as ApiRecordingResponse"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              v-if="isMobileView"
+            />
             <div
               class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
             >
+
               <map-with-points
                 class="recording-location-map"
                 :points="mapPointForRecording"
@@ -1440,18 +1585,7 @@ const inlineModal = ref<boolean>(false);
                 class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
               >
                 <div class="fw-bolder d-flex">
-                  <div class="station-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
-                  </div>
-                  <div class="device-name pe-2 text-truncate">
+                  <div class="device-name pe-3 text-truncate">
                     <font-awesome-icon
                       icon="microchip"
                       size="xs"
@@ -1473,8 +1607,208 @@ const inlineModal = ref<boolean>(false);
                       {{ currentDeviceName }}
                     </router-link>
                   </div>
+                  <div class="station-name pe-2 text-truncate">
+                    <font-awesome-icon
+                      icon="map-marker-alt"
+                      size="xs"
+                      class="me-2"
+                      color="rgba(0, 0, 0, 0.7)"
+                    />
+                    <span class="text-truncate">
+                      {{ currentLocationName }}
+                    </span>
+                  </div>
                 </div>
 
+                <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
+                  <div>
+                    <font-awesome-icon
+                      :icon="['far', 'calendar']"
+                      size="sm"
+                      class="me-1"
+                      color="rgba(0, 0, 0, 0.5)"
+                    />
+                    <span v-html="recordingDate" />
+                  </div>
+                  <div class="ms-4">
+                    <font-awesome-icon
+                      :icon="['far', 'clock']"
+                      size="sm"
+                      class="me-1"
+                      color="rgba(0, 0, 0, 0.5)"
+                    />
+                    <span v-html="recordingStartTime" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Audio recording -->
+    <div
+      class="player-container"
+      ref="playerContainer"
+      v-if="recordingType === RecordingType.Audio"
+    >
+      <spectrogram-viewer
+        :recording="recording"
+        :user-selected-track="userSelectedTrack"
+        :recording-id="currentRecordingId"
+        @track-selected="selectedTrackWrap"
+        @track-deselected="deselectedTrack"
+        @track-tag-changed="trackTagChanged"
+        @track-removed="trackRemoved"
+        @delete-recording="deleteRecording"
+        :current-track="currentTrack"
+      />
+    </div>
+    <div
+      class="d-flex flex-row overflow-auto flex-fill recording-type-audio"
+      ref="recordingInfo"
+      v-if="recordingType === RecordingType.Audio"
+    >
+      <!-- Desktop view only -->
+      <div class="recording-info d-flex flex-column">
+        <ul
+          class="nav nav-tabs justify-content-md-center justify-content-evenly"
+          v-if="!isMobileView"
+        >
+          <router-link
+            :class="[
+              ...navLinkClasses,
+              { active: activeTabName === `${recordingViewContext}-tracks` },
+            ]"
+            title="Tracks"
+            :to="{
+              name: `${recordingViewContext}-tracks`,
+              params: {
+                ...route.params,
+                trackId: currentTrack?.id || tracks[0]?.id,
+              },
+              query: route.query,
+            }"
+            >Tracks
+            <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
+              >({{ tracks.length }})</span
+            ></router-link
+          >
+          <router-link
+            :class="[
+              ...navLinkClasses,
+              { active: activeTabName === `${recordingViewContext}-labels` },
+            ]"
+            title="Labels"
+            :to="{
+              name: `${recordingViewContext}-labels`,
+              params: {
+                ...route.params,
+                trackId: currentTrack?.id || tracks[0]?.id,
+              },
+              query: route.query,
+            }"
+            >Labels
+            <span v-if="activeTabName !== `${recordingViewContext}-labels`"
+              >({{ tags.length }})</span
+            ></router-link
+          >
+          <router-link
+            :class="[
+              ...navLinkClasses,
+              { active: activeTabName === `${recordingViewContext}-notes` },
+            ]"
+            title="Notes"
+            :to="{
+              name: `${recordingViewContext}-notes`,
+              params: {
+                ...route.params,
+                trackId: currentTrack?.id || tracks[0]?.id,
+              },
+              query: route.query,
+            }"
+            >Notes
+            <span v-if="activeTabName !== `${recordingViewContext}-notes`"
+              >({{ notes.length }})</span
+            ></router-link
+          >
+        </ul>
+        <div class="overflow-auto recording-type-audio">
+          <router-view
+            v-if="!isMobileView"
+            :recording="recording"
+            @track-tag-changed="trackTagChanged"
+            @track-selected="selectedTrackWrapped"
+            @track-removed="trackRemoved"
+            @added-recording-label="addedRecordingLabel"
+            @removed-recording-label="removedRecordingLabel"
+            @delete-recording="deleteRecording"
+          />
+          <recording-view-tracks
+            v-if="isMobileView && recording"
+            :recording="recording"
+            class="recording-tracks"
+            @track-tag-changed="trackTagChanged"
+            @track-removed="trackRemoved"
+            @track-selected="selectedTrackWrap"
+            @added-recording-label="addedRecordingLabel"
+            @delete-recording="deleteRecording"
+          />
+          <div class="recording-info-mobile p-3" v-if="isMobileView">
+            <div
+              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
+            >
+              <map-with-points
+                class="recording-location-map"
+                :points="mapPointForRecording"
+                :active-points="mapPointForRecording"
+                :highlighted-point="null"
+                :is-interactive="false"
+                :markers-are-interactive="false"
+                :has-attribution="false"
+                :can-change-base-map="false"
+                :zoom="false"
+                :radius="30"
+              />
+              <div
+                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
+              >
+                <div class="fw-bolder d-flex">
+                  <div class="device-name pe-3 text-truncate">
+                    <font-awesome-icon
+                      icon="microchip"
+                      size="xs"
+                      class="me-2"
+                      color="rgba(0, 0, 0, 0.7)"
+                    />
+                    <router-link
+                      class="text-truncate non-blue-link"
+                      ref="deviceNameSpan"
+                      v-if="recording && recording.deviceId"
+                      :to="{
+                        name: 'device-diagnostics',
+                        params: {
+                          deviceId: recording.deviceId,
+                          deviceName: urlNormaliseName(recording.deviceName),
+                        },
+                      }"
+                    >
+                      {{ currentDeviceName }}
+                    </router-link>
+                  </div>
+                  <div class="station-name pe-2 text-truncate">
+                    <font-awesome-icon
+                      icon="map-marker-alt"
+                      size="xs"
+                      class="me-2"
+                      color="rgba(0, 0, 0, 0.7)"
+                    />
+                    <span class="text-truncate">
+                      {{ currentLocationName }}
+                    </span>
+                  </div>
+                </div>
                 <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
                   <div>
                     <font-awesome-icon
@@ -1503,10 +1837,116 @@ const inlineModal = ref<boolean>(false);
               @removed-recording-label="removedRecordingLabel"
               v-if="isMobileView"
             />
+            <recording-view-notes
+              :recording="recording as ApiRecordingResponse"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              v-if="isMobileView"
+            />
           </div>
         </div>
       </div>
+      <div
+        class="recording-station-info"
+        style="min-width: min(30%, 550px)"
+        v-if="!isMobileView"
+      >
+        <map-with-points
+          class="recording-location-map"
+          :points="mapPointForRecording"
+          :active-points="mapPointForRecording"
+          :highlighted-point="null"
+          :is-interactive="false"
+          :markers-are-interactive="false"
+          :has-attribution="false"
+          :can-change-base-map="false"
+          :zoom="false"
+          :radius="30"
+        />
+        <div class="recording-details d-flex flex-column">
+          <div
+            class="fw-bolder"
+            :class="{
+              'recording-details-hover':
+                stationNameIsTruncated || deviceNameIsTruncated,
+            }"
+          >
+            <div
+              class="device-name pt-3 px-3 text-truncate d-inline-flex"
+              :class="{ 'is-truncated': deviceNameIsTruncated }"
+            >
+              <font-awesome-icon
+                icon="microchip"
+                size="xs"
+                class="me-2"
+                color="rgba(0, 0, 0, 0.7)"
+              />
+              <router-link
+                class="text-truncate non-blue-link"
+                ref="deviceNameSpan"
+                v-if="recording && recording.deviceId"
+                :to="{
+                  name: 'device-diagnostics',
+                  params: {
+                    deviceId: recording.deviceId,
+                    deviceName: urlNormaliseName(recording.deviceName),
+                  },
+                }"
+              >
+                {{ currentDeviceName }}
+              </router-link>
+            </div>
+            <div
+              class="station-name pt-3 pe-2 text-truncate d-inline-flex"
+              :class="{ 'is-truncated': stationNameIsTruncated }"
+            >
+              <font-awesome-icon
+                icon="map-marker-alt"
+                size="xs"
+                class="me-2"
+                color="rgba(0, 0, 0, 0.7)"
+              />
+              <span class="text-truncate" ref="stationNameSpan">
+                {{ currentLocationName }}
+              </span>
+            </div>
+          </div>
+          <div class="recording-date-time fs-7 d-flex px-3 mt-1">
+            <div>
+              <font-awesome-icon
+                :icon="['far', 'calendar']"
+                size="sm"
+                class="me-1"
+                color="rgba(0, 0, 0, 0.5)"
+              />
+              <span v-html="recordingDate" />
+            </div>
+            <div class="ms-4">
+              <font-awesome-icon
+                :icon="['far', 'clock']"
+                size="sm"
+                class="me-1"
+                color="rgba(0, 0, 0, 0.5)"
+              />
+              <span v-html="recordingStartTime" />
+            </div>
+          </div>
+          <recording-view-action-buttons
+            v-if="recording"
+            :recording="recording"
+            :classes="['align-self-center']"
+            @added-recording-label="addedRecordingLabel"
+            @removed-recording-label="removedRecordingLabel"
+            @requested-export="requestedExport"
+            @requested-advanced-export="requestedAdvancedExport"
+            @requested-download="requestedDownload"
+            @delete-recording="deleteRecording"
+          />
+        </div>
+      </div>
     </div>
+
+    <!-- Mobile view only -->
     <footer class="recording-view-footer">
       <div class="visit-progress">
         <div
@@ -1564,7 +2004,7 @@ const inlineModal = ref<boolean>(false);
               <span class="fs-9" v-if="previousVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
-                    previousVisit.classification as string
+                    previousVisit.classification as string,
                   )
                 }}</span
                 >,&nbsp;<span
@@ -1693,7 +2133,7 @@ const inlineModal = ref<boolean>(false);
               <span class="fs-9" v-if="nextVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
-                    nextVisit.classification as string
+                    nextVisit.classification as string,
                   )
                 }}</span
                 >,&nbsp;<span
@@ -1771,9 +2211,29 @@ const inlineModal = ref<boolean>(false);
   }
   background: #f6f6f6;
 }
+.player-overflow.recording-type-audio {
+  overflow-y: auto;
+  background: #f6f6f6;
+}
 .tags-overflow {
   @media screen and (min-width: 1041px) {
     overflow-y: scroll;
+    @headerHeight: 64px;
+    @playerHeight: 426px;
+    @locationInfoHeight: 120px;
+    @tabsHeight: 38.5px;
+    @footerHeight: 55px;
+    flex: 1;
+    //max-height: min(
+    //  @playerHeight,
+    //  calc(
+    //    100svh -
+    //      (
+    //        @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
+    //          @footerHeight
+    //      )
+    //  )
+    //);
     height: 100%;
   }
 }
@@ -1834,6 +2294,20 @@ const inlineModal = ref<boolean>(false);
       .fs-7();
     }
   }
+  @container (max-height: 940px) {
+    .recording-header-type {
+      .fs-8();
+    }
+    .recording-header-details {
+      line-height: 1;
+    }
+    .recording-header-label {
+      .fs-6();
+    }
+    .recording-header-time {
+      .fs-8();
+    }
+  }
 }
 .recording-view-footer {
   background: white;
@@ -1857,6 +2331,9 @@ const inlineModal = ref<boolean>(false);
 }
 .recording-details {
   max-width: 318px;
+}
+.recording-type-audio .recording-details {
+  max-width: unset;
 }
 .recording-location-map {
   @media screen and (max-width: 1039px) {
@@ -1892,7 +2369,7 @@ const inlineModal = ref<boolean>(false);
           opacity: 1;
         }
       }
-      .device-name:hover {
+      .station-name:hover {
         transform: translateX(-90%);
         > span {
           min-width: 270px;
@@ -1949,6 +2426,39 @@ const inlineModal = ref<boolean>(false);
     flex-direction: column;
   }
 }
+.player-and-tagging.recording-type-audio {
+  flex-direction: column;
+}
+.inline-modal {
+  // TODO - Max width for mobile breakpoints
+  @width: 400px;
+  @height: auto;
+  width: @width;
+  height: @height;
+  position: absolute;
+  border-radius: 2px;
+  top: 40%;
+  left: calc(50% - (@width / 2));
+  background: white;
+  z-index: 401;
+  .standard-shadow();
+}
+
+.recording-view.recording-type-audio {
+  background: white;
+  position: fixed;
+  top: 16px;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  container-type: size;
+  @media screen and (max-width: 1040px) {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+}
 .recording-view {
   @media screen and (max-width: 1040px) {
     background: white;
@@ -1975,20 +2485,6 @@ const inlineModal = ref<boolean>(false);
     right: 0;
     z-index: 400;
   }
-}
-.inline-modal {
-  // TODO - Max width for mobile breakpoints
-  @width: 400px;
-  @height: auto;
-  width: @width;
-  height: @height;
-  position: absolute;
-  border-radius: 2px;
-  top: 40%;
-  left: calc(50% - (@width / 2));
-  background: white;
-  z-index: 401;
-  .standard-shadow();
 }
 .player-container {
   background: black;

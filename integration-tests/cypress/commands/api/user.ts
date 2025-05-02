@@ -24,7 +24,7 @@ Cypress.Commands.add(
     endUserAgreement: number = LATEST_END_USER_AGREEMENT,
     statusCode: number = 200,
     additionalChecks: any = {},
-    inviteToken: string | undefined = undefined
+    inviteToken: string | undefined = undefined,
   ) => {
     logTestDescription(`Create user '${userName}'`, { user: userName }, true);
 
@@ -59,7 +59,7 @@ Cypress.Commands.add(
         //check messages[] contain expected error`
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
+            additionalChecks["message"],
           );
         }
       });
@@ -72,7 +72,7 @@ Cypress.Commands.add(
         }
       });
     }
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -81,7 +81,7 @@ Cypress.Commands.add(
     userName: string,
     updates: any,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Update user ${userName} `, {});
 
@@ -103,7 +103,7 @@ Cypress.Commands.add(
         body: updates,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode == 200) {
         if (newUserName !== undefined) {
@@ -112,11 +112,11 @@ Cypress.Commands.add(
       }
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
+          additionalChecks["message"],
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -126,11 +126,11 @@ Cypress.Commands.add(
     updateUserNameOrId: string,
     permission: string,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(
       `Update user ${updateUserNameOrId} access to ${permission}`,
-      {}
+      {},
     );
 
     let fullUserName: string;
@@ -152,15 +152,15 @@ Cypress.Commands.add(
         body: data,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
+          additionalChecks["message"],
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -171,7 +171,7 @@ Cypress.Commands.add(
     expectedUser: ApiLoggedInUserResponse,
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Check user ${checkedUserNameOrId} `, {});
 
@@ -183,23 +183,23 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         checkTreeStructuresAreEqualExcept(
           expectedUser,
           response.body.userData,
-          excludeCheckOn
+          excludeCheckOn,
         );
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
+            additionalChecks["message"],
           );
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add("apiEUACheck", (expectedVersion: number) => {
@@ -212,7 +212,7 @@ Cypress.Commands.add("apiEUACheck", (expectedVersion: number) => {
   }).then((response) => {
     expect(
       response.body.euaVersion,
-      "End user agreement version should be"
+      "End user agreement version should be",
     ).to.equal(expectedVersion);
     cy.wrap(response.body.euaVersion);
   });
@@ -225,7 +225,7 @@ Cypress.Commands.add(
     expectedUsers: ApiUserResponse[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Check users`, {});
 
@@ -237,25 +237,25 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         if (additionalChecks["contains"] === true) {
           expectedUsers.forEach((expectedUser) => {
             //check expectedUser is in returned usersList
             const index = response.body.usersList.findIndex(
-              (user) => user.userName === expectedUser.userName
+              (user) => user.userName === expectedUser.userName,
             );
             expect(
               index,
-              `User ${expectedUser.userName} is in returned usersList`
+              `User ${expectedUser.userName} is in returned usersList`,
             ).to.be.gt(0);
 
             //check expectedUser and usersList[x] entries match
             checkTreeStructuresAreEqualExcept(
               expectedUser,
               response.body.usersList[index],
-              excludeCheckOn
+              excludeCheckOn,
             );
           });
         } else {
@@ -274,19 +274,19 @@ Cypress.Commands.add(
           checkTreeStructuresAreEqualExcept(
             sortExpectedUsers,
             sortUsers,
-            excludeCheckOn
+            excludeCheckOn,
           );
         }
       } else {
         //statusCode!=200
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
+            additionalChecks["message"],
           );
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -311,7 +311,7 @@ Cypress.Commands.add(
       body: data,
       failOnStatusCode: true,
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -336,7 +336,7 @@ Cypress.Commands.add(
       body: data,
       failOnStatusCode: true,
     });
-  }
+  },
 );
 
 Cypress.Commands.add("apiConfirmEmailAddress", (token: string) => {
@@ -369,7 +369,7 @@ Cypress.Commands.add(
       body,
       failOnStatusCode: true,
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -377,12 +377,12 @@ Cypress.Commands.add(
   (userName, group, camera) => {
     logTestDescription(
       `Create user '${userName}' with camera '${camera}' in group '${group}'`,
-      { user: userName, group: group, camera: camera }
+      { user: userName, group: group, camera: camera },
     );
     cy.apiUserAdd(userName);
     cy.apiGroupAdd(userName, group, false);
     cy.apiDeviceAdd(camera, group, null, null);
-  }
+  },
 );
 
 Cypress.Commands.add("testCreateUserAndGroup", (userName, group) => {
@@ -406,7 +406,7 @@ Cypress.Commands.add(
         user: userName,
         group,
         cameras,
-      }
+      },
     );
     const deviceIds = [];
     cy.apiGroupAdd(userName, group, false).then((groupId) => {
@@ -417,12 +417,12 @@ Cypress.Commands.add(
       });
       cy.wrap({ groupId, deviceIds });
     });
-  }
+  },
 );
 
 export function TestCreateExpectedUser(
   userName: string,
-  params: any
+  params: any,
 ): ApiLoggedInUserResponse {
   const user: ApiLoggedInUserResponse = {
     email:

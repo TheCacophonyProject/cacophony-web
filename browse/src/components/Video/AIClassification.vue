@@ -22,7 +22,7 @@
             onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='"
             :src="imgSrc(aiGuess.what)"
             class="tag-img"
-            :data-model="aiGuess.data.name"
+            :data-model="aiGuess.model"
           />
           <span>{{ aiGuess.what }}</span>
         </div>
@@ -85,9 +85,7 @@ export default {
   },
   computed: {
     aiGuess() {
-      return this.tags.find(
-        (tag) => tag.automatic && tag.data.name === "Master"
-      );
+      return this.tags.find((tag) => tag.automatic && tag.model === "Master");
     },
     aiGuessIsSameAsSomeUser() {
       return (

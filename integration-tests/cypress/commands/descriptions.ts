@@ -3,7 +3,7 @@ export const NO_LOG_MESSAGE = false;
 export function logTestDescription(
   message: string,
   consoleObject: any,
-  log = true
+  log = true,
 ) {
   if (!log) {
     return;
@@ -30,7 +30,7 @@ export function prettyLog(object: any) {
       if (objectCopy[key] instanceof Date) {
         const date = objectCopy[key] as Date;
         objectCopy[key] = `${date.toLocaleDateString(
-          "en-NZ"
+          "en-NZ",
         )} ${date.toLocaleTimeString("en-NZ")}`;
       }
     });
@@ -38,7 +38,7 @@ export function prettyLog(object: any) {
   }
 
   return JSON.stringify(object)
-    .replaceAll('",', ", ")
-    .replaceAll('"', "")
+    .replaceAll("\",", ", ")
+    .replaceAll("\"", "")
     .replaceAll("},", "} -  ");
 }

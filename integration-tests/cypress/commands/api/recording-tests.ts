@@ -44,7 +44,7 @@ Cypress.Commands.add(
         type: type,
         processingState: state,
       },
-      undefined
+      undefined,
     ).then((count) => {
       //query returns up to 300 entries - so run once per 300 in the count
       for (let processed = 0; processed < count; processed = processed + 300) {
@@ -52,7 +52,6 @@ Cypress.Commands.add(
           type: type,
           processingState: state,
         }).then((recordingIds) => {
-          console.log(recordingIds);
           recordingIds.forEach((recordingId) => {
             cy.apiRecordingDelete(
               superuser,
@@ -60,7 +59,7 @@ Cypress.Commands.add(
               HttpStatusCode.Ok,
               {
                 useRawRecordingId: true,
-              }
+              },
             );
           });
 
@@ -68,7 +67,7 @@ Cypress.Commands.add(
         });
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -79,7 +78,7 @@ Cypress.Commands.add(
     recordingName: string = "recording1",
     fileName: string = "invalid.cptv",
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     const data = makeRecordingDataFromDetails(details);
     cy.apiRecordingAdd(
@@ -88,9 +87,9 @@ Cypress.Commands.add(
       fileName,
       recordingName,
       statusCode,
-      additionalChecks
+      additionalChecks,
     );
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -103,7 +102,7 @@ Cypress.Commands.add(
     recordingName: string = "recording1",
     fileName: string = "invalid.cptv",
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     const data = makeRecordingDataFromDetails(details);
     cy.apiRecordingAddOnBehalfUsingGroup(
@@ -114,9 +113,9 @@ Cypress.Commands.add(
       recordingName,
       fileName,
       statusCode,
-      additionalChecks
+      additionalChecks,
     );
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -128,7 +127,7 @@ Cypress.Commands.add(
     recordingName: string = "recording1",
     fileName: string = "invalid.cptv",
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     const data = makeRecordingDataFromDetails(details);
     cy.apiRecordingAddOnBehalfUsingDevice(
@@ -138,9 +137,9 @@ Cypress.Commands.add(
       recordingName,
       fileName,
       statusCode,
-      additionalChecks
+      additionalChecks,
     );
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -148,17 +147,17 @@ Cypress.Commands.add(
   (deviceName: string, times: string[], latLng: LatLng) => {
     logTestDescription(
       `Upload recordings   at ${prettyLog(times)}  to '${deviceName}'`,
-      { camera: deviceName, times }
+      { camera: deviceName, times },
     );
 
     const ids = [];
     times.forEach((time) => {
       cy.testUploadRecording(deviceName, { time, ...latLng }).then((id) =>
-        ids.push(id)
+        ids.push(id),
       );
     });
     cy.wrap(ids);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -176,20 +175,20 @@ Cypress.Commands.add(
         method: "GET",
         url: v1ApiPath(`recordings/${recordingId}/tracks`),
       },
-      tagger
+      tagger,
     ).then((response) => {
       makeAuthorizedRequest(
         {
           method: "POST",
           url: v1ApiPath(
-            `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replace-tag`
+            `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replace-tag`,
           ),
           body: { what: tag, confidence: 0.7, automatic: false },
         },
-        tagger
+        tagger,
       );
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -207,20 +206,20 @@ Cypress.Commands.add(
         method: "GET",
         url: v1ApiPath(`recordings/${recordingId}/tracks`),
       },
-      tagger
+      tagger,
     ).then((response) => {
       makeAuthorizedRequest(
         {
           method: "POST",
           url: v1ApiPath(
-            `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`
+            `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`,
           ),
           body: { what: tag, confidence: 0.7, automatic: false },
         },
-        tagger
+        tagger,
       );
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -228,7 +227,7 @@ Cypress.Commands.add(
   { prevSubject: true },
   (subject: RecordingId, tagger: string, tag: string) => {
     cy.testUserTagRecording(subject, 0, tagger, tag);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -237,16 +236,16 @@ Cypress.Commands.add(
     deviceName: string,
     details: TestThermalRecordingInfo,
     tagger: string,
-    tag: string
+    tag: string,
   ) => {
     cy.testUploadRecording(deviceName, details).then((recordingId) => {
       cy.testUserTagRecording(recordingId, 0, tagger, tag);
     });
-  }
+  },
 );
 
 function makeRecordingDataFromDetails(
-  details: TestThermalRecordingInfo
+  details: TestThermalRecordingInfo,
 ): ApiRecordingSet {
   const data: ApiRecordingSet = {
     type: RecordingType.ThermalRaw,
@@ -303,7 +302,7 @@ function addTracksToRecording(
   data: ApiRecordingSet,
   model: string,
   trackDetails?: ApiTrackSet[],
-  tags?: string[]
+  tags?: string[],
 ): void {
   data.metadata = {
     algorithm: { tracker_version: 10 },
@@ -381,7 +380,7 @@ Cypress.Commands.add(
       recordingIds = recordings.map((recording: any) => recording.id);
       cy.wrap(recordingIds);
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -400,20 +399,20 @@ Cypress.Commands.add(
     }).then((request) => {
       expect(request.body.count).to.equal(count);
     });
-  }
+  },
 );
 
 export function checkRecording(
   userName: string,
   recordingId: number,
-  checkFunction: any
+  checkFunction: any,
 ) {
   cy.log(`recording id is ${recordingId}`);
   makeAuthorizedRequest(
     {
       url: v1ApiPath(`recordings/${recordingId}`),
     },
-    userName
+    userName,
   ).then((response) => {
     let rtrn: any = undefined;
     const recording = response.body.recording;
@@ -432,7 +431,7 @@ export function addSeconds(initialTime: Date, secondsToAdd: number): Date {
 }
 
 export function TestCreateRecordingData(
-  template: ApiRecordingSet
+  template: ApiRecordingSet,
 ): ApiRecordingSet {
   return JSON.parse(JSON.stringify(template));
 }
@@ -440,7 +439,7 @@ export function TestCreateRecordingData(
 export function TestCreateExpectedProcessingData(
   template: ApiRecordingForProcessing,
   recordingName: string,
-  recording: ApiRecordingSet
+  recording: ApiRecordingSet,
 ): ApiRecordingForProcessing {
   const expected = JSON.parse(JSON.stringify(template));
   expected.id = getCreds(recordingName).id;
@@ -458,7 +457,7 @@ export function TestCreateExpectedNeedsTagData(
   template: ApiRecordingNeedsTagReturned,
   recordingName: string,
   deviceName: string,
-  inputRecording: any
+  inputRecording: any,
 ): ApiRecordingNeedsTagReturned {
   const expected = JSON.parse(JSON.stringify(template));
   const deviceId = getCreds(deviceName).id;
@@ -489,7 +488,7 @@ export function TestCreateExpectedRecordingColumns(
   deviceName: string,
   groupName: string,
   stationName: string,
-  inputRecording: ApiRecordingSet
+  inputRecording: ApiRecordingSet,
 ): ApiRecordingColumns {
   const inputTrackData = inputRecording.metadata;
   const expected: ApiRecordingColumns = {};
@@ -504,10 +503,10 @@ export function TestCreateExpectedRecordingColumns(
     expected.Station = "";
   }
   expected.Date = new Date(inputRecording.recordingDateTime).toLocaleDateString(
-    "en-CA"
+    "en-CA",
   );
   expected.Time = new Date(
-    inputRecording.recordingDateTime
+    inputRecording.recordingDateTime,
   ).toLocaleTimeString();
   expected.Latitude = inputRecording.location[0].toString();
   expected.Longitude = inputRecording.location[1].toString();
@@ -518,7 +517,7 @@ export function TestCreateExpectedRecordingColumns(
     expected["Track Count"] = inputTrackData.tracks.length.toString();
     expected["Automatic Track Tags"] = inputTrackData.tracks
       .map((track) =>
-        track.predictions.map((prediction) => prediction.confident_tag)
+        track.predictions.map((prediction) => prediction.confident_tag),
       )
       .join(";");
   } else {
@@ -549,7 +548,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   stationName: string,
   inputRecording: any,
   includePositions: boolean = true,
-  minimal: boolean = false
+  minimal: boolean = false,
 ): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
@@ -617,7 +616,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   }
   if (!minimal && inputRecording.additionalMetadata !== undefined) {
     expected.additionalMetadata = JSON.parse(
-      JSON.stringify(inputRecording.additionalMetadata)
+      JSON.stringify(inputRecording.additionalMetadata),
     );
   }
   if (inputRecording.location !== undefined) {
@@ -639,7 +638,7 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
     expected.tracks = trackResponseFromSet(
       inputTrackData.tracks,
       inputTrackData.models,
-      includePositions
+      includePositions,
     );
   }
 
@@ -669,7 +668,7 @@ export function positionResponseFromSet(positions) {
 
 export function predictionResponseFromSet(
   predictions,
-  models: ApiRecordingModel[]
+  models: ApiRecordingModel[],
 ) {
   const tps = [];
   if (predictions) {
@@ -697,7 +696,7 @@ export function predictionResponseFromSet(
 export function trackResponseFromSet(
   tracks: ApiTrackSet[],
   models: ApiRecordingModel[],
-  includePositions: boolean = true
+  includePositions: boolean = true,
 ) {
   const expected: ApiTrackResponse[] = [];
   if (tracks) {
@@ -712,7 +711,6 @@ export function trackResponseFromSet(
         start: track.start_s,
         end: track.end_s,
         filtered: false,
-        automatic: true,
       };
       if (includePositions) {
         newTrack.positions = tpos;
@@ -731,7 +729,7 @@ export function trackResponseFromSet(
             what: track.predictions[0].confident_tag,
             automatic: true,
             trackId: -99,
-            data: tpreddata[0],
+            model: "Master",
             confidence: track.predictions[0].confidence,
             id: 0,
             path: "all",

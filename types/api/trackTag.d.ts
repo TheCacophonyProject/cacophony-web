@@ -32,14 +32,15 @@ export interface ApiTrackTagResponse {
   userId?: UserId;
   userName?: string;
   archivedAt?: IsoFormattedDateString; // FIXME - is this used?
-  data?: string | TrackTagData;
+  data?: TrackTagData;
+  model: string | null;
 }
 
 export interface ApiHumanTrackTagResponse extends ApiTrackTagResponse {
   userId?: UserId;
   userName?: string;
   automatic: false;
-  data?: string;
+  model: null;
 }
 
 export interface ApiAutomaticTrackTagResponse extends ApiTrackTagResponse {
@@ -54,6 +55,7 @@ export type Classification = {
   label: string;
   aliases?: string[];
   display?: string;
+  displayAudio?: string;
   children?: Classification[];
   path?: string | string[];
 };

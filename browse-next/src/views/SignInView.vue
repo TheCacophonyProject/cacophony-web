@@ -63,19 +63,19 @@ const isValidEmailAddress = computed<boolean>(() => {
 
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    userEmailAddress.touched ? isValidEmailAddress.value : undefined
+    userEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 
 const isValidPassword = computed<boolean>(
-  () => userPassword.value.trim().length >= 8
+  () => userPassword.value.trim().length >= 8,
 );
 
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
-  () => (userPassword.touched ? isValidPassword.value : undefined)
+  () => (userPassword.touched ? isValidPassword.value : undefined),
 );
 
 const signInFormIsFilledAndValid = computed<boolean>(
-  () => isValidEmailAddress.value && isValidPassword.value
+  () => isValidEmailAddress.value && isValidPassword.value,
 );
 </script>
 <template>

@@ -30,7 +30,7 @@ const props = withDefaults(
     modes: [string, string];
     spread?: boolean;
   }>(),
-  { spread: false }
+  { spread: false },
 );
 
 const mode = ref<boolean>(false);
@@ -77,7 +77,9 @@ onMounted(() => {
     background-repeat: no-repeat;
     background-image: url(../assets/switch-base.svg);
     background-size: auto 100%;
-    transition: transform 0.15s ease-in-out, left 0.2s ease-in-out;
+    transition:
+      transform 0.15s ease-in-out,
+      left 0.2s ease-in-out;
   }
 }
 .bi-modal-switch.form-check-input {

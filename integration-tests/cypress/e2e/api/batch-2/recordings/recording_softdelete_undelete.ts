@@ -31,11 +31,11 @@ const EXCLUDE_COLUMNS = ["Date", "Time"];
 
 describe("Recordings: soft delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
   );
   delete templateExpectedRecording.tracks;
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
   delete templateRecording.metadata;
 
@@ -51,7 +51,7 @@ describe("Recordings: soft delete, undelete", () => {
     cy.testCreateUserGroupAndDevice(
       "rsdGroup2Admin",
       "rsdGroup2",
-      "rsdCamera2"
+      "rsdCamera2",
     );
   });
 
@@ -64,7 +64,7 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording1"
+      "rsdRecording1",
     ).then(() => {
       expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -73,7 +73,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdGroup",
         null,
         recording1,
-        false
+        false,
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
       //expectedRecordingFromQuery1.tracks[0].positions = [];
@@ -85,14 +85,14 @@ describe("Recordings: soft delete, undelete", () => {
         HttpStatusCode.Ok,
         {
           additionalParams: "{soft-delete: true}",
-        }
+        },
       ).then(() => {
         cy.log("Check recording no longer shown by default");
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",
           { where: { id: getCreds("rsdRecording1").id } },
           [],
-          []
+          [],
         );
 
         cy.log("Check recording listed as deleted");
@@ -100,7 +100,7 @@ describe("Recordings: soft delete, undelete", () => {
           "rsdGroupAdmin",
           { deleted: true, where: { id: getCreds("rsdRecording1").id } },
           [expectedRecordingFromQuery1],
-          EXCLUDE_IDS_RECORDINGS
+          EXCLUDE_IDS_RECORDINGS,
         );
 
         cy.log("Undelete");
@@ -110,14 +110,14 @@ describe("Recordings: soft delete, undelete", () => {
             "rsdGroupAdmin",
             { where: { id: getCreds("rsdRecording1").id } },
             [expectedRecordingFromQuery1],
-            EXCLUDE_IDS_RECORDINGS
+            EXCLUDE_IDS_RECORDINGS,
           );
           cy.log("Check recording not listed as deleted");
           cy.apiRecordingsQueryCheck(
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording1").id } },
             [],
-            []
+            [],
           );
         });
       });
@@ -133,7 +133,7 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording2"
+      "rsdRecording2",
     ).then(() => {
       expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -142,7 +142,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdGroup",
         null,
         recording1,
-        false
+        false,
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
       //expectedRecordingFromQuery1.tracks[0].positions = [];
@@ -154,14 +154,14 @@ describe("Recordings: soft delete, undelete", () => {
         HttpStatusCode.Ok,
         {
           additionalParams: "{soft-delete: true}",
-        }
+        },
       ).then(() => {
         cy.log("Check recording no longer shown by default");
         cy.apiRecordingsQueryCheck(
           "rsdGroupMember",
           { where: { id: getCreds("rsdRecording2").id } },
           [],
-          []
+          [],
         );
 
         cy.log("Check recording listed as deleted");
@@ -169,7 +169,7 @@ describe("Recordings: soft delete, undelete", () => {
           "rsdGroupMember",
           { deleted: true, where: { id: getCreds("rsdRecording2").id } },
           [expectedRecordingFromQuery1],
-          EXCLUDE_IDS_RECORDINGS
+          EXCLUDE_IDS_RECORDINGS,
         );
 
         cy.log("Undelete");
@@ -179,14 +179,14 @@ describe("Recordings: soft delete, undelete", () => {
             "rsdGroupMember",
             { where: { id: getCreds("rsdRecording2").id } },
             [expectedRecordingFromQuery1],
-            EXCLUDE_IDS_RECORDINGS
+            EXCLUDE_IDS_RECORDINGS,
           );
           cy.log("Check recording not listed as deleted");
           cy.apiRecordingsQueryCheck(
             "rsdGroupMember",
             { deleted: true, where: { id: getCreds("rsdRecording2").id } },
             [],
-            []
+            [],
           );
         });
       });
@@ -200,7 +200,7 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording5"
+      "rsdRecording5",
     ).then(() => {
       cy.log("Hard delete recording");
       cy.apiRecordingDelete(
@@ -209,7 +209,7 @@ describe("Recordings: soft delete, undelete", () => {
         HttpStatusCode.Ok,
         {
           additionalParams: { "soft-delete": false },
-        }
+        },
       );
 
       cy.log("Check recording no longer shown by default");
@@ -217,7 +217,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdGroupMember",
         { where: { id: getCreds("rsdRecording5").id } },
         [],
-        []
+        [],
       );
 
       cy.log("Check recording not listed as deleted");
@@ -225,14 +225,14 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdGroupMember",
         { deleted: true, where: { id: getCreds("rsdRecording5").id } },
         [],
-        EXCLUDE_IDS_RECORDINGS
+        EXCLUDE_IDS_RECORDINGS,
       );
 
       cy.log("Check cannot undelete");
       cy.apiRecordingUndelete(
         "rsdGroupMember",
         "rsdRecording5",
-        HttpStatusCode.Forbidden
+        HttpStatusCode.Forbidden,
       );
     });
   });
@@ -246,7 +246,7 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording6"
+      "rsdRecording6",
     ).then(() => {
       expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -255,7 +255,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdGroup",
         null,
         recording1,
-        false
+        false,
       );
       // TODO: Isue 104: positions whould be returned or absent, but not empty
       //expectedRecordingFromQuery1.tracks[0].positions = [];
@@ -264,7 +264,7 @@ describe("Recordings: soft delete, undelete", () => {
       cy.apiRecordingDelete(
         "rsdGroup2Admin",
         "rsdRecording6",
-        HttpStatusCode.Forbidden
+        HttpStatusCode.Forbidden,
       );
 
       cy.log("Check recording not deleted");
@@ -272,7 +272,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdGroupAdmin",
         { where: { id: getCreds("rsdRecording6").id } },
         [expectedRecordingFromQuery1],
-        EXCLUDE_IDS_RECORDINGS
+        EXCLUDE_IDS_RECORDINGS,
       );
 
       cy.log("Owner can soft-delete recording");
@@ -282,28 +282,28 @@ describe("Recordings: soft delete, undelete", () => {
         HttpStatusCode.Ok,
         {
           additionalParams: "{soft-delete: true}",
-        }
+        },
       ).then(() => {
         cy.log("Non member cannot list as deleted");
         cy.apiRecordingsQueryCheck(
           "rsdGroup2Admin",
           { deleted: true, where: { id: getCreds("rsdRecording6").id } },
           [],
-          EXCLUDE_IDS_RECORDINGS
+          EXCLUDE_IDS_RECORDINGS,
         );
 
         cy.log("Non member cannot Undelete");
         cy.apiRecordingUndelete(
           "rsdGroup2Admin",
           "rsdRecording6",
-          HttpStatusCode.Forbidden
+          HttpStatusCode.Forbidden,
         ).then(() => {
           cy.log("Check recording still deleted");
           cy.apiRecordingsQueryCheck(
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording6").id } },
             [expectedRecordingFromQuery1],
-            EXCLUDE_IDS_RECORDINGS
+            EXCLUDE_IDS_RECORDINGS,
           );
         });
       });
@@ -318,7 +318,7 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording7"
+      "rsdRecording7",
     ).then(() => {
       cy.log("Soft-delete recording");
       cy.apiRecordingDelete(
@@ -327,14 +327,14 @@ describe("Recordings: soft delete, undelete", () => {
         HttpStatusCode.Ok,
         {
           additionalParams: "{soft-delete: true}",
-        }
+        },
       ).then(() => {
         cy.log("Check not returned by /recordings/?where=");
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",
           { where: { id: getCreds("rsdRecording7").id } },
           [],
-          EXCLUDE_IDS_RECORDINGS
+          EXCLUDE_IDS_RECORDINGS,
         );
 
         //check /recordings/count
@@ -342,7 +342,7 @@ describe("Recordings: soft delete, undelete", () => {
         cy.apiRecordingsCountCheck(
           "rsdGroupAdmin",
           { where: { id: getCreds("rsdRecording7").id } },
-          0
+          0,
         );
 
         //check /recordings/report
@@ -350,7 +350,7 @@ describe("Recordings: soft delete, undelete", () => {
         cy.apiRecordingsReportCheck(
           "rsdGroupAdmin",
           { where: { id: getCreds("rsdRecording7").id } },
-          []
+          [],
         );
       });
     });
@@ -372,7 +372,7 @@ describe("Recordings: soft delete, undelete", () => {
           "rsdGroup",
           station.name,
           recording1,
-          false
+          false,
         );
         // TODO: Isue 104: positions whould be returned or absent, but not empty
         //expectedRecordingFromQuery1.tracks[0].positions = [];
@@ -382,7 +382,7 @@ describe("Recordings: soft delete, undelete", () => {
           "rsdCamera1",
           "rsdGroup",
           station.name,
-          recording1
+          recording1,
         );
 
         cy.log("Soft-delete recording");
@@ -392,16 +392,16 @@ describe("Recordings: soft delete, undelete", () => {
           HttpStatusCode.Ok,
           {
             additionalParams: "{soft-delete: true}",
-          }
+          },
         ).then(() => {
           cy.log(
-            "Check returned when deleted requested by /recordings/?where="
+            "Check returned when deleted requested by /recordings/?where=",
           );
           cy.apiRecordingsQueryCheck(
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording8").id } },
             [expectedRecordingFromQuery1],
-            EXCLUDE_IDS_RECORDINGS
+            EXCLUDE_IDS_RECORDINGS,
           );
 
           //check /recordings/count
@@ -409,7 +409,7 @@ describe("Recordings: soft delete, undelete", () => {
           cy.apiRecordingsCountCheck(
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-            1
+            1,
           );
 
           //check /recordings/report
@@ -418,7 +418,7 @@ describe("Recordings: soft delete, undelete", () => {
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording8").id } },
             [expectedReportFromQuery1],
-            EXCLUDE_COLUMNS
+            EXCLUDE_COLUMNS,
           );
         });
       });
@@ -433,7 +433,7 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording9"
+      "rsdRecording9",
     ).then(() => {
       expectedRecordingFromQuery1 = TestCreateExpectedRecordingData(
         templateExpectedRecording,
@@ -442,7 +442,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdGroup",
         null,
         recording1,
-        false
+        false,
       );
       // TODO: Issue 104: positions should be returned or absent, but not empty
       //expectedRecordingFromQuery1.tracks[0].positions = [];
@@ -450,13 +450,13 @@ describe("Recordings: soft delete, undelete", () => {
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingDelete("rsdGroupAdmin", "rsdRecording9").then(() => {
         cy.log(
-          "Check recording was soft-deleted (listed in soft-deleted recordings query)"
+          "Check recording was soft-deleted (listed in soft-deleted recordings query)",
         );
         cy.apiRecordingsQueryCheck(
           "rsdGroupAdmin",
           { deleted: true, where: { id: getCreds("rsdRecording9").id } },
           [expectedRecordingFromQuery1],
-          EXCLUDE_IDS_RECORDINGS
+          EXCLUDE_IDS_RECORDINGS,
         );
       });
     });
@@ -470,7 +470,7 @@ describe("Recordings: soft delete, undelete", () => {
       "rsdCamera1",
       recording1,
       undefined,
-      "rsdRecording10"
+      "rsdRecording10",
     ).then(() => {
       cy.log("Delete recording without specifying soft/hard delete");
       cy.apiRecordingDelete(
@@ -479,7 +479,7 @@ describe("Recordings: soft delete, undelete", () => {
         HttpStatusCode.Ok,
         {
           additionalParams: "{soft-delete: true}",
-        }
+        },
       ).then(() => {
         cy.log("Handling of undelete invalid recording id");
         cy.apiRecordingUndelete(
@@ -488,7 +488,7 @@ describe("Recordings: soft delete, undelete", () => {
           HttpStatusCode.Forbidden,
           {
             useRawRecordingId: true,
-          }
+          },
         );
 
         cy.log("Handling of invalid parameter");
@@ -496,7 +496,7 @@ describe("Recordings: soft delete, undelete", () => {
           "rsdGroupAdmin",
           "rsdRecording10",
           HttpStatusCode.Unprocessable,
-          { additionalParams: { badParameter: "hello" } }
+          { additionalParams: { badParameter: "hello" } },
         );
       });
     });

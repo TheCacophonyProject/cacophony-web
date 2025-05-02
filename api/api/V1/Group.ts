@@ -106,7 +106,7 @@ const models = await modelsInit();
 
 const mapGroup = (
   group: Group,
-  viewAsSuperAdmin: boolean
+  viewAsSuperAdmin: boolean,
 ): ApiGroupResponse => {
   const groupData: ApiGroupResponse = {
     id: group.id,
@@ -154,7 +154,7 @@ export const mapLegacyGroupsResponse = (groups: ApiGroupResponse[]) =>
 
 const mapGroups = (
   groups: Group[],
-  viewAsSuperAdmin: boolean
+  viewAsSuperAdmin: boolean,
 ): ApiGroupResponse[] =>
   groups.map((group) => mapGroup(group, viewAsSuperAdmin));
 
@@ -254,7 +254,7 @@ export default function (app: Application, baseUrl: string) {
         // Check for urlNormalised versions of group name.
         const groupName = extractValFromRequest(
           request,
-          body(["groupname", "groupName"])
+          body(["groupname", "groupName"]),
         );
 
         const urlNormalisedGroupName = urlNormaliseName(groupName);
@@ -263,15 +263,15 @@ export default function (app: Application, baseUrl: string) {
           return next(
             new ClientError(
               "Group name is reserved",
-              HttpStatusCode.Unprocessable
-            )
+              HttpStatusCode.Unprocessable,
+            ),
           );
         }
 
         await fetchUnauthorizedOptionalGroupByNameOrId(urlNormalisedGroupName)(
           request,
           response,
-          next
+          next,
         );
       } else {
         next();
@@ -280,7 +280,7 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.group) {
         return next(
-          new ClientError("Group name in use", HttpStatusCode.Unprocessable)
+          new ClientError("Group name in use", HttpStatusCode.Unprocessable),
         );
       }
       next();
@@ -296,7 +296,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Created new group.", {
         groupId: newGroup.id,
       });
-    }
+    },
   );
 
   /**
@@ -328,17 +328,17 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       let groups: ApiGroupResponse[] = mapGroups(
         response.locals.groups,
-        response.locals.viewAsSuperUser
+        response.locals.viewAsSuperUser,
       );
       if (request.headers["user-agent"].includes("okhttp")) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
       } else {
         const oneWeekAgo = new Date(
-          new Date().setDate(new Date().getDate() - 7)
+          new Date().setDate(new Date().getDate() - 7),
         );
         const actualUser = await models.User.findByPk(
-          response.locals.requestUser.id
+          response.locals.requestUser.id,
         );
         if (!actualUser) {
           return next(new AuthorizationError("User not found"));
@@ -361,7 +361,7 @@ export default function (app: Application, baseUrl: string) {
                   owner: invite.owner,
                   id: invite.GroupId,
                   pending: "invited",
-                } as ApiGroupResponse)
+                } as ApiGroupResponse),
             );
             groups = [...groups, ...invitesMapped];
           }
@@ -369,7 +369,7 @@ export default function (app: Application, baseUrl: string) {
       }
       // FIXME - handle deprecated field.
       return successResponse(response, { groups });
-    }
+    },
   );
 
   /**
@@ -405,7 +405,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, {
         group: mapGroup(response.locals.group, response.locals.viewAsSuperUser),
       });
-    }
+    },
   );
   /**
    * @api {get} /api/v1/groups/:groupIdOrName/devices Retrieves all devices for a group (only active devices by default).
@@ -431,7 +431,7 @@ export default function (app: Application, baseUrl: string) {
       nameOrIdOf(param("groupIdOrName")),
       anyOf(
         query("onlyActive").optional().isBoolean().toBoolean(),
-        query("only-active").optional().isBoolean().toBoolean()
+        query("only-active").optional().isBoolean().toBoolean(),
       ),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
@@ -440,10 +440,10 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got devices for group", {
         devices: mapDevicesResponse(
           response.locals.devices,
-          response.locals.viewAsSuperUser
+          response.locals.viewAsSuperUser,
         ),
       });
-    }
+    },
   );
 
   /**
@@ -486,7 +486,7 @@ export default function (app: Application, baseUrl: string) {
             user.pending = GroupUsers.pending;
           }
           return user;
-        }
+        },
       );
       const invitedUsers = await models.GroupInvites.findAll({
         where: {
@@ -499,12 +499,12 @@ export default function (app: Application, baseUrl: string) {
           admin,
           owner,
           pending: "invited",
-        })
+        }),
       );
       return successResponse(response, "Got users for group", {
         users: [...existingUsers, ...futureUsers],
       });
-    }
+    },
   );
 
   /**
@@ -529,7 +529,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got schedules for group", {
         schedules: response.locals.schedules.map(mapSchedule),
       });
-    }
+    },
   );
 
   /**
@@ -568,14 +568,14 @@ export default function (app: Application, baseUrl: string) {
         await fetchUnauthorizedRequiredUserByEmailOrId(body("userId"))(
           request,
           response,
-          next
+          next,
         );
       } else if (request.body.email) {
         // We're possibly trying to update an invited user.
         await fetchUnauthorizedOptionalUserByEmailOrId(body("email"))(
           request,
           response,
-          next
+          next,
         );
       }
     },
@@ -604,19 +604,19 @@ export default function (app: Application, baseUrl: string) {
             // NOTE: No need to send transactional email for invited user to let them know their permissions have changed.
             return successResponse(
               response,
-              "Updated, user group permissions changed."
+              "Updated, user group permissions changed.",
             );
           } else {
             return successResponse(
               response,
-              "No change, user already added with identical permissions."
+              "No change, user already added with identical permissions.",
             );
           }
         } else {
           return next(
             new AuthorizationError(
-              `Could not find a user with an email of '${request.body.email}'`
-            )
+              `Could not find a user with an email of '${request.body.email}'`,
+            ),
           );
         }
       }
@@ -630,7 +630,7 @@ export default function (app: Application, baseUrl: string) {
           user,
           asAdmin,
           asOwner,
-          null
+          null,
         );
 
       if (user.id !== requestUser.id && user.emailConfirmed) {
@@ -658,7 +658,7 @@ export default function (app: Application, baseUrl: string) {
               request.headers.host,
               user.email,
               group.groupName,
-              permissions
+              permissions,
             );
           }
         } else {
@@ -668,13 +668,13 @@ export default function (app: Application, baseUrl: string) {
               request.headers.host,
               user.email,
               group.groupName,
-              permissions
+              permissions,
             );
           }
         }
       }
       return successResponse(response, action);
-    }
+    },
   );
 
   /**
@@ -709,14 +709,14 @@ export default function (app: Application, baseUrl: string) {
         await fetchUnauthorizedRequiredUserByEmailOrId(body("userId"))(
           request,
           response,
-          next
+          next,
         );
       } else if (request.body.email) {
         // We're trying to remove an invited user.
         await fetchUnauthorizedOptionalUserByEmailOrId(body("email"))(
           request,
           response,
-          next
+          next,
         );
       }
     },
@@ -726,7 +726,7 @@ export default function (app: Application, baseUrl: string) {
       if (response.locals.user) {
         const success = await models.Group.removeUserFromGroup(
           response.locals.group,
-          response.locals.user
+          response.locals.user,
         );
         removed = success.removed;
         wasPending = success.wasPending;
@@ -746,19 +746,19 @@ export default function (app: Application, baseUrl: string) {
           await sendRemovedFromInvitedGroupNotificationEmail(
             request.headers.host,
             invitation.email,
-            response.locals.group.groupName
+            response.locals.group.groupName,
           );
           return successResponse(response, "Removed user group invitation.");
         } else {
           if (!response.locals.user) {
             return next(
               new AuthorizationError(
-                `Could not find a user with an email of '${request.body.email}'`
-              )
+                `Could not find a user with an email of '${request.body.email}'`,
+              ),
             );
           } else {
             return next(
-              new ClientError("Failed to remove user from the group.")
+              new ClientError("Failed to remove user from the group."),
             );
           }
         }
@@ -772,7 +772,7 @@ export default function (app: Application, baseUrl: string) {
             await sendRemovedFromGroupNotificationEmail(
               request.headers.host,
               response.locals.user.email,
-              response.locals.group.groupName
+              response.locals.group.groupName,
             );
           }
         }
@@ -782,14 +782,14 @@ export default function (app: Application, baseUrl: string) {
           await sendRemovedFromInvitedGroupNotificationEmail(
             request.headers.host,
             response.locals.user.email,
-            response.locals.group.groupName
+            response.locals.group.groupName,
           );
         }
         return successResponse(response, "Removed user group invitation.");
       } else {
         return next(new ClientError("Failed to remove user from the group."));
       }
-    }
+    },
   );
 
   /**
@@ -819,14 +819,14 @@ export default function (app: Application, baseUrl: string) {
         },
       });
       const otherAdmins = groupUsers.filter(
-        ({ UserId, admin }) => UserId !== user.id && admin
+        ({ UserId, admin }) => UserId !== user.id && admin,
       );
       if (otherAdmins.length === 0) {
         return next(new ClientError("Can't remove last admin from group."));
       }
 
       const otherOwners = groupUsers.filter(
-        ({ UserId, owner }) => UserId !== user.id && owner
+        ({ UserId, owner }) => UserId !== user.id && owner,
       );
       if (otherOwners.length === 0) {
         return next(new ClientError("Can't remove last owner from group."));
@@ -839,7 +839,7 @@ export default function (app: Application, baseUrl: string) {
         await sendLeftGroupNotificationEmail(
           request.headers.host,
           actualUser.email,
-          response.locals.group.groupName
+          response.locals.group.groupName,
         );
       }
 
@@ -848,11 +848,11 @@ export default function (app: Application, baseUrl: string) {
         removedAt: new Date(),
       });
       return successResponse(response, "User left the group.");
-    }
+    },
   );
 
   /**
-   * @api {get} /api/v1/groups/:groupIdOrName/station Add a single station.
+   * @api {post} /api/v1/groups/:groupIdOrName/station Add a single station.
    * @apiName CreateStation
    * @apiGroup Station
    * @apiDescription Create a single station
@@ -894,7 +894,7 @@ export default function (app: Application, baseUrl: string) {
         await models.Station.activeInGroupDuringTimeRange(
           groupId,
           fromTime,
-          untilTime
+          untilTime,
         );
       for (const existingStation of activeStationsInTimeWindow) {
         if (
@@ -902,21 +902,21 @@ export default function (app: Application, baseUrl: string) {
           MIN_STATION_SEPARATION_METERS
         ) {
           proximityWarnings.push(
-            `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`
+            `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`,
           );
         }
       }
 
       const nameCollision = activeStationsInTimeWindow.find(
-        (existingStation) => existingStation.name === name
+        (existingStation) => existingStation.name === name,
       );
       if (nameCollision) {
         return next(
           new ClientError(
             `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
               (untilTime && untilTime.toISOString()) || "now"
-            }.`
-          )
+            }.`,
+          ),
         );
 
         // NOTE: Alternate behaviour: We rename any existing station in the active range that has the same name.
@@ -936,7 +936,7 @@ export default function (app: Application, baseUrl: string) {
         stationId: station.id,
         ...(proximityWarnings.length && { warnings: proximityWarnings }),
       });
-    }
+    },
   );
 
   /**
@@ -964,13 +964,13 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredStationByNameInGroup(
       param("groupIdOrName"),
-      param("stationName")
+      param("stationName"),
     ),
     async (request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
-    }
+    },
   );
 
   /**
@@ -1021,7 +1021,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got stations for group", {
         stations: mapStations(stations),
       });
-    }
+    },
   );
 
   /**
@@ -1065,10 +1065,10 @@ export default function (app: Application, baseUrl: string) {
           where: {
             UserId: response.locals.requestUser.id,
           },
-        }
+        },
       );
       return successResponse(response, "Updated group settings for user");
-    }
+    },
   );
 
   /**
@@ -1100,7 +1100,7 @@ export default function (app: Application, baseUrl: string) {
         settings: { ...existingSettings, ...response.locals.settings },
       });
       return successResponse(response, "Updated group settings");
-    }
+    },
   );
 
   /**
@@ -1122,7 +1122,7 @@ export default function (app: Application, baseUrl: string) {
         await extractJWTInfo(body("acceptGroupInviteJWT"))(
           request,
           response,
-          next
+          next,
         );
       } else {
         next();
@@ -1152,18 +1152,18 @@ export default function (app: Application, baseUrl: string) {
       if (response.locals.tokenInfo) {
         if (response.locals.tokenInfo._type === "invite-new-user") {
           await fetchUnauthorizedRequiredInvitationById(
-            response.locals.tokenInfo.id
+            response.locals.tokenInfo.id,
           )(request, response, next);
         } else if (response.locals.tokenInfo._type === "invite-existing-user") {
           if (response.locals.requestUser.id !== response.locals.tokenInfo.id) {
             return next(
-              new AuthorizationError("Token does not match redeeming user")
+              new AuthorizationError("Token does not match redeeming user"),
             );
           }
           await fetchUnauthorizedRequiredUserById(response.locals.tokenInfo.id)(
             request,
             response,
-            next
+            next,
           );
         }
       } else {
@@ -1183,7 +1183,7 @@ export default function (app: Application, baseUrl: string) {
       // }
 
       const actualUser = await models.User.findByPk(
-        response.locals.requestUser.id
+        response.locals.requestUser.id,
       );
 
       const tokenInfo = response.locals.tokenInfo as {
@@ -1209,8 +1209,8 @@ export default function (app: Application, baseUrl: string) {
               await invitation.destroy();
               return next(
                 new AuthorizationError(
-                  "Invitation was sent to a different email address"
-                )
+                  "Invitation was sent to a different email address",
+                ),
               );
             }
           }
@@ -1222,7 +1222,7 @@ export default function (app: Application, baseUrl: string) {
           actualUser,
           invitation.admin,
           invitation.owner,
-          null
+          null,
         );
         if (added && actualUser.emailConfirmed) {
           const permissions = {};
@@ -1236,7 +1236,7 @@ export default function (app: Application, baseUrl: string) {
             request.headers.host,
             actualUser.email,
             response.locals.group.groupName,
-            permissions
+            permissions,
           );
         }
         await invitation.destroy();
@@ -1265,13 +1265,13 @@ export default function (app: Application, baseUrl: string) {
             request.headers.host,
             actualUser.email,
             response.locals.group.groupName,
-            permissions
+            permissions,
           );
         }
       }
       // TODO: Should the inviting user receive an email to let them know that the user has accepted their invitation?
       return successResponse(response, "Joined group");
-    }
+    },
   );
 
   if (config.server.loggerLevel === "debug") {
@@ -1324,7 +1324,7 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Got invite token", {
           token,
         });
-      }
+      },
     );
   }
 
@@ -1366,7 +1366,7 @@ export default function (app: Application, baseUrl: string) {
           actualRequestUser.email,
           group.groupName,
           actualRequestUser.userName,
-          email
+          email,
         );
         if (!sendSuccess) {
           await invitation.destroy();
@@ -1383,7 +1383,7 @@ export default function (app: Application, baseUrl: string) {
         });
         if (existingGroupUser && existingGroupUser.pending === null) {
           return next(
-            new UnprocessableError("User is already a member of group")
+            new UnprocessableError("User is already a member of group"),
           );
         }
         if (
@@ -1395,7 +1395,7 @@ export default function (app: Application, baseUrl: string) {
             user,
             makeAdmin,
             makeOwner,
-            "invited"
+            "invited",
           );
           const token = getInviteToGroupTokenExistingUser(user.id, group.id);
           const actualRequestUser = await models.User.findByPk(requestUser.id);
@@ -1407,7 +1407,7 @@ export default function (app: Application, baseUrl: string) {
               actualRequestUser.email,
               group.groupName,
               actualRequestUser.userName,
-              email
+              email,
             );
           } else {
             // Still send the user an email, but send it as if they are not a current member.
@@ -1417,7 +1417,7 @@ export default function (app: Application, baseUrl: string) {
               actualRequestUser.email,
               group.groupName,
               actualRequestUser.userName,
-              email
+              email,
             );
           }
           if (!sendSuccess) {
@@ -1427,6 +1427,6 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       return successResponse(response, "Invited user to group");
-    }
+    },
   );
 }

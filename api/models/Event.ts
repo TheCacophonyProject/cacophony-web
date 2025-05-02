@@ -32,6 +32,7 @@ export interface Event extends Sequelize.Model, ModelCommon<Event> {
   DeviceId: DeviceId;
   dataValues: any;
   Device: Device | null;
+  env: "tc2-dev" | "tc2-test" | "tc2-prod" | "unknown";
 }
 
 export interface QueryOptions {
@@ -64,6 +65,10 @@ export default function (sequelize, DataTypes) {
 
   const attributes = {
     dateTime: DataTypes.DATE,
+    env: {
+      type: Sequelize.ENUM("tc2-dev", "tc2-test", "tc2-prod", "unknown"),
+      defaultValue: "unknown",
+    },
   };
 
   const Event = sequelize.define(name, attributes) as unknown as EventStatic;
@@ -94,7 +99,7 @@ export default function (sequelize, DataTypes) {
     limit,
     latestFirst,
     options,
-    includeCount
+    includeCount,
   ): Promise<Event[] | { rows: Event[]; count: number }> {
     const where: any = {};
     offset = offset || 0;
@@ -228,7 +233,7 @@ export default function (sequelize, DataTypes) {
       ],
       attributes: [
         Sequelize.literal(
-          'DISTINCT ON("Event"."DeviceId","EventDetail"."type") 1'
+          "DISTINCT ON(\"Event\".\"DeviceId\",\"EventDetail\".\"type\") 1",
         ), // the 1 is some kind of hack that makes this work in sequelize
         "id",
         "dateTime",

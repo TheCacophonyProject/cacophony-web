@@ -62,7 +62,7 @@ const props = withDefaults(
     color: "inherit",
     rotate: null,
     variant: "link",
-  }
+  },
 );
 // Ideally we want to center the button and the triangle, but if we're too close to the edge of the viewport,
 // we want to move it to one side.

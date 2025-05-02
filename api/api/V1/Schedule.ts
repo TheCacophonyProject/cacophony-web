@@ -90,7 +90,7 @@ export default (app: Application, baseUrl: string) => {
       return successResponse(response, "Created new schedule.", {
         id: schedule.id,
       });
-    }
+    },
   );
 
   /**
@@ -111,7 +111,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorisedDevice,
     async (request: Request, response: Response, next: NextFunction) => {
       const device = (await models.Device.getFromId(
-        response.locals.requestDevice.id
+        response.locals.requestDevice.id,
       )) as Device;
       const schedule = await models.Schedule.findByPk(device.ScheduleId);
       if (schedule) {
@@ -122,11 +122,11 @@ export default (app: Application, baseUrl: string) => {
         return next(
           new ClientError(
             `Could not find schedule for device ${device.id}`,
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
-    }
+    },
   );
 
   /**
@@ -155,7 +155,7 @@ export default (app: Application, baseUrl: string) => {
       return successResponse(response, "Got schedules for user", {
         schedules: schedules.map(mapSchedule),
       });
-    }
+    },
   );
 
   /**
@@ -181,14 +181,14 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request: Request, response: Response, next: NextFunction) => {
       await fetchUnauthorizedRequiredScheduleById(
-        response.locals.device.ScheduleId
+        response.locals.device.ScheduleId,
       )(request, response, next);
     },
     async (request: Request, response: Response) => {
       return successResponse(response, {
         schedule: response.locals.schedule.schedule as ApiScheduleConfig,
       });
-    }
+    },
   );
 
   /**
@@ -218,11 +218,11 @@ export default (app: Application, baseUrl: string) => {
         return next(
           new ClientError(
             `User #${response.locals.requestUser.id} doesn't have permission to delete schedule`,
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       return successResponse(response, "schedule deleted");
-    }
+    },
   );
 };

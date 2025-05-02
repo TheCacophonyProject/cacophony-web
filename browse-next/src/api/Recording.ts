@@ -23,7 +23,7 @@ import type {
 
 export const getRecordingById = (
   id: RecordingId,
-  includeDeletedRecordings = false
+  includeDeletedRecordings = false,
 ): Promise<LoadedResource<ApiRecordingResponse>> => {
   const params = new URLSearchParams();
   if (includeDeletedRecordings) {
@@ -36,7 +36,7 @@ export const getRecordingById = (
         recording: ApiRecordingResponse;
       }>
     >,
-    "recording"
+    "recording",
   );
 };
 
@@ -44,7 +44,7 @@ export const replaceTrackTag = (
   tag: ApiTrackTagRequest,
   recordingId: RecordingId,
   trackId: TrackId,
-  automatic = false
+  automatic = false,
 ) => {
   const body: ApiTrackTagRequest = {
     ...tag,
@@ -52,27 +52,45 @@ export const replaceTrackTag = (
   };
   return CacophonyApi.post(
     `/api/v1/recordings/${recordingId}/tracks/${trackId}/replace-tag`,
-    body
+    body,
   ) as Promise<FetchResult<{ trackTagId?: number }>>;
 };
 
 export const removeTrackTag = (
   id: RecordingId,
   trackId: TrackId,
-  trackTagId: TrackTagId
+  trackTagId: TrackTagId,
 ) =>
   CacophonyApi.delete(
-    `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`
+    `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`,
   ) as Promise<FetchResult<void>>;
 
 export const createDummyTrack = (
   recording: ApiRecordingResponse,
-  track: ApiTrackDataRequest
+  track: ApiTrackDataRequest,
 ) =>
   CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
     data: {
       ...track,
       tracker_version: "dummy-track",
+    },
+  }) as Promise<FetchResult<{ trackId: TrackId }>>;
+
+export const deleteTrack = (
+  recording: ApiRecordingResponse,
+  trackId: TrackId,
+) =>
+  CacophonyApi.delete(
+    `/api/v1/recordings/${recording.id}/tracks/${trackId}?soft-delete=false`,
+  ) as Promise<FetchResult<void>>;
+
+export const createUserDefinedTrack = (
+  recording: ApiRecordingResponse,
+  track: ApiTrackDataRequest,
+) =>
+  CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
+    data: {
+      ...track,
     },
   }) as Promise<FetchResult<{ trackId: TrackId }>>;
 
@@ -83,6 +101,16 @@ export const addRecordingLabel = (id: RecordingId, label: string) =>
       confidence: 0.9,
     },
   }) as Promise<FetchResult<{ tagId: TagId }>>;
+
+export const addRecordingNoteLabel = (id: RecordingId, note: string) =>
+  CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
+    tag: {
+      detail: "note",
+      comment: note,
+      confidence: 0.9,
+    },
+  }) as Promise<FetchResult<{ tagId: TagId }>>;
+
 export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
   CacophonyApi.delete(`/api/v1/recordings/${id}/tags/${tagId}`) as Promise<
     FetchResult<void>
@@ -122,7 +150,7 @@ export interface BulkRecordingsResponse {
 
 export const queryRecordingsInProjectNew = (
   projectId: ProjectId,
-  options: QueryRecordingsOptions
+  options: QueryRecordingsOptions,
 ): Promise<
   FetchResult<{ recordings: ApiRecordingResponse[]; count?: number }>
 > => {
@@ -161,6 +189,7 @@ export const queryRecordingsInProjectNew = (
   if (options.limit) {
     params.append("max-results", options.limit.toString());
   }
+  params.append("duration", "0");
   // Do we want this, or do we want to show processing recordings?
   // params.append("processingState", RecordingProcessingState.Finished);
 
@@ -190,7 +219,7 @@ export const queryRecordingsInProjectNew = (
   const ABORTABLE = true;
   return CacophonyApi.get(
     `/api/v1/recordings/for-project/${projectId}?${params}`,
-    ABORTABLE
+    ABORTABLE,
   ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
   //"rows"
   //);
@@ -199,32 +228,32 @@ export const queryRecordingsInProjectNew = (
 export const getRecordingsForDeviceInProject = (
   deviceIds: DeviceId | DeviceId[],
   projectId: ProjectId,
-  tags?: string[]
+  tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> =>
   getRecordingsForLocationsAndDevicesInProject(
     projectId,
     undefined,
     deviceIds,
-    tags
+    tags,
   );
 
 export const getRecordingsForLocationsInProject = (
   locationIds: LocationId | LocationId[],
   projectId: ProjectId,
-  tags?: string[]
+  tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> =>
   getRecordingsForLocationsAndDevicesInProject(
     projectId,
     locationIds,
     undefined,
-    tags
+    tags,
   );
 
 export const getRecordingsForLocationsAndDevicesInProject = (
   projectId: ProjectId,
   locationIds?: LocationId | LocationId[],
   deviceIds?: DeviceId | DeviceId[],
-  tags?: string[]
+  tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> => {
   const options: QueryRecordingsOptions = {
     limit: 100,
@@ -246,14 +275,14 @@ export const getRecordingsForLocationsAndDevicesInProject = (
     queryRecordingsInProjectNew(projectId, options) as Promise<
       WrappedFetchResult<ApiRecordingResponse[]>
     >,
-    "recordings"
+    "recordings",
   );
 };
 
 export const getAllRecordingsForProjectBetweenTimes = async (
   projectId: ProjectId,
   query: QueryRecordingsOptions,
-  progressUpdater: () => void
+  progressUpdater: () => void,
 ): Promise<ApiRecordingResponse[]> => {
   query.limit = 1000;
   const recordings = [];
@@ -270,7 +299,7 @@ export const getAllRecordingsForProjectBetweenTimes = async (
       // TODO: Show progress bar based on a linear interpolation of start vs end time.
       if (recordings.length) {
         query.untilDateTime = new Date(
-          recordings[recordings.length - 1].recordingDateTime
+          recordings[recordings.length - 1].recordingDateTime,
         );
         query.untilDateTime = new Date(query.untilDateTime.getTime() - 1000);
       }
@@ -291,7 +320,7 @@ export const longRunningQuery = (seconds?: number, succeed?: boolean) => {
   }
   return CacophonyApi.get(
     `/api/v1/recordings/long-running-query?${params}`,
-    abortable
+    abortable,
   ) as Promise<FetchResult<{ count: number }>>;
 };
 
@@ -303,7 +332,7 @@ export const uploadRecording = (
   derivedFile?: ArrayBuffer,
   derivedFileName?: string,
   thumbFile?: ArrayBuffer,
-  thumbFileName?: string
+  thumbFileName?: string,
 ) => {
   const formData = new FormData();
   formData.set("data", JSON.stringify(data));
@@ -317,6 +346,25 @@ export const uploadRecording = (
   return CacophonyApi.postMultipartFormData(
     `/api/v1/recordings/device/${deviceId}`,
     formData,
-    true
+    true,
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
+};
+
+export const getRawRecording = (recordingId: RecordingId) => {
+  const ABORTABLE = true;
+  return CacophonyApi.get(
+    `/api/v1/recordings/raw/${recordingId}`,
+    ABORTABLE,
+  ) as Promise<FetchResult<Blob>>;
+};
+
+export const updateResizedTrack = (recordingId: RecordingId, trackId: TrackId, startSeconds: number, endSeconds: number, minFreqHz: number, maxFreqHz: number) => {
+  return CacophonyApi.patch(`/api/v1/recordings/${recordingId}/tracks/${trackId}/update-data`, {
+    data: {
+      start_s: startSeconds,
+      end_s: endSeconds,
+      minFreq: minFreqHz,
+      maxFreq: maxFreqHz,
+    },
+  }) as Promise<FetchResult<void>>;
 };

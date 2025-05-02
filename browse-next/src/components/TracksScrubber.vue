@@ -14,7 +14,7 @@ const props = withDefaults(
     sidePadding?: number;
     playbackTime: number;
   }>(),
-  { tracks: () => [], sidePadding: 1, playbackTime: 0 }
+  { tracks: () => [], sidePadding: 1, playbackTime: 0 },
 );
 
 interface TrackDimensions {
@@ -42,9 +42,9 @@ const heightForTracks = computed((): number => {
     return minScrubberHeight;
   }
   const paddingY = 10;
-  const heightForTracks =
-    trackHeight * numUniqueYSlots.value + props.tracks.length - 1;
-  return Math.max(44, heightForTracks + paddingY * 2);
+  let h = trackHeight * numUniqueYSlots.value; // + props.tracks.length - 1;
+  h = Math.max(44, h + paddingY * 2);
+  return h;
 });
 
 const getOffsetYForTrack = (
@@ -52,7 +52,7 @@ const getOffsetYForTrack = (
   tracks: IntermediateTrack[],
   trackDimensions: TrackDimensions[],
   thisLeft: number,
-  thisRight: number
+  thisRight: number,
 ): number => {
   // See if there are any gaps to move this up to.
   let topOffset = minScrubberHeight / 2 - trackHeight / 2;
@@ -76,7 +76,7 @@ const getOffsetYForTrack = (
     for (let i = 0; i < orderedSlots.length; i++) {
       const slot = orderedSlots[i];
       const noOverlaps = slot[1].every(
-        ([prevLeft, prevRight]) => thisRight < prevLeft || thisLeft > prevRight
+        ([prevLeft, prevRight]) => thisRight < prevLeft || thisLeft > prevRight,
       );
       if (noOverlaps) {
         bestSlot = Number(slot[0]);
@@ -92,26 +92,30 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
   const dimensions = [];
   numUniqueYSlots.value = 0;
   const uniqueYSlots: Record<number, boolean> = {};
-  for (let i = 0; i < tracks.length; i++) {
-    const thisLeft = tracks[i].positions[0][0] / props.totalFrames;
-    const thisRight =
-      tracks[i].positions[tracks[i].positions.length - 1][0] /
-      props.totalFrames;
-    const yOffset = getOffsetYForTrack(
-      i,
-      tracks,
-      dimensions,
-      thisLeft,
-      thisRight
-    );
-    dimensions.push({
-      top: yOffset,
-      right: thisRight,
-      left: thisLeft,
-    });
-    uniqueYSlots[yOffset] = true;
+  if (props.totalFrames !== 0) {
+    for (let i = 0; i < tracks.length; i++) {
+      if (tracks[i].positions.length !== 0) {
+        const thisLeft = tracks[i].positions[0][0] / props.totalFrames;
+        const thisRight =
+          tracks[i].positions[tracks[i].positions.length - 1][0] /
+          props.totalFrames;
+        const yOffset = getOffsetYForTrack(
+          i,
+          tracks,
+          dimensions,
+          thisLeft,
+          thisRight,
+        );
+        dimensions.push({
+          top: yOffset,
+          right: thisRight,
+          left: thisLeft,
+        });
+        uniqueYSlots[yOffset] = true;
+      }
+    }
+    trackDimensions.value = dimensions;
   }
-  trackDimensions.value = dimensions;
   numUniqueYSlots.value = Object.keys(uniqueYSlots).length;
 };
 
@@ -125,7 +129,7 @@ watch(
   () => {
     initTrackDimensions(props.tracks);
     updatePlayhead(props.playbackTime, scrubberWidth.value, pixelRatio.value);
-  }
+  },
 );
 
 watch(
@@ -135,9 +139,9 @@ watch(
     updatePlayhead(
       props.playbackTime,
       scrubberWidthMinusPaddingPx.value,
-      pixelRatio.value
+      pixelRatio.value,
     );
-  }
+  },
 );
 
 watch(
@@ -146,16 +150,16 @@ watch(
     updatePlayhead(
       newPlaybackTime,
       scrubberWidthMinusPaddingPx.value,
-      pixelRatio.value
+      pixelRatio.value,
     );
-  }
+  },
 );
 
 watch(pixelRatio, (newPixelRatio: number) => {
   updatePlayhead(
     props.playbackTime,
     scrubberWidthMinusPaddingPx.value,
-    newPixelRatio
+    newPixelRatio,
   );
 });
 
@@ -164,7 +168,7 @@ const onChangeWidth = (width: number) => {
   updatePlayhead(
     props.playbackTime,
     scrubberWidthMinusPaddingPx.value,
-    pixelRatio.value
+    pixelRatio.value,
   );
 };
 
@@ -179,7 +183,7 @@ const scrubberWidthMinusPaddingPx = computed<number>(() => {
 const updatePlayhead = (
   offset: number,
   scrubberWidth: number,
-  pixelRatio: number
+  pixelRatio: number,
 ) => {
   // TODO: Is this just over-complicated by being a canvas draw rather than a div drawn with CSS?
   //  Are we actually making it faster for low-end systems?  Actually, I think we did it so we
@@ -196,7 +200,7 @@ const updatePlayhead = (
           0,
           0,
           playhead.value.width,
-          playhead.value.height
+          playhead.value.height,
         );
         const playheadX = Math.max(
           props.sidePadding,
@@ -204,8 +208,8 @@ const updatePlayhead = (
             playhead.value.width - playheadLineWidth + props.sidePadding,
             offset * playhead.value.width -
               playheadLineWidth / 2 +
-              props.sidePadding
-          )
+              props.sidePadding,
+          ),
         );
 
         playheadContext.fillRect(0, 0, playheadX, playhead.value.height);
@@ -282,6 +286,7 @@ const currentTrackIndex = computed<number>(() => {
 <style scoped lang="less">
 .track-scrubber {
   background: #2b333f;
+  min-height: 0;
   transition: height 0.3s;
   /* Above the motion paths canvas if it exists */
   box-shadow: 0 1px 5px #000 inset;

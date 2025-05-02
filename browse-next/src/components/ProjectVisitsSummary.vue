@@ -11,7 +11,7 @@ import { locationsAreEqual } from "@/utils";
 import type { StationId as LocationId } from "@typedefs/api/common";
 
 const currentlyHighlightedLocation = inject(
-  "currentlyHighlightedLocation"
+  "currentlyHighlightedLocation",
 ) as Ref<LocationId | null>;
 
 const props = defineProps<{
@@ -30,14 +30,14 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
     let location: ApiLocationResponse | undefined;
     if (currentlyHighlightedLocation.value) {
       location = props.locations.find(
-        ({ id }) => id === currentlyHighlightedLocation.value
+        ({ id }) => id === currentlyHighlightedLocation.value,
       );
     } else {
       location = props.locations.find(({ location }) =>
         locationsAreEqual(
           location,
-          highlightedPointInternal.value?.location as LatLng
-        )
+          highlightedPointInternal.value?.location as LatLng,
+        ),
       );
     }
     if (location) {

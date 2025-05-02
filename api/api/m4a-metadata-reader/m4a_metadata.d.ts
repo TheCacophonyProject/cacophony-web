@@ -37,14 +37,14 @@ export interface InitOutput {
     d: number
   ) => number;
   readonly __wbindgen_export_2: WebAssembly.Table;
-  readonly _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__h99011da901f2b23b: (
+  readonly _dyn_core__ops__function__FnMut__A____Output___R_as_wasm_bindgen__closure__WasmClosure___describe__invoke__ha68e04f5e444495f: (
     a: number,
     b: number,
     c: number
   ) => void;
   readonly __wbindgen_free: (a: number, b: number, c: number) => void;
   readonly __wbindgen_exn_store: (a: number) => void;
-  readonly wasm_bindgen__convert__closures__invoke2_mut__h695f61305e585c80: (
+  readonly wasm_bindgen__convert__closures__invoke2_mut__h252cc0cb81a95e18: (
     a: number,
     b: number,
     c: number,

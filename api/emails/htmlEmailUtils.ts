@@ -57,7 +57,7 @@ const scrapePlainTextFromHtml = (html: string): string => {
   const dom = new JSDOM(html);
   // Text content, but we want to make the links have (...)
   const text = depthFirstTraversal(
-    dom.window.document.body.querySelector("#email-body")
+    dom.window.document.body.querySelector("#email-body"),
   );
 
   // Now get the lines, and collapse where there are too many new lines in a row.
@@ -85,7 +85,7 @@ const scrapePlainTextFromHtml = (html: string): string => {
 
 export const createEmailWithTemplate = async (
   templateFilename: string,
-  interpolants: Record<string, string | number | string[] | boolean | any>
+  interpolants: Record<string, string | number | string[] | boolean | any>,
 ) => {
   const baseTemplate = (
     await fs.readFile(`${__dirname}/templates/base-template.html`)
@@ -113,7 +113,7 @@ export const embedImage = async (
   cid: string,
   imageAttachments: EmailImageAttachment[],
   src: string,
-  errorOnMissing: boolean = true
+  errorOnMissing: boolean = true,
 ) => {
   const filePath = `${__dirname}/templates/image-attachments/${src}`;
   let imageBuffer: Buffer;

@@ -28,7 +28,7 @@ Cypress.Commands.add(
     password: string | null = null,
     generateUniqueName: boolean = true,
     log = true,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     logTestDescription(
       `Create camera '${deviceName}' in group '${groupName}' with saltId '${saltId}'`,
@@ -37,7 +37,7 @@ Cypress.Commands.add(
         group: groupName,
         saltId: saltId,
       },
-      log
+      log,
     );
 
     const request = createDevice(
@@ -45,7 +45,7 @@ Cypress.Commands.add(
       groupName,
       password,
       saltId,
-      generateUniqueName
+      generateUniqueName,
     );
     if (statusCode == 200) {
       cy.request(request).then((response) => {
@@ -56,7 +56,7 @@ Cypress.Commands.add(
     } else {
       checkRequestFails(request, statusCode);
     }
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -68,7 +68,7 @@ Cypress.Commands.add(
     stationIdOrName: string,
     recordingLocation: LatLng,
     statusCode: number = HttpStatusCode.Ok,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let stationId: number;
     let deviceId: string;
@@ -101,9 +101,9 @@ Cypress.Commands.add(
 
     logTestDescription(
       `Fix device ${deviceId} (${deviceIdOrName})  to station '${stationId}' (${stationIdOrName}) ${prettyLog(
-        body
+        body,
       )}`,
-      { body: body }
+      { body: body },
     );
 
     makeAuthorizedRequestWithStatus(
@@ -113,13 +113,13 @@ Cypress.Commands.add(
         body,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["messages"]) {
         checkMessages(response, additionalChecks["messages"]);
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -129,7 +129,7 @@ Cypress.Commands.add(
     deviceIdOrName: string,
     expectedHistory: any[],
     statusCode: number = HttpStatusCode.Ok,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let deviceId: string;
 
@@ -142,7 +142,7 @@ Cypress.Commands.add(
 
     logTestDescription(
       `Check device history for  device ${deviceId} (${deviceIdOrName})`,
-      { deviceId: deviceId }
+      { deviceId: deviceId },
     );
 
     makeAuthorizedRequestWithStatus(
@@ -151,7 +151,7 @@ Cypress.Commands.add(
         url: v1ApiPath(`devices/${deviceId}/history`),
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["messages"]) {
         checkMessages(response, additionalChecks["messages"]);
@@ -163,18 +163,18 @@ Cypress.Commands.add(
         const sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
         const sortExpectedHistory = sortArrayOn(
           expectedHistory,
-          "fromDateTime"
+          "fromDateTime",
         );
         for (devCount = 0; devCount < expectedHistory.length; devCount++) {
           checkTreeStructuresAreEqualExcept(
             sortExpectedHistory[devCount],
             sortHistory[devCount],
-            []
+            [],
           );
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -185,7 +185,7 @@ Cypress.Commands.add(
     newGroup: string,
     password: string | null = null,
     generateUniqueName: boolean = true,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     let uniqueName: string;
     logTestDescription(
@@ -194,7 +194,7 @@ Cypress.Commands.add(
         camera: newName,
         group: newGroup,
       },
-      true
+      true,
     );
 
     if (generateUniqueName == true) {
@@ -221,12 +221,12 @@ Cypress.Commands.add(
         body: data,
       },
       oldName,
-      statusCode
+      statusCode,
     ).then((response) => {
       const id = response.body.id;
       saveCreds(response, newName, id);
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -237,7 +237,7 @@ Cypress.Commands.add(
     newGroup: string,
     adminUserName: string,
     password: string | null = null,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     logTestDescription(
       `Reregister camera '${newName}' in group '${newGroup}'`,
@@ -245,7 +245,7 @@ Cypress.Commands.add(
         camera: newName,
         group: newGroup,
       },
-      true
+      true,
     );
     const uniqueName = getTestName(newName);
     if (password === null) {
@@ -266,12 +266,12 @@ Cypress.Commands.add(
         body: data,
       },
       oldName,
-      statusCode
+      statusCode,
     ).then((response) => {
       const id = response.body.id;
       saveCreds(response, newName, id);
     });
-  }
+  },
 );
 
 function createDevice(
@@ -279,7 +279,7 @@ function createDevice(
   groupName: string,
   password: string,
   saltId: number,
-  makeCameraNameTestName = true
+  makeCameraNameTestName = true,
 ): any {
   const fullName = makeCameraNameTestName
     ? getTestName(deviceName)
@@ -319,14 +319,14 @@ Cypress.Commands.add(
     userName: string,
     expectedDevices: ApiDevicesDevice[],
     params: any = {},
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     const fullUrl = v1ApiPath("devices", params);
 
     logTestDescription(
       `${userName} Check devices seen by  user '${userName}'`,
       { user: userName },
-      true
+      true,
     );
 
     makeAuthorizedRequestWithStatus(
@@ -336,7 +336,7 @@ Cypress.Commands.add(
         body: null,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         const devices = response.body.devices;
@@ -347,17 +347,17 @@ Cypress.Commands.add(
         for (devCount = 0; devCount < expectedDevices.length; devCount++) {
           checkDeviceMatchesExpected(
             sortDevices[devCount],
-            sortExpectedDevices[devCount]
+            sortExpectedDevices[devCount],
           );
         }
       }
     });
-  }
+  },
 );
 
 function checkDeviceMatchesExpected(
   device: ApiDeviceResponse,
-  expectedDevice: ApiDeviceResponse
+  expectedDevice: ApiDeviceResponse,
 ) {
   expect(device.groupName, "groupName").to.equal(expectedDevice.groupName);
   expect(device.deviceName, "deviceName").to.equal(expectedDevice.deviceName);
@@ -372,13 +372,13 @@ Cypress.Commands.add(
     userName: string,
     expectedDevices: ApiDeviceResponse[],
     params: any = {},
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     const fullUrl = v1ApiPath("devices", params);
     logTestDescription(
       `${userName} Check devices seen by user '${userName}' contain the expected devices `,
       { user: userName },
-      true
+      true,
     );
 
     makeAuthorizedRequestWithStatus(
@@ -388,7 +388,7 @@ Cypress.Commands.add(
         body: null,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         const devices = response.body.devices;
@@ -403,7 +403,7 @@ Cypress.Commands.add(
           const found = devices.find(
             (device: any) =>
               device.deviceName === expectedDevices[devCount].deviceName &&
-              device.groupName === expectedDevices[devCount].groupName
+              device.groupName === expectedDevices[devCount].groupName,
           );
           if (found) {
             checkDeviceMatchesExpected(found, expectedDevices[devCount]);
@@ -412,7 +412,7 @@ Cypress.Commands.add(
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -421,7 +421,7 @@ Cypress.Commands.add(
     userName: string,
     deviceName: string,
     activeAndInactive: boolean = false,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     logTestDescription(`Get device ${deviceName} for ${userName}`, {
       deviceName,
@@ -435,9 +435,9 @@ Cypress.Commands.add(
         }),
       },
       userName,
-      statusCode
+      statusCode,
     );
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -448,16 +448,16 @@ Cypress.Commands.add(
     groupName: string | null,
     groupId: number | null,
     params: any = {},
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     const group = groupId !== null ? groupId : getTestName(groupName);
     const fullUrl = v1ApiPath(
       "devices/" + getTestName(deviceName) + "/in-group/" + group,
-      params
+      params,
     );
     logTestDescription(
       `Get device ${deviceName} in group ${group} for ${userName}`,
-      {}
+      {},
     );
 
     return makeAuthorizedRequestWithStatus(
@@ -467,9 +467,9 @@ Cypress.Commands.add(
         body: null,
       },
       userName,
-      statusCode
+      statusCode,
     );
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -481,12 +481,12 @@ Cypress.Commands.add(
     groupId: number | null,
     expectedDevice: ApiDeviceResponse,
     params: any = {},
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     logTestDescription(
       `${userName} Check user '${userName}' can see device '${deviceName}' in group '${groupName}' `,
       { user: userName, groupName, deviceName },
-      true
+      true,
     );
     cy.apiDeviceInGroup(
       userName,
@@ -494,13 +494,13 @@ Cypress.Commands.add(
       groupName,
       groupId,
       params,
-      statusCode
+      statusCode,
     ).then((response: any) => {
       if (statusCode === null || statusCode == 200) {
         checkTreeStructuresAreEqualExcept(expectedDevice, response.body.device);
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -509,12 +509,12 @@ Cypress.Commands.add(
     userName: string,
     deviceName: string,
     expectedUsers: ApiGroupUserRelationshipResponse[],
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     logTestDescription(
       `${userName} Check users for device '${deviceName}' requesting as user '${userName}'`,
       { user: userName, deviceName },
-      true
+      true,
     );
     const params = {
       deviceId: getCreds(deviceName).id,
@@ -528,7 +528,7 @@ Cypress.Commands.add(
         body: null,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === null || statusCode == 200) {
         // API returns devices: [ groupName: ..., deviceName: ..., saltId, ..., Group.groupName: ... ]
@@ -544,7 +544,7 @@ Cypress.Commands.add(
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -553,7 +553,7 @@ Cypress.Commands.add(
     deviceName: string,
     nextHeartbeat: string,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Register heartbeat for camera '${deviceName}'`, {
       camera: deviceName,
@@ -569,13 +569,13 @@ Cypress.Commands.add(
         },
       },
       deviceName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
         checkMessages(response, additionalChecks["messages"]);
       }
     });
-  }
+  },
 );
 
 // Custom test functions
@@ -593,7 +593,7 @@ Cypress.Commands.add(
     recTime: string,
     stationTime: string,
     move = true,
-    additionalRecTime?: string
+    additionalRecTime?: string,
   ) => {
     let fixLocation: LatLng;
     let expectedLocation: LatLng;
@@ -614,7 +614,7 @@ Cypress.Commands.add(
         stationTime,
         move,
       },
-      true
+      true,
     );
     //set move=true to move the recording to new location
     //set move=false to reassign recording to station, but keep old location
@@ -635,13 +635,13 @@ Cypress.Commands.add(
         NOT_NULL_STRING,
         null,
         "register",
-        null
+        null,
       );
 
       cy.testUploadRecording(
         deviceName,
         { ...oldLocation, time: new Date(recTime) },
-        recName
+        recName,
       )
         .thenCheckStationIsNew(userName)
         .then((autoStation: TestNameAndId) => {
@@ -653,14 +653,14 @@ Cypress.Commands.add(
             recTime,
             oldLocation,
             "automatic",
-            autoStation.name
+            autoStation.name,
           );
 
           if (additionalRecTime) {
             cy.testUploadRecording(
               deviceName,
               { ...oldLocation, time: new Date(additionalRecTime) },
-              recName
+              recName,
             );
             expectedMessage = "Updated 2 recording(s)";
           }
@@ -672,11 +672,11 @@ Cypress.Commands.add(
             userName,
             group,
             { name: stationName, ...newLocation },
-            stationTime
+            stationTime,
           ).then((manualStationId: number) => {
             cy.log(
               "Update first and subsequent recording's location to match manual station",
-              manualStationId
+              manualStationId,
             );
             cy.apiDeviceFixLocation(
               userName,
@@ -685,7 +685,7 @@ Cypress.Commands.add(
               manualStationId.toString(),
               fixLocation,
               HttpStatusCode.Ok,
-              { messages: [expectedMessage], useRawStationId: true }
+              { messages: [expectedMessage], useRawStationId: true },
             ).then(() => {
               expectedHistory[1].stationId = manualStationId;
               expectedHistory[1].location = expectedLocation;
@@ -696,7 +696,7 @@ Cypress.Commands.add(
     });
 
     cy.wrap(expectedHistory);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -706,7 +706,7 @@ Cypress.Commands.add(
     deviceName: string,
     maskRegions: ApiMaskRegionsData,
     statusCode?: number,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(
       `Add ${
@@ -714,7 +714,7 @@ Cypress.Commands.add(
       } mask regions for camera '${deviceName}'}`,
       {
         camera: deviceName,
-      }
+      },
     );
     makeAuthorizedRequestWithStatus(
       {
@@ -723,14 +723,14 @@ Cypress.Commands.add(
         body: maskRegions,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
         checkMessages(response, additionalChecks["messages"]);
       }
       cy.wrap(response);
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -740,7 +740,7 @@ Cypress.Commands.add(
     deviceName: string,
     atTime?: Date,
     statusCode?: number,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     const fromTime = atTime || new Date();
     logTestDescription(
@@ -748,7 +748,7 @@ Cypress.Commands.add(
       {
         camera: deviceName,
         fromTime,
-      }
+      },
     );
 
     const params = new URLSearchParams();
@@ -761,14 +761,14 @@ Cypress.Commands.add(
         }),
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
         checkMessages(response, additionalChecks["messages"]);
       }
       cy.wrap(response);
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -784,9 +784,9 @@ Cypress.Commands.add(
           group: group.id,
         },
       },
-      userName
+      userName,
     );
-  }
+  },
 );
 
 export function TestCreateExpectedDevice(
@@ -796,7 +796,7 @@ export function TestCreateExpectedDevice(
   type: DeviceType = DeviceType.Unknown,
   admin: boolean = true,
   active: boolean = true,
-  isHealthy: boolean = true
+  isHealthy: boolean = true,
 ) {
   const expectedDevice: ApiDeviceResponse = {
     id: getCreds(deviceName).id,
@@ -826,7 +826,7 @@ export function TestCreateExpectedHistoryEntry(
   fromDate: string,
   location: LatLng,
   setBy: string,
-  stationName: string
+  stationName: string,
 ): DeviceHistoryEntry {
   const expectedHistory: DeviceHistoryEntry = {
     DeviceId: getCreds(deviceName).id,

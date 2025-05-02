@@ -9,8 +9,8 @@
     "release": "node ./node_modules/.bin/cypress run",
     "ci-batch-1": "node ./node_modules/.bin/cypress run --config-file cypress-api-batch-1.config.ts",
     "ci-batch-2": "node ./node_modules/.bin/cypress run --config-file cypress-api-batch-2.config.ts",
-    "lint": "eslint ./ --ext .ts && (npx prettier --check './**/*.ts' || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false))",
-    "lint:fix": "eslint ./ --fix --ext .ts && npx prettier --write './**/*.ts'"
+    "lint": "eslint ./ --ext .ts --ignore-path .gitignore . || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false)",
+    "lint:fix": "eslint ./ --fix --ext .ts --ignore-path .gitignore ."
   },
   "dependencies": {
     "form-data": "^4.0.0",

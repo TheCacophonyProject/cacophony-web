@@ -65,7 +65,7 @@ export class CptvDecoder {
   async initWithRecordingIdAndKnownSize(
     id: RecordingId,
     size: number,
-    apiToken?: string
+    apiToken?: string,
   ): Promise<string | boolean | Blob> {
     await this.init();
     const type = "initWithRecordingIdAndSize";
@@ -92,7 +92,7 @@ export class CptvDecoder {
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithLocalCptvFile(
-    fileBytes: Uint8Array
+    fileBytes: Uint8Array,
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithLocalCptvFile";

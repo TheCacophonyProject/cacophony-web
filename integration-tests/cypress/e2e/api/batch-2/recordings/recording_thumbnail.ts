@@ -24,21 +24,21 @@ describe("Recording thumbnails", () => {
   const suPassword = getCreds("superuser")["password"];
 
   //Do not validate keys
-  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey"];
+  const EXCLUDE_KEYS = [".jobKey", ".rawFileKey", ".metadataSource"];
 
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
   );
 
   // template thermal recording with no tracks - force into Analyse state to do thumbnail generation
   const templateRecording: ApiRecordingSet = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
   templateRecording.processingState = RecordingProcessingState.Analyse;
   templateRecording.metadata.tracks = [];
 
   const templateExpectedProcessing: ApiRecordingForProcessing = JSON.parse(
-    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING)
+    JSON.stringify(TEMPLATE_THERMAL_RECORDING_PROCESSING),
   );
   templateExpectedProcessing.processingState = RecordingProcessingState.Analyse;
   templateExpectedProcessing.updatedAt = NOT_NULL_STRING;
@@ -65,12 +65,12 @@ describe("Recording thumbnails", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        RecordingProcessingState.Analyse
+        RecordingProcessingState.Analyse,
       );
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.Audio,
-        RecordingProcessingState.Analyse
+        RecordingProcessingState.Analyse,
       );
     });
 
@@ -80,12 +80,12 @@ describe("Recording thumbnails", () => {
         "rtCamera1",
         recording01,
         "oneframe.cptv",
-        "rtRecording01"
+        "rtRecording01",
       ).then(() => {
         const expectedProcessing01 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
           "rtRecording01",
-          recording01
+          recording01,
         );
         const expectedRecording01 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
@@ -94,7 +94,7 @@ describe("Recording thumbnails", () => {
           "rtGroup",
           null,
           recording01,
-          false
+          false,
         );
 
         cy.log("Send for processing");
@@ -104,7 +104,7 @@ describe("Recording thumbnails", () => {
           RecordingProcessingState.Analyse,
           "rtRecording01",
           expectedProcessing01,
-          EXCLUDE_KEYS
+          EXCLUDE_KEYS,
         );
 
         cy.log("Look up algorithm and then post tracks");
@@ -116,7 +116,7 @@ describe("Recording thumbnails", () => {
             "rtTrack01",
             "rtRecording01",
             { start_s: 1, end_s: 4 },
-            algorithmId
+            algorithmId,
           );
           cy.log("Add tags");
           cy.processingApiTracksTagsPost(
@@ -125,7 +125,7 @@ describe("Recording thumbnails", () => {
             "rtRecording01",
             "possum",
             0.9,
-            { name: "Master" }
+            { name: "Master" },
           ).then(() => {
             expectedRecording01.tracks = [
               {
@@ -136,7 +136,7 @@ describe("Recording thumbnails", () => {
                     automatic: true,
                     trackId: getCreds("rtTrack01").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -146,7 +146,6 @@ describe("Recording thumbnails", () => {
                 //                  positions: [],
                 // TODO enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 
@@ -171,7 +170,7 @@ describe("Recording thumbnails", () => {
                   },
                 },
               },
-              undefined
+              undefined,
             );
 
             cy.log("Check thumbnail data present");
@@ -189,7 +188,7 @@ describe("Recording thumbnails", () => {
               "rtGroupAdmin",
               "rtRecording01",
               expectedRecording01,
-              EXCLUDE_IDS
+              EXCLUDE_IDS,
             );
 
             cy.log("Check thumbnail available");
@@ -197,7 +196,7 @@ describe("Recording thumbnails", () => {
               "rtGroupAdmin",
               "rtRecording01",
               HttpStatusCode.Ok,
-              { type: "PNG" }
+              { type: "PNG" },
             );
           });
         });
@@ -210,12 +209,12 @@ describe("Recording thumbnails", () => {
         "rtCamera1",
         recording01,
         "oneframe.cptv",
-        "rtRecording01"
+        "rtRecording01",
       ).then(() => {
         const expectedProcessing01 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
           "rtRecording01",
-          recording01
+          recording01,
         );
         const expectedRecording01 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
@@ -224,7 +223,7 @@ describe("Recording thumbnails", () => {
           "rtGroup",
           null,
           recording01,
-          false
+          false,
         );
 
         cy.log("Send for processing");
@@ -234,7 +233,7 @@ describe("Recording thumbnails", () => {
           RecordingProcessingState.Analyse,
           "rtRecording01",
           expectedProcessing01,
-          EXCLUDE_KEYS
+          EXCLUDE_KEYS,
         );
 
         cy.log("Look up algorithm and then post tracks");
@@ -264,7 +263,7 @@ describe("Recording thumbnails", () => {
                 score: 5,
               },
             },
-            algorithmId
+            algorithmId,
           );
           cy.log("Add tags");
           cy.processingApiTracksTagsPost(
@@ -273,7 +272,7 @@ describe("Recording thumbnails", () => {
             "rtRecording01",
             "possum",
             0.9,
-            { name: "Master" }
+            { name: "Master" },
           ).then(() => {
             expectedRecording01.tracks = [
               {
@@ -284,7 +283,7 @@ describe("Recording thumbnails", () => {
                     automatic: true,
                     trackId: getCreds("rtTrack01").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -294,7 +293,6 @@ describe("Recording thumbnails", () => {
                 //                  positions: [],
                 // TODO enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 
@@ -319,7 +317,7 @@ describe("Recording thumbnails", () => {
                   },
                 },
               },
-              undefined
+              undefined,
             );
 
             cy.log("Check thumbnail data present");
@@ -337,7 +335,7 @@ describe("Recording thumbnails", () => {
               "rtGroupAdmin",
               "rtRecording01",
               expectedRecording01,
-              EXCLUDE_IDS
+              EXCLUDE_IDS,
             );
 
             cy.log("Check thumbnail available");
@@ -345,7 +343,7 @@ describe("Recording thumbnails", () => {
               "rtGroupAdmin",
               "rtRecording01",
               HttpStatusCode.Ok,
-              { type: "PNG" }
+              { type: "PNG" },
             );
 
             cy.log("Check track thumbnail available");
@@ -354,7 +352,7 @@ describe("Recording thumbnails", () => {
               "rtRecording01",
               HttpStatusCode.Ok,
               { type: "PNG" },
-              "rtTrack01"
+              "rtTrack01",
             );
           });
         });
@@ -367,7 +365,7 @@ describe("Recording thumbnails", () => {
         "rtGroupMember",
         "rtRecording01",
         HttpStatusCode.Ok,
-        { type: "PNG" }
+        { type: "PNG" },
       );
     });
 
@@ -377,7 +375,7 @@ describe("Recording thumbnails", () => {
       cy.apiRecordingThumbnailCheck(
         "rtGroup2Admin",
         "rtRecording01",
-        HttpStatusCode.Forbidden
+        HttpStatusCode.Forbidden,
       );
     });
 
@@ -388,7 +386,7 @@ describe("Recording thumbnails", () => {
         HttpStatusCode.Forbidden,
         {
           useRawRecordingId: true,
-        }
+        },
       );
     });
 
@@ -398,12 +396,12 @@ describe("Recording thumbnails", () => {
         "rtCamera1",
         recording02,
         "oneframe.cptv",
-        "rtRecording02"
+        "rtRecording02",
       ).then(() => {
         const expectedProcessing02 = TestCreateExpectedProcessingData(
           templateExpectedProcessing,
           "rtRecording02",
-          recording02
+          recording02,
         );
         const expectedRecording02 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
@@ -411,7 +409,7 @@ describe("Recording thumbnails", () => {
           "rtCamera1",
           "rtGroup",
           null,
-          recording02
+          recording02,
         );
 
         cy.log("Send for processing");
@@ -421,7 +419,7 @@ describe("Recording thumbnails", () => {
           RecordingProcessingState.Analyse,
           "rtRecording02",
           expectedProcessing02,
-          EXCLUDE_KEYS
+          EXCLUDE_KEYS,
         );
 
         cy.log("Look up algorithm and then post tracks");
@@ -433,7 +431,7 @@ describe("Recording thumbnails", () => {
             "rtTrack02",
             "rtRecording02",
             { start_s: 1, end_s: 4 },
-            algorithmId
+            algorithmId,
           );
           cy.log("Add tags");
           cy.processingApiTracksTagsPost(
@@ -442,7 +440,7 @@ describe("Recording thumbnails", () => {
             "rtRecording02",
             "possum",
             0.9,
-            { name: "Master" }
+            { name: "Master" },
           ).then(() => {
             expectedRecording02.tracks = [
               {
@@ -453,7 +451,7 @@ describe("Recording thumbnails", () => {
                     automatic: true,
                     trackId: getCreds("rtTrack02").id,
                     confidence: 0.9,
-                    data: { name: "Master" },
+                    model: "Master",
                     id: -1,
                   },
                 ],
@@ -463,7 +461,6 @@ describe("Recording thumbnails", () => {
                 //                  positions: [],
                 // TODO: enable after merge
                 filtered: false,
-                automatic: true,
               },
             ];
 
@@ -473,7 +470,7 @@ describe("Recording thumbnails", () => {
               "rtRecording02",
               true,
               {},
-              undefined
+              undefined,
             );
 
             cy.log("Check no thumbnail data present");
@@ -481,15 +478,15 @@ describe("Recording thumbnails", () => {
               "rtGroupAdmin",
               "rtRecording02",
               expectedRecording02,
-              EXCLUDE_IDS
+              EXCLUDE_IDS,
             );
 
-            cy.log("Check thumbnail not available");
+            cy.log("Check fallback thumbnail available");
             cy.apiRecordingThumbnailCheck(
               "rtGroupAdmin",
               "rtRecording02",
-              HttpStatusCode.BadRequest,
-              { message: "No thumbnail exists" }
+              HttpStatusCode.Ok,
+              { message: "No thumbnail exists" },
             );
           });
         });

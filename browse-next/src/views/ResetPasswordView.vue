@@ -12,19 +12,19 @@ const userPassword: FormInputValue = formFieldInputText();
 const userPasswordConfirmation: FormInputValue = formFieldInputText();
 const isValidPassword = computed<boolean>(() => !passwordIsTooShort.value);
 const passwordIsTooShort = computed<boolean>(
-  () => userPassword.value.trim().length < 8
+  () => userPassword.value.trim().length < 8,
 );
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
-  () => (userPassword.touched ? isValidPassword.value : undefined)
+  () => (userPassword.touched ? isValidPassword.value : undefined),
 );
 const passwordConfirmationMatches = computed<boolean>(
-  () => userPasswordConfirmation.value.trim() === userPassword.value.trim()
+  () => userPasswordConfirmation.value.trim() === userPassword.value.trim(),
 );
 const needsValidationAndIsValidPasswordConfirmation =
   computed<FormInputValidationState>(() =>
     userPasswordConfirmation.touched
       ? isValidPassword.value && passwordConfirmationMatches.value
-      : undefined
+      : undefined,
   );
 
 // ---------- password visibility ------------
@@ -66,7 +66,7 @@ const resetErrorMessagesDisplay = computed(() => {
   }
 });
 const resetFormIsFilledAndValid = computed<boolean>(
-  () => isValidPassword.value && passwordConfirmationMatches.value
+  () => isValidPassword.value && passwordConfirmationMatches.value,
 );
 const invalidReason = ref<string>("");
 const router = useRouter();
@@ -80,7 +80,7 @@ onBeforeMount(async () => {
       resetToken.value = params.token.replace(/:/g, ".");
     }
     const validateTokenResponse = await validatePasswordResetToken(
-      resetToken.value
+      resetToken.value,
     );
     checkingResetToken.value = false;
     console.log(validateTokenResponse);
@@ -108,7 +108,7 @@ const resetPassword = async () => {
   resetInProgress.value = true;
   const changePasswordResponse = await changePassword(
     resetToken.value,
-    userPassword.value
+    userPassword.value,
   );
   console.log("Resetting", userPassword.value);
   if (changePasswordResponse.success) {

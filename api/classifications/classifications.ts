@@ -2,14 +2,15 @@ import Classifications from "@/classifications/classification.json" assert { typ
 import type { Classification } from "@typedefs/api/trackTag.js";
 
 const flattenNodes = (
-  acc: Record<string, { label: string; display: string; path: string }>,
+  acc: Record<string, { label: string; display: string; path: string, displayAudio: string }>,
   node: Classification,
-  parentPath: string
+  parentPath: string,
 ) => {
   for (const child of node.children || []) {
     acc[child.label] = {
       label: child.label,
       display: child.display || child.label,
+      displayAudio: child.displayAudio || child.display || child.label,
       path: `${parentPath}.${child.label}`,
     };
     flattenNodes(acc, child, acc[child.label].path);
@@ -28,7 +29,7 @@ export const flatClassifications = (() => {
 export const displayLabelForClassificationLabel = (
   label: string,
   aiTag = false,
-  isAudioContext = false
+  isAudioContext = false,
 ) => {
   label = label.toLowerCase();
   if (label === "unclassified") {
@@ -38,8 +39,5 @@ export const displayLabelForClassificationLabel = (
     return "Unidentified";
   }
   const classifications = flatClassifications;
-  if ((label === "human" || label === "person") && !isAudioContext) {
-    return "human";
-  }
-  return (classifications[label] && classifications[label].display) || label;
+  return (classifications[label] && (isAudioContext ? classifications[label].displayAudio || classifications[label].display : classifications[label].display)) || label;
 };

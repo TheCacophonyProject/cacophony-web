@@ -13,5 +13,5 @@ if (process.argv.length != 3) {
 const hash = bcrypt.hashSync(process.argv[2], 10);
 console.log(hash);
 console.log(
-  `UPDATE "Users" SET password = '` + hash + `' WHERE username = '<username>'`
+  `UPDATE "Users" SET password = '` + hash + `' WHERE username = '<username>'`,
 );

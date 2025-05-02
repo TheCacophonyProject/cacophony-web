@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import { body } from "express-validator";
+import { body, query } from "express-validator";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
@@ -60,23 +60,22 @@ export default function (app: Application) {
     "/authenticate_device",
     validateFields([
       validPasswordOf(body("password")),
-      // FIXME - Make nested anyOf work properly with error messages etc.
-      //anyOf(
-      //  [
       anyOf(
         deprecatedField(validNameOf(body("devicename"))).optional(),
-        validNameOf(body("deviceName")).optional()
+        validNameOf(body("deviceName")).optional(),
       ),
       anyOf(
         deprecatedField(validNameOf(body("groupname"))).optional(),
-        validNameOf(body("groupName")).optional()
+        validNameOf(body("groupName")).optional(),
       ),
-      //  ],
       anyOf(
         idOf(body("deviceId")).optional(),
-        deprecatedField(idOf(body("deviceID"))).optional()
+        deprecatedField(idOf(body("deviceID"))).optional(),
       ),
-      // ),
+      anyOf(
+        query("onlyActive").default(false).isBoolean().toBoolean(),
+        query("only-active").default(false).isBoolean().toBoolean(),
+      ),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
       const b = request.body;
@@ -87,26 +86,42 @@ export default function (app: Application) {
       } else {
         next(
           new ClientError(
-            "Either a deviceName and groupName is required, or a deviceId"
-          )
+            "Either a deviceName and groupName is required, or a deviceId",
+          ),
         );
       }
     },
     extractUnauthenticatedOptionalDeviceInGroup(
       body(["devicename", "deviceName", "deviceId", "deviceID"]),
-      body(["groupname", "groupName"])
+      body(["groupname", "groupName"]),
     ),
     (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.device) {
         if (request.body.deviceId || request.body.deviceID) {
-          return next(
-            new AuthenticationError("Device not found for supplied deviceId")
-          );
+          const suppliedId = request.body.deviceId || request.body.deviceID;
+          const group = request.body.groupName || request.body.groupname;
+          const deviceName =
+            request.body.deviceName ||
+            request.body.devicename ||
+            "unknown device";
+          if (group) {
+            return next(
+              new AuthenticationError(
+                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}') in project '${group}'`,
+              ),
+            );
+          } else {
+            return next(
+              new AuthenticationError(
+                `Device not found for supplied deviceId (#${suppliedId}, '${deviceName}')`,
+              ),
+            );
+          }
         } else {
           return next(
             new AuthenticationError(
-              "Device not found for supplied deviceName and groupName"
-            )
+              "Device not found for supplied deviceName and groupName",
+            ),
           );
         }
       }
@@ -124,6 +139,6 @@ export default function (app: Application) {
       } else {
         return next(new AuthenticationError("Wrong password or deviceName."));
       }
-    }
+    },
   );
 }

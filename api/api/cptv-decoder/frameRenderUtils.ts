@@ -14,7 +14,7 @@ const Plasma = Uint32Array.from((plasma as RgbZeroOneArray).map(mapRgba));
 const Inferno = Uint32Array.from((inferno as RgbZeroOneArray).map(mapRgba));
 const Magma = Uint32Array.from((magma as RgbZeroOneArray).map(mapRgba));
 const Default = Uint32Array.from(
-  defaultColourmap.map(([r, g, b]) => (255 << 24) | (b << 16) | (g << 8) | r)
+  defaultColourmap.map(([r, g, b]) => (255 << 24) | (b << 16) | (g << 8) | r),
 );
 const GreyscaleSquared = new Uint32Array(256);
 const Greyscale = new Uint32Array(256);
@@ -50,7 +50,7 @@ export const renderFrameIntoFrameBuffer = (
   frame: Uint16Array,
   colourMap: Uint32Array,
   min: number,
-  max: number
+  max: number,
 ): void => {
   const frameBufferView = new Uint32Array(targetFrameBuffer.buffer);
   const range = max - min;

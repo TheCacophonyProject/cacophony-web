@@ -50,7 +50,7 @@ export const CurrentViewAbortController = {
 const cancelPendingRequests = (
   to: RouteLocationNormalized,
   from: RouteLocationNormalized,
-  next: NavigationGuardNext
+  next: NavigationGuardNext,
 ) => {
   CurrentViewAbortController.newView();
   return next();
@@ -65,6 +65,11 @@ const recordingModalTabChildren = (grandParent: string, parent: string) => [
     path: "tracks/:trackId?/:detail?",
     name: `${grandParent}-${parent}-tracks`,
     component: () => import("@/components/RecordingViewTracks.vue"),
+  },
+  {
+    path: "notes/:trackId?/:detail?",
+    name: `${grandParent}-${parent}-notes`,
+    component: () => import("@/components/RecordingViewNotes.vue"),
   },
 ];
 
@@ -312,11 +317,24 @@ const router = createRouter({
           component: () => import("@/views/ManageProjectUsersSubView.vue"),
         },
         {
-          name: "project-tag-settings",
-          path: "tag-settings",
-          meta: { title: "Tag preferences for :projectName" },
+          name: "project-tagging-settings",
+          path: "tagging-settings",
+          meta: { title: "Tagging settings for :projectName" },
           component: () =>
             import("@/views/ManageProjectTagSettingsSubView.vue"),
+        },
+        {
+          name: "project-label-settings",
+          path: "label-settings",
+          meta: { title: "Label settings for :projectName" },
+          component: () =>
+            import("@/views/ManageProjectLabelSettingsSubView.vue"),
+        },
+        {
+          name: "project-misc-settings",
+          path: "project-settings",
+          meta: { title: "Settings for :projectName" },
+          component: () => import("@/views/ManageProjectSettingsSubView.vue"),
         },
         {
           name: "fix-project-locations",
@@ -422,7 +440,7 @@ const DEFAULT_TITLE = "Cacophony Browse";
 
 const interpolateTitle = (
   str: string,
-  route: RouteLocationNormalized
+  route: RouteLocationNormalized,
 ): string => {
   const params = route.params;
   let foundMatch = true;
@@ -443,7 +461,7 @@ const interpolateTitle = (
         const replaceWith = params[piece.slice(1)];
         output = output.replace(
           piece,
-          replaceWith[0].toUpperCase() + replaceWith.slice(1)
+          replaceWith[0].toUpperCase() + replaceWith.slice(1),
         );
         foundMatch = true;
         if (startsWithHash) {
@@ -513,7 +531,7 @@ router.beforeEach(async (to, from, next) => {
       !currentSelectedProject.value &&
       !isFetchingProjects.value
     ) {
-      console.log("User is logged in, refresh projects (2)");
+      //console.log("User is logged in, refresh projects (2)");
       const projectsResponse = await refreshUserProjects();
       if (projectsResponse.status === 401) {
         return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
@@ -532,7 +550,7 @@ router.beforeEach(async (to, from, next) => {
     } else {
       console.warn(
         "Failed to resume session or no session to resume",
-        to.fullPath
+        to.fullPath,
       );
       if (to.meta.requiresLogin || to.path === "/") {
         console.warn("Redirect to sign-in");
@@ -607,14 +625,14 @@ router.beforeEach(async (to, from, next) => {
       let matchedProject = (
         (UserProjects.value as ApiGroupResponse[]) || []
       ).find(
-        ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName
+        ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName,
       );
       if (!matchedProject && currentUserIsSuperUser.value) {
         matchedProject = (
           (NonUserProjects.value as ApiGroupResponse[]) || []
         ).find(
           ({ groupName }) =>
-            urlNormaliseName(groupName) === potentialProjectName
+            urlNormaliseName(groupName) === potentialProjectName,
         );
       }
 
@@ -655,11 +673,11 @@ router.beforeEach(async (to, from, next) => {
               getDevicesForProject(
                 currentSelectedProject.value.id,
                 false,
-                true
+                true,
               ),
               getLocationsForProject(
                 currentSelectedProject.value.id.toString(),
-                true
+                true,
               ),
             ]);
             DevicesForCurrentProject.value = devices as LoadedResource<

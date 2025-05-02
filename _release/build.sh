@@ -29,6 +29,16 @@ cp _release/* ${build_dir}/_release  # makes things easier while developing rele
 
 cd ${build_dir}
 
+echo "Installing shared type definitions"
+cd types
+echo "Installing dependencies"
+npm ci
+echo "Compiling TypeScript..."
+./node_modules/.bin/tsc
+npm run generate-schemas
+
+cd ..
+
 echo "Building Cacophony Browse-Next"
 cd browse-next
 npm version --no-git-tag-version ${version}
@@ -36,14 +46,6 @@ echo "Installing dependencies"
 npm ci
 npm run build
 rm -rf node_modules
-
-echo "Installing shared type definitions"
-cd ../types
-echo "Installing dependencies"
-npm ci
-echo "Compiling TypeScript..."
-./node_modules/.bin/tsc
-npm run generate-schemas
 
 cd ..
 
@@ -86,7 +88,7 @@ cd ..
 # cron doesn't like it when cron.d files are writeable by anyone other than the
 # owner.
 echo "Fixing perms..."
-chmod 644 _release/{cacophony-api-influx-metrics,cacophony-api-prune-objects,cacophony-api-remove-dups,cacophony-api-report-stopped-devices,cacophony-api-report-errors,cacophony-api-archive-objects,cacophony-api-rat-threshold,cacophony-api-usage-report,cacophony-project-activity-digests}
+chmod 644 _release/{cacophony-api-influx-metrics,cacophony-api-prune-objects,cacophony-api-remove-dups,cacophony-api-report-stopped-devices,cacophony-api-report-errors,cacophony-api-archive-objects,cacophony-api-rat-threshold,cacophony-api-usage-report,cacophony-project-activity-digests,cacophony-api-housekeeping}
 
 echo "Setting versions..."
 perl -pi -e "s/^version:.+/version: \"${version}\"/" _release/nfpm.yaml

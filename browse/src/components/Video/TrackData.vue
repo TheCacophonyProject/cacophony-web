@@ -9,23 +9,32 @@
         <font-awesome-icon icon="angle-up" class="fa-1x" />
       </span>
     </h6>
-    <div v-if="showDetails">
-      <p v-if="trackTag.data.model_used">
-        <strong>Model:</strong> {{ trackTag.data.model_used }}
+    <div
+      v-if="
+        showDetails &&
+        hasLoadedDetails &&
+        localTrackTagData &&
+        localTrackTagData.data
+      "
+    >
+      <p v-if="localTrackTagData.data.model_used">
+        <strong>Model:</strong> {{ localTrackTagData.data.model_used }}
       </p>
-
       <p>
         <strong>Label:</strong>
-        {{ trackTag.what.charAt(0).toUpperCase() + trackTag.what.substring(1) }}
+        {{
+          localTrackTagData.what.charAt(0).toUpperCase() +
+          localTrackTagData.what.substring(1)
+        }}
       </p>
       <p>
         <strong>Confidence:</strong>
         {{ trackTag.confidence }}
-        <span class="delta">(&#916; {{ trackTag.data.clarity }})</span>
+        <span class="delta">(&#916; {{ localTrackTagData.data.clarity }})</span>
       </p>
 
-      <p v-if="trackTag.average_novelty">
-        <strong>Novelty:</strong> {{ trackTag.average_novelty }}
+      <p v-if="localTrackTagData.average_novelty">
+        <strong>Novelty:</strong> {{ localTrackTagData.average_novelty }}
       </p>
       <table class="table table-sm">
         <thead>
@@ -35,7 +44,8 @@
           </tr>
         </thead>
         <tr
-          v-for="(value, animal) in trackTag.data.all_class_confidences"
+          v-for="(value, animal) in localTrackTagData.data
+            .all_class_confidences"
           :key="animal"
         >
           <td>{{ animal }}</td>
@@ -47,6 +57,8 @@
 </template>
 
 <script>
+import recordingApi from "@api/Recording.api";
+
 export default {
   name: "TrackData",
   props: {
@@ -54,11 +66,47 @@ export default {
       type: Object,
       required: false,
     },
+    recordingId: {
+      type: Number,
+      required: true,
+    },
   },
   data() {
     return {
       showDetails: false,
+      hasLoadedDetails: false, // To track if the data has already been loaded
+      localTrackTagData: {},
     };
+  },
+  watch: {
+    showDetails(newValue) {
+      if (newValue && !this.hasLoadedDetails) {
+        this.loadDetails();
+      }
+    },
+  },
+  methods: {
+    async loadDetails() {
+      const response = await recordingApi.getTrack(
+        this.trackTag.trackId,
+        this.recordingId
+      );
+      if (response.success) {
+        const tag = response.result.track.tags.find(
+          (tag) => tag.id === this.trackTag.id
+        );
+        if (tag) {
+          this.localTrackTagData = {
+            ...this.trackTag,
+            data: {
+              ...(this.trackTag.data || {}),
+              ...(tag.data || {}),
+            },
+          }; // Merge the new details with existing data
+        }
+        this.hasLoadedDetails = true;
+      }
+    },
   },
 };
 </script>

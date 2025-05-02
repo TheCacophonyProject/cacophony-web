@@ -59,8 +59,8 @@ export default function (app: Application, baseUrl: string) {
           return next(
             new ClientError(
               "Super admin user must have globalWrite permissions",
-              HttpStatusCode.Forbidden
-            )
+              HttpStatusCode.Forbidden,
+            ),
           );
         }
         next();
@@ -75,15 +75,18 @@ export default function (app: Application, baseUrl: string) {
         // Update global super admin cache:
         if (
           [UserGlobalPermission.Write, UserGlobalPermission.Read].includes(
-            permission
+            permission,
           )
         ) {
-          SuperUsers.set(userToUpdate.id, userToUpdate.globalPermission);
+          SuperUsers.set(userToUpdate.id, {
+            globalPermission: userToUpdate.globalPermission,
+            userName: userToUpdate.userName,
+          });
         } else {
           SuperUsers.delete(userToUpdate.id);
         }
         return successResponse(response, "Users global permission updated.");
-      }
+      },
     );
   }
 }

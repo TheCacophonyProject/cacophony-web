@@ -41,13 +41,13 @@ watch(
     if (networkConnectionError.retryCount === MAX_RETRY_COUNT) {
       show.value = false;
     } else {
-      countDown.value = count / 1000;
+      countDown.value = Math.max(0, count / 1000);
       countDownInterval.value = setInterval(() => {
-        countDown.value--;
+        countDown.value = Math.max(0, countDown.value - 1);
       }, 1000) as unknown as number;
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>
 

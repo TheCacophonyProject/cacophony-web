@@ -21,6 +21,7 @@ import type Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type { User } from "./User.js";
 import LabelPaths from "../classifications/label_paths.json" assert { type: "json" };
+import type { TrackTagUserData } from "@models/TrackTagUserData.js";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 
@@ -29,9 +30,6 @@ export interface TrackTagData {
   all_class_confidences: null | Record<string, number>;
   classify_time: number;
   message?: string;
-  gender?: "male" | "female" | null;
-  maturity?: "juvenile" | "adult" | null;
-
   userTagsConflict?: boolean;
 }
 
@@ -43,13 +41,15 @@ export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
   automatic: boolean;
   UserId: UserId;
   User: User;
+  data?: any;
   confidence: number;
-  data: string | TrackTagData;
+  model: string | null;
   archivedAt: Date;
   createdAt: Date;
   updatedAt: Date;
   path: string;
   used: boolean;
+  TrackTagUserDatum?: TrackTagUserData;
 }
 export const additionalTags = Object.freeze([
   "poor tracking",
@@ -61,20 +61,24 @@ export const filteredTags = Object.freeze(["false-positive", "noise"]);
 export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): TrackTagStatic {
   const TrackTag = sequelize.define("TrackTag", {
     what: DataTypes.STRING,
     path: DataTypes.STRING, // ltree path
     confidence: DataTypes.FLOAT,
     automatic: DataTypes.BOOLEAN,
-    data: DataTypes.JSONB,
     archivedAt: DataTypes.DATE,
     used: {
       // This tag is used in visit calculations/canonical tag search.
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    model: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
     },
   }) as unknown as TrackTagStatic;
 
@@ -89,7 +93,7 @@ export default function (
   TrackTag.apiSettableFields = Object.freeze(["what", "confidence", "data"]);
 
   TrackTag.userGetAttributes = Object.freeze(
-    TrackTag.apiSettableFields.concat(["id"])
+    TrackTag.apiSettableFields.concat(["id"]),
   );
   const addPath = (trackTag) => {
     // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
@@ -98,7 +102,7 @@ export default function (
       what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
     sequelize.query(
       `UPDATE "TrackTags" SET "path" = text2ltree(:path) WHERE "id" = :id`,
-      { replacements: { path, id: trackTag.id } }
+      { replacements: { path, id: trackTag.id } },
     );
   };
 

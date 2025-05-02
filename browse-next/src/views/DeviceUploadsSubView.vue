@@ -62,7 +62,7 @@ const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
       (devices.value as ApiDeviceResponse[]).find(
-        (device: ApiDeviceResponse) => device.id === deviceId
+        (device: ApiDeviceResponse) => device.id === deviceId,
       )) ||
     null
   );
@@ -89,7 +89,7 @@ const totalUploads = ref<number>(0);
 const uploadQueue = ref<UploadJob[]>([]);
 
 const getAllFileEntries = async (
-  dataTransferItemList: DataTransferItemList
+  dataTransferItemList: DataTransferItemList,
 ): Promise<FileSystemFileEntry[]> => {
   const fileEntries: FileSystemFileEntry[] = [];
   const queue: FileSystemEntry[] = [];
@@ -107,8 +107,8 @@ const getAllFileEntries = async (
     } else if (entry.isDirectory) {
       queue.push(
         ...(await readAllDirectoryEntries(
-          (entry as FileSystemDirectoryEntry).createReader()
-        ))
+          (entry as FileSystemDirectoryEntry).createReader(),
+        )),
       );
     }
   }
@@ -116,7 +116,7 @@ const getAllFileEntries = async (
 };
 
 const readAllDirectoryEntries = async (
-  directoryReader: FileSystemDirectoryReader
+  directoryReader: FileSystemDirectoryReader,
 ): Promise<FileSystemEntry[]> => {
   const entries = [];
   let readEntries = await readEntriesPromise(directoryReader);
@@ -128,7 +128,7 @@ const readAllDirectoryEntries = async (
 };
 
 const readEntriesPromise = async (
-  directoryReader: FileSystemDirectoryReader
+  directoryReader: FileSystemDirectoryReader,
 ): Promise<FileSystemEntry[]> => {
   return new Promise((resolve, reject) => {
     directoryReader.readEntries(resolve, reject);
@@ -174,7 +174,7 @@ interface MessageData {
 const messageQueue: Record<string, ((data: unknown) => void) | boolean>[] = [];
 const waitForMessage = async (
   threadIndex: number,
-  messageType: string
+  messageType: string,
 ): Promise<unknown> => {
   return new Promise((resolve) => {
     messageQueue[threadIndex][messageType] = resolve;
@@ -183,7 +183,7 @@ const waitForMessage = async (
 
 const startWork = (
   threadIndex: number,
-  payload: { type: string; data: any }
+  payload: { type: string; data: any },
 ): boolean => {
   if (!messageQueue[threadIndex].busy) {
     messageQueue[threadIndex].busy = true;
@@ -239,16 +239,16 @@ const createNewLocation = async (location: {
     (project.value as SelectedProject).id,
     location.name,
     location.location,
-    true
+    true,
   );
   // TODO: Check that new location was successfully created, otherwise throw an error.
   // Reload projects
   previousLocations.value = await getLocationsForProject(
-    (project.value as SelectedProject).id.toString()
+    (project.value as SelectedProject).id.toString(),
   );
   return (previousLocations.value as ApiLocationResponse[]).find(
     (location) =>
-      location.id === (newLocation as { locationId: LocationId }).locationId
+      location.id === (newLocation as { locationId: LocationId }).locationId,
   ) as ApiLocationResponse;
 };
 
@@ -286,7 +286,7 @@ const beginUploadJob = async () => {
   // TODO: Download OCR wasm + training set once, and pass to all workers.
   const numThreads = Math.min(
     navigator.hardwareConcurrency - 1,
-    uploadQueue.value.length
+    uploadQueue.value.length,
   );
   for (let i = 0; i < numThreads; i++) {
     messageQueue[i] = {};
@@ -294,7 +294,7 @@ const beginUploadJob = async () => {
       new URL("../components/ImageUpload.worker.ts", import.meta.url),
       {
         type: "module",
-      }
+      },
     );
     await new Promise((resolve) => {
       worker.onmessage = (message) => {
@@ -337,7 +337,7 @@ const beginUploadJob = async () => {
             data.derivedFile,
             data.derivedFileName,
             data.thumbFile,
-            data.thumbFileName
+            data.thumbFileName,
           );
           if (recordingUploadResponse.success) {
             if (
@@ -361,7 +361,7 @@ const beginUploadJob = async () => {
         }
       }
       const resolver = messageQueue[threadIndex][type] as (
-        data: unknown
+        data: unknown,
       ) => void;
       delete messageQueue[threadIndex][type];
       messageQueue[threadIndex].busy = false;
@@ -370,7 +370,7 @@ const beginUploadJob = async () => {
     const canvas = new OffscreenCanvas(1280, 960);
     worker.postMessage(
       { type: "thread-id", data: { threadIndex: i, canvas } },
-      [canvas]
+      [canvas],
     );
     if (Object.keys(uploadErrors.value).length) {
       console.log("Errors", uploadErrors.value);
@@ -481,7 +481,7 @@ onMounted(async () => {
   if (device.value && project.value) {
     //  This should be all existing locations for the project.
     previousLocations.value = await getLocationsForProject(
-      (project.value as SelectedProject).id.toString()
+      (project.value as SelectedProject).id.toString(),
     );
     if (
       previousLocations.value &&
@@ -496,7 +496,7 @@ onBeforeUnmount(async () => {
 });
 
 const existingOrNewLocation = ref<"existing-location" | "new-location">(
-  "existing-location"
+  "existing-location",
 );
 
 // Should this be an existing device location, or an existing "Station" location?
@@ -563,7 +563,7 @@ const existingNamedLocations = computed<NamedPoint[]>(() => {
   return (previousLocations.value || [])
     .filter((location) => location.location !== undefined)
     .filter(
-      (location) => location.location?.lat !== 0 && location.location?.lng !== 0
+      (location) => location.location?.lat !== 0 && location.location?.lng !== 0,
     )
     .map((location) => {
       return {
@@ -583,7 +583,7 @@ const hasLocation = computed<boolean>(
       !!selectedLatLng.value.location.lng &&
       selectedLatLng.value.name.trim().length !== 0) ||
     (existingOrNewLocation.value === "existing-location" &&
-      selectedLocation.value !== null)
+      selectedLocation.value !== null),
 );
 
 const clearUploadQueue = () => {

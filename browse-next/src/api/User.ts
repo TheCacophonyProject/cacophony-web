@@ -17,7 +17,7 @@ export const login = (userEmail: string, password: string, dev = false) =>
     {
       email: userEmail,
       password,
-    }
+    },
   ) as Promise<
     FetchResult<{
       userData: ApiLoggedInUserResponse;
@@ -32,7 +32,7 @@ export const refreshLogin = (refreshToken: string) =>
     {
       refreshToken,
     },
-    NO_ABORT
+    NO_ABORT,
   ) as Promise<
     FetchResult<{
       token: JwtToken<UserId>;
@@ -81,11 +81,11 @@ export const changePassword = (token: string, newPassword: string) =>
 
 export const resendAccountActivationEmail = () =>
   CacophonyApi.post(
-    "/api/v1/users/resend-email-confirmation-request"
+    "/api/v1/users/resend-email-confirmation-request",
   ) as Promise<FetchResult<void>>;
 
 export const changeAccountEmail = async (
-  newEmailAddress: string
+  newEmailAddress: string,
 ): Promise<FetchResult<void>> => {
   const response = await updateUserFields({ email: newEmailAddress });
   if (response.success) {
@@ -110,7 +110,7 @@ export const register = (
   userName: string,
   password: string,
   email: string,
-  endUserAgreement: number | undefined
+  endUserAgreement: number | undefined,
 ) =>
   CacophonyApi.post("/api/v1/users", {
     userName,
@@ -139,7 +139,7 @@ export const saveUserSettings = (settings: ApiUserSettings) =>
 
 export const updateUserFields = (
   fields: ApiLoggedInUserUpdates,
-  abortable?: boolean
+  abortable?: boolean,
 ) => {
   const allowedFields = [
     "displayMode",
@@ -169,31 +169,31 @@ export const getEUAVersion = () =>
 
 export const getProjectsForProjectAdminByEmail = (
   groupAdminEmail: string,
-  abortable = false
+  abortable = false,
 ) =>
   CacophonyApi.get(
     `/api/v1/users/groups-for-admin-user/${encodeURIComponent(
-      groupAdminEmail
+      groupAdminEmail,
     )}`,
-    abortable
+    abortable,
   ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>;
 
 export const superUserGetProjectsForUserByEmail = (
   userEmail: string,
-  abortable = false
+  abortable = false,
 ): Promise<LoadedResource<ApiGroupResponse[]>> =>
   unwrapLoadedResource(
     CacophonyApi.get(
       `/api/v1/users/groups-for-user/${encodeURIComponent(userEmail)}`,
-      abortable
+      abortable,
     ) as Promise<FetchResult<{ groups: ApiGroupResponse[] }>>,
-    "groups"
+    "groups",
   );
 
 export const requestToJoinGroup = (
   groupAdminEmail: string,
   groupId: GroupId,
-  abortable = false
+  abortable = false,
 ) =>
   CacophonyApi.post(
     `/api/v1/users/request-group-membership`,
@@ -201,24 +201,24 @@ export const requestToJoinGroup = (
       groupAdminEmail,
       groupId,
     },
-    abortable
+    abortable,
   ) as Promise<FetchResult<void>>;
 
 export const acceptProjectInvitation = (groupId: GroupId, abortable = false) =>
   CacophonyApi.post(
     `/api/v1/groups/${groupId}/accept-invitation`,
     {},
-    abortable
+    abortable,
   ) as Promise<FetchResult<void>>;
 
 export const confirmAddToProjectRequest = (
   membershipRequestJWT: string,
-  abortable = true
+  abortable = true,
 ) =>
   CacophonyApi.post(
     `/api/v1/users/validate-group-membership-request`,
     {
       membershipRequestJWT,
     },
-    abortable
+    abortable,
   ) as Promise<FetchResult<void>>;

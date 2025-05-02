@@ -26,6 +26,7 @@ import type { Recording } from "@models/Recording.js";
 import { mapPosition } from "@models/Recording.js";
 import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
+import { getTrackData, getTrackTagData, saveTrackData } from "@models/Track.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert { type: "json" };
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
@@ -76,9 +77,11 @@ import {
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
+  fetchAuthorizedRequiredFlatRecordingById,
+  fetchAuthorizedRequiredFullRecordingById,
   fetchAuthorizedRequiredGroupByNameOrId,
-  fetchAuthorizedRequiredRecordingById,
-  fetchUnauthorizedRequiredRecordingById,
+  fetchUnauthorizedRequiredFlatRecordingById,
+  fetchUnauthorizedRequiredFullRecordingById, fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
@@ -122,33 +125,33 @@ import {
   queryRecordingsInProject,
   sqlDebugOutput,
 } from "./recordingsBulkQueryUtil.js";
+import { openS3 } from "@models/util/util.js";
 
 const models = await modelsInit();
 
 const mapTrackTag = (
-  trackTag: TrackTag
+  trackTag: TrackTag,
 ): ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse => {
-  let data = trackTag?.data;
-  if (data && typeof data === "string") {
-    try {
-      data = JSON.parse(data);
-    } catch (e) {
-      // ...
-    }
-  }
-
   const trackTagBase: ApiTrackTagResponse = {
     confidence: trackTag.confidence,
     createdAt: trackTag.createdAt?.toISOString(),
-    data: data as any, // FIXME - Probably returning a bit too much useless
-    // data to the front-end?
     id: trackTag.id,
     automatic: false, // Unset
     trackId: trackTag.TrackId,
     updatedAt: trackTag.updatedAt?.toISOString(),
     what: trackTag.what,
     path: trackTag.path,
+    model: trackTag.model,
   };
+  if (trackTag.data) {
+    trackTagBase.data = trackTag.data;
+  }
+  if (trackTag.TrackTagUserDatum) {
+    trackTagBase.data = {
+      ...(trackTagBase.data || {}),
+      ...trackTag.TrackTagUserDatum.dataValues,
+    } as any;
+  }
   if (trackTag.automatic) {
     (trackTagBase as ApiAutomaticTrackTagResponse).automatic = true;
     return trackTagBase as ApiAutomaticTrackTagResponse;
@@ -164,7 +167,8 @@ const mapTrackTag = (
 };
 
 const mapTrackTags = (
-  trackTags: TrackTag[]
+  trackTags: TrackTag[],
+  minimal = false,
 ): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] => {
   const t = trackTags.map(mapTrackTag);
   // Make sure tags are always in some deterministic order for testing purposes.
@@ -174,20 +178,21 @@ const mapTrackTags = (
 
 export const mapTrack = (
   track: Track,
-  minimal: boolean = false
+  minimal: boolean = false,
 ): ApiTrackResponse => {
   const t: ApiTrackResponse = {
     id: track.id,
-    start: track.data.start_s,
-    end: track.data.end_s,
-    tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
-    automatic: track.data.automatic ?? true,
-    ...(track.data.minFreq && { minFreq: track.data.minFreq }),
-    ...(track.data.maxFreq && { maxFreq: track.data.maxFreq }),
+    start: track.startSeconds,
+    end: track.endSeconds,
+    tags: (track.TrackTags && mapTrackTags(track.TrackTags, minimal)) || [],
   };
-  if (!minimal) {
-    t.filtered = track.filtered;
+  if (track.minFreqHz !== null) {
+    t.minFreq = track.minFreqHz;
   }
+  if (track.maxFreqHz !== null) {
+    t.maxFreq = track.maxFreqHz;
+  }
+  t.filtered = track.filtered;
   if (!minimal && track.data.positions && track.data.positions.length) {
     t.positions = track.data.positions.map(mapPosition);
   }
@@ -197,10 +202,16 @@ export const mapTrack = (
   return t;
 };
 
-export const mapTracks = (
+export const mapTracks = async (
   tracks: Track[],
-  minimal: boolean = false
-): ApiTrackResponse[] => {
+  minimal: boolean = false,
+): Promise<ApiTrackResponse[]> => {
+  if (!minimal) {
+    // TODO: Parallelize with a pool of S3Clients
+    for (const track of tracks) {
+      track.data = await getTrackData(track.id);
+    }
+  }
   const t = tracks.map((x) => mapTrack(x, minimal));
   // Sort tracks by start time
   t.sort((a, b) => a.start - b.start);
@@ -242,16 +253,20 @@ const ifNotNull = (val: any | null) => {
   return undefined;
 };
 
-export const mapRecordingResponse = (
+export const mapRecordingResponse = async (
   recording: Recording,
-  minimal: boolean = false
-): ApiThermalRecordingResponse | ApiAudioRecordingResponse => {
+  minimal: boolean = false,
+): Promise<ApiThermalRecordingResponse | ApiAudioRecordingResponse> => {
   const cameraTypes = [
     RecordingType.ThermalRaw,
     RecordingType.TrailCamVideo,
     RecordingType.TrailCamImage,
     RecordingType.InfraredVideo,
   ];
+  let tracks = [];
+  if (recording.Tracks) {
+    tracks = await mapTracks(recording.Tracks, minimal);
+  }
   try {
     const commonRecording: ApiRecordingResponse = {
       id: recording.id,
@@ -267,7 +282,7 @@ export const mapRecordingResponse = (
       stationName: recording.Station?.name,
       type: recording.type,
       tags: (recording.Tags && mapTags(recording.Tags)) || [],
-      tracks: (recording.Tracks && mapTracks(recording.Tracks, minimal)) || [],
+      tracks,
     };
     const comment = ifNotNull(recording.comment);
     const stationId = ifNotNull(recording.StationId);
@@ -448,7 +463,7 @@ export default (app: Application, baseUrl: string) => {
     apiUrl,
     extractJwtAuthorisedDevice,
     async (request, response, next) =>
-      uploadGenericRecordingFromDevice(models)(request, response, next)
+      uploadGenericRecordingFromDevice(models)(request, response, next),
   );
 
   /**
@@ -485,10 +500,10 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredDeviceInGroup(
       param("deviceName"),
-      param("groupName")
+      param("groupName"),
     ),
     async (request, response, next) =>
-      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next)
+      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next),
   );
 
   /**
@@ -526,7 +541,7 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request, response, next) =>
-      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next)
+      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next),
   );
 
   /**
@@ -557,20 +572,20 @@ export default (app: Application, baseUrl: string) => {
     (request: Request, response: Response, next: NextFunction) => {
       const targetDeviceName = request.params.deviceName;
       const devices = response.locals.devices.filter(
-        ({ deviceName }) => deviceName === targetDeviceName
+        ({ deviceName }) => deviceName === targetDeviceName,
       );
       if (devices.length !== 1) {
         return next(
           new ClientError(
-            `Could not find unique device with name ${targetDeviceName} - try the /api/v1/recordings/device/:deviceName/group/:groupName endpoint.`
-          )
+            `Could not find unique device with name ${targetDeviceName} - try the /api/v1/recordings/device/:deviceName/group/:groupName endpoint.`,
+          ),
         );
       }
       response.locals.device = devices.pop();
       next();
     },
     async (request, response, next) =>
-      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next)
+      uploadGenericRecordingOnBehalfOfDevice(models)(request, response, next),
   );
 
   // FIXME - Should we just delete this now?
@@ -636,7 +651,7 @@ export default (app: Application, baseUrl: string) => {
         visits: result.visits,
         summary: result.summary.generateAnimalSummary(),
       });
-    }
+    },
   );
 
   /**
@@ -715,7 +730,7 @@ export default (app: Application, baseUrl: string) => {
         !Object.values(RecordingType).includes(type as RecordingType)
       ) {
         return next(
-          new BadRequestError(`Invalid recording type '${type}' supplied`)
+          new BadRequestError(`Invalid recording type '${type}' supplied`),
         );
       }
       // eslint-disable-next-line no-undef
@@ -735,16 +750,18 @@ export default (app: Application, baseUrl: string) => {
           hideFiltered: !!hideFiltered,
           exclusive: !!exclusive,
           filterModel: useFilteredModel,
-        }
+        },
       );
 
       return successResponse(response, "Completed query.", {
         limit: request.query.limit,
         offset: request.query.offset,
         count: result.count,
-        rows: result.rows.map((x) => mapRecordingResponse(x)),
+        rows: await Promise.all(
+          result.rows.map((x) => mapRecordingResponse(x, true)),
+        ),
       });
-    }
+    },
   );
 
   /**
@@ -812,18 +829,18 @@ export default (app: Application, baseUrl: string) => {
             hideFiltered: !!hideFiltered,
             exclusive: !!exclusive,
             checkIsGroupAdmin: true,
-          }
+          },
         );
         return successResponse(
           response,
           `Deleted Recordings: ${JSON.stringify(values)}`,
-          { ids: values }
+          { ids: values },
         );
       } catch (e) {
         log.error(e);
         return next(new ClientError(e.message));
       }
-    }
+    },
   );
 
   /**
@@ -879,14 +896,14 @@ export default (app: Application, baseUrl: string) => {
           return next(
             new ClientError(
               "No recordings to undelete",
-              HttpStatusCode.Forbidden
-            )
+              HttpStatusCode.Forbidden,
+            ),
           );
         }
 
         await models.Recording.update(
           { deletedAt: null, deletedBy: null },
-          { where: { id: ids } }
+          { where: { id: ids } },
         );
         return successResponse(response, `Recordings Restored: ${ids}`);
       } catch (e) {
@@ -894,11 +911,11 @@ export default (app: Application, baseUrl: string) => {
         return next(
           new ClientError(
             "Unable to restore recordings",
-            HttpStatusCode.Unprocessable
-          )
+            HttpStatusCode.Unprocessable,
+          ),
         );
       }
-    }
+    },
   );
 
   if (config.server.loggerLevel === "debug") {
@@ -921,10 +938,10 @@ export default (app: Application, baseUrl: string) => {
             request,
             response,
             new Error("Timed out."),
-            { count: 101 }
+            { count: 101 },
           );
         }
-      }
+      },
     );
   }
 
@@ -992,7 +1009,7 @@ export default (app: Application, baseUrl: string) => {
         !Object.values(RecordingType).includes(type as RecordingType)
       ) {
         return next(
-          new BadRequestError(`Invalid recording type '${type}' supplied`)
+          new BadRequestError(`Invalid recording type '${type}' supplied`),
         );
       }
       const options = {
@@ -1024,7 +1041,7 @@ export default (app: Application, baseUrl: string) => {
       }
       const builder = await new models.Recording.queryBuilder().init(
         user.id,
-        options
+        options,
       );
       builder.query.distinct = true;
       try {
@@ -1034,52 +1051,7 @@ export default (app: Application, baseUrl: string) => {
         log.error(e);
         return next(new ClientError(e.message));
       }
-    }
-  );
-
-  /**
-   * @api {get} /api/v1/recordings/needs-tag Get a random recording that needs
-   * human tagging applied.
-   * @apiName NeedsTag
-   * @apiGroup Recordings
-   * @apiDescription Parameters are as per GET /api/V1/recordings. On
-   * success (status 200), the response body will contain JSON
-   * formatted details of the selected recordings.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} [deviceId] Optional deviceId to bias returned recording
-   * to.
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/needs-tag`,
-    extractJwtAuthorizedUser,
-    validateFields([idOf(query("deviceId")).optional()]),
-    async (request: Request, response: Response) => {
-      // NOTE: We only return the minimum set of fields we need to play
-      // back
-      //  a recording, show tracks in the UI, and have the user add a tag.
-      //  Generate a short-lived JWT token for each recording we return, keyed
-      //  to that recording.  Only return a single recording at a time.
-
-      let result;
-      if (!request.query.deviceId) {
-        result = await models.Recording.getRecordingWithUntaggedTracks();
-      } else {
-        // NOTE: Optionally, the returned recordings can be biased to be
-        // from
-        //  a preferred deviceId, to handle the case where we'd like a
-        //  series of random recordings to tag constrained to a single
-        //  device.
-        result = await models.Recording.getRecordingWithUntaggedTracks(
-          Number(request.query.deviceId)
-        );
-      }
-      // FIXME - should be a mapped recording?
-      return successResponse(response, "Completed query.", {
-        rows: [result],
-      });
-    }
+    },
   );
 
   /**
@@ -1138,12 +1110,12 @@ export default (app: Application, baseUrl: string) => {
         request.query.type.toString(),
         response.locals.exclude,
         request.query.offset && parseInt(request.query.offset as string),
-        request.query.limit && parseInt(request.query.limit as string)
+        request.query.limit && parseInt(request.query.limit as string),
       );
       return successResponse(response, "Completed query.", {
         rows: result,
       });
-    }
+    },
   );
 
   /**
@@ -1222,7 +1194,7 @@ export default (app: Application, baseUrl: string) => {
         rows = await reportVisits(
           models,
           response.locals.requestUser.id,
-          options
+          options,
         );
       } else {
         rows = await reportRecordings(
@@ -1233,7 +1205,7 @@ export default (app: Application, baseUrl: string) => {
             ...options,
             order,
             exclusive: Boolean(exclusive),
-          }
+          },
         );
       }
       response.status(HttpStatusCode.Ok).set({
@@ -1241,7 +1213,7 @@ export default (app: Application, baseUrl: string) => {
         "Content-Disposition": "attachment; filename=recordings.csv",
       });
       csv.writeToStream(response, rows);
-    }
+    },
   );
 
   /**
@@ -1277,10 +1249,10 @@ export default (app: Application, baseUrl: string) => {
       query("deleted").default(false).isBoolean().toBoolean(),
       query("requires-signed-url").default(true).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFullRecordingById(param("id")),
     async (request: Request, response: Response) => {
       const recordingItem = response.locals.recording;
-      const recording = mapRecordingResponse(response.locals.recording);
+      const recording = await mapRecordingResponse(response.locals.recording);
       if (request.query["requires-signed-url"]) {
         let rawJWT;
         let cookedJWT;
@@ -1292,7 +1264,7 @@ export default (app: Application, baseUrl: string) => {
             recordingItem.getFileName(),
             recordingItem.fileMimeType,
             response.locals.requestUser.id,
-            recordingItem.groupId
+            recordingItem.groupId,
           );
           cookedSize =
             recordingItem.fileSize ||
@@ -1304,7 +1276,7 @@ export default (app: Application, baseUrl: string) => {
             recordingItem.getRawFileName(),
             recordingItem.rawMimeType,
             response.locals.requestUser.id,
-            recordingItem.GroupId
+            recordingItem.GroupId,
           );
           rawSize =
             recordingItem.rawFileSize ||
@@ -1322,7 +1294,7 @@ export default (app: Application, baseUrl: string) => {
           recording,
         });
       }
-    }
+    },
   );
 
   /**
@@ -1392,7 +1364,7 @@ export default (app: Application, baseUrl: string) => {
       return successResponse(response, "Completed query.", {
         rows: result,
       });
-    }
+    },
   );
   /**
    * @api {get} /api/v1/recordings/raw/:id Get a raw recording stream
@@ -1419,7 +1391,7 @@ export default (app: Application, baseUrl: string) => {
       param("useArchival").optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       // NOTE: If the recording type is trailcam, then actually want to return "derived" rather than "raw" files, unless
       //  the useArchival param is present
@@ -1478,11 +1450,11 @@ export default (app: Application, baseUrl: string) => {
         const file = await fs.readFile("./debug-files/2-second-status.cptv");
         response.setHeader(
           "Content-disposition",
-          "attachment; filename=" + fileName
+          "attachment; filename=" + fileName,
         );
         response.setHeader(
           "Content-type",
-          fileMimeType || "application/octet-stream"
+          fileMimeType || "application/octet-stream",
         );
         response.setHeader("Content-Length", file.byteLength);
         response.write(file, "binary");
@@ -1496,9 +1468,9 @@ export default (app: Application, baseUrl: string) => {
         fileMimeType || "application/octet-stream",
         response.locals.requestUser.id,
         recordingItem.GroupId,
-        fileSize
+        fileSize,
       );
-    }
+    },
   );
 
   /**
@@ -1522,7 +1494,22 @@ export default (app: Application, baseUrl: string) => {
       query("trackId").optional().isInt().toInt(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
-    fetchUnauthorizedRequiredRecordingById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (!request.query.trackId) {
+        await fetchUnauthorizedRequiredFullRecordingById(param("id"))(
+          request,
+          response,
+          next,
+        );
+      } else {
+        // If we're looking for a specific track thumbnail, we don't need the full recording.
+        await fetchUnauthorizedRequiredFlatRecordingById(param("id"))(
+          request,
+          response,
+          next,
+        );
+      }
+    },
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
       const fileKey = rec.rawFileKey;
@@ -1563,26 +1550,21 @@ export default (app: Application, baseUrl: string) => {
         return response.end(null, "binary");
       }
        */
-      try {
-        const data = await getThumbnail(rec, trackId);
+      const data = await getThumbnail(rec, trackId);
+      if (data) {
         response.setHeader(
           "Content-disposition",
-          "attachment; filename=" + filename
+          "attachment; filename=" + filename,
         );
         response.setHeader("Content-type", mimeType);
         response.setHeader("Content-Length", data.length);
         response.write(data, "binary");
         return response.end(null, "binary");
-      } catch (err) {
+      } else {
         // FIXME - if the thumbnail doesn't exist, lets create it, even if the request takes a while.
-        log.error(
-          "Error getting thumbnail from s3 %s: %s",
-          rec.id,
-          err.message
-        );
         return next(new ClientError("No thumbnail exists"));
       }
-    }
+    },
   );
 
   /**
@@ -1606,7 +1588,7 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("id")),
       query("soft-delete").default(true).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response) => {
       let softDelete = false;
       const recording: Recording = response.locals.recording;
@@ -1622,27 +1604,47 @@ export default (app: Application, baseUrl: string) => {
         const thumbKey = `${rawFileKey}-thumb`;
         const trackIds = (await recording.getTracks()).map(({ id }) => id);
 
+        for (const trackId of trackIds) {
+          const trackTags = await models.TrackTag.findAll({
+            where: {
+              TrackId: trackId,
+            },
+          });
+          for (const trackTag of trackTags) {
+            await util
+              .deleteS3Object(`/TrackTag/${trackTag.id}`)
+              .catch((err) => {
+                log.warning(err);
+              });
+          }
+          await util.deleteS3Object(`/Track/${trackId}`).catch((err) => {
+            log.warning(err);
+          });
+        }
+
         try {
           await recording.destroy({ force: true });
           deleted = true;
         } catch (e) {
           // ..
         }
-        if (deleted && rawFileKey) {
-          await util.deleteS3Object(rawFileKey).catch((err) => {
-            log.warning(err);
-          });
+        if (deleted) {
           // Delete thumbs
           await util.deleteS3Object(thumbKey).catch((err) => {
             log.warning(err);
           });
           // NOTE: There can be other thumbnails related to appending tracks, so delete those too.
-          for (const trackId of trackIds) {
-            await util
-              .deleteS3Object(`${rawFileKey}-${trackId}-thumb`)
-              .catch((err) => {
-                log.warning(err);
-              });
+          if (deleted && rawFileKey) {
+            await util.deleteS3Object(rawFileKey).catch((err) => {
+              log.warning(err);
+            });
+            for (const trackId of trackIds) {
+              await util
+                .deleteS3Object(`${rawFileKey}-${trackId}-thumb`)
+                .catch((err) => {
+                  log.warning(err);
+                });
+            }
           }
         }
         if (deleted && fileKey) {
@@ -1657,7 +1659,7 @@ export default (app: Application, baseUrl: string) => {
       } else {
         return successResponse(response, "Hard deleted recording.");
       }
-    }
+    },
   );
 
   /**
@@ -1682,14 +1684,14 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("id")),
       body("updates").custom(jsonSchemaOf(ApiRecordingUpdateRequestSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     parseJSONField(body("updates")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await response.locals.recording.update(
-        response.locals.updates as ApiRecordingUpdateRequest
+        response.locals.updates as ApiRecordingUpdateRequest,
       );
       return successResponse(response, "Updated recording.");
-    }
+    },
   );
 
   /**
@@ -1712,13 +1714,13 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/undelete`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    (request: Request, response: Response, next: NextFunction) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       // Make sure we restrict this to deleted recordings
       response.locals.deleted = true;
       next();
     },
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
+    async (_request: Request, response: Response) => {
       const recording = response.locals.recording;
       await recording.update({
         deletedAt: null,
@@ -1726,7 +1728,7 @@ export default (app: Application, baseUrl: string) => {
       });
       await fixupLatestRecordingTimesForUndeletedRecording(models, recording);
       return successResponse(response, "Undeleted recording.");
-    }
+    },
   );
 
   /**
@@ -1756,19 +1758,19 @@ export default (app: Application, baseUrl: string) => {
       body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
       anyOf(
         body("algorithm").isJSON().optional(),
-        body("algorithm").isArray().optional()
+        body("algorithm").isArray().optional(),
       ),
     ]),
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (_request: Request, response: Response) => {
       const algorithm = response.locals.algorithm
         ? response.locals.algorithm
         : "{'status': 'User added.'}";
       const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
         "algorithm",
-        algorithm
+        algorithm,
       );
       const data = {
         userId: response.locals.requestUser.id,
@@ -1776,26 +1778,38 @@ export default (app: Application, baseUrl: string) => {
       };
       let trackId: TrackId = 1;
       let algorithmId: number = 1;
-
       const deviceId = response.locals.recording.DeviceId;
       const groupId = response.locals.recording.GroupId;
       const atTime = response.locals.recording.recordingDateTime;
       const positions = data.positions;
       let discardMaskedTrack = false;
-      if (positions) {
+      if (
+        positions &&
+        response.locals.recording.type === RecordingType.ThermalRaw
+      ) {
         discardMaskedTrack = await trackIsMasked(
           models,
           deviceId,
           groupId,
           atTime,
-          positions
+          positions,
         );
       }
       if (!discardMaskedTrack) {
-        const track = await response.locals.recording.createTrack({
+        const newTrack = {
+          startSeconds: data.start_s || 0,
+          endSeconds: data.end_s || 0,
+          minFreqHz: null,
+          maxFreqHz: null,
           data,
           AlgorithmId: algorithmDetail.id,
-        });
+        };
+        if (response.locals.recording.type === RecordingType.Audio) {
+          newTrack.minFreqHz = data.minFreq || 0;
+          newTrack.maxFreqHz = data.maxFreq || 0;
+        }
+        const track = await response.locals.recording.addTrack(newTrack);
+        await saveTrackData(track.id, data);
         await track.updateIsFiltered();
         trackId = track.id;
         algorithmId = track.AlgorithmId;
@@ -1806,7 +1820,7 @@ export default (app: Application, baseUrl: string) => {
         trackId,
         algorithmId,
       });
-    }
+    },
   );
 
   /**
@@ -1829,12 +1843,13 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tracks`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
-      const tracks =
-        await response.locals.recording.getActiveTracksTagsAndTagger();
-      return successResponse(response, "OK.", { tracks: mapTracks(tracks) });
-    }
+    fetchAuthorizedRequiredFullRecordingById(param("id")),
+    async (_request: Request, response: Response) => {
+      const tracks = await mapTracks(response.locals.recording.Tracks || []);
+      return successResponse(response, "OK.", {
+        tracks,
+      });
+    },
   );
 
   /**
@@ -1858,16 +1873,33 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tracks/:trackId`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
-    async (request: Request, response: Response) => {
-      const track = await response.locals.recording.getTrack(
-        request.params.trackId
-      );
+    async (_request: Request, response: Response) => {
+      const track = response.locals.track;
+      const trackMeta = await getTrackData(track.id);
+      if (Object.keys(trackMeta).length !== 0) {
+        track.data = trackMeta;
+      }
+      track.TrackTags = await models.TrackTag.findAll({
+        where: {
+          TrackId: track.id,
+        },
+        include: [
+          {
+            model: models.TrackTagUserData,
+            attributes: ["gender", "maturity"],
+            required: false,
+          },
+        ],
+      });
+      for (const tag of track.TrackTags || []) {
+        tag.data = await getTrackTagData(tag.id);
+      }
       return successResponse(response, "OK.", {
         track: mapTrack(track),
       });
-    }
+    },
   );
 
   /**
@@ -1892,27 +1924,38 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
-      query("soft-delete").default(false).isBoolean().toBoolean(),
+      query("soft-delete").default(true).isBoolean().toBoolean(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request: Request, response: Response, next: NextFunction) => {
       // Make sure the track belongs to the recording (this could
       // probably be one query)
-      if (
-        (response.locals.track as Track).RecordingId ===
-        response.locals.recording.id
-      ) {
+      const track = response.locals.track as Track;
+      if (track.RecordingId === response.locals.recording.id) {
         if (request.query["soft-delete"]) {
           await response.locals.track.archive();
         } else {
-          await response.locals.track.destroy();
+          await openS3()
+            .deleteObject(`Track/${track.id}`)
+            .catch((e) => log.warning(e));
+          const trackTags = await models.TrackTag.findAll({
+            where: {
+              TrackId: track.id,
+            },
+          });
+          for (const trackTag of trackTags) {
+            await openS3()
+              .deleteObject(`TrackTag/${trackTag.id}`)
+              .catch((e) => log.warning(e));
+          }
+          await track.destroy();
         }
         return successResponse(response, "Track deleted.");
       } else {
         return next(new ClientError("No such track."));
       }
-    }
+    },
   );
 
   const replaceTrackTagParams = [
@@ -1925,16 +1968,16 @@ export default (app: Application, baseUrl: string) => {
       body("automatic").isBoolean().toBoolean(),
       body("data").isJSON().optional(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       // Make sure track actually belongs to the recording we have permissions for.
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         return next();
       } else {
         return next(
-          new FatalError("Track does not belong to specified recording")
+          new FatalError("Track does not belong to specified recording"),
         );
       }
     },
@@ -1945,18 +1988,20 @@ export default (app: Application, baseUrl: string) => {
       }
       const path =
         request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
-      const newTag = models.TrackTag.build({
-        what: request.body.what,
-        confidence: request.body.confidence,
-        automatic: request.body.automatic,
-        data: response.locals.data || "",
-        UserId: requestUser.id,
-        TrackId: response.locals.track.id,
-        path,
-        used: true,
-      }) as TrackTag;
       try {
-        const tag = await response.locals.track.replaceTag(newTag);
+        const newTag = models.TrackTag.build({
+          what: request.body.what,
+          confidence: request.body.confidence,
+          automatic: request.body.automatic,
+          UserId: requestUser.id,
+          TrackId: response.locals.track.id,
+          path,
+          used: true,
+        }) as TrackTag;
+        const tag = await response.locals.track.replaceTag(
+          newTag,
+          response.locals.data,
+        );
         if (tag) {
           return successResponse(response, "Track tag added.", {
             trackTagId: tag.id,
@@ -1966,6 +2011,7 @@ export default (app: Application, baseUrl: string) => {
           return successResponse(response, "Tag already exists.");
         }
       } catch (e) {
+        console.log(e, JSON.stringify(request.body));
         return next(new FatalError("Server error replacing tag."));
       }
     },
@@ -2000,12 +2046,12 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replace-tag`,
-    ...replaceTrackTagParams
+    ...replaceTrackTagParams,
   );
 
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replaceTag`,
-    ...replaceTrackTagParams
+    ...replaceTrackTagParams,
   );
 
   /**
@@ -2037,28 +2083,32 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("trackId")),
       body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         try {
           const track: Track = response.locals.track;
-
+          const updatedData = { ...track.data, ...request.body.data };
+          await saveTrackData(track.id, updatedData);
           await track.update({
-            data: { ...track.data, ...request.body.data },
+            minFreqHz: updatedData.minFreq || null,
+            maxFreqHz: updatedData.maxFreq || null,
+            startSeconds: updatedData.start_s || null,
+            endSeconds: updatedData.end_s || null,
           });
           return successResponse(response, "Track data updated.");
         } catch (e) {
           return next(
-            new FatalError(`Server error updating track data: ${e.toString()}`)
+            new FatalError(`Server error updating track data: ${e.toString()}`),
           );
         }
       } else {
         return next(
-          new FatalError("Track does not belong to specified recording")
+          new ClientError("Track does not belong to specified recording"),
         );
       }
-    }
+    },
   );
 
   /**
@@ -2096,21 +2146,25 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("tagId")),
       body("updates").custom(jsonSchemaOf(ApiTrackTagAttributesSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
-    // FIXME - extract valid track for trackId on recording with id
     async (request: Request, response: Response, next: NextFunction) => {
+      if (response.locals.track.RecordingId !== response.locals.recording.id) {
+        return next(
+          new ClientError("Track does not belong to specified recording"),
+        );
+      }
       try {
         await response.locals.track.updateTag(
           request.params.tagId,
-          request.body.updates
+          request.body.updates,
         );
         return successResponse(response, "Tag has been updated.");
       } catch (e) {
         return next(new FatalError("Server error replacing tag."));
       }
-    }
+    },
   );
 
   /**
@@ -2133,12 +2187,12 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tracks/:trackId/undelete`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await response.locals.track.unarchive();
       return successResponse(response, "Undeleted track.");
-    }
+    },
   );
 
   /**
@@ -2177,7 +2231,7 @@ export default (app: Application, baseUrl: string) => {
       body("tagJWT").optional().isString(),
       anyOf(
         body("data").isJSON().optional(),
-        body("data").isObject().optional()
+        body("data").isObject().optional(),
       ),
     ]),
     // FIXME - JSON schema for allowed data? At least a limit to how many
@@ -2187,10 +2241,10 @@ export default (app: Application, baseUrl: string) => {
       if (request.body.tagJWT) {
         return next();
       } else {
-        await fetchAuthorizedRequiredRecordingById(param("id"))(
+        await fetchAuthorizedRequiredFlatRecordingById(param("id"))(
           request,
           response,
-          next
+          next,
         );
       }
     },
@@ -2212,7 +2266,7 @@ export default (app: Application, baseUrl: string) => {
         try {
           const jwtDecoded = jwt.verify(
             tagJWT,
-            config.server.passportSecret
+            config.server.passportSecret,
           ) as JwtPayload;
           if (
             jwtDecoded._type === "tagPermission" &&
@@ -2222,8 +2276,8 @@ export default (app: Application, baseUrl: string) => {
           } else {
             return next(
               new AuthorizationError(
-                "JWT does not have permissions to tag this recording"
-              )
+                "JWT does not have permissions to tag this recording",
+              ),
             );
           }
         } catch (e) {
@@ -2232,7 +2286,7 @@ export default (app: Application, baseUrl: string) => {
       } else {
         // Otherwise, just check that the user can update this track.
         track = await response.locals.recording.getTrack(
-          request.params.trackId
+          request.params.trackId,
         );
       }
       if (!track) {
@@ -2250,12 +2304,12 @@ export default (app: Application, baseUrl: string) => {
         request.body.confidence,
         request.body.automatic,
         response.locals.data || "",
-        response.locals.requestUser.id
+        response.locals.requestUser.id,
       );
       return successResponse(response, "Track tag added.", {
         trackTagId: tag.id,
       });
-    }
+    },
   );
 
   /**
@@ -2278,7 +2332,7 @@ export default (app: Application, baseUrl: string) => {
       idOf(param("trackTagId")),
       query("tagJWT").isString().optional(),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       let track;
       if (request.query.tagJWT) {
@@ -2288,7 +2342,7 @@ export default (app: Application, baseUrl: string) => {
         try {
           const jwtDecoded = jwt.verify(
             tagJWT,
-            config.server.passportSecret
+            config.server.passportSecret,
           ) as JwtPayload;
           if (
             jwtDecoded._type === "tagPermission" &&
@@ -2298,27 +2352,25 @@ export default (app: Application, baseUrl: string) => {
           } else {
             return next(
               new AuthorizationError(
-                "JWT does not have permissions to tag this recording"
-              )
+                "JWT does not have permissions to tag this recording",
+              ),
             );
           }
         } catch (e) {
           return next(new AuthorizationError("Failed to verify JWT."));
         }
       } else {
-        // FIXME - fetch in middleware
-        // Otherwise, just check that the user can update this track.
         track = await response.locals.recording.getTrack(
-          request.params.trackId
+          request.params.trackId,
         );
       }
       if (!track) {
         return next(new AuthorizationError("Track does not exist"));
       }
       // Ensure track belongs to this recording.
-      if (track.RecordingId !== request.params.id) {
+      if (track.RecordingId !== response.locals.recording.id) {
         return next(
-          new AuthorizationError("Track does not belong to recording")
+          new AuthorizationError("Track does not belong to recording"),
         );
       }
 
@@ -2326,11 +2378,17 @@ export default (app: Application, baseUrl: string) => {
       if (!tag) {
         return next(new AuthorizationError("No such track tag."));
       }
+      try {
+        // Try to remove additional data from object storage
+        await openS3().deleteObject(`TrackTag/${tag.id}`);
+      } catch (e) {
+        // No tag data to delete.
+      }
 
       await tag.destroy();
       await track.updateIsFiltered();
       return successResponse(response, "Track tag deleted.");
-    }
+    },
   );
 
   /**
@@ -2348,12 +2406,12 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id/tags/:tagId`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id")), idOf(param("tagId"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     fetchUnauthorizedRequiredRecordingTagById(param("tagId")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       await response.locals.tag.destroy();
       return successResponse(response, "Deleted tag.");
-    }
+    },
   );
 
   /**
@@ -2381,19 +2439,19 @@ export default (app: Application, baseUrl: string) => {
         .bail()
         .custom(jsonSchemaOf(ApiRecordingTagRequestSchema)),
     ]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
     parseJSONField(body("tag")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const tagInstance = await addTag(
         models,
         response.locals.requestUser,
-        response.locals.recording,
-        response.locals.tag
+        response.locals.recording.id,
+        response.locals.tag,
       );
       return successResponse(response, "Added new tag.", {
         tagId: tagInstance.id,
       });
-    }
+    },
   );
 
   /**
@@ -2461,7 +2519,7 @@ export default (app: Application, baseUrl: string) => {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
         ),
       query("sub-class-tags").default(true).isBoolean().toBoolean(),
       query("include-deleted").default(false).isBoolean().toBoolean(),
@@ -2494,7 +2552,7 @@ export default (app: Application, baseUrl: string) => {
         .isString()
         .custom((value: string) => {
           const invalidProcessingState = !Object.values(
-            RecordingProcessingState
+            RecordingProcessingState,
           ).includes(value as RecordingProcessingState);
           if (invalidProcessingState) {
             throw new Error(format("Invalid processing state '%s'.", value));
@@ -2507,7 +2565,7 @@ export default (app: Application, baseUrl: string) => {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
         ),
       query("types")
         .optional()
@@ -2516,14 +2574,14 @@ export default (app: Application, baseUrl: string) => {
         .custom((value: any[]) => {
           const allowedTypes = [...Object.values(RecordingType), "thermal"];
           const invalidTypes = value.filter(
-            (type) => !allowedTypes.includes(type)
+            (type) => !allowedTypes.includes(type),
           );
           if (invalidTypes.length) {
             throw new Error(
               format(
                 "Invalid recording type(s) '%s'.",
-                invalidTypes.join("', '")
-              )
+                invalidTypes.join("', '"),
+              ),
             );
           }
           return true;
@@ -2604,7 +2662,7 @@ export default (app: Application, baseUrl: string) => {
               sqlPasses.push(
                 sqlFormat(message.replace("Executed (default): ", ""), {
                   language: "postgresql",
-                })
+                }),
               );
               sqlTimings.push(time);
             }
@@ -2632,6 +2690,7 @@ export default (app: Application, baseUrl: string) => {
         // NOTE: Earliest time in Cacophony DB
         const earliestAllowedDate = new Date("2017-11-01 17:06:58.015 +1300");
         if (!untilDate) {
+
           // NOTE: In order to do less queries when an until date isn't supplied,
           //  we do an initial query with a limit of 1 where we find the latest result for the query.
           const rec = await queryRecordingsInProject(
@@ -2652,7 +2711,7 @@ export default (app: Application, baseUrl: string) => {
             1,
             undefined,
             undefined,
-            logging
+            logging,
           );
           if (rec.length === 0) {
             return successResponse(response, "Got recordings", {
@@ -2685,7 +2744,7 @@ export default (app: Application, baseUrl: string) => {
             undefined,
             undefined,
             logging,
-            "asc"
+            "asc",
           );
           if (rec.length === 0) {
             fromDateTime = new Date(earliestAllowedDate);
@@ -2702,7 +2761,7 @@ export default (app: Application, baseUrl: string) => {
 
         fromDateTime = latestDate(
           fromDateTime,
-          dateTimeMinusThreeMonths(untilDateTime)
+          dateTimeMinusThreeMonths(untilDateTime),
         );
         let timeLimitReached = false;
 
@@ -2725,7 +2784,7 @@ export default (app: Application, baseUrl: string) => {
             limit,
             fromDateTime,
             untilDateTime,
-            logging
+            logging,
           );
           timeLimitReached =
             performance.now() - startTime > timeLimitForRequest;
@@ -2737,7 +2796,7 @@ export default (app: Application, baseUrl: string) => {
             // If we already have some results, prefer returning a limited list rather than make the user wait even longer
             // for us to reach our number of max requested recordings (limit)
             console.warn(
-              "Aborting with some results to hit responsiveness deadline"
+              "Aborting with some results to hit responsiveness deadline",
             );
 
             break;
@@ -2748,19 +2807,19 @@ export default (app: Application, baseUrl: string) => {
           if (recordings.length !== 0) {
             limit -= recordings.length;
             const earliestRecordingTime = new Date(
-              recordings[recordings.length - 1].recordingDateTime
+              recordings[recordings.length - 1].recordingDateTime,
             );
             accumulatedRecordingIds.push(...recordings.map(({ id }) => id));
             untilDateTime = earliestRecordingTime; //
             fromDateTime = latestDate(
               fromDate,
-              dateTimeMinusThreeMonths(untilDateTime)
+              dateTimeMinusThreeMonths(untilDateTime),
             );
           } else {
             untilDateTime = fromDateTime;
             fromDateTime = latestDate(
               fromDate,
-              dateTimeMinusThreeMonths(fromDateTime)
+              dateTimeMinusThreeMonths(fromDateTime),
             );
           }
         }
@@ -2775,7 +2834,7 @@ export default (app: Application, baseUrl: string) => {
               {
                 model: models.Track,
                 required: false,
-                attributes: ["id", "data"],
+                attributes: ["id", "startSeconds", "endSeconds"],
                 where: {
                   archivedAt: {
                     [Op.is]: null,
@@ -2791,10 +2850,18 @@ export default (app: Application, baseUrl: string) => {
                       "path",
                       "UserId",
                       "id",
+                      "model",
                       "automatic",
                       "confidence",
                     ],
-                    include: [{ model: models.User, attributes: ["userName"] }],
+                    include: [
+                      { model: models.User, attributes: ["userName"] },
+                      {
+                        model: models.TrackTagUserData,
+                        required: false,
+                        attributes: ["gender", "maturity"],
+                      },
+                    ],
                     where: {
                       used: true,
                       archivedAt: {
@@ -2849,7 +2916,7 @@ export default (app: Application, baseUrl: string) => {
         const sequelizeTime = performance.now() - now;
         if (!query.debug) {
           return successResponse(response, "Got recordings", {
-            recordings: recs,
+            recordings: await Promise.all(recs),
           });
         } else {
           return response
@@ -2860,8 +2927,8 @@ export default (app: Application, baseUrl: string) => {
                 recs.length,
                 sqlTimings,
                 sqlPasses,
-                sequelizeTime
-              )
+                sequelizeTime,
+              ),
             );
         }
       } catch (e) {
@@ -2870,6 +2937,6 @@ export default (app: Application, baseUrl: string) => {
           recordings: [],
         });
       }
-    }
+    },
   );
 };

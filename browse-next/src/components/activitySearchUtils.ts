@@ -11,7 +11,7 @@ export enum ActivitySearchDisplayMode {
 }
 export const getLatestDateForLocationInRecordingMode = (
   location: ApiLocationResponse,
-  recordingMode: ActivitySearchRecordingMode
+  recordingMode: ActivitySearchRecordingMode,
 ): Date | null => {
   if (recordingMode === ActivitySearchRecordingMode.Cameras) {
     return (
@@ -32,7 +32,7 @@ export type DateRange = [Date, Date];
 
 export const validateLocations = (
   locations: LocationQueryValue | LocationQueryValue[] | undefined,
-  availableLocations: ApiLocationResponse[]
+  availableLocations: ApiLocationResponse[],
 ): string => {
   if (!locations) {
     return "any";
@@ -54,7 +54,7 @@ export const validateLocations = (
 };
 
 export const queryValueIsDate = (
-  value: LocationQueryValue | LocationQueryValue[] | undefined | Date
+  value: LocationQueryValue | LocationQueryValue[] | undefined | Date,
 ): boolean => {
   if (value instanceof Date) {
     return true;

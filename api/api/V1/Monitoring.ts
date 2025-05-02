@@ -174,7 +174,7 @@ export default function (app: Application, baseUrl: string) {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
         ),
       query("groups")
         .optional()
@@ -182,7 +182,7 @@ export default function (app: Application, baseUrl: string) {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
         ),
       query("ai").optional().isLength({ min: 3 }),
       query("from").optional().isISO8601().toDate(),
@@ -192,7 +192,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = await models.User.findByPk(
-        response.locals.requestUser.id
+        response.locals.requestUser.id,
       );
       const types = (((request.query.types as string) &&
         (request.query.types as string).split(",")) as (
@@ -228,7 +228,7 @@ export default function (app: Application, baseUrl: string) {
       const searchDetails = await calculateMonitoringPageCriteria(
         requestUser,
         params,
-        viewAsSuperAdmin
+        viewAsSuperAdmin,
       );
       searchDetails.compareAi = (request.query["ai"] as string) || "Master";
       searchDetails.types = params.types;
@@ -236,7 +236,7 @@ export default function (app: Application, baseUrl: string) {
       const visits = await generateVisits(
         requestUser.id,
         searchDetails,
-        viewAsSuperAdmin
+        viewAsSuperAdmin,
       );
       if (visits instanceof ClientError) {
         return next(visits);
@@ -246,7 +246,7 @@ export default function (app: Application, baseUrl: string) {
         params: searchDetails,
         visits,
       });
-    }
+    },
   );
 
   app.get(
@@ -262,7 +262,7 @@ export default function (app: Application, baseUrl: string) {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'"
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
         ),
       query("from").optional().isISO8601().toDate(), // TODO: Defaults
       query("until").optional().isISO8601().toDate(),
@@ -278,14 +278,14 @@ export default function (app: Application, baseUrl: string) {
             "thermal",
           ];
           const invalidTypes = value.filter(
-            (type) => !allowedTypes.includes(type)
+            (type) => !allowedTypes.includes(type),
           );
           if (invalidTypes.length) {
             throw new Error(
               format(
                 "Invalid recording type(s) '%s'.",
-                invalidTypes.join("', '")
-              )
+                invalidTypes.join("', '"),
+              ),
             );
           }
           return true;
@@ -329,7 +329,7 @@ export default function (app: Application, baseUrl: string) {
             sqlPasses.push(
               sqlFormat(message.replace("Executed (default): ", ""), {
                 language: "postgresql",
-              })
+              }),
             );
             sqlTimings.push(time);
           }
@@ -355,7 +355,6 @@ export default function (app: Application, baseUrl: string) {
 
       const visits = await generateVisits2(searchDetails, logging);
       //const actualRecordings = visits.map((r: Recording[][]) => r.length);
-      console.log(visits);
       const sequelizeTime = performance.now() - now;
       if (!query.debug) {
         return successResponse(response, "Completed query.", {
@@ -369,11 +368,11 @@ export default function (app: Application, baseUrl: string) {
             (Array.isArray(visits) && visits.length) || 0,
             sqlTimings,
             sqlPasses,
-            sequelizeTime
+            sequelizeTime,
             //visits
-          )
+          ),
         );
       }
-    }
+    },
   );
 }

@@ -351,7 +351,7 @@ export default defineComponent({
       if (!this.isSuperUserAndViewingAsSuperUser) {
         // Remove AI tags other than master, as they'll just be confusing
         items = items.filter(
-          (item: ApiTrackTag) => !item.automatic || item.data.name === "Master"
+          (item: ApiTrackTag) => !item.automatic || item.model === "Master"
         );
       }
       return items;
@@ -360,9 +360,9 @@ export default defineComponent({
       if (
         this.isSuperUserAndViewingAsSuperUser &&
         trackTag.automatic &&
-        trackTag.data.name
+        trackTag.model
       ) {
-        return "AI " + trackTag.data.name;
+        return "AI " + trackTag.model;
       } else {
         return "Cacophony AI";
       }

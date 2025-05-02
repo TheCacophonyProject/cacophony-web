@@ -46,15 +46,15 @@ export const maybeRefreshStaleCredentials = async (dev = false) => {
   // NOTE: Check if we need to refresh our apiToken using our refreshToken before making this request.
   if (!dev) {
     const rememberedCredentials = window.localStorage.getItem(
-      "saved-login-credentials"
+      "saved-login-credentials",
     );
     if (rememberedCredentials) {
       try {
         const currentUserCreds = JSON.parse(
-          rememberedCredentials
+          rememberedCredentials,
         ) as LoggedInUserAuth;
         const apiToken = decodeJWT(
-          (currentUserCreds as LoggedInUserAuth).apiToken
+          (currentUserCreds as LoggedInUserAuth).apiToken,
         );
         const now = new Date();
         if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
@@ -73,7 +73,7 @@ export const maybeRefreshStaleCredentials = async (dev = false) => {
                   "Content-Type": "application/json; charset=utf-8",
                 },
                 method: "POST",
-              }
+              },
             );
             const result = await response.json();
             const refreshedUserResult = {
@@ -109,15 +109,15 @@ export const maybeRefreshStaleCredentials = async (dev = false) => {
     }
   } else {
     const rememberedCredentials = window.localStorage.getItem(
-      "saved-login-credentials-dev"
+      "saved-login-credentials-dev",
     );
     if (rememberedCredentials) {
       try {
         const currentUserCreds = JSON.parse(
-          rememberedCredentials
+          rememberedCredentials,
         ) as LoggedInUserAuth;
         const apiToken = decodeJWT(
-          (currentUserCreds as LoggedInUserAuth).apiToken
+          (currentUserCreds as LoggedInUserAuth).apiToken,
         );
         const now = new Date();
         if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
@@ -127,7 +127,7 @@ export const maybeRefreshStaleCredentials = async (dev = false) => {
                 ...currentUserCreds,
                 refreshingToken: true,
               },
-              true
+              true,
             );
             const response = await window.fetch(
               `https://api.cacophony.org.nz/api/v1/users/refresh-session-token`,
@@ -139,7 +139,7 @@ export const maybeRefreshStaleCredentials = async (dev = false) => {
                   "Content-Type": "application/json; charset=utf-8",
                 },
                 method: "POST",
-              }
+              },
             );
             const result = await response.json();
             const refreshedUserResult = {
@@ -156,7 +156,7 @@ export const maybeRefreshStaleCredentials = async (dev = false) => {
                   refreshToken: refreshedUser.refreshToken,
                   refreshingToken: false,
                 },
-                true
+                true,
               );
             } else {
               // Refresh token wasn't found, so prompt login again
@@ -199,7 +199,7 @@ export async function fetch<T>(
   url: string,
   // eslint-disable-next-line no-undef
   request: RequestInit = {},
-  abortable = true
+  abortable = true,
 ): Promise<FetchResult<T> | void> {
   request = {
     mode: "cors",
@@ -249,7 +249,7 @@ export async function fetch<T>(
         e,
         (e as Error).name,
         url,
-        request.signal
+        request.signal,
       );
       return;
     }
@@ -261,7 +261,7 @@ export async function fetch<T>(
         () => {
           return fetch(url, request);
         },
-        networkConnectionError
+        networkConnectionError,
       )) as Promise<FetchResult<T>>;
     }
 
@@ -288,7 +288,7 @@ export async function fetch<T>(
       ).find(
         ([key, val]: [string, string]) =>
           key.toLowerCase() === "content-type" &&
-          val.toLowerCase().includes("application/json")
+          val.toLowerCase().includes("application/json"),
       );
       if (isJSON) {
         const _result = await response.json();
@@ -312,7 +312,7 @@ export async function fetch<T>(
   ).find(
     ([key, val]: [string, string]) =>
       key.toLowerCase() === "content-type" &&
-      val.toLowerCase().includes("application/json")
+      val.toLowerCase().includes("application/json"),
   );
   let result;
   if (isJSON) {
@@ -344,7 +344,7 @@ export async function fetch<T>(
         //  of the user object stored, and we need to get it again?  Or we could just re-fetch the user info before we reload?
         window.localStorage.setItem(
           "last-api-version",
-          result.cwVersion.version
+          result.cwVersion.version,
         );
         return window.location.reload();
       }

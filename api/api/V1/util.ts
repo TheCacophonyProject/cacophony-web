@@ -50,13 +50,13 @@ interface MultiPartFormPart extends stream.Readable {
 const stream2Buffer = (
   stream: Stream,
   key: string,
-  filename: string
+  filename: string,
 ): Promise<{ key: string; filename: string; buffer: Buffer }> => {
   return new Promise((resolve, reject) => {
     const _buf = [];
     stream.on("data", (chunk) => _buf.push(chunk));
     stream.on("end", () =>
-      resolve({ key, filename, buffer: Buffer.concat(_buf) })
+      resolve({ key, filename, buffer: Buffer.concat(_buf) }),
     );
     stream.on("error", (err) => reject(err));
   });
@@ -65,7 +65,7 @@ const stream2Buffer = (
 export const uploadFileStream = async (
   request: Request,
   keyPrefix?: string,
-  fullKey?: string
+  fullKey?: string,
 ): Promise<{
   size: number;
   key: string;
@@ -115,7 +115,7 @@ function multipartUpload(
     keys: string[],
     uploadedFileDatas: { key: string; data: Uint8Array; filename: string }[],
     locals: Record<string, any>
-  ) => Promise<ModelCommon<T> | string>
+  ) => Promise<ModelCommon<T> | string>,
 ) {
   return async (request: Request, response: Response, _next: NextFunction) => {
     const key = `${keyPrefix}/${moment().format("YYYY/MM/DD")}/${uuidv4()}`;
@@ -137,7 +137,7 @@ function multipartUpload(
       ) {
         // We just have a device id, so get the actual device object to update.
         uploadingDevice = await models.Device.findByPk(
-          response.locals.requestDevice.id
+          response.locals.requestDevice.id,
         );
         // Update the last connection time for the uploading device, and set the device to active (just in case it's been set inactive)
         await uploadingDevice.update({
@@ -170,7 +170,7 @@ function multipartUpload(
             return someResponse(
               response,
               HttpStatusCode.Unprocessable,
-              `Invalid recordingDateTime '${data.recordingDateTime}'`
+              `Invalid recordingDateTime '${data.recordingDateTime}'`,
             );
           }
         }
@@ -195,13 +195,13 @@ function multipartUpload(
             log.warning(
               "Recording with hash %s for device %s already exists, discarding duplicate",
               data.fileHash,
-              uploadingDevice.id
+              uploadingDevice.id,
             );
             canceledRequest = true;
             responseUtil.validRecordingUpload(
               response,
               existingRecordingWithHashForDevice.id,
-              "Duplicate recording found for device"
+              "Duplicate recording found for device",
             );
             return;
           }
@@ -244,7 +244,7 @@ function multipartUpload(
       fileDataPromises[partKey] = stream2Buffer(
         writeStream,
         partKey,
-        part.filename
+        part.filename,
       );
       log.debug("Started streaming upload to bucket...");
     });
@@ -265,7 +265,7 @@ function multipartUpload(
         log.error("Upload missing 'data' field.");
         responseUtil.invalidDatapointUpload(
           response,
-          "Upload missing 'data' field."
+          "Upload missing 'data' field.",
         );
         return;
       }
@@ -273,7 +273,7 @@ function multipartUpload(
         log.error("Upload was never started.");
         responseUtil.invalidDatapointUpload(
           response,
-          "Upload was never started."
+          "Upload was never started.",
         );
         return;
       }
@@ -306,7 +306,7 @@ function multipartUpload(
               key: string;
               buffer: Buffer;
               filename: string;
-            }) => ({ key, filename, data: new Uint8Array(buffer) })
+            }) => ({ key, filename, data: new Uint8Array(buffer) }),
           );
         log.info("Finished streaming upload to object store. Key: %s", key);
         if (keyPrefix === "raw") {
@@ -339,7 +339,7 @@ function multipartUpload(
                 if (!canceledRequest) {
                   responseUtil.invalidDatapointUpload(
                     response,
-                    "Uploaded file integrity check failed, please retry."
+                    "Uploaded file integrity check failed, please retry.",
                   );
                 }
               }
@@ -368,7 +368,7 @@ function multipartUpload(
                 log.warning(
                   "Recording with hash %s for device %s already exists, discarding duplicate",
                   data.fileHash,
-                  uploadingDevice.id
+                  uploadingDevice.id,
                 );
                 // Remove from s3
                 await openS3()
@@ -380,7 +380,7 @@ function multipartUpload(
                   responseUtil.validRecordingUpload(
                     response,
                     existingRecordingWithHashForDevice.id,
-                    "Duplicate recording found for device"
+                    "Duplicate recording found for device",
                   );
                 }
               }
@@ -398,7 +398,7 @@ function multipartUpload(
           data,
           uploadKeys,
           fileDataArrays,
-          response.locals
+          response.locals,
         );
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();
@@ -411,7 +411,7 @@ function multipartUpload(
           ) {
             responseUtil.validEventThumbnailUpload(
               response,
-              (dbRecordOrFileKey as any).id
+              (dbRecordOrFileKey as any).id,
             );
           } else if (!canceledRequest) {
             responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
@@ -444,7 +444,7 @@ async function getS3ObjectFileSize(fileKey) {
     return s3Ojb.ContentLength;
   } catch (err) {
     log.warning(
-      `Error retrieving S3 Object for with fileKey: ${fileKey}. Error was: ${err.message}`
+      `Error retrieving S3 Object for with fileKey: ${fileKey}. Error was: ${err.message}`,
     );
   }
 }

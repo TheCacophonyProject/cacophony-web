@@ -20,7 +20,7 @@ Cypress.Commands.add(
     fromDate?: string,
     untilDate?: string,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let fullGroupName: string;
     const thisStation = JSON.parse(JSON.stringify(station));
@@ -39,7 +39,7 @@ Cypress.Commands.add(
 
     logTestDescription(
       `Add station ${prettyLog(station)} to group '${groupIdOrName}' `,
-      { userName, groupIdOrName, thisStation, fromDate, untilDate }
+      { userName, groupIdOrName, thisStation, fromDate, untilDate },
     );
 
     const body: { [key: string]: string } = {
@@ -59,7 +59,7 @@ Cypress.Commands.add(
         body,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["warnings"]) {
         if (additionalChecks["warnings"] == "none") {
@@ -70,7 +70,7 @@ Cypress.Commands.add(
           expect(warnings).to.exist;
           expectedWarnings.forEach(function (warning: string) {
             expect(warnings, "Expect warning to be present").to.contain(
-              warning
+              warning,
             );
           });
         }
@@ -92,7 +92,7 @@ Cypress.Commands.add(
         cy.wrap(stationId);
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -104,14 +104,14 @@ Cypress.Commands.add(
     expectedStation: ApiStationResponse,
     excludeCheckOn: any = [".lastActiveThermalTime"],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(
       `Check station ${stationName} for group ${groupIdOrName}`,
       {
         userName,
         groupIdOrName,
-      }
+      },
     );
     let fullGroupName: string;
     let fullStationName: string;
@@ -139,22 +139,22 @@ Cypress.Commands.add(
         method: "GET",
         url: v1ApiPath(
           `groups/${fullGroupName}/station/${fullStationName}`,
-          params
+          params,
         ),
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         checkTreeStructuresAreEqualExcept(
           expectedStation,
           response.body.station,
-          excludeCheckOn
+          excludeCheckOn,
         );
         cy.wrap(response.body.station.id);
       }
     });
-  }
+  },
 );
 
 // Legacy test functions used in /recordings. To be retired and replaces with standard-format API wrappers.
@@ -170,7 +170,7 @@ Cypress.Commands.add(
       "[].lastActiveThermalTime",
     ],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Check stations for group ${groupIdOrName}`, {
       userName,
@@ -198,7 +198,7 @@ Cypress.Commands.add(
         url: v1ApiPath(`groups/${fullGroupName}/stations`, params),
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
@@ -213,11 +213,11 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedStations,
           sortStations,
-          excludeCheckOn
+          excludeCheckOn,
         );
       }
     });
-  }
+  },
 );
 
 // Legacy test functions used in /recordings. To be retired and replaces with standard-format API wrappers.
@@ -227,7 +227,7 @@ Cypress.Commands.add(
   { prevSubject: true },
   (subject: RecordingId, userName: string, station: string) => {
     checkStationNameIs(userName, subject, station);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -235,7 +235,7 @@ Cypress.Commands.add(
   { prevSubject: true },
   (subject: RecordingId, userName: string, stationId: number) => {
     checkStationIdIs(userName, subject, stationId);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -248,7 +248,7 @@ Cypress.Commands.add(
       saveIdOnly(recording.stationName, recording.stationId);
       return { id: recording.stationId, name: recording.stationName };
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -256,7 +256,7 @@ Cypress.Commands.add(
   (userName: string, station: string) => {
     const returnedStation = checkStationNameIs(userName, 0, station);
     cy.wrap(returnedStation);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -269,7 +269,7 @@ Cypress.Commands.add(
 
       return { id: recording.stationId, name: recording.stationName };
     });
-  }
+  },
 );
 
 function checkStationNameIs(userName: string, recId: number, station: string) {
@@ -295,7 +295,7 @@ function checkStationIdIs(userName: string, recId: number, stationId: number) {
     `and check recording is assigned to station ${stationId}`,
     {
       userName,
-    }
+    },
   );
   checkRecording(userName, recId, (recording) => {
     expect(recording.stationId).equals(stationId);

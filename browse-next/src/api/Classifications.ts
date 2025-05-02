@@ -6,7 +6,7 @@ import { computed, ref } from "vue";
 
 const apiGetClassifications = (version?: string) =>
   CacophonyApi.get(
-    `/api/v1/files/classifications${version ? `?version=${version}` : ""}`
+    `/api/v1/files/classifications${version ? `?version=${version}` : ""}`,
   ) as Promise<FetchResult<ApiClassificationResponse>>;
 
 const loadedClassificationsThisSession = ref(false);
@@ -15,9 +15,9 @@ export const classifications = ref<Classification | null>(null);
 const flattenNodes = (
   acc: Record<
     string,
-    { label: string; display: string; path: string; node: Classification }
+    { label: string; display: string; path: string; node: Classification; displayAudio: string }
   >,
-  node: Classification
+  node: Classification,
 ) => {
   for (const child of node.children || []) {
     const parent = acc[node.label];
@@ -27,6 +27,7 @@ const flattenNodes = (
     acc[child.label] = {
       label: child.label,
       display: child.display || child.label,
+      displayAudio: child.displayAudio || child.display || child.label,
       node: child,
       path,
     };
@@ -44,7 +45,7 @@ const flattenNodes = (
 export const flatClassifications = computed<
   Record<
     string,
-    { label: string; display: string; path: string; node: Classification }
+    { label: string; display: string; displayAudio: string; path: string; node: Classification }
   >
 >(() => {
   if (classifications.value) {
@@ -74,10 +75,10 @@ const getFreshClassifications = async (): Promise<Classification> => {
       "pest",
     ];
     const otherChildren = other?.children?.filter((item) =>
-      otherChildLabels.includes(item.label)
+      otherChildLabels.includes(item.label),
     ) as Classification[];
     const animalChildren = [mammals, birds].filter(
-      (item) => !!item
+      (item) => !!item,
     ) as Classification[];
     children.push({
       label: "animal",
@@ -90,7 +91,7 @@ const getFreshClassifications = async (): Promise<Classification> => {
         label,
         children,
         version,
-      })
+      }),
     );
     loadedClassificationsThisSession.value = true;
     return {
@@ -103,7 +104,7 @@ const getFreshClassifications = async (): Promise<Classification> => {
 };
 
 export const getClassifications = async (
-  cb?: (classifications: Classification) => void
+  cb?: (classifications: Classification) => void,
 ): Promise<Classification> => {
   if (classifications.value === null) {
     const cached = localStorage.getItem("classifications");
@@ -130,7 +131,7 @@ export const getClassifications = async (
 export const displayLabelForClassificationLabel = (
   label: string,
   aiTag = false,
-  isAudioContext = false
+  isAudioContext = false,
 ) => {
   if (!label) {
     debugger;
@@ -143,10 +144,7 @@ export const displayLabelForClassificationLabel = (
     return "Unidentified";
   }
   const classifications = flatClassifications.value || {};
-  if ((label === "human" || label === "person") && !isAudioContext) {
-    return "human";
-  }
-  return (classifications[label] && classifications[label].display) || label;
+  return (classifications[label] && (isAudioContext ? classifications[label].displayAudio || classifications[label].display : classifications[label].display)) || label;
 };
 
 export const getPathForLabel = (label: string): string => {

@@ -136,7 +136,7 @@ export default {
         // Remove AI tags other than master, as they'll just be confusing
         items = this.items.filter(
           (item: ApiTrackTagResponse) =>
-            !item.automatic || item.data.name === "Master"
+            !item.automatic || item.model === "Master"
         );
       }
       return items.sort((a: ApiTrackTagResponse, b: ApiTrackTagResponse) => {
@@ -169,12 +169,8 @@ export default {
     },
     imgSrc,
     aiName: function (trackTag) {
-      if (
-        this.isSuperUserAndViewingAsSuperUser &&
-        trackTag.data &&
-        trackTag.data.name
-      ) {
-        return "AI " + trackTag.data.name;
+      if (this.isSuperUserAndViewingAsSuperUser && trackTag.model) {
+        return "AI " + trackTag.model;
       } else {
         return "Cacophony AI";
       }
