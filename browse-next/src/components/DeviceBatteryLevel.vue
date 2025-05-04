@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { onBeforeMount, ref, watch } from "vue";
+import { computed, onBeforeMount, ref, watch } from "vue";
 import {
   type BatteryInfoEvent,
   getLastKnownDeviceBatteryLevel,
@@ -52,22 +52,17 @@ const loadInfo = async () => {
     }
   }
 };
-onBeforeMount(() => {
-  if (props.device.active && props.device.isHealthy) {
-    loadInfo();
-  } else {
-    batteryLevelInfo.value = false;
-  }
+
+const deviceIsActive = computed<boolean>(() => {
+  return (props.device.active && props.device.isHealthy) || false;
 });
+
+onBeforeMount(loadInfo);
 watch(
   () => props.device.id,
   (next, prev) => {
     if (next !== prev) {
-      if (props.device.active && props.device.isHealthy) {
-        loadInfo();
-      } else {
-        batteryLevelInfo.value = false;
-      }
+      loadInfo();
     }
   },
 );
@@ -84,6 +79,7 @@ watch(
       batteryLevelInfo.batteryType === 'unknown' &&
       batteryLevelInfo.battery === 100
     "
+    :class="{ active: deviceIsActive,  inactive: !deviceIsActive }"
   >
     <font-awesome-icon icon="plug" /><span v-if="props.showLevel" class="ms-1"
       >{{ batteryLevelInfo.battery }}%</span
@@ -92,6 +88,7 @@ watch(
   <div
     v-else-if="batteryLevelInfo && batteryLevelInfo.battery"
     class="d-flex align-items-center"
+    :class="{ active: deviceIsActive,  inactive: !deviceIsActive }"
   >
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -121,7 +118,17 @@ watch(
 </template>
 
 <style scoped lang="less">
+.active {
+  color: inherit;
+}
+.inactive {
+  color: rgba(0, 0, 0, 0.4);
+}
 .battery-warning {
   color: red;
 }
+.inactive .battery-warning {
+  color: color-mix(rgba(255, 0, 0, 0.4), #aaa);
+}
+
 </style>

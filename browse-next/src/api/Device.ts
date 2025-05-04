@@ -212,7 +212,7 @@ export const getBatteryInfo = (
     ) {
       const params = new URLSearchParams();
       params.append("deviceId", deviceId.toString());
-      params.append("only-active", true.toString());
+      //params.append("only-active", true.toString());
       params.append("startTime", fromDateTime.toISOString());
       params.append("endTime", untilDateTime.toISOString());
       params.append("include-count", false.toString());
@@ -663,10 +663,9 @@ export const hasReferenceImageForDeviceAtCurrentLocation = (
 export const getLastKnownDeviceBatteryLevel = (
   deviceId: DeviceId,
 ): Promise<BatteryInfoEvent | false | null> => {
-  const last25Hours = new Date();
-  last25Hours.setHours(last25Hours.getHours() - 25);
+  const batteryEpoch = new Date("2024-06-20 16:27:25.312 +1200");
   return new Promise((resolve) => {
-    getBatteryInfo(deviceId, last25Hours, 1, 1).then((result) => {
+    getBatteryInfo(deviceId, batteryEpoch, 1, 1).then((result) => {
       if (result === null) {
         resolve(null);
       } else if (result === false || result.length === 0) {
