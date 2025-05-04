@@ -22,12 +22,12 @@ const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
 };
 
 const commonInterpolants = (origin: string) => {
-  const browseUrl = origin.startsWith('http')
-    ? origin.replace(/^https?:\/\//, 'https://')   // ensure exactly one https://
+  const browseUrl = origin.startsWith("http")
+    ? origin.replace(/^https?:\/\//, "https://")   // ensure exactly one https://
     : `https://${origin}`;
   return {
     cacophonyBrowseUrl: browseUrl,
-    cacophonyDisplayUrl: 'browse.cacophony.org.nz',
+    cacophonyDisplayUrl: "browse.cacophony.org.nz",
   };
 };
 
