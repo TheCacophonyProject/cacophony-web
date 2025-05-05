@@ -2885,7 +2885,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   top: 0;
   left: 0;
   /* Start at 50% to show half, or whatever default you want */
-  width: 50%;
+  width: 100%;
   height: 100%;
   overflow: hidden; /* So only the left portion of the image is visible */
   user-select: none;
@@ -2915,7 +2915,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   border-radius: 50%;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(0, 0, 0, 0.5);
-  left: (calc(50% - 20px));
+  left: (calc(100% - 20px));
   font-size: 20px;
   cursor: grab;
   &.selected {
