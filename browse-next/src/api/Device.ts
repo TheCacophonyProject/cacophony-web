@@ -663,9 +663,10 @@ export const hasReferenceImageForDeviceAtCurrentLocation = (
 export const getLastKnownDeviceBatteryLevel = (
   deviceId: DeviceId,
 ): Promise<BatteryInfoEvent | false | null> => {
-  const batteryEpoch = new Date("2024-06-20 16:27:25.312 +1200");
+  const lastThirtyDays = new Date();
+  lastThirtyDays.setDate(lastThirtyDays.getDate() - 30);
   return new Promise((resolve) => {
-    getBatteryInfo(deviceId, batteryEpoch, 1, 1).then((result) => {
+    getBatteryInfo(deviceId, lastThirtyDays, 1, 1).then((result) => {
       if (result === null) {
         resolve(null);
       } else if (result === false || result.length === 0) {
