@@ -75,7 +75,7 @@ order by "recordingDateTime" desc
 export async function calculateMonitoringPageCriteria(
   user: User,
   params: MonitoringParams,
-  viewAsSuperAdmin: boolean
+  viewAsSuperAdmin: boolean,
 ): Promise<MonitoringPageCriteria> {
   return getDatesForSearch(user, params, viewAsSuperAdmin);
 }
@@ -99,12 +99,12 @@ const makeRecordingTypes = (suppliedTypes: string[]): string => {
 async function getDatesForSearch(
   user: User,
   params: MonitoringParams,
-  viewAsSuperAdmin: boolean
+  viewAsSuperAdmin: boolean,
 ): Promise<MonitoringPageCriteria> {
   const replacements = {
     GROUPS_AND_STATIONS: makeGroupsAndStationsCriteria(
       params.stations,
-      params.groups
+      params.groups,
     ),
     USER_PERMISSIONS: await makeGroupsPermissions(user, viewAsSuperAdmin),
     RECORDING_TYPES: makeRecordingTypes(params.types),
@@ -114,7 +114,7 @@ async function getDatesForSearch(
 
   const countRet = await models.sequelize.query(
     replaceInSQL(VISITS_COUNT_SQL, replacements),
-    { type: QueryTypes.SELECT }
+    { type: QueryTypes.SELECT },
   );
   const approxVisitCount = parseInt((countRet[0] as { count: string }).count);
   const returnVal = createPageCriteria(params, approxVisitCount);
@@ -127,7 +127,7 @@ async function getDatesForSearch(
     replacements.PAGING = ` LIMIT ${limit} OFFSET ${offset}`;
     const results: Recording[] = await models.sequelize.query(
       replaceInSQL(VISIT_STARTS_SQL, replacements),
-      { model: models.Recording }
+      { model: models.Recording },
     );
 
     if (results.length > 0) {
@@ -146,7 +146,7 @@ async function getDatesForSearch(
 
 function createPageCriteria(
   params: MonitoringParams,
-  count: number
+  count: number,
 ): MonitoringPageCriteria {
   const criteria: MonitoringPageCriteria = {
     page: params.page,
@@ -169,7 +169,7 @@ function createPageCriteria(
 
 function replaceInSQL(
   sql: string,
-  replacements: { [key: string]: string }
+  replacements: { [key: string]: string },
 ): string {
   for (const [placeholder, replacement] of Object.entries(replacements)) {
     sql = sql.replace(new RegExp(`{${placeholder}}`, "g"), replacement);
@@ -179,7 +179,7 @@ function replaceInSQL(
 
 function makeGroupsAndStationsCriteria(
   stationIds: StationId[],
-  groupIds: GroupId[]
+  groupIds: GroupId[],
 ): string {
   const stationString =
     stationIds.length > 0 ? `"StationId" IN (${stationIds.join(",")})` : null;
@@ -213,7 +213,7 @@ function toPgDate(date: Date): string {
 
 async function makeGroupsPermissions(
   user: User,
-  viewAsSuperAdmin: boolean
+  viewAsSuperAdmin: boolean,
 ): Promise<string> {
   if (user.hasGlobalRead() && viewAsSuperAdmin) {
     return "";

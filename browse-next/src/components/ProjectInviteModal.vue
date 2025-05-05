@@ -14,7 +14,7 @@ const inviteeEmailAddress = formFieldInputText();
 const submittingInvite = ref<boolean>(false);
 const inviteSent = ref<boolean>(false);
 const emailIsTooShort = computed<boolean>(
-  () => inviteeEmailAddress.value.trim().length < 3
+  () => inviteeEmailAddress.value.trim().length < 3,
 );
 const isValidEmailAddress = computed<boolean>(() => {
   const { value } = inviteeEmailAddress;
@@ -23,7 +23,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    inviteeEmailAddress.touched ? isValidEmailAddress.value : undefined
+    inviteeEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 const resetFormValues = () => {
   inviteeEmailAddress.touched = false;
@@ -37,7 +37,7 @@ const invitePendingUser = async () => {
     (currentSelectedProject.value as SelectedProject).id,
     inviteeEmailAddress.value,
     permissions.value.includes("admin"),
-    permissions.value.includes("owner")
+    permissions.value.includes("owner"),
   );
   if (inviteResponse && inviteResponse.success) {
     inviteSent.value = true;

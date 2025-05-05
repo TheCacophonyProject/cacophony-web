@@ -13,6 +13,7 @@ import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
 import { persistUserProjectSettings } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
+import { deleteTrack } from "@api/Recording.ts";
 import {
   classifications,
   displayLabelForClassificationLabel,
@@ -27,7 +28,7 @@ import type {
 import { useRoute } from "vue-router";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
-import { DEFAULT_TAGS } from "@/consts";
+import { DEFAULT_AUDIO_TAGS, DEFAULT_CAMERA_TAGS } from "@/consts";
 import { capitalize } from "@/utils";
 import TagImage from "@/components/TagImage.vue";
 import {
@@ -36,6 +37,7 @@ import {
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
+import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
 
 const props = defineProps<{
   track: ApiTrackResponse;
@@ -43,6 +45,7 @@ const props = defineProps<{
   color: { foreground: string; background: string };
   selected: boolean;
   processingState: RecordingProcessingState;
+  isAudioRecording: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -50,12 +53,13 @@ const emit = defineEmits<{
   (e: "selected-track", trackId: TrackId, forceReplay?: boolean): void;
   (
     e: "add-or-remove-user-tag",
-    payload: { trackId: TrackId; tag: string }
+    payload: { trackId: TrackId; tag: string },
   ): void;
   (
     e: "remove-tag",
-    payload: { trackId: TrackId; trackTagId: TrackTagId }
+    payload: { trackId: TrackId; trackTagId: TrackTagId },
   ): void;
+  (e: "removed-track", payload: { trackId: TrackId }): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
@@ -81,7 +85,6 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
     if (masterTag.value) {
       tags.unshift(masterTag.value);
     }
-
     // NOTE: Delete button gives admins the ability to remove track tags created by other users,
     //  but not AI tags
     return tags.map((tag: ApiTrackTagResponse) => {
@@ -90,14 +93,16 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
         GenericCardTableValue<string | ApiTrackTagResponse> | string
       > = {
         tag: capitalize(
-          displayLabelForClassificationLabel(tag.what, tag.automatic)
+          displayLabelForClassificationLabel(tag.what, tag.automatic, props.isAudioRecording),
         ),
         tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(
           " ",
-          "&nbsp;"
+          "&nbsp;",
         ),
         confidence: tag.automatic
-          ? Math.round(100 * tag.confidence).toString() + "%"
+          ? Math.round(
+              (props.isAudioRecording ? 1 : 100) * tag.confidence,
+            ).toString() + "%"
           : "",
       };
       if (userIsGroupAdmin.value) {
@@ -108,7 +113,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
       }
       return item;
     });
-  }
+  },
 );
 
 const route = useRoute();
@@ -127,7 +132,7 @@ const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = `${
-        (trackDetails.value as HTMLDivElement).scrollHeight
+        (trackDetails.value as HTMLDivElement).scrollHeight + (expandedOnce.value ? 0 : 10)
       }px`;
     }
     expandedOnce.value = true;
@@ -141,7 +146,14 @@ const handleExpansion = (isExpanding: boolean) => {
 };
 
 watch(expanded, handleExpansion);
-
+watch(
+  () => props.selected,
+  (next) => {
+    if (next) {
+      show();
+    }
+  },
+);
 const resizeElementToContents = (el: HTMLElement) => {
   if (el.childNodes.length && expandedInternal.value) {
     const top = el.getBoundingClientRect().top;
@@ -161,7 +173,7 @@ const resizeDetails = () => {
 watch(showTaggerDetails, resizeDetails);
 watch(showClassificationSearch, resizeDetails);
 
-const selectAndMaybeToggleExpanded = () => {
+const selectAndMaybeToggleExpanded = (e: MouseEvent) => {
   expandedInternal.value = !expandedInternal.value;
   emit("expanded-changed", props.track.id, expandedInternal.value);
 };
@@ -179,7 +191,7 @@ const uniqueUserTags = computed<string[]>(() => {
           getClassificationForLabel(item.what)?.label || item.what;
         acc[mappedWhat] = true;
         return acc;
-      }, {})
+      }, {}),
   );
 });
 
@@ -188,15 +200,66 @@ const consensusUserTag = computed<string | null>(() => {
     return null;
   }
   return (
-    displayLabelForClassificationLabel(uniqueUserTags.value[0] || "") || null
+    displayLabelForClassificationLabel(uniqueUserTags.value[0] || "", false, props.isAudioRecording) || null
   );
 });
 
+const getAuthoritativeTagsForTrack = (
+  trackTags: ApiTrackTagResponse[],
+): string[] => {
+  const userTags = trackTags.filter((tag) => !tag.automatic);
+  const authTags = [];
+  if (userTags.length) {
+    authTags.push(userTags[0].what);
+  } else {
+    // NOTE: For audio, there can be multiple authoritative tags for a single track, until a user confirms one.
+    const masterTags = trackTags.filter(
+      (tag) => tag.automatic && tag.model === "Master",
+    );
+    const isNoise = (tag: ApiTrackTagResponse) =>
+      tag.what === "noise" || tag.what === "false-positive";
+    const nonNoiseMaster = masterTags.some((tag) => !isNoise(tag));
+
+    for (const tag of masterTags) {
+      if ((nonNoiseMaster && !isNoise(tag)) || !nonNoiseMaster) {
+        authTags.push(tag.what);
+      }
+    }
+  }
+  return authTags;
+};
+
 const masterTag = computed<ApiAutomaticTrackTagResponse | null>(() => {
-  const tag = props.track.tags.find(
-    (tag) =>
-      tag.automatic && tag.data && (tag.data as TrackTagData).name === "Master"
+  // If there are multiple AI master tags, as there seem to be for audio, find the most specific one.
+  const masterTags = props.track.tags.filter(
+    (tag) => tag.automatic && tag.model === "Master",
   );
+  let tag;
+  if (masterTags.length === 1) {
+    tag = masterTags[0];
+  } else {
+    // Find the best/most specific tag.
+    const isNoise = (tag: ApiTrackTagResponse) =>
+      tag.what === "noise" || tag.what === "false-positive";
+    const nonNoiseMasters = masterTags.filter((tag) => !isNoise(tag));
+    if (nonNoiseMasters.length === 1) {
+      tag = nonNoiseMasters[0];
+    } else {
+      let mostSpecific = null;
+      for (const tag of nonNoiseMasters) {
+        if (mostSpecific === null) {
+          mostSpecific = tag;
+        } else if (
+          mostSpecific &&
+          tag.path.length > mostSpecific.path.length &&
+          tag.path.startsWith(mostSpecific.path)
+        ) {
+          mostSpecific = tag;
+        }
+      }
+      tag = mostSpecific;
+    }
+  }
   if (tag) {
     const mappedWhat = getClassificationForLabel(tag.what);
     return {
@@ -224,9 +287,9 @@ const thisUserTag = computed<ApiHumanTrackTagResponse | undefined>(
   () =>
     (CurrentUser.value &&
       humanTags.value.find(
-        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id,
       )) ||
-    undefined
+    undefined,
 );
 
 const selectedUserTagLabel = computed<string[]>({
@@ -234,7 +297,7 @@ const selectedUserTagLabel = computed<string[]>({
     const label =
       CurrentUser.value &&
       humanTags.value.find(
-        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id
+        (tag) => tag.userId === (CurrentUser.value as LoggedInUser).id,
       );
     if (label) {
       return [label.what];
@@ -251,17 +314,31 @@ const selectedUserTagLabel = computed<string[]>({
   },
 });
 
+const permanentlyDeleteTrack = async (trackId: TrackId) => {
+  emit("removed-track", { trackId });
+};
+
+const trackWasCreatedByUser = (track: ApiTrackResponse): boolean => {
+  if (CurrentUser.value) {
+    return track.tags.every(
+      (tag) =>
+        !tag.automatic && tag.userId === (CurrentUser.value as LoggedInUser).id,
+    );
+  }
+  return false;
+};
+
 const otherUserTags = computed<string[]>(
   () =>
     (CurrentUser.value &&
       humanTags.value
         .filter((tag) => tag.userId !== (CurrentUser.value as LoggedInUser).id)
         .map(({ what }) => what)) ||
-    []
+    [],
 );
 
 const thisUsersTagAgreesWithAiClassification = computed<boolean>(
-  () => thisUserTag.value?.what === masterTag.value?.what
+  () => thisUserTag.value?.what === masterTag.value?.what,
 );
 
 // Default tags is computed from a default list, with overrides coming from the group admin level, and the user group level.
@@ -269,11 +346,20 @@ const defaultTags = computed<string[]>(() => {
   const tags = [];
   if (currentSelectedProject.value) {
     const groupSettings = currentSelectedProject.value.settings;
-    if (groupSettings && groupSettings.tags) {
-      tags.push(...groupSettings.tags);
+    if (!props.isAudioRecording) {
+      if (groupSettings && groupSettings.tags) {
+        tags.push(...groupSettings.tags);
+      } else {
+        // Default base tags if admin hasn't edited them
+        tags.push(...DEFAULT_CAMERA_TAGS);
+      }
     } else {
-      // Default base tags if admin hasn't edited them
-      tags.push(...DEFAULT_TAGS);
+      if (groupSettings && groupSettings.audioTags) {
+        tags.push(...groupSettings.audioTags);
+      } else {
+        // Default base tags if admin hasn't edited them
+        tags.push(...DEFAULT_AUDIO_TAGS);
+      }
     }
   }
   return tags;
@@ -284,24 +370,32 @@ const userDefinedTags = computed<Record<string, boolean>>(() => {
   const tags: Record<string, boolean> = {};
   if (currentSelectedProject.value) {
     const userSettings = currentSelectedProject.value.userSettings;
-    if (userSettings && userSettings.tags) {
+    if (userSettings) {
       // These are any user-defined "pinned" tags for this group.
-      for (const tag of userSettings.tags) {
-        tags[tag] = true;
+      if (props.isAudioRecording && userSettings.audioTags) {
+        for (const tag of userSettings.audioTags) {
+          tags[tag] = true;
+        }
+      } else if (!props.isAudioRecording && userSettings.tags) {
+        for (const tag of userSettings.tags) {
+          tags[tag] = true;
+        }
       }
     }
   }
   return tags;
 });
 const userDefinedTagLabels = computed<string[]>(() =>
-  Object.keys(userDefinedTags.value)
+  Object.keys(userDefinedTags.value),
 );
 
-const availableTags = computed<{ label: string; display: string }[]>(() => {
-  // TODO: These can be changed at a group preferences level my group admins,
+const availableTags = computed<{ label: string; display: string; displayAudio: string }[]>(() => {
+  // TODO: These should be different for audio and camera
+
+  // TODO: These can be changed at a group preferences level by group admins,
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
-  const tags: Record<string, { label: string; display: string }> = {};
+  const tags: Record<string, { label: string; display: string; displayAudio: string }> = {};
   const allTags = [
     ...defaultTags.value,
     ...userDefinedTagLabels.value,
@@ -318,11 +412,9 @@ const availableTags = computed<{ label: string; display: string }[]>(() => {
       flatClassifications.value[tag] || {
         label: tag,
         display: `${tag}_not_found`,
-      }
+        displayAudio: `${tag}_not_found`,
+      },
   )) {
-    if (tag.label === "human") {
-      tag.display = "human";
-    }
     tags[tag.label] = tag;
   }
   return Object.values(tags);
@@ -359,6 +451,7 @@ const confirmAiSuggestedTag = () => {
     });
   }
 };
+
 const replaySelectedTrack = () => {
   emit("selected-track", props.track.id, true);
 };
@@ -370,19 +463,34 @@ const rejectAiSuggestedTag = () => {
 
 const pinCustomTag = async (classification: Classification) => {
   if (currentSelectedProject.value) {
+    const currentDisplayMode =
+      route.query["display-mode"] === "recordings" ? "recordings" : "visits";
     const userProjectSettings: ApiProjectUserSettings = currentSelectedProject
       .value.userSettings || {
-      displayMode: "visits",
+      displayMode: currentDisplayMode, // Current display mode
       tags: [],
+      audioTags: [],
     };
-    const tags = userProjectSettings.tags || [];
-    if (tags.includes(classification.label)) {
-      userProjectSettings.tags = tags.filter(
-        (tag) => tag !== classification.label
-      );
+    if (props.isAudioRecording) {
+      const tags = userProjectSettings.audioTags || [];
+      if (tags.includes(classification.label)) {
+        userProjectSettings.audioTags = tags.filter(
+          (tag) => tag !== classification.label,
+        );
+      } else {
+        userProjectSettings.audioTags = userProjectSettings.audioTags || [];
+        userProjectSettings.audioTags.push(classification.label);
+      }
     } else {
-      userProjectSettings.tags = userProjectSettings.tags || [];
-      userProjectSettings.tags.push(classification.label);
+      const tags = userProjectSettings.tags || [];
+      if (tags.includes(classification.label)) {
+        userProjectSettings.tags = tags.filter(
+          (tag) => tag !== classification.label,
+        );
+      } else {
+        userProjectSettings.tags = userProjectSettings.tags || [];
+        userProjectSettings.tags.push(classification.label);
+      }
     }
     await persistUserProjectSettings(userProjectSettings);
   }
@@ -393,7 +501,7 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
     return false;
   }
   return !defaultTags.value.includes(
-    (thisUserTag.value as ApiHumanTrackTagResponse).what
+    (thisUserTag.value as ApiHumanTrackTagResponse).what,
   );
 });
 const addCustomTag = () => {
@@ -402,8 +510,20 @@ const addCustomTag = () => {
 };
 
 const processingIsAnalysing = computed<boolean>(
-  () => props.processingState === RecordingProcessingState.Analyse
+  () => props.processingState === RecordingProcessingState.Analyse,
 );
+
+const row = ref<HTMLDivElement>();
+const show = () => {
+  if (row.value) {
+    row.value.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+  // setTimeout(() => {
+  //   if (row.value) {
+  //     row.value.scrollIntoView({ block: "center", behavior: "smooth" });
+  //   }
+  // }, 200);
+};
 
 onMounted(async () => {
   if (!classifications.value) {
@@ -415,6 +535,7 @@ onMounted(async () => {
 <template>
   <div
     class="track p-2 fs-8 d-flex align-items-center justify-content-between"
+    ref="row"
     :class="{ selected }"
     @click="selectAndMaybeToggleExpanded"
   >
@@ -432,7 +553,7 @@ onMounted(async () => {
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="masterTag"
-          >{{ displayLabelForClassificationLabel(masterTag.what) }}</span
+          >{{ displayLabelForClassificationLabel(masterTag.what, true, isAudioRecording) }}</span
         >
       </div>
       <span v-else-if="hasUserTag" class="d-flex flex-column">
@@ -442,7 +563,7 @@ onMounted(async () => {
           v-if="
             consensusUserTag &&
             masterTag &&
-            displayLabelForClassificationLabel(masterTag.what) ===
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording) ===
               consensusUserTag
           "
           >{{ consensusUserTag }}
@@ -453,12 +574,12 @@ onMounted(async () => {
           v-else-if="
             consensusUserTag &&
             masterTag &&
-            displayLabelForClassificationLabel(masterTag.what) !==
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording) !==
               consensusUserTag
           "
           >{{ consensusUserTag }}
           <span class="strikethrough">{{
-            displayLabelForClassificationLabel(masterTag.what)
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording)
           }}</span></span
         >
         <!-- Controversial tag, should be automatically flagged for review. -->
@@ -471,11 +592,11 @@ onMounted(async () => {
           "
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag))
+              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
               .join(", ")
           }}
           <span class="strikethrough conflicting-tags">{{
-            displayLabelForClassificationLabel(masterTag.what)
+            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording)
           }}</span></span
         >
         <span
@@ -483,7 +604,7 @@ onMounted(async () => {
           v-else-if="!consensusUserTag && masterTag"
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag))
+              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
               .join(", ")
           }}</span
         >
@@ -493,7 +614,7 @@ onMounted(async () => {
           v-else-if="consensusUserTag && !hasAiTag"
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag))
+              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
               .join(", ")
           }}</span
         >
@@ -511,7 +632,7 @@ onMounted(async () => {
         <span v-if="!processingIsAnalysing">&mdash;</span>
       </div>
     </div>
-    <div v-if="!hasUserTag && hasAiTag && !expanded">
+    <div v-if="!hasUserTag && hasAiTag && !expanded" class="d-flex">
       <button
         type="button"
         class="btn fs-7 confirm-button"
@@ -539,9 +660,8 @@ onMounted(async () => {
           <font-awesome-icon :icon="['far', 'thumbs-down']" />
         </span>
       </button>
-    </div>
-    <div v-else>
       <button
+        v-if="expanded"
         type="button"
         aria-label="Replay track"
         class="btn"
@@ -550,6 +670,53 @@ onMounted(async () => {
         <span class="visually-hidden">Replay track</span>
         <font-awesome-icon icon="rotate-right" color="#666" />
       </button>
+      <two-step-action-button-popover
+        v-if="isAudioRecording"
+        :action="() => permanentlyDeleteTrack(track.id)"
+        :icon="['far', 'trash-can']"
+        :confirmation-label="'Delete track'"
+        color="#666"
+        :boundary-padding="true"
+      ></two-step-action-button-popover>
+    </div>
+    <div v-else>
+      <button
+        v-if="!hasUserTag && hasAiTag"
+        type="button"
+        class="btn fs-7 confirm-button"
+        @click.stop.prevent="confirmAiSuggestedTag"
+      >
+        <span class="label">Confirm</span>
+        <span class="fs-6 icon">
+          <font-awesome-icon
+            :icon="
+              thisUsersTagAgreesWithAiClassification
+                ? ['fas', 'thumbs-up']
+                : ['far', 'thumbs-up']
+            "
+          />
+        </span>
+      </button>
+      <button
+        v-if="expanded"
+        type="button"
+        aria-label="Replay track"
+        class="btn"
+        @click.stop.prevent="replaySelectedTrack"
+      >
+        <span class="visually-hidden">Replay track</span>
+        <font-awesome-icon icon="rotate-right" color="#666" />
+      </button>
+      <two-step-action-button-popover
+        v-if="
+          isAudioRecording && (userIsGroupAdmin || trackWasCreatedByUser(track))
+        "
+        :action="() => permanentlyDeleteTrack(track.id)"
+        :icon="['far', 'trash-can']"
+        :confirmation-label="'Delete track'"
+        color="#666"
+        :boundary-padding="true"
+      ></two-step-action-button-popover>
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>
         <font-awesome-icon
@@ -562,7 +729,7 @@ onMounted(async () => {
   </div>
   <div
     :class="[{ expanded, mounting }]"
-    class="track-details px-2 pe-2"
+    class="track-details px-2"
     ref="trackDetails"
   >
     <div class="classification-btns">
@@ -579,8 +746,8 @@ onMounted(async () => {
           },
           { pinned: !!userDefinedTags[tag.label] },
         ]"
-        :key="index"
-        v-for="(tag, index) in availableTags"
+        :key="tag.label"
+        v-for="(tag, _index) in availableTags"
         @click="(e) => toggleTag(tag.label)"
       >
         <span v-if="!!userDefinedTags[tag.label]" class="pinned-tag"
@@ -593,7 +760,8 @@ onMounted(async () => {
           height="24"
           :class="{ selected: thisUserTag && tag.label === thisUserTag.what }"
         />
-        <span>{{ tag.display }}</span>
+        <span v-if="isAudioRecording">{{ tag.displayAudio }}</span>
+        <span v-else>{{ tag.display }}</span>
       </button>
       <button
         type="button"
@@ -632,7 +800,6 @@ onMounted(async () => {
       <card-table
         v-if="showTaggerDetails && taggerDetails.length !== 0"
         :items="taggerDetails"
-        class="mb-2"
         compact
         :max-card-width="0"
       >
@@ -678,28 +845,28 @@ onMounted(async () => {
     transition: height 0.2s ease-in-out;
   }
   height: 0;
-  overflow: hidden;
+  overflow-y: hidden;
 }
 .classification-btns {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   @media screen and (min-width: 430px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   @media screen and (min-width: 530px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
   @media screen and (min-width: 630px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
   @media screen and (min-width: 730px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
   }
   @media screen and (min-width: 830px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
   }
   @media screen and (min-width: 1041px) {
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
   column-gap: 7px;
   row-gap: 5px;
@@ -735,7 +902,8 @@ onMounted(async () => {
   }
   &.selected-by-other-user {
     background: #eee;
-    box-shadow: inset 0 1px 10px 3px rgba(144, 238, 144, 0.4),
+    box-shadow:
+      inset 0 1px 10px 3px rgba(144, 238, 144, 0.4),
       inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
   }
   &.pinned {
@@ -746,6 +914,11 @@ onMounted(async () => {
       right: 4px;
       transform: rotate(30deg);
     }
+  }
+  padding-left: 3px;
+  padding-right: 3px;
+  > span {
+    word-break: break-word;
   }
 }
 
@@ -823,5 +996,8 @@ onMounted(async () => {
     vertical-align: middle;
     color: #408f58;
   }
+}
+.track .btn:not(.confirm-button) {
+  width: 42px;
 }
 </style>

@@ -20,17 +20,17 @@ const userNameFieldValidationError = computed<
     registerErrorMessage.value &&
     registerErrorMessage.value.errorType === "validation" &&
     (registerErrorMessage.value.errors as FieldValidationError[])?.find(
-      ({ param }) => param === "userName"
-    )
+      ({ param }) => param === "userName",
+    ),
 );
 const userNameFieldValidationErrorMessage = computed<string>(() => {
   return (userNameFieldValidationError.value as FieldValidationError).msg;
 });
 const userNameIsTooShort = computed<boolean>(
-  () => userName.value.trim().length < 3
+  () => userName.value.trim().length < 3,
 );
 const userNameInUse = computed<boolean>(
-  () => !!userNameFieldValidationError.value
+  () => !!userNameFieldValidationError.value,
 );
 const isValidUserName = computed<boolean>(() => {
   if (
@@ -43,7 +43,7 @@ const isValidUserName = computed<boolean>(() => {
   return isValidName(userName.value.trim());
 });
 const needsValidationAndIsValidUserName = computed<FormInputValidationState>(
-  () => (userName.touched ? isValidUserName.value : undefined)
+  () => (userName.touched ? isValidUserName.value : undefined),
 );
 
 // ---------- email ------------
@@ -54,7 +54,7 @@ const emailFieldValidationError = computed(() => {
     registerErrorMessage.value &&
     registerErrorMessage.value.errorType === "validation" &&
     (registerErrorMessage.value.errors as FieldValidationError[])?.find(
-      ({ param }) => param === "email"
+      ({ param }) => param === "email",
     )
   );
 });
@@ -62,7 +62,7 @@ const emailFieldValidationErrorMessage = computed<string>(() => {
   return (emailFieldValidationError.value as FieldValidationError).msg;
 });
 const emailIsTooShort = computed<boolean>(
-  () => userEmailAddress.value.trim().length < 3
+  () => userEmailAddress.value.trim().length < 3,
 );
 const isValidEmailAddress = computed<boolean>(() => {
   if (
@@ -78,7 +78,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    userEmailAddress.touched ? isValidEmailAddress.value : undefined
+    userEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 
 // ---------- password ------------
@@ -86,19 +86,19 @@ const userPassword: FormInputValue = formFieldInputText();
 const userPasswordConfirmation: FormInputValue = formFieldInputText();
 const isValidPassword = computed<boolean>(() => !passwordIsTooShort.value);
 const passwordIsTooShort = computed<boolean>(
-  () => userPassword.value.trim().length < 8
+  () => userPassword.value.trim().length < 8,
 );
 const needsValidationAndIsValidPassword = computed<FormInputValidationState>(
-  () => (userPassword.touched ? isValidPassword.value : undefined)
+  () => (userPassword.touched ? isValidPassword.value : undefined),
 );
 const passwordConfirmationMatches = computed<boolean>(
-  () => userPasswordConfirmation.value.trim() === userPassword.value.trim()
+  () => userPasswordConfirmation.value.trim() === userPassword.value.trim(),
 );
 const needsValidationAndIsValidPasswordConfirmation =
   computed<FormInputValidationState>(() =>
     userPasswordConfirmation.touched
       ? isValidPassword.value && passwordConfirmationMatches.value
-      : undefined
+      : undefined,
   );
 
 // ---------- password visibility ------------
@@ -110,7 +110,7 @@ const togglePasswordVisibility = () => {
 // ---------- acceptedEUA ------------
 const acceptedEUA: FormInputValue = formFieldInputText(false);
 const needsValidationAndAcceptedEUA = computed<FormInputValidationState>(() =>
-  acceptedEUA.touched ? Boolean(acceptedEUA.value) : undefined
+  acceptedEUA.touched ? Boolean(acceptedEUA.value) : undefined,
 );
 
 // ---------- general ------------
@@ -145,7 +145,7 @@ const registrationFormIsFilledAndValid = computed<boolean>(
     isValidPassword.value &&
     isValidUserName.value &&
     passwordConfirmationMatches.value &&
-    Boolean(acceptedEUA.value)
+    Boolean(acceptedEUA.value),
 );
 
 // Hold onto a snapshot of the submitted details so that we can see if the user
@@ -180,7 +180,7 @@ const register = async () => {
     name,
     password,
     emailAddress,
-    latestEUAVersion
+    latestEUAVersion,
   );
   if (newUserResponse.success) {
     const newUser = newUserResponse.result;

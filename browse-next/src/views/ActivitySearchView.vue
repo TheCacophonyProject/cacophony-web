@@ -21,7 +21,6 @@ import {
   allHistoricLocations,
   currentSelectedProject as currentActiveProject,
   latLngForActiveLocations,
-  selectedProjectDevices,
   urlNormalisedCurrentSelectedProjectName,
 } from "@models/provides";
 import {
@@ -65,7 +64,6 @@ import { DateTime } from "luxon";
 import {
   dayAndTimeAtLocation,
   formatDuration,
-  timeAtLocation,
   timezoneForLatLng,
   visitDuration,
 } from "@models/visitsUtils";
@@ -81,10 +79,8 @@ import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
-  type BulkVisitsResponse,
   getAllVisitsForProjectBetweenTimes,
   getVisitsForProject,
-  getVisitsForProjectNew,
   type VisitsQueryResult,
 } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
@@ -130,7 +126,7 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 >;
 
 const fileSafeProjectName = inject(
-  urlNormalisedCurrentSelectedProjectName
+  urlNormalisedCurrentSelectedProjectName,
 ) as ComputedRef<string>;
 
 export interface ActivitySearchParams {
@@ -174,7 +170,7 @@ watch(currentProject, async (next, prev) => {
 
 const arrayContentsAreTheSame = (
   a: LocationQueryValue[],
-  b: LocationQueryValue[]
+  b: LocationQueryValue[],
 ): boolean => {
   if (a.length !== b.length) {
     return false;
@@ -200,7 +196,7 @@ const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
       Array.isArray(prev[key]) &&
       !arrayContentsAreTheSame(
         next[key] as LocationQueryValue[],
-        prev[key] as LocationQueryValue[]
+        prev[key] as LocationQueryValue[],
       )
     ) {
       diff[key] = next[key];
@@ -215,12 +211,73 @@ const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
   return diff;
 };
 
-const DefaultSearchParams = {
-  "display-mode": ActivitySearchDisplayMode.Visits,
-  "recording-mode": ActivitySearchRecordingMode.Cameras,
-  locations: "any",
-  from: "24-hours-ago",
+const defaultSearchParams = computed(() => {
+  const hasCameraRecordings = locations.value.some((location) =>
+    locationHasCameraRecordings(location),
+  );
+  const hasAudioRecordings = locations.value.some((location) =>
+    locationHasAudioRecordings(location),
+  );
+  if (hasAudioRecordings && !hasCameraRecordings) {
+    return {
+      "display-mode": ActivitySearchDisplayMode.Recordings,
+      "recording-mode": ActivitySearchRecordingMode.Audio,
+      locations: "any",
+      from: "24-hours-ago",
+    };
+  }
+  return {
+    "display-mode": ActivitySearchDisplayMode.Visits,
+    "recording-mode": ActivitySearchRecordingMode.Cameras,
+    locations: "any",
+    from: "24-hours-ago",
+  };
+});
+
+const locationHasAudioRecordings = (location: ApiLocationResponse) => {
+  return !!location.lastAudioRecordingTime;
 };
+const locationHasCameraRecordings = (location: ApiLocationResponse) => {
+  return !!location.lastThermalRecordingTime;
+};
+const route = useRoute();
+const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
+  if (route && route.query["display-mode"]) {
+    if (route.query["display-mode"] === "recordings") {
+      return ActivitySearchDisplayMode.Recordings;
+    } else if (route.query["display-mode"] === "visits") {
+      return ActivitySearchDisplayMode.Visits;
+    }
+  } else if (
+    locations.value.some((location) => locationHasCameraRecordings(location))
+  ) {
+    return ActivitySearchDisplayMode.Visits;
+  } else if (
+    locations.value.some((location) => locationHasAudioRecordings(location))
+  ) {
+    return ActivitySearchDisplayMode.Recordings;
+  }
+  return ActivitySearchDisplayMode.Visits;
+});
+
+const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
+  if (route && route.query["recording-mode"]) {
+    if (route.query["recording-mode"] === "audio") {
+      return ActivitySearchRecordingMode.Audio;
+    } else if (route.query["recording-mode"] === "cameras") {
+      return ActivitySearchRecordingMode.Cameras;
+    }
+  } else if (
+    locations.value.some((location) => locationHasCameraRecordings(location))
+  ) {
+    return ActivitySearchRecordingMode.Cameras;
+  } else if (
+    locations.value.some((location) => locationHasAudioRecordings(location))
+  ) {
+    return ActivitySearchRecordingMode.Audio;
+  }
+  return ActivitySearchRecordingMode.Cameras;
+});
 
 const initSearchParams = (): ActivitySearchParams => ({
   devices: "all",
@@ -232,8 +289,8 @@ const initSearchParams = (): ActivitySearchParams => ({
   taggedWith: ["any"],
   subClassTags: true,
   until: undefined,
-  displayMode: ActivitySearchDisplayMode.Visits,
-  recordingMode: ActivitySearchRecordingMode.Cameras,
+  displayMode: defaultDisplayMode.value,
+  recordingMode: defaultRecordingMode.value,
   locations: ["any"],
   from: "24-hours-ago",
 });
@@ -259,7 +316,7 @@ const maxDateForProject = computed<Date>(() => {
     for (const location of locations.value) {
       const latestDateForLocation = getLatestDateForLocationInRecordingMode(
         location,
-        searchParams.value.recordingMode
+        searchParams.value.recordingMode,
       );
       if (latestDateForLocation && latestDateForLocation > latest) {
         latest = latestDateForLocation;
@@ -323,7 +380,7 @@ const availableDateRanges = computed<
 
 const deserialiseAndValidateRouteValue = (
   key: string,
-  value: LocationQueryValue | LocationQueryValue[]
+  value: LocationQueryValue | LocationQueryValue[],
 ): { replacement: string | null | false } => {
   if (Array.isArray(value)) {
     value = value.join(",");
@@ -339,21 +396,21 @@ const deserialiseAndValidateRouteValue = (
       case "display-mode":
         if (
           Object.values(ActivitySearchDisplayMode).includes(
-            value as ActivitySearchDisplayMode
+            value as ActivitySearchDisplayMode,
           )
         ) {
           searchParams.value.displayMode = value as ActivitySearchDisplayMode;
         } else {
           // Replace with default value
           return {
-            replacement: ActivitySearchDisplayMode.Visits,
+            replacement: defaultDisplayMode.value,
           };
         }
         break;
       case "recording-mode":
         if (
           Object.values(ActivitySearchRecordingMode).includes(
-            value as ActivitySearchRecordingMode
+            value as ActivitySearchRecordingMode,
           )
         ) {
           searchParams.value.recordingMode =
@@ -361,7 +418,7 @@ const deserialiseAndValidateRouteValue = (
         } else {
           // Replace with default value
           return {
-            replacement: ActivitySearchRecordingMode.Cameras,
+            replacement: defaultRecordingMode.value,
           };
         }
         break;
@@ -373,7 +430,7 @@ const deserialiseAndValidateRouteValue = (
         arr[from] = range;
         return arr;
       },
-      {}
+      {},
     );
     if (value in knownLabels) {
       dateRange.value = [...knownLabels[value]];
@@ -408,7 +465,7 @@ const deserialiseAndValidateRouteValue = (
     // Maybe need to do this in two passes.
     if (locationsInSelectedTimespan.value.length) {
       const availableLocations = locationsInSelectedTimespan.value.map(
-        ({ id }) => id
+        ({ id }) => id,
       );
       const validIds = ids.filter((id) => availableLocations.includes(id));
       if (validIds.length === ids.length) {
@@ -478,14 +535,14 @@ const deserialiseAndValidateRouteValue = (
 };
 const syncSearchQuery = async (
   next: LocationQuery,
-  prev: LocationQuery | undefined
+  prev: LocationQuery | undefined,
 ) => {
   if (route.name !== "activity") {
     return;
   }
 
   if (prev === undefined) {
-    prev = DefaultSearchParams as LocationQuery;
+    prev = defaultSearchParams.value as LocationQuery;
   }
   // IMPORTANT: We need to make sure the dateRange is set correctly first.
   // But to get the dateRange, we need to have validated that any locations passed in
@@ -527,7 +584,7 @@ const syncSearchQuery = async (
   await loadActiveAndInactiveDevices();
   if (Object.entries(replacements).length) {
     const query: LocationQuery = {
-      ...DefaultSearchParams,
+      ...defaultSearchParams.value,
       ...route.query,
       ...replacements,
     };
@@ -546,7 +603,7 @@ const syncSearchQuery = async (
   }
 };
 const router = useRouter();
-const route = useRoute();
+
 const watchQuery = ref<WatchStopHandle | null>(null);
 
 const loading = ref<boolean>(false);
@@ -588,12 +645,13 @@ const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
 
 const locationHasRecordings = (location: ApiLocationResponse) => {
   if (searchParams.value.recordingMode === "audio") {
-    return !!location.lastAudioRecordingTime;
+    return locationHasAudioRecordings(location);
   } else if (searchParams.value.recordingMode === "cameras") {
-    return !!location.lastThermalRecordingTime;
+    return locationHasCameraRecordings(location);
   }
-  return !!(
-    location.lastAudioRecordingTime || location.lastThermalRecordingTime
+  return (
+    locationHasCameraRecordings(location) ||
+    locationHasAudioRecordings(location)
   );
 };
 
@@ -604,7 +662,7 @@ const locationsForMap = computed<NamedPoint[]>(() => {
         (location) =>
           locationHasRecordings(location) &&
           location.location &&
-          (location.location.lat !== 0 || location.location.lng !== 0)
+          (location.location.lat !== 0 || location.location.lng !== 0),
       )
       .map(mapLocationForMap);
   }
@@ -613,7 +671,7 @@ const locationsForMap = computed<NamedPoint[]>(() => {
 const highlightedPoint = computed<NamedPoint | null>(() => {
   return (
     (locationsForMap.value || []).find(
-      (p) => p.id === currentlyHighlightedLocation.value
+      (p) => p.id === currentlyHighlightedLocation.value,
     ) || null
   );
 });
@@ -624,7 +682,7 @@ const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
   }
   return searchParams.value.locations
     .map((locId) =>
-      locationsInSelectedTimespan.value.find(({ id }) => id === locId)
+      locationsInSelectedTimespan.value.find(({ id }) => id === locId),
     )
     .filter((item) => !!item) as ApiLocationResponse[];
 });
@@ -635,7 +693,7 @@ const selectedDevices = computed<ApiDeviceResponse[] | "all">(() => {
   }
   return (
     (searchParams.value.devices as DeviceId[]).map((deviceId) =>
-      (devices.value || []).find(({ id }) => id === deviceId)
+      (devices.value || []).find(({ id }) => id === deviceId),
     ) as ApiDeviceResponse[]
   ).filter((device) => !!device);
 });
@@ -651,7 +709,7 @@ const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
       }
       const latestDateForLocation = getLatestDateForLocationInRecordingMode(
         location,
-        searchParams.value.recordingMode
+        searchParams.value.recordingMode,
       );
       return (
         latestDateForLocation &&
@@ -672,7 +730,7 @@ const locationsInSelectedTimespanForMap = computed<NamedPoint[]>(() => {
           return true;
         } else {
           return !!(selectedLocations.value as ApiLocationResponse[]).find(
-            ({ id }) => id === location.id
+            ({ id }) => id === location.id,
           );
         }
       }
@@ -737,8 +795,8 @@ const maxDateForSelectedLocations = computed<Date>(() => {
         lastActiveAudio,
         maxDate(
           lastActiveThermal,
-          maxDate(lastThermalRecording, lastAudioRecording)
-        )
+          maxDate(lastThermalRecording, lastAudioRecording),
+        ),
       );
       if (activeAt > latest) {
         latest = activeAt;
@@ -751,7 +809,7 @@ const highlightPoint = (_point: NamedPoint | null) => {
   // TODO: Could highlight all visible list items that correspond to the highlighted map location?
 };
 const canonicalLatLngForActiveLocations = canonicalLatLngForLocations(
-  locationsInSelectedTimespan
+  locationsInSelectedTimespan,
 );
 
 interface MaybeDeletedRecording extends ApiRecordingResponse {
@@ -785,10 +843,10 @@ const canExpandSearchBackFurther = computed<boolean>(() => {
 });
 const updatedRecording = (
   recording: ApiRecordingResponse,
-  recordingWasDeleted = false
+  recordingWasDeleted = false,
 ) => {
   const loadedRecording = loadedRecordings.value.find(
-    ({ id }) => id === recording.id
+    ({ id }) => id === recording.id,
   );
   if (loadedRecording) {
     if (recordingWasDeleted) {
@@ -817,12 +875,12 @@ const chunkedRecordings = ref<
 const prefilteredChunkedVisits = ref<ApiVisitResponse[]>([]);
 const chunkedVisits = computed<ApiVisitResponse[]>(() => {
   return prefilteredChunkedVisits.value.filter(
-    (visit) => !visit.hasOwnProperty("tombstoned")
+    (visit) => !visit.hasOwnProperty("tombstoned"),
   );
 });
 const filteredLoadedRecordings = computed<ApiRecordingResponse[]>(() => {
   return loadedRecordings.value.filter(
-    (rec) => !rec.hasOwnProperty("tombstoned")
+    (rec) => !rec.hasOwnProperty("tombstoned"),
   );
 });
 
@@ -868,25 +926,25 @@ onUpdated(() => {
     let nearLast;
     if (inRecordingsMode.value) {
       nearLast = document.querySelector(
-        ".day-container:last-child > .list-item:nth-last-child(3)"
+        ".day-container:last-child > .list-item:nth-last-child(3)",
       );
       if (!nearLast) {
         nearLast = document.querySelector(
-          ".day-container:last-child > .list-item:nth-last-child(2)"
+          ".day-container:last-child > .list-item:nth-last-child(2)",
         );
       }
       if (!nearLast) {
         nearLast = document.querySelector(
-          ".day-container:last-child > .list-item:last-child"
+          ".day-container:last-child > .list-item:last-child",
         );
       }
     } else if (inVisitsMode.value) {
       nearLast = document.querySelector(
-        ".visits-daily-breakdown:nth-last-child(3)"
+        ".visits-daily-breakdown:nth-last-child(3)",
       );
       if (!nearLast) {
         nearLast = document.querySelector(
-          ".visits-daily-breakdown:nth-last-child(2)"
+          ".visits-daily-breakdown:nth-last-child(2)",
         );
       }
       if (!nearLast) {
@@ -914,7 +972,7 @@ onUpdated(() => {
                 break;
               }
             }
-          }
+          },
         );
       }
     } else {
@@ -968,13 +1026,13 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
   const isAnyLocation = selectedLocations.value.includes("any");
   if (!isAnyLocation) {
     query.locations = selectedLocations.value.map(
-      (loc) => (loc as ApiLocationResponse).id
+      (loc) => (loc as ApiLocationResponse).id,
     );
   }
   const isAllDevices = selectedDevices.value === "all";
   if (!isAllDevices) {
     query.devices = (selectedDevices.value as ApiDeviceResponse[]).map(
-      (device) => (device as ApiDeviceResponse).id
+      (device) => (device as ApiDeviceResponse).id,
     );
   }
   const taggedWithAny = searchParams.value.taggedWith.includes("any");
@@ -1004,7 +1062,7 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
       "pest",
     ];
     query.taggedWith = query.taggedWith.filter(
-      (tag) => !animalChildren.includes(tag)
+      (tag) => !animalChildren.includes(tag),
     );
     query.taggedWith = [...query.taggedWith, ...animalChildren];
   }
@@ -1023,7 +1081,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
     const { sunrise, sunset } = sunCalc.getTimes(
       recordingDate,
       canonicalLatLngForActiveLocations.value.lat,
-      canonicalLatLngForActiveLocations.value.lng
+      canonicalLatLngForActiveLocations.value.lng,
     );
 
     let prevDay;
@@ -1070,6 +1128,29 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
         });
       }
     }
+    if (
+      (recording.type === "thermalRaw" &&
+        recording.duration < 2.5 &&
+        recording.duration > 1.8) ||
+      (recording.type === "audio" &&
+        recording.duration < 11 &&
+        recording.duration > 9.8)
+    ) {
+      recording.tags.push({
+        id: -1,
+        confidence: 1,
+        detail: "test recording",
+        createdAt: recording.recordingDateTime,
+      });
+    }
+    if (recording.type === "audio" && recording.redacted) {
+      recording.tags.push({
+        id: -1,
+        confidence: 1,
+        detail: "redacted for privacy",
+        createdAt: recording.recordingDateTime,
+      });
+    }
     prevDay.items.push({
       type: "recording",
       data: recording,
@@ -1087,7 +1168,7 @@ const appendVisitsChunkedByDay = (visits: ApiVisitResponse[]) => {
 const resetQuery = (
   newQueryHash: string,
   fromDateTime: Date,
-  untilDateTime: Date
+  untilDateTime: Date,
 ) => {
   while (loadedRecordings.value.length) {
     loadedRecordings.value.pop();
@@ -1114,13 +1195,13 @@ const resetQuery = (
 };
 
 const displayMode = computed<ActivitySearchDisplayMode>(
-  () => searchParams.value.displayMode
+  () => searchParams.value.displayMode,
 );
 const inRecordingsMode = computed<boolean>(
-  () => displayMode.value === ActivitySearchDisplayMode.Recordings
+  () => displayMode.value === ActivitySearchDisplayMode.Recordings,
 );
 const inVisitsMode = computed<boolean>(
-  () => displayMode.value === ActivitySearchDisplayMode.Visits
+  () => displayMode.value === ActivitySearchDisplayMode.Visits,
 );
 
 const maxDate = (a: Date, b: Date): Date => {
@@ -1185,7 +1266,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         earliestRecord = new Date(
           filteredLoadedRecordings.value[
             filteredLoadedRecordings.value.length - 1
-          ].recordingDateTime
+          ].recordingDateTime,
         );
       }
     } else {
@@ -1199,7 +1280,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       resetQuery(
         queryHash,
         endOfDay(untilDateTime as Date),
-        endOfDay(untilDateTime as Date)
+        endOfDay(untilDateTime as Date),
       );
     }
 
@@ -1247,7 +1328,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           dateRange.value[0] as Date,
           minDate(
             currentQueryCursor.value.untilDateTime as Date,
-            endOfDay(maxDateForSelectedLocations.value)
+            endOfDay(maxDateForSelectedLocations.value),
           ),
           //pageSize,
           query.locations,
@@ -1257,7 +1338,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
                 | RecordingType.TrailCamImage
                 | RecordingType.TrailCamVideo
               )[]
-            | undefined
+            | undefined,
         );
       }
       if (response && response.success) {
@@ -1275,7 +1356,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           currentQueryLoaded.value += recordings.length;
           if (recordings.length !== 0) {
             gotUntilDate = new Date(
-              recordings[recordings.length - 1].recordingDateTime
+              recordings[recordings.length - 1].recordingDateTime,
             );
           }
         } else if (inVisitsMode.value) {
@@ -1322,7 +1403,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               // We're at the end of the current time range, but can expand it back further
               // and load more.
               currentQueryCursor.value.fromDateTime = new Date(
-                currentQueryCursor.value.untilDateTime as Date
+                currentQueryCursor.value.untilDateTime as Date,
               );
             }
           }
@@ -1333,11 +1414,11 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               minDateForSelectedLocations.value.getTime()
           ) {
             currentQueryCursor.value.fromDateTime = new Date(
-              minDateForSelectedLocations.value
+              minDateForSelectedLocations.value,
             );
           } else {
             currentQueryCursor.value.fromDateTime = new Date(
-              currentQueryCursor.value.untilDateTime as Date
+              currentQueryCursor.value.untilDateTime as Date,
             );
           }
           completedCurrentQuery.value = true;
@@ -1356,7 +1437,7 @@ const exportProgress = ref<number>(0);
 const exportStartTime = ref<number>(0);
 const exportTime = ref<number>(0);
 const exportProgressZeroOneHundred = computed<number>(
-  () => exportProgress.value * 100
+  () => exportProgress.value * 100,
 );
 const doSearch = async () => {
   searching.value = true;
@@ -1381,9 +1462,9 @@ const arrayToCsv = (data: string[][]) => {
       (row) =>
         row
           .map(String) // convert every value to String
-          .map((v) => v.replaceAll('"', '""')) // escape double quotes
+          .map((v) => v.replaceAll("\"", "\"\"")) // escape double quotes
           .map((v) => `"${v}"`) // quote it
-          .join(",") // comma-separated
+          .join(","), // comma-separated
     )
     .join("\r\n"); // rows starting on new lines
 };
@@ -1413,10 +1494,10 @@ const createVisitsCsv = (data: ApiVisitResponse[]): string => {
         ? "User & AI"
         : "User"
       : visit.classificationAi
-      ? "AI"
-      : "unknown";
+        ? "AI"
+        : "unknown";
     const location = (locations.value || []).find(
-      ({ id }) => id === visit.stationId
+      ({ id }) => id === visit.stationId,
     );
     if (location) {
       csv.push([
@@ -1430,9 +1511,9 @@ const createVisitsCsv = (data: ApiVisitResponse[]): string => {
           (visit.classification &&
             displayLabelForClassificationLabel(
               visit.classification,
-              !visit.classFromUserTag
+              !visit.classFromUserTag,
             )) ||
-            "none"
+            "none",
         ),
         classificationType,
         (visit.recordings?.length || 0).toString(),
@@ -1465,7 +1546,7 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
   }
   for (const recording of data) {
     const location = (locations.value || []).find(
-      ({ id }) => id === recording.stationId
+      ({ id }) => id === recording.stationId,
     );
 
     const canonicalTags = canonicalTagsForRecording(recording);
@@ -1479,30 +1560,30 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
       const display = displayLabelForClassificationLabel(
         tag.what,
         tag.automatic && !tag.human,
-        isAudioMode
+        isAudioMode,
       );
       displaysCanonical.push(
-        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`,
       );
     }
     for (const tag of aiTags) {
       const display = displayLabelForClassificationLabel(
         tag.what,
         tag.automatic && !tag.human,
-        isAudioMode
+        isAudioMode,
       );
       displaysAI.push(
-        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`,
       );
     }
     for (const tag of humanTags) {
       const display = displayLabelForClassificationLabel(
         tag.what,
         tag.automatic && !tag.human,
-        isAudioMode
+        isAudioMode,
       );
       displaysHuman.push(
-        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`
+        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`,
       );
     }
     const row = [
@@ -1525,7 +1606,7 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
       row.push(
         ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
           .map((index: { index_percent: number }) => index.index_percent)
-          .join(", ")
+          .join(", "),
       );
     }
     csv.push(row);
@@ -1534,7 +1615,7 @@ const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
 };
 
 const exportTimeElapsed = computed<number>(
-  () => exportTime.value - exportStartTime.value
+  () => exportTime.value - exportStartTime.value,
 );
 
 const doExport = async () => {
@@ -1569,16 +1650,16 @@ const doExport = async () => {
         (progress) => {
           exportProgress.value = progress;
           exportTime.value = performance.now();
-        }
+        },
       );
       const csvFileData = createVisitsCsv(
-        visitsResponse.visits as ApiVisitResponse[]
+        visitsResponse.visits as ApiVisitResponse[],
       );
       download(
         URL.createObjectURL(
-          new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
+          new Blob([csvFileData], { type: "text/csv;charset=utf-8;" }),
         ),
-        `${fileSafeProjectName.value}-visits-export.csv`
+        `${fileSafeProjectName.value}-visits-export.csv`,
       );
     } else if (inRecordingsMode.value) {
       query.fromDateTime = fromDateTime;
@@ -1588,14 +1669,14 @@ const doExport = async () => {
         query,
         () => {
           exportTime.value = performance.now();
-        }
+        },
       );
       const csvFileData = createRecordingsCsv(recordings);
       download(
         URL.createObjectURL(
-          new Blob([csvFileData], { type: "text/csv;charset=utf-8;" })
+          new Blob([csvFileData], { type: "text/csv;charset=utf-8;" }),
         ),
-        `${fileSafeProjectName.value}-recordings-export.csv`
+        `${fileSafeProjectName.value}-recordings-export.csv`,
       );
     }
   }
@@ -1611,7 +1692,7 @@ const fromDateMinusIncrement = computed<Date>(() => {
   const setBackFourWeeks = fromDateTime.setDate(fromDateTime.getDate() - 28);
   const from = Math.max(
     minDateForSelectedLocations.value.getTime(),
-    new Date(setBackFourWeeks).getTime()
+    new Date(setBackFourWeeks).getTime(),
   );
   return new Date(from);
 });
@@ -1647,7 +1728,7 @@ const currentlySelectedRecording = computed<RecordingId | null>(
   () =>
     (route.params.currentRecordingId &&
       Number(route.params.currentRecordingId)) ||
-    null
+    null,
 );
 
 // TODO: Load offset date from url params, and have the ability to also scroll upwards and load more,
@@ -1656,7 +1737,7 @@ const currentlySelectedRecording = computed<RecordingId | null>(
 const isCustomDateRange = computed<boolean>(
   () =>
     queryValueIsDate(searchParams.value.from) &&
-    queryValueIsDate(searchParams.value.until)
+    queryValueIsDate(searchParams.value.until),
 );
 const customAutomaticallySet = ref<boolean>(false);
 
@@ -1738,15 +1819,15 @@ watch(
             rec.tracks.some(
               (track) =>
                 track.tag === visit.classification ||
-                (!track.tag && track.aiTag === visit.classification)
-            )
+                (!track.tag && track.aiTag === visit.classification),
+            ),
         );
         if (firstRecordingWithVisitClassification) {
           firstRec = firstRecordingWithVisitClassification;
           firstTrack = firstRec.tracks.find(
             (track) =>
               track.tag === visit.classification ||
-              (!track.tag && track.aiTag === visit.classification)
+              (!track.tag && track.aiTag === visit.classification),
           );
         }
       }
@@ -1764,7 +1845,7 @@ watch(
         query: route.query,
       });
     }
-  }
+  },
 );
 
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -1800,7 +1881,7 @@ const mapWidthPx = computed<number>(() => {
   if (windowWidth.value >= 1200) {
     return Math.min(
       500,
-      windowWidth.value - (searchContainerLeft.value + 810 + 24)
+      windowWidth.value - (searchContainerLeft.value + 810 + 24),
     );
   } else if (windowWidth.value >= 992) {
     return 250;
@@ -1814,7 +1895,7 @@ const toggleOffcanvasSearch = () => {
   showOffcanvasSearch.value = !showOffcanvasSearch.value;
 };
 const shouldShowSearchControlsInline = computed<boolean>(
-  () => windowWidth.value >= 768
+  () => windowWidth.value >= 768,
 );
 
 const localDateString = (d: Date): string => {
@@ -1834,7 +1915,7 @@ const loadActiveAndInactiveDevices = async () => {
     devices.value = await getDevicesForProject(
       currentProject.value.id,
       true,
-      true
+      true,
     );
   }
 };
@@ -1948,6 +2029,7 @@ onBeforeUnmount(() => {
             @selected-recording="selectedRecording"
             :currently-selected-recording-id="currentlySelectedRecording"
             :canonical-location="canonicalLatLngForActiveLocations"
+            :devices="devices || []"
           />
           <visits-breakdown-list
             v-else-if="inVisitsMode"

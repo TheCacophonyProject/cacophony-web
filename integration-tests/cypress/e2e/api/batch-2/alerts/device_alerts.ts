@@ -28,7 +28,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       null,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     ).then((response: any) => {
       checkResponse(response, HttpStatusCode.Forbidden);
     });
@@ -48,7 +48,7 @@ describe("Devices alerts", () => {
       BAD_POSSUM_ALERT,
       usera.camera,
       null,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     ).then((response: any) => {
       checkResponse(response, HttpStatusCode.Unprocessable);
     });
@@ -65,14 +65,14 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     ).then(() => {
       // crete an example alert to compare against
       const emptyExpectedAlert = createExpectedAlert(
         "alert1",
         0,
         POSSUM_ALERT,
-        false
+        false,
       );
 
       //check we created an alert wth no last alerted time
@@ -94,7 +94,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
@@ -105,18 +105,18 @@ describe("Devices alerts", () => {
         tags: ["possum"],
         time: oneHourAgo,
       },
-      "recording1"
+      "recording1",
     ).then(() => {
       const expectedAlert = createExpectedAlert(
         "alert1",
         0,
         POSSUM_ALERT,
-        true
+        true,
       );
       const expectedEvent = createExpectedEvent(
         usera.camera,
         "recording1",
-        "alert1"
+        "alert1",
       );
 
       //check that an alert is present and has a 'last alerted'
@@ -126,7 +126,7 @@ describe("Devices alerts", () => {
       cy.testEventsCheckAgainstExpected(
         usera.name,
         usera.camera,
-        expectedEvent
+        expectedEvent,
       );
     });
   });
@@ -142,7 +142,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //upload a recording tagged as rat and  build an expected event using the returned recording details
@@ -153,7 +153,7 @@ describe("Devices alerts", () => {
         tags: ["rat"],
         time: oneHourAgo,
       },
-      "recording1b"
+      "recording1b",
     ).then(() => {
       const emptyAlert = createExpectedAlert("alert1b", 0, POSSUM_ALERT, false);
 
@@ -178,7 +178,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //upload a recording tagged as possum against another camera and  build an expected event using the returned recording details
@@ -189,7 +189,7 @@ describe("Devices alerts", () => {
         tags: ["possum"],
         time: oneHourAgo,
       },
-      "recording1c"
+      "recording1c",
     ).then(() => {
       const emptyAlert = createExpectedAlert("alert1c", 0, POSSUM_ALERT, false);
 
@@ -213,7 +213,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //upload a recording tagged as possum and build an expected event using the returned recording details
@@ -224,18 +224,18 @@ describe("Devices alerts", () => {
         tags: ["rat", "possum", "possum", "possum", "rat"],
         time: oneHourAgo,
       },
-      "recording1d"
+      "recording1d",
     ).then(() => {
       const expectedAlert1d = createExpectedAlert(
         "alert1d",
         0,
         POSSUM_ALERT,
-        true
+        true,
       );
       const expectedEvent1d = createExpectedEvent(
         usera.camera,
         "recording1d",
-        "alert1d"
+        "alert1d",
       );
 
       //check that an alert is present and has a 'last alerted'
@@ -245,7 +245,7 @@ describe("Devices alerts", () => {
       cy.testEventsCheckAgainstExpected(
         usera.name,
         usera.camera,
-        expectedEvent1d
+        expectedEvent1d,
       );
     });
   });
@@ -261,7 +261,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //upload a recording tagged as possum and  build an expected event using the returned recording details
@@ -272,13 +272,13 @@ describe("Devices alerts", () => {
         tags: ["rat", "rat", "possum", "possum", "rat"],
         time: oneHourAgo,
       },
-      "recording1d"
+      "recording1d",
     ).then(() => {
       const expectedAlert1e = createExpectedAlert(
         "alert1d",
         0,
         POSSUM_ALERT,
-        false
+        false,
       );
 
       //check that an alert is present and has no 'last alerted'
@@ -300,7 +300,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //upload a recording tagged as possum
@@ -312,7 +312,7 @@ describe("Devices alerts", () => {
         tags: ["possum"],
         time: oneHourAgo,
       },
-      "recording2"
+      "recording2",
     ).then(() => {
       //expected alert to compare against (latestEvent is false)
       const emptyAlert = createExpectedAlert("alert1", 0, POSSUM_ALERT, false);
@@ -339,7 +339,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //add userb to camera's group
@@ -354,13 +354,13 @@ describe("Devices alerts", () => {
         tags: ["possum"],
         time: oneHourAgo,
       },
-      "recording3"
+      "recording3",
     ).then(() => {
       const expectedAlert3 = createExpectedAlert(
         "alert3",
         0,
         POSSUM_ALERT,
-        false
+        false,
       );
 
       //check we have an alert with a latestEvent
@@ -385,7 +385,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //add userb to camera's group
@@ -401,13 +401,13 @@ describe("Devices alerts", () => {
         tags: ["possum"],
         time: oneHourAgo,
       },
-      "recording4"
+      "recording4",
     ).then(() => {
       const expectedAlert4 = createExpectedAlert(
         "alert4",
         0,
         POSSUM_ALERT,
-        false
+        false,
       );
 
       //check alert is present and as expected shows latest event
@@ -429,7 +429,7 @@ describe("Devices alerts", () => {
       POSSUM_ALERT,
       usera.camera,
       0,
-      HttpStatusCode.Ok
+      HttpStatusCode.Ok,
     );
 
     //upload a recording tagged as possum using group
@@ -440,18 +440,18 @@ describe("Devices alerts", () => {
         tags: ["possum"],
         time: oneHourAgo,
       },
-      "recording1"
+      "recording1",
     ).then(() => {
       const expectedAlert1 = createExpectedAlert(
         "alert1",
         0,
         POSSUM_ALERT,
-        true
+        true,
       );
       const expectedEvent1 = createExpectedEvent(
         usera.camera,
         "recording1",
-        "alert1"
+        "alert1",
       );
 
       //check that an alert is present and has a 'last alerted'
@@ -462,7 +462,7 @@ describe("Devices alerts", () => {
         usera.name,
         usera.camera,
         expectedEvent1,
-        1
+        1,
       );
 
       //upload a 2nd recording tagged as possum using device
@@ -473,18 +473,18 @@ describe("Devices alerts", () => {
           tags: ["possum"],
           time: oneHourAgo,
         },
-        "recording2"
+        "recording2",
       ).then(() => {
         const expectedAlert2 = createExpectedAlert(
           "alert1",
           0,
           POSSUM_ALERT,
-          true
+          true,
         );
         const expectedEvent2 = createExpectedEvent(
           usera.camera,
           "recording2",
-          "alert1"
+          "alert1",
         );
 
         //check that an alert is present and has a 'last alerted'
@@ -495,7 +495,7 @@ describe("Devices alerts", () => {
           usera.name,
           usera.camera,
           expectedEvent2,
-          2
+          2,
         );
 
         //upload a 3rd recording tagged as possum and  build an expected event using the returned recording details
@@ -506,18 +506,18 @@ describe("Devices alerts", () => {
             tags: ["possum"],
             time: oneHourAgo,
           },
-          "recording3"
+          "recording3",
         ).then(() => {
           const expectedAlert3 = createExpectedAlert(
             "alert1",
             0,
             POSSUM_ALERT,
-            true
+            true,
           );
           const expectedEvent3 = createExpectedEvent(
             usera.camera,
             "recording3",
-            "alert1"
+            "alert1",
           );
 
           //check that an alert is present and has a 'last alerted'
@@ -528,7 +528,7 @@ describe("Devices alerts", () => {
             usera.name,
             usera.camera,
             expectedEvent3,
-            3
+            3,
           );
         });
       });

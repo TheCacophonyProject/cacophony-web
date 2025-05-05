@@ -48,7 +48,7 @@ onMounted(async () => {
       } else {
         await refreshUserProjects();
         const nextProject = nonPendingUserProjects.value.find(
-          ({ id }) => id === jwtToken.group
+          ({ id }) => id === jwtToken.group,
         );
         let nextProjectName = urlNormalisedCurrentProjectName.value;
         if (nextProject) {

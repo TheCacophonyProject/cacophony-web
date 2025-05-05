@@ -14,10 +14,12 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
 <template>
   <section-header>Manage project</section-header>
   <div class="px-3 p-md-0">
-    <p>
+    <b-alert :model-value="true" variant="light" class="mb-3">
       Add or remove users who have access to this project, change the default
-      tags that users of this project see when tagging tracks.
-    </p>
+      tags and labels that users of this project see when tagging recordings.
+      <br />Customise which tags you'd like your users to see on your project
+      dashboard.
+    </b-alert>
     <!--    <p>-->
     <!--      If I'm the only user, and there are no devices, and no recordings, then we-->
     <!--      should show the setup screen-->
@@ -39,13 +41,38 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
     <router-link
       :class="[
         ...navLinkClasses,
-        { active: activeTabName === 'project-tag-settings' },
+        { active: activeTabName === 'project-tagging-settings' },
       ]"
-      title="Tag settings"
+      title="Tagging settings"
       :to="{
-        name: 'project-tag-settings',
+        name: 'project-tagging-settings',
       }"
-      >Tag settings</router-link
+      >Tag<span class="d-none d-sm-inline-block">ging</span
+      ><span class="d-sm-none">s</span></router-link
+    >
+    <router-link
+      :class="[
+        ...navLinkClasses,
+        { active: activeTabName === 'project-label-settings' },
+      ]"
+      title="Label settings"
+      :to="{
+        name: 'project-label-settings',
+      }"
+      >Labels</router-link
+    >
+    <router-link
+      :class="[
+        ...navLinkClasses,
+        { active: activeTabName === 'project-misc-settings' },
+      ]"
+      title="Other settings"
+      :to="{
+        name: 'project-misc-settings',
+      }"
+      ><span
+        >Other<span class="d-none d-sm-inline-block">&nbsp;settings</span></span
+      ></router-link
     >
     <!--    <router-link-->
     <!--      :class="[-->

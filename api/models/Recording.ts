@@ -15,7 +15,6 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import log from "../logging.js";
 import mime from "mime";
 import moment from "moment-timezone";
 import type { FindOptions, Includeable } from "sequelize";
@@ -28,15 +27,13 @@ import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type { Tag, TagStatic } from "./Tag.js";
 import type { Device, DeviceStatic } from "./Device.js";
 import type { Group } from "./Group.js";
-import type { Track } from "./Track.js";
+import { saveTrackData, type Track } from "./Track.js";
 
-import jsonwebtoken from "jsonwebtoken";
 import type { TrackTag } from "./TrackTag.js";
 import type { Station } from "./Station.js";
 import type {
   DeviceId,
   GroupId,
-  IsoFormattedDateString,
   LatLng,
   RecordingId,
   StationId,
@@ -57,7 +54,7 @@ import type {
 } from "@typedefs/api/recording.js";
 import labelPath from "../classifications/label_paths.json" assert { type: "json" };
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
-import { locationField, openS3 } from "@models/util/util.js";
+import { locationField } from "@models/util/util.js";
 import type { ApiTrackPosition } from "@typedefs/api/track.js";
 
 // Mapping
@@ -216,13 +213,36 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   //  potentially undocumented extension methods).
   getTrack: (id: TrackId) => Promise<Track | null>;
   getTracks: (options?: FindOptions) => Promise<Track[]>;
-  createTrack: ({
+  // createTrack: ({
+  //   data,
+  //   start_s,
+  //   end_s,
+  //   AlgorithmId,
+  //   filtered,
+  //   archivedAt,
+  // }: {
+  //   data: any;
+  //   start_s: number;
+  //   end_s: number;
+  //   AlgorithmId: DetailSnapshotId;
+  //   filtered?: boolean;
+  //   archivedAt?: Date;
+  // }) => Promise<Track>;
+  addTrack: ({
     data,
+    startSeconds,
+    endSeconds,
+    minFreqHz,
+    maxFreqHz,
     AlgorithmId,
     filtered,
     archivedAt,
   }: {
     data: any;
+    startSeconds: number;
+    endSeconds: number;
+    minFreqHz: number | null;
+    maxFreqHz: number | null;
     AlgorithmId: DetailSnapshotId;
     filtered?: boolean;
     archivedAt?: Date;
@@ -268,7 +288,7 @@ interface TagLimitedRecording {
 export interface RecordingStatic extends ModelStaticCommon<Recording> {
   buildSafely: (fields: Record<string, any>) => Recording;
   isValidTagMode: (mode: TagMode) => boolean;
-  processingAttributes: string[];
+  processingAttributes: (string | [Sequelize.Utils.Json, string])[];
   processingStates: {
     [RecordingType.TrailCamImage]: string[];
     [RecordingType.InfraredVideo]: string[];
@@ -295,7 +315,7 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
 const Op = Sequelize.Op;
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): RecordingStatic {
   const name = "Recording";
   const maxQueryResults = 10000;
@@ -351,7 +371,7 @@ export default function (
 
   const Recording = sequelize.define(
     name,
-    attributes
+    attributes,
   ) as unknown as RecordingStatic;
 
   //---------------
@@ -361,7 +381,7 @@ export default function (
 
   Recording.buildSafely = function (fields: Record<string, any>): Recording {
     return Recording.build(
-      _.pick(fields, Recording.apiSettableFields)
+      _.pick(fields, Recording.apiSettableFields),
     ) as Recording;
   };
 
@@ -418,7 +438,7 @@ export default function (
     if (state == RecordingProcessingState.Finished) {
       //check if any tracks have been made in the last day by users that haven't had AI run against it
       where[Op.and] = Sequelize.literal(
-        `	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`
+        `	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`,
       );
       includeQ = [
         {
@@ -440,7 +460,8 @@ export default function (
           where: where,
           include: includeQ,
           attributes: [
-            ...(models.Recording as RecordingStatic).processingAttributes,
+            ...((models.Recording as RecordingStatic)
+              .processingAttributes as any),
             [
               Sequelize.literal(`exists(
           	select
@@ -459,7 +480,7 @@ export default function (
             ["processingFailedCount", "ASC NULLS FIRST"], //only do these after all others
             Sequelize.literal(`"hasAlert" DESC`),
             Sequelize.literal(
-              `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`
+              `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`,
             ),
             ["uploader", "DESC NULLS LAST"],
             ["recordingDateTime", "asc"],
@@ -480,7 +501,7 @@ export default function (
         if (recording.isFailed()) {
           recording.processingState = recording.processingState.replace(
             ".failed",
-            ""
+            "",
           );
         }
 
@@ -488,7 +509,6 @@ export default function (
           recording.processingFailedCount += 1;
         }
         recording.currentStateStartTime = now.toISOString();
-        recording.processingEndTime = null;
         recording.processingEndTime = null;
         recording.jobKey = uuidv4();
         recording.processing = true;
@@ -516,150 +536,6 @@ export default function (
     return options;
   };
 
-  Recording.getRecordingWithUntaggedTracks = async (
-    biasDeviceId: DeviceId
-  ): Promise<TagLimitedRecording> => {
-    // If a device id is supplied, try to bias the returned recording to that device.
-    // If the requested device has no more recordings, pick another random recording.
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] = (await sequelize.query(`
-select
-  g."RId" as "RecordingId",
-  g."DeviceId",
-  g."TrackData",
-  g."TId" as "TrackId",
-  g."TaggedBy",
-  g."rawFileKey",
-  g."rawMimeType",
-  g."duration",
-  g."recordingDateTime"
-from (
-  select *, "Tracks"."data" as "TrackData", "Tracks".id as "TId", "TrackTags".automatic as "TaggedBy" from (
-    select id as "RId", "DeviceId", "rawFileKey", "rawMimeType", "recordingDateTime", "duration" from "Recordings" inner join (
-      (select distinct("RecordingId") from "Tracks" inner join
-        (select tId as "TrackId" from
-          (
-           -- TrackTags for Tracks that have *only* TrackTags that were automatically set.
-           (select distinct("TrackId") as tId from "TrackTags" where automatic is true and "TrackTags"."archivedAt" IS NULL) as a
-             left outer join
-               (select distinct("TrackId") from "TrackTags" where automatic is false) as b
-             on a.tId = b."TrackId"
-          ) as c where c."TrackId" is null
-        ) as d on d."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null)
-      union all
-      -- All the recordings that have Tracks but no TrackTags
-      (select "RecordingId" from "Tracks"
-        left outer join "TrackTags" on "Tracks".id = "TrackTags"."TrackId"
-        where "TrackTags".id is null and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" IS NULL
-      )
-    ) as e on e."RecordingId" = "Recordings".id ${
-      biasDeviceId !== undefined ? ` where "DeviceId" = ${biasDeviceId}` : ""
-    } and "Recordings"."deletedAt" is null order by RANDOM() limit 1)
-  as f left outer join "Tracks" on f."RId" = "Tracks"."RecordingId" and "Tracks"."archivedAt" is null
-  left outer join "TrackTags" on "TrackTags"."TrackId" = "Tracks".id and "Tracks"."archivedAt" is null and "TrackTags"."archivedAt" is null
-) as g;`)) as [
-      {
-        RecordingId: RecordingId;
-        DeviceId: DeviceId;
-        TrackData: any;
-        TrackId: TrackId;
-        TaggedBy: UserId | false;
-        rawFileKey: string;
-        rawMimeType: string;
-        duration: number;
-        recordingDateTime: IsoFormattedDateString;
-      }[],
-      unknown
-    ];
-    // NOTE: We bundle everything we need into this one specialised request.
-    const flattenedResult = result.reduce(
-      (acc, item) => {
-        if (!acc.tracks.find(({ id }) => id === item.TrackId)) {
-          acc.RecordingId = item.RecordingId;
-          acc.DeviceId = item.DeviceId;
-          acc.fileKey = item.rawFileKey;
-          acc.fileMimeType = item.rawMimeType;
-          acc.recordingDateTime = item.recordingDateTime;
-          acc.duration = item.duration;
-
-          const t: any = {
-            trackId: item.TrackId,
-            id: item.TrackId,
-            start: item.TrackData.start_s,
-            end: item.TrackData.end_s,
-
-            numFrames: item.TrackData?.num_frames,
-            needsTagging: item.TaggedBy !== false,
-          };
-          if (item.TrackData.positions && item.TrackData.positions.length) {
-            t.positions = item.TrackData.positions.map(mapPosition);
-          }
-          acc.tracks.push(t);
-        }
-        return acc;
-      },
-      {
-        RecordingId: 0,
-        DeviceId: 0,
-        tracks: [],
-        duration: 0,
-        fileKey: "",
-        fileMimeType: "",
-        recordingDateTime: "",
-      }
-    );
-    // Sort tracks by time, so that the front-end doesn't have to.
-    flattenedResult.tracks.sort((a, b) => a.start - b.start);
-    // We need to retrieve the content length of the media file in order to sign
-    // the JWT token for it.
-    let ContentLength = 0;
-    try {
-      const s3 = openS3();
-      const s3Data = await s3.headObject(flattenedResult.fileKey);
-      ContentLength = s3Data.ContentLength;
-    } catch (err) {
-      log.warning(
-        "Error retrieving S3 Object for recording: %s, %s",
-        err.message,
-        flattenedResult.fileKey
-      );
-    }
-    const fileName = moment(new Date(flattenedResult.recordingDateTime))
-      .tz(config.timeZone)
-      .format("YYYYMMDD-HHmmss");
-
-    const downloadFileData = {
-      _type: "fileDownload",
-      key: flattenedResult.fileKey,
-      filename: `${fileName}.cptv`,
-      mimeType: flattenedResult.fileMimeType,
-    };
-
-    const recordingJWT = jsonwebtoken.sign(
-      downloadFileData,
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 } // Ten minutes
-    );
-    const tagJWT = jsonwebtoken.sign(
-      {
-        _type: "tagPermission",
-        recordingId: flattenedResult.RecordingId,
-      },
-      config.server.passportSecret,
-      { expiresIn: 60 * 10 }
-    );
-    delete flattenedResult.fileKey;
-    delete flattenedResult.fileMimeType;
-    delete flattenedResult.recordingDateTime;
-    return {
-      ...flattenedResult,
-      recordingJWT,
-      tagJWT,
-      fileSize: ContentLength,
-    };
-  };
-
   //------------------
   // INSTANCE METHODS
   //------------------
@@ -674,6 +550,10 @@ from (
       nextState = Recording.finishedState(this.type);
     } else if (this.processingState == RecordingProcessingState.ReTrack) {
       nextState = RecordingProcessingState.Analyse;
+    } else if (
+      this.processingState == RecordingProcessingState.TrackAndAnalyse
+    ) {
+      nextState = RecordingProcessingState.Finished;
     } else {
       const job_index = jobs.indexOf(this.processingState);
       if (job_index == -1) {
@@ -764,7 +644,7 @@ from (
     if (this.location) {
       this.location.coordinates = reduceLatLonPrecision(
         this.location,
-        options.latLongPrec
+        options.latLongPrec,
       );
     }
   };
@@ -831,7 +711,7 @@ from (
 
   // Return a specific track for the recording.
   Recording.prototype.getTrack = async function (
-    trackId: TrackId
+    trackId: TrackId,
   ): Promise<Track | null> {
     const track = await models.Track.findByPk(trackId);
     if (!track) {
@@ -845,10 +725,42 @@ from (
     return track as Track;
   };
 
+  Recording.prototype.addTrack = async function ({
+    data,
+    startSeconds,
+    endSeconds,
+    minFreqHz,
+    maxFreqHz,
+    AlgorithmId,
+    filtered,
+    archivedAt,
+  }: {
+    data: any;
+    startSeconds: number;
+    endSeconds: number;
+    minFreqHz: number | null;
+    maxFreqHz: number | null;
+    AlgorithmId: DetailSnapshotId;
+    filtered?: boolean;
+    archivedAt?: Date;
+  }): Promise<Track> {
+    const track = await this.createTrack({
+      startSeconds,
+      endSeconds,
+      minFreqHz,
+      maxFreqHz,
+      AlgorithmId,
+      filtered,
+      archivedAt,
+    });
+    await saveTrackData(track.id, data);
+    return track;
+  };
+
   Recording.queryBuilder = function () {} as unknown as RecordingQueryBuilder;
   Recording.queryBuilder.prototype.init = function (
     userId: UserId,
-    options: RecordingQueryOptions
+    options: RecordingQueryOptions,
   ) {
     const {
       tagMode,
@@ -879,14 +791,13 @@ from (
     const constraints = [
       where,
       Sequelize.literal(
-        Recording.queryBuilder.handleTagMode(tagMode, tags, exclusive)
+        Recording.queryBuilder.handleTagMode(tagMode, tags, exclusive),
       ),
     ];
     const noArchived = { archivedAt: null };
     const onlyMasterModel = options.filterModel
       ? {
-          //[Op.or]: [{ "data.name": options.filterModel }, { automatic: false }],
-          [Op.or]: { used: true },
+          used: true,
         }
       : {};
     if (hideFiltered) {
@@ -952,20 +863,7 @@ from (
           where: noArchived,
           required: false,
           separate: true,
-          attributes: [
-            "id",
-            "filtered",
-            [
-              Sequelize.fn(
-                "json_build_object",
-                "start_s",
-                Sequelize.literal(`"Track"."data"#>'{start_s}'`),
-                "end_s",
-                Sequelize.literal(`"Track"."data"#>'{end_s}'`)
-              ),
-              "data",
-            ],
-          ],
+          attributes: ["id", "filtered", "startSeconds", "endSeconds"],
           include: [
             {
               model: models.TrackTag,
@@ -978,7 +876,7 @@ from (
                 "TrackId",
                 "confidence",
                 "UserId",
-                [Sequelize.json("data.name"), "data"],
+                "model",
               ],
               include: [
                 {
@@ -1019,7 +917,7 @@ from (
   Recording.queryBuilder.handleTagMode = (
     tagMode: AllTagModes,
     tagWhatsIn: string[],
-    exclusive: boolean
+    exclusive: boolean,
   ): SqlString => {
     const tagWhats = tagWhatsIn && tagWhatsIn.length > 0 ? tagWhatsIn : null;
     if (!tagMode) {
@@ -1027,21 +925,21 @@ from (
     }
 
     // FIXME Seems like we're doing validation here that should be done at the API layer
-    const humanSQL = 'NOT "Tags".automatic';
-    const AISQL = '"Tags".automatic';
+    const humanSQL = "NOT \"Tags\".automatic";
+    const AISQL = "\"Tags\".automatic";
     if (
       (models.Tag as TagStatic).acceptableTags.has(tagMode as AcceptableTag)
     ) {
       let sqlQuery = `((${Recording.queryBuilder.recordingTaggedWith(
         [tagMode],
         null,
-        exclusive
+        exclusive,
       )} limit 1) IS NOT NULL)`;
       if (tagWhats) {
         sqlQuery = `${sqlQuery} AND (${Recording.queryBuilder.trackTaggedWith(
           tagWhats,
           null,
-          exclusive
+          exclusive,
         )}) IS NOT NULL`;
       }
       return sqlQuery;
@@ -1062,33 +960,33 @@ from (
         return Recording.queryBuilder.notTagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         );
       case TagMode.AutomaticOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           AISQL,
-          exclusive
+          exclusive,
         )} AND ${Recording.queryBuilder.notTagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         )}`;
       case TagMode.HumanOnly:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         )} AND ${Recording.queryBuilder.notTagOfType(
           tagWhats,
           AISQL,
-          exclusive
+          exclusive,
         )}`;
       case TagMode.AutomaticHuman:
         return `${Recording.queryBuilder.tagOfType(
           tagWhats,
           humanSQL,
-          exclusive
+          exclusive,
         )} AND ${Recording.queryBuilder.tagOfType(tagWhats, AISQL, exclusive)}`;
       default: {
         throw `invalid tag mode: ${tagMode}`;
@@ -1099,24 +997,24 @@ from (
   Recording.queryBuilder.tagOfType = (
     tagWhats: string[],
     tagTypeSql: SqlString,
-    exclusive: boolean
+    exclusive: boolean,
   ): SqlString => {
     let query = `((${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
-      exclusive
+      exclusive,
     )}  ${tagTypeSql || !tagWhats ? "LIMIT 1) IS NOT NULL" : ")"}`;
     if (
       !tagWhats ||
       (!tagWhats && tagTypeSql) ||
       tagWhats.find((tag) =>
-        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag)
+        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag),
       )
     ) {
       query += ` OR (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
         tagTypeSql,
-        exclusive
+        exclusive,
       )} LIMIT 1) IS NOT NULL`;
     }
     query += ")";
@@ -1126,24 +1024,24 @@ from (
   Recording.queryBuilder.notTagOfType = (
     tagWhats: string[],
     tagTypeSql: SqlString,
-    exclusive: boolean
+    exclusive: boolean,
   ): SqlString => {
     let query = `((${Recording.queryBuilder.trackTaggedWith(
       tagWhats,
       tagTypeSql,
-      exclusive
+      exclusive,
     )} LIMIT 1) ${tagTypeSql || !tagWhats ? "IS NULL" : ""}`;
     if (
       !tagWhats ||
       (!tagWhats && tagTypeSql) ||
       tagWhats.find((tag) =>
-        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag)
+        (models.Tag as TagStatic).acceptableTags.has(tag as AcceptableTag),
       )
     ) {
       query += ` AND (${Recording.queryBuilder.recordingTaggedWith(
         tagWhats,
         tagTypeSql,
-        exclusive
+        exclusive,
       )} LIMIT 1)  ${tagTypeSql || !tagWhats ? "IS NULL" : ""}`;
     }
     query += ")";
@@ -1153,15 +1051,15 @@ from (
   Recording.queryBuilder.recordingTaggedWith = (
     tags: (TagMode | AcceptableTag)[],
     tagTypeSql: SqlString,
-    exclusive: boolean
+    exclusive: boolean,
   ) => {
     let sql =
-      'SELECT 1 FROM "Tags" WHERE "Tags"."RecordingId" = "Recording".id';
+      "SELECT 1 FROM \"Tags\" WHERE \"Tags\".\"RecordingId\" = \"Recording\".id";
     if (tags) {
       sql += ` AND (${Recording.queryBuilder.selectByTag(
         tags,
         exclusive,
-        "detail"
+        "detail",
       )})`;
     }
     if (tagTypeSql) {
@@ -1173,7 +1071,7 @@ from (
   Recording.queryBuilder.trackTaggedWith = (
     tags?: (TagMode | AcceptableTag)[],
     tagTypeSql?: SqlString,
-    exclusive?: boolean
+    exclusive?: boolean,
   ) => {
     let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags".
     "archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
@@ -1199,7 +1097,7 @@ from (
   Recording.queryBuilder.selectByTag = (
     tags: string[],
     exclusive: boolean,
-    tagPath = "what"
+    tagPath = "what",
   ) => {
     if (!tags || tags.length === 0) {
       return null;
@@ -1210,7 +1108,7 @@ from (
       const tag = tags[i];
       if (tag === "interesting") {
         parts.push(
-          `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`
+          `("Tags"."what"!='bird' AND "Tags"."what"!='false positive')`,
         );
       } else {
         const path = labelPath[tag.toLowerCase()];
@@ -1238,13 +1136,13 @@ from (
   // Include details of recent audio bait events in the query output.
   Recording.queryBuilder.prototype.addAudioEvents = function (
     after?: string,
-    before?: string
+    before?: string,
   ) {
     if (!after) {
-      after = '"Recording"."recordingDateTime" - interval \'30 minutes\'';
+      after = "\"Recording\".\"recordingDateTime\" - interval '30 minutes'";
     }
     if (!before) {
-      before = '"Recording"."recordingDateTime"';
+      before = "\"Recording\".\"recordingDateTime\"";
     }
     const deviceInclude = this.findInclude(models.Device as DeviceStatic);
 
@@ -1278,7 +1176,7 @@ from (
   };
 
   Recording.queryBuilder.prototype.findInclude = function (
-    modelType: ModelStaticCommon<any>
+    modelType: ModelStaticCommon<any>,
   ): Includeable[] {
     for (const inc of this.query.include) {
       if (inc.model === modelType) {
@@ -1366,6 +1264,7 @@ from (
     ],
     thermalRaw: [
       RecordingProcessingState.ReTrack,
+      RecordingProcessingState.TrackAndAnalyse,
       RecordingProcessingState.Tracking,
       RecordingProcessingState.AnalyseThermal,
       RecordingProcessingState.Finished,
@@ -1380,15 +1279,11 @@ from (
     if (type == RecordingType.Audio || type == RecordingType.TrailCamImage) {
       return RecordingProcessingState.Analyse;
     } else {
-      return RecordingProcessingState.Tracking;
+      return RecordingProcessingState.TrackAndAnalyse;
     }
   };
   Recording.finishedState = function (type: RecordingType) {
-    if (type == RecordingType.Audio) {
-      return RecordingProcessingState.Finished;
-    } else {
-      return RecordingProcessingState.Finished;
-    }
+    return RecordingProcessingState.Finished;
   };
   Recording.processingAttributes = [
     "id",
@@ -1408,6 +1303,7 @@ from (
     "location",
     "processing",
     "processingFailedCount",
+    [sequelize.json("additionalMetadata.metadataSource"), "metadataSource"],
   ];
 
   return Recording;

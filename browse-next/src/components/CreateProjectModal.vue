@@ -15,10 +15,10 @@ import { useRouter } from "vue-router";
 
 const newProjectName = formFieldInputText();
 const isValidProjectName = computed<boolean>(
-  () => newProjectName.value !== "" && newProjectName.value.length > 2
+  () => newProjectName.value !== "" && newProjectName.value.length > 2,
 );
 const needsValidationAndIsValidProjectName = computed<FormInputValidationState>(
-  () => (newProjectName.touched ? isValidProjectName.value : undefined)
+  () => (newProjectName.touched ? isValidProjectName.value : undefined),
 );
 
 const submittingCreateRequest = ref(false);

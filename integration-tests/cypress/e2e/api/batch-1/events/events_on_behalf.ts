@@ -29,7 +29,7 @@ describe("Events - add event on behalf of device", () => {
     cy.testCreateUserGroupAndDevice(
       "otherGroupAdmin",
       "otherGroup",
-      "otherGroupCamera"
+      "otherGroupCamera",
     );
 
     //Create some events to reuse / query
@@ -53,6 +53,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: firstTime,
       Device: { deviceName: getTestName("camera1") },
       EventDetail: { type: EventTypes.POWERED_ON, details: {} },
+      env: "unknown",
     };
 
     // add and verify events
@@ -60,14 +61,14 @@ describe("Events - add event on behalf of device", () => {
       "groupAdmin1",
       "camera1",
       { type: EventTypes.POWERED_ON, details: {} },
-      [firstTime]
+      [firstTime],
     );
     cy.apiEventsCheck(
       "groupAdmin1",
       "camera1",
       {},
       [expectedEvent1],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -80,6 +81,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: firstTime,
       Device: { deviceName: getTestName("camera2") },
       EventDetail: { type: EventTypes.POWERED_ON, details: {} },
+      env: "unknown",
     };
     cy.apiGroupUserAdd("groupAdmin2", "groupMember2", "group2", false);
 
@@ -88,14 +90,14 @@ describe("Events - add event on behalf of device", () => {
       "groupMember2",
       "camera2",
       { type: EventTypes.POWERED_ON, details: {} },
-      [firstTime]
+      [firstTime],
     );
     cy.apiEventsCheck(
       "groupMember2",
       "camera2",
       {},
       [expectedEvent2],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -107,7 +109,7 @@ describe("Events - add event on behalf of device", () => {
       [firstTime],
       undefined,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -118,14 +120,14 @@ describe("Events - add event on behalf of device", () => {
     const time6 = "2018-01-06T07:22:56.000Z";
 
     cy.log(
-      "check we can resue same eventDetailsIds by specifying same description"
+      "check we can resue same eventDetailsIds by specifying same description",
     );
     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails1, [
       time3,
     ]).then((response: number) => {
       expect(
         response,
-        `event details ID should match previous identical event ${eventDetailsId1}`
+        `event details ID should match previous identical event ${eventDetailsId1}`,
       ).to.equal(eventDetailsId1);
     });
     cy.apiEventsDeviceAddOnBehalf("groupAdmin", "camera", eventDetails2, [
@@ -133,23 +135,23 @@ describe("Events - add event on behalf of device", () => {
     ]).then((response: number) => {
       expect(
         response,
-        `event details ID should match previous identical event ${eventDetailsId2}`
+        `event details ID should match previous identical event ${eventDetailsId2}`,
       ).to.equal(eventDetailsId2);
     });
 
     cy.log(
-      "check we can resue same eventDetailsIds by specifying eventDetailsId"
+      "check we can resue same eventDetailsIds by specifying eventDetailsId",
     );
     cy.apiEventsDeviceAddOnBehalf(
       "groupAdmin",
       "camera",
       undefined,
       [time5],
-      eventDetailsId1
+      eventDetailsId1,
     ).then((response: number) => {
       expect(
         response,
-        `event details ID should match previous identical event ${eventDetailsId1}`
+        `event details ID should match previous identical event ${eventDetailsId1}`,
       ).to.equal(eventDetailsId1);
     });
     cy.apiEventsDeviceAddOnBehalf(
@@ -157,11 +159,11 @@ describe("Events - add event on behalf of device", () => {
       "camera",
       undefined,
       [time6],
-      eventDetailsId2
+      eventDetailsId2,
     ).then((response: number) => {
       expect(
         response,
-        `event details ID should match previous identical event ${eventDetailsId2}`
+        `event details ID should match previous identical event ${eventDetailsId2}`,
       ).to.equal(eventDetailsId2);
     });
 
@@ -173,6 +175,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time1,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7b = {
       id: null,
@@ -181,6 +184,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time2,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7c = {
       id: null,
@@ -189,6 +193,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time3,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7d = {
       id: null,
@@ -197,6 +202,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time4,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     const expectedEvent7e = {
       id: null,
@@ -205,6 +211,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time5,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
     const expectedEvent7f = {
       id: null,
@@ -213,6 +220,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time6,
       Device: { deviceName: getTestName("camera") },
       EventDetail: eventDetails2,
+      env: "unknown",
     };
     cy.apiEventsCheck(
       "groupAdmin",
@@ -226,7 +234,7 @@ describe("Events - add event on behalf of device", () => {
         expectedEvent7e,
         expectedEvent7f,
       ],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -254,6 +262,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time11,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8b = {
       id: null,
@@ -262,6 +271,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time12,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8c = {
       id: null,
@@ -270,6 +280,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time13,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
     const expectedEvent8d = {
       id: null,
@@ -278,6 +289,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time14,
       Device: { deviceName: getTestName("camera8") },
       EventDetail: eventDetail,
+      env: "unknown",
     };
 
     cy.apiEventsCheck(
@@ -285,7 +297,7 @@ describe("Events - add event on behalf of device", () => {
       "camera8",
       {},
       [expectedEvent8a, expectedEvent8b, expectedEvent8c, expectedEvent8d],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -297,7 +309,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -310,7 +322,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("description missing type");
     cy.apiEventsDeviceAddOnBehalf(
@@ -320,7 +332,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -333,7 +345,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("eventDetailsId=non-existent event detail record");
     cy.apiEventsDeviceAddOnBehalf(
@@ -343,7 +355,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       9999999,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -355,7 +367,7 @@ describe("Events - add event on behalf of device", () => {
       [time1],
       undefined,
       true,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -368,7 +380,7 @@ describe("Events - add event on behalf of device", () => {
       [],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("blank time");
     cy.apiEventsDeviceAddOnBehalf(
@@ -378,7 +390,7 @@ describe("Events - add event on behalf of device", () => {
       [""],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("invalid time");
     cy.apiEventsDeviceAddOnBehalf(
@@ -388,7 +400,7 @@ describe("Events - add event on behalf of device", () => {
       ["bad time"],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.log("list containing invaid time");
     cy.apiEventsDeviceAddOnBehalf(
@@ -398,7 +410,7 @@ describe("Events - add event on behalf of device", () => {
       [time1, time2, "bad time"],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -408,7 +420,7 @@ describe("Events - add event on behalf of device", () => {
       "groupAdmin9",
       getTestName("camera9"),
       eventDetails1,
-      [time1]
+      [time1],
     );
 
     const expectedEvent9 = {
@@ -418,6 +430,7 @@ describe("Events - add event on behalf of device", () => {
       dateTime: time1,
       Device: { deviceName: getTestName("camera9") },
       EventDetail: eventDetails1,
+      env: "unknown",
     };
 
     cy.apiEventsCheck(
@@ -425,7 +438,7 @@ describe("Events - add event on behalf of device", () => {
       "camera9",
       {},
       [expectedEvent9],
-      EXCL_ID_CREATED
+      EXCL_ID_CREATED,
     );
   });
 
@@ -440,7 +453,7 @@ describe("Events - add event on behalf of device", () => {
       [timeNow],
       undefined,
       true,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 });

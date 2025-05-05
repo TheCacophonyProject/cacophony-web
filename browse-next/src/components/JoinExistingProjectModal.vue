@@ -17,17 +17,17 @@ const submittingJoinRequest = ref(false);
 const projectChosen = ref<string>("");
 const joinableProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 const hasJoinableProjects = computed<boolean>(
-  () => !!joinableProjects.value && joinableProjects.value.length !== 0
+  () => !!joinableProjects.value && joinableProjects.value.length !== 0,
 );
 const hasMultipleJoinableProjects = computed<boolean>(
-  () => !!joinableProjects.value && joinableProjects.value.length > 1
+  () => !!joinableProjects.value && joinableProjects.value.length > 1,
 );
 const emailIsTooShort = computed<boolean>(
-  () => projectAdminEmailAddress.value.trim().length < 3
+  () => projectAdminEmailAddress.value.trim().length < 3,
 );
 
 const joinableProjectsLoaded = computed<boolean>(
-  () => !!joinableProjects.value
+  () => !!joinableProjects.value,
 );
 
 const joinableProjectsCheckboxOptions = computed<
@@ -39,9 +39,9 @@ const joinableProjectsCheckboxOptions = computed<
         ({ id, groupName }) => ({
           text: groupName,
           value: id.toString(),
-        })
+        }),
       )) ||
-    []
+    [],
 );
 
 const isValidEmailAddress = computed<boolean>(() => {
@@ -51,7 +51,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 });
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    projectAdminEmailAddress.touched ? isValidEmailAddress.value : undefined
+    projectAdminEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 
 onMounted(() => {
@@ -68,7 +68,7 @@ const joinExistingGroup = async () => {
   submittingJoinRequest.value = true;
   const joinRequestResponse = await requestToJoinGroup(
     projectAdminEmailAddress.value.trim(),
-    Number(projectChosen.value)
+    Number(projectChosen.value),
   );
   if (joinRequestResponse.success) {
     // Groups changed, reload groups.
@@ -84,15 +84,15 @@ const joinExistingGroup = async () => {
 const getGroupsForAdmin = async () => {
   submittingJoinRequest.value = true;
   const projectsResponse = await getProjectsForProjectAdminByEmail(
-    projectAdminEmailAddress.value.trim()
+    projectAdminEmailAddress.value.trim(),
   );
   if (projectsResponse.success) {
     // Filter out any groups we're already a member of.
     const groups = projectsResponse.result.groups.filter(
       ({ id }) =>
         !(UserProjects.value || []).find(
-          (existingGroup: ApiProjectResponse) => existingGroup.id === id
-        )
+          (existingGroup: ApiProjectResponse) => existingGroup.id === id,
+        ),
     );
     if (groups.length === 0) {
       // Admin user has no groups we can join.

@@ -91,7 +91,7 @@ onUnmounted(() => {
 const updateEmailAddress = async () => {
   emailUpdateInProgress.value = true;
   const emailUpdateResponse = await changeAccountEmail(
-    newUserEmailAddress.value
+    newUserEmailAddress.value,
   );
   if (emailUpdateResponse.success) {
     emailAddressUpdated.value = true;
@@ -141,7 +141,7 @@ const isValidEmailAddress = computed<boolean>(() => {
 
 const needsValidationAndIsValidEmailAddress =
   computed<FormInputValidationState>(() =>
-    newUserEmailAddress.touched ? isValidEmailAddress.value : undefined
+    newUserEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 
 const pendingProjectTableItems = computed(() => {
@@ -165,7 +165,7 @@ const isDev = ref<boolean>(import.meta.env.DEV);
 
 const debugConfirmEmail = async () => {
   const tokenResponse = await debugGetEmailConfirmationToken(
-    CurrentUser.value?.email as string
+    CurrentUser.value?.email as string,
   );
   if (tokenResponse.success) {
     const token = tokenResponse.result.token;

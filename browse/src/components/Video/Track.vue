@@ -70,6 +70,7 @@
         />
         <TrackData
           :track-tag="masterTag"
+          :recording-id="recordingId"
           v-if="isSuperUserAndViewingAsSuperUser"
         />
       </div>
@@ -163,7 +164,7 @@ export default {
   computed: {
     masterTag(): ApiTrackTagResponse | undefined {
       return (this.track as ApiTrackResponse).tags.find(
-        (tag) => tag.data.name === "Master"
+        (tag) => tag.model === "Master"
       );
     },
     trackClass() {

@@ -70,7 +70,7 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
 
   const GroupUsers = sequelize.define(
     name,
-    attributes
+    attributes,
   ) as unknown as GroupUsersStatic;
   const models = sequelize.models;
   GroupUsers.addAssociations = function () {

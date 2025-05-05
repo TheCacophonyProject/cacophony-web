@@ -63,7 +63,7 @@ describe("Stations: station updates also update recordings", () => {
       Josie,
       group,
       { name: stationName, ...location },
-      oneMonthAgo.toISOString()
+      oneMonthAgo.toISOString(),
     ).then((stationId: number) => {
       cy.testUploadRecording(deviceName, {
         ...location,
@@ -77,7 +77,7 @@ describe("Stations: station updates also update recordings", () => {
           HttpStatusCode.Ok,
           {
             useRawStationId: true,
-          }
+          },
         ).then(() => {
           cy.log("Check that station and its recordings are deleted");
           cy.apiStationCheck(
@@ -85,7 +85,7 @@ describe("Stations: station updates also update recordings", () => {
             getTestName(stationName),
             null,
             null,
-            HttpStatusCode.Forbidden
+            HttpStatusCode.Forbidden,
           );
           cy.apiRecordingCheck(
             Josie,
@@ -95,7 +95,7 @@ describe("Stations: station updates also update recordings", () => {
             HttpStatusCode.Forbidden,
             {
               useRawRecordingId: true,
-            }
+            },
           );
         });
       });
@@ -109,7 +109,7 @@ describe("Stations: station updates also update recordings", () => {
     const location = TestGetLocation(2);
     cy.apiDeviceAdd(deviceName, group).then(() => {
       const oneMonthAgo = new Date(
-        new Date().setDate(new Date().getDate() - 30)
+        new Date().setDate(new Date().getDate() - 30),
       );
       const oneWeekAgo = new Date(new Date().setDate(new Date().getDate() - 7));
       const recording = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
@@ -120,7 +120,7 @@ describe("Stations: station updates also update recordings", () => {
         Josie,
         group,
         { name: stationName, ...location },
-        oneMonthAgo.toISOString()
+        oneMonthAgo.toISOString(),
       ).then((stationId: number) => {
         cy.apiRecordingAdd(deviceName, recording, undefined, recordingName)
           .thenCheckStationIdIs(Josie, stationId)
@@ -131,7 +131,7 @@ describe("Stations: station updates also update recordings", () => {
               deviceName,
               group,
               station.name,
-              recording
+              recording,
             );
 
             cy.apiStationDelete(
@@ -139,18 +139,18 @@ describe("Stations: station updates also update recordings", () => {
               stationId.toString(),
               false,
               HttpStatusCode.Ok,
-              { useRawStationId: true }
+              { useRawStationId: true },
             );
 
             cy.log(
-              "Check that station is deleted, and its recordings don't have the station id"
+              "Check that station is deleted, and its recordings don't have the station id",
             );
             cy.apiStationCheck(
               Josie,
               getTestName(stationName),
               null,
               null,
-              HttpStatusCode.Forbidden
+              HttpStatusCode.Forbidden,
             );
 
             delete expectedRecording.stationId;
@@ -159,14 +159,14 @@ describe("Stations: station updates also update recordings", () => {
               Josie,
               recordingName,
               expectedRecording,
-              EXCLUDE_IDS
+              EXCLUDE_IDS,
             );
           });
       });
     });
   });
 
-  it("station-update: change does not affect exsiting recordings", () => {
+  it("station-update: change does not affect existing recordings", () => {
     const deviceName = "new-device-7";
     const thisLocation = TestGetLocation(7);
     const recording1 = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
@@ -189,7 +189,7 @@ describe("Stations: station updates also update recordings", () => {
               deviceName,
               recording2,
               undefined,
-              secondName
+              secondName,
             ).then(() => {
               const expectedRecording1 = TestCreateExpectedRecordingData(
                 TEMPLATE_THERMAL_RECORDING_RESPONSE,
@@ -197,7 +197,7 @@ describe("Stations: station updates also update recordings", () => {
                 deviceName,
                 group,
                 getTestName(station1.name),
-                recording1
+                recording1,
               );
               const expectedRecording2 = TestCreateExpectedRecordingData(
                 TEMPLATE_THERMAL_RECORDING_RESPONSE,
@@ -205,7 +205,7 @@ describe("Stations: station updates also update recordings", () => {
                 deviceName,
                 group,
                 getTestName(station1.name),
-                recording2
+                recording2,
               );
 
               cy.log("Check recording 1");
@@ -213,7 +213,7 @@ describe("Stations: station updates also update recordings", () => {
                 Josie,
                 firstName,
                 expectedRecording1,
-                EXCLUDE_IDS
+                EXCLUDE_IDS,
               );
 
               cy.log("Check recording 2");
@@ -221,7 +221,7 @@ describe("Stations: station updates also update recordings", () => {
                 Josie,
                 secondName,
                 expectedRecording2,
-                EXCLUDE_IDS
+                EXCLUDE_IDS,
               );
 
               cy.log("Rename station on day 2");
@@ -229,14 +229,14 @@ describe("Stations: station updates also update recordings", () => {
                 Josie,
                 station1.name,
                 updatedStation,
-                dayTwo.toISOString()
+                dayTwo.toISOString(),
               ).then(() => {
                 cy.log("Check recording 1 unchanged");
                 cy.apiRecordingCheck(
                   Josie,
                   firstName,
                   expectedRecording1,
-                  EXCLUDE_IDS
+                  EXCLUDE_IDS,
                 );
 
                 cy.log("Check recording 2 unchanged");
@@ -244,13 +244,13 @@ describe("Stations: station updates also update recordings", () => {
                   Josie,
                   secondName,
                   expectedRecording2,
-                  EXCLUDE_IDS
+                  EXCLUDE_IDS,
                 );
               });
             });
-          }
+          },
         );
-      }
+      },
     );
   });
 
@@ -268,17 +268,17 @@ describe("Stations: station updates also update recordings", () => {
       Josie,
       group,
       oldLocationStation,
-      dayOne.toISOString()
+      dayOne.toISOString(),
     ).then(() => {
       cy.log("Move station");
       cy.apiStationUpdate(
         Josie,
         oldLocationStation.name,
         newLocationStation,
-        dayOne.toISOString()
+        dayOne.toISOString(),
       ).then(() => {
         const expectedStation = JSON.parse(
-          JSON.stringify(templateExpectedStation)
+          JSON.stringify(templateExpectedStation),
         );
         expectedStation.automatic = false;
         expectedStation.location = newLocation;
@@ -287,7 +287,7 @@ describe("Stations: station updates also update recordings", () => {
         cy.apiStationCheck(
           Josie,
           getTestName(newLocationStation.name),
-          expectedStation
+          expectedStation,
         );
 
         cy.log("Add recordings in new location day3");
@@ -314,14 +314,14 @@ describe("Stations: station updates also update recordings", () => {
       Josie,
       group,
       oldLocationStation,
-      dayOne.toISOString()
+      dayOne.toISOString(),
     ).then(() => {
       cy.log("Move station");
       cy.apiStationUpdate(
         Josie,
         oldLocationStation.name,
         newLocationStation,
-        dayOne.toISOString()
+        dayOne.toISOString(),
       ).then(() => {
         cy.log("Add recordings in old location on day3");
         cy.testUploadRecording(deviceName, {

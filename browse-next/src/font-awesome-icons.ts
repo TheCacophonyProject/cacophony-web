@@ -71,6 +71,7 @@ import {
   faHeart,
   faHeartBroken,
   faCircleMinus,
+  faCirclePlus,
   faPowerOff,
   faLeftRight,
   faStream,
@@ -82,6 +83,11 @@ import {
   faArrowTurnUp,
   faArrowLeft,
   faPlug,
+  faVolumeMute,
+  faVolumeUp,
+  faSquarePlus as faSquarePlusSolid,
+  faComment,
+  faExpand,
 } from "@fortawesome/free-solid-svg-icons";
 
 import {
@@ -95,6 +101,8 @@ import {
   faFileVideo,
   faCircle,
   faCircleCheck,
+  faSquarePlus,
+  faTrashCan as faTrashCanRegular,
 } from "@fortawesome/free-regular-svg-icons";
 
 library.add(
@@ -128,6 +136,7 @@ library.add(
   faStarSolid,
   faDownload,
   faTrashCan,
+  faTrashCanRegular,
   faLink,
   faCheck,
   faSpinner,
@@ -175,6 +184,7 @@ library.add(
   faHeart,
   faHeartBroken,
   faCircleMinus,
+  faCirclePlus,
   faPowerOff,
   faLeftRight,
   faCircle,
@@ -188,7 +198,13 @@ library.add(
   faArrowTurnDown,
   faArrowTurnUp,
   faArrowLeft,
-  faPlug
+  faPlug,
+  faVolumeMute,
+  faVolumeUp,
+  faSquarePlus,
+  faSquarePlusSolid,
+  faComment,
+  faExpand,
 );
 
 export default FontAwesomeIcon;

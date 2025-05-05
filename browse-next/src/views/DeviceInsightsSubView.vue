@@ -31,13 +31,13 @@ const latestStatusRecording = inject("latestStatusRecording") as Ref<
 >;
 const route = useRoute();
 const deviceId = computed<number>(
-  () => Number(route.params.deviceId) as DeviceId
+  () => Number(route.params.deviceId) as DeviceId,
 );
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
       devices.value.find(
-        (device: ApiDeviceResponse) => device.id === deviceId.value
+        (device: ApiDeviceResponse) => device.id === deviceId.value,
       )) ||
     null
   );
@@ -72,7 +72,7 @@ const trackTagOptions = computed<{ value: string | null; text: string }[]>(
       ];
     }
     return [{ value: null, text: "Loading...", disabled: true }];
-  }
+  },
 );
 const locationStartTime = ref<Date | null>(null);
 const tracksForSelectedTag = ref<LoadedResource<ApiTrackResponse[]>>(null);
@@ -105,7 +105,7 @@ onMounted(async () => {
       locationStartTime.value = new Date(locationHistory[0].fromDateTime);
       trackTags.value = await getUniqueTrackTagsForDeviceInProject(
         deviceId.value,
-        locationStartTime.value
+        locationStartTime.value,
       );
     }
   }
@@ -118,7 +118,7 @@ const getTracksForTag = async (tag: string | null) => {
     tracksForSelectedTag.value = await getTracksWithTagForDeviceInProject(
       deviceId.value,
       tag,
-      locationStartTime.value
+      locationStartTime.value,
     );
     const tracksHeatmapData = await (new Promise((resolve) => {
       if (tracksForSelectedTag.value) {
@@ -126,14 +126,14 @@ const getTracksForTag = async (tag: string | null) => {
           new URL("../components/Heatmap.worker.ts", import.meta.url),
           {
             type: "module",
-          }
+          },
         );
         let inited = false;
         worker.onmessage = (message) => {
           if (!inited) {
             inited = true;
             const tracks = JSON.parse(
-              JSON.stringify(tracksForSelectedTag.value)
+              JSON.stringify(tracksForSelectedTag.value),
             );
             worker.postMessage({ tracks });
           } else {

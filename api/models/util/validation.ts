@@ -23,7 +23,7 @@ import { canonicalLatLng } from "@models/util/locationUtils.js";
 
 export function isLatLon(
   point: { coordinates: [number, number] } | [number, number] | LatLng,
-  shouldThrow = true
+  shouldThrow = true,
 ) {
   let valid = true;
   if (point === null) {

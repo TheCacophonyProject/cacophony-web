@@ -163,7 +163,7 @@ describe.skip("Events - query errors", () => {
     cy.testCreateUserGroupAndDevice(
       "erOtherGroupAdmin",
       "erOherGroup",
-      "erOtherGroupCamera"
+      "erOtherGroupCamera",
     );
 
     //Create some errors to reuse / query
@@ -183,13 +183,13 @@ describe.skip("Events - query errors", () => {
       "erGroupAdmin",
       "erOtherCamera",
       eventDetails1,
-      [time5]
+      [time5],
     );
     cy.apiEventsDeviceAddOnBehalf(
       "erOtherGroupAdmin",
       "erOtherGroupCamera",
       eventDetails2,
-      [time6]
+      [time6],
     );
 
     //Define the expected 'similar' field in the report for the above errors
@@ -360,7 +360,7 @@ describe.skip("Events - query errors", () => {
       {},
       [],
       [],
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -381,13 +381,13 @@ describe.skip("Events - query errors", () => {
 
     //Test for query errors >= time 2 and < time 3
     cy.log(
-      "start time = time 2, end time = time3 returns errors at time 2 only"
+      "start time = time 2, end time = time3 returns errors at time 2 only",
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
       "erCamera",
       { startTime: time2, endTime: time3 },
-      [expectedCategoryError2]
+      [expectedCategoryError2],
     );
 
     //Test for 0-length time period (returns noting)
@@ -396,7 +396,7 @@ describe.skip("Events - query errors", () => {
       "erGroupAdmin",
       "erCamera",
       { startTime: time2, endTime: time2 },
-      []
+      [],
     );
   });
 
@@ -407,7 +407,7 @@ describe.skip("Events - query errors", () => {
       { startTime: "" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -415,7 +415,7 @@ describe.skip("Events - query errors", () => {
       { endTime: "" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -423,7 +423,7 @@ describe.skip("Events - query errors", () => {
       { startTime: "not a timestamp" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -431,14 +431,14 @@ describe.skip("Events - query errors", () => {
       { endTime: "not a timestamp" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
   it("Verify limit and offset paging works correctly", () => {
     //Test with just length parameter
     cy.log(
-      "Specify just length returns 1st page of specified length (errors at times 1,2)"
+      "Specify just length returns 1st page of specified length (errors at times 1,2)",
     );
     //Check expected errors reported
     cy.apiEventsErrorsCheck("erGroupAdmin", "erCamera", { limit: 2 }, [
@@ -447,13 +447,13 @@ describe.skip("Events - query errors", () => {
 
     //Test with offset=0
     cy.log(
-      "Offset of 0 returns 1st page of specified length (errors at times 1,2)"
+      "Offset of 0 returns 1st page of specified length (errors at times 1,2)",
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
       "erCamera",
       { offset: 0, limit: 2 },
-      [expectedCategoryError1and2]
+      [expectedCategoryError1and2],
     );
 
     //Test with offset = length
@@ -463,7 +463,7 @@ describe.skip("Events - query errors", () => {
       "erGroupAdmin",
       "erCamera",
       { offset: 2, limit: 2 },
-      [expectedCategoryError3, expectedCategoryError4]
+      [expectedCategoryError3, expectedCategoryError4],
     );
 
     //Test with offset > data length
@@ -472,18 +472,18 @@ describe.skip("Events - query errors", () => {
       "erGroupAdmin",
       "erCamera",
       { offset: 4, limit: 2 },
-      []
+      [],
     );
 
     //Test with offset not a multiple of length
     cy.log(
-      "Arbitrary offset unrelated to page length works (offset 1, lemgth 2 retruns errors at times 2,3)"
+      "Arbitrary offset unrelated to page length works (offset 1, lemgth 2 retruns errors at times 2,3)",
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
       "erCamera",
       { offset: 1, limit: 2 },
-      [expectedCategoryError2, expectedCategoryError3]
+      [expectedCategoryError2, expectedCategoryError3],
     );
   });
 
@@ -496,7 +496,7 @@ describe.skip("Events - query errors", () => {
       { limit: "" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -504,7 +504,7 @@ describe.skip("Events - query errors", () => {
       { limit: "a" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     //TODO: Issue 68 - -ve values cause server error - disabling until fixed
     // cy.apiEventsErrorsCheck("erGroupAdmin",DEVICE_NOT_SPECIFIED,{limit: -1}, [],[],HTTP_Unprocessable);
@@ -517,7 +517,7 @@ describe.skip("Events - query errors", () => {
       { limit: 1, offset: "" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiEventsErrorsCheck(
       "erGroupAdmin",
@@ -525,7 +525,7 @@ describe.skip("Events - query errors", () => {
       { limit: 1, offset: "a" },
       [],
       [],
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     //TODO: Issue 68 - -ve values cause server error - disabling until fixed
     //cy.apiEventsErrorsCheck("erGroupAdmin",DEVICE_NOT_SPECIFIED,{limit: 1, offset: -1}, [],[],HTTP_Unprocessable);

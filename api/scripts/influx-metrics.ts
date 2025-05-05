@@ -63,7 +63,7 @@ async function measureProcessingWaitTime(influx, pgClient) {
     pgClient,
     `select "createdAt" from "Recordings"
     where "processingState" in ('analyse', 'tracking') and "deletedAt" is null and "processingFailedCount" = 0
-    order by "createdAt" asc limit 1`
+    order by "createdAt" asc limit 1`,
   );
 
   let waitMinutes = 0;
@@ -82,7 +82,7 @@ async function measureProcessingWaitTime(influx, pgClient) {
 const countStates = Object.values(RecordingProcessingState).filter(
   (state) =>
     state !== RecordingProcessingState.Finished &&
-    state !== RecordingProcessingState.AnalyseTest
+    state !== RecordingProcessingState.AnalyseTest,
 ) as string[];
 
 const stateCountMeasurement = "processing_state_count";
@@ -92,7 +92,7 @@ async function stateCount(influx, pgClient) {
   for (const state of countStates) {
     fields[state] = await getCount(
       pgClient,
-      `select Count(id) from "Recordings" where "processingState" = '${state}' and "deletedAt" is null`
+      `select Count(id) from "Recordings" where "processingState" = '${state}' and "deletedAt" is null`,
     );
   }
   console.log("Count: ", fields);
@@ -126,7 +126,7 @@ async function getCount(pgClient, query: string) {
 async function influxConnect() {
   const processingFields = {};
   countStates.forEach(
-    (val) => (processingFields[val] = Influx.FieldType.INTEGER)
+    (val) => (processingFields[val] = Influx.FieldType.INTEGER),
   );
   return new Influx.InfluxDB({
     host: Config.influx.host,

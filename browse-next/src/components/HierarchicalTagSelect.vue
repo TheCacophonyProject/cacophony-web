@@ -7,9 +7,11 @@
     :pinned-items="pinnedItems"
     :placeholder="placeholder"
     :multiselect="multiselect"
+    :with-audio-context="withAudioContext"
     :selected-items="modelValue"
     :open-on-mount="openOnMount"
     @change="updateModel"
+    @deselected="(deselected) => emit('deselected')"
     ref="layeredDropdown"
   />
 </template>
@@ -26,6 +28,7 @@ const props = withDefaults(
     placeholder?: string;
     multiselect?: boolean;
     canBePinned?: boolean;
+    withAudioContext?: boolean;
     pinnedItems?: string[];
     openOnMount?: boolean;
     disabledTags?: string[];
@@ -36,22 +39,24 @@ const props = withDefaults(
     exclude: () => [],
     placeholder: "Search Tags...",
     multiselect: false,
+    withAudioContext: false,
     canBePinned: false,
     pinnedItems: () => [],
     openOnMount: true,
     disabledTags: () => [],
     modelValue: () => [],
-  }
+  },
 );
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string[]): void;
+  (e: "deselected"): void;
 }>();
 
 const updateModel = (val: Classification[]) => {
   emit(
     "update:modelValue",
-    val.map(({ label }) => label)
+    val.map(({ label }) => label),
   );
 };
 
@@ -77,7 +82,7 @@ const setClassifications = (classifications: Classification) => {
 onMounted(async () => {
   // Get our own copy of classifications since we're going to mutate it.
   const classifications = (await getClassifications(
-    setClassifications
+    setClassifications,
   )) as Classification;
   setClassifications(classifications);
 });

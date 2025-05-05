@@ -23,7 +23,8 @@ import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
-  fetchAuthorizedRequiredRecordingById,
+  fetchAuthorizedRequiredFlatRecordingById,
+  fetchAuthorizedRequiredLimitedRecordingById,
   parseJSONField,
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";
@@ -66,7 +67,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("tag")),
     // We want a recording that this user has permissions for, and has permissions to tag.
-    fetchAuthorizedRequiredRecordingById(body("recordingId")),
+    fetchAuthorizedRequiredFlatRecordingById(body("recordingId")),
 
     // FIXME - may want to revisit these tagging rules
     // The rules for who can tag a recording are:
@@ -79,13 +80,13 @@ export default function (app: Application, baseUrl: string) {
       const tagInstance = await addTag(
         models,
         response.locals.requestUser,
-        response.locals.recording,
-        request.body.tag
+        response.locals.recording.id,
+        request.body.tag,
       );
       return successResponse(response, "Added new tag.", {
         tagId: tagInstance.id,
       });
-    }
+    },
   );
 
   /**
@@ -109,22 +110,19 @@ export default function (app: Application, baseUrl: string) {
       const tag = await models.Tag.findByPk(request.body.tagId);
       if (tag) {
         response.locals.tag = tag;
-        // FIXME(ManageStations): This breaks undeleting tags in power-tagger.
-        //  Need to check with tagger JWT. - Actually, there seems to already be a dedicated API that uses tagJWT for this.
-        //  Is the front-end just using the wrong api here?  Oh wait, this is for *recording* tags, not track tags.
-        await fetchAuthorizedRequiredRecordingById(tag.recordingId)(
+        await fetchAuthorizedRequiredFlatRecordingById(tag.recordingId)(
           request,
           response,
-          next
+          next,
         );
       } else {
         next(new ClientError("Failed to delete tag."));
       }
     },
-    async function (request: Request, response: Response) {
+    async function (_request: Request, response: Response) {
       // There is a matching tag, and the user has access to the corresponding recording.
       await response.locals.tag.destroy();
       return successResponse(response, "Deleted tag.");
-    }
+    },
   );
 }

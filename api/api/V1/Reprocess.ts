@@ -22,8 +22,10 @@ import { body, param } from "express-validator";
 import type { Application, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
-  fetchAuthorizedRequiredRecordingById,
-  fetchAuthorizedRequiredRecordingsByIds,
+  fetchAuthorizedRequiredFlatRecordingById,
+  fetchAuthorizedRequiredFlatRecordingsByIds,
+  fetchAuthorizedRequiredLimitedRecordingById,
+  fetchAuthorizedRequiredLimitedRecordingsByIds,
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";
 import { successResponse } from "./responseUtil.js";
@@ -54,13 +56,13 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/retry-failed/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response, next) => {
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
+    async (_request: Request, response: Response, next) => {
       if (!response.locals.recording.isFailed()) {
         return next(
           new BadRequestError(
-            `Recording is not in a failed state '${response.locals.recording.processingState}'`
-          )
+            `Recording is not in a failed state '${response.locals.recording.processingState}'`,
+          ),
         );
       }
       if (await response.locals.recording.retryFailed()) {
@@ -68,11 +70,11 @@ export default (app: Application, baseUrl: string) => {
       } else {
         return next(
           new BadRequestError(
-            `Could not retry processing of recordings ${response.locals.recording.id}`
-          )
+            `Could not retry processing of recordings ${response.locals.recording.id}`,
+          ),
         );
       }
-    }
+    },
   );
 
   /**
@@ -92,11 +94,11 @@ export default (app: Application, baseUrl: string) => {
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
-    fetchAuthorizedRequiredRecordingById(param("id")),
-    async (request: Request, response: Response) => {
+    fetchAuthorizedRequiredFlatRecordingById(param("id")),
+    async (_request: Request, response: Response) => {
       await response.locals.recording.reprocess();
       return successResponse(response, "Recording reprocessed");
-    }
+    },
   );
 
   /**
@@ -124,7 +126,7 @@ export default (app: Application, baseUrl: string) => {
         .toArray()
         .custom(jsonSchemaOf(arrayOf(RecordingIdSchema))),
     ]),
-    fetchAuthorizedRequiredRecordingsByIds(body("recordings")),
+    fetchAuthorizedRequiredFlatRecordingsByIds(body("recordings")),
     async (request: Request, response: Response, next: NextFunction) => {
       // FIXME: Anyone who can see a recording can ask for it to be reprocessed
       //  currently, but should be with the exception of users with globalRead permissions?
@@ -134,14 +136,14 @@ export default (app: Application, baseUrl: string) => {
         return next(
           new ClientError(
             "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
       for (const recording of recordings) {
         await recording.reprocess();
       }
       return successResponse(response, "Recordings scheduled for reprocessing");
-    }
+    },
   );
 };

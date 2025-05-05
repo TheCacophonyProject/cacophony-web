@@ -20,7 +20,7 @@ class Unlocker {
 }
 const FakeReader = (
   bytes: Uint8Array,
-  maxChunkSize = 0
+  maxChunkSize = 0,
 ): {
   cancel(): Promise<void>;
   read(): Promise<{ value: Uint8Array; done: boolean }>;
@@ -53,7 +53,7 @@ const FakeReader = (
         state.offset += 1;
         const value = (state.bytes as Uint8Array).slice(
           state.offsets[state.offset - 1],
-          state.offsets[state.offset]
+          state.offsets[state.offset],
         );
         resolve({
           value,
@@ -109,7 +109,7 @@ class CptvDecoderInterface {
     id: RecordingId,
     apiToken: string,
     apiRoot: string,
-    size?: number
+    size?: number,
   ): Promise<string | boolean | Blob> {
     await this.free();
     const unlocker = new Unlocker();
@@ -128,7 +128,7 @@ class CptvDecoderInterface {
       this.response = await fetch(
         `${apiRoot}/api/v1/recordings/raw/${id}`,
         // eslint-disable-next-line no-undef
-        request as RequestInit
+        request as RequestInit,
       );
       if (this.response.status === 200) {
         if (this.response.body) {
@@ -143,7 +143,7 @@ class CptvDecoderInterface {
               this.response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
             await init(wasmUrl);
             this.playerContext = CptvDecoderContext.newWithReadableStream(
-              this.reader
+              this.reader,
             );
           } else if (this.currentContentType === "image/webp") {
             return await this.response.blob();
@@ -157,13 +157,18 @@ class CptvDecoderInterface {
       } else {
         unlocker.unlock();
         this.locked = false;
+        const responseText = await this.response.text();
         try {
-          const r = await this.response.json();
+          const r = JSON.parse(responseText) as {
+            messages?: string[];
+            message?: string;
+          };
           return (
             (r.messages && r.messages.pop()) || r.message || "Unknown error"
           );
         } catch (e) {
-          return await this.response.text();
+          // FIXME: json can have already been read and failed, so text() will fail.
+          return responseText;
         }
       }
     } catch (e) {
@@ -175,7 +180,7 @@ class CptvDecoderInterface {
 
   async initWithCptvUrlAndSize(
     url: string,
-    size?: number
+    size?: number,
   ): Promise<boolean | string> {
     await this.free();
     const unlocker = new Unlocker();
@@ -196,7 +201,7 @@ class CptvDecoderInterface {
           this.expectedSize = size;
           await init(wasmUrl);
           this.playerContext = CptvDecoderContext.newWithReadableStream(
-            this.reader
+            this.reader,
           );
           unlocker.unlock();
           this.inited = true;
@@ -232,14 +237,14 @@ class CptvDecoderInterface {
 
     this.reader = FakeReader(
       fileBytes,
-      100000
+      100000,
     ) as ReadableStreamDefaultReader<Uint8Array>;
     this.expectedSize = fileBytes.length;
     let result;
     try {
       await init(wasmUrl);
       this.playerContext = CptvDecoderContext.newWithReadableStream(
-        this.reader as ReadableStreamDefaultReader
+        this.reader as ReadableStreamDefaultReader,
       );
       this.inited = true;
       result = true;
@@ -367,7 +372,7 @@ self.addEventListener("message", async ({ data }) => {
           data.id,
           data.apiToken,
           data.apiRoot,
-          data.size
+          data.size,
         );
         self.postMessage({ type: data.type, data: result });
       }

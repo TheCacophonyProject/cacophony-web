@@ -19,7 +19,7 @@ describe("Device reregister", () => {
     cy.testCreateUserGroupAndDevice(
       "Augustus",
       "RR_default_group",
-      "RR_default_camera"
+      "RR_default_camera",
     );
     cy.apiGroupAdd("Augustus", "RR_default_group_2", true);
   });
@@ -47,7 +47,7 @@ describe("Device reregister", () => {
       "RR_cam1",
       { type: RecordingType.ThermalRaw },
       "oneframe.cptv",
-      "raRecording1"
+      "raRecording1",
     );
 
     //re-register camera & store device details
@@ -82,7 +82,7 @@ describe("Device reregister", () => {
           NOT_NULL_STRING,
           null,
           "register",
-          null
+          null,
         );
       expectedHistory.saltId = 1234567;
       cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [expectedHistory]);
@@ -90,7 +90,7 @@ describe("Device reregister", () => {
       cy.apiDeviceReregister(
         "RR_history_cam",
         "RR_history_cam2",
-        "RR_group1"
+        "RR_group1",
       ).then(() => {
         cy.log("Check deviceHistory created correctly for new device");
         const expectedNewHistory: DeviceHistoryEntry =
@@ -100,7 +100,7 @@ describe("Device reregister", () => {
             NOT_NULL_STRING,
             null,
             "re-register",
-            null
+            null,
           );
         expectedNewHistory.saltId = 1234567;
         cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
@@ -111,7 +111,7 @@ describe("Device reregister", () => {
           "RR_user1",
           "RR_history_cam",
           [],
-          HttpStatusCode.Forbidden
+          HttpStatusCode.Forbidden,
         );
       });
     });
@@ -134,7 +134,7 @@ describe("Device reregister", () => {
           groupName: getTestName("RR_group2"),
           groupId: getCreds("RR_group2").id,
         };
-      }
+      },
     );
 
     cy.log("create second group");
@@ -145,7 +145,7 @@ describe("Device reregister", () => {
       "RR_cam2",
       { type: RecordingType.ThermalRaw },
       "oneframe.cptv",
-      "raRecording1"
+      "raRecording1",
     );
 
     cy.log("re-register camera to 2nd group & store device details");
@@ -184,7 +184,7 @@ describe("Device reregister", () => {
           groupName: getTestName("RR_group3"),
           groupId: getCreds("RR_group3").id,
         };
-      }
+      },
     );
 
     cy.log("Add a recording so that old device isn't deleted when renamed");
@@ -192,7 +192,7 @@ describe("Device reregister", () => {
       "RR_cam3",
       { type: RecordingType.ThermalRaw },
       "oneframe.cptv",
-      "raRecording1"
+      "raRecording1",
     );
 
     cy.log("create second group");
@@ -233,7 +233,7 @@ describe("Device reregister", () => {
           groupName: getTestName("RR_group5"),
           groupId: getCreds("RR_group5").id,
         };
-      }
+      },
     );
 
     cy.log("another pre-existing camera");
@@ -247,7 +247,7 @@ describe("Device reregister", () => {
       "RR_group5",
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HttpStatusCode.BadRequest
+      HttpStatusCode.BadRequest,
       //HttpStatusCode.Unprocessable
     ).then(() => {
       cy.log("check old device unaltered");
@@ -262,7 +262,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiDeviceReregister(
       "RR_default_camera",
@@ -270,7 +270,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -280,12 +280,12 @@ describe("Device reregister", () => {
     cy.apiDeviceReregister(
       "funny device1",
       "funny-device1",
-      "RR_default_group"
+      "RR_default_group",
     );
     cy.apiDeviceReregister(
       "funny-device1",
       "funny_device1",
-      "RR_default_group"
+      "RR_default_group",
     );
   });
 
@@ -296,7 +296,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiDeviceReregister(
       "RR_default_camera",
@@ -304,7 +304,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     cy.apiDeviceReregister(
       "RR_default_camera",
@@ -312,7 +312,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -365,7 +365,7 @@ describe("Device reregister", () => {
             type: DeviceType.Unknown,
           };
           cy.apiDevicesCheck("RR_user8", [expectedDevice2]);
-        }
+        },
       );
     });
   });
@@ -378,7 +378,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       "",
       GENERATE_UNIQUE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     //not space
     cy.apiDeviceReregister(
@@ -387,7 +387,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       " ",
       GENERATE_UNIQUE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
     //not less than 8 chars
     cy.apiDeviceReregister(
@@ -396,7 +396,7 @@ describe("Device reregister", () => {
       "RR_default_group",
       "1234567",
       GENERATE_UNIQUE_NAME,
-      HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     );
   });
 
@@ -407,7 +407,7 @@ describe("Device reregister", () => {
       "invalid-group",
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 

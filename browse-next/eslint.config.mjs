@@ -3,6 +3,7 @@ import globals from "globals";
 import jsLint from "@eslint/js";
 import tsLint from "typescript-eslint";
 import vueLint from "eslint-plugin-vue";
+import stylistic from "@stylistic/eslint-plugin";
 import { includeIgnoreFile } from "@eslint/compat";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,7 +17,7 @@ export default [
   // config parsers
   {
     files: ["**/*.{js,mjs,cjs,ts,mts,jsx,tsx}"],
-    ignores: ["node_modules", "dist", "eslint.config.mjs", "*.d.ts", "public"]
+    ignores: ["node_modules", "dist", "eslint.config.mjs", "*.d.ts", "public"],
   },
   {
     files: ["*.vue", "**/*.vue"],
@@ -24,25 +25,27 @@ export default [
     languageOptions: {
       parserOptions: {
         parser: "@typescript-eslint/parser",
-        sourceType: "module"
-      }
+        sourceType: "module",
+      },
     },
   },
   // config envs
   {
     languageOptions: {
-      globals: { ...globals.browser, ...globals.node }
-    }
+      globals: { ...globals.browser, ...globals.node },
+    },
   },
   // syntax rules
   jsLint.configs.recommended,
   ...tsLint.configs.recommended,
   ...vueLint.configs["flat/essential"],
   {
+    plugins: { "@stylistic": stylistic },
     rules: {
       "no-prototype-builtins": "off",
       "linebreak-style": ["warn", "unix"],
-      quotes: "off",
+      quotes: ["error", "double", { allowTemplateLiterals: true }],
+      "comma-dangle": ["error", "always-multiline"],
       semi: ["warn", "always"],
       curly: ["warn", "all"],
       "no-console": ["warn", { allow: ["warn", "error", "assert"] }],
@@ -54,7 +57,21 @@ export default [
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-non-null-assertion": ["off"],
       "vue/no-setup-props-destructure": ["off"],
+      "vue/no-deprecated-slot-attribute": ["off"],
       "@typescript-eslint/no-unused-expressions": ["off"],
+      "@stylistic/member-delimiter-style": [
+        "warn",
+        {
+          multiline: {
+            delimiter: "semi",
+            requireLast: true,
+          },
+          singleline: {
+            delimiter: "semi",
+            requireLast: false,
+          },
+        },
+      ],
       "@typescript-eslint/no-unused-vars": [
         "off",
         {
@@ -62,13 +79,14 @@ export default [
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
           caughtErrorsIgnorePattern: "^_",
-        }],
+        },
+      ],
       "vue/no-unused-vars": [
         "warn",
         {
           ignorePattern: "^_",
         },
       ],
-    }
-  }
+    },
+  },
 ];

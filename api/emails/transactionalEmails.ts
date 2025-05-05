@@ -22,8 +22,11 @@ const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
 };
 
 const commonInterpolants = (origin: string) => {
+  const browseUrl = origin.startsWith("http")
+    ? origin.replace(/^https?:\/\//, "https://")   // ensure exactly one https://
+    : `https://${origin}`;
   return {
-    cacophonyBrowseUrl: `https://${origin}`,
+    cacophonyBrowseUrl: browseUrl,
     cacophonyDisplayUrl: "browse.cacophony.org.nz",
   };
 };
@@ -44,23 +47,22 @@ const getPermissions = (permissions: { owner?: boolean; admin?: boolean }) => {
 export const sendWelcomeEmailConfirmationEmail = async (
   origin: string,
   emailConfirmationToken: string,
-  userEmailAddress: string
+  userEmailAddress: string,
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants(origin);
-    const emailConfirmationUrl = `${
-      common.cacophonyBrowseUrl
-    }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
+    const emailConfirmationUrl = `${common.cacophonyBrowseUrl
+      }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "welcome-confirm-email.html",
-      { emailConfirmationUrl, ...common }
+      { emailConfirmationUrl, ...common },
     );
     return await sendEmail(
       html,
       text,
       userEmailAddress,
       "🔧 Finish setting up your new Cacophony Monitoring account",
-      await commonAttachments()
+      await commonAttachments(),
     );
   } catch (e) {
     logger.error("%s", e);
@@ -70,20 +72,20 @@ export const sendWelcomeEmailConfirmationEmail = async (
 export const sendWelcomeEmailWithGroupsAdded = async (
   origin: string,
   userEmailAddress: string,
-  groupNamesAdded: string[]
+  groupNamesAdded: string[],
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants(origin);
     const { text, html } = await createEmailWithTemplate(
       "welcome-with-groups.html",
-      { groupNamesAdded, ...common }
+      { groupNamesAdded, ...common },
     );
     return await sendEmail(
       html,
       text,
       userEmailAddress,
       "🎉 Welcome to your new Cacophony Monitoring account!",
-      await commonAttachments()
+      await commonAttachments(),
     );
   } catch (e) {
     logger.error("%s", e);
@@ -93,23 +95,22 @@ export const sendWelcomeEmailWithGroupsAdded = async (
 export const sendEmailConfirmationEmailLegacyUser = async (
   origin: string,
   emailConfirmationToken: string,
-  userEmailAddress: string
+  userEmailAddress: string,
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants(origin);
-    const emailConfirmationUrl = `${
-      common.cacophonyBrowseUrl
-    }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
+    const emailConfirmationUrl = `${common.cacophonyBrowseUrl
+      }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "confirm-email-legacy-user.html",
-      { emailConfirmationUrl, ...common }
+      { emailConfirmationUrl, ...common },
     );
     return await sendEmail(
       html,
       text,
       userEmailAddress,
       "🔧 Confirm your Cacophony Monitoring account email address",
-      await commonAttachments()
+      await commonAttachments(),
     );
   } catch (e) {
     logger.error("%s", e);
@@ -119,26 +120,25 @@ export const sendEmailConfirmationEmailLegacyUser = async (
 export const sendChangedEmailConfirmationEmail = async (
   origin: string,
   emailConfirmationToken: string,
-  userEmailAddress: string
+  userEmailAddress: string,
 ) => {
   const common = commonInterpolants(origin);
-  const emailConfirmationUrl = `${
-    common.cacophonyBrowseUrl
-  }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
+  const emailConfirmationUrl = `${common.cacophonyBrowseUrl
+    }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "confirm-email-change.html",
     {
       emailConfirmationUrl,
       ...common,
       newAccountEmailAddress: userEmailAddress,
-    }
+    },
   );
   return await sendEmail(
     html,
     text,
     userEmailAddress,
     "🔧 Confirm your email change for Cacophony Monitoring",
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
@@ -148,14 +148,14 @@ export const sendGroupInviteExistingMemberEmail = async (
   requesterEmailAddress: string,
   requestGroupName: string,
   requesterUserName: string,
-  userEmailAddress: string
+  userEmailAddress: string,
 ) => {
   const common = commonInterpolants(origin);
   const existingAccountJoinGroupUrl = `${
     common.cacophonyBrowseUrl
   }/accept-invite/${existingAccountJoinGroupToken.replace(
     /\./g,
-    ":"
+    ":",
   )}?existing-member=1`;
   const { text, html } = await createEmailWithTemplate(
     "group-invite-existing-member.html",
@@ -165,14 +165,14 @@ export const sendGroupInviteExistingMemberEmail = async (
       requesterUserName,
       requesterEmailAddress,
       ...common,
-    }
+    },
   );
   return await sendEmail(
     html,
     text,
     userEmailAddress,
     "You've been invited to join a group on Cacophony Monitoring",
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
@@ -182,20 +182,20 @@ export const sendGroupInviteNewMemberEmail = async (
   requesterEmailAddress: string,
   requestGroupName: string,
   requesterUserName: string,
-  userEmailAddress: string
+  userEmailAddress: string,
 ) => {
   const common = commonInterpolants(origin);
   const signupAndJoinGroupUrl = `${
     common.cacophonyBrowseUrl
   }/register?nextUrl=/accept-invite/${newMemberJoinGroupToken.replace(
     /\./g,
-    ":"
+    ":",
   )}`;
   const existingAccountJoinGroupUrl = `${
     common.cacophonyBrowseUrl
   }/accept-invite/${newMemberJoinGroupToken.replace(
     /\./g,
-    ":"
+    ":",
   )}?existing-member=1`;
   const { text, html } = await createEmailWithTemplate(
     "group-invite-new-member.html",
@@ -206,14 +206,14 @@ export const sendGroupInviteNewMemberEmail = async (
       requesterEmailAddress,
       requesterUserName,
       ...common,
-    }
+    },
   );
   return await sendEmail(
     html,
     text,
     userEmailAddress,
     "You've been invited to join a group on Cacophony Monitoring",
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
@@ -221,7 +221,7 @@ export const sendAddedToGroupNotificationEmail = async (
   origin: string,
   userEmailAddress: string,
   groupNameAdded: string,
-  permissions: { owner?: boolean; admin?: boolean }
+  permissions: { owner?: boolean; admin?: boolean },
 ) => {
   const { text, html } = await createEmailWithTemplate(
     "added-to-group-notification.html",
@@ -230,7 +230,7 @@ export const sendAddedToGroupNotificationEmail = async (
       ...getPermissions(permissions),
       ...commonInterpolants(origin),
       groupUrl: urlNormaliseName(groupNameAdded),
-    }
+    },
   );
   const subject = `👌 You've been accepted to '${groupNameAdded}'`;
 
@@ -239,7 +239,7 @@ export const sendAddedToGroupNotificationEmail = async (
     text,
     userEmailAddress,
     subject,
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
@@ -247,7 +247,7 @@ export const sendUpdatedGroupPermissionsNotificationEmail = async (
   origin: string,
   userEmailAddress: string,
   groupName: string,
-  permissions: { owner?: boolean; admin?: boolean }
+  permissions: { owner?: boolean; admin?: boolean },
 ) => {
   const { text, html } = await createEmailWithTemplate(
     "updated-to-group-permissions-notification.html",
@@ -256,7 +256,7 @@ export const sendUpdatedGroupPermissionsNotificationEmail = async (
       ...getPermissions(permissions),
       ...commonInterpolants(origin),
       groupUrl: urlNormaliseName(groupName),
-    }
+    },
   );
   const subject = `Your status in the group '${groupName}' has changed`;
   return await sendEmail(
@@ -264,18 +264,18 @@ export const sendUpdatedGroupPermissionsNotificationEmail = async (
     text,
     userEmailAddress,
     subject,
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
 export const sendRemovedFromGroupNotificationEmail = async (
   origin: string,
   userEmailAddress: string,
-  groupNameRemoved: string
+  groupNameRemoved: string,
 ) => {
   const { text, html } = await createEmailWithTemplate(
     "removed-from-group-notification.html",
-    { groupNameRemoved, ...commonInterpolants(origin) }
+    { groupNameRemoved, ...commonInterpolants(origin) },
   );
 
   const subject = `❗️You've been removed from '${groupNameRemoved}'`;
@@ -284,18 +284,18 @@ export const sendRemovedFromGroupNotificationEmail = async (
     text,
     userEmailAddress,
     subject,
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
 export const sendLeftGroupNotificationEmail = async (
   origin: string,
   userEmailAddress: string,
-  groupNameRemoved: string
+  groupNameRemoved: string,
 ) => {
   const { text, html } = await createEmailWithTemplate(
     "left-group-notification.html",
-    { groupNameRemoved, ...commonInterpolants(origin) }
+    { groupNameRemoved, ...commonInterpolants(origin) },
   );
 
   const subject = `❗️You've left '${groupNameRemoved}'`;
@@ -304,18 +304,18 @@ export const sendLeftGroupNotificationEmail = async (
     text,
     userEmailAddress,
     subject,
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
 export const sendRemovedFromInvitedGroupNotificationEmail = async (
   origin: string,
   userEmailAddress: string,
-  groupNameRemoved: string
+  groupNameRemoved: string,
 ) => {
   const { text, html } = await createEmailWithTemplate(
     "removed-from-invited-group-notification.html",
-    { groupNameRemoved, ...commonInterpolants(origin) }
+    { groupNameRemoved, ...commonInterpolants(origin) },
   );
 
   const subject = `❗️You've been uninvited from '${groupNameRemoved}'`;
@@ -324,7 +324,7 @@ export const sendRemovedFromInvitedGroupNotificationEmail = async (
     text,
     userEmailAddress,
     subject,
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
@@ -334,12 +334,11 @@ export const sendGroupMembershipRequestEmail = async (
   requesterEmailAddress: string,
   requesterUserName: string,
   requestGroupName: string,
-  userEmailAddress: string
+  userEmailAddress: string,
 ) => {
   const common = commonInterpolants(origin);
-  const acceptToGroupUrl = `${
-    common.cacophonyBrowseUrl
-  }/confirm-group-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
+  const acceptToGroupUrl = `${common.cacophonyBrowseUrl
+    }/confirm-group-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "group-membership-request.html",
     {
@@ -348,14 +347,14 @@ export const sendGroupMembershipRequestEmail = async (
       requesterEmailAddress,
       requesterUserName,
       ...common,
-    }
+    },
   );
   return await sendEmail(
     html,
     text,
     userEmailAddress,
     `A Cacophony Monitoring user wants to join your '${requestGroupName}' group`,
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
@@ -363,7 +362,7 @@ export const sendStoppedDevicesReportEmail = async (
   origin: string,
   groupName: string,
   stoppedDevicesList: string[],
-  recipients: { email: string; emailConfirmed: boolean }[]
+  recipients: { email: string; emailConfirmed: boolean }[],
 ) => {
   const sendPromises = [];
   const confirmedEmailUsers = recipients
@@ -375,7 +374,7 @@ export const sendStoppedDevicesReportEmail = async (
 
   const common = commonInterpolants(origin);
   const emailSettingsUrl = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
+    groupName,
   )}/my-settings`;
   let confirmedEmailTemplate;
   let unconfirmedEmailTemplate;
@@ -389,7 +388,7 @@ export const sendStoppedDevicesReportEmail = async (
         groupName,
         stoppedDevicesList,
         ...common,
-      }
+      },
     );
   }
   if (unconfirmedEmailUsers.length !== 0) {
@@ -402,7 +401,7 @@ export const sendStoppedDevicesReportEmail = async (
         groupName,
         stoppedDevicesList,
         ...common,
-      }
+      },
     );
   }
   let sentAdminCopy = false;
@@ -413,12 +412,11 @@ export const sendStoppedDevicesReportEmail = async (
         confirmedEmailTemplate.html,
         confirmedEmailTemplate.text,
         recipient,
-        `💔 Possible stopped or offline device${
-          stoppedDevicesList.length > 1 ? "s" : ""
+        `💔 Possible stopped or offline device${stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
         attachments,
-        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
-      )
+        !sentAdminCopy ? config.server.adminEmails : [], // Just bcc admin for the first email in a group.
+      ),
     );
     sentAdminCopy = true;
   }
@@ -429,17 +427,16 @@ export const sendStoppedDevicesReportEmail = async (
         unconfirmedEmailTemplate.html,
         unconfirmedEmailTemplate.text,
         recipient,
-        `💔 Possible stopped or offline device${
-          stoppedDevicesList.length > 1 ? "s" : ""
+        `💔 Possible stopped or offline device${stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
         attachments,
-        !sentAdminCopy ? config.server.adminEmails : [] // Just bcc admin for the first email in a group.
-      )
+        !sentAdminCopy ? config.server.adminEmails : [], // Just bcc admin for the first email in a group.
+      ),
     );
     sentAdminCopy = true;
   }
   return (await Promise.allSettled(sendPromises)).map(
-    (p) => p.status === "fulfilled"
+    (p) => p.status === "fulfilled",
   );
 };
 
@@ -456,11 +453,11 @@ export const sendAnimalAlertEmail = async (
   trackId: number,
   userEmailAddress: string,
   deviceTimezone: string | null,
-  thumbnail?: Buffer
+  thumbnail?: Buffer,
 ) => {
   const common = commonInterpolants(origin);
   const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-    groupName
+    groupName,
   )}`;
   const emailSettingsUrl = `${projectRoot}/my-settings`;
   const targetTag =
@@ -495,32 +492,31 @@ export const sendAnimalAlertEmail = async (
   });
   const thumb: EmailImageAttachment[] = thumbnail
     ? [
-        {
-          buffer: thumbnail,
-          mimeType: "image/png",
-          cid: "thumbnail",
-        },
-      ]
+      {
+        buffer: thumbnail,
+        mimeType: "image/png",
+        cid: "thumbnail",
+      },
+    ]
     : [];
   return await sendEmail(
     html,
     text,
     userEmailAddress,
     `🎯 ${targetTag} alert at '${stationName}'`,
-    [...(await commonAttachments()), ...thumb]
+    [...(await commonAttachments()), ...thumb],
   );
 };
 
 export const sendPasswordResetEmail = async (
   origin: string,
   resetPasswordToken: string,
-  userEmailAddress: string
+  userEmailAddress: string,
 ) => {
   const common = commonInterpolants(origin);
   const accountEmailAddress = userEmailAddress;
-  const passwordResetUrl = `${
-    common.cacophonyBrowseUrl
-  }/reset-password/${resetPasswordToken.replace(/\./g, ":")}`;
+  const passwordResetUrl = `${common.cacophonyBrowseUrl
+    }/reset-password/${resetPasswordToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate("reset-password.html", {
     accountEmailAddress,
     passwordResetUrl,
@@ -531,7 +527,7 @@ export const sendPasswordResetEmail = async (
     text,
     userEmailAddress,
     "Reset your Cacophony Monitoring password",
-    await commonAttachments()
+    await commonAttachments(),
   );
 };
 
@@ -540,7 +536,7 @@ export const sendPlatformUsageEmail = async (
   recipientEmailAddress: string,
   weekEnding: Date,
   platformUsageStats: string,
-  imageAttachments: EmailImageAttachment[] = []
+  imageAttachments: EmailImageAttachment[] = [],
 ) => {
   const common = commonInterpolants(origin);
   const getMonthName = (num: number) => {
@@ -573,7 +569,7 @@ export const sendPlatformUsageEmail = async (
   };
 
   const weekEndingDate = `${getMonthName(
-    weekEnding.getMonth() + 1
+    weekEnding.getMonth() + 1,
   )}&nbsp;${weekEnding.getDate()},&nbsp;${weekEnding.getFullYear()}`;
   const { text, html } = await createEmailWithTemplate(
     "platform-usage-report.html",
@@ -581,14 +577,14 @@ export const sendPlatformUsageEmail = async (
       platformUsageStats,
       weekEndingDate,
       ...common,
-    }
+    },
   );
   return await sendEmail(
     html,
     text,
     recipientEmailAddress,
     "📈 Cacophony Monitoring Platform usage report",
-    [...(await commonAttachments()), ...imageAttachments]
+    [...(await commonAttachments()), ...imageAttachments],
   );
 };
 
@@ -599,7 +595,7 @@ export const sendDailyServiceErrorsEmail = async (
   until: Date,
   serviceErrors: Record<string, GroupedServiceErrors[]>,
   devicesFailingSaltUpdate: Record<string, { id: DeviceId; name: string }[]>,
-  imageAttachments: EmailImageAttachment[] = []
+  imageAttachments: EmailImageAttachment[] = [],
 ) => {
   const common = commonInterpolants(origin);
   const dateFormat = new Intl.DateTimeFormat("en-NZ", {
@@ -651,7 +647,7 @@ export const sendDailyServiceErrorsEmail = async (
           .sort(
             (a, b) =>
               b.errors.reduce((acc, item) => item.c + acc, 0) -
-              a.errors.reduce((acc, item) => item.c + acc, 0)
+              a.errors.reduce((acc, item) => item.c + acc, 0),
           ),
       });
     }
@@ -678,14 +674,14 @@ export const sendDailyServiceErrorsEmail = async (
       fromDate,
       untilDate,
       ...common,
-    }
+    },
   );
   return await sendEmail(
     html,
     text,
     recipientEmailAddress,
     "🧨💥 Service Errors in the last 24 hours",
-    [...(await commonAttachments()), ...imageAttachments]
+    [...(await commonAttachments()), ...imageAttachments],
   );
 };
 
@@ -699,11 +695,11 @@ export const sendProjectActivityDigestEmail = async (
     speciesDisplayName: string;
     count: number;
     hasIcon?: boolean;
-  }[]
+  }[],
 ) => {
   const common = commonInterpolants(origin);
   const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
-    projectName
+    projectName,
   )}`;
   const emailFrequency = frequency.toLowerCase();
   const emailSettingsUrl = `${projectRoot}/my-settings`;
@@ -715,7 +711,7 @@ export const sendProjectActivityDigestEmail = async (
       species.species,
       imageAttachments,
       `classification-icons/${species.species}.svg`,
-      false
+      false,
     );
     if (!iconExists) {
       // Fallback to path parent icons.
@@ -730,7 +726,7 @@ export const sendProjectActivityDigestEmail = async (
           species.species,
           imageAttachments,
           `classification-icons/${pathPart}.svg`,
-          false
+          false,
         );
         if (iconExists) {
           break;
@@ -750,7 +746,7 @@ export const sendProjectActivityDigestEmail = async (
       hasNoVisitsInPeriod: visitsInfo.length === 0,
       activityUrl,
       ...common,
-    }
+    },
   );
 
   // TODO: How much info should we try to cram into these reports?
@@ -762,11 +758,11 @@ export const sendProjectActivityDigestEmail = async (
         text,
         `${recipient.userName} <${recipient.email}>`,
         `📊 ${frequency} activity report for '${projectName}'`,
-        imageAttachments
-      )
+        imageAttachments,
+      ),
     );
   }
   return (await Promise.allSettled(recipientPromises)).every(
-    (success) => success.status === "fulfilled"
+    (success) => success.status === "fulfilled",
   );
 };

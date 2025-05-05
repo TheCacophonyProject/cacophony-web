@@ -100,7 +100,7 @@ class TypeAliasParser implements SubNodeParser {
   createType(
     node: ts.Node,
     context: Context,
-    reference?: ReferenceType
+    reference?: ReferenceType,
   ): BaseType {
     return new IntegerType(); // Treat constructors as strings in this example
   }
@@ -119,7 +119,7 @@ class FloatZeroOneParser implements SubNodeParser {
   createType(
     node: ts.Node,
     context: Context,
-    reference?: ReferenceType
+    reference?: ReferenceType,
   ): BaseType {
     return new FloatZeroOneType(); // Treat constructors as strings in this example
   }
@@ -138,7 +138,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   createType(
     node: ts.Node,
     context: Context,
-    reference?: ReferenceType
+    reference?: ReferenceType,
   ): BaseType {
     return new IsoFormattedDateStringType(); // Treat constructors as strings in this example
   }
@@ -221,7 +221,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
           program,
           parser,
           formatter,
-          config
+          config,
         );
         const schema = generator.createSchema(config.type);
         const schemaString = JSON.stringify(schema, null, 2);
@@ -245,9 +245,9 @@ class IsoFormattedDateStringParser implements SubNodeParser {
         }
         await fs.writeFile(
           `../api/json-schemas/${subdirNames.join(
-            "/"
+            "/",
           )}/${exportedName}.schema.json`,
-          schemaString
+          schemaString,
         );
         updatedSchemas.push(typedefFile);
       }
@@ -260,7 +260,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
     console.log(`Built ${updatedSchemas.length} json schemas`);
     await fs.writeFile(
       "../api/schema-cache.json",
-      JSON.stringify(changes, null, 2)
+      JSON.stringify(changes, null, 2),
     );
   }
   process.exit();

@@ -43,6 +43,7 @@ import { isLatLon } from "@models/util/validation.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import logger from "@log";
+import type { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -63,7 +64,7 @@ interface RecordingData {
 
 const mergeEmbeddedDataWithSuppliedRecordingData = (
   data: RecordingData,
-  recordingUploadData: RecordingFileUploadResult
+  recordingUploadData: RecordingFileUploadResult,
 ): RecordingData => {
   const mergedData = {
     ...recordingUploadData.embeddedMetadata,
@@ -118,7 +119,7 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
 const uploadStream = (
   key: string,
   readableWebStream: streamWeb.ReadableStream,
-  fileName?: string
+  fileName?: string,
 ) => {
   if (fileName) {
     return openS3().uploadStreaming(key, readableWebStream, {
@@ -149,7 +150,7 @@ const processDataPart = (part: MultipartFormPart) => {
 const validateDataPart = async (
   data: any,
   uploadingDeviceId: DeviceId,
-  models: ModelsDictionary
+  models: ModelsDictionary,
 ) => {
   // If the recordingDateTime data field is set, it must be a valid date.
   if (
@@ -157,7 +158,7 @@ const validateDataPart = async (
     isNaN(Date.parse(data.recordingDateTime))
   ) {
     throw new UnprocessableError(
-      `Invalid recordingDateTime '${data.recordingDateTime}'`
+      `Invalid recordingDateTime '${data.recordingDateTime}'`,
     );
   }
   if ("fileHash" in data && !!data.fileHash) {
@@ -172,11 +173,11 @@ const validateDataPart = async (
       log.warning(
         "Recording with hash %s for device %s already exists, discarding duplicate",
         data.fileHash,
-        uploadingDeviceId
+        uploadingDeviceId,
       );
       throw new ClientError(
         `Duplicate recording found for device: ${existingRecordingWithHashForDevice.id}`,
-        HttpStatusCode.Ok
+        HttpStatusCode.Ok,
       );
     }
   }
@@ -186,7 +187,7 @@ const validateDataPart = async (
 const processAndValidateDataPart = async (
   part: MultipartFormPart,
   uploadingDeviceId: DeviceId,
-  models: ModelsDictionary
+  models: ModelsDictionary,
 ) => {
   try {
     const data = await processDataPart(part);
@@ -221,7 +222,7 @@ const mapPartName = (partKey: string, partName: string): string => {
 function appendToArrayBuffer(originalBuffer, newData) {
   // Create a new ArrayBuffer with the size of the original plus the new data
   const newBuffer = new ArrayBuffer(
-    originalBuffer.byteLength + newData.byteLength
+    originalBuffer.byteLength + newData.byteLength,
   );
 
   // Create typed arrays to work with the data
@@ -241,7 +242,7 @@ const processFilePart = async (
   partKey: string,
   part: MultipartFormPart,
   request: Request,
-  canceledRequest: { canceled: boolean }
+  canceledRequest: { canceled: boolean },
 ): Promise<RecordingFileUploadResult> => {
   let length = 0;
   // NOTE: it can end up that we are uploading old recordings for another group, in which case we'd want to rename these keys.
@@ -258,7 +259,9 @@ const processFilePart = async (
   const mightBeTc2AudioFile =
     !("filename" in part) ||
     (part.filename &&
-      (part.filename.endsWith(".aac") || part.filename === "file"));
+      (part.filename.endsWith(".aac") ||
+        part.filename.endsWith(".m4a") ||
+        part.filename === "file"));
   let wasValidCptvFile = true;
   let wasValidM4aFile = true;
 
@@ -322,10 +325,12 @@ const processFilePart = async (
       await upload.done().catch((error) => {
         if (error.name !== "AbortError") {
           log.error("Upload error: %s", error.toString());
-          part.emit(
-            "error",
-            new UnprocessableError(`Upload error: '${part.name}'`)
-          );
+          decoder.close().then(() => {
+            part.emit(
+              "error",
+              new UnprocessableError(`Upload error: '${part.name}'`),
+            );
+          });
         }
       });
       uploaded = true;
@@ -349,7 +354,7 @@ const processFilePart = async (
           log.error("Upload error: %s", error.toString());
           part.emit(
             "error",
-            new UnprocessableError(`Upload error: '${part.name}'`)
+            new UnprocessableError(`Upload error: '${part.name}'`),
           );
         }
       });
@@ -365,7 +370,7 @@ const processFilePart = async (
         log.error("DONE? %s", error.toString());
         part.emit(
           "error",
-          new UnprocessableError(`Upload error: '${part.name}'`)
+          new UnprocessableError(`Upload error: '${part.name}'`),
         );
       }
     });
@@ -394,7 +399,7 @@ const createRecording = (
   data: RecordingData,
   uploader: "device" | "user",
   uploadingDevice: Device,
-  uploadingUser?: User
+  uploadingUser?: User,
 ): Recording => {
   const recording = models.Recording.buildSafely(data);
   recording.public = uploadingDevice.public;
@@ -411,7 +416,7 @@ const createRecording = (
 export const uploadGenericRecordingFromDevice = (models: ModelsDictionary) =>
   uploadGenericRecording(models, true);
 export const uploadGenericRecordingOnBehalfOfDevice = (
-  models: ModelsDictionary
+  models: ModelsDictionary,
 ) => uploadGenericRecording(models, false);
 
 export const uploadGenericRecording =
@@ -439,12 +444,35 @@ export const uploadGenericRecording =
         }));
     }
 
+    if (!recordingDevice) {
+      return next(
+        new UnprocessableError(
+          `No device found for ID ${recordingDeviceId}. Cannot proceed with upload.`,
+        ),
+      );
+    }
+    if (!recordingDevice.GroupId) {
+      return next(
+        new UnprocessableError(
+          `Device ${recordingDeviceId} is not assigned to any group. Cannot upload a recording.`,
+        ),
+      );
+    }
+    if (!recordingDevice.Group) {
+      // If we rely on `recordingDevice.Group` from `include: [models.Group]`
+      return next(
+        new UnprocessableError(
+          `Device ${recordingDeviceId} has GroupId = ${recordingDevice.GroupId}, but no matching group found.`,
+        ),
+      );
+    }
+
     if (response.locals.requestUser) {
       uploadingUser = response.locals.requestUser;
     }
-
+    const fileUploadsInProgress: Promise<RecordingFileUploadResult>[] = [];
     const partKey = `${recordingDevice.GroupId}/${moment().format(
-      "YYYY/MM/DD/"
+      "YYYY/MM/DD/",
     )}${uuidv4()}`;
     const form = new multiparty.Form();
     form.on("error", (error: Error) => {
@@ -458,17 +486,17 @@ export const uploadGenericRecording =
               "Duplicate recording found for device",
               {
                 recordingId,
-              }
+              },
             );
           }
         }
-        return next(error);
       }
+      return next(error);
     });
 
     // TODO - depending on the kind of asset we're uploading, it can go to different object storage providers and buckets.
     //  Choose destination based on object type, and potentially owning group.
-    const fileUploadsInProgress: Promise<RecordingFileUploadResult>[] = [];
+
     const recognisedFileParts = ["file", "derived", "thumb"];
     let dataPromise: Promise<any>;
     form.on("part", async (part: MultipartFormPart) => {
@@ -488,7 +516,7 @@ export const uploadGenericRecording =
         dataPromise = processAndValidateDataPart(
           part,
           recordingDeviceId,
-          models
+          models,
         );
       } else if (recognisedFileParts.includes(part.name)) {
         fileUploadsInProgress.push(
@@ -496,13 +524,13 @@ export const uploadGenericRecording =
             mapPartName(partKey, part.name),
             part,
             request,
-            canceledRequest
-          )
+            canceledRequest,
+          ),
         );
       } else {
         part.emit(
           "error",
-          new UnprocessableError(`Unknown form field '${part.name}'`)
+          new UnprocessableError(`Unknown form field '${part.name}'`),
         );
       }
     });
@@ -516,19 +544,20 @@ export const uploadGenericRecording =
         return;
       }
       const rawFileUploadResult = uploadResults.find(
-        (part) => part.partName === "file"
+        (part) => part.partName === "file",
       );
       const derivedUploadResult = uploadResults.find(
-        (part) => part.partName === "derived"
+        (part) => part.partName === "derived",
       );
       try {
         data = mergeEmbeddedDataWithSuppliedRecordingData(
           data,
-          rawFileUploadResult
+          rawFileUploadResult,
         );
       } catch (error) {
         if (error instanceof CustomError && !canceledRequest.canceled) {
           canceledRequest.canceled = true;
+          await deleteUploads(uploadResults);
           return next(error);
         }
       }
@@ -537,10 +566,11 @@ export const uploadGenericRecording =
       if (data.location && !isLatLon(data.location, false)) {
         if (!canceledRequest.canceled) {
           canceledRequest.canceled = true;
+          await deleteUploads(uploadResults);
           return next(
             new UnprocessableError(
-              `Invalid location '${JSON.stringify(data.location)}'`
-            )
+              `Invalid location '${JSON.stringify(data.location)}'`,
+            ),
           );
         }
       }
@@ -554,7 +584,7 @@ export const uploadGenericRecording =
         log.error(
           "File hash check failed, for device %s, deleting key: %s",
           recordingDeviceId,
-          rawFileUploadResult.key
+          rawFileUploadResult.key,
         );
         // Hash check failed, delete the file from s3, and return an error which the client can respond
         // to in order to decide whether to retry immediately.
@@ -562,8 +592,8 @@ export const uploadGenericRecording =
         if (!canceledRequest.canceled) {
           return next(
             new BadRequestError(
-              "Uploaded file integrity check failed, please retry."
-            )
+              "Uploaded file integrity check failed, please retry.",
+            ),
           );
         } else {
           return;
@@ -584,7 +614,7 @@ export const uploadGenericRecording =
         data,
         uploader,
         recordingDevice,
-        uploadingUser
+        uploadingUser,
       );
       recordingTemplate.rawFileHash = rawFileUploadResult.sha1Hash;
 
@@ -603,7 +633,7 @@ export const uploadGenericRecording =
       recordingTemplate.rawFileKey = rawFileUploadResult.key;
       recordingTemplate.rawMimeType = guessMimeType(
         recordingTemplate.type,
-        rawFileUploadResult.fileName
+        rawFileUploadResult.fileName,
       );
 
       recordingTemplate.rawFileSize = rawFileUploadResult.fileLength;
@@ -611,7 +641,7 @@ export const uploadGenericRecording =
         recordingTemplate.fileKey = derivedUploadResult.key;
         recordingTemplate.fileMimeType = guessMimeType(
           recordingTemplate.type,
-          derivedUploadResult.fileName
+          derivedUploadResult.fileName,
         );
         recordingTemplate.fileSize = derivedUploadResult.fileLength;
       }
@@ -624,8 +654,19 @@ export const uploadGenericRecording =
         models,
         recordingDevice,
         recordingTemplate.recordingDateTime,
-        recordingTemplate.location
+        recordingTemplate.location,
       );
+
+      if (!deviceId || !groupId) {
+        // We can throw a 422 or similar
+        await deleteUploads(uploadResults);
+        return next(
+          new UnprocessableError(
+            `Unable to determine valid device (${deviceId}) or group (${groupId}) for this recording.`,
+          ),
+        );
+      }
+
       recordingTemplate.DeviceId = deviceId;
       recordingTemplate.GroupId = groupId;
 
@@ -698,31 +739,39 @@ export const uploadGenericRecording =
       }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
+      // or with supplied tracks to support existing devices
+      const metadataSupplied =
+        (data.metadata && data.metadata.metadata_source) ||
+        wouldHaveSuppliedTracks;
       const wouldHaveSuppliedTracksWithPredictions =
         dataHasSuppliedTracksWithPredictions(data);
-      setInitialProcessingState(
-        recordingTemplate,
-        data,
-        wouldHaveSuppliedTracks
-      );
+      setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
       const [recording, _station] = await Promise.all([
         recordingTemplate.save(),
         maybeUpdateLastRecordingTimesForStation(
           recordingTemplate,
           fromDevice,
-          stationToAssignToRecording
+          stationToAssignToRecording,
         ),
         maybeUpdateLastRecordingTimesForDeviceAndGroup(
           recordingTemplate,
           recordingDevice,
           recordingDeviceUpdatePayload,
-          recordingGroup
+          recordingGroup,
         ),
       ]);
 
+      if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
+        recording.additionalMetadata = {
+          ...recording.additionalMetadata,
+          metadataSource: data.metadata.metadata_source,
+        };
+        await recording.save();
+      }
+
       if (wouldHaveSuppliedTracks) {
-        // Now that we have a recording saved to the DB, we can create any associated track items
+        // Now that we have a recording saved to the DB, we can creat./e any associated track items
         await tracksFromMeta(models, recording, data.metadata);
       }
 
@@ -768,7 +817,7 @@ const deleteUploads = async (uploadResults: RecordingFileUploadResult[]) => {
         .deleteObject(uploadResult.key)
         .catch((err) => {
           return err;
-        })
+        }),
     );
   }
   return Promise.allSettled(deleteUploadPromises);
@@ -778,7 +827,7 @@ const recordingUploadedState = (type: RecordingType) => {
   if (type === RecordingType.Audio) {
     return RecordingProcessingState.Analyse;
   } else if (type === RecordingType.ThermalRaw) {
-    return RecordingProcessingState.Tracking;
+    return RecordingProcessingState.TrackAndAnalyse;
   } else if (type === RecordingType.InfraredVideo) {
     return RecordingProcessingState.Tracking;
   } else if (type == RecordingType.TrailCamImage) {
@@ -797,7 +846,7 @@ const dataHasSuppliedTracksWithPredictions = (data: { metadata?: any }) => {
     data.metadata &&
     data.metadata.tracks &&
     data.metadata.tracks.some(
-      (track) => track.predictions && track.predictions.length !== 0
+      (track) => track.predictions && track.predictions.length !== 0,
     )
   );
 };
@@ -805,7 +854,7 @@ const dataHasSuppliedTracksWithPredictions = (data: { metadata?: any }) => {
 const setInitialProcessingState = (
   recordingTemplate: Recording,
   data: { processingState?: RecordingProcessingState; type: RecordingType },
-  hasSuppliedTracks: boolean
+  hasSuppliedMetadata: boolean,
 ) => {
   if (data.processingState) {
     // NOTE: If the processingState field is present when a recording is uploaded, this means that the recording
@@ -819,12 +868,11 @@ const setInitialProcessingState = (
       recordingTemplate.processingState !== RecordingProcessingState.Corrupt
     ) {
       if (
-        hasSuppliedTracks &&
+        hasSuppliedMetadata &&
         (recordingTemplate.type === RecordingType.ThermalRaw ||
           recordingTemplate.type === RecordingType.InfraredVideo)
       ) {
-        // NOTE: If there are supplied tracks, we have already done tracking on the device, so do post processing if required.
-        recordingTemplate.processingState = RecordingProcessingState.ReTrack;
+        recordingTemplate.processingState = RecordingProcessingState.Analyse;
       } else {
         recordingTemplate.processingState = recordingUploadedState(data.type);
       }
@@ -837,7 +885,7 @@ const assignGroupAndStationToRecording = async (
   models: ModelsDictionary,
   deviceForRecording: Device,
   recordingDateTime: Date,
-  recordingLocation?: LatLng
+  recordingLocation?: LatLng,
 ): Promise<{ groupId: GroupId; deviceId: DeviceId; station: Station }> => {
   let groupId;
   let deviceId;
@@ -848,7 +896,7 @@ const assignGroupAndStationToRecording = async (
         models,
         deviceForRecording,
         recordingLocation,
-        recordingDateTime
+        recordingDateTime,
       );
     station = stationToAssignToRecording;
     deviceId = deviceHistoryEntry.DeviceId;
@@ -861,7 +909,7 @@ const assignGroupAndStationToRecording = async (
       await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
         models,
         deviceForRecording,
-        recordingDateTime
+        recordingDateTime,
       );
     deviceId = d;
     groupId = g;
@@ -876,12 +924,12 @@ const assignGroupAndStationToRecording = async (
 const maybeUpdateLastRecordingTimesForStation = async (
   recordingData: Recording,
   isDeviceUpload: boolean,
-  station?: Station
+  station?: Station,
 ): Promise<void | Station> => {
   let stationUpdatePromise: Promise<void | Station> = new Promise(
     (resolve, _reject) => {
       resolve();
-    }
+    },
   );
 
   if (station) {
@@ -928,7 +976,7 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     lastConnectionTime?: Date;
     active?: boolean;
   },
-  uploadingGroup: Group
+  uploadingGroup: Group,
 ): Promise<void> => {
   if (uploadingDevice.kind === DeviceType.Unknown) {
     // If this is the first recording we've gotten from a device, we can set its type.
@@ -962,9 +1010,7 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     uploadingDevice.lastRecordingTime < recording.recordingDateTime
   ) {
     updateDevicePayload.location = recording.location;
-    if (recording.duration >= 3) {
-      updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
-    }
+    updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
   }
 
   if (
@@ -972,17 +1018,13 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     (!uploadingGroup.lastThermalRecordingTime ||
       uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
   ) {
-    if (recording.duration >= 3) {
-      updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
-    }
+    updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
   } else if (
     recording.type === RecordingType.Audio &&
     (!uploadingGroup.lastAudioRecordingTime ||
       uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
   ) {
-    if (recording.duration >= 3) {
-      updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
-    }
+    updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
   }
   const hasGroupUpdate = Object.keys(updateGroupPayload).length !== 0;
   const hasDeviceUpdate = Object.keys(updateDevicePayload).length !== 0;

@@ -23,7 +23,7 @@ import {
 import type { StationId as LocationId } from "@typedefs/api/common";
 
 const currentlyHighlightedLocation = inject(
-  "currentlyHighlightedLocation"
+  "currentlyHighlightedLocation",
 ) as Ref<LocationId | null>;
 
 const props = defineProps<{
@@ -40,7 +40,7 @@ const clipLabelLeft = ref<HTMLDivElement | null>(null);
 const checkClipping = (
   label: HTMLDivElement,
   labelBounds: DOMRect,
-  clipBounds: DOMRect
+  clipBounds: DOMRect,
 ) => {
   if (labelBounds.right > clipBounds.right) {
     label.style.display = "none";
@@ -53,7 +53,7 @@ const evaluateLabelClipping = () => {
   if (labelContainer.value) {
     const containerBounds = labelContainer.value.getBoundingClientRect();
     const labels = labelContainer.value.querySelectorAll(
-      ".visits-timeline-date-label"
+      ".visits-timeline-date-label",
     );
     let leftMostLabel = null;
     let leftMostVal = containerBounds.right;
@@ -71,7 +71,7 @@ const evaluateLabelClipping = () => {
       checkClipping(
         leftMostLabel as HTMLDivElement,
         leftMostLabel.getBoundingClientRect(),
-        clipBounds
+        clipBounds,
       );
     }
   }
@@ -125,7 +125,7 @@ const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() =>
       return a[0] > b[0] ? 1 : -1;
     }
     return order;
-  })
+  }),
 );
 
 const getLeft = (minTime: number, time: number, maxTime: number) => {
@@ -189,12 +189,12 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
             left: `${getLeft(
               minTime,
               new Date(visit.timeStart).getTime(),
-              maxTime
+              maxTime,
             )}%`,
             right: `${getRight(
               minTime,
               new Date(visit.timeEnd).getTime(),
-              maxTime
+              maxTime,
             )}%`,
           }"
           :class="[
@@ -236,7 +236,7 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
           right: `${getRight(
             minTime,
             dates[Math.min(1, dates.length - 1)].toMillis(),
-            maxTime
+            maxTime,
           )}%`,
         }"
       ></div>

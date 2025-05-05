@@ -27,7 +27,7 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 //  Of course, we don't currently do this.
 
 const currentlySelectedVisit = inject(
-  "currentlySelectedVisit"
+  "currentlySelectedVisit",
 ) as Ref<ApiVisitResponse | null>;
 
 const now = new Date();
@@ -46,14 +46,14 @@ const emit = defineEmits<{
 
 const endTime = computed<DateTime>(() => props.startTime.plus({ day: 1 }));
 const visitCountBySpecies = computed<[string, string, number][]>(() =>
-  visitsCountBySpeciesCalc(props.visits)
+  visitsCountBySpeciesCalc(props.visits),
 );
 
 const periodInProgress = computed<boolean>(() => {
   const { sunrise } = sunCalc.getTimes(
     endTime.value.toJSDate(),
     props.location.lat,
-    props.location.lng
+    props.location.lng,
   );
   return endTime.value.toJSDate() > now && sunrise > now;
 });
@@ -90,7 +90,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         timeStart: visit.timeStart,
         data: visit,
         date: new Date(visit.timeStart),
-      } as VisitEventItem)
+      } as VisitEventItem),
   );
   const now = new Date();
   if (props.isNocturnal) {
@@ -101,7 +101,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       const { sunrise, sunset } = sunCalc.getTimes(
         startTime,
         props.location.lat,
-        props.location.lng
+        props.location.lng,
       );
       if (startTime > sunrise) {
         events.push({
@@ -117,7 +117,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         const { sunset } = sunCalc.getTimes(
           prevDay,
           props.location.lat,
-          props.location.lng
+          props.location.lng,
         );
         events.push({
           type: "sun",
@@ -131,7 +131,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
       const { sunrise, sunset } = sunCalc.getTimes(
         endTime,
         props.location.lat,
-        props.location.lng
+        props.location.lng,
       );
       if (now < sunrise) {
         // If we're before sunrise, then use the "Now" placeholder
@@ -156,7 +156,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         const { sunrise } = sunCalc.getTimes(
           endTimePlusOneDay,
           props.location.lat,
-          props.location.lng
+          props.location.lng,
         );
         if (sunrise < now) {
           events.push({
@@ -180,7 +180,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
     const { sunrise, sunset } = sunCalc.getTimes(
       endTime,
       props.location.lat,
-      props.location.lng
+      props.location.lng,
     );
     events.push({
       type: "sun",
@@ -261,7 +261,7 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
     let foundRec;
     for (const rec of visit.recordings) {
       const track = rec.tracks.find(
-        (track) => track.tag === visit.classification
+        (track) => track.tag === visit.classification,
       );
       if (track) {
         foundRec = rec;
@@ -308,8 +308,8 @@ const isStillProcessing = computed<boolean>(() => {
     (visit) =>
       visit.type === "visit" &&
       visit.data.recordings.some((rec) =>
-        VisitProcessingStates.includes(rec.processingState)
-      )
+        VisitProcessingStates.includes(rec.processingState),
+      ),
   );
 });
 </script>
@@ -464,9 +464,10 @@ const isStillProcessing = computed<boolean>(() => {
                 class="visit-species-tag px-1 mb-1 text-capitalize d-inline-flex align-items-center"
                 :class="[
                   visit.name,
-                  ...(getClassificationForLabel(visit.name)?.path as string || '').split(
-                    '.'
-                  ),
+                  ...(
+                    (getClassificationForLabel(visit.name)?.path as string) ||
+                    ''
+                  ).split('.'),
                 ]"
                 ><b-spinner
                   small

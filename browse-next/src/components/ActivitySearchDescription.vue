@@ -4,18 +4,17 @@ import { computed } from "vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import {
   ActivitySearchDisplayMode,
+  ActivitySearchRecordingMode,
   dateSuffix,
   fullMonthName,
   isSameDay,
   queryValueIsDate,
 } from "@/components/activitySearchUtils.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
-import {
-  displayLabelForClassificationLabel,
-  flatClassifications,
-} from "@api/Classifications.ts";
+import { displayLabelForClassificationLabel, flatClassifications } from "@api/Classifications.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
+
 const COOL = "cool";
 const FLAG = "requires review";
 const props = defineProps<{
@@ -33,15 +32,15 @@ const upperFirst = (str: string): string => {
 
 const allTagsAreLeafNodes = (tags: string[]): boolean => {
   return !tags.some(
-    (tag) => !!flatClassifications.value[tag]?.node.children?.length
+    (tag) => !!flatClassifications.value[tag]?.node.children?.length,
   );
 };
 
 const hasStarred = computed<boolean>(
-  () => props.searchParams.labelledWith?.includes(COOL) || false
+  () => props.searchParams.labelledWith?.includes(COOL) || false,
 );
 const hasFlagged = computed<boolean>(
-  () => props.searchParams.labelledWith?.includes(FLAG) || false
+  () => props.searchParams.labelledWith?.includes(FLAG) || false,
 );
 
 const timespan = computed<string>(() => {
@@ -63,14 +62,14 @@ const timespan = computed<string>(() => {
       if (from.getMonth() === until.getMonth()) {
         fromString = `the ${dateSuffix(from.getDate())}`;
         untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
-          until.getMonth()
+          until.getMonth(),
         )}`;
       } else {
         fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
-          from.getDate()
+          from.getDate(),
         )}`;
         untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
-          until.getDate()
+          until.getDate(),
         )}`;
       }
     } else {
@@ -80,20 +79,20 @@ const timespan = computed<string>(() => {
       ) {
         fromString = `the ${dateSuffix(from.getDate())}`;
         untilString = `${dateSuffix(until.getDate())} of ${fullMonthName(
-          until.getMonth()
+          until.getMonth(),
         )} ${until.getFullYear()}`;
       } else {
         fromString = `${fullMonthName(from.getMonth())} ${dateSuffix(
-          from.getDate()
+          from.getDate(),
         )} ${from.getFullYear()}`;
         untilString = `${fullMonthName(until.getMonth())} ${dateSuffix(
-          until.getDate()
+          until.getDate(),
         )} ${until.getFullYear()}`;
       }
     }
     if (isSameDay(from, until)) {
       timespan = `on the ${dateSuffix(from.getDate())} of ${fullMonthName(
-        from.getMonth()
+        from.getMonth(),
       )}`;
       if (from.getFullYear() !== new Date().getFullYear()) {
         timespan += ` ${from.getFullYear()}`;
@@ -111,8 +110,8 @@ const timespan = computed<string>(() => {
 const otherLabels = computed<string[]>(
   () =>
     props.searchParams.labelledWith?.filter(
-      (label) => label !== COOL && label !== FLAG
-    ) || []
+      (label) => label !== COOL && label !== FLAG,
+    ) || [],
 );
 </script>
 
@@ -148,7 +147,7 @@ const otherLabels = computed<string[]>(
         across
         <span
           :key="index"
-          v-for="(loc, index) in (selectedLocations as ApiLocationResponse[])"
+          v-for="(loc, index) in selectedLocations as ApiLocationResponse[]"
         >
           <strong class="fw-semibold">{{ loc.name }}</strong
           ><span v-if="index === selectedLocations.length - 2"> and </span
@@ -184,8 +183,13 @@ const otherLabels = computed<string[]>(
       <span v-if="searchParams.tagMode === TagMode.UnTagged">
         that don't have any tag</span
       >
-      <span v-else-if="searchParams.tagMode === TagMode.Tagged">
+      <span v-else-if="[TagMode.NoHuman, TagMode.Tagged].includes(searchParams.tagMode)">
+        <span v-if="searchParams.tagMode === TagMode.NoHuman">
+          that are untagged by humans<span v-if="searchParams.taggedWith.length !== 0 && searchParams.taggedWith[0] !== 'any'"> and tagged by AI with </span>
+        </span>
+        <span v-else>
         tagged with
+        </span>
         <span
           v-if="
             searchParams.subClassTags &&
@@ -194,10 +198,10 @@ const otherLabels = computed<string[]>(
         >
           or inheriting from
         </span>
-        <span :key="index" v-for="(tag, index) in searchParams.taggedWith">
+        <span :key="index" v-for="(tag, index) in searchParams.taggedWith.filter(t => t !== 'any')">
           <strong class="fw-semibold"
             ><span class="text-capitalize">{{
-              displayLabelForClassificationLabel(tag)
+              displayLabelForClassificationLabel(tag, searchParams.tagMode === TagMode.NoHuman, searchParams.recordingMode === ActivitySearchRecordingMode.Audio)
             }}</span></strong
           ><span v-if="index === searchParams.taggedWith.length - 2"> or </span
           ><span
@@ -212,7 +216,7 @@ const otherLabels = computed<string[]>(
       <span
         v-if="
           !searchParams.includeFalsePositives &&
-          searchParams.tagMode == TagMode.Any
+          (searchParams.tagMode == TagMode.Any || searchParams.tagMode == TagMode.NoHuman)
         "
         >, excluding those with no tracks, or that are only tagged as
         <strong class="fw-semibold text-capitalize">false trigger</strong>

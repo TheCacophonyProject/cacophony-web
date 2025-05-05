@@ -29,6 +29,7 @@ import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
 import { BSpinner } from "bootstrap-vue-next";
 import type { LatLng } from "@typedefs/api/common";
+import { useElementSize } from "@vueuse/core";
 
 const attribution = control.attribution;
 
@@ -55,6 +56,7 @@ const props = withDefaults(
     hasAttribution?: boolean;
     showCrossHairs?: boolean;
     width?: number;
+    square?: boolean;
   }>(),
   {
     isInteractive: true,
@@ -72,8 +74,9 @@ const props = withDefaults(
     showStationRadius: true,
     radius: 0,
     width: 0,
+    square: false,
     points: () => [] as NamedPoint[],
-  }
+  },
 );
 
 interface LeafletInternalRawMarker {
@@ -203,7 +206,7 @@ watch(
         pointMarker.foregroundMarker.closeTooltip();
       }
     }
-  }
+  },
 );
 
 const mapLayers = [
@@ -211,7 +214,7 @@ const mapLayers = [
     name: "OpenTopoMap Basemap",
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
     attribution:
-      'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+      "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, <a href=\"http://viewfinderpanoramas.org\">SRTM</a> | Map style: &copy; <a href=\"https://opentopomap.org\">OpenTopoMap</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)",
     visible: true,
   },
   {
@@ -219,7 +222,7 @@ const mapLayers = [
     visible: false,
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution:
-      '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
+      "&copy; <a href=\"http://osm.org/copyright\">OpenStreetMap</a> contributors",
   },
 ];
 const mapBounds = computed<LatLngBounds | null>(() => {
@@ -235,19 +238,19 @@ const mapBounds = computed<LatLngBounds | null>(() => {
       // Give the bounds 300m around the focused location.
       // TODO: Make focused point be more centered, so that its tooltip doesn't get cut off
       return latLng(props.focusedPoint.location).toBounds(
-        boundsPaddingInMeters
+        boundsPaddingInMeters,
       );
     } else if (props.activePoints && props.activePoints.length === 1) {
       // Give the bounds 300m around the location.
       return latLng(props.activePoints[0].location).toBounds(
-        boundsPaddingInMeters
+        boundsPaddingInMeters,
       );
     } else if (props.activePoints && props.activePoints.length > 1) {
       return latLngBounds(
         props.activePoints.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
-        })
+        }),
       );
     }
   }
@@ -259,7 +262,7 @@ const mapBounds = computed<LatLngBounds | null>(() => {
         props.points.flatMap(({ location }) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
-        })
+        }),
       )) ||
     null
   );
@@ -318,7 +321,7 @@ const maybeShowAttributionForCurrentLayer = () => {
   }
   if (showAttribution) {
     const attributionForLayer = attribution().addAttribution(
-      (tileLayer.getAttribution && tileLayer.getAttribution()) || ""
+      (tileLayer.getAttribution && tileLayer.getAttribution()) || "",
     );
     (map as LeafletMap).addControl(attributionForLayer);
   }
@@ -403,7 +406,7 @@ const addPoints = () => {
         marker.foregroundMarker.on("mouseover", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
           );
           namedPoint && hoverPoint(namedPoint);
         });
@@ -411,7 +414,7 @@ const addPoints = () => {
         marker.foregroundMarker.on("click", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng
+              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
           );
           namedPoint && selectPoint(namedPoint);
         });
@@ -469,6 +472,12 @@ const fitMapBounds = () => {
     ]);
   }
 };
+
+const parentWidth = computed(() => {
+  return mapDims.width || 0;
+});
+
+const mapDims = useElementSize(mapEl);
 
 onMounted(() => {
   loading.value = true;
@@ -543,7 +552,7 @@ onMounted(() => {
       DomEvent.addListener(
         el,
         "dblclick",
-        DomEvent.stopPropagation
+        DomEvent.stopPropagation,
       ).addListener(el, "dblclick", DomEvent.preventDefault);
       return el;
     };
@@ -563,7 +572,7 @@ watch(
       map.invalidateSize();
       map.setView(props.center, props.zoomLevel);
     }
-  }
+  },
 );
 //  TODO: On point highlight, animate the size/colour of the point.
 //  Suggests that maybe we don't want to use vue-leaflet to manage the lifecycle of the points.
@@ -598,6 +607,7 @@ const leavePoint = () => {
     :style="{
       pointerEvents: isInteractive ? 'auto' : 'none',
       width: width !== 0 ? `${width}px` : 'auto',
+      height: `${parentWidth}px`,
     }"
     ref="mapEl"
   >

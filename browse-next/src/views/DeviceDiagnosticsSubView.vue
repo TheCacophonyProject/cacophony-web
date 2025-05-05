@@ -51,7 +51,7 @@ const deviceId = Number(route.params.deviceId) as DeviceId;
 const versionInfo = ref<LoadedResource<Record<string, string>>>(null);
 const latestVersionInfo =
   ref<LoadedResource<Record<string, Record<string, Record<string, string>>>>>(
-    null
+    null,
   );
 
 const deviceConfig = ref<LoadedResource<DeviceConfigDetail>>(null);
@@ -123,7 +123,7 @@ const scheduledRecordStartTime = computed<Date | null>(() => {
       const { sunset } = sunCalc.getTimes(
         new Date(),
         thisDevice.location.lat,
-        thisDevice.location.lng
+        thisDevice.location.lng,
       );
       return absoluteTime(start, sunset);
     }
@@ -140,7 +140,7 @@ const scheduledRecordEndTime = computed<Date | null>(() => {
       const { sunrise } = sunCalc.getTimes(
         new Date(),
         thisDevice.location.lat,
-        thisDevice.location.lng
+        thisDevice.location.lng,
       );
       const off = absoluteTime(end, sunrise);
       if (
@@ -154,7 +154,7 @@ const scheduledRecordEndTime = computed<Date | null>(() => {
         const { sunrise } = sunCalc.getTimes(
           tomorrow,
           thisDevice.location.lat,
-          thisDevice.location.lng
+          thisDevice.location.lng,
         );
         return absoluteTime(end, sunrise);
       }
@@ -201,7 +201,7 @@ const haveHeardDirectlyFromDeviceInItsCurrentLocation = computed<boolean>(
       );
     }
     return false;
-  }
+  },
 );
 
 const deviceStopped = computed<boolean>(() => {
@@ -361,7 +361,7 @@ const initBatteryInfoTimeSeries = () => {
                 day: "numeric",
               }),
           },
-        }
+        },
       );
       // chart.on("created", (val) => {
       //   console.log("Created chart", val);
@@ -392,7 +392,7 @@ const hasUnknownPowerSource = computed<boolean>(() => {
     !!batteryInfo.value &&
     batteryInfo.value.length !== 0 &&
     batteryInfo.value.every(
-      (item) => item.batteryType === "unknown" || item.batteryType === "mains"
+      (item) => item.batteryType === "unknown" || item.batteryType === "mains",
     )
   );
 });
@@ -403,14 +403,14 @@ const interpolatedBatteryInfo = computed<BatteryInfoEvent[]>(() => {
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
   if (batteryInfo.value && batteryInfo.value.length !== 0) {
     const firstEventTime = new Date(
-      batteryInfo.value[batteryInfo.value.length - 1].dateTime
+      batteryInfo.value[batteryInfo.value.length - 1].dateTime,
     );
     const lastEventTime = new Date(batteryInfo.value[0].dateTime);
     const emptyDaysAtStart = Math.floor(
-      (firstEventTime.getTime() - eightWeeksAgo.getTime()) / 1000 / 60 / 60 / 24
+      (firstEventTime.getTime() - eightWeeksAgo.getTime()) / 1000 / 60 / 60 / 24,
     );
     const emptyDaysAtEnd = Math.floor(
-      (now.getTime() - lastEventTime.getTime()) / 1000 / 60 / 60 / 24
+      (now.getTime() - lastEventTime.getTime()) / 1000 / 60 / 60 / 24,
     );
     const interpolatedValues: BatteryInfoEvent[] = [];
     for (let i = 0; i < emptyDaysAtStart; i++) {
@@ -425,7 +425,7 @@ const interpolatedBatteryInfo = computed<BatteryInfoEvent[]>(() => {
     }
     const sorted = [...batteryInfo.value];
     sorted.sort(
-      (a, b) => new Date(b.dateTime).getDate() - new Date(a.dateTime).getTime()
+      (a, b) => new Date(b.dateTime).getDate() - new Date(a.dateTime).getTime(),
     );
 
     // TODO: If the voltage goes up, and there were days missed, then show a discontinuity.
@@ -456,7 +456,7 @@ watch(batteryTimeSeries, () => {
 
 const loadResource = (
   target: Ref<LoadedResource<unknown>>,
-  loader: () => Promise<unknown | false>
+  loader: () => Promise<unknown | false>,
 ) => {
   if (resourceIsLoading(target)) {
     loader().then((result) => (target.value = result));
@@ -488,7 +488,7 @@ const init = async () => {
     loadResource(versionInfo, () => getDeviceVersionInfo(deviceId));
 
     loadResource(currentLocationForDevice, () =>
-      getDeviceLocationAtTime(deviceId, true)
+      getDeviceLocationAtTime(deviceId, true),
     );
     loadResource(lastPowerOffTime, () => getDeviceLastPoweredOff(deviceId));
     loadResource(lastPowerOnTime, () => getDeviceLastPoweredOn(deviceId));
@@ -609,7 +609,7 @@ const chartEl = ref<SVGElement>();
 const hoveredPointValue = computed<number>(() => {
   if (hoveredDataPoint.value) {
     return Number(
-      hoveredDataPoint.value.getAttribute("ct:value")?.split(",")[1]
+      hoveredDataPoint.value.getAttribute("ct:value")?.split(",")[1],
     );
   }
   return 0;
@@ -623,7 +623,7 @@ const hoveredPointValue = computed<number>(() => {
           Camera view from
           {{
             DateTime.fromJSDate(
-              new Date(latestStatusRecording.recordingDateTime)
+              new Date(latestStatusRecording.recordingDateTime),
             ).toRelative()
           }}:
         </h6>
@@ -804,7 +804,7 @@ const hoveredPointValue = computed<number>(() => {
           #version="{
             cell: versionInfo,
           }: {
-            cell: { version: string, latestVersion: string },
+            cell: { version: string; latestVersion: string };
           }"
         >
           <span
@@ -828,9 +828,9 @@ const hoveredPointValue = computed<number>(() => {
             card,
           }: {
             card: {
-              package: string,
-              version: { version: string, latestVersion: string },
-            },
+              package: string;
+              version: { version: string; latestVersion: string };
+            };
           }"
         >
           <div class="d-flex justify-content-between">

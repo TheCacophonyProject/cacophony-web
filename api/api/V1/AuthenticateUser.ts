@@ -85,17 +85,17 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       anyOf(
         body("nameOrEmail").isEmail().optional(),
-        body("email").isEmail().optional()
+        body("email").isEmail().optional(),
       ),
       validPasswordOf(body("password")),
     ]),
     fetchUnauthorizedOptionalUserByEmailOrId(body(["email", "nameOrEmail"])),
-    (request: Request, response: Response, next: NextFunction) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.user) {
         // NOTE: Don't give away the fact that the user may not exist - remain vague in the
         //  error message as to whether the error is username or password related.
         return next(
-          new AuthenticationError("Wrong password or email address.")
+          new AuthenticationError("Wrong password or email address."),
         );
       } else {
         next();
@@ -103,20 +103,28 @@ export default function (app: Application, baseUrl: string) {
     },
     async (request: Request, response: Response, next: NextFunction) => {
       const passwordMatch = await response.locals.user.comparePassword(
-        request.body.password
+        request.body.password,
       );
       if (passwordMatch) {
         // NOTE: If this is called from the old, deprecated API, continue to give out
         //  tokens that never expire.  If called from the new end-point, timeout in 30mins, and
         //  require use of the token refresh.
         const isNewEndPoint = request.path.endsWith("authenticate");
+
+        if (isNewEndPoint) {
+          // Clear out any out of date sessions for this user from the DB
+          await models.sequelize.query(
+            `delete from "UserSessions" where "UserSessions"."userId" = ${response.locals.user.id} and "UserSessions"."updatedAt" < now() - interval '15 days'`,
+          );
+        }
+
         await response.locals.user.update({ lastActiveAt: new Date() });
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
           models,
           response.locals.user,
           request.headers["viewport"] as string,
           request.headers["user-agent"],
-          isNewEndPoint
+          isNewEndPoint,
         );
         return successResponse(response, "Successful login.", {
           token: apiToken,
@@ -125,7 +133,7 @@ export default function (app: Application, baseUrl: string) {
         });
       } else {
         return next(
-          new AuthenticationError("Wrong password or email address.")
+          new AuthenticationError("Wrong password or email address."),
         );
       }
     },
@@ -138,8 +146,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Authentication
    * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * @apiBody {String} email Address identifying a valid user account
-   * @apiDeprecated Use /api/v1/users/authenticate-user
+   * @apiDeprecated Use /api/v1/users/authenticate
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
@@ -157,7 +164,6 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Authentication
    * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
-   * @apiBody {String} email Address identifying a valid user account
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
@@ -202,7 +208,7 @@ export default function (app: Application, baseUrl: string) {
           replacements: {
             refreshToken: response.locals.tokenInfo.refreshToken,
           },
-        }
+        },
       );
 
       if (result.length) {
@@ -216,11 +222,11 @@ export default function (app: Application, baseUrl: string) {
         // Best practices taken from auth0 say that we should revoke refresh tokens after 15 days of inactivity:
         // https://auth0.com/blog/achieving-a-seamless-user-experience-with-refresh-token-inactivity-lifetimes/
         const fifteenDaysAgo = new Date(
-          new Date().setDate(new Date().getDate() - 15)
+          new Date().setDate(new Date().getDate() - 15),
         );
         if (new Date(validToken.updatedAt) < fifteenDaysAgo) {
           return next(
-            new AuthorizationError("Inactive refresh token expired.")
+            new AuthorizationError("Inactive refresh token expired."),
           );
         }
 
@@ -228,7 +234,7 @@ export default function (app: Application, baseUrl: string) {
         const user = await models.User.findByPk(validToken.userId);
         await user.update({ lastActiveAt: new Date() });
         const expiry = new Date(
-          new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
+          new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5)),
         );
 
         const now = new Date().toISOString();
@@ -245,7 +251,7 @@ export default function (app: Application, baseUrl: string) {
               oldRefreshToken: response.locals.tokenInfo.refreshToken,
               updatedAt: now,
             },
-          }
+          },
         );
 
         const token = createEntityJWT(user, {
@@ -253,7 +259,7 @@ export default function (app: Application, baseUrl: string) {
         });
         const refreshTokenSigned = jwt.sign(
           { refreshToken },
-          config.server.passportSecret
+          config.server.passportSecret,
         );
         return successResponse(response, "Got user token.", {
           token: `JWT ${token}`,
@@ -264,7 +270,7 @@ export default function (app: Application, baseUrl: string) {
       } else {
         return next(new AuthorizationError("Invalid refresh token."));
       }
-    }
+    },
   );
 
   const authenticateAsOtherUserOptions = [
@@ -273,12 +279,12 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request: Request, response: Response) => {
       const isNewEndPoint = request.path.endsWith(
-        "admin-authenticate-as-other-user"
+        "admin-authenticate-as-other-user",
       );
       const options = isNewEndPoint ? { expiresIn: ttlTypes.medium } : {};
       const token = createEntityJWT(response.locals.user, options);
       const expiry = new Date(
-        new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5))
+        new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5)),
       );
       const { id, userName, email, globalPermission, endUserAgreement } =
         response.locals.user;
@@ -314,7 +320,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     "/admin_authenticate_as_other_user",
-    ...authenticateAsOtherUserOptions
+    ...authenticateAsOtherUserOptions,
   );
 
   /**
@@ -333,7 +339,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/admin-authenticate-as-other-user`,
-    ...authenticateAsOtherUserOptions
+    ...authenticateAsOtherUserOptions,
   );
 
   /**
@@ -366,10 +372,10 @@ export default function (app: Application, baseUrl: string) {
       const token = createEntityJWT(
         request.user,
         { expiresIn: expiry },
-        request.body.access
+        request.body.access,
       );
       return successResponse(response, "Token generated.", { token });
-    })
+    }),
   );
 
   const resetPasswordOptions = [
@@ -384,13 +390,13 @@ export default function (app: Application, baseUrl: string) {
           const sendingSuccess = await sendPasswordResetEmail(
             request.headers.host,
             token,
-            user.email
+            user.email,
           );
           if (!sendingSuccess) {
             return next(
               new FatalError(
-                "We failed to send your password recovery email, please check that you've entered your email correctly."
-              )
+                "We failed to send your password recovery email, please check that you've entered your email correctly.",
+              ),
             );
           }
         } else {
@@ -398,8 +404,8 @@ export default function (app: Application, baseUrl: string) {
           if (!sendingSuccess) {
             return next(
               new FatalError(
-                "We failed to send your password recovery email, please check that you've entered your email correctly."
-              )
+                "We failed to send your password recovery email, please check that you've entered your email correctly.",
+              ),
             );
           }
         }
@@ -409,7 +415,7 @@ export default function (app: Application, baseUrl: string) {
       }
       return successResponse(
         response,
-        "Your password recovery email has been sent"
+        "Your password recovery email has been sent",
       );
     },
   ];
@@ -461,7 +467,7 @@ export default function (app: Application, baseUrl: string) {
   app.post("/validateToken", ...validateTokenOptions);
 
   /**
-   * @api {post} /api/v1/users/validate-reset-token Validates a reset token
+   * @api {post} /api/v1/users/validate-reset-token Validates a password reset token
    * @apiName ValidateToken
    * @apiGroup Authentication
    * @apiDescription Used by the front-end when following a password reset link from an email to make sure
@@ -491,7 +497,7 @@ export default function (app: Application, baseUrl: string) {
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
           user.id,
-          user.email
+          user.email,
         );
         //
         const groups = await user.getGroups();
@@ -501,20 +507,20 @@ export default function (app: Application, baseUrl: string) {
           sendSuccess = await sendWelcomeEmailConfirmationEmail(
             request.headers.host,
             emailConfirmationToken,
-            user.email
+            user.email,
           );
         } else if (user.createdAt < browseNextLaunchDate) {
           sendSuccess = await sendEmailConfirmationEmailLegacyUser(
             request.headers.host,
             emailConfirmationToken,
-            user.email
+            user.email,
           );
         } else {
           // otherwise resend the email change confirmation email.
           sendSuccess = await sendChangedEmailConfirmationEmail(
             request.headers.host,
             emailConfirmationToken,
-            user.email
+            user.email,
           );
         }
         if (!sendSuccess) {
@@ -523,15 +529,15 @@ export default function (app: Application, baseUrl: string) {
             response,
             new ClientError(
               `Failed to send email to ${user.email}`,
-              HttpStatusCode.ServerError
-            )
+              HttpStatusCode.ServerError,
+            ),
           );
         }
         return successResponse(response, "Email confirmation request sent");
       } else if (user.emailConfirmed) {
         return next(new UnprocessableError("Email already confirmed"));
       }
-    }
+    },
   );
 
   if (config.server.loggerLevel === "debug") {
@@ -551,7 +557,7 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Got email confirmation token", {
           token,
         });
-      }
+      },
     );
   }
 
@@ -569,7 +575,7 @@ export default function (app: Application, baseUrl: string) {
     extractJWTInfo(body("emailConfirmationJWT")),
     async (request, response, next) => {
       await fetchUnauthorizedRequiredUserByEmailOrId(
-        response.locals.tokenInfo.id
+        response.locals.tokenInfo.id,
       )(request, response, next);
     },
     async (request: Request, response: Response, next: NextFunction) => {
@@ -581,8 +587,8 @@ export default function (app: Application, baseUrl: string) {
       if (tokenInfo.email !== user.email) {
         return next(
           new UnprocessableError(
-            "User email address differs from email to confirm"
-          )
+            "User email address differs from email to confirm",
+          ),
         );
       }
       if (user.email) {
@@ -599,7 +605,7 @@ export default function (app: Application, baseUrl: string) {
           models,
           user,
           request.headers["viewport"] as string,
-          request.headers["user-agent"]
+          request.headers["user-agent"],
         );
 
         user = await user.update({ emailConfirmed: true });
@@ -610,7 +616,7 @@ export default function (app: Application, baseUrl: string) {
           refreshToken,
         });
       }
-    }
+    },
   );
 
   // NOTE: This is really just for if the user has lost the email that was sent

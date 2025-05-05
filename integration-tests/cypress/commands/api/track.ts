@@ -25,7 +25,7 @@ Cypress.Commands.add(
     data: ApiTrackDataRequest,
     algorithm: any,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Adding track to recording ${recordingNameOrId}`, {
       recording: recordingNameOrId,
@@ -53,7 +53,7 @@ Cypress.Commands.add(
         body: params,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode == 200) {
         if (trackName !== null) {
@@ -67,11 +67,11 @@ Cypress.Commands.add(
       //check for substring in _any_ of messages[]
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
+          additionalChecks["message"],
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -81,7 +81,7 @@ Cypress.Commands.add(
     recordingNameOrId: string,
     trackNameOrId: string,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Delete track from recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
@@ -102,7 +102,9 @@ Cypress.Commands.add(
       trackId = getCreds(trackNameOrId).id.toString();
     }
 
-    const url = v1ApiPath(`recordings/${recordingId}/tracks/${trackId}`);
+    const url = v1ApiPath(`recordings/${recordingId}/tracks/${trackId}`, {
+      "soft-delete": "false",
+    });
 
     makeAuthorizedRequestWithStatus(
       {
@@ -110,15 +112,15 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
+          additionalChecks["message"],
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -130,7 +132,7 @@ Cypress.Commands.add(
     expectedTrack: ApiTrackResponse,
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let sortTags: ApiHumanTrackTagResponse[] | ApiAutomaticTrackTagResponse[];
     logTestDescription(`Check tracks for recording ${recordingNameOrId} `, {
@@ -158,7 +160,7 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         const track = response.body.track;
@@ -169,7 +171,7 @@ Cypress.Commands.add(
           sortTags = sortArrayOnTwoKeys(
             expectedTrack.tags,
             "confidence",
-            "userName"
+            "userName",
           );
           expectedTrack.tags = sortTags;
         }
@@ -178,12 +180,12 @@ Cypress.Commands.add(
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
+            additionalChecks["message"],
           );
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -194,7 +196,7 @@ Cypress.Commands.add(
     expectedTracks: ApiTrackResponse[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     let sortTracks: ApiTrackResponse[];
     let sortExpectedTracks: ApiTrackResponse[];
@@ -217,7 +219,7 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         //sort tracks
@@ -229,7 +231,7 @@ Cypress.Commands.add(
           sortExpectedTracks = sortArrayOnTwoKeys(
             expectedTracks,
             "start",
-            "end"
+            "end",
           );
           sortTracks.forEach((track: ApiTrackResponse) => {
             sortTags = sortArrayOnTwoKeys(track.tags, "confidence", "userName");
@@ -244,17 +246,17 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedTracks,
           sortTracks,
-          excludeCheckOn
+          excludeCheckOn,
         );
       } else {
         if (additionalChecks["message"] !== undefined) {
           expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"]
+            additionalChecks["message"],
           );
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -266,7 +268,7 @@ Cypress.Commands.add(
     tagName: string,
     data: ApiTrackTagRequest,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Adding tracktag to track ${trackNameOrId}`, {
       recordinmg: recordingNameOrId,
@@ -288,7 +290,7 @@ Cypress.Commands.add(
     }
 
     const url = v1ApiPath(
-      `recordings/${recordingId}/tracks/${trackId}/replaceTag`
+      `recordings/${recordingId}/tracks/${trackId}/replaceTag`,
     );
 
     makeAuthorizedRequestWithStatus(
@@ -298,7 +300,7 @@ Cypress.Commands.add(
         body: data,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode == 200) {
         if (tagName !== null) {
@@ -308,11 +310,11 @@ Cypress.Commands.add(
 
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
+          additionalChecks["message"],
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -324,7 +326,7 @@ Cypress.Commands.add(
     tagName: string,
     data: ApiTrackTagRequest,
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Adding tracktag to track ${trackNameOrId}`, {
       recording: recordingNameOrId,
@@ -354,7 +356,7 @@ Cypress.Commands.add(
         body: data,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode == 200) {
         if (tagName !== null) {
@@ -364,11 +366,11 @@ Cypress.Commands.add(
 
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
+          additionalChecks["message"],
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -379,7 +381,7 @@ Cypress.Commands.add(
     trackNameOrId: string,
     tagNameOrId: string,
     statusCode: number = HttpStatusCode.Ok,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Delete tracktag from recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
@@ -409,7 +411,7 @@ Cypress.Commands.add(
     }
 
     const url = v1ApiPath(
-      `recordings/${recordingId}/tracks/${trackId}/tags/${tagId}`
+      `recordings/${recordingId}/tracks/${trackId}/tags/${tagId}`,
     );
 
     makeAuthorizedRequestWithStatus(
@@ -418,13 +420,13 @@ Cypress.Commands.add(
         url: url,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (additionalChecks["message"] !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"]
+          additionalChecks["message"],
         );
       }
     });
-  }
+  },
 );

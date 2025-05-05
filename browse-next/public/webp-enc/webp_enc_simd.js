@@ -54,7 +54,7 @@ var Module = (function () {
       if (scriptDirectory.indexOf("blob:") !== 0) {
         scriptDirectory = scriptDirectory.substr(
           0,
-          scriptDirectory.lastIndexOf("/") + 1
+          scriptDirectory.lastIndexOf("/") + 1,
         );
       } else {
         scriptDirectory = "";
@@ -394,7 +394,7 @@ var Module = (function () {
     } else {
       var wasmBinaryFile = new URL(
         "webp_enc_simd.wasm",
-        import.meta.url
+        import.meta.url,
       ).toString();
     }
     function getBinary(file) {
@@ -473,7 +473,7 @@ var Module = (function () {
                 err("falling back to ArrayBuffer instantiation");
                 return instantiateArrayBuffer(receiveInstantiationResult);
               });
-            }
+            },
           );
         } else {
           return instantiateArrayBuffer(receiveInstantiationResult);
@@ -577,7 +577,7 @@ var Module = (function () {
     function whenDependentTypesAreResolved(
       myTypes,
       dependentTypes,
-      getTypeConverters
+      getTypeConverters,
     ) {
       myTypes.forEach(function (type) {
         typeDependencies[type] = dependentTypes;
@@ -628,7 +628,7 @@ var Module = (function () {
         .concat(
           fieldRecords.map(function (field) {
             return field.setterArgumentType;
-          })
+          }),
         );
       whenDependentTypesAreResolved(
         [structType],
@@ -646,7 +646,7 @@ var Module = (function () {
             fields[fieldName] = {
               read: function (ptr) {
                 return getterReturnType["fromWireType"](
-                  getter(getterContext, ptr)
+                  getter(getterContext, ptr),
                 );
               },
               write: function (ptr, o) {
@@ -654,7 +654,7 @@ var Module = (function () {
                 setter(
                   setterContext,
                   ptr,
-                  setterArgumentType["toWireType"](destructors, o)
+                  setterArgumentType["toWireType"](destructors, o),
                 );
                 runDestructors(destructors);
               },
@@ -691,7 +691,7 @@ var Module = (function () {
               destructorFunction: rawDestructor,
             },
           ];
-        }
+        },
       );
     }
     function __embind_register_bigint(
@@ -699,7 +699,7 @@ var Module = (function () {
       name,
       size,
       minRange,
-      maxRange
+      maxRange,
     ) {}
     function getShiftFromSize(size) {
       switch (size) {
@@ -739,13 +739,13 @@ var Module = (function () {
       options = options || {};
       if (!("argPackAdvance" in registeredInstance)) {
         throw new TypeError(
-          "registerType registeredInstance requires argPackAdvance"
+          "registerType registeredInstance requires argPackAdvance",
         );
       }
       var name = registeredInstance.name;
       if (!rawType) {
         throwBindingError(
-          'type "' + name + '" must have a positive integer typeid pointer'
+          'type "' + name + '" must have a positive integer typeid pointer',
         );
       }
       if (registeredTypes.hasOwnProperty(rawType)) {
@@ -770,7 +770,7 @@ var Module = (function () {
       name,
       size,
       trueValue,
-      falseValue
+      falseValue,
     ) {
       var shift = getShiftFromSize(size);
       name = readLatin1String(name);
@@ -888,12 +888,12 @@ var Module = (function () {
                 arguments.length +
                 ") - expects one of (" +
                 proto[methodName].overloadTable +
-                ")!"
+                ")!",
             );
           }
           return proto[methodName].overloadTable[arguments.length].apply(
             this,
-            arguments
+            arguments,
           );
         };
         proto[methodName].overloadTable = [];
@@ -914,7 +914,7 @@ var Module = (function () {
           throwBindingError(
             "Cannot register multiple overloads of a function with the same number of arguments (" +
               numArguments +
-              ")!"
+              ")!",
           );
         }
         Module[name].overloadTable[numArguments] = value;
@@ -976,7 +976,7 @@ var Module = (function () {
       var impl = registeredTypes[rawType];
       if (undefined === impl) {
         throwBindingError(
-          humanName + " has unknown type " + getTypeName(rawType)
+          humanName + " has unknown type " + getTypeName(rawType),
         );
       }
       return impl;
@@ -990,7 +990,7 @@ var Module = (function () {
         constructor: {
           value: createNamedFunction(
             enumType.name + "_" + name,
-            function () {}
+            function () {},
           ),
         },
       });
@@ -1033,7 +1033,7 @@ var Module = (function () {
         toWireType: function (destructors, value) {
           if (typeof value !== "number" && typeof value !== "boolean") {
             throw new TypeError(
-              'Cannot convert "' + _embind_repr(value) + '" to ' + this.name
+              'Cannot convert "' + _embind_repr(value) + '" to ' + this.name,
             );
           }
           return value;
@@ -1048,12 +1048,12 @@ var Module = (function () {
       argTypes,
       classType,
       cppInvokerFunc,
-      cppTargetFunc
+      cppTargetFunc,
     ) {
       var argCount = argTypes.length;
       if (argCount < 2) {
         throwBindingError(
-          "argTypes array size mismatch! Must at least get return value and 'this' types!"
+          "argTypes array size mismatch! Must at least get return value and 'this' types!",
         );
       }
       var isClassMethodFunc = argTypes[1] !== null && classType !== null;
@@ -1081,7 +1081,7 @@ var Module = (function () {
               arguments.length +
               " arguments, expected " +
               expectedArgCount +
-              " args!"
+              " args!",
           );
         }
         destructors.length = 0;
@@ -1169,7 +1169,7 @@ var Module = (function () {
           "unknown function pointer with signature " +
             signature +
             ": " +
-            rawFunction
+            rawFunction,
         );
       }
       return fp;
@@ -1194,7 +1194,7 @@ var Module = (function () {
       }
       types.forEach(visit);
       throw new UnboundTypeError(
-        message + ": " + unboundTypes.map(getTypeName).join([", "])
+        message + ": " + unboundTypes.map(getTypeName).join([", "]),
       );
     }
     function __embind_register_function(
@@ -1203,7 +1203,7 @@ var Module = (function () {
       rawArgTypesAddr,
       signature,
       rawInvoker,
-      fn
+      fn,
     ) {
       var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
       name = readLatin1String(name);
@@ -1213,17 +1213,17 @@ var Module = (function () {
         function () {
           throwUnboundTypeError(
             "Cannot call " + name + " due to unbound types",
-            argTypes
+            argTypes,
           );
         },
-        argCount - 1
+        argCount - 1,
       );
       whenDependentTypesAreResolved([], argTypes, function (argTypes) {
         var invokerArgsArray = [argTypes[0], null].concat(argTypes.slice(1));
         replacePublicSymbol(
           name,
           craftInvokerFunction(name, invokerArgsArray, null, rawInvoker, fn),
-          argCount - 1
+          argCount - 1,
         );
         return [];
       });
@@ -1263,7 +1263,7 @@ var Module = (function () {
       name,
       size,
       minRange,
-      maxRange
+      maxRange,
     ) {
       name = readLatin1String(name);
       if (maxRange === -1) {
@@ -1286,7 +1286,7 @@ var Module = (function () {
         toWireType: function (destructors, value) {
           if (typeof value !== "number" && typeof value !== "boolean") {
             throw new TypeError(
-              'Cannot convert "' + _embind_repr(value) + '" to ' + this.name
+              'Cannot convert "' + _embind_repr(value) + '" to ' + this.name,
             );
           }
           if (value < minRange || value > maxRange) {
@@ -1299,7 +1299,7 @@ var Module = (function () {
                 minRange +
                 ", " +
                 maxRange +
-                "]!"
+                "]!",
             );
           }
           return isUnsignedType ? value >>> 0 : value | 0;
@@ -1308,7 +1308,7 @@ var Module = (function () {
         readValueFromPointer: integerReadValueFromPointer(
           name,
           shift,
-          minRange !== 0
+          minRange !== 0,
         ),
         destructorFunction: null,
       });
@@ -1341,7 +1341,7 @@ var Module = (function () {
           argPackAdvance: 8,
           readValueFromPointer: decodeMemoryView,
         },
-        { ignoreDuplicateRegistrations: true }
+        { ignoreDuplicateRegistrations: true },
       );
     }
     function __embind_register_std_string(rawType, name) {
@@ -1415,7 +1415,7 @@ var Module = (function () {
                 if (charCode > 255) {
                   _free(ptr);
                   throwBindingError(
-                    "String has UTF-16 code units that do not fit in 8 bits"
+                    "String has UTF-16 code units that do not fit in 8 bits",
                   );
                 }
                 HEAPU8[ptr + 4 + i] = charCode;
@@ -1485,7 +1485,7 @@ var Module = (function () {
         toWireType: function (destructors, value) {
           if (!(typeof value === "string")) {
             throwBindingError(
-              "Cannot pass non-string to C++ string type " + name
+              "Cannot pass non-string to C++ string type " + name,
             );
           }
           var length = lengthBytesUTF(value);
@@ -1510,17 +1510,17 @@ var Module = (function () {
       constructorSignature,
       rawConstructor,
       destructorSignature,
-      rawDestructor
+      rawDestructor,
     ) {
       structRegistrations[rawType] = {
         name: readLatin1String(name),
         rawConstructor: embind__requireFunction(
           constructorSignature,
-          rawConstructor
+          rawConstructor,
         ),
         rawDestructor: embind__requireFunction(
           destructorSignature,
-          rawDestructor
+          rawDestructor,
         ),
         fields: [],
       };
@@ -1535,7 +1535,7 @@ var Module = (function () {
       setterArgumentType,
       setterSignature,
       setter,
-      setterContext
+      setterContext,
     ) {
       structRegistrations[structType].fields.push({
         fieldName: readLatin1String(fieldName),
@@ -1617,7 +1617,7 @@ var Module = (function () {
         for (var i = 0; i < argCount; ++i) {
           var argType = requireRegisteredType(
             HEAP32[(argTypes >> 2) + i],
-            "parameter " + i
+            "parameter " + i,
           );
           argsList[i + 1] = argType.readValueFromPointer(args);
           args += argType.argPackAdvance;
@@ -1666,11 +1666,11 @@ var Module = (function () {
         var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown);
         overGrownHeapSize = Math.min(
           overGrownHeapSize,
-          requestedSize + 100663296
+          requestedSize + 100663296,
         );
         var newSize = Math.min(
           maxHeapSize,
-          alignUp(Math.max(requestedSize, overGrownHeapSize), 65536)
+          alignUp(Math.max(requestedSize, overGrownHeapSize), 65536),
         );
         var replacement = emscripten_realloc_buffer(newSize);
         if (replacement) {
@@ -1684,14 +1684,14 @@ var Module = (function () {
     }
     InternalError = Module["InternalError"] = extendError(
       Error,
-      "InternalError"
+      "InternalError",
     );
     embind_init_charCodes();
     BindingError = Module["BindingError"] = extendError(Error, "BindingError");
     init_emval();
     UnboundTypeError = Module["UnboundTypeError"] = extendError(
       Error,
-      "UnboundTypeError"
+      "UnboundTypeError",
     );
     var asmLibraryArg = {
       x: ___cxa_thread_atexit,
@@ -1727,13 +1727,13 @@ var Module = (function () {
     var _malloc = (Module["_malloc"] = function () {
       return (_malloc = Module["_malloc"] = Module["asm"]["A"]).apply(
         null,
-        arguments
+        arguments,
       );
     });
     var _free = (Module["_free"] = function () {
       return (_free = Module["_free"] = Module["asm"]["B"]).apply(
         null,
-        arguments
+        arguments,
       );
     });
     var ___getTypeName = (Module["___getTypeName"] = function () {

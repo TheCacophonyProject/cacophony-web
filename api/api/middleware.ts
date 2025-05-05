@@ -40,14 +40,14 @@ const models = await modelsInit();
 export const getModelByIdChain = <T>(
   modelType: ModelStaticCommon<T>,
   fieldName: string,
-  checkFunc
+  checkFunc,
 ) => {
   return checkFunc(fieldName).custom(async (val, { req }) => {
     log.info("Get id %s for %s", val, modelTypeName(modelType));
     const model = await modelType.findByPk(val);
     if (model === null) {
       throw new Error(
-        format("Could not find a %s with an id of %s.", modelType.name, val)
+        format("Could not find a %s with an id of %s.", modelType.name, val),
       );
     }
     req.body[modelTypeName(modelType)] = model;
@@ -56,7 +56,7 @@ export const getModelByIdChain = <T>(
 };
 
 export const getModelById = <T>(
-  modelType: ModelStaticCommon<T>
+  modelType: ModelStaticCommon<T>,
 ): CustomValidator => {
   return async (id, { req }) => {
     log.info("Get model by id %s for %s", id, modelTypeName(modelType));
@@ -64,7 +64,7 @@ export const getModelById = <T>(
     log.info("Returned %s", item);
     if (item === null) {
       throw new ClientError(
-        `Could not find a ${modelType.name} with an id of ${id}`
+        `Could not find a ${modelType.name} with an id of ${id}`,
       );
     }
     req.body[modelTypeName(modelType)] = item;
@@ -79,7 +79,7 @@ type ValidationMiddleware = (
 
 export const getUserByEmail = function (
   checkFunc: ValidationMiddleware,
-  fieldName: string = "email"
+  fieldName: string = "email",
 ): ValidationChain {
   return checkFunc(fieldName)
     .isEmail()
@@ -130,7 +130,7 @@ export const convertToIdArray = function (idsAsString: string): number[] {
 
 export const isDateArray = function (
   fieldName: string,
-  customError
+  customError,
 ): ValidationChain {
   return body(fieldName, customError)
     .exists()
@@ -141,8 +141,8 @@ export const isDateArray = function (
             throw new Error(
               format(
                 "Cannot parse '%s' into a date.  Try formatting the date like '2017-11-13T00:47:51.160Z'.",
-                dateAsString
-              )
+                dateAsString,
+              ),
             );
           }
         });
@@ -159,7 +159,7 @@ export function getUserById(checkFunc: ValidationMiddleware): ValidationChain {
 
 export const getDetailSnapshotById = (
   checkFunc: ValidationMiddleware,
-  paramName: string
+  paramName: string,
 ): ValidationChain =>
   getModelByIdChain(models.DetailSnapshot, paramName, checkFunc);
 
@@ -167,7 +167,7 @@ export const getFileById = (checkFunc: ValidationMiddleware): ValidationChain =>
   getModelByIdChain(models.File, "id", checkFunc);
 
 export const getRecordingByIdChain = (
-  checkFunc: ValidationMiddleware
+  checkFunc: ValidationMiddleware,
 ): ValidationChain => getModelByIdChain(models.Recording, "id", checkFunc);
 
 export const getRecordingById = (): CustomValidator =>
@@ -175,11 +175,11 @@ export const getRecordingById = (): CustomValidator =>
 
 export const isValidName = function (
   checkFunc: ValidationMiddleware,
-  field: string
+  field: string,
 ): ValidationChain {
   return checkFunc(
     field,
-    `${field} must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`
+    `${field} must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter`,
   )
     .isLength({ min: 3 })
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/);
@@ -190,7 +190,7 @@ export const isValidName2 = (val) =>
     .isLength({ min: 3 })
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
     .withMessage(
-      "password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter"
+      "password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter",
     );
 
 export const checkNewPassword = function (field: string): ValidationChain {
@@ -227,7 +227,7 @@ export const viewMode = function (): ValidationChain {
  */
 export const parseJSON = function (
   field: string,
-  checkFunc: ValidationMiddleware
+  checkFunc: ValidationMiddleware,
 ): ValidationChain {
   return checkFunc(field).custom(parseJSONInternal);
 };
@@ -262,7 +262,7 @@ export const parseJSONInternal = (value, { req, location, path }) => {
  */
 export const parseArray = function (
   field: string,
-  checkFunc: ValidationMiddleware
+  checkFunc: ValidationMiddleware,
 ): ValidationChain {
   return checkFunc(field).custom((value, { req, location, path }) => {
     if (Array.isArray(value)) {
@@ -299,13 +299,13 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
     logMessage = format(
       "%s (user: %s)",
       logMessage,
-      request.user.get("userName")
+      request.user.get("userName"),
     );
   } else if (request.device) {
     logMessage = format(
       "%s (device: %s)",
       logMessage,
-      request.device.get("deviceName")
+      request.device.get("deviceName"),
     );
   }
   log.info(logMessage);
@@ -316,7 +316,7 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
       validationErrors
         .array()
         .map((item) => JSON.stringify(item))
-        .join(", ")
+        .join(", "),
     );
     throw new customErrors.ValidationError(validationErrors);
   } else {
@@ -342,7 +342,7 @@ export const expectedTypeOf =
 export const isIntArray = (val) => {
   if (Array.isArray(val)) {
     return !(val as string[]).some(
-      (v) => isNaN(parseInt(v)) || parseInt(v).toString() !== String(v)
+      (v) => isNaN(parseInt(v)) || parseInt(v).toString() !== String(v),
     );
   }
   return !(isNaN(parseInt(val)) || parseInt(val).toString() !== String(val));
@@ -350,7 +350,7 @@ export const isIntArray = (val) => {
 
 const checkForUnknownFields = (
   validators,
-  req: Request
+  req: Request,
 ): { unknownFields: string[]; suggestions: Record<string, string> } => {
   const allowedFieldsKnown = validators.reduce((fields, rule) => {
     if (rule.fieldNames) {
@@ -363,7 +363,7 @@ const checkForUnknownFields = (
     return fields;
   }, []);
   const matchedAllowedFields = Object.keys(
-    matchedData(req, { onlyValidData: false, includeOptionals: true })
+    matchedData(req, { onlyValidData: false, includeOptionals: true }),
   );
   const allowed = new Set();
   for (const field of allowedFieldsKnown) {
@@ -373,7 +373,7 @@ const checkForUnknownFields = (
     allowed.add(field);
   }
   const allowedFields: string[] = Array.from(
-    allowed.keys()
+    allowed.keys(),
   ) as unknown as string[];
 
   // Check for all common request inputs
@@ -386,10 +386,10 @@ const checkForUnknownFields = (
   }
   const requestFields = Object.keys(requestInput);
   const unusedAllowedFields = allowedFields.filter(
-    (field) => !requestFields.includes(field)
+    (field) => !requestFields.includes(field),
   );
   const unknownFields = requestFields.filter(
-    (item) => !allowedFields.includes(item)
+    (item) => !allowedFields.includes(item),
   );
   const suggestions = {};
   if (unusedAllowedFields.length && unknownFields.length) {
@@ -401,7 +401,7 @@ const checkForUnknownFields = (
         const distance = levenshteinEditDistance(
           unknownField,
           unusedField,
-          true
+          true,
         );
         if (distance < bestDistance) {
           bestDistance = distance;
@@ -421,7 +421,7 @@ export const validateFields = (
       })
     | ValidationChain
   )[],
-  sequentially: boolean = false
+  sequentially: boolean = false,
 ) => {
   return async (request: Request, response: Response, next: NextFunction) => {
     if (sequentially) {
@@ -443,7 +443,7 @@ export const validateFields = (
 
     const { unknownFields, suggestions } = checkForUnknownFields(
       validations,
-      request
+      request,
     );
     if (unknownFields.length) {
       return next(
@@ -456,8 +456,8 @@ export const validateFields = (
               }
               return field;
             })
-            .join(", ")}`
-        )
+            .join(", ")}`,
+        ),
       );
     }
 
@@ -479,7 +479,7 @@ export const validateFields = (
         logMessage,
         requester || "unauthenticated",
         requestId,
-        response.locals.viewAsSuperUser ? "::SUPER_USER" : ""
+        response.locals.viewAsSuperUser ? "::SUPER_USER" : "",
       );
       const validationErrors = validationResult(request);
       if (!validationErrors.isEmpty()) {

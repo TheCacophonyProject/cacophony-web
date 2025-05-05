@@ -25,7 +25,7 @@ export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
 export const drawBottomRightOverlayLabel = (
   label: string | false,
   overlayContext: CanvasRenderingContext2D | null,
-  scale: number
+  scale: number,
 ) => {
   if (label && overlayContext) {
     setLabelFontStyle(overlayContext);
@@ -37,12 +37,12 @@ export const drawBottomRightOverlayLabel = (
     overlayContext.strokeText(
       label,
       (canvasWidth - (labelWidth + sidePadding * scale)) / scale,
-      (canvasHeight - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale,
     );
     overlayContext.fillText(
       label,
       (canvasWidth - (labelWidth + sidePadding * scale)) / scale,
-      (canvasHeight - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale,
     );
   }
 };
@@ -50,7 +50,7 @@ export const drawBottomRightOverlayLabel = (
 export const drawBottomLeftOverlayLabel = (
   label: string | null,
   overlayContext: CanvasRenderingContext2D | null,
-  scale: number
+  scale: number,
 ) => {
   if (label && overlayContext) {
     setLabelFontStyle(overlayContext);
@@ -60,26 +60,26 @@ export const drawBottomLeftOverlayLabel = (
     overlayContext.strokeText(
       label,
       sidePadding,
-      (canvasHeight - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale,
     );
     overlayContext.fillText(
       label,
       sidePadding,
-      (canvasHeight - bottomPadding * scale) / scale
+      (canvasHeight - bottomPadding * scale) / scale,
     );
   }
 };
 
 export const clearOverlay = (
   overlayContext: CanvasRenderingContext2D | null,
-  pixelRatio: number = 1.0
+  pixelRatio: number = 1.0,
 ): boolean => {
   if (overlayContext) {
     overlayContext.clearRect(
       0,
       0,
       Math.max(640, overlayContext.canvas.width * pixelRatio),
-      Math.max(480, overlayContext.canvas.height * pixelRatio)
+      Math.max(480, overlayContext.canvas.height * pixelRatio),
     );
     return true;
   }
@@ -96,7 +96,7 @@ export const drawRectWithText = (
   currentTrack: ApiTrackResponse | undefined,
   pixelRatio: number,
   scale: number,
-  restrictedHeight?: number
+  restrictedHeight?: number,
 ) => {
   context.save();
   const selected = currentTrack?.id === trackId || isExporting;
@@ -124,17 +124,17 @@ export const drawRectWithText = (
     Math.max(
       halfOutlineWidth,
       Math.round(top + yOffset) - halfOutlineWidth,
-      yOffset + halfOutlineWidth
+      yOffset + halfOutlineWidth,
     ) / deviceRatio;
   const width =
     Math.min(
       canvasWidth - (x + halfOutlineWidth),
-      Math.round(Math.min(canvasWidth - left, Math.round(rectWidth)))
+      Math.round(Math.min(canvasWidth - left, Math.round(rectWidth))),
     ) / deviceRatio;
   const height =
     Math.min(
       contextHeight - (y - yOffset + halfOutlineWidth),
-      Math.round(Math.min(contextHeight - top, Math.round(rectHeight)))
+      Math.round(Math.min(contextHeight - top, Math.round(rectHeight))),
     ) / deviceRatio;
   context.lineJoin = "round";
   context.lineWidth = outlineWidth;
@@ -187,7 +187,7 @@ export const renderOverlay = (
   pixelRatio: number,
   tracksByFrame: Record<FrameNum, [TrackId, TrackBox][]>,
   framesByTrack: Record<TrackId, Record<FrameNum, TrackBox>>,
-  trackExportOptions: TrackExportOption[]
+  trackExportOptions: TrackExportOption[],
 ) => {
   if (context) {
     if (!isExporting) {
@@ -201,7 +201,7 @@ export const renderOverlay = (
         trackId !== currentTrack?.id &&
         (!trackExportOptions.length ||
           trackExportOptions.find((options) => options.trackId === trackId)
-            ?.displayInExport)
+            ?.displayInExport),
     )) {
       drawRectWithText(
         context,
@@ -212,7 +212,7 @@ export const renderOverlay = (
         tracks,
         currentTrack,
         pixelRatio,
-        scale
+        scale,
       );
     }
     // Always draw selected track last, so it sits on top of any overlapping tracks.
@@ -222,7 +222,7 @@ export const renderOverlay = (
         trackBox &&
         (!trackExportOptions.length ||
           trackExportOptions.find(
-            (options) => options.trackId === currentTrack.id
+            (options) => options.trackId === currentTrack.id,
           )?.displayInExport)
       ) {
         drawRectWithText(
@@ -234,7 +234,7 @@ export const renderOverlay = (
           tracks,
           currentTrack,
           pixelRatio,
-          scale
+          scale,
         );
       }
     }
@@ -244,7 +244,7 @@ export const renderOverlay = (
       renderMotionPath(
         context,
         motionPaths[i],
-        TagColours[i % TagColours.length].background
+        TagColours[i % TagColours.length].background,
       );
     }
     context.restore();
@@ -271,7 +271,7 @@ export const renderOverlay = (
 const renderMotionPath = (
   context: CanvasRenderingContext2D,
   path: MotionPath,
-  color: string
+  color: string,
 ) => {
   // Here's a nice example motion track: #1301155
 
@@ -296,7 +296,7 @@ const renderMotionPath = (
       segment.controlPoints[1].x,
       segment.controlPoints[1].y,
       segment.endPoint.x,
-      segment.endPoint.y
+      segment.endPoint.y,
     );
   }
 

@@ -13,11 +13,11 @@ import type { ErrorResult, JwtAcceptInviteTokenPayload } from "@api/types";
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import { decodeJWT, urlNormaliseName } from "@/utils";
-const checkingValidateEmailToken = ref(false);
-const validateToken = ref("");
-const isValidValidateToken = ref(false);
 const alreadyPartOfProject = ref(false);
+const checkingValidateEmailToken = ref(false);
+const isValidValidateToken = ref(false);
 const validateError = ref<ErrorResult | null>(null);
+const validateToken = ref("");
 const router = useRouter();
 const { params } = useRoute();
 onMounted(async () => {
@@ -33,7 +33,7 @@ onMounted(async () => {
         nonPendingUserProjects.value.find(({ id }) => id === jwtToken.group);
       if (!alreadyAddedToProject) {
         const validateTokenResponse = await acceptProjectInvitation(
-          jwtToken.group
+          jwtToken.group,
         );
         if (!validateTokenResponse.success) {
           if (
@@ -50,7 +50,7 @@ onMounted(async () => {
         } else {
           await refreshUserProjects();
           const nextProject = nonPendingUserProjects.value.find(
-            ({ id }) => id === jwtToken.group
+            ({ id }) => id === jwtToken.group,
           );
           let nextProjectName = urlNormalisedCurrentProjectName.value;
           if (nextProject) {

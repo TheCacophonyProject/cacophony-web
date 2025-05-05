@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { type ComputedRef, inject, type Ref } from "vue";
+import { type ComputedRef, inject, onBeforeMount, type Ref } from "vue";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   CptvFrame,
@@ -92,7 +92,7 @@ const props = withDefaults(
     hasPrev: false,
     hasReferencePhoto: false,
     displayHeaderInfo: false,
-  }
+  },
 );
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
@@ -123,7 +123,7 @@ watch(pixelRatio, () => {
 
 const exportProgressZeroOne = ref<number>(0);
 const exportProgress = computed<number>(
-  () => exportProgressZeroOne.value * 100
+  () => exportProgressZeroOne.value * 100,
 );
 watch(
   () => props.exportRequested,
@@ -135,7 +135,7 @@ watch(
         // Wait for user input
       }
     }
-  }
+  },
 );
 
 const playbackTimeChanged = (offset: number) => {
@@ -163,8 +163,8 @@ const playbackTimeZeroOne = computed<number>(() => {
     0,
     Math.min(
       1,
-      targetFrameNum.value / (totalPlayableFrames.value - 1) + fractionalFrame
-    )
+      targetFrameNum.value / (totalPlayableFrames.value - 1) + fractionalFrame,
+    ),
   );
 });
 
@@ -175,7 +175,7 @@ const emit = defineEmits<{
   (e: "request-next-visit"): void;
   (
     e: "track-selected",
-    { trackId, automatically }: { trackId: TrackId; automatically: boolean }
+    payload: { trackId: TrackId; automatically: boolean },
   ): void;
   (e: "ready-to-play", header: CptvHeader): void;
   (e: "export-completed"): void;
@@ -216,7 +216,7 @@ watch(
       }
     }
     updateOverlayCanvas(frameNum.value);
-  }
+  },
 );
 
 watch(
@@ -228,7 +228,7 @@ watch(
   },
   {
     deep: true, // If tags change, we'd like to know about it
-  }
+  },
 );
 
 const container = ref<HTMLDivElement | null>(null);
@@ -272,7 +272,7 @@ const persistentBooleanPref = (
   key: string,
   propertyName: string,
   forceReRender = false,
-  defaultValue = false
+  defaultValue = false,
 ): Ref<boolean> => {
   const initValue =
     (localStorage.getItem(key) && localStorage.getItem(key) === "true") ||
@@ -292,45 +292,45 @@ const showDebugTools = persistentBooleanPref("show-debug-tools", "Debug tools");
 const silhouetteMode = persistentBooleanPref(
   "silhouette-mode",
   "Silhouette mode",
-  true
+  true,
 );
 const polygonEditMode = persistentBooleanPref(
   "polygon-edit-mode",
-  "Polygon edit mode"
+  "Polygon edit mode",
 );
 const motionPathMode = persistentBooleanPref(
   "motion-path-mode",
   "Motion paths",
-  true
+  true,
 );
 const trackHighlightMode = persistentBooleanPref(
   "track-highlight-mode",
   "Track focus",
-  true
+  true,
 );
 const videoSmoothing = persistentBooleanPref(
   "video-smoothing",
   "Smoothing",
   true,
-  true
+  true,
 );
 
 const speedMultiplierIndex = ref<number>(
   Math.max(
     PlaybackSpeeds.indexOf(
-      Number(localStorage.getItem("video-playback-speed")) || 1
+      Number(localStorage.getItem("video-playback-speed")) || 1,
     ),
-    0
-  )
+    0,
+  ),
 );
 
 const paletteIndex = ref<number>(
   Math.max(
     ColourMaps.findIndex(
-      ([name]) => name === localStorage.getItem("video-palette")
+      ([name]) => name === localStorage.getItem("video-palette"),
     ),
-    0
-  )
+    0,
+  ),
 );
 const colourMap = ref<[string, Uint32Array]>(ColourMaps[paletteIndex.value]);
 const messageTimeout = ref<number | null>(null);
@@ -366,15 +366,15 @@ const setTimeAndRedraw = async ({
         targetFrameNum.value = Math.floor(
           Math.min(
             totalPlayableFrames.value - 1,
-            timeZeroOne * (totalPlayableFrames.value - 1)
-          )
+            timeZeroOne * (totalPlayableFrames.value - 1),
+          ),
         );
       } else {
         targetFrameNum.value = frameNumToDraw || 0;
       }
       const gotFrame = await seekToSpecifiedFrameAndRender(
         true,
-        targetFrameNum.value
+        targetFrameNum.value,
       );
       if (gotFrame) {
         frameNum.value = targetFrameNum.value;
@@ -410,7 +410,7 @@ const selectTrack = async (
   track: ApiTrackResponse,
   force = false,
   shouldPlay = false,
-  userSelected = false
+  userSelected = false,
 ) => {
   if ((!playing.value || force) && props.recording?.tracks.length) {
     cancelAnimationFrame(animationFrame.value);
@@ -513,7 +513,7 @@ const makeSureWeHaveTheFrame = async (frameNumToRender: number) => {
 let cNum = 0;
 const setCurrentFrameAndRender = (
   force: boolean,
-  frameNumToRender?: number
+  frameNumToRender?: number,
 ) => {
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
@@ -535,7 +535,7 @@ const setCurrentFrameAndRender = (
 
 const seekToSpecifiedFrameAndRender = async (
   force = false,
-  frameNumToRender?: number
+  frameNumToRender?: number,
 ): Promise<boolean> => {
   if (frameNumToRender === undefined) {
     frameNumToRender = targetFrameNum.value;
@@ -576,7 +576,7 @@ const frameHeight = computed<number>(() => {
 const renderFrame = (
   frameData: CptvFrame,
   frameNumToRender: number,
-  force = false
+  force = false,
 ) => {
   if (canvas.value && header.value && canvasContext.value) {
     let min;
@@ -597,11 +597,11 @@ const renderFrame = (
         // );
 
         const trackBoxes = Object.values(
-          framesByTrack.value[props.currentTrack.id]
+          framesByTrack.value[props.currentTrack.id],
         );
         [min, max] = minMaxForTrack(
           trackBoxes,
-          loadedFramesForTrack(props.currentTrack.id)
+          loadedFramesForTrack(props.currentTrack.id),
         );
       } else if (numTracks === 1) {
         // There's only one track, so highlight it all the time.
@@ -615,7 +615,7 @@ const renderFrame = (
           const trackBoxes = Object.values(framesByTrack.value[trackId]);
           [min, max] = minMaxForTrack(
             trackBoxes,
-            loadedFramesForTrack(trackId)
+            loadedFramesForTrack(trackId),
           );
         } else {
           // Get the min/max for the first frame of the track, or maybe one in the middle.
@@ -636,7 +636,7 @@ const renderFrame = (
           const trackBoxes = Object.values(framesByTrack.value[trackId]);
           [min, max] = minMaxForTrack(
             trackBoxes,
-            loadedFramesForTrack(trackId)
+            loadedFramesForTrack(trackId),
           );
         }
 
@@ -714,7 +714,7 @@ const renderFrame = (
         canvasContext.value,
         new ImageData(frameBuffer, frameWidth.value, frameHeight.value),
         frameNumToRender,
-        force
+        force,
       );
     });
   }
@@ -788,9 +788,9 @@ const totalPlayableFrames = computed<number>(() => {
           (props.recording || { duration: 0 }).duration * fps.value -
             backgroundAdjust,
           ...(props.recording || { tracks: [] }).tracks.map(
-            ({ end }) => end * fps.value - backgroundAdjust
-          )
-        )
+            ({ end }) => end * fps.value - backgroundAdjust,
+          ),
+        ),
       );
     }
   }
@@ -798,7 +798,7 @@ const totalPlayableFrames = computed<number>(() => {
 });
 
 const actualDuration = computed<number>(
-  () => totalPlayableFrames.value / fps.value
+  () => totalPlayableFrames.value / fps.value,
 );
 
 const currentTime = computed<number>(() => {
@@ -822,7 +822,7 @@ const elapsedTime = computed<string>(() => {
 const headerInfo = computed(() => formatHeaderInfo(header.value));
 const loadDateTime = ref<Date>(new Date());
 const getAuthoritativeTagForTrack = (
-  trackTags: ApiTrackTagResponse[]
+  trackTags: ApiTrackTagResponse[],
 ): [string, boolean, boolean] | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
   if (userTags.length) {
@@ -836,13 +836,7 @@ const getAuthoritativeTagForTrack = (
         new Date(userTags[0].createdAt) > loadDateTime.value,
     ];
   } else {
-    const tag = trackTags.find(
-      (tag) =>
-        (tag.data && typeof tag.data === "string" && tag.data === "Master") ||
-        (typeof tag.data === "object" &&
-          tag.data.name &&
-          tag.data.name === "Master")
-    )?.what;
+    const tag = trackTags.find((tag) => tag.model === "Master")?.what;
     return (tag && [tag, true, false]) || null;
   }
 };
@@ -851,14 +845,14 @@ const getAuthoritativeTagForTrack = (
 const getPositions = (
   positions: ApiTrackPosition[],
   timeOffset: number,
-  frameTimeSeconds: number
+  frameTimeSeconds: number,
 ): [FrameNum, Rectangle][] => {
   const frameAtTime = (time: number) => {
     return Math.round(time / frameTimeSeconds);
   };
   // Add a bit of breathing room around our boxes
   const padding = 0; // 5
-  return (positions as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
+  return ((positions || []) as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
     position.order ||
       (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
       0,
@@ -891,7 +885,7 @@ const tracksIntermediate = computed<IntermediateTrack[]>(() => {
         positions: getPositions(
           positions as ApiTrackPosition[],
           timeAdjustmentForBackgroundFrame.value,
-          frameTimeSeconds.value
+          frameTimeSeconds.value,
         ),
         id,
       };
@@ -900,7 +894,7 @@ const tracksIntermediate = computed<IntermediateTrack[]>(() => {
     (track) =>
       userProjectSettings.value.showFalseTriggers ||
       (!userProjectSettings.value.showFalseTriggers &&
-        (track.what !== "false-positive" || track.justTaggedFalseTrigger))
+        (track.what !== "false-positive" || track.justTaggedFalseTrigger)),
   );
 });
 
@@ -919,7 +913,7 @@ const tracksByFrame = computed<Record<FrameNum, [TrackId, TrackBox][]>>(() => {
       }
       return acc;
     },
-    {}
+    {},
   );
 });
 
@@ -937,7 +931,7 @@ const mergedTracks = computed(() => {
 
   const mergeCandidates: Record<string, boolean> = {};
   for (const [_frameNum, tracks] of Object.entries(tracksByFrame.value).filter(
-    ([_, tracks]) => tracks.length > 1
+    ([_, tracks]) => tracks.length > 1,
   )) {
     for (const [trackA, trackABox] of tracks) {
       for (const [trackId, trackBox] of tracks) {
@@ -964,7 +958,7 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
     return tracksIntermediate.value.reduce(
       (
         acc: Record<TrackId, Record<FrameNum, TrackBox>>,
-        { id, what, positions }
+        { id, what, positions },
       ) => {
         acc[id] = acc[id] || {};
         for (const [frameNum, trackBox] of positions) {
@@ -975,9 +969,9 @@ const framesByTrack = computed<Record<TrackId, Record<FrameNum, TrackBox>>>(
         }
         return acc;
       },
-      {}
+      {},
     );
-  }
+  },
 );
 
 const isExporting = ref<boolean>(false);
@@ -1066,7 +1060,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
       for (const { includeInExportTime, trackId } of options) {
         if (includeInExportTime) {
           const track = (props.recording as ApiRecordingResponse).tracks.find(
-            (track) => track.id === trackId
+            (track) => track.id === trackId,
           );
           if (track) {
             firstFrameNumForTrack(trackId);
@@ -1074,7 +1068,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
             startFrame = Math.min(startFrame, firstFrameNumForTrack(trackId));
             onePastLastFrame = Math.max(
               onePastLastFrame,
-              onePastLastFrameNumForTrack(trackId)
+              onePastLastFrameNumForTrack(trackId),
             );
           }
         }
@@ -1090,13 +1084,13 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         frameData.imageData,
         colourMap.value[1],
         min,
-        max
+        max,
       );
       const thisHeader = header.value as CptvHeader;
       videoContext.putImageData(
         new ImageData(frameBuffer, thisHeader.width, thisHeader.height),
         0,
-        0
+        0,
       );
       renderContext.imageSmoothingEnabled = videoSmoothing.value;
       if (videoSmoothing.value) {
@@ -1111,7 +1105,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         0,
         0,
         renderCanvas.width,
-        renderCanvas.height
+        renderCanvas.height,
       );
 
       // Draw the overlay
@@ -1134,11 +1128,11 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         1,
         tracksByFrame.value,
         framesByTrack.value,
-        useExportOptions
+        useExportOptions,
       );
 
       await encoder.encodeFrame(
-        renderContext.getImageData(0, 0, targetWidth, targetHeight).data
+        renderContext.getImageData(0, 0, targetWidth, targetHeight).data,
       );
       if (!props.exportRequested) {
         encoder.close();
@@ -1161,7 +1155,7 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     trackExportOptions.value = exportOptions.value;
 
     let date: DateTime = DateTime.fromJSDate(
-      new Date((header.value as CptvHeader).timestamp / 1000)
+      new Date((header.value as CptvHeader).timestamp / 1000),
     );
     if (props.recording && props.recording.location) {
       const zone = timezoneForLatLng(props.recording.location);
@@ -1169,13 +1163,13 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
         new Date((header.value as CptvHeader).timestamp / 1000),
         {
           zone,
-        }
+        },
       );
     }
 
     download(
       URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
-      `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`
+      `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`,
     );
     isExporting.value = false;
     emit("export-completed");
@@ -1192,7 +1186,7 @@ const download = (url: string, filename: string) => {
 const _ambientTemperature = computed<string | null>(() => {
   if (frameHeader.value && (frameHeader.value as CptvFrameHeader).frameTempC) {
     return `About ${Math.round(
-      (frameHeader.value as CptvFrameHeader).frameTempC || 0
+      (frameHeader.value as CptvFrameHeader).frameTempC || 0,
     )}ºC`;
   }
   return null;
@@ -1228,7 +1222,7 @@ const drawTrailcamImageAndOverlay = () => {
       0,
       offsetY / pixelRatio.value,
       canvasWidth / pixelRatio.value,
-      restrictedHeight / pixelRatio.value
+      restrictedHeight / pixelRatio.value,
     );
     if (props.recording && props.recording.tracks) {
       for (const track of props.recording.tracks) {
@@ -1257,7 +1251,7 @@ const drawTrailcamImageAndOverlay = () => {
               track,
               pixelRatio.value,
               1,
-              restrictedHeight
+              restrictedHeight,
             );
           }
         }
@@ -1282,24 +1276,24 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
         pixelRatio.value,
         tracksByFrame.value,
         framesByTrack.value,
-        trackExportOptions.value
+        trackExportOptions.value,
       );
 
       {
         const time = `${elapsedTime.value} / ${formatTime(
-          Math.max(currentTime.value, actualDuration.value)
+          Math.max(currentTime.value, actualDuration.value),
         )}`;
         drawBottomRightOverlayLabel(
           time,
           overlayContext.value,
-          pixelRatio.value
+          pixelRatio.value,
         );
         // Draw time and temperature in
         // overlayContext.
         drawBottomLeftOverlayLabel(
           currentAbsoluteTime.value,
           overlayContext.value,
-          pixelRatio.value
+          pixelRatio.value,
         );
       }
     } else {
@@ -1316,7 +1310,7 @@ const ticksBetweenDraws = computed<number>(() => {
   // One tick represents 1000 / fps * multiplier
   return Math.max(
     1,
-    Math.floor(raqFps.value / (fps.value * speedMultiplier.value))
+    Math.floor(raqFps.value / (fps.value * speedMultiplier.value)),
   );
 });
 
@@ -1385,21 +1379,28 @@ const togglePlayback = async (): Promise<void> => {
 };
 
 const referenceImageURL = ref<string | null>(null);
-const showingReferencePhoto = ref<boolean>(false);
+const showingReferencePhoto = ref<boolean>(true);
+const referenceOpacity = ref<number>(0.3);
+const loadReferenceImageUrl = async () => {
+  const rec = props.recording as ApiRecordingResponse;
+  // Load the reference photo.
+  const referenceImageResponse = await getReferenceImageForDeviceAtTime(
+    rec.deviceId,
+    new Date(rec.recordingDateTime),
+    true,
+  );
+  if (referenceImageResponse.success) {
+    referenceImageURL.value = URL.createObjectURL(
+      referenceImageResponse.result,
+    );
+  }
+};
+
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
+  window.localStorage.setItem("cptv-player-show-reference-image", showingReferencePhoto.value ? "true" : "false");
   if (showingReferencePhoto.value) {
-    const rec = props.recording as ApiRecordingResponse;
-    // Load the reference photo.
-    const referenceImageResponse = await getReferenceImageForDeviceAtTime(
-      rec.deviceId,
-      new Date(rec.recordingDateTime)
-    );
-    if (referenceImageResponse.success) {
-      referenceImageURL.value = URL.createObjectURL(
-        referenceImageResponse.result
-      );
-    }
+    await loadReferenceImageUrl();
   }
 };
 
@@ -1436,7 +1437,7 @@ const incrementSpeed = () => {
   setPlayerMessage(`Speed ${speedMultiplier.value}x`);
   localStorage.setItem(
     "video-playback-speed",
-    speedMultiplier.value.toString()
+    speedMultiplier.value.toString(),
   );
 };
 
@@ -1466,7 +1467,7 @@ const canvasContext = computed<CanvasRenderingContext2D | null>(() => {
 
 const canStepBackward = computed<boolean>(() => frameNum.value > 0);
 const canStepForward = computed<boolean>(
-  () => frameNum.value < totalPlayableFrames.value - 1
+  () => frameNum.value < totalPlayableFrames.value - 1,
 );
 
 const stepBackward = async () => {
@@ -1476,7 +1477,7 @@ const stepBackward = async () => {
   targetFrameNum.value = Math.max(frameNum.value - 1, 0);
   const couldStep = await seekToSpecifiedFrameAndRender(
     true,
-    Math.max(frameNum.value - 1, 0)
+    Math.max(frameNum.value - 1, 0),
   );
   if (couldStep) {
     // Actually advance
@@ -1493,7 +1494,7 @@ const stepForward = async () => {
   targetFrameNum.value = frameNum.value + 1;
   const couldStep = await seekToSpecifiedFrameAndRender(
     true,
-    targetFrameNum.value
+    targetFrameNum.value,
   );
   if (couldStep) {
     // Actually advance
@@ -1529,20 +1530,20 @@ const toggleBackground = async (): Promise<void> => {
         background.imageData,
         colourMap.value[1],
         min,
-        max
+        max,
       );
       const thisHeader = header.value as CptvHeader;
       (canvasContext.value as CanvasRenderingContext2D).putImageData(
         new ImageData(frameBuffer, thisHeader.width, thisHeader.height),
         0,
-        0
+        0,
       );
       cancelAnimationFrame(animationFrame.value);
       if (clearOverlay(overlayContext.value, pixelRatio.value)) {
         drawBottomLeftOverlayLabel(
           "Background frame",
           overlayContext.value,
-          pixelRatio.value
+          pixelRatio.value,
         );
       }
     }
@@ -1561,7 +1562,7 @@ const getTrackIdAtPosition = (x: number, y: number): TrackId | null => {
         {
           rect: [left, top, right, bottom],
         },
-      ]) => left <= x && right > x && top <= y && bottom > y
+      ]) => left <= x && right > x && top <= y && bottom > y,
     );
   return (trackId && trackId[0]) || null;
 };
@@ -1591,7 +1592,7 @@ const currentVisibleFrame = computed<CptvFrame>(() => {
   } else {
     console.assert(
       frameNum.value <= frames.length - 1,
-      "Tried to read past loaded frames"
+      "Tried to read past loaded frames",
     );
     return frames[frameNum.value];
   }
@@ -1691,6 +1692,25 @@ const handleKeyboardControls = (event: KeyboardEvent) => {
   }
 };
 
+onBeforeMount(() => {
+  const savedReferenceImageOpacity = window.localStorage.getItem("cptv-player-reference-image-opacity");
+  if (savedReferenceImageOpacity !== null) {
+    referenceOpacity.value = Number(savedReferenceImageOpacity);
+  }
+  const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+  if (showReferenceImage !== null) {
+    if (showReferenceImage === "true" && props.hasReferencePhoto) {
+      showingReferencePhoto.value = true;
+    } else if (showReferenceImage === "false") {
+      showingReferencePhoto.value = false;
+    } else if (!props.hasReferencePhoto) {
+      showingReferencePhoto.value = false;
+    }
+  } else if (!props.hasReferencePhoto) {
+    showingReferencePhoto.value = false;
+  }
+});
+
 onMounted(async () => {
   window.addEventListener("keydown", handleKeyboardControls);
   cptvDecoder = new CptvDecoder();
@@ -1700,7 +1720,7 @@ onMounted(async () => {
     () => {
       return;
     },
-    false
+    false,
   );
 
   if (canvas.value) {
@@ -1724,7 +1744,7 @@ onBeforeUnmount(() => {
 const loadedNextRecordingData = async () => {
   if (props.currentTrack && framesByTrack.value[props.currentTrack.id]) {
     const firstFrameForTrack = Number(
-      Object.keys(framesByTrack.value[props.currentTrack.id])[0]
+      Object.keys(framesByTrack.value[props.currentTrack.id])[0],
     );
     targetFrameNum.value = firstFrameForTrack;
     await seekToSpecifiedFrameAndRender(true, firstFrameForTrack);
@@ -1739,7 +1759,7 @@ watch(
       trackExportOptions.value = exportOptions.value;
       await loadedNextRecordingData();
     }
-  }
+  },
 );
 
 const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
@@ -1775,7 +1795,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     console.warn(
       "Can merge",
       Object.values(framesByTrack.value).length,
-      Object.keys(mergedTracks.value)
+      Object.keys(mergedTracks.value),
     );
   }
   // Our api token could be out of date
@@ -1785,7 +1805,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
     loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
       nextRecordingId,
       props.cptvSize || 0,
-      (creds.value as LoggedInUserAuth).apiToken
+      (creds.value as LoggedInUserAuth).apiToken,
     );
   }
 
@@ -1810,7 +1830,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
         !frameBuffer
       ) {
         frameBuffer = new Uint8ClampedArray(
-          thisHeader.width * thisHeader.height * 4
+          thisHeader.width * thisHeader.height * 4,
         );
         thisCanvas.width = thisHeader.width;
         thisCanvas.height = thisHeader.height;
@@ -1873,7 +1893,7 @@ watch(
     if (nextRecordingId && prevRecordingId !== nextRecordingId) {
       await loadNextRecording(nextRecordingId);
     }
-  }
+  },
 );
 
 const clearCanvases = () => {
@@ -1931,7 +1951,7 @@ const drawFrame = async (
   context: CanvasRenderingContext2D | null,
   imgData: ImageData,
   frameNumToRender: number,
-  force = false
+  force = false,
 ): Promise<void> => {
   if (context) {
     if (force) {
@@ -1959,7 +1979,7 @@ const drawFrame = async (
           targetFrameNum.value = frameNumToRender + 1;
           didAdvance = await seekToSpecifiedFrameAndRender(
             false,
-            targetFrameNum.value
+            targetFrameNum.value,
           );
         }
         if (didAdvance) {
@@ -1982,7 +2002,7 @@ const drawFrame = async (
         animationTick.value++;
         // NOTE: Don't request a next frame if we're paused.
         animationFrame.value = requestAnimationFrame(() =>
-          drawFrame(context, imgData, frameNumToRender)
+          drawFrame(context, imgData, frameNumToRender),
         ) as number;
       }
     }
@@ -1997,7 +2017,7 @@ const revealSlider = ref<HTMLDivElement>();
 const referenceImageContainer = ref<HTMLDivElement>();
 const referenceImage = ref<HTMLImageElement>();
 const { width: referenceImageContainerWidth } = useElementSize(
-  referenceImageContainer
+  referenceImageContainer,
 );
 watch(referenceImageContainerWidth, (width) => {
   if (referenceImage.value) {
@@ -2029,9 +2049,9 @@ const moveRevealHandle = (event: PointerEvent) => {
     const x = Math.min(
       Math.max(
         -(handleBounds.width / 2),
-        event.clientX - parentBounds.left - revealGrabOffsetX
+        event.clientX - parentBounds.left - revealGrabOffsetX,
       ),
-      parentBounds.width - handleBounds.width / 2
+      parentBounds.width - handleBounds.width / 2,
     );
     if (revealSlider.value) {
       (revealSlider.value as HTMLDivElement).style.width = `${
@@ -2043,12 +2063,27 @@ const moveRevealHandle = (event: PointerEvent) => {
 };
 watch(
   () => props.hasReferencePhoto,
-  (hasRef) => {
+  async (hasRef) => {
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
+    } else if (hasRef) {
+      const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+      if (showReferenceImage !== null) {
+        if (showReferenceImage === "true") {
+          showingReferencePhoto.value = true;
+          await loadReferenceImageUrl();
+        }
+      } else {
+        showingReferencePhoto.value = true;
+        await loadReferenceImageUrl();
+      }
     }
-  }
+  },
 );
+
+const updateSavedOpacity = (val: InputEvent) => {
+  window.localStorage.setItem("cptv-player-reference-image-opacity", (val.target as HTMLInputElement).value);
+};
 </script>
 <template>
   <div class="cptv-player">
@@ -2077,6 +2112,36 @@ watch(
         :class="['player-messaging', { show: playerMessage !== null }]"
         v-html="playerMessage"
       />
+      <div
+        class="position-absolute top-0 h-100 w-100 reference-image"
+        :class="{ hide: atEndOfPlayback }"
+        ref="referenceImageContainer"
+        v-if="showingReferencePhoto && hasReferencePhoto"
+      >
+        <div
+          class="reveal-slider position-absolute d-flex align-items-center"
+          ref="revealSlider"
+        >
+          <img
+            v-if="referenceImageURL"
+            ref="referenceImage"
+            alt="Device
+          point-of-view reference photo at the time of recording"
+            :src="referenceImageURL"
+            :style="{ opacity: referenceOpacity }"
+          />
+        </div>
+        <div
+          class="reveal-handle d-flex align-items-center justify-content-center"
+          ref="revealHandle"
+          @touchstart="(e: TouchEvent) => e.preventDefault()"
+          @pointerdown="grabRevealHandle"
+          @pointerup="releaseRevealHandle"
+          @pointermove="moveRevealHandle"
+        >
+          <font-awesome-icon icon="left-right" />
+        </div>
+      </div>
       <div key="buffering" :class="['playback-controls', { show: buffering }]">
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
@@ -2106,34 +2171,6 @@ watch(
           <font-awesome-icon icon="forward" class="replay" />
         </button>
       </div>
-
-      <div
-        class="position-absolute top-0 h-100 w-100 reference-image"
-        ref="referenceImageContainer"
-        v-if="showingReferencePhoto && hasReferencePhoto"
-      >
-        <div
-          class="reveal-slider position-absolute d-flex align-items-center"
-          ref="revealSlider"
-        >
-          <img
-            v-if="referenceImageURL"
-            ref="referenceImage"
-            alt="Device point-of-view reference photo at the time of recording"
-            :src="referenceImageURL"
-          />
-        </div>
-        <div
-          class="reveal-handle d-flex align-items-center justify-content-center"
-          ref="revealHandle"
-          @touchstart="(e: TouchEvent) => e.preventDefault()"
-          @pointerdown="grabRevealHandle"
-          @pointerup="releaseRevealHandle"
-          @pointermove="moveRevealHandle"
-        >
-          <font-awesome-icon icon="left-right" />
-        </div>
-      </div>
     </div>
     <div
       key="playback-nav"
@@ -2149,16 +2186,17 @@ watch(
         <font-awesome-icon v-else icon="pause" />
       </button>
       <div class="right-nav">
-        <div :class="['advanced-controls', { open: showAdvancedControls }]">
+        <div :class="['advanced-controls', { open: showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570) }]">
           <button
             @click.prevent="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
+            :disabled="(showingReferencePhoto && canvasWidth <= 570)"
             ref="advancedControlsButton"
           >
             <font-awesome-icon
               icon="angle-right"
-              :rotation="showAdvancedControls ? null : 180"
+              :rotation="(showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570)) ? null : 180"
             />
           </button>
           <button
@@ -2243,6 +2281,28 @@ watch(
           >
             <font-awesome-icon icon="info-circle" />
           </button>
+        </div>
+        <div
+          class="reference-opacity-container"
+          :class="{ open: showingReferencePhoto && hasReferencePhoto }"
+        >
+          <div
+            class="reference-opacity-slider"
+            :class="{ open: showingReferencePhoto, 'has-no-reference': !hasReferencePhoto }"
+          >
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              v-model.number="referenceOpacity"
+              @input="updateSavedOpacity"
+              :disabled="!hasReferencePhoto"
+              :style="`background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
+              class="me-2 reference-opacity-slider-el"
+            />
+            <font-awesome-icon icon="eye" />
+          </div>
         </div>
         <button
           :disabled="!hasReferencePhoto"
@@ -2401,7 +2461,7 @@ watch(
           >Track {{ index + 1 }} ({{
             displayLabelForClassificationLabel(
               framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
-                .what || ""
+                .what || "",
             )
           }})</b-form-checkbox
         >
@@ -2414,7 +2474,7 @@ watch(
           >Track {{ index + 1 }} ({{
             displayLabelForClassificationLabel(
               framesByTrack[track.trackId][firstFrameNumForTrack(track.trackId)]
-                .what || ""
+                .what || "",
             )
           }})</b-form-checkbox
         >
@@ -2462,6 +2522,7 @@ watch(
   aspect-ratio: 4 / 3;
 }
 .cptv-player {
+  position: relative;
   user-select: none;
   background: #202731;
   .video-canvas {
@@ -2807,22 +2868,37 @@ watch(
 }
 // Reference image overlay + slider
 .reference-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
   z-index: 1;
   user-select: none;
+  overflow: hidden; /* ensures we don’t show anything outside the container */
+  &.hide {
+    display: none;
+  }
 }
 
 .reveal-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* Start at 50% to show half, or whatever default you want */
+  width: 100%;
   height: 100%;
-  width: 50%;
-  overflow: hidden;
+  overflow: hidden; /* So only the left portion of the image is visible */
   user-select: none;
+
   > img {
-    user-select: none;
-    pointer-events: none;
-    max-width: 640px;
-    aspect-ratio: auto 4/3;
+    display: block; /* removes inline spacing gaps */
+    height: 480px;
+    object-fit: cover; /* critical to maintain aspect ratio but cover fully */
+    object-position: center; /* center the image as it covers */
+    pointer-events: none; /* so the handle can receive pointer events */
   }
 }
+
 @media screen and (max-width: 639px) {
   .reveal-slider > img {
     max-width: 100svw;
@@ -2839,7 +2915,7 @@ watch(
   border-radius: 50%;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(0, 0, 0, 0.5);
-  left: (calc(50% - 20px));
+  left: (calc(100% - 20px));
   font-size: 20px;
   cursor: grab;
   &.selected {
@@ -2849,6 +2925,98 @@ watch(
   transition: opacity 0.2s;
   &:hover {
     opacity: 1;
+  }
+}
+
+.reference-opacity-container {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  width: 0;
+  transition: width 0.3s ease-in-out;
+  background: #2b333f;
+  border-radius: 1em 1em 0 0;
+  .reference-opacity-toggle {
+    width: 48px;
+    height: 44px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    outline: none;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  &.open {
+    width: 170px;
+  }
+  .reference-opacity-slider {
+    appearance: none;
+    flex: 1;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.3s;
+    opacity: 0;
+
+    &.open {
+      opacity: 1;
+      &.has-no-reference {
+        opacity: 0.5;
+      }
+    }
+  }
+}
+input[type="range"].reference-opacity-slider-el {
+  flex: 1;
+  cursor: pointer;
+  width: 100px;
+  transition: opacity 0.2s ease-in-out;
+  opacity: 0.7;
+  &:hover {
+    opacity: 1;
+  }
+  background: unset;
+  background-color: unset;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: inset 0 1px 2px #000;
+  border-radius: 3.5px;
+  height: 9px;
+  &::-webkit-slider-thumb {
+    background: lighten(yellowgreen, 20%);
+    width: 15px;
+    height: 15px;
+    outline: 0;
+    border: 0;
+    border-radius: 50%;
+    transition: background-color 0.2s ease-in-out;
+    -webkit-appearance: none;
+    appearance: none;
+    &:hover {
+      background: red;
+      background: lighten(yellowgreen, 30%);
+    }
+
+  }
+  &::-moz-range-thumb {
+    background: lighten(yellowgreen, 10%);
+    width: 15px;
+    height: 15px;
+    outline: 0;
+    border: 0;
+    transition: background-color 0.2s ease-in-out;
+    border-radius: 50%;
+    -webkit-appearance: none;
+    appearance: none;
+    &:hover {
+      background: red;
+      background: lighten(yellowgreen, 30%);
+    }
   }
 }
 </style>

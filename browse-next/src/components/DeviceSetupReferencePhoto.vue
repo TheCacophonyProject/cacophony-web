@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { type Ref } from "vue";
-import { computed, inject, ref, watch } from "vue";
+import { computed, inject, nextTick, ref, watch } from "vue";
 import { updateReferenceImageForDeviceAtCurrentLocation } from "@api/Device";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
@@ -9,10 +9,43 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import type { DeviceId } from "@typedefs/api/common";
 import { drawSkewedImage } from "@/components/skew-image";
 import { useElementSize } from "@vueuse/core";
-import { encode } from "@jsquash/webp";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { LoadedResource } from "@api/types.ts";
 
+/**
+ * Converts an ImageData object to a WebP Blob.
+ *
+ * @param imageData The ImageData to convert.
+ * @param quality A number between 0 and 1 indicating image quality (default is 0.9).
+ * @returns A Promise that resolves to a Blob in WebP format.
+ */
+const convertImageDataToWebP = (
+  imageData: ImageData,
+  quality: number = 0.9,
+): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = imageData.width;
+    tempCanvas.height = imageData.height;
+    const tempCtx = tempCanvas.getContext("2d");
+    if (!tempCtx) {
+      reject(new Error("Failed to get 2D context from canvas"));
+      return;
+    }
+    tempCtx.putImageData(imageData, 0, 0);
+    tempCanvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error("Conversion to WebP failed"));
+        }
+      },
+      "image/webp",
+      quality,
+    );
+  });
+};
 const emit = defineEmits<{
   (e: "updated-reference-image"): void;
 }>();
@@ -29,12 +62,11 @@ const deviceId = Number(route.params.deviceId) as DeviceId;
 const device = computed<ApiDeviceResponse | null>(() => {
   return (
     (devices.value &&
-      devices.value.find(
-        (device: ApiDeviceResponse) => device.id === deviceId
-      )) ||
+      devices.value.find((d: ApiDeviceResponse) => d.id === deviceId)) ||
     null
   );
 });
+
 const referenceImage = ref<ImageBitmap | null>(null);
 const referenceImageSkew = ref<HTMLCanvasElement>();
 const singleFrameCanvas = ref<HTMLDivElement>();
@@ -47,28 +79,52 @@ const latestReferenceImageURL = inject("latestReferenceImageURL") as Ref<
 const loading = computed<boolean>(() => {
   return (
     latestStatusRecording.value === null ||
-    latestReferenceImageURL.value === null
+    latestReferenceImageURL.value === undefined
   );
 });
 
 const { width: singleFrameCanvasWidth } = useElementSize(singleFrameCanvas);
-const replaceExistingReferenceImage = async () => {
-  latestReferenceImageURL.value = null;
+const fileInputRef = ref<HTMLInputElement | null>(null);
+// Used to replace (remove) the existing reference image
+const replaceExistingReferenceImage = () => {
+  fileInputRef.value?.click();
 };
 
-const onSelectReferenceImage = async (event: Event) => {
-  if (event && event.target && (event.target as HTMLInputElement).files) {
-    const files = (event.target as HTMLInputElement).files as FileList;
-    const file = files[0];
-    const hasReferenceImage = referenceImage.value !== null;
-    referenceImage.value = await createImageBitmap(file);
-    if (hasReferenceImage) {
+const editingReferenceImage = ref(false);
+
+const editExistingReferenceImage = async () => {
+  if (
+    latestReferenceImageURL.value &&
+    typeof latestReferenceImageURL.value === "string"
+  ) {
+    try {
+      await nextTick();
+      editingReferenceImage.value = true;
+      const resp = await fetch(latestReferenceImageURL.value);
+      const blob = await resp.blob();
+      referenceImage.value = await createImageBitmap(blob);
       positionHandles();
       renderSkewedImage();
+    } catch (e) {
+      console.error("Failed to load existing reference image to edit:", e);
     }
   }
 };
 
+const onSelectReferenceImage = async (event: Event) => {
+  if (event && event.target && (event.target as HTMLInputElement).files) {
+    await nextTick();
+    editingReferenceImage.value = true;
+    const files = (event.target as HTMLInputElement).files as FileList;
+    const file = files[0];
+    referenceImage.value = await createImageBitmap(file);
+    positionHandles();
+    renderSkewedImage();
+    await nextTick();
+  }
+};
+
+// ----- Handle corner dragging logic -----
 const handle0 = ref<HTMLDivElement>();
 const handle1 = ref<HTMLDivElement>();
 const handle2 = ref<HTMLDivElement>();
@@ -76,8 +132,8 @@ const handle3 = ref<HTMLDivElement>();
 
 const selectedHandle = ref<HTMLDivElement | null>(null);
 let grabOffsetX = 0;
-let revealGrabOffsetX = 0;
 let grabOffsetY = 0;
+
 const moveHandle = (event: PointerEvent) => {
   const handle = event.currentTarget as HTMLDivElement;
   if (selectedHandle.value === handle) {
@@ -89,10 +145,23 @@ const moveHandle = (event: PointerEvent) => {
   }
 };
 
+const singleFrame = ref<HTMLCanvasElement>();
+
+const handleSingleFrameLoaded = (el: HTMLCanvasElement) => {
+  singleFrame.value = el;
+  nextTick(() => {
+    positionHandles();
+  });
+};
+watch(singleFrame, (newVal) => {
+  if (newVal) {
+    positionHandles();
+  }
+});
 const constrainHandle = (
   handle: HTMLDivElement,
   clientX?: number,
-  clientY?: number
+  clientY?: number,
 ) => {
   const {
     width: handleW,
@@ -105,23 +174,27 @@ const constrainHandle = (
   if (clientY === undefined) {
     clientY = handleY;
   }
+
   const {
     left: parentX,
     top: parentY,
     width,
     height,
   } = (handle.parentElement as HTMLDivElement).getBoundingClientRect();
+
   let x = Math.min(
     width - handleW,
-    Math.max(0, clientX - parentX - grabOffsetX)
+    Math.max(0, clientX - parentX - grabOffsetX),
   );
   let y = Math.min(
     height - handleW,
-    Math.max(0, clientY - parentY - grabOffsetY)
+    Math.max(0, clientY - parentY - grabOffsetY),
   );
   const dim = handleW / 2;
+
   if (singleFrame.value) {
     const singleFrameBounds = singleFrame.value.getBoundingClientRect();
+    // Logic to constrain each corner to the corners of the singleFrame
     if (handle === handle0.value) {
       x = Math.min(singleFrameBounds.left - (parentX + dim), x);
       y = Math.min(singleFrameBounds.top - (parentY + dim), y);
@@ -136,42 +209,76 @@ const constrainHandle = (
       y = Math.max(singleFrameBounds.bottom - (parentY + dim), y);
     }
   }
+
   handle.style.left = `${x}px`;
   handle.style.top = `${y}px`;
 };
 
-const singleFrame = ref<HTMLCanvasElement>();
+const buffer = 0; // extra offset in pixels to keep handles away from the exact corner
+
 const positionHandles = () => {
   if (
-    singleFrame.value &&
-    handle0.value &&
-    handle1.value &&
-    handle2.value &&
-    handle3.value &&
-    referenceImage.value
+    !handle0.value ||
+    !handle1.value ||
+    !handle2.value ||
+    !handle3.value ||
+    !skewContainer.value
   ) {
-    const singleFrameBounds = singleFrame.value.getBoundingClientRect();
-    const { left: parentX, top: parentY } = (
-      handle0.value.parentElement as HTMLDivElement
-    ).getBoundingClientRect();
-    const handleBounds = (
-      handle0.value as HTMLDivElement
-    ).getBoundingClientRect();
-    const dim = handleBounds.width / 2;
-    handle0.value.style.left = `${singleFrameBounds.left - (parentX + dim)}px`;
-    handle0.value.style.top = `${singleFrameBounds.top - (parentY + dim)}px`;
-
-    handle1.value.style.left = `${singleFrameBounds.right - (parentX + dim)}px`;
-    handle1.value.style.top = `${singleFrameBounds.top - (parentY + dim)}px`;
-
-    handle2.value.style.left = `${singleFrameBounds.right - (parentX + dim)}px`;
-    handle2.value.style.top = `${singleFrameBounds.bottom - (parentY + dim)}px`;
-
-    handle3.value.style.left = `${singleFrameBounds.left - (parentX + dim)}px`;
-    handle3.value.style.top = `${singleFrameBounds.bottom - (parentY + dim)}px`;
+    return;
   }
+
+  const h0 = handle0.value;
+  const h1 = handle1.value;
+  const h2 = handle2.value;
+  const h3 = handle3.value;
+  const handleBounds = h0.getBoundingClientRect();
+  const dim = handleBounds.width / 2;
+
+  // If the singleFrame exists, get its bounding rect:
+  if (singleFrame.value) {
+    const singleFrameBounds = singleFrame.value.getBoundingClientRect();
+    const { left: parentX, top: parentY } =
+      skewContainer.value.getBoundingClientRect();
+
+    // Check that singleFrameBounds has valid dimensions.
+    if (singleFrameBounds.width > 0 && singleFrameBounds.height > 0) {
+      // Position top-left handle
+      h0.style.left = `${singleFrameBounds.left - parentX - dim}px`;
+      h0.style.top = `${singleFrameBounds.top - parentY - dim}px`;
+
+      // Position top-right handle
+      h1.style.left = `${singleFrameBounds.right - parentX - dim}px`;
+      h1.style.top = `${singleFrameBounds.top - parentY - dim}px`;
+
+      // Position bottom-right handle
+      h2.style.left = `${singleFrameBounds.right - parentX - dim}px`;
+      h2.style.top = `${singleFrameBounds.bottom - parentY - dim}px`;
+
+      // Position bottom-left handle
+      h3.style.left = `${singleFrameBounds.left - parentX - dim}px`;
+      h3.style.top = `${singleFrameBounds.bottom - parentY - dim}px`;
+      renderSkewedImage();
+      return;
+    }
+  }
+
+  // Fallback: position handles relative to the container's size
+  const containerRect = skewContainer.value.getBoundingClientRect();
+  const cWidth = containerRect.width;
+  const cHeight = containerRect.height;
+
+  h0.style.left = `${-dim}px`;
+  h0.style.top = `${-dim}px`;
+  h1.style.left = `${cWidth - dim}px`;
+  h1.style.top = `${-dim}px`;
+  h2.style.left = `${cWidth - dim}px`;
+  h2.style.top = `${cHeight - dim}px`;
+  h3.style.left = `${-dim}px`;
+  h3.style.top = `${cHeight - dim}px`;
+
   renderSkewedImage();
 };
+
 watch(referenceImageSkew, positionHandles);
 
 const renderSkewedImage = () => {
@@ -184,17 +291,21 @@ const renderSkewedImage = () => {
     handle3.value &&
     referenceImage.value
   ) {
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.save();
     ctx.globalAlpha = savingReferenceImage.value
       ? 1
       : parseFloat(overlayOpacity.value);
+
+    // drawSkewedImage applies the 4-handle corners to the reference image
     drawSkewedImage(
       ctx,
       [handle0.value, handle1.value, handle2.value, handle3.value],
-      referenceImage.value
+      referenceImage.value,
     );
     ctx.restore();
 
+    // If not saving, draw an outline of the thermal camera's single-frame region
     if (singleFrame.value && !savingReferenceImage.value) {
       ctx.save();
       const {
@@ -203,46 +314,47 @@ const renderSkewedImage = () => {
         top: parentY,
       } = ctx.canvas.getBoundingClientRect();
       const ratio = ctx.canvas.width / canvasOnScreenWidth;
-      const singleFrameBounds = (
-        singleFrame.value as HTMLCanvasElement
-      ).getBoundingClientRect();
-      // Now draw the outline of the underlying canvas on top:
+      const singleFrameBounds = singleFrame.value.getBoundingClientRect();
+
       ctx.lineWidth = 1;
       ctx.strokeStyle = "white";
       ctx.globalCompositeOperation = "color-dodge";
       ctx.scale(ratio, ratio);
+
       ctx.strokeRect(
         singleFrameBounds.left - parentX,
         singleFrameBounds.top - parentY,
         singleFrameBounds.width,
-        singleFrameBounds.height
+        singleFrameBounds.height,
       );
       ctx.restore();
+
+      // Darken everything outside the singleFrame bounds
       ctx.save();
       ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
       ctx.fillRect(
         0,
         0,
         ctx.canvas.width,
-        (singleFrameBounds.top - parentY) * ratio
+        (singleFrameBounds.top - parentY) * ratio,
       );
       ctx.fillRect(
         0,
         (singleFrameBounds.top - parentY) * ratio,
         (singleFrameBounds.left - parentX) * ratio,
-        singleFrameBounds.height * ratio
+        singleFrameBounds.height * ratio,
       );
       ctx.fillRect(
-        ctx.canvas.width - (singleFrameBounds.left - parentX) * ratio,
+        (singleFrameBounds.right - parentX) * ratio,
         (singleFrameBounds.top - parentY) * ratio,
-        ctx.canvas.width - (singleFrameBounds.left - parentX) * ratio,
-        singleFrameBounds.height * ratio
+        ctx.canvas.width - (singleFrameBounds.right - parentX) * ratio,
+        singleFrameBounds.height * ratio,
       );
       ctx.fillRect(
         0,
-        (singleFrameBounds.top - parentY + singleFrameBounds.height) * ratio,
+        (singleFrameBounds.bottom - parentY) * ratio,
         ctx.canvas.width,
-        ctx.canvas.height - (singleFrameBounds.top - parentY) * ratio
+        ctx.canvas.height - (singleFrameBounds.bottom - parentY) * ratio,
       );
       ctx.restore();
     }
@@ -251,21 +363,23 @@ const renderSkewedImage = () => {
 
 watch(overlayOpacity, renderSkewedImage);
 watch(singleFrameCanvasWidth, () => {
-  // When the cptv single frame is scaled small, and the handle constraints are close around it,
-  // if we scale it large again we need to re-evaluate the handle constraints.
+  // Re-check handle constraints if the singleFrame has changed in size
   if (singleFrame.value && handle0.value) {
     const singleFrameBounds = singleFrame.value.getBoundingClientRect();
     const singleFrameParentBounds = (
       (singleFrame.value.parentElement as HTMLDivElement)
         .parentElement as HTMLDivElement
     ).getBoundingClientRect();
+
     const sfLeft = singleFrameBounds.left - singleFrameParentBounds.left;
     const sfTop = singleFrameBounds.top - singleFrameParentBounds.top;
-    const sfRight = sfLeft + singleFrameBounds.width; //singleFrameBounds.right - singleFrameParentBounds.right;
-    const sfBottom = sfTop + singleFrameBounds.height; //singleFrameBounds.bottom - singleFrameParentBounds.bottom;
+    const sfRight = sfLeft + singleFrameBounds.width;
+    const sfBottom = sfTop + singleFrameBounds.height;
+
     const parentBounds = (
       handle0.value.parentElement as HTMLDivElement
     ).getBoundingClientRect();
+
     for (const handle of [
       handle0.value,
       handle1.value,
@@ -277,6 +391,7 @@ watch(singleFrameCanvasWidth, () => {
       const dim = width / 2;
       let x = handleX - parentBounds.left;
       let y = handleY - parentBounds.top;
+
       if (h === handle0.value) {
         x = Math.min(x, sfLeft - dim);
         y = Math.min(y, sfTop - dim);
@@ -300,7 +415,7 @@ watch(cptvFrameScale, renderSkewedImage);
 
 const referenceImageIsLandscape = computed<boolean>(() => {
   if (referenceImage.value) {
-    return referenceImage.value?.width >= referenceImage.value?.height;
+    return referenceImage.value.width >= referenceImage.value.height;
   }
   return true;
 });
@@ -322,7 +437,6 @@ const cptvFrameHeight = computed<number>(() => {
 });
 
 const grabHandle = (event: PointerEvent) => {
-  // NOTE: Maintain the offset of the cursor on the pointer when it's selected.
   grabOffsetX = event.offsetX;
   grabOffsetY = event.offsetY;
   const target = event.currentTarget as HTMLDivElement;
@@ -331,14 +445,22 @@ const grabHandle = (event: PointerEvent) => {
   target.setPointerCapture(event.pointerId);
 };
 
+const releaseHandle = (event: PointerEvent) => {
+  const target = event.currentTarget as HTMLDivElement;
+  selectedHandle.value = null;
+  target.classList.remove("selected");
+  target.releasePointerCapture(event.pointerId);
+};
+
+// ----- Reveal slider logic -----
+const revealSlider = ref<HTMLDivElement>();
+const revealHandle = ref<HTMLDivElement>();
 const revealHandleSelected = ref<boolean>(false);
+let revealGrabOffsetX = 0;
+
 const grabRevealHandle = (event: PointerEvent) => {
-  // @pointerup="releaseRevealHandle"
-  // @pointermove="moveRevealHandle"
   window.addEventListener("pointermove", moveRevealHandle);
   window.addEventListener("pointerup", releaseRevealHandle);
-
-  // NOTE: Maintain the offset of the cursor on the pointer when it's selected.
   revealGrabOffsetX = event.offsetX;
   const target = event.currentTarget as HTMLDivElement;
   target.classList.add("selected");
@@ -346,11 +468,24 @@ const grabRevealHandle = (event: PointerEvent) => {
   target.setPointerCapture(event.pointerId);
 };
 
-const releaseHandle = (event: PointerEvent) => {
-  const target = event.currentTarget as HTMLDivElement;
-  selectedHandle.value = null;
-  target.classList.remove("selected");
-  target.releasePointerCapture(event.pointerId);
+const moveRevealHandle = (event: PointerEvent) => {
+  if (revealHandleSelected.value && revealHandle.value) {
+    event.preventDefault();
+    const target = revealHandle.value;
+    const parentBounds = target.parentElement!.getBoundingClientRect();
+    const handleBounds = target.getBoundingClientRect();
+    const x = Math.min(
+      Math.max(
+        -(handleBounds.width / 2),
+        event.clientX - parentBounds.left - revealGrabOffsetX,
+      ),
+      parentBounds.width - handleBounds.width / 2,
+    );
+    if (revealSlider.value) {
+      revealSlider.value.style.width = `${x + handleBounds.width / 2}px`;
+    }
+    target.style.left = `${x}px`;
+  }
 };
 
 const releaseRevealHandle = (event: PointerEvent) => {
@@ -364,73 +499,64 @@ const releaseRevealHandle = (event: PointerEvent) => {
   }
 };
 
-const moveRevealHandle = (event: PointerEvent) => {
-  if (revealHandleSelected.value && revealHandle.value) {
-    event.preventDefault();
-    const target = revealHandle.value;
-    const parentBounds = (
-      target.parentElement as HTMLDivElement
-    ).getBoundingClientRect();
-    const handleBounds = target.getBoundingClientRect();
-    const x = Math.min(
-      Math.max(
-        -(handleBounds.width / 2),
-        event.clientX - parentBounds.left - revealGrabOffsetX
-      ),
-      parentBounds.width - handleBounds.width / 2
-    );
-    if (revealSlider.value) {
-      revealSlider.value.style.width = `${x + handleBounds.width / 2}px`;
-    }
-    target.style.left = `${x}px`;
-  }
-};
-
 const savingReferenceImage = ref<boolean>(false);
+
 const saveReferenceImage = async () => {
   const ctx = referenceImageSkew.value?.getContext("2d");
-  if (ctx) {
-    savingReferenceImage.value = true;
-    renderSkewedImage();
-    ctx.save();
-    const {
-      width: canvasOnScreenWidth,
-      left: parentX,
-      top: parentY,
-    } = ctx.canvas.getBoundingClientRect();
-    const ratio = ctx.canvas.width / canvasOnScreenWidth;
-    const singleFrameBounds = (
-      singleFrame.value as HTMLCanvasElement
-    ).getBoundingClientRect();
-    // Now draw the outline of the underlying canvas on top:
-    const imageData = ctx.getImageData(
-      (singleFrameBounds.left - parentX) * ratio,
-      (singleFrameBounds.top - parentY) * ratio,
-      singleFrameBounds.width * ratio,
-      singleFrameBounds.height * ratio
-    );
-    ctx.restore();
+  if (!ctx) {
+    return;
+  }
 
+  savingReferenceImage.value = true;
+  renderSkewedImage(); // do one final draw at full opacity
+
+  ctx.save();
+  const {
+    width: canvasOnScreenWidth,
+    left: parentX,
+    top: parentY,
+  } = ctx.canvas.getBoundingClientRect();
+  const ratio = ctx.canvas.width / canvasOnScreenWidth;
+  const singleFrameBounds = singleFrame.value?.getBoundingClientRect();
+  if (!singleFrameBounds) {
     savingReferenceImage.value = false;
-    renderSkewedImage();
+    return;
+  }
 
-    const webp = await encode(imageData, { quality: 90 });
-    const response = await updateReferenceImageForDeviceAtCurrentLocation(
-      device.value!.id,
-      webp
-    );
-    if (response.success) {
-      emit("updated-reference-image");
-    }
+  const imageData = ctx.getImageData(
+    (singleFrameBounds.left - parentX) * ratio,
+    (singleFrameBounds.top - parentY) * ratio,
+    singleFrameBounds.width * ratio,
+    singleFrameBounds.height * ratio,
+  );
+  ctx.restore();
+
+  savingReferenceImage.value = false;
+  renderSkewedImage();
+
+  const webp = await convertImageDataToWebP(imageData);
+  const response = await updateReferenceImageForDeviceAtCurrentLocation(
+    device.value!.id,
+    webp,
+  );
+  if (response.success) {
+    // Create a local blob URL to show the updated image immediately
+    const newUrl = URL.createObjectURL(webp);
+    latestReferenceImageURL.value = newUrl;
+    editingReferenceImage.value = false;
+    emit("updated-reference-image");
+  } else {
+    console.error("Saving reference image failed:", response.result.messages);
   }
 };
-const revealSlider = ref<HTMLDivElement>();
-const revealHandle = ref<HTMLDivElement>();
+
 const helpInfo = ref(true);
 </script>
+
 <template>
   <div class="d-flex flex-row justify-content-between">
     <div class="w-100 d-flex justify-content-center align-items-center">
+      <!-- LOADING SPINNER -->
       <div
         v-if="loading"
         class="d-flex justify-content-center align-items-center"
@@ -438,22 +564,24 @@ const helpInfo = ref(true);
       >
         <b-spinner />
       </div>
+
+      <!-- NO REFERENCE IMAGE YET -->
       <div
         class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
         v-else-if="!latestReferenceImageURL"
       >
-        <b-alert dismissible v-model="helpInfo"
-          ><p>
-            Sometimes it can be difficult to figure out what's going on in a
-            thermal camera recording scene.
+        <b-alert dismissible v-model="helpInfo">
+          <p>
+            Sometimes it’s hard to make sense of a scene captured by a thermal
+            camera. Try taking or selecting a
+            <strong>reference photo</strong>—for example, using the Sidekick
+            mobile app—then adjust it to match the thermal view.
           </p>
           <p>
-            Choose a <strong>'reference photo'</strong>, then adjust it to make
-            it match what the thermal camera sees as closely as possible.
-            <br /><br />This can help you to remember where those bushes or
-            trees were when an animal magically emerges from them!
-          </p></b-alert
-        >
+            This makes it easier to remember where bushes or trees
+            are—especially helpful when an animal suddenly appears from them!
+          </p>
+        </b-alert>
 
         <div
           class="d-flex justify-content-center align-items-center position-relative skew-container mt-3"
@@ -465,7 +593,7 @@ const helpInfo = ref(true);
             :width="cptvFrameWidth"
             :height="cptvFrameHeight"
             ref="singleFrameCanvas"
-            @loaded="(el) => (singleFrame = el)"
+            @loaded="handleSingleFrameLoaded"
           />
           <input
             type="file"
@@ -474,7 +602,7 @@ const helpInfo = ref(true);
             v-if="!referenceImage"
             accept="image/png, image/jpeg, image/heif"
           />
-          <div class="skew-canvas" v-if="referenceImage">
+          <div class="skew-canvas" v-show="referenceImage">
             <canvas
               ref="referenceImageSkew"
               width="1280"
@@ -515,6 +643,7 @@ const helpInfo = ref(true);
             />
           </div>
         </div>
+
         <div class="d-flex align-items-center mt-3">
           <div
             v-if="referenceImage"
@@ -563,51 +692,177 @@ const helpInfo = ref(true);
           </div>
         </div>
       </div>
-      <div
-        v-else
-        class="d-flex justify-content-center align-items-center flex-column mt-2 mt-lg-0"
-      >
-        <div class="position-relative">
-          <div class="existing-reference-image position-relative">
+
+      <!-- REFERENCE IMAGE EXISTS -->
+      <div v-else>
+        <!-- EDIT MODE for existing reference image -->
+        <div
+          v-if="editingReferenceImage"
+          class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
+        >
+          <div
+            class="d-flex justify-content-center align-items-center position-relative skew-container mt-3"
+            ref="skewContainer"
+          >
             <cptv-single-frame
               :recording="latestStatusRecording"
               v-if="latestStatusRecording"
+              :width="cptvFrameWidth"
+              :height="cptvFrameHeight"
               ref="singleFrameCanvas"
-              class="position-absolute"
               @loaded="(el) => (singleFrame = el)"
             />
-            <div class="reveal-slider position-absolute" ref="revealSlider">
-              <img
-                alt="Current device point-of-view reference photo"
-                :src="latestReferenceImageURL"
+
+            <!-- Same canvas + handles as above -->
+            <div class="skew-canvas" v-if="referenceImage">
+              <canvas
+                ref="referenceImageSkew"
+                width="1280"
+                height="960"
+                class="skew-canvas"
+              />
+              <div
+                class="handle"
+                ref="handle0"
+                @touchstart="(e) => e.preventDefault()"
+                @pointerdown="grabHandle"
+                @pointerup="releaseHandle"
+                @pointermove="moveHandle"
+              />
+              <div
+                class="handle"
+                ref="handle1"
+                @touchstart="(e) => e.preventDefault()"
+                @pointerdown="grabHandle"
+                @pointerup="releaseHandle"
+                @pointermove="moveHandle"
+              />
+              <div
+                class="handle"
+                ref="handle2"
+                @touchstart="(e) => e.preventDefault()"
+                @pointerdown="grabHandle"
+                @pointerup="releaseHandle"
+                @pointermove="moveHandle"
+              />
+              <div
+                class="handle"
+                ref="handle3"
+                @touchstart="(e) => e.preventDefault()"
+                @pointerdown="grabHandle"
+                @pointerup="releaseHandle"
+                @pointermove="moveHandle"
               />
             </div>
           </div>
-          <div
-            class="reveal-handle d-flex align-items-center justify-content-center user-select-none"
-            ref="revealHandle"
-            @pointerdown="grabRevealHandle"
-            @touchstart="(e) => e.preventDefault()"
-          >
-            <font-awesome-icon icon="left-right" />
+          <div class="d-flex align-items-center mt-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="me-5">
+                <div>
+                  <label for="opacity">Reference image opacity</label>
+                  <b-form-input
+                    id="opacity"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    v-model="overlayOpacity"
+                  />
+                </div>
+                <div>
+                  <label for="opacity">Location view scale</label>
+                  <b-form-input
+                    id="opacity"
+                    type="range"
+                    min="0.75"
+                    max="1"
+                    step="0.01"
+                    v-model="cptvFrameScale"
+                  />
+                </div>
+              </div>
+              <div class="d-flex flex-column">
+                <button
+                  type="button"
+                  class="btn btn-outline-warning"
+                  @click="() => (editingReferenceImage = false)"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary mt-2"
+                  @click="saveReferenceImage"
+                >
+                  Save reference image
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div
-        class="d-flex flex-column align-items-md-center mt-3"
-        v-if="latestReferenceImageURL"
-      >
-        <button
-          type="button"
-          class="btn btn-primary"
-          @click="replaceExistingReferenceImage"
+
+        <!-- REVEAL SLIDER MODE (default) -->
+        <div
+          v-else
+          class="d-flex justify-content-center align-items-center flex-column mt-2 mt-lg-0"
         >
-          Choose a new reference image
-        </button>
+          <div class="position-relative">
+            <div class="existing-reference-image position-relative">
+              <cptv-single-frame
+                :recording="latestStatusRecording"
+                v-if="latestStatusRecording"
+                ref="singleFrameCanvas"
+                class="position-absolute"
+                @loaded="handleSingleFrameLoaded"
+              />
+              <div class="reveal-slider position-absolute" ref="revealSlider">
+                <img
+                  alt="Current device point-of-view reference photo"
+                  :src="latestReferenceImageURL"
+                />
+              </div>
+            </div>
+            <div
+              class="reveal-handle d-flex align-items-center justify-content-center user-select-none"
+              ref="revealHandle"
+              @pointerdown="grabRevealHandle"
+              @touchstart="(e) => e.preventDefault()"
+            >
+              <font-awesome-icon icon="left-right" />
+            </div>
+          </div>
+        </div>
+        <input
+          ref="fileInputRef"
+          type="file"
+          style="display: none"
+          @change="onSelectReferenceImage"
+          accept="image/png, image/jpeg, image/heif"
+        />
+        <div class="d-flex flex-column align-items-md-center mt-3">
+          <div class="d-flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="btn btn-primary"
+              @click="replaceExistingReferenceImage"
+            >
+              Choose a new reference image
+            </button>
+            <button
+              v-if="!editingReferenceImage"
+              type="button"
+              class="btn btn-secondary"
+              @click="editExistingReferenceImage"
+            >
+              Edit reference image POV
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
+
 <style scoped lang="less">
 .reference-image {
   max-width: 640px;
@@ -639,7 +894,6 @@ const helpInfo = ref(true);
 .skew-container {
   width: 640px;
   aspect-ratio: auto 4/3;
-  //border: 3px dashed #cecece;
   background: #333;
   border-radius: 10px;
 }
@@ -648,11 +902,10 @@ const helpInfo = ref(true);
   position: absolute;
   left: 0;
   top: 0;
-  bottom: 0;
-  right: 0;
   width: 640px;
   aspect-ratio: auto 4/3;
   border-radius: 10px;
+  z-index: 1;
 }
 @media screen and (max-width: 639px) {
   .skew-container,
@@ -660,14 +913,15 @@ const helpInfo = ref(true);
     width: 100svw;
   }
 }
+
 .handle {
   border-radius: 12px;
   width: 24px;
   height: 24px;
-  display: block;
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 2;
   opacity: 0.25;
   background-color: rgba(255, 255, 255, 0.25);
   border: 1px solid white;
@@ -680,27 +934,25 @@ const helpInfo = ref(true);
     cursor: grabbing;
   }
 }
+
 .select-reference-image {
   position: absolute;
   opacity: 0.8;
   width: 60%;
 }
+
 .existing-reference-image {
-  //width: 640px;
-  //height: 480px;
   border-radius: 10px;
-  //overflow: hidden;
-  img {
-    //pointer-events: none;
-  }
+  overflow: hidden;
 }
+
 .reveal-slider {
   width: 50%;
   overflow: hidden;
   user-select: none;
 }
+
 .reveal-handle {
-  content: "";
   position: absolute;
   top: calc(50% - 20px);
   width: 40px;
@@ -708,7 +960,7 @@ const helpInfo = ref(true);
   border-radius: 50%;
   color: rgba(255, 255, 255, 0.85);
   background: rgba(0, 0, 0, 0.5);
-  left: (calc(50% - 20px));
+  left: calc(50% - 20px);
   font-size: 20px;
   cursor: grab;
   &.selected {

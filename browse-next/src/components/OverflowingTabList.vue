@@ -38,7 +38,7 @@ watch(
   (newItems) => {
     items.value = newItems as VNode[];
     findSelectedItemName();
-  }
+  },
 );
 watch(listWidth, (newWidth) => {
   // Measure the children.
@@ -82,7 +82,7 @@ watch(listHeight, (newHeight, oldHeight) => {
 });
 const findSelectedItemName = () => {
   const name = items.value.find(
-    (item) => item.props && item.props.class.includes("active")
+    (item) => item.props && item.props.class.includes("active"),
   );
   if (name && name.props) {
     activeItemTitle.value = name.props.title;
@@ -90,6 +90,8 @@ const findSelectedItemName = () => {
 };
 
 const activeItemTitle = ref<string>("");
+
+// TODO: If overflowing items are selected, move the ellipsis around and have the selected item showing?
 </script>
 
 <template>

@@ -81,7 +81,7 @@ interface ApiLoggedInUserResponseSuccess {
 }
 export const mapUser = (
   user: User,
-  omitSettings = false
+  omitSettings = false,
 ): ApiLoggedInUserResponse => {
   const userData: ApiLoggedInUserResponse = {
     id: user.id,
@@ -114,7 +114,7 @@ export default function (app: Application, baseUrl: string) {
     async (request, response) => {
       const users = await models.User.getAll(
         {},
-        response.locals.requestUser.hasGlobalWrite()
+        response.locals.requestUser.hasGlobalWrite(),
       );
 
       return successResponse(response, { usersList: mapUsers(users, true) });
@@ -171,7 +171,7 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ValidationError([
             { msg: "Email address in use", location: "body", param: "email" },
-          ])
+          ]),
         );
       } else {
         next();
@@ -189,7 +189,7 @@ export default function (app: Application, baseUrl: string) {
               location: "body",
               param: "endUserAgreement",
             },
-          ])
+          ]),
         );
       } else {
         next();
@@ -221,7 +221,7 @@ export default function (app: Application, baseUrl: string) {
         const addedToGroups = [];
         if (isSigningUpFromEmailInvitation) {
           const oneWeekAgo = new Date(
-            new Date().setDate(new Date().getDate() - 7)
+            new Date().setDate(new Date().getDate() - 7),
           );
           // NOTE: Check if there are any pending non-expired group invites for this email address:
           const pendingInvites = await models.GroupInvites.findAll({
@@ -238,7 +238,7 @@ export default function (app: Application, baseUrl: string) {
                 user,
                 invitation.admin,
                 invitation.owner,
-                null
+                null,
               );
               if (added) {
                 addedToGroups.push(group);
@@ -253,7 +253,7 @@ export default function (app: Application, baseUrl: string) {
           sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
             request.headers.host,
             user.email,
-            addedToGroups.map(({ groupName }) => groupName)
+            addedToGroups.map(({ groupName }) => groupName),
           );
         } else {
           // NOTE Send a welcome email, with a requirement to validate the email address.
@@ -263,7 +263,7 @@ export default function (app: Application, baseUrl: string) {
           sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
             request.headers.host,
             getEmailConfirmationToken(user.id, user.email),
-            user.email
+            user.email,
           );
         }
 
@@ -274,7 +274,7 @@ export default function (app: Application, baseUrl: string) {
           // In this case, we don't want to create the user.
           await user.destroy();
           return next(
-            new FatalError("Failed to send welcome/email confirmation email.")
+            new FatalError("Failed to send welcome/email confirmation email."),
           );
         }
       }
@@ -282,14 +282,14 @@ export default function (app: Application, baseUrl: string) {
         models,
         user,
         request.headers["viewport"] as string,
-        request.headers["user-agent"]
+        request.headers["user-agent"],
       );
       return successResponse(response, "Created new user.", {
         token: apiToken,
         refreshToken,
         userData: mapUser(user),
       });
-    }
+    },
   );
 
   if (config.server.loggerLevel === "debug") {
@@ -302,7 +302,7 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Got email confirmation token.", {
           token,
         });
-      }
+      },
     );
   }
 
@@ -332,7 +332,7 @@ export default function (app: Application, baseUrl: string) {
         body("email").isEmail(),
         validPasswordOf(body("password")),
         integerOf(body("endUserAgreement")),
-        body("settings").custom(jsonSchemaOf(ApiUserSettingsSchema))
+        body("settings").custom(jsonSchemaOf(ApiUserSettingsSchema)),
       ),
     ]),
     async (request: Request, Response: Response, next: NextFunction) => {
@@ -343,7 +343,7 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ValidationError([
             { msg: "Email address in use", location: "body", param: "email" },
-          ])
+          ]),
         );
       } else {
         next();
@@ -353,7 +353,7 @@ export default function (app: Application, baseUrl: string) {
       // map matchedData to db fields.
       const dataToUpdate = matchedData(request);
       const requestUser = await models.User.findByPk(
-        response.locals.requestUser.id
+        response.locals.requestUser.id,
       );
       if (dataToUpdate.email) {
         // If the user has changed their email, we'll need to send
@@ -365,23 +365,23 @@ export default function (app: Application, baseUrl: string) {
         ) {
           const token = getEmailConfirmationToken(
             requestUser.id,
-            dataToUpdate.email
+            dataToUpdate.email,
           );
           const emailSuccess = await sendChangedEmailConfirmationEmail(
             request.headers.host,
             token,
-            dataToUpdate.email
+            dataToUpdate.email,
           );
           if (!emailSuccess && config.productionEnv) {
             return next(
-              new FatalError("Failed to send email confirmation email.")
+              new FatalError("Failed to send email confirmation email."),
             );
           }
         }
       }
       await requestUser.update(dataToUpdate);
       return successResponse(response, "Updated user.");
-    }
+    },
   );
 
   /**
@@ -415,8 +415,8 @@ export default function (app: Application, baseUrl: string) {
         return next(
           new ClientError(
             "User doesn't have permissions to view other user details",
-            HttpStatusCode.Forbidden
-          )
+            HttpStatusCode.Forbidden,
+          ),
         );
       }
     },
@@ -424,7 +424,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, {
         userData: mapUser(response.locals.user),
       });
-    }
+    },
   );
 
   /**
@@ -485,7 +485,7 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Incremented EUA version", {
           euaVersion: config.euaVersion,
         });
-      }
+      },
     );
 
     // TODO(docs) - This is just for test/debug purposes to increment the CW version and test that the UI prompts to refresh.
@@ -494,7 +494,7 @@ export default function (app: Application, baseUrl: string) {
       async (request: Request, response: Response) => {
         CACOPHONY_WEB_VERSION.version += ".1";
         return successResponse(response, "Incremented Cacophony web version");
-      }
+      },
     );
   }
 
@@ -506,7 +506,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.user.password !== response.locals.resetInfo.password
       ) {
         return next(
-          new UnprocessableError("Your password has already been changed")
+          new UnprocessableError("Your password has already been changed"),
         );
       }
       const newPasswordIsTheSameAsOld =
@@ -514,8 +514,8 @@ export default function (app: Application, baseUrl: string) {
       if (newPasswordIsTheSameAsOld) {
         return next(
           new UnprocessableError(
-            "New password must be different from old password"
-          )
+            "New password must be different from old password",
+          ),
         );
       }
       const result = await response.locals.user.update({
@@ -523,14 +523,14 @@ export default function (app: Application, baseUrl: string) {
       });
       if (!result) {
         return next(
-          new ClientError("Error changing password please contact sys admin")
+          new ClientError("Error changing password please contact sys admin"),
         );
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
         models,
         response.locals.user,
         request.headers["viewport"] as string,
-        request.headers["user-agent"]
+        request.headers["user-agent"],
       );
       return successResponse(response, {
         token: apiToken,
@@ -594,7 +594,7 @@ export default function (app: Application, baseUrl: string) {
       // Check if the user already belongs to the group.
       // Check if the user giving permissions is still an admin member of the group in question.
       return successResponse(response, "Added to invited group");
-    }
+    },
   );
 
   // TODO(docs) - This returns limited info about groups that a user with this email address is admin of.
@@ -616,7 +616,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got groups for admin user", {
         groups,
       });
-    }
+    },
   );
 
   app.get(
@@ -637,7 +637,7 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Got groups for user", {
         groups,
       });
-    }
+    },
   );
 
   app.post(
@@ -659,16 +659,16 @@ export default function (app: Application, baseUrl: string) {
       // Make sure each of the groups requested is found in the group admin users groups that
       // they are admin of:
       const requestingUser = await models.User.findByPk(
-        response.locals.originalUser.id
+        response.locals.originalUser.id,
       );
       const requestedOfUser = await models.User.findByPk(
-        response.locals.requestUser.id
+        response.locals.requestUser.id,
       );
       if (!requestedOfUser.emailConfirmed || !requestingUser.emailConfirmed) {
         return next(
           new ClientError(
-            "Requested and/or requesting user has not activated their account"
-          )
+            "Requested and/or requesting user has not activated their account",
+          ),
         );
       }
       await models.Group.addOrUpdateGroupUser(
@@ -676,11 +676,11 @@ export default function (app: Application, baseUrl: string) {
         requestingUser,
         false,
         false,
-        "requested"
+        "requested",
       );
       const acceptToGroupRequestToken = getJoinGroupRequestToken(
         requestingUser.id,
-        response.locals.group.id
+        response.locals.group.id,
       );
       const sendSuccess = await sendGroupMembershipRequestEmail(
         request.headers.host,
@@ -688,16 +688,16 @@ export default function (app: Application, baseUrl: string) {
         requestingUser.email,
         requestingUser.userName,
         response.locals.group.groupName,
-        requestedOfUser.email
+        requestedOfUser.email,
       );
       if (sendSuccess) {
         return successResponse(response, "Sent membership request to user");
       } else {
         return next(
-          new FatalError("Failed sending membership request email to user")
+          new FatalError("Failed sending membership request email to user"),
         );
       }
-    }
+    },
   );
 
   app.post(
@@ -711,7 +711,7 @@ export default function (app: Application, baseUrl: string) {
     extractJWTInfo(body("membershipRequestJWT")),
     async (request, response, next) => {
       await fetchAdminAuthorizedRequiredGroupById(
-        response.locals.tokenInfo.group
+        response.locals.tokenInfo.group,
       )(request, response, next);
     },
     async (request: Request, response: Response, next: NextFunction) => {
@@ -748,20 +748,20 @@ export default function (app: Application, baseUrl: string) {
         userToGrantMembershipFor,
         asAdmin,
         asOwner,
-        null
+        null,
       );
       if (userToGrantMembershipFor.emailConfirmed) {
         await sendAddedToGroupNotificationEmail(
           request.headers.host,
           userToGrantMembershipFor.email,
           response.locals.group.groupName,
-          permissions
+          permissions,
         );
       }
       return successResponse(response, "Allowed to add user.", {
         userId: id,
         userName: userToGrantMembershipFor.userName,
       });
-    }
+    },
   );
 }

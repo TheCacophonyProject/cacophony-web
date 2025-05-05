@@ -56,7 +56,8 @@ export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {
   latest(
     deviceId: DeviceId,
     groupId: GroupId,
-    atTime?: Date
+    atTime?: Date,
+    where?: any
   ): Promise<DeviceHistory | null>;
   getEarliestFromDateTimeForDeviceAtCurrentLocation(
     deviceId: DeviceId,
@@ -67,7 +68,7 @@ export interface DeviceHistoryStatic extends ModelStaticCommon<DeviceHistory> {
 
 export default function (
   sequelize: Sequelize.Sequelize,
-  DataTypes
+  DataTypes,
 ): DeviceHistoryStatic {
   const name = "DeviceHistory";
 
@@ -83,7 +84,7 @@ export default function (
         "user",
         "config",
         "register",
-        "re-register"
+        "re-register",
       ),
       allowNull: false,
     },
@@ -134,31 +135,57 @@ export default function (
   DeviceHistory.latest = async function (
     deviceId: DeviceId,
     groupId: GroupId,
-    atTime = new Date()
+    atTime = new Date(),
+    where = {},
   ): Promise<DeviceHistory | null> {
-    return this.findOne({
+    // Find the closest entry before (or at) atTime
+    const before = await this.findOne({
       where: {
         DeviceId: deviceId,
         GroupId: groupId,
-        location: { [Op.ne]: null },
         fromDateTime: { [Op.lte]: atTime },
+        location: { [Op.ne]: null },
+        ...where,
       },
       order: [["fromDateTime", "DESC"]],
     });
+
+    // Find the closest entry after (or at) atTime
+    const after = await this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+        fromDateTime: { [Op.gte]: atTime },
+        location: { [Op.ne]: null },
+        ...where,
+      },
+      order: [["fromDateTime", "ASC"]],
+    });
+
+    // If both exist, choose the one with the smallest difference to atTime.
+    if (before && after) {
+      const diffBefore = atTime.getTime() - before.fromDateTime.getTime();
+      const diffAfter = after.fromDateTime.getTime() - atTime.getTime();
+
+      return diffBefore <= diffAfter ? before : after;
+    }
+
+    // If only one exists, return that one.
+    return before || after;
   };
   DeviceHistory.updateDeviceSettings = async function (
     deviceId: DeviceId,
     groupId: GroupId,
     newSettings: ApiDeviceHistorySettings,
-    setBy: DeviceHistorySetBy
+    setBy: DeviceHistorySetBy,
   ): Promise<ApiDeviceHistorySettings> {
     const currentSettingsEntry: DeviceHistory = await this.latest(
       deviceId,
-      groupId
+      groupId,
     );
     if (!currentSettingsEntry) {
       throw Error(
-        `Device may not be registered or setup in group ${groupId}/with location`
+        `Device may not be registered or setup in group ${groupId}/with location`,
       );
     }
     const currentSettings: ApiDeviceHistorySettings =
@@ -167,7 +194,7 @@ export default function (
     const { settings, changed } = mergeSettings(
       currentSettings,
       newSettings,
-      setBy
+      setBy,
     );
 
     const synced = setBy === "automatic";
@@ -195,7 +222,7 @@ export default function (
             DeviceId: deviceId,
             GroupId: groupId,
           },
-        }
+        },
       );
     }
     return settings;
@@ -205,12 +232,12 @@ export default function (
     async function (
       deviceId: DeviceId,
       groupId: GroupId,
-      atTime = new Date()
+      atTime = new Date(),
     ): Promise<Date | null> {
       const currentSettingsEntry: DeviceHistory = await this.latest(
         deviceId,
         groupId,
-        atTime
+        atTime,
       );
       if (currentSettingsEntry) {
         const earliestEntry = await this.findOne({
@@ -243,7 +270,7 @@ export default function (
 function mergeSettings(
   currentSettings: ApiDeviceHistorySettings,
   incomingSettings: ApiDeviceHistorySettings,
-  setBy: DeviceHistorySetBy
+  setBy: DeviceHistorySetBy,
 ): { settings: ApiDeviceHistorySettings; changed: boolean } {
   const mergedSettings: ApiDeviceHistorySettings = { ...currentSettings };
 

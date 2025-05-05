@@ -10,7 +10,7 @@ const fetchJsonWithMethod = async (
   endpoint: string,
   method: HttpMethod,
   body?: object,
-  abortable?: boolean
+  abortable?: boolean,
 ) => {
   const payload = {
     method,
@@ -65,7 +65,7 @@ export default {
   postBinaryData: async (
     endpoint: string,
     body: ArrayBuffer,
-    abortable?: boolean
+    abortable?: boolean,
   ) => fetch(`${API_ROOT}${endpoint}`, { method: "POST", body }, abortable),
 
   /**
@@ -79,7 +79,7 @@ export default {
   postMultipartFormData: async (
     endpoint: string,
     body: FormData,
-    abortable?: boolean
+    abortable?: boolean,
   ) => fetch(`${API_ROOT}${endpoint}`, { method: "POST", body }, abortable),
 
   /**
@@ -116,7 +116,7 @@ export const optionalQueryString = (params: URLSearchParams) => {
 
 export const unwrapLoadedResource = <T>(
   apiCall: Promise<WrappedFetchResult<T>>,
-  responseKey: string
+  responseKey: string,
 ): Promise<LoadedResource<T>> => {
   return new Promise((resolve) => {
     apiCall.then((response) => {

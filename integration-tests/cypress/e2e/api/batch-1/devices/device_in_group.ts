@@ -50,7 +50,7 @@ describe("Device in group", () => {
       camera,
       group,
       null,
-      expectedDeviceInGroupAdminView
+      expectedDeviceInGroupAdminView,
     );
   });
 
@@ -60,14 +60,14 @@ describe("Device in group", () => {
       camera,
       group,
       null,
-      expectedDeviceInGroupUserView
+      expectedDeviceInGroupUserView,
     );
   });
 
   it("Non member should not have any access", () => {
     logTestDescription(
       `Check that ${hacker} is blocked from getting device`,
-      {}
+      {},
     );
     cy.apiDeviceInGroupCheck(
       hacker,
@@ -76,7 +76,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -86,7 +86,7 @@ describe("Device in group", () => {
       camera,
       group,
       getCreds(group).id,
-      expectedDeviceInGroupUserView
+      expectedDeviceInGroupUserView,
     );
   });
 
@@ -98,7 +98,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 
@@ -110,7 +110,7 @@ describe("Device in group", () => {
       null,
       null,
       {},
-      HttpStatusCode.Forbidden
+      HttpStatusCode.Forbidden,
     );
   });
 });

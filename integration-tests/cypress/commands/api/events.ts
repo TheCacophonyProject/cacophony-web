@@ -34,7 +34,7 @@ Cypress.Commands.add(
     dates: string[] = [new Date().toISOString()],
     eventDetailId: number,
     log: boolean = true,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     const data: ApiEventSet = {
       dateTimes: dates,
@@ -44,7 +44,7 @@ Cypress.Commands.add(
     logTestDescription(
       `Create event for ${deviceName} at ${dates}`,
       { data: data },
-      log
+      log,
     );
     makeAuthorizedRequestWithStatus(
       {
@@ -53,11 +53,11 @@ Cypress.Commands.add(
         body: data,
       },
       deviceName,
-      statusCode
+      statusCode,
     ).then((response) => {
       cy.wrap(response.body.eventDetailId);
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -69,7 +69,7 @@ Cypress.Commands.add(
     dates: string[] = [new Date().toISOString()],
     eventDetailId?: number,
     log: boolean = true,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     let deviceId: string;
     const data: ApiEventSet = {
@@ -87,7 +87,7 @@ Cypress.Commands.add(
     logTestDescription(
       `Create event for ${deviceIdOrName} at ${dates}`,
       { data: data },
-      log
+      log,
     );
     makeAuthorizedRequestWithStatus(
       {
@@ -96,11 +96,11 @@ Cypress.Commands.add(
         body: data,
       },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       cy.wrap(response.body.eventDetailId);
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -113,7 +113,7 @@ Cypress.Commands.add(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Check for expected errors for ${deviceName} `, {
       userName,
@@ -138,7 +138,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       { url: v1ApiPath("events/errors/", filteredParams) },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         const errors = response.body.rows;
@@ -146,7 +146,7 @@ Cypress.Commands.add(
         //check the right number of error categories is present
         expect(
           errorCategories.length,
-          `Expect there to be ${expectedErrors.length} error categories`
+          `Expect there to be ${expectedErrors.length} error categories`,
         ).to.equal(expectedErrors.length);
 
         //then check that each expected category is present
@@ -159,12 +159,12 @@ Cypress.Commands.add(
           //check list of devices
           expect(
             JSON.stringify(category.devices),
-            "devices in category"
+            "devices in category",
           ).to.equal(JSON.stringify(expectedCategory.devices));
           //check list of errors
           expect(
             category.errors.length,
-            "Number of errors in category should be as expected"
+            "Number of errors in category should be as expected",
           ).to.equal(expectedCategory.errors.length);
           //for each error in list
           for (
@@ -177,17 +177,17 @@ Cypress.Commands.add(
 
             //check device list
             expect(JSON.stringify(error.devices), "devices in error").to.equal(
-              JSON.stringify(expectedError.devices)
+              JSON.stringify(expectedError.devices),
             );
             //check timestamp
             expect(
               JSON.stringify(error.timestamps),
-              "timestamps in error"
+              "timestamps in error",
             ).to.equal(JSON.stringify(expectedError.timestamps));
             //check similar list
             expect(
               error.similar.length,
-              "Number of similar in error should be as expected"
+              "Number of similar in error should be as expected",
             ).to.equal(expectedError.similar.length);
             //for each similar error
             for (
@@ -200,12 +200,12 @@ Cypress.Commands.add(
               //check device
               expect(
                 similar.device,
-                `device for similar entry ${similarCount}`
+                `device for similar entry ${similarCount}`,
               ).to.equal(expectedSimilar.device);
               //check timestamp
               expect(
                 similar.timestamp,
-                `timestamp for similar entry ${similarCount}`
+                `timestamp for similar entry ${similarCount}`,
               ).to.equal(expectedSimilar.timestamp);
               //TODO: check lines
             }
@@ -224,7 +224,7 @@ Cypress.Commands.add(
         }
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -236,7 +236,7 @@ Cypress.Commands.add(
     expectedEvents: ApiEventReturned[],
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Check for expected events for ${deviceName} `, {
       userName,
@@ -265,7 +265,7 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       { url: v1ApiPath("events/", filteredParams) },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
@@ -281,11 +281,11 @@ Cypress.Commands.add(
         checkTreeStructuresAreEqualExcept(
           sortExpectedEvents,
           sortEvents,
-          excludeCheckOn
+          excludeCheckOn,
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -298,7 +298,7 @@ Cypress.Commands.add(
     excludeCheckOn: string[] = [],
     statusCode: number = 200,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    additionalChecks: any = {}
+    additionalChecks: any = {},
   ) => {
     logTestDescription(`Check for expected power events for ${deviceName} `, {
       userName,
@@ -317,17 +317,17 @@ Cypress.Commands.add(
     makeAuthorizedRequestWithStatus(
       { url: v1ApiPath("events/powerEvents", filteredParams) },
       userName,
-      statusCode
+      statusCode,
     ).then((response) => {
       if (statusCode === 200) {
         checkTreeStructuresAreEqualExcept(
           expectedEvents,
           response.body.events,
-          excludeCheckOn
+          excludeCheckOn,
         );
       }
     });
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -335,7 +335,7 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    expectedEvent: TestComparablePowerEvent
+    expectedEvent: TestComparablePowerEvent,
   ) => {
     logTestDescription(
       `Check power events for ${deviceName} is ${prettyLog(expectedEvent)}}`,
@@ -343,11 +343,11 @@ Cypress.Commands.add(
         userName,
         deviceName,
         expectedEvent,
-      }
+      },
     );
 
     checkPowerEvents(userName, deviceName, expectedEvent);
-  }
+  },
 );
 
 Cypress.Commands.add(
@@ -357,7 +357,7 @@ Cypress.Commands.add(
     deviceName: string,
     expectedEvent: any,
     eventNumber: number = 1,
-    statusCode: number = 200
+    statusCode: number = 200,
   ) => {
     logTestDescription(`Check for expected event for ${deviceName} `, {
       userName,
@@ -371,15 +371,15 @@ Cypress.Commands.add(
       expectedEvent,
       eventNumber,
       ["success", "trackId", "dateTime"],
-      statusCode
+      statusCode,
     );
-  }
+  },
 );
 
 export function createExpectedEvent(
   deviceName: string,
   recording: string,
-  alertName: string
+  alertName: string,
 ): any {
   const expectedEvent = {
     id: 1,
@@ -403,7 +403,7 @@ export function createExpectedEvent(
 function checkPowerEvents(
   userName: string,
   deviceName: string,
-  expectedEvent: TestComparablePowerEvent
+  expectedEvent: TestComparablePowerEvent,
 ) {
   const params = {
     deviceId: getCreds(deviceName).id,
@@ -411,7 +411,7 @@ function checkPowerEvents(
 
   makeAuthorizedRequest(
     { url: v1ApiPath("events/powerEvents", params) },
-    userName
+    userName,
   ).then((response) => {
     checkPowerEventMatches(response, expectedEvent);
   });
@@ -423,7 +423,7 @@ function checkEvents(
   expectedEvent: any,
   eventNumber: number,
   ignoreParams: string[],
-  statusCode: number
+  statusCode: number,
 ) {
   const params = {
     deviceId: getCreds(deviceName).id,
@@ -432,7 +432,7 @@ function checkEvents(
   makeAuthorizedRequestWithStatus(
     { url: v1ApiPath("events", params) },
     userName,
-    statusCode
+    statusCode,
   ).then((response) => {
     if (statusCode === 200) {
       expect(response.body.rows.length).to.equal(eventNumber);
@@ -442,7 +442,7 @@ function checkEvents(
           response.body.rows,
           expectedEvent,
           eventNumber - 1,
-          ignoreParams
+          ignoreParams,
         );
       }
     }
@@ -453,27 +453,27 @@ function checkEventMatchesExpected(
   events: any[],
   expectedEvent: TestComparableEvent,
   eventNumber: number,
-  ignoreParams: any
+  ignoreParams: any,
 ) {
   const event = events[eventNumber];
 
   expect(
     event.DeviceId.toString(),
-    `DeviceId should be ${expectedEvent.DeviceId}`
+    `DeviceId should be ${expectedEvent.DeviceId}`,
   ).to.eq(expectedEvent.DeviceId.toString());
   if (!ignoreParams.includes("dateTime")) {
     expect(
       event.dateTime,
-      `dateTime should be ${expectedEvent.dateTime}`
+      `dateTime should be ${expectedEvent.dateTime}`,
     ).to.eq(expectedEvent.dateTime);
   }
   expect(
     event.Device.deviceName,
-    `deviceName should be ${expectedEvent.Device.deviceName}`
+    `deviceName should be ${expectedEvent.Device.deviceName}`,
   ).to.eq(expectedEvent.Device.deviceName);
   expect(
     event.EventDetail.type,
-    `Type should be ${expectedEvent.EventDetail.type}`
+    `Type should be ${expectedEvent.EventDetail.type}`,
   ).to.eq(expectedEvent.EventDetail.type);
 
   // check details except for success (email sent - not implemented on dev servers), and trackId - as we haven't stored this
@@ -481,27 +481,27 @@ function checkEventMatchesExpected(
     checkFlatStructuresAreEqualExcept(
       expectedEvent.EventDetail.details,
       event.EventDetail.details,
-      ignoreParams
+      ignoreParams,
     );
   }
 }
 
 function checkPowerEventMatches(
   response: Cypress.Response<any>,
-  expectedEvent: TestComparablePowerEvent
+  expectedEvent: TestComparablePowerEvent,
 ) {
   expect(response.body.events.length, `Expected 1 event`).to.eq(1);
   const powerEvent = response.body.events[0];
 
   expect(
     powerEvent.hasStopped,
-    `Device should be ${expectedEvent.hasStopped ? "stopped" : "running"}`
+    `Device should be ${expectedEvent.hasStopped ? "stopped" : "running"}`,
   ).to.eq(expectedEvent.hasStopped);
   expect(
     powerEvent.hasAlerted,
     `Device should have been ${
       expectedEvent.hasAlerted ? "alerted" : "not alerted"
-    }`
+    }`,
   ).to.eq(expectedEvent.hasAlerted);
 }
 

@@ -275,6 +275,7 @@ export default {
         (this.recording as ApiThermalRecordingResponse).tracks
           .map((track) => ({
             ...track,
+            tags: track.tags.map((tag) => ({ ...tag, data: tag.model })),
             positions: track.positions.map((position) => ({
               ...position,
               frameNumber: position.order,

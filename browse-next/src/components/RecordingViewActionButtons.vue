@@ -10,35 +10,35 @@ import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import { currentSelectedProject } from "@models/provides.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
+import type { LoadedResource } from "@api/types.ts";
+import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
 
 const props = withDefaults(
   defineProps<{
-    recording?: ApiRecordingResponse | null;
+    recording: LoadedResource<ApiRecordingResponse>;
+    classes?: string[];
   }>(),
-  { recording: null }
+  { recording: null },
 );
-const currentRecordingType = ref<"cptv" | "image">("cptv");
 
 const currentProject = inject(currentSelectedProject) as ComputedRef<
   SelectedProject | false
 >;
 
-watch(
-  () => props.recording,
-  (nextRecording) => {
-    if (nextRecording) {
-      switch (nextRecording.type) {
-        case RecordingType.TrailCamVideo:
-        case RecordingType.TrailCamImage:
-          currentRecordingType.value = "image";
-          break;
-        default:
-          currentRecordingType.value = "cptv";
-          break;
-      }
+const currentRecordingType = computed<"cptv" | "image" | "audio">(() => {
+  if (props.recording) {
+    switch (props.recording.type) {
+      case RecordingType.TrailCamVideo:
+      case RecordingType.TrailCamImage:
+        return "image";
+      case RecordingType.ThermalRaw:
+        return "cptv";
+      case RecordingType.Audio:
+        return "audio";
     }
   }
-);
+  return "cptv";
+});
 
 const emit = defineEmits<{
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
@@ -76,13 +76,13 @@ const addLabel = async (label: string) => {
 const removeLabel = async (label: string) => {
   if (props.recording) {
     const labelToRemove = props.recording.tags.find(
-      (tag) => tag.detail === label
+      (tag) => tag.detail === label,
     );
     if (labelToRemove) {
       removingLabelInProgress.value = true;
       const removeLabelResponse = await removeRecordingLabel(
         props.recording.id,
-        labelToRemove.id
+        labelToRemove.id,
       );
       if (removeLabelResponse.success) {
         emit("removed-recording-label", labelToRemove.id);
@@ -145,6 +145,7 @@ const notImplemented = () => {
 <template>
   <div
     class="recording-icons d-flex justify-content-between px-sm-2 align-items-center"
+    :class="props.classes || []"
   >
     <button
       type="button"
@@ -202,7 +203,9 @@ const notImplemented = () => {
       </b-dropdown-item-button>
     </b-dropdown>
     <button
-      v-else-if="currentRecordingType === 'image'"
+      v-else-if="
+        currentRecordingType === 'image' || currentRecordingType === 'audio'
+      "
       type="button"
       class="btn btn-square btn-hi"
       :disabled="!recordingReady"
@@ -210,18 +213,17 @@ const notImplemented = () => {
     >
       <font-awesome-icon icon="download" color="#666" />
     </button>
-    <two-step-action-button
-      :action="() => emit('delete-recording')"
-      icon="trash-can"
+    <two-step-action-button-popover
+      :icon="['fas', 'trash-can']"
+      :confirmation-label="'Delete recording'"
       :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
-      confirmation-label="Delete Recording"
       color="#666"
+      :action="() => emit('delete-recording')"
+      :placement="'top'"
       v-if="userIsGroupAdmin"
+      :boundary-padding="false"
     >
-      <template #button-content>
-        <font-awesome-icon icon="trash-can" color="#666" />
-      </template>
-    </two-step-action-button>
+    </two-step-action-button-popover>
     <!--    <button-->
     <!--      type="button"-->
     <!--      class="btn btn-square btn-hi"-->

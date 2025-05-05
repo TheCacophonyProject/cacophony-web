@@ -16,7 +16,7 @@ const allVisitsForProjectInTimespan = async (
   projectId: GroupId,
   from: Date,
   until: Date,
-  user: User
+  user: User,
 ): Promise<Visit[]> => {
   const params: MonitoringParams = {
     stations: [],
@@ -31,7 +31,7 @@ const allVisitsForProjectInTimespan = async (
   let searchDetails = await calculateMonitoringPageCriteria(
     user,
     params,
-    false
+    false,
   );
   searchDetails.compareAi = "Master";
   searchDetails.types = params.types;
@@ -53,7 +53,7 @@ const allVisitsForProjectInTimespan = async (
       searchDetails = await calculateMonitoringPageCriteria(
         user,
         params,
-        false
+        false,
       );
       searchDetails.compareAi = "Master";
       searchDetails.types = params.types;
@@ -108,7 +108,7 @@ const allVisitsForProjectInTimespan = async (
       group.id,
       startOfPeriod,
       now,
-      group.Users[0]
+      group.Users[0],
     );
     const noVisitsInTimespan = visits.length === 0;
     let alreadySentNoActivityEmail = false;
@@ -122,7 +122,7 @@ const allVisitsForProjectInTimespan = async (
         group.id,
         period,
         newNow,
-        group.Users[0]
+        group.Users[0],
       );
       if (visitsInPreviousTimespan.length === 0) {
         alreadySentNoActivityEmail = true;
@@ -130,6 +130,12 @@ const allVisitsForProjectInTimespan = async (
     }
     if (!alreadySentNoActivityEmail) {
       for (const visit of visits) {
+        if (visit.classification === "false-trigger") {
+          continue;
+        }
+        if (visit.classification === "none") {
+          visit.classification = "unidentified";
+        }
         recordingData[visit.classification] =
           recordingData[visit.classification] || 0;
         recordingData[visit.classification] += 1;
@@ -140,7 +146,7 @@ const allVisitsForProjectInTimespan = async (
             species,
             count,
             speciesDisplayName: displayLabelForClassificationLabel(
-              species
+              species,
             ).replace(/ /g, "&nbsp;"),
           };
         })
@@ -158,7 +164,7 @@ const allVisitsForProjectInTimespan = async (
         timespan === "weekly" ? "Weekly" : "Daily",
         group.groupName,
         recipients,
-        speciesList
+        speciesList,
       );
     }
   }
