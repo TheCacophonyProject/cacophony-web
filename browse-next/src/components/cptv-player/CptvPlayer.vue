@@ -2073,6 +2073,9 @@ watch(
           showingReferencePhoto.value = true;
           await loadReferenceImageUrl();
         }
+      } else {
+        showingReferencePhoto.value = true;
+        await loadReferenceImageUrl();
       }
     }
   },
