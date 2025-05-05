@@ -124,11 +124,11 @@ watch(
 .inactive {
   color: rgba(0, 0, 0, 0.4);
 }
-.battery-warning {
+.active > .battery-warning {
   color: red;
 }
-.inactive .battery-warning {
-  color: color-mix(rgba(255, 0, 0, 0.4), #aaa);
+.inactive > .battery-warning {
+  color: color-mix(in oklab, rgba(255, 0, 0, 0.6) 50%, #888 50%);
 }
 
 </style>
