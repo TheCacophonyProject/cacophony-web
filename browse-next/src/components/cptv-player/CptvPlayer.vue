@@ -1381,22 +1381,26 @@ const togglePlayback = async (): Promise<void> => {
 const referenceImageURL = ref<string | null>(null);
 const showingReferencePhoto = ref<boolean>(true);
 const referenceOpacity = ref<number>(0.3);
+const loadReferenceImageUrl = async () => {
+  const rec = props.recording as ApiRecordingResponse;
+  // Load the reference photo.
+  const referenceImageResponse = await getReferenceImageForDeviceAtTime(
+    rec.deviceId,
+    new Date(rec.recordingDateTime),
+    true,
+  );
+  if (referenceImageResponse.success) {
+    referenceImageURL.value = URL.createObjectURL(
+      referenceImageResponse.result,
+    );
+  }
+};
+
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
   window.localStorage.setItem("cptv-player-show-reference-image", showingReferencePhoto.value ? "true" : "false");
   if (showingReferencePhoto.value) {
-    const rec = props.recording as ApiRecordingResponse;
-    // Load the reference photo.
-    const referenceImageResponse = await getReferenceImageForDeviceAtTime(
-      rec.deviceId,
-      new Date(rec.recordingDateTime),
-      true,
-    );
-    if (referenceImageResponse.success) {
-      referenceImageURL.value = URL.createObjectURL(
-        referenceImageResponse.result,
-      );
-    }
+    await loadReferenceImageUrl();
   }
 };
 
@@ -2059,7 +2063,7 @@ const moveRevealHandle = (event: PointerEvent) => {
 };
 watch(
   () => props.hasReferencePhoto,
-  (hasRef) => {
+  async (hasRef) => {
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
     } else if (hasRef) {
@@ -2067,6 +2071,7 @@ watch(
       if (showReferenceImage !== null) {
         if (showReferenceImage === "true") {
           showingReferencePhoto.value = true;
+          await loadReferenceImageUrl();
         }
       }
     }
