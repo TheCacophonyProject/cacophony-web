@@ -154,6 +154,7 @@ const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
         filtered: false,
       },
     ];
+    expandedItemChanged(-1, true);
   } else {
     // Local mutable copy of tracks + tags for when we update things.
     recordingTracksLocal.value = tracks.map((track) => ({

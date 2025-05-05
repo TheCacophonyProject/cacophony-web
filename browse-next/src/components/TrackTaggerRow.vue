@@ -681,7 +681,7 @@ onMounted(async () => {
     </div>
     <div v-else>
       <button
-        v-if="!hasUserTag"
+        v-if="!hasUserTag && hasAiTag"
         type="button"
         class="btn fs-7 confirm-button"
         @click.stop.prevent="confirmAiSuggestedTag"
