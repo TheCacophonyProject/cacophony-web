@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { type ComputedRef, inject, type Ref } from "vue";
+import { type ComputedRef, inject, onBeforeMount, type Ref } from "vue";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   CptvFrame,
@@ -1379,10 +1379,11 @@ const togglePlayback = async (): Promise<void> => {
 };
 
 const referenceImageURL = ref<string | null>(null);
-const showingReferencePhoto = ref<boolean>(false);
-const referenceOpacity = ref<number>(1);
+const showingReferencePhoto = ref<boolean>(true);
+const referenceOpacity = ref<number>(0.3);
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
+  window.localStorage.setItem("cptv-player-show-reference-image", showingReferencePhoto.value ? "true" : "false");
   if (showingReferencePhoto.value) {
     const rec = props.recording as ApiRecordingResponse;
     // Load the reference photo.
@@ -1686,6 +1687,25 @@ const handleKeyboardControls = (event: KeyboardEvent) => {
     }
   }
 };
+
+onBeforeMount(() => {
+  const savedReferenceImageOpacity = window.localStorage.getItem("cptv-player-reference-image-opacity");
+  if (savedReferenceImageOpacity !== null) {
+    referenceOpacity.value = Number(savedReferenceImageOpacity);
+  }
+  const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+  if (showReferenceImage !== null) {
+    if (showReferenceImage === "true" && props.hasReferencePhoto) {
+      showingReferencePhoto.value = true;
+    } else if (showReferenceImage === "false") {
+      showingReferencePhoto.value = false;
+    } else if (!props.hasReferencePhoto) {
+      showingReferencePhoto.value = false;
+    }
+  } else if (!props.hasReferencePhoto) {
+    showingReferencePhoto.value = false;
+  }
+});
 
 onMounted(async () => {
   window.addEventListener("keydown", handleKeyboardControls);
@@ -2042,9 +2062,20 @@ watch(
   (hasRef) => {
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
+    } else if (hasRef) {
+      const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+      if (showReferenceImage !== null) {
+        if (showReferenceImage === "true") {
+          showingReferencePhoto.value = true;
+        }
+      }
     }
   },
 );
+
+const updateSavedOpacity = (val: InputEvent) => {
+  window.localStorage.setItem("cptv-player-reference-image-opacity", (val.target as HTMLInputElement).value);
+};
 </script>
 <template>
   <div class="cptv-player">
@@ -2073,6 +2104,36 @@ watch(
         :class="['player-messaging', { show: playerMessage !== null }]"
         v-html="playerMessage"
       />
+      <div
+        class="position-absolute top-0 h-100 w-100 reference-image"
+        :class="{ hide: atEndOfPlayback }"
+        ref="referenceImageContainer"
+        v-if="showingReferencePhoto && hasReferencePhoto"
+      >
+        <div
+          class="reveal-slider position-absolute d-flex align-items-center"
+          ref="revealSlider"
+        >
+          <img
+            v-if="referenceImageURL"
+            ref="referenceImage"
+            alt="Device
+          point-of-view reference photo at the time of recording"
+            :src="referenceImageURL"
+            :style="{ opacity: referenceOpacity }"
+          />
+        </div>
+        <div
+          class="reveal-handle d-flex align-items-center justify-content-center"
+          ref="revealHandle"
+          @touchstart="(e: TouchEvent) => e.preventDefault()"
+          @pointerdown="grabRevealHandle"
+          @pointerup="releaseRevealHandle"
+          @pointermove="moveRevealHandle"
+        >
+          <font-awesome-icon icon="left-right" />
+        </div>
+      </div>
       <div key="buffering" :class="['playback-controls', { show: buffering }]">
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
@@ -2102,36 +2163,6 @@ watch(
           <font-awesome-icon icon="forward" class="replay" />
         </button>
       </div>
-
-      <div
-        class="position-absolute top-0 h-100 w-100 reference-image"
-        ref="referenceImageContainer"
-        v-if="showingReferencePhoto && hasReferencePhoto"
-      >
-        <div
-          class="reveal-slider position-absolute d-flex align-items-center"
-          ref="revealSlider"
-        >
-          <img
-            v-if="referenceImageURL"
-            ref="referenceImage"
-            alt="Device
-          point-of-view reference photo at the time of recording"
-            :src="referenceImageURL"
-            :style="{ opacity: referenceOpacity }"
-          />
-        </div>
-        <div
-          class="reveal-handle d-flex align-items-center justify-content-center"
-          ref="revealHandle"
-          @touchstart="(e: TouchEvent) => e.preventDefault()"
-          @pointerdown="grabRevealHandle"
-          @pointerup="releaseRevealHandle"
-          @pointermove="moveRevealHandle"
-        >
-          <font-awesome-icon icon="left-right" />
-        </div>
-      </div>
     </div>
     <div
       key="playback-nav"
@@ -2147,16 +2178,17 @@ watch(
         <font-awesome-icon v-else icon="pause" />
       </button>
       <div class="right-nav">
-        <div :class="['advanced-controls', { open: showAdvancedControls }]">
+        <div :class="['advanced-controls', { open: showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570) }]">
           <button
             @click.prevent="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
+            :disabled="(showingReferencePhoto && canvasWidth <= 570)"
             ref="advancedControlsButton"
           >
             <font-awesome-icon
               icon="angle-right"
-              :rotation="showAdvancedControls ? null : 180"
+              :rotation="(showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570)) ? null : 180"
             />
           </button>
           <button
@@ -2242,6 +2274,28 @@ watch(
             <font-awesome-icon icon="info-circle" />
           </button>
         </div>
+        <div
+          class="reference-opacity-container"
+          :class="{ open: showingReferencePhoto && hasReferencePhoto }"
+        >
+          <div
+            class="reference-opacity-slider"
+            :class="{ open: showingReferencePhoto, 'has-no-reference': !hasReferencePhoto }"
+          >
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              v-model.number="referenceOpacity"
+              @input="updateSavedOpacity"
+              :disabled="!hasReferencePhoto"
+              :style="`background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
+              class="me-2 reference-opacity-slider-el"
+            />
+            <font-awesome-icon icon="eye" />
+          </div>
+        </div>
         <button
           :disabled="!hasReferencePhoto"
           :class="{ selected: showingReferencePhoto }"
@@ -2260,24 +2314,6 @@ watch(
         >
           <span>{{ speedMultiplier }}x</span>
         </button>
-      </div>
-      <div
-        class="reference-opacity-container"
-        :class="{ open: showingReferencePhoto }"
-      >
-        <div
-          class="reference-opacity-slider"
-          :class="{ open: showingReferencePhoto }"
-        >
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            v-model.number="referenceOpacity"
-          />
-          <font-awesome-icon icon="eye" />
-        </div>
       </div>
     </div>
     <div v-else-if="hasReferencePhoto" class="playback-nav justify-content-end">
@@ -2831,6 +2867,9 @@ watch(
   z-index: 1;
   user-select: none;
   overflow: hidden; /* ensures we don’t show anything outside the container */
+  &.hide {
+    display: none;
+  }
 }
 
 .reveal-slider {
@@ -2882,17 +2921,13 @@ watch(
 }
 
 .reference-opacity-container {
-  z-index: 2;
-  position: absolute;
-  right: 0;
-  bottom: 44px;
-  height: 0;
   display: flex;
   align-items: center;
   overflow: hidden;
-  transition: height 0.3s ease-in-out;
+  width: 0;
+  transition: width 0.3s ease-in-out;
   background: #2b333f;
-  border-radius: 1em 1em 0em 0em;
+  border-radius: 1em 1em 0 0;
   .reference-opacity-toggle {
     width: 48px;
     height: 44px;
@@ -2908,26 +2943,71 @@ watch(
     }
   }
   &.open {
-    transform: translateY(0);
-    height: 44px;
+    width: 170px;
   }
   .reference-opacity-slider {
+    appearance: none;
     flex: 1;
     padding: 0 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: opacity 0.3s;
-
     opacity: 0;
+
     &.open {
-      opacity: 100%;
+      opacity: 1;
+      &.has-no-reference {
+        opacity: 0.5;
+      }
     }
-    input[type="range"] {
-      flex: 1;
-      cursor: pointer;
-      margin: 0 4px;
-      // You can style the slider track/ thumb if needed
+  }
+}
+input[type="range"].reference-opacity-slider-el {
+  flex: 1;
+  cursor: pointer;
+  width: 100px;
+  transition: opacity 0.2s ease-in-out;
+  opacity: 0.7;
+  &:hover {
+    opacity: 1;
+  }
+  background: unset;
+  background-color: unset;
+  -webkit-appearance: none;
+  appearance: none;
+  box-shadow: inset 0 1px 2px #000;
+  border-radius: 3.5px;
+  height: 9px;
+  &::-webkit-slider-thumb {
+    background: lighten(yellowgreen, 20%);
+    width: 15px;
+    height: 15px;
+    outline: 0;
+    border: 0;
+    border-radius: 50%;
+    transition: background-color 0.2s ease-in-out;
+    -webkit-appearance: none;
+    appearance: none;
+    &:hover {
+      background: red;
+      background: lighten(yellowgreen, 30%);
+    }
+
+  }
+  &::-moz-range-thumb {
+    background: lighten(yellowgreen, 10%);
+    width: 15px;
+    height: 15px;
+    outline: 0;
+    border: 0;
+    transition: background-color 0.2s ease-in-out;
+    border-radius: 50%;
+    -webkit-appearance: none;
+    appearance: none;
+    &:hover {
+      background: red;
+      background: lighten(yellowgreen, 30%);
     }
   }
 }

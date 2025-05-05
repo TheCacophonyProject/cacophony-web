@@ -241,7 +241,7 @@ const doAddLabel = async () => {
         <router-link
           :to="{ name: 'project-label-settings' }"
           class="text-decoration-none"
-          >Customise labels for this project</router-link
+          >Label descriptions/customisations</router-link
         >
       </div>
     </b-modal>
