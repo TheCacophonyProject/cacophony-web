@@ -182,6 +182,7 @@ watch(
 watch(
   () => route.params.trackId,
   (nextTrackId, prevTrackId) => {
+    console.log("Track if changed", nextTrackId, prevTrackId);
     if (recording.value) {
       currentTrack.value = (
         recording.value as ApiRecordingResponse
@@ -363,6 +364,7 @@ const gotoPreviousRecordingOrVisit = async () => {
 };
 
 const gotoRecording = async (recordingId: RecordingId) => {
+  console.log("gotoRecording", recordingId);
   const params: RouteParams = {
     ...route.params,
     currentRecordingId: recordingId.toString(),
@@ -838,7 +840,6 @@ const loadRecording = async () => {
       }
 
       const _ = nextTick(checkNameTruncations);
-
       if (route.params.trackId) {
         currentTrack.value = (
           recording.value as ApiRecordingResponse

@@ -44,6 +44,7 @@ import { API_ROOT } from "@api/root.ts";
 import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 import { decodeJWT } from "@/utils.ts";
 import { useMediaQuery, useWindowSize } from "@vueuse/core";
+import { useRoute } from "vue-router";
 
 const props = defineProps<{
   userSelectedTrack?: ApiTrackResponse;
@@ -967,6 +968,7 @@ const renderOverlay = (ctx: CanvasRenderingContext2D) => {
   }
 };
 const audioIsPlaying = ref<boolean>(false);
+let shouldPlayTrackOnLoad = false;
 onMounted(() => {
   let initedContextListeners = false;
   if (props.recording) {
@@ -992,15 +994,16 @@ onMounted(() => {
         renderOverlay(ctx);
       },
     );
-    spectastiq.addEventListener("ready", () => {
-      //console.log("initialised spectrogram");
-    });
     spectastiq.addEventListener(
       "audio-loaded",
       ({ detail: { sampleRate, duration } }) => {
         audioSampleRate.value = sampleRate / 2;
         audioDuration.value = duration;
         audioIsPlaying.value = false;
+        if (route.params.trackId) {
+          shouldPlayTrackOnLoad = true;
+          emit("track-selected", { trackId: Number(route.params.trackId), automatically: false });
+        }
       },
     );
     spectastiq.addEventListener("playback-ended", () => {
@@ -1103,7 +1106,6 @@ const togglePlayback = async () => {
         );
         const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
         spectastiqEl.value.setGain(newGain);
-
         if (currentTime.value >= currentIntermediateTrack.end) {
           await spectastiqEl.value.play(
             trackStartZeroOne,
@@ -1112,6 +1114,13 @@ const togglePlayback = async () => {
         } else if (currentTime.value > currentIntermediateTrack.start) {
           // Play until the end of the current track
           await spectastiqEl.value.play(currentTime.value / audioDuration.value, trackEndZeroOne);
+        } else if (shouldPlayTrackOnLoad) {
+          // If there was a track initially selected from the url route.
+          await spectastiqEl.value.play(
+            trackStartZeroOne,
+            trackEndZeroOne,
+          );
+          shouldPlayTrackOnLoad = false;
         } else {
           // Continue playing normally until the end of the recording
           await spectastiqEl.value.play();
@@ -1453,6 +1462,7 @@ const computeIntermediateTracks = (tracks: ApiTrackResponse[]) => {
       return t as IntermediateTrack;
     });
 };
+const route = useRoute();
 
 const watchTracks = ref<WatchStopHandle | null>(null);
 

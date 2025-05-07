@@ -29,6 +29,7 @@
           () => {
             action();
             shouldHideInternal = true;
+            hide();
           }
         "
         class="btn btn-outline-danger text-nowrap w-100"
@@ -53,6 +54,12 @@ const shouldHideInternal = ref(false);
 
 const didHide = () => {
   shouldHideInternal.value = false;
+};
+
+const hide = () => {
+  setTimeout(() => {
+    popover.value && popover.value.toggle();
+  }, 100);
 };
 
 const props = withDefaults(

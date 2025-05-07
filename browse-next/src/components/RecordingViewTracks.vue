@@ -141,29 +141,31 @@ watch(showFalseTriggers, async (next) => {
 const cloneLocalTracks = (tracks: ApiTrackResponse[]) => {
   // NOTE: If there's no tracks on a recording, we can create a dummy one, which can be added
   //  via the API as soon as there is a user tag present.
-  if (
-    tracks.length === 0 &&
-    props.recording?.processingState !== RecordingProcessingState.Tracking
-  ) {
-    recordingTracksLocal.value = [
-      {
-        id: -1,
-        start: 0,
-        end: props.recording?.duration || 0,
-        tags: [],
-        filtered: false,
-      },
-    ];
-    expandedItemChanged(-1, true);
-  } else {
-    // Local mutable copy of tracks + tags for when we update things.
-    recordingTracksLocal.value = tracks.map((track) => ({
-      id: track.id,
-      end: track.end,
-      start: track.start,
-      tags: JSON.parse(JSON.stringify(track.tags)),
-      filtered: track.filtered,
-    }));
+  if (props.recording) {
+    if (
+      tracks.length === 0 &&
+      props.recording.processingState !== RecordingProcessingState.Tracking
+    ) {
+      recordingTracksLocal.value = [
+        {
+          id: -1,
+          start: 0,
+          end: props.recording.duration || 0,
+          tags: [],
+          filtered: false,
+        },
+      ];
+      expandedItemChanged(-1, true);
+    } else {
+      // Local mutable copy of tracks + tags for when we update things.
+      recordingTracksLocal.value = tracks.map((track) => ({
+        id: track.id,
+        end: track.end,
+        start: track.start,
+        tags: JSON.parse(JSON.stringify(track.tags)),
+        filtered: track.filtered,
+      }));
+    }
   }
 };
 
