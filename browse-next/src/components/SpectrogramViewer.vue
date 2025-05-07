@@ -270,7 +270,9 @@ const selectTrackRegionAndPlay = async (
         minFreqZeroOne * audioSampleRate.value,
         maxFreqZeroOne * audioSampleRate.value,
       );
-      await spectastiqEl.value.play(trackStartZeroOne, trackEndZeroOne);
+      if (!shouldPlayTrackOnLoad) {
+        await spectastiqEl.value.play(trackStartZeroOne, trackEndZeroOne);
+      }
     }
   }
 };
