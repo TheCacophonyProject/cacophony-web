@@ -182,7 +182,6 @@ watch(
 watch(
   () => route.params.trackId,
   (nextTrackId, prevTrackId) => {
-    console.log("Track if changed", nextTrackId, prevTrackId);
     if (recording.value) {
       currentTrack.value = (
         recording.value as ApiRecordingResponse
