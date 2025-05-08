@@ -102,13 +102,22 @@ const uploadEvent = async (
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
       if (details.location !== null) {
-        await maybeUpdateDeviceHistory(
-          models,
-          device,
-          { lat: details.location.latitude, lng: details.location.longitude },
-          new Date(details.location.updated),
-          "config",
-        );
+        if (
+          typeof details.location.latitude === "number" &&
+          typeof details.location.longitude === "number"
+        ) {
+          await maybeUpdateDeviceHistory(
+            models,
+            device,
+            { lat: details.location.latitude, lng: details.location.longitude },
+            new Date(details.location.updated),
+            "config",
+          );
+        } else {
+          logger.warn(
+            `Invalid location data for device ${device.id} in config event: lat ${details.location.latitude}, lng ${details.location.longitude}`,
+          );
+        }
       }
     }
   }
