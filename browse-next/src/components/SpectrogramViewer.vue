@@ -1004,7 +1004,10 @@ onMounted(() => {
         audioIsPlaying.value = false;
         if (route.params.trackId) {
           shouldPlayTrackOnLoad = true;
-          emit("track-selected", { trackId: Number(route.params.trackId), automatically: false });
+          if (props.recording) {
+            const trackId = Number(route.params.trackId);
+            emit("track-selected", { trackId, automatically: false });
+          }
         }
       },
     );
@@ -1470,7 +1473,7 @@ const watchTracks = ref<WatchStopHandle | null>(null);
 
 watch(
   () => props.recording,
-  (nextRecording) => {
+  (nextRecording, prevRecording) => {
     if (nextRecording) {
       if (watchTracks.value) {
         watchTracks.value();
@@ -1484,6 +1487,11 @@ watch(
         { deep: true },
       );
       computeIntermediateTracks(nextRecording.tracks);
+      if (nextRecording && route.params.trackId) {
+        const trackId = Number(route.params.trackId);
+        emit("track-selected", { trackId, automatically: false });
+        shouldPlayTrackOnLoad = true;
+      }
     } else {
       if (watchTracks.value) {
         watchTracks.value();
