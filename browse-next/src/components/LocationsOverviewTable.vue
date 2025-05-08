@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import CardTable from "@/components/CardTable.vue";
-import { lastActiveLocationTime } from "@/utils";
+import { lastActiveLocationTime, locationHasAudioRecordings, locationHasThermalRecordings } from "@/utils";
 import { DateTime, type ToRelativeOptions } from "luxon";
 import { ref } from "vue";
 import type { StationId as LocationId } from "@typedefs/api/common";
@@ -100,6 +100,7 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
       </div>
       <div class="d-flex mt-2 mb-1">
         <b-button
+          v-if="locationHasThermalRecordings(location)"
           class="align-items-center justify-content-between d-flex"
           variant="light"
           :to="{
@@ -122,20 +123,48 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
           />
         </b-button>
         <b-button
-          class="align-items-center justify-content-between d-flex ms-2"
+          class="align-items-center justify-content-between d-flex"
+          :class="{'ms-2': locationHasThermalRecordings(location)}"
+          v-if="locationHasThermalRecordings(location)"
           variant="light"
           :to="{
             name: 'activity',
             query: {
               locations: [location.id],
               'display-mode': 'recordings',
+              'recording-mode': 'cameras',
               from: new Date(location.activeAt).toISOString(),
               until: (
                 lastActiveLocationTime(location) || new Date()
               ).toISOString(),
             },
           }"
-          ><span class="me-2">Recordings</span>
+          ><span class="me-2">Thermal recordings</span>
+          <font-awesome-icon
+            icon="arrow-turn-down"
+            :rotation="270"
+            size="xs"
+            class="ps-1"
+          />
+        </b-button>
+        <b-button
+          class="align-items-center justify-content-between d-flex"
+          :class="{'ms-2': locationHasThermalRecordings(location)}"
+          v-if="locationHasAudioRecordings(location)"
+          variant="light"
+          :to="{
+            name: 'activity',
+            query: {
+              locations: [location.id],
+              'display-mode': 'recordings',
+              'recording-mode': 'audio',
+              from: new Date(location.activeAt).toISOString(),
+              until: (
+                lastActiveLocationTime(location) || new Date()
+              ).toISOString(),
+            },
+          }"
+        ><span class="me-2">Bird recordings</span>
           <font-awesome-icon
             icon="arrow-turn-down"
             :rotation="270"

@@ -679,7 +679,7 @@ onMounted(async () => {
         :boundary-padding="true"
       ></two-step-action-button-popover>
     </div>
-    <div v-else>
+    <div v-else class="d-flex">
       <button
         v-if="!hasUserTag && hasAiTag"
         type="button"

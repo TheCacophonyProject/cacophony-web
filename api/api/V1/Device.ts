@@ -976,17 +976,17 @@ export default function (app: Application, baseUrl: string) {
         new Date();
       const device = response.locals.device as Device;
       const kind = (request.query.type as string) || "pov";
-      const query =
-        kind === "pov"
-          ? "settings.referenceImagePOV"
-          : "settings.referenceImageInSitu";
+      // const query =
+      //   kind === "pov"
+      //     ? "settings.referenceImagePOV"
+      //     : "settings.referenceImageInSitu";
       const deviceHistoryEntry = await models.DeviceHistory.latest(
         device.id,
         device.GroupId,
         atTime,
-        {
-          [query]: { [Op.ne]: null },
-        },
+        // {
+        //   [query]: { [Op.ne]: null },
+        // },
       );
       if (!deviceHistoryEntry) {
         return next(

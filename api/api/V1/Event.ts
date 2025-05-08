@@ -101,7 +101,7 @@ const uploadEvent = async (
 
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
-      if (details.location !== null) {
+      if (details.location !== null && details.location.latitude !== undefined && details.location.longitude !== undefined) {
         await maybeUpdateDeviceHistory(
           models,
           device,
