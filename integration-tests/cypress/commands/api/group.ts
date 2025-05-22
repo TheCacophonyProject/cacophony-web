@@ -145,25 +145,108 @@ Cypress.Commands.add(
 Cypress.Commands.add(
   "apiGroupUserRequestInvite",
   (
-    groupAdminUserEmail: string,
+    groupAdminUserEmail: string | undefined,
     userName: string,
     groupName: string,
     log: boolean = true,
     statusCode: number = 200,
   ) => {
+    const logMessage = groupAdminUserEmail
+      ? `${userName} requesting access to group '${groupName}' from ${groupAdminUserEmail}`
+      : `${userName} requesting access to group '${groupName}' (to group owner)`;
     logTestDescription(
-      `${userName} requesting access to group '${groupName}' from ${groupAdminUserEmail}`,
+      logMessage,
       { user: userName, groupName, groupAdminUserEmail },
       log,
     );
-    const body = {
-      groupAdminEmail: groupAdminUserEmail,
-      groupId: getCreds(groupName).id,
+    const body: { groupId: string; groupAdminEmail?: string } = {
+      groupId: String(getCreds(groupName).id),
     };
+
+    if (groupAdminUserEmail) {
+      body.groupAdminEmail = groupAdminUserEmail;
+    }
+
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",
         url: v1ApiPath(`users/request-group-membership`),
+        body,
+      },
+      userName,
+      statusCode,
+    );
+  },
+);
+
+Cypress.Commands.add(
+  "apiDeviceUserRequestInvite",
+  (
+    groupAdminUserEmail: string | undefined,
+    userName: string,
+    deviceName: string,
+    groupName: string,
+    log: boolean = true,
+    statusCode: number = 200,
+  ) => {
+    const logMessage = groupAdminUserEmail
+      ? `${userName} requesting access to device '${deviceName}' in group '${groupName}' from ${groupAdminUserEmail}`
+      : `${userName} requesting access to device '${deviceName}' in group '${groupName}' (to group owner)`;
+    logTestDescription(
+      logMessage,
+      { user: userName, deviceName, groupName, groupAdminUserEmail },
+      log,
+    );
+    const body: { deviceName: string; groupName: string; groupAdminEmail?: string } = {
+      deviceName: getTestName(deviceName),
+      groupName: getTestName(groupName),
+    };
+
+    if (groupAdminUserEmail) {
+      body.groupAdminEmail = groupAdminUserEmail;
+    }
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`users/request-device-access`),
+        body,
+      },
+      userName,
+      statusCode,
+    );
+  },
+);
+
+Cypress.Commands.add(
+  "apiDeviceUserRequestInviteById",
+  (
+    groupAdminUserEmail: string | undefined,
+    userName: string,
+    deviceName: string,
+    log: boolean = true,
+    statusCode: number = 200,
+  ) => {
+    const logMessage = groupAdminUserEmail
+      ? `${userName} requesting access to device ID '${getCreds(deviceName).id}' from ${groupAdminUserEmail}`
+      : `${userName} requesting access to device ID '${getCreds(deviceName).id}' (to group owner)`;
+    logTestDescription(
+      logMessage,
+      { user: userName, deviceName, groupAdminUserEmail },
+      log,
+    );
+    const body: { deviceId: string; groupAdminEmail?: string } = {
+      deviceId: String(getCreds(deviceName).id),
+    };
+
+    if (groupAdminUserEmail) {
+      body.groupAdminEmail = groupAdminUserEmail;
+    }
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: v1ApiPath(`users/request-device-access`),
         body,
       },
       userName,

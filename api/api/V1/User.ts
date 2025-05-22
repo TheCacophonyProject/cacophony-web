@@ -69,6 +69,8 @@ import {
 import { CACOPHONY_WEB_VERSION } from "@/Globals.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { Op } from "sequelize";
+import type { Group } from "@models/Group.js"; // Added import
+import { Device } from "@/models/Device.js";
 
 const models = await modelsInit();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -640,63 +642,200 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  // Shared middleware to determine email recipient (admin or owner)
+  const determineEmailRecipient = async (request: Request, response: Response, next: NextFunction) => {
+    if (!request.body.groupAdminEmail) {
+      const group = response.locals.group as Group;
+      if (!group) {
+        return next(new ClientError("Group not found", HttpStatusCode.NotFound));
+      }
+      // Find the owner of the group
+      const groupUserOwner = await models.GroupUsers.findOne({
+        where: { GroupId: group.id, owner: true, removedAt: { [Op.eq]: null } },
+      });
+      if (!groupUserOwner) {
+        return next(new ClientError("Group owner not found", HttpStatusCode.NotFound));
+      }
+      const owner = await models.User.findByPk(groupUserOwner.UserId);
+      if (!owner) {
+        return next(new ClientError("Group owner user record not found", HttpStatusCode.NotFound));
+      }
+      response.locals.requestedOfUser = owner;
+    } else {
+      response.locals.requestedOfUser = response.locals.user;
+    }
+    delete response.locals.user;
+    return next();
+  };
+
+  // Shared middleware to send group membership request
+  const sendGroupMembershipRequest = (contextMessage: string) => async (request: Request, response: Response, next: NextFunction) => {
+    const requestingUser = response.locals.requestUser as User;
+    const emailRecipientUser = response.locals.requestedOfUser as User;
+    const group = response.locals.group as Group;
+
+    if (!emailRecipientUser) {
+      return next(new ClientError("Target recipient for the email could not be determined.", HttpStatusCode.Unprocessable));
+    }
+    if (!requestingUser) {
+      return next(new ClientError("Requesting user could not be determined.", HttpStatusCode.Unprocessable));
+    }
+
+    if (!emailRecipientUser.emailConfirmed || !requestingUser.emailConfirmed) {
+      return next(
+        new ClientError(
+          "Email recipient and/or requesting user has not activated their account",
+        ),
+      );
+    }
+    
+    await models.Group.addOrUpdateGroupUser(
+      group,
+      requestingUser,
+      false,
+      false,
+      "requested",
+    );
+    
+    const acceptToGroupRequestToken = getJoinGroupRequestToken(
+      requestingUser.id,
+      group.id,
+    );
+    
+    const sendSuccess = await sendGroupMembershipRequestEmail(
+      request.headers.host,
+      acceptToGroupRequestToken,
+      requestingUser.email,
+      requestingUser.userName,
+      group.groupName,
+      emailRecipientUser.email,
+    );
+    
+    if (sendSuccess) {
+      return successResponse(response, contextMessage);
+    } else {
+      return next(
+        new FatalError("Failed sending membership request email to user"),
+      );
+    }
+  };
+
+  /**
+   * @api {post} /api/v1/users/request-group-membership Request access to a group
+   * @apiName RequestGroupMembership
+   * @apiGroup User
+   * @apiDescription Request access to a group by providing a group ID. Optionally specify a group admin email, otherwise the request goes to the group owner.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} groupId ID of the group to request access to.
+   * @apiParam {String} [groupAdminEmail] Optional email of a group admin to send the request to. If not provided, the request goes to the group owner.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.post(
     `${apiUrl}/request-group-membership`,
     extractJwtAuthorizedUser,
     validateFields([
-      body("groupAdminEmail").isEmail(),
+      body("groupAdminEmail").isEmail().optional(),
       idOf(body("groupId")).exists(),
     ]),
-    fetchUnauthorizedRequiredUserByEmailOrId(body("groupAdminEmail")),
-    (request: Request, response: Response, next: NextFunction) => {
-      // This is a little bit hacky, but is safe in this context.
-      response.locals.originalUser = response.locals.requestUser;
-      response.locals.requestUser = response.locals.user;
-      return next();
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (request.body.groupAdminEmail) {
+        return fetchUnauthorizedRequiredUserByEmailOrId(body("groupAdminEmail"))(request, response, next);
+      } else {
+        return next();
+      }
     },
     fetchAdminAuthorizedRequiredGroupById(body("groupId")),
+    determineEmailRecipient,
+    sendGroupMembershipRequest("Sent membership request to user"),
+  );
+
+  /**
+   * @api {post} /api/v1/users/request-device-access Request access to a group via device
+   * @apiName RequestDeviceAccess
+   * @apiGroup User
+   * @apiDescription Request access to a group by providing either a device ID OR a combination of device name and group name. The request will be sent to access the specified group. If no group admin email is provided, the request goes to the group owner.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} [deviceId] ID of the device whose group you want to request access to. Required if deviceName and groupName are not provided.
+   * @apiParam {String} [deviceName] Name of the device in the group you want to request access to. Required if deviceId is not provided.
+   * @apiParam {String} [groupName] Name of the group you want to request access to. Required if deviceId is not provided.
+   * @apiParam {String} [groupAdminEmail] Optional email of a group admin to send the request to. If not provided, the request goes to the group owner.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/request-device-access`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      body("groupAdminEmail").isEmail().optional(),
+      // Custom validation to ensure either deviceId OR (deviceName + groupName) is provided
+      body("deviceId").optional().isInt(),
+      body("deviceName").optional().isString().notEmpty(),
+      body("groupName").optional().isString().notEmpty(),
+    ]),
     async (request: Request, response: Response, next: NextFunction) => {
-      // Make sure each of the groups requested is found in the group admin users groups that
-      // they are admin of:
-      const requestingUser = await models.User.findByPk(
-        response.locals.originalUser.id,
-      );
-      const requestedOfUser = await models.User.findByPk(
-        response.locals.requestUser.id,
-      );
-      if (!requestedOfUser.emailConfirmed || !requestingUser.emailConfirmed) {
-        return next(
-          new ClientError(
-            "Requested and/or requesting user has not activated their account",
-          ),
-        );
+      // Validate that either deviceId or (deviceName + groupName) is provided
+      const hasDeviceId = request.body.deviceId;
+      const hasDeviceNameAndGroup = request.body.deviceName && request.body.groupName;
+      
+      if (!hasDeviceId && !hasDeviceNameAndGroup) {
+        return next(new ClientError("Either deviceId OR both deviceName and groupName must be provided", HttpStatusCode.BadRequest));
       }
-      await models.Group.addOrUpdateGroupUser(
-        response.locals.group,
-        requestingUser,
-        false,
-        false,
-        "requested",
-      );
-      const acceptToGroupRequestToken = getJoinGroupRequestToken(
-        requestingUser.id,
-        response.locals.group.id,
-      );
-      const sendSuccess = await sendGroupMembershipRequestEmail(
-        request.headers.host,
-        acceptToGroupRequestToken,
-        requestingUser.email,
-        requestingUser.userName,
-        response.locals.group.groupName,
-        requestedOfUser.email,
-      );
-      if (sendSuccess) {
-        return successResponse(response, "Sent membership request to user");
+      
+      if (hasDeviceId && hasDeviceNameAndGroup) {
+        return next(new ClientError("Provide either deviceId OR deviceName+groupName, not both", HttpStatusCode.BadRequest));
+      }
+
+      let device;
+      
+      if (hasDeviceId) {
+        // Fetch device by ID
+        device = await models.Device.findByPk(request.body.deviceId, {
+          include: [{ model: models.Group }]
+        });
+        
+        if (!device) {
+          return next(new ClientError(`Device with ID '${request.body.deviceId}' not found`, HttpStatusCode.NotFound));
+        }
       } else {
-        return next(
-          new FatalError("Failed sending membership request email to user"),
-        );
+        // Fetch device by name and group name
+        device = await models.Device.findOne({
+          where: { deviceName: request.body.deviceName },
+          include: [{
+            model: models.Group,
+            where: { groupName: request.body.groupName },
+            required: true
+          }]
+        });
+        
+        if (!device) {
+          return next(new ClientError(`Device '${request.body.deviceName}' not found in group '${request.body.groupName}'`, HttpStatusCode.NotFound));
+        }
       }
+
+      if (!device.Group) {
+        return next(new ClientError("Device group not found", HttpStatusCode.NotFound));
+      }
+
+      response.locals.device = device;
+      response.locals.group = device.Group;
+
+      if (request.body.groupAdminEmail) {
+        return fetchUnauthorizedRequiredUserByEmailOrId(body("groupAdminEmail"))(request, response, next);
+      } else {
+        return next();
+      }
+    },
+    determineEmailRecipient,
+    async (request: Request, response: Response, next: NextFunction) => {
+      const device = response.locals.device as Device;
+      return sendGroupMembershipRequest(`Sent device access request for device '${device.deviceName}' to user`)(request, response, next);
     },
   );
 

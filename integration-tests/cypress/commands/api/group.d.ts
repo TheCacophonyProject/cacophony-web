@@ -51,9 +51,32 @@ declare namespace Cypress {
      * Ask an admin user to join one of their groups.
      */
     apiGroupUserRequestInvite(
-      groupAdminUserEmail: string,
+      groupAdminUserEmail: string | undefined,
       userName: string,
       groupName: string,
+      log?: boolean,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Ask to join a group via device access using device name and group name.
+     */
+    apiDeviceUserRequestInvite(
+      groupAdminUserEmail: string | undefined,
+      userName: string,
+      deviceName: string,
+      groupName: string,
+      log?: boolean,
+      statusCode?: number
+    ): any;
+
+    /**
+     * Ask to join a group via device access using device ID.
+     */
+    apiDeviceUserRequestInviteById(
+      groupAdminUserEmail: string | undefined,
+      userName: string,
+      deviceName: string,
       log?: boolean,
       statusCode?: number
     ): any;
