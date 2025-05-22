@@ -298,6 +298,46 @@ describe("Transactional emails for different user lifecycle actions", () => {
       });
     });
 
+    it("Non-activated users should be denied when requesting group membership", () => {
+      const normalUser = uniqueName("user");
+      const adminUser = uniqueName("admin");
+      const group = uniqueName("group");
+      cy.log("Create a group and confirm admin email");
+      cy.testCreateUserAndGroup(adminUser, group);
+      confirmEmailAddress(adminUser);
+      cy.log("Add a new user but don't confirm their email");
+      cy.apiUserAdd(normalUser).then(() => {
+        cy.log("Non-activated user attempts to request group membership - should fail");
+        cy.apiGroupUserRequestInvite(
+          getTestEmail(adminUser),
+          normalUser,
+          group,
+          true, // log
+          400 // expect 400 status code
+        );
+      });
+    });
+
+    it("Non-activated admin should prevent group membership requests", () => {
+      const normalUser = uniqueName("user");
+      const adminUser = uniqueName("admin");
+      const group = uniqueName("group");
+      cy.log("Create a group but don't confirm admin email");
+      cy.testCreateUserAndGroup(adminUser, group);
+      cy.log("Add a new user and confirm their email");
+      cy.apiUserAdd(normalUser).then(() => {
+        confirmEmailAddress(normalUser);
+        cy.log("Activated user attempts to request membership from non-activated admin - should fail");
+        cy.apiGroupUserRequestInvite(
+          getTestEmail(adminUser),
+          normalUser,
+          group,
+          true, // log
+          400 // expect 400 status code
+        );
+      });
+    });
+
     it("A user can make a request to a group admin to join their group. The group admin should receive an email", () => {
       const normalUser = uniqueName("user");
       const adminUser = uniqueName("admin");
@@ -343,54 +383,105 @@ describe("Transactional emails for different user lifecycle actions", () => {
       const group = uniqueName("group");
 
       cy.log("Create a group with an owner");
-      cy.testCreateUserAndGroup(ownerUser, group, true); // true for owner
+      cy.testCreateUserAndGroup(ownerUser, group); // true for owner
       confirmEmailAddress(ownerUser);
 
       cy.log("Add a new user (requester)");
       cy.apiUserAdd(normalUser).then(() => {
-        confirmEmailAddress(normalUser);
-        clearMailServerLog();
+        confirmEmailAddress(normalUser).then(() => {
+          clearMailServerLog();
 
-        cy.log("User requests to join the group without specifying admin email (should go to owner)");
-        cy.apiGroupUserRequestInvite(undefined, normalUser, group);
+          cy.log("User requests to join the group without specifying admin email (should go to owner)");
+          cy.apiGroupUserRequestInvite(undefined, normalUser, group);
 
-        waitForEmail("group join request to owner").then((email) => {
-          expect(getEmailSubject(email)).to.equal(
-            `A Cacophony Monitoring user wants to join your '${getTestName(
-              group,
-            )}' group`,
-          );
-          expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
-          const { token } = extractTokenStartingWith(
-            email,
-            JOIN_GROUP_REQUEST_PREFIX,
-          );
-          cy.log("Owner user accepts request");
-          cy.apiGroupUserAcceptInviteRequest(ownerUser, token);
-          waitForEmail("join request approved for normal user").then((email) => {
+          waitForEmail("group join request to owner").then((email) => {
             expect(getEmailSubject(email)).to.equal(
-              `👌 You've been accepted to '${getTestName(group)}'`,
+              `A Cacophony Monitoring user wants to join your '${getTestName(
+                group,
+              )}' group`,
             );
-            expect(getEmailToAddress(email)).to.equal(
-              getTestEmail(normalUser),
+            expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
+            const { token } = extractTokenStartingWith(
+              email,
+              JOIN_GROUP_REQUEST_PREFIX,
             );
+            cy.log("Owner user accepts request");
+            cy.apiGroupUserAcceptInviteRequest(ownerUser, token);
+            waitForEmail("join request approved for normal user").then((email) => {
+              expect(getEmailSubject(email)).to.equal(
+                `👌 You've been accepted to '${getTestName(group)}'`,
+              );
+              expect(getEmailToAddress(email)).to.equal(
+                getTestEmail(normalUser),
+              );
+            });
+            cy.log("Check normalUser is now part of the group");
+            cy.apiGroupUsersCheck(ownerUser, group, [
+              {
+                userName: getTestName(ownerUser),
+                id: getCreds(ownerUser).id,
+                owner: true,
+                admin: true, // Owners are implicitly admins
+              },
+              {
+                userName: getTestName(normalUser),
+                id: getCreds(normalUser).id,
+                owner: false,
+                admin: false,
+              },
+            ]);
           });
-          cy.log("Check normalUser is now part of the group");
-          cy.apiGroupUsersCheck(ownerUser, group, [
-            {
-              userName: getTestName(ownerUser),
-              id: getCreds(ownerUser).id,
-              owner: true,
-              admin: true, // Owners are implicitly admins
-            },
-            {
-              userName: getTestName(normalUser),
-              id: getCreds(normalUser).id,
-              owner: false,
-              admin: false,
-            },
-          ]);
         });
+      });
+    });
+
+    it("Non-activated users should be denied when requesting device access", () => {
+      const normalUser = uniqueName("user");
+      const ownerUser = uniqueName("owner");
+      const group = uniqueName("group");
+      const device = uniqueName("device");
+
+      cy.log("Create a group with an owner and device, confirm owner email");
+      cy.testCreateUserAndGroup(ownerUser, group);
+      cy.apiDeviceAdd(device, group);
+      confirmEmailAddress(ownerUser);
+
+      cy.log("Add a new user but don't confirm their email");
+      cy.apiUserAdd(normalUser).then(() => {
+        cy.log("Non-activated user attempts to request device access - should fail");
+        cy.apiDeviceUserRequestInvite(
+          undefined,
+          normalUser,
+          device,
+          group,
+          true, // log
+          400 // expect 400 status code
+        );
+      });
+    });
+
+    it("Non-activated admin should prevent device access requests", () => {
+      const normalUser = uniqueName("user");
+      const adminUser = uniqueName("admin");
+      const group = uniqueName("group");
+      const device = uniqueName("device");
+
+      cy.log("Create a group and device but don't confirm admin email");
+      cy.testCreateUserAndGroup(adminUser, group);
+      cy.apiDeviceAdd(device, group);
+
+      cy.log("Add a new user and confirm their email");
+      cy.apiUserAdd(normalUser).then(() => {
+        confirmEmailAddress(normalUser);
+        cy.log("Activated user attempts device access from non-activated admin - should fail");
+        cy.apiDeviceUserRequestInvite(
+          getTestEmail(adminUser),
+          normalUser,
+          device,
+          group,
+          true, // log
+          400 // expect 400 status code
+        );
       });
     });
 
@@ -401,7 +492,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
       const device = uniqueName("device");
 
       cy.log("Create a group with an owner and a device");
-      cy.testCreateUserAndGroup(ownerUser, group, true); // true for owner
+      cy.testCreateUserAndGroup(ownerUser, group);
       cy.apiDeviceAdd(device, group);
       confirmEmailAddress(ownerUser);
 
@@ -497,6 +588,30 @@ describe("Transactional emails for different user lifecycle actions", () => {
       });
     });
 
+    it("Non-activated users should be denied when requesting device access by ID", () => {
+      const normalUser = uniqueName("user");
+      const ownerUser = uniqueName("owner");
+      const group = uniqueName("group");
+      const device = uniqueName("device");
+
+      cy.log("Create a group with an owner and device, confirm owner email");
+      cy.testCreateUserAndGroup(ownerUser, group);
+      cy.apiDeviceAdd(device, group);
+      confirmEmailAddress(ownerUser);
+
+      cy.log("Add a new user but don't confirm their email");
+      cy.apiUserAdd(normalUser).then(() => {
+        cy.log("Non-activated user attempts to request device access by ID - should fail");
+        cy.apiDeviceUserRequestInviteById(
+          undefined,
+          normalUser,
+          device,
+          true, // log
+          400 // expect 400 status code
+        );
+      });
+    });
+
     it("A user can request access to a group via device ID without specifying an admin, and the request goes to the group owner", () => {
       const normalUser = uniqueName("user");
       const ownerUser = uniqueName("owner");
@@ -504,7 +619,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
       const device = uniqueName("device");
 
       cy.log("Create a group with an owner and a device");
-      cy.testCreateUserAndGroup(ownerUser, group, true); // true for owner
+      cy.testCreateUserAndGroup(ownerUser, group);
       cy.apiDeviceAdd(device, group);
       confirmEmailAddress(ownerUser);
 

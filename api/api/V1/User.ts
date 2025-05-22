@@ -125,6 +125,7 @@ export default function (app: Application, baseUrl: string) {
   ];
 
   /**
+   *
    * @api {get} api/v1/users/list-users List usernames
    * @apiName ListUsers
    * @apiGroup User
@@ -671,15 +672,21 @@ export default function (app: Application, baseUrl: string) {
 
   // Shared middleware to send group membership request
   const sendGroupMembershipRequest = (contextMessage: string) => async (request: Request, response: Response, next: NextFunction) => {
-    const requestingUser = response.locals.requestUser as User;
+    const requestingUserPartial = response.locals.requestUser;
     const emailRecipientUser = response.locals.requestedOfUser as User;
     const group = response.locals.group as Group;
 
     if (!emailRecipientUser) {
       return next(new ClientError("Target recipient for the email could not be determined.", HttpStatusCode.Unprocessable));
     }
-    if (!requestingUser) {
+    if (!requestingUserPartial) {
       return next(new ClientError("Requesting user could not be determined.", HttpStatusCode.Unprocessable));
+    }
+
+    // Fetch the full User object from the database
+    const requestingUser = await models.User.findByPk(requestingUserPartial.id);
+    if (!requestingUser) {
+      return next(new ClientError("Requesting user not found in database.", HttpStatusCode.Unprocessable));
     }
 
     if (!emailRecipientUser.emailConfirmed || !requestingUser.emailConfirmed) {
@@ -689,7 +696,7 @@ export default function (app: Application, baseUrl: string) {
         ),
       );
     }
-    
+
     await models.Group.addOrUpdateGroupUser(
       group,
       requestingUser,
@@ -697,12 +704,12 @@ export default function (app: Application, baseUrl: string) {
       false,
       "requested",
     );
-    
+
     const acceptToGroupRequestToken = getJoinGroupRequestToken(
       requestingUser.id,
       group.id,
     );
-    
+
     const sendSuccess = await sendGroupMembershipRequestEmail(
       request.headers.host,
       acceptToGroupRequestToken,
@@ -711,7 +718,7 @@ export default function (app: Application, baseUrl: string) {
       group.groupName,
       emailRecipientUser.email,
     );
-    
+
     if (sendSuccess) {
       return successResponse(response, contextMessage);
     } else {
@@ -784,23 +791,23 @@ export default function (app: Application, baseUrl: string) {
       // Validate that either deviceId or (deviceName + groupName) is provided
       const hasDeviceId = request.body.deviceId;
       const hasDeviceNameAndGroup = request.body.deviceName && request.body.groupName;
-      
+
       if (!hasDeviceId && !hasDeviceNameAndGroup) {
         return next(new ClientError("Either deviceId OR both deviceName and groupName must be provided", HttpStatusCode.BadRequest));
       }
-      
+
       if (hasDeviceId && hasDeviceNameAndGroup) {
         return next(new ClientError("Provide either deviceId OR deviceName+groupName, not both", HttpStatusCode.BadRequest));
       }
 
       let device;
-      
+
       if (hasDeviceId) {
         // Fetch device by ID
         device = await models.Device.findByPk(request.body.deviceId, {
           include: [{ model: models.Group }],
         });
-        
+
         if (!device) {
           return next(new ClientError(`Device with ID '${request.body.deviceId}' not found`, HttpStatusCode.NotFound));
         }
@@ -814,7 +821,7 @@ export default function (app: Application, baseUrl: string) {
             required: true,
           }],
         });
-        
+
         if (!device) {
           return next(new ClientError(`Device '${request.body.deviceName}' not found in group '${request.body.groupName}'`, HttpStatusCode.NotFound));
         }
