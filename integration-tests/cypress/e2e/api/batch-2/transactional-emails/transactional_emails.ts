@@ -313,7 +313,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           normalUser,
           group,
           true, // log
-          400 // expect 400 status code
+          400, // expect 400 status code
         );
       });
     });
@@ -333,7 +333,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           normalUser,
           group,
           true, // log
-          400 // expect 400 status code
+          400, // expect 400 status code
         );
       });
     });
@@ -455,7 +455,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           device,
           group,
           true, // log
-          400 // expect 400 status code
+          400, // expect 400 status code
         );
       });
     });
@@ -480,7 +480,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           device,
           group,
           true, // log
-          400 // expect 400 status code
+          400, // expect 400 status code
         );
       });
     });
@@ -607,7 +607,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           normalUser,
           device,
           true, // log
-          400 // expect 400 status code
+          400, // expect 400 status code
         );
       });
     });
