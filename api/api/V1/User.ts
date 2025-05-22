@@ -52,6 +52,7 @@ import {
   fetchAdminAuthorizedRequiredGroups,
   fetchAuthorizedRequiredGroups,
   fetchUnauthorizedOptionalUserByEmailOrId,
+  fetchUnauthorizedRequiredGroupById,
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserByResetToken,
 } from "../extract-middleware.js";
@@ -748,7 +749,7 @@ export default function (app: Application, baseUrl: string) {
         return next();
       }
     },
-    fetchAdminAuthorizedRequiredGroupById(body("groupId")),
+    fetchUnauthorizedRequiredGroupById(body("groupId")),
     determineEmailRecipient,
     sendGroupMembershipRequest("Sent membership request to user"),
   );
