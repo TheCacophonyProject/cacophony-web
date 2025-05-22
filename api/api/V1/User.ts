@@ -71,7 +71,7 @@ import { CACOPHONY_WEB_VERSION } from "@/Globals.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { Op } from "sequelize";
 import type { Group } from "@models/Group.js"; // Added import
-import { Device } from "@/models/Device.js";
+import type { Device } from "@/models/Device.js";
 
 const models = await modelsInit();
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -798,7 +798,7 @@ export default function (app: Application, baseUrl: string) {
       if (hasDeviceId) {
         // Fetch device by ID
         device = await models.Device.findByPk(request.body.deviceId, {
-          include: [{ model: models.Group }]
+          include: [{ model: models.Group }],
         });
         
         if (!device) {
@@ -811,8 +811,8 @@ export default function (app: Application, baseUrl: string) {
           include: [{
             model: models.Group,
             where: { groupName: request.body.groupName },
-            required: true
-          }]
+            required: true,
+          }],
         });
         
         if (!device) {
