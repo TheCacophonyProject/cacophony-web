@@ -193,7 +193,7 @@ export const mapTrack = (
     t.maxFreq = track.maxFreqHz;
   }
   t.filtered = track.filtered;
-  if (!minimal && track.data.positions && track.data.positions.length) {
+  if (!minimal && track.data && track.data.positions && track.data.positions.length) {
     t.positions = track.data.positions.map(mapPosition);
   }
   if (!minimal) {
