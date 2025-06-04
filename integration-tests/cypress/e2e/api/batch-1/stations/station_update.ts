@@ -509,4 +509,147 @@ describe("Stations: updating", () => {
 
   //TODO write this
   it.skip("setting retired=true sets retiredAt to Now()");
+
+  // Station name update tests (non-admin users)
+  it("Non-admin user can update station name", () => {
+    const deviceName = "new-device-name-update-1";
+    const stationName = "original-station-name";
+    const newStationName = "updated-station-name";
+    const location = TestGetLocation(21);
+    const nonAdminUser = "NonAdminUser_station_name_update";
+    
+    cy.apiDeviceAdd(deviceName, "stuGroup");
+    cy.apiUserAdd(nonAdminUser);
+    cy.apiGroupUserAdd("stuAdmin", nonAdminUser, "stuGroup", false); // Add as non-admin
+
+    cy.apiGroupStationAdd(
+      "stuAdmin",
+      "stuGroup",
+      { name: stationName, ...location },
+    ).then(() => {
+      cy.log("Non-admin user updates station name");
+      cy.apiStationUpdateName(nonAdminUser, stationName, newStationName);
+      
+      cy.log("Check station has new name");
+      const expectedStation = JSON.parse(JSON.stringify(TemplateExpectedStation));
+      expectedStation.name = getTestName(newStationName);
+      expectedStation.location = location;
+      expectedStation.lastUpdatedById = getCreds(nonAdminUser).id;
+      
+      cy.apiStationCheck(
+        nonAdminUser,
+        getTestName(newStationName),
+        expectedStation,
+      );
+    });
+  });
+
+  it("Cannot update station name to duplicate name using name endpoint", () => {
+    const deviceName = "new-device-name-update-2";
+    const stationName1 = "first-station-name-22";
+    const stationName2 = "second-station-name-22";
+    const location1 = TestGetLocation(22);
+    const location2 = TestGetLocation(23);
+    
+    cy.apiDeviceAdd(deviceName, "stuGroup");
+
+    cy.apiGroupStationAdd(
+      "stuAdmin",
+      "stuGroup",
+      { name: stationName1, ...location1 },
+    ).then(() => {
+      cy.apiGroupStationAdd(
+        "stuAdmin",
+        "stuGroup",
+        { name: stationName2, ...location2 },
+      ).then(() => {
+        cy.log("Try to rename station2 to same name as station1");
+        cy.apiStationUpdateName(
+          "stuAdmin",
+          stationName2,
+          stationName1,
+          HttpStatusCode.BadRequest,
+          {
+            messages: ["An active station with the name"],
+          },
+        );
+        
+        cy.log("Check station2 name unchanged");
+        const expectedStation = JSON.parse(JSON.stringify(TemplateExpectedStation));
+        expectedStation.name = getTestName(stationName2);
+        expectedStation.location = location2;
+        expectedStation.lastUpdatedById = getCreds("stuAdmin").id;
+        
+        cy.apiStationCheck("stuAdmin", getTestName(stationName2), expectedStation);
+      });
+    });
+  });
+
+  it("Updates automatic and needsRename flags when renaming auto-created station", () => {
+    const deviceName = "new-device-auto-rename";
+    const location = TestGetLocation(24);
+    const recordingTime = new Date();
+    
+    cy.apiDeviceAdd(deviceName, "stuGroup").then(() => {
+      cy.log("Upload recording to create automatic station");
+      cy.testUploadRecording(deviceName, {
+        ...location,
+        time: recordingTime,
+        noTracks: true,
+      }).thenCheckStationIsNew("stuAdmin").then((station: any) => {
+        const autoStationId = station.id;
+        const newStationName = "renamed-auto-station";
+        
+        cy.log("Rename automatic station");
+        cy.apiStationUpdateName(
+          "stuAdmin",
+          autoStationId.toString(),
+          newStationName,
+          HttpStatusCode.Ok,
+          {
+            useRawStationId: true,
+          },
+        );
+        
+        cy.log("Check station flags are updated");
+        const expectedStation = JSON.parse(JSON.stringify(TemplateExpectedStation));
+        expectedStation.name = getTestName(newStationName);
+        expectedStation.location = location;
+        expectedStation.automatic = false; // Should be false after rename
+        expectedStation.lastUpdatedById = getCreds("stuAdmin").id;
+        expectedStation.lastThermalRecordingTime = recordingTime.toISOString();
+        
+        cy.apiStationCheck(
+          "stuAdmin",
+          getTestName(newStationName),
+          expectedStation,
+          [".id", ".createdAt", ".updatedAt", ".activeAt", ".lastActiveThermalTime"],
+        );
+      });
+    });
+  });
+  
+  it("Non-group member cannot update station name", () => {
+    const deviceName = "new-device-name-update-3";
+    const stationName = "station-for-unauthorized-test";
+    const location = TestGetLocation(25);
+    const otherUser = "OtherUser_not_in_group";
+    
+    cy.apiDeviceAdd(deviceName, "stuGroup");
+    cy.apiUserAdd(otherUser);
+
+    cy.apiGroupStationAdd(
+      "stuAdmin",
+      "stuGroup",
+      { name: stationName, ...location },
+    ).then(() => {
+      cy.log("User not in group tries to update station name");
+      cy.apiStationUpdateName(
+        otherUser,
+        stationName,
+        "new-name",
+        HttpStatusCode.Forbidden,
+      );
+    });
+  });
 });
