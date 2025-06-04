@@ -120,7 +120,7 @@ const getAllVisitsForProject = (api: CacophonyApiClient, authKey: TestHandle | n
   while (morePagesExist && requestNumber < 100) {
     // We only allow up to 100 pages...
     if (!(untilDate > fromDate)) {
-      debugger;
+      console.warn("Until date is less than fromDate");
     }
 
     requestNumber++;
@@ -159,7 +159,7 @@ const getAllVisitsForProject = (api: CacophonyApiClient, authKey: TestHandle | n
         untilDate = new Date(pageFrom);
       }
     } else if (response && !response.success) {
-      debugger;
+      console.warn("Failure", response);
       break;
     }
   }
