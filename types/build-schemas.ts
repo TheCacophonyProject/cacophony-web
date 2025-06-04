@@ -202,7 +202,9 @@ class IsoFormattedDateStringParser implements SubNodeParser {
           path: typedefFile,
           tsconfig: "./tsconfig.json",
           type: exportedName, // Or <type-name> if you want to generate schema for that one type only
-        };
+          topRef: true,
+          additionalProperties: false,
+        } as any;
 
         // Get the exported types from each of the schema files that has changed.
         const formatter = createFormatter(config as any, (fmt) => {

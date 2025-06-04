@@ -36,7 +36,7 @@
     "handlebars": "^4.7.7",
     "influx": "^5.9.2",
     "jsdom": "^19.0.0",
-    "jsonschema": "^1.4.0",
+    "jsonschema": "1.4.0",
     "jsonwebtoken": "^9.0.0",
     "levenshtein-edit-distance": "2.0.5",
     "lodash": "^4.17.13",
