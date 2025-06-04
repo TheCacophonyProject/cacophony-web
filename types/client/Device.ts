@@ -30,7 +30,7 @@ import {
   type FetchResult,
   type LoadedResource,
   type LoggedInDeviceCredentials,
-  type TestHandle
+  type TestHandle,
 } from "./types";
 
 const createProxyDevice = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (

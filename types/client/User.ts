@@ -7,7 +7,7 @@ import {
   type JwtToken,
   type LoadedResource,
   type LoggedInUserWithCredentials,
-  type TestHandle
+  type TestHandle,
 } from "./types";
 import type { UserGlobalPermission } from "@typedefs/api/consts";
 import type { EndUserAgreementVersion } from "@typedefs/api/common";

@@ -297,10 +297,11 @@ onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
   await getClassifications();
 });
-// TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
+
 const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiLocationResponse[]
 >(() => {
+  // NOTE: - Use this to show which stations *could* have had recordings, but may have had no activity.
   // const visitLocations = dashboardVisits.value.map(
   //   (visit: ApiVisitResponse) => visit.stationId
   // );

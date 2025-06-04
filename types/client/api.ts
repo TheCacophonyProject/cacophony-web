@@ -3,7 +3,7 @@ import type {
   FetchResult, JwtToken,
   LoadedResource, LoggedInDeviceCredentials, LoggedInUserAuth,
   TestHandle,
-  WrappedFetchResult
+  WrappedFetchResult,
 } from "./types";
 const CurrentViewAbortController = {
   newView() {
