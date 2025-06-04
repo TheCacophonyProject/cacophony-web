@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { userProjectsLoaded } from "@models/LoggedInUser";
 import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
-import { computed, inject, onBeforeMount, ref } from "vue";
+import { computed, defineAsyncComponent, inject, onBeforeMount, ref } from "vue";
 import type { Ref } from "vue";
-import {
-  addOrUpdateProjectUser,
-  getUsersForProject,
-  removeProjectUser,
-} from "@api/Project";
+import {ClientApi} from "@/api";
 import type { GroupId as ProjectId } from "@typedefs/api/common";
 import type { ApiGroupUserResponse as ApiProjectUserResponse } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import type { CardTableRows, CardTableItem } from "@/components/CardTableTypes";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
-import ProjectInviteModal from "@/components/ProjectInviteModal.vue";
+const ProjectInviteModal = defineAsyncComponent(() => import("@/components/ProjectInviteModal.vue"));
 import {
   currentUser as currentUserInfo,
   currentSelectedProject as selectedProject,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
 const projectUsers = ref<LoadedResource<ApiProjectUserResponse[]>>(null);
 const loadingUsers = ref(false);
 const fallibleCurrentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
@@ -37,7 +33,7 @@ const currentUser = computed<LoggedInUser>(() => {
 const loadProjectUsers = async () => {
   loadingUsers.value = true;
   await userProjectsLoaded();
-  projectUsers.value = await getUsersForProject(
+  projectUsers.value = await ClientApi.Projects.getUsersForProject(
     (currentSelectedProject.value as { groupName: string; id: ProjectId }).id,
   );
   loadingUsers.value = false;
@@ -66,7 +62,7 @@ const updateUserPermissions = async () => {
   let updateUserResponse;
   const user = editPermissionsForUser.value as ApiProjectUserResponse;
   if (user.id) {
-    updateUserResponse = await addOrUpdateProjectUser(
+    updateUserResponse = await ClientApi.Projects.addOrUpdateProjectUser(
       (currentSelectedProject.value as SelectedProject).groupName,
       permissions.value.includes("admin"),
       permissions.value.includes("owner"),
@@ -74,7 +70,7 @@ const updateUserPermissions = async () => {
     );
   } else {
     // The user is invited, and the userName field is actually the email
-    updateUserResponse = await addOrUpdateProjectUser(
+    updateUserResponse = await ClientApi.Projects.addOrUpdateProjectUser(
       (currentSelectedProject.value as SelectedProject).groupName,
       permissions.value.includes("admin"),
       permissions.value.includes("owner"),
@@ -89,7 +85,7 @@ const updateUserPermissions = async () => {
 
 const acceptPendingUser = async (user: ApiProjectUserResponse) => {
   // TODO: Loading state
-  const acceptPendingUserResponse = await addOrUpdateProjectUser(
+  const acceptPendingUserResponse = await ClientApi.Projects.addOrUpdateProjectUser(
     (currentSelectedProject.value as SelectedProject).groupName,
     user.admin,
     user.owner,
@@ -106,20 +102,20 @@ const removeUser = async (user: ApiProjectUserResponse) => {
   } else {
     let removeUserResponse;
     if (user.id) {
-      removeUserResponse = await removeProjectUser(
+      removeUserResponse = await ClientApi.Projects.removeProjectUser(
         (currentSelectedProject.value as SelectedProject).groupName,
         user.id,
       );
     } else {
       // The user is invited, and the userName field is actually the email
-      removeUserResponse = await removeProjectUser(
+      removeUserResponse = await ClientApi.Projects.removeProjectUser(
         (currentSelectedProject.value as SelectedProject).groupName,
         undefined,
         user.userName,
       );
     }
     if (removeUserResponse.success) {
-      console.log("Removed user from group");
+      // Removed user from project
       await loadProjectUsers();
     }
   }
@@ -208,9 +204,9 @@ const permissionsOptions = computed(() => [
 <template>
   <h1 class="d-none d-md-block h5">Users</h1>
   <div
-    class="d-flex flex-column flex-md-row flex-fill mb-3 justify-content-md-between"
+    class="d-flex flex-column flex-md-row mb-3 justify-content-md-between"
   >
-    <p class="">
+    <p>
       Manage the users associated with {{ currentSelectedProject.groupName }}.
     </p>
     <div class="d-flex justify-content-end ms-md-5">
@@ -227,9 +223,9 @@ const permissionsOptions = computed(() => [
   </div>
   <div
     v-if="loadingUsers"
-    class="d-flex align-items-center justify-content-center"
+    class="d-flex align-items-center justify-content-center flex-fill"
   >
-    <b-spinner variant="secondary" />
+      <b-spinner variant="secondary" />
   </div>
   <card-table :items="tableItems" compact v-else :max-card-width="730">
     <template #card="{ card }">
@@ -263,7 +259,7 @@ const permissionsOptions = computed(() => [
           variant="outline-secondary"
           :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
           label="Approve request"
-          classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
+          :classes="['btn-outline-secondary', 'd-flex', 'align-items-center', 'fs-7', 'text-nowrap', 'w-100']"
           alignment="right"
         />
       </div>

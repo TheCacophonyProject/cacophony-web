@@ -1,4 +1,4 @@
-import { FileId, UserId } from "./common";
+import type { FileId, UserId } from "./common.ts";
 
 export interface AudiobaitDetails {
   name: string;

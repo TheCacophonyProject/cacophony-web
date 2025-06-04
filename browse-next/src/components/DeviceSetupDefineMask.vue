@@ -2,7 +2,7 @@
 import { reactive, type Ref } from "vue";
 import { ref, onMounted, computed, inject, watch } from "vue";
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
-import { updateMaskRegionsForDevice } from "@api/Device";
+import {ClientApi} from "@/api";
 import { useRoute } from "vue-router";
 import type {
   ApiDeviceResponse,
@@ -16,7 +16,7 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import { formFieldInputText, type FormInputValidationState } from "@/utils.ts";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import CardTable from "@/components/CardTable.vue";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 interface Point {
   x: number;
   y: number;
@@ -88,7 +88,7 @@ const updateExistingMaskRegions = async () => {
     }
     const regionsPayload: ApiMaskRegionsData = { maskRegions };
     emit("updated-regions", regionsPayload);
-    await updateMaskRegionsForDevice(device.value.id, regionsPayload);
+    await ClientApi.Devices.updateMaskRegionsForDevice(device.value.id, regionsPayload);
   }
 };
 

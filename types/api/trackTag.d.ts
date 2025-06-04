@@ -1,4 +1,4 @@
-import { IsoFormattedDateString, TrackId, TrackTagId, UserId } from "./common";
+import type { IsoFormattedDateString, TrackId, TrackTagId, UserId } from "./common.ts";
 
 export interface ApiTrackTagRequest {
   what: string;

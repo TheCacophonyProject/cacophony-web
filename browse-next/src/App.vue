@@ -45,7 +45,7 @@ import {
 import type { ComputedRef, Ref } from "vue";
 import { BSpinner } from "bootstrap-vue-next";
 import SwitchProjectsModal from "@/components/SwitchProjectsModal.vue";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 
 const fallibleCurrentUser = inject(currentUser) as Ref<
   LoadedResource<LoggedInUser>

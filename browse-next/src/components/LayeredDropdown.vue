@@ -5,7 +5,7 @@ import { onClickOutside } from "@vueuse/core";
 import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 
 const props = withDefaults(
   defineProps<{

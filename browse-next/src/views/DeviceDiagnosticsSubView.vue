@@ -1,16 +1,6 @@
 <script lang="ts" setup>
 import { computed, inject, onBeforeMount, ref, watch } from "vue";
-import {
-  type BatteryInfoEvent,
-  getBatteryInfo,
-  getDeviceConfig,
-  getDeviceLastPoweredOff,
-  getDeviceLastPoweredOn,
-  getDeviceLatestVersionInfo,
-  getDeviceLocationAtTime,
-  getDeviceNodeGroup,
-  getDeviceVersionInfo,
-} from "@api/Device";
+import {ClientApi} from "@/api";
 import { useRoute } from "vue-router";
 import type { Ref } from "vue";
 import type { DeviceId } from "@typedefs/api/common";
@@ -22,7 +12,7 @@ import {
   projectDevicesLoaded,
   projectLocationsLoaded,
 } from "@models/LoggedInUser";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource, BatteryInfoEvent } from "@apiClient/types";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
@@ -484,19 +474,19 @@ const init = async () => {
   await Promise.all([projectDevicesLoaded(), projectLocationsLoaded()]);
   await deviceLoaded();
   if (device.value) {
-    loadResource(deviceConfig, () => getDeviceConfig(deviceId));
-    loadResource(versionInfo, () => getDeviceVersionInfo(deviceId));
+    loadResource(deviceConfig, () => ClientApi.Devices.getDeviceConfig(deviceId));
+    loadResource(versionInfo, () => ClientApi.Devices.getDeviceVersionInfo(deviceId));
 
     loadResource(currentLocationForDevice, () =>
-      getDeviceLocationAtTime(deviceId, true),
+      ClientApi.Devices.getDeviceLocationAtTime(deviceId, true),
     );
-    loadResource(lastPowerOffTime, () => getDeviceLastPoweredOff(deviceId));
-    loadResource(lastPowerOnTime, () => getDeviceLastPoweredOn(deviceId));
-    loadResource(saltNodeGroup, () => getDeviceNodeGroup(deviceId));
+    loadResource(lastPowerOffTime, () => ClientApi.Devices.getDeviceLastPoweredOff(deviceId));
+    loadResource(lastPowerOnTime, () => ClientApi.Devices.getDeviceLastPoweredOn(deviceId));
+    loadResource(saltNodeGroup, () => ClientApi.Devices.getDeviceNodeGroup(deviceId));
     const eightWeeksAgo = new Date();
     eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-    loadResource(batteryInfo, () => getBatteryInfo(deviceId, eightWeeksAgo));
-    loadResource(latestVersionInfo, () => getDeviceLatestVersionInfo());
+    loadResource(batteryInfo, () => ClientApi.Devices.getBatteryInfo(deviceId, eightWeeksAgo));
+    loadResource(latestVersionInfo, () => ClientApi.Devices.getDeviceLatestVersionInfo());
     /*
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);

@@ -20,14 +20,15 @@ import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/st
 import { useRoute } from "vue-router";
 import type { DeviceId, LatLng } from "@typedefs/api/common";
 import type { SelectedProject } from "@models/LoggedInUser";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
 import LocationPicker from "@/components/LocationPicker.vue";
-import { getLocationsForProject } from "@api/Project.ts";
+// import { getLocationsForProject } from "@api/Project.ts";
 import Multiselect from "@vueform/multiselect";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { NamedPoint } from "@models/mapUtils.ts";
-import { createNewLocationForProject } from "@api/Location.ts";
-import { uploadRecording } from "@api/Recording.ts";
+// import { createNewLocationForProject } from "@api/Location.ts";
+// import { uploadRecording } from "@api/Recording.ts";
+import {ClientApi} from "@/api";
 import { DateTime } from "luxon";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
@@ -168,7 +169,7 @@ const onAddFiles = (e: Event) => {
 interface MessageData {
   threadIndex: number;
   type: string;
-  data: any;
+  data: unknown;
 }
 
 const messageQueue: Record<string, ((data: unknown) => void) | boolean>[] = [];
@@ -183,7 +184,7 @@ const waitForMessage = async (
 
 const startWork = (
   threadIndex: number,
-  payload: { type: string; data: any },
+  payload: { type: string; data: unknown },
 ): boolean => {
   if (!messageQueue[threadIndex].busy) {
     messageQueue[threadIndex].busy = true;
@@ -235,7 +236,7 @@ const createNewLocation = async (location: {
   name: string;
   location: LatLng;
 }): Promise<ApiLocationResponse> => {
-  const newLocation = await createNewLocationForProject(
+  const newLocation = await ClientApi.Locations.createNewLocationForProject(
     (project.value as SelectedProject).id,
     location.name,
     location.location,
@@ -243,7 +244,7 @@ const createNewLocation = async (location: {
   );
   // TODO: Check that new location was successfully created, otherwise throw an error.
   // Reload projects
-  previousLocations.value = await getLocationsForProject(
+  previousLocations.value = await ClientApi.Projects.getLocationsForProject(
     (project.value as SelectedProject).id.toString(),
   );
   return (previousLocations.value as ApiLocationResponse[]).find(
@@ -278,7 +279,7 @@ const beginUploadJob = async () => {
 
   totalUploads.value = uploadQueue.value.length;
   completedUploads.value = 0;
-  const pendingUploadApiRequests = [];
+  const pendingUploadApiRequests: Promise<void>[] = [];
   // Switch between canvas decode on main thread where offscreen canvas is not supported
   // vs offscreen canvas in a worker.
   // Create n-1 worker threads
@@ -304,7 +305,6 @@ const beginUploadJob = async () => {
     });
     worker.onmessage = async (message: MessageEvent<MessageData>) => {
       const { type, data, threadIndex } = message.data;
-      console.log(type, data, threadIndex);
       // Type is only ever "finish"
       if (type === "finish") {
         if (data.success) {
@@ -329,7 +329,7 @@ const beginUploadJob = async () => {
           };
           //console.log("Meta", recordingData.additionalMetadata);
           // NOTE: We want back-pressure from the uploads queue.
-          const recordingUploadResponse = await uploadRecording(
+          const recordingUploadResponse = await ClientApi.Recordings.uploadRecording(
             (device.value as ApiDeviceResponse).id,
             recordingData,
             data.rawFile,
@@ -373,7 +373,7 @@ const beginUploadJob = async () => {
       [canvas],
     );
     if (Object.keys(uploadErrors.value).length) {
-      console.log("Errors", uploadErrors.value);
+      console.warn("Errors", uploadErrors.value);
     }
     await waitForMessage(i, "ack");
     uploadWorkers.push(worker);
@@ -480,7 +480,7 @@ onMounted(async () => {
   // I guess if we pipeline and interleave the uploading and compression work, we'll be fine.
   if (device.value && project.value) {
     //  This should be all existing locations for the project.
-    previousLocations.value = await getLocationsForProject(
+    previousLocations.value = await ClientApi.Projects.getLocationsForProject(
       (project.value as SelectedProject).id.toString(),
     );
     if (

@@ -22,17 +22,18 @@ import { userProjects as currentUserProjects } from "@models/provides.ts";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { DateTime } from "luxon";
 import Multiselect from "@vueform/multiselect";
-import type { LoadedResource } from "@api/types.ts";
-import { getAllProjects } from "@api/Project.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
+// import { getAllProjects } from "@api/Project.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import {
-  list as listUsers,
-  superUserGetProjectsForUserByEmail,
-} from "@api/User.ts";
+// import {
+//   list as listUsers,
+//   superUserGetProjectsForUserByEmail,
+// } from "@api/User.ts";
 import type { DeviceId, UserId } from "@typedefs/api/common";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { getActiveDevicesForCurrentUser } from "@api/Device.ts";
+//import { getActiveDevicesForCurrentUser } from "@api/Device.ts";
 import DeviceName from "@/components/DeviceName.vue";
+import {ClientApi} from "@/api";
 
 const router = useRouter();
 const currentRoute = useRoute();
@@ -121,7 +122,7 @@ const allProjectsInternal = ref<LoadedResource<ApiProjectResponse[]>>(null);
 const loadAllProjects = async () => {
   if (allProjectsInternal.value === null) {
     // Load projects
-    const response = await getAllProjects(false);
+    const response = await ClientApi.Projects.getAllProjects(false);
     if (response.success) {
       allProjectsInternal.value = response.result.groups;
     }
@@ -244,7 +245,7 @@ const filterUser = computed(() =>
   (usersList.value || []).find((user) => user.id === userToFilterProjects.value),
 );
 const loadAllUsers = async () => {
-  const response = await listUsers();
+  const response = await ClientApi.Users.list();
   if (response.success) {
     usersList.value = response.result.usersList.sort((a, b) => {
       const ua = a.userName.toLowerCase();
@@ -265,7 +266,7 @@ const loadAllUsers = async () => {
   return [];
 };
 const loadAllDevices = async () => {
-  const devices = await getActiveDevicesForCurrentUser();
+  const devices = await ClientApi.Devices.getActiveDevicesForCurrentUser();
   if (devices) {
     devicesList.value = devices;
   } else {
@@ -277,7 +278,7 @@ const filterUserProjects = ref<ApiProjectResponse[] | null>(null);
 watch(userToFilterProjects, (userId) => {
   if (userId) {
     if (filterUser.value) {
-      superUserGetProjectsForUserByEmail(filterUser.value.email).then(
+      ClientApi.Users.superUserGetProjectsForUserByEmail(filterUser.value.email).then(
         (projects) => {
           if (projects) {
             filterUserProjects.value = projects as ApiProjectResponse[];

@@ -11,7 +11,7 @@ import {
   queryValueIsDate,
 } from "@/components/activitySearchUtils.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
-import { displayLabelForClassificationLabel, flatClassifications } from "@api/Classifications.ts";
+import { displayLabelForClassificationLabel, flatClassifications } from "@api/classificationsUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
 

@@ -7,117 +7,14 @@ import type {
   TrackId,
   TrackTagId,
 } from "@typedefs/api/common";
-import CacophonyApi, { unwrapLoadedResource } from "@api/api";
-import type {
-  FetchResult,
-  LoadedResource,
-  WrappedFetchResult,
-} from "@api/types";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackTagRequest } from "@typedefs/api/trackTag";
-import { RecordingType, TagMode } from "@typedefs/api/consts.ts";
+import { RecordingType, TagMode } from "@typedefs/api/consts";
 import type {
   ApiTrackDataRequest,
-  ApiTrackResponse,
 } from "@typedefs/api/track";
-
-export const getRecordingById = (
-  id: RecordingId,
-  includeDeletedRecordings = false,
-): Promise<LoadedResource<ApiRecordingResponse>> => {
-  const params = new URLSearchParams();
-  if (includeDeletedRecordings) {
-    params.append("deleted", true.toString());
-  }
-  params.append("requires-signed-url", false.toString());
-  return unwrapLoadedResource(
-    CacophonyApi.get(`/api/v1/recordings/${id}?${params}`) as Promise<
-      FetchResult<{
-        recording: ApiRecordingResponse;
-      }>
-    >,
-    "recording",
-  );
-};
-
-export const replaceTrackTag = (
-  tag: ApiTrackTagRequest,
-  recordingId: RecordingId,
-  trackId: TrackId,
-  automatic = false,
-) => {
-  const body: ApiTrackTagRequest = {
-    ...tag,
-    automatic,
-  };
-  return CacophonyApi.post(
-    `/api/v1/recordings/${recordingId}/tracks/${trackId}/replace-tag`,
-    body,
-  ) as Promise<FetchResult<{ trackTagId?: number }>>;
-};
-
-export const removeTrackTag = (
-  id: RecordingId,
-  trackId: TrackId,
-  trackTagId: TrackTagId,
-) =>
-  CacophonyApi.delete(
-    `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`,
-  ) as Promise<FetchResult<void>>;
-
-export const createDummyTrack = (
-  recording: ApiRecordingResponse,
-  track: ApiTrackDataRequest,
-) =>
-  CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
-    data: {
-      ...track,
-      tracker_version: "dummy-track",
-    },
-  }) as Promise<FetchResult<{ trackId: TrackId }>>;
-
-export const deleteTrack = (
-  recording: ApiRecordingResponse,
-  trackId: TrackId,
-) =>
-  CacophonyApi.delete(
-    `/api/v1/recordings/${recording.id}/tracks/${trackId}?soft-delete=false`,
-  ) as Promise<FetchResult<void>>;
-
-export const createUserDefinedTrack = (
-  recording: ApiRecordingResponse,
-  track: ApiTrackDataRequest,
-) =>
-  CacophonyApi.post(`/api/v1/recordings/${recording.id}/tracks`, {
-    data: {
-      ...track,
-    },
-  }) as Promise<FetchResult<{ trackId: TrackId }>>;
-
-export const addRecordingLabel = (id: RecordingId, label: string) =>
-  CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
-    tag: {
-      detail: label,
-      confidence: 0.9,
-    },
-  }) as Promise<FetchResult<{ tagId: TagId }>>;
-
-export const addRecordingNoteLabel = (id: RecordingId, note: string) =>
-  CacophonyApi.post(`/api/v1/recordings/${id}/tags`, {
-    tag: {
-      detail: "note",
-      comment: note,
-      confidence: 0.9,
-    },
-  }) as Promise<FetchResult<{ tagId: TagId }>>;
-
-export const removeRecordingLabel = (id: RecordingId, tagId: TagId) =>
-  CacophonyApi.delete(`/api/v1/recordings/${id}/tags/${tagId}`) as Promise<
-    FetchResult<void>
-  >;
-
-export const deleteRecording = (id: RecordingId) =>
-  CacophonyApi.delete(`/api/v1/recordings/${id}`) as Promise<FetchResult<void>>;
+import { DEFAULT_AUTH_ID, type FetchResult, type LoadedResource, type TestHandle, type WrappedFetchResult } from "./types";
+import { type CacophonyApiClient, unwrapLoadedResource } from "./api";
 
 export interface QueryRecordingsOptions {
   devices?: DeviceId[];
@@ -140,7 +37,7 @@ export interface QueryRecordingsOptions {
     | RecordingType.TrailCamVideo
     | RecordingType.ThermalRaw
     | RecordingType.Audio
-  )[];
+    )[];
 }
 
 export interface BulkRecordingsResponse {
@@ -148,7 +45,107 @@ export interface BulkRecordingsResponse {
   count?: number;
 }
 
-export const queryRecordingsInProjectNew = (
+
+const getRecordingById = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
+  id: RecordingId,
+  includeDeletedRecordings = false,
+): Promise<LoadedResource<ApiRecordingResponse>> => {
+  const params = new URLSearchParams();
+  if (includeDeletedRecordings) {
+    params.append("deleted", true.toString());
+  }
+  params.append("requires-signed-url", false.toString());
+  return unwrapLoadedResource(
+    api.get(authKey, `/api/v1/recordings/${id}?${params}`) as Promise<
+      FetchResult<{
+        recording: ApiRecordingResponse;
+      }>
+    >,
+    "recording",
+  );
+};
+
+const replaceTrackTag = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
+  tag: ApiTrackTagRequest,
+  recordingId: RecordingId,
+  trackId: TrackId,
+  automatic = false,
+) => {
+  const body: ApiTrackTagRequest = {
+    ...tag,
+    automatic,
+  };
+  return api.post(authKey,
+    `/api/v1/recordings/${recordingId}/tracks/${trackId}/replace-tag`,
+    body,
+  ) as Promise<FetchResult<{ trackTagId?: number }>>;
+};
+
+const removeTrackTag = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
+  id: RecordingId,
+  trackId: TrackId,
+  trackTagId: TrackTagId,
+) =>
+  api.delete(
+    authKey,
+    `/api/v1/recordings/${id}/tracks/${trackId}/tags/${trackTagId}`,
+  ) as Promise<FetchResult<void>>;
+
+const createDummyTrack = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
+  recording: ApiRecordingResponse,
+  track: ApiTrackDataRequest,
+) =>
+  api.post(authKey, `/api/v1/recordings/${recording.id}/tracks`, {
+    data: {
+      ...track,
+      tracker_version: "dummy-track",
+    },
+  }) as Promise<FetchResult<{ trackId: TrackId }>>;
+
+const deleteTrack = (api: CacophonyApiClient, authKey: TestHandle | null = null) => (
+  recording: ApiRecordingResponse,
+  trackId: TrackId,
+) =>
+  api.delete(
+    authKey, `/api/v1/recordings/${recording.id}/tracks/${trackId}?soft-delete=false`,
+  ) as Promise<FetchResult<void>>;
+
+const createUserDefinedTrack = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
+  recording: ApiRecordingResponse,
+  track: ApiTrackDataRequest,
+) =>
+  api.post(authKey, `/api/v1/recordings/${recording.id}/tracks`, {
+    data: {
+      ...track,
+    },
+  }) as Promise<FetchResult<{ trackId: TrackId }>>;
+
+const addRecordingLabel = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (id: RecordingId, label: string) =>
+  api.post(authKey, `/api/v1/recordings/${id}/tags`, {
+    tag: {
+      detail: label,
+      confidence: 0.9,
+    },
+  }) as Promise<FetchResult<{ tagId: TagId }>>;
+
+const addRecordingNoteLabel = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (id: RecordingId, note: string) =>
+  api.post(authKey, `/api/v1/recordings/${id}/tags`, {
+    tag: {
+      detail: "note",
+      comment: note,
+      confidence: 0.9,
+    },
+  }) as Promise<FetchResult<{ tagId: TagId }>>;
+
+const removeRecordingLabel = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (id: RecordingId, tagId: TagId) =>
+  api.delete(authKey, `/api/v1/recordings/${id}/tags/${tagId}`) as Promise<
+    FetchResult<void>
+  >;
+
+const deleteRecording = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (id: RecordingId) =>
+  api.delete(authKey, `/api/v1/recordings/${id}`) as Promise<FetchResult<void>>;
+
+const queryRecordingsInProjectNew = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectId: ProjectId,
   options: QueryRecordingsOptions,
 ): Promise<
@@ -217,7 +214,8 @@ export const queryRecordingsInProjectNew = (
   //  or we need to hold onto the pagination value.
   //return unwrapLoadedResource(
   const ABORTABLE = true;
-  return CacophonyApi.get(
+  return api.get(
+    authKey,
     `/api/v1/recordings/for-project/${projectId}?${params}`,
     ABORTABLE,
   ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
@@ -225,31 +223,31 @@ export const queryRecordingsInProjectNew = (
   //);
 };
 
-export const getRecordingsForDeviceInProject = (
+const getRecordingsForDeviceInProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   deviceIds: DeviceId | DeviceId[],
   projectId: ProjectId,
   tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> =>
-  getRecordingsForLocationsAndDevicesInProject(
+  getRecordingsForLocationsAndDevicesInProject(api, authKey)(
     projectId,
     undefined,
     deviceIds,
     tags,
   );
 
-export const getRecordingsForLocationsInProject = (
+const getRecordingsForLocationsInProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   locationIds: LocationId | LocationId[],
   projectId: ProjectId,
   tags?: string[],
 ): Promise<LoadedResource<ApiRecordingResponse[]>> =>
-  getRecordingsForLocationsAndDevicesInProject(
+  getRecordingsForLocationsAndDevicesInProject(api, authKey)(
     projectId,
     locationIds,
     undefined,
     tags,
   );
 
-export const getRecordingsForLocationsAndDevicesInProject = (
+const getRecordingsForLocationsAndDevicesInProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectId: ProjectId,
   locationIds?: LocationId | LocationId[],
   deviceIds?: DeviceId | DeviceId[],
@@ -272,14 +270,14 @@ export const getRecordingsForLocationsAndDevicesInProject = (
     options.taggedWith = tags;
   }
   return unwrapLoadedResource(
-    queryRecordingsInProjectNew(projectId, options) as Promise<
+    queryRecordingsInProjectNew(api, authKey)(projectId, options) as Promise<
       WrappedFetchResult<ApiRecordingResponse[]>
     >,
     "recordings",
   );
 };
 
-export const getAllRecordingsForProjectBetweenTimes = async (
+const getAllRecordingsForProjectBetweenTimes = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => async (
   projectId: ProjectId,
   query: QueryRecordingsOptions,
   progressUpdater: () => void,
@@ -288,7 +286,7 @@ export const getAllRecordingsForProjectBetweenTimes = async (
   const recordings = [];
   let moreRecordingsToLoad = true;
   while (moreRecordingsToLoad) {
-    const response = await queryRecordingsInProjectNew(projectId, {
+    const response = await queryRecordingsInProjectNew(api, authKey)(projectId, {
       ...query,
       queryIsTimeSensitive: false,
     });
@@ -309,7 +307,7 @@ export const getAllRecordingsForProjectBetweenTimes = async (
   return recordings;
 };
 
-export const longRunningQuery = (seconds?: number, succeed?: boolean) => {
+const longRunningQuery = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (seconds?: number, succeed?: boolean) => {
   const abortable = true;
   const params = new URLSearchParams();
   if (seconds) {
@@ -318,13 +316,13 @@ export const longRunningQuery = (seconds?: number, succeed?: boolean) => {
   if (succeed !== undefined) {
     params.append("succeed", succeed.toString());
   }
-  return CacophonyApi.get(
+  return api.get(authKey,
     `/api/v1/recordings/long-running-query?${params}`,
     abortable,
   ) as Promise<FetchResult<{ count: number }>>;
 };
 
-export const uploadRecording = (
+const uploadRecording = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   deviceId: DeviceId,
   data: { fileHash: string },
   rawFile: ArrayBuffer,
@@ -343,23 +341,24 @@ export const uploadRecording = (
   if (thumbFile && thumbFileName) {
     formData.set("thumb", new Blob([thumbFile]), thumbFileName);
   }
-  return CacophonyApi.postMultipartFormData(
+  return api.post(authKey,
     `/api/v1/recordings/device/${deviceId}`,
     formData,
     true,
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
 };
 
-export const getRawRecording = (recordingId: RecordingId) => {
+const getRawRecording = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (recordingId: RecordingId) => {
   const ABORTABLE = true;
-  return CacophonyApi.get(
+  return api.get(
+    authKey,
     `/api/v1/recordings/raw/${recordingId}`,
     ABORTABLE,
   ) as Promise<FetchResult<Blob>>;
 };
 
-export const updateResizedTrack = (recordingId: RecordingId, trackId: TrackId, startSeconds: number, endSeconds: number, minFreqHz: number, maxFreqHz: number) => {
-  return CacophonyApi.patch(`/api/v1/recordings/${recordingId}/tracks/${trackId}/update-data`, {
+const updateResizedTrack = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (recordingId: RecordingId, trackId: TrackId, startSeconds: number, endSeconds: number, minFreqHz: number, maxFreqHz: number) => {
+  return api.patch(authKey, `/api/v1/recordings/${recordingId}/tracks/${trackId}/update-data`, {
     data: {
       start_s: startSeconds,
       end_s: endSeconds,
@@ -367,4 +366,49 @@ export const updateResizedTrack = (recordingId: RecordingId, trackId: TrackId, s
       maxFreq: maxFreqHz,
     },
   }) as Promise<FetchResult<void>>;
+};
+
+export default (api: CacophonyApiClient) => {
+  return {
+    getRecordingById: getRecordingById(api),
+    replaceTrackTag: replaceTrackTag(api),
+    removeTrackTag: removeTrackTag(api),
+    createDummyTrack: createDummyTrack(api),
+    deleteTrack: deleteTrack(api),
+    createUserDefinedTrack: createUserDefinedTrack(api),
+    addRecordingLabel: addRecordingLabel(api),
+    addRecordingNoteLabel: addRecordingNoteLabel(api),
+    removeRecordingLabel: removeRecordingLabel(api),
+    deleteRecording: deleteRecording(api),
+    queryRecordingsInProjectNew: queryRecordingsInProjectNew(api),
+    getRecordingsForDeviceInProject: getRecordingsForDeviceInProject(api),
+    getRecordingsForLocationsInProject: getRecordingsForLocationsInProject(api),
+    getRecordingsForLocationsAndDevicesInProject: getRecordingsForLocationsAndDevicesInProject(api),
+    getAllRecordingsForProjectBetweenTimes: getAllRecordingsForProjectBetweenTimes(api),
+    longRunningQuery: longRunningQuery(api),
+    uploadRecording: uploadRecording(api),
+    getRawRecording: getRawRecording(api),
+    updateResizedTrack: updateResizedTrack(api),
+    withAuth: (authKey: TestHandle) => ({
+      getRecordingById: getRecordingById(api, authKey),
+      replaceTrackTag: replaceTrackTag(api, authKey),
+      removeTrackTag: removeTrackTag(api, authKey),
+      createDummyTrack: createDummyTrack(api, authKey),
+      deleteTrack: deleteTrack(api, authKey),
+      createUserDefinedTrack: createUserDefinedTrack(api, authKey),
+      addRecordingLabel: addRecordingLabel(api, authKey),
+      addRecordingNoteLabel: addRecordingNoteLabel(api, authKey),
+      removeRecordingLabel: removeRecordingLabel(api, authKey),
+      deleteRecording: deleteRecording(api, authKey),
+      queryRecordingsInProjectNew: queryRecordingsInProjectNew(api, authKey),
+      getRecordingsForDeviceInProject: getRecordingsForDeviceInProject(api, authKey),
+      getRecordingsForLocationsInProject: getRecordingsForLocationsInProject(api, authKey),
+      getRecordingsForLocationsAndDevicesInProject: getRecordingsForLocationsAndDevicesInProject(api, authKey),
+      getAllRecordingsForProjectBetweenTimes: getAllRecordingsForProjectBetweenTimes(api, authKey),
+      longRunningQuery: longRunningQuery(api, authKey),
+      uploadRecording: uploadRecording(api, authKey),
+      getRawRecording: getRawRecording(api, authKey),
+      updateResizedTrack: updateResizedTrack(api, authKey),
+    }),
+  };
 };

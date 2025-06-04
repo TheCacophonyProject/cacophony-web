@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BModal } from "bootstrap-vue-next";
 import { ref, watch } from "vue";
-import { MAX_RETRY_COUNT, networkConnectionError } from "@api/fetch";
+import { MAX_RETRY_COUNT, networkConnectionError } from "@/api";
 import { delayMs, delayMsThen } from "@/utils";
 const countDownInterval = ref(0);
 const countDown = ref(networkConnectionError.retryInterval / 1000);

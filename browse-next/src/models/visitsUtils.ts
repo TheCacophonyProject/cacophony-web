@@ -8,7 +8,7 @@ import {
   flatClassifications,
   getClassifications,
   getPathForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import type { Classification } from "@typedefs/api/trackTag";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 

@@ -144,7 +144,7 @@ const extractJwtAuthenticatedEntityCommon = async (
   }
 
   if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
-    return next(new AuthorizationError("User is not an admin."));
+    return next(new AuthorizationError("User is not a super admin."));
   }
 };
 

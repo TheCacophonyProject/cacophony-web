@@ -3,7 +3,8 @@ import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
-import { resetPassword as sendResetPasswordRequest } from "@api/User";
+
+import {ClientApi} from "@/api";
 
 const userEmailAddress: FormInputValue = formFieldInputText();
 const resetErrorMessage = ref<string | false>(false);
@@ -36,7 +37,7 @@ const resetPassword = async () => {
   const emailAddress = userEmailAddress.value.trim();
   resetInProgress.value = true;
   resetSubmitted.value = false;
-  const resetPasswordResponse = await sendResetPasswordRequest(emailAddress);
+  const resetPasswordResponse = await ClientApi.Users.sendPasswordResetRequest(emailAddress);
   if (resetPasswordResponse.success) {
     resetSubmitted.value = true;
   } else {

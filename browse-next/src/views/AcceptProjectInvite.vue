@@ -1,18 +1,20 @@
 <script lang="ts" setup>
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { acceptProjectInvitation } from "@api/User";
 import {
   nonPendingUserProjects,
   refreshUserProjects,
   urlNormalisedCurrentProjectName,
   userIsLoggedIn,
 } from "@models/LoggedInUser";
-import type { ErrorResult, JwtAcceptInviteTokenPayload } from "@api/types";
+import type { ErrorResult, JwtAcceptInviteTokenPayload } from "@apiClient/types";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
-import { decodeJWT, urlNormaliseName } from "@/utils";
+import { urlNormaliseName } from "@/utils";
+import { decodeJWT } from "@apiClient/utils.ts";
+import {ClientApi} from "@/api";
+
 const alreadyPartOfProject = ref(false);
 const checkingValidateEmailToken = ref(false);
 const isValidValidateToken = ref(false);
@@ -32,7 +34,7 @@ onMounted(async () => {
         userIsLoggedIn.value &&
         nonPendingUserProjects.value.find(({ id }) => id === jwtToken.group);
       if (!alreadyAddedToProject) {
-        const validateTokenResponse = await acceptProjectInvitation(
+        const validateTokenResponse = await ClientApi.Users.acceptProjectInvitation(
           jwtToken.group,
         );
         if (!validateTokenResponse.success) {

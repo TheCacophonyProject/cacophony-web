@@ -3,8 +3,8 @@
 import { formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { computed, onBeforeMount, ref } from "vue";
-import type { ErrorResult } from "@api/types";
-import { changePassword, validatePasswordResetToken } from "@api/User";
+import type { ErrorResult } from "@apiClient/types";
+import {ClientApi} from "@/api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { useRoute, useRouter } from "vue-router";
 
@@ -79,11 +79,10 @@ onBeforeMount(async () => {
     } else if (typeof params.token === "string") {
       resetToken.value = params.token.replace(/:/g, ".");
     }
-    const validateTokenResponse = await validatePasswordResetToken(
+    const validateTokenResponse = await ClientApi.Users.validatePasswordResetToken(
       resetToken.value,
     );
     checkingResetToken.value = false;
-    console.log(validateTokenResponse);
     if (!validateTokenResponse.success) {
       invalidReason.value = validateTokenResponse.result.messages[0];
       // Grab the error.
@@ -106,11 +105,10 @@ onBeforeMount(async () => {
 });
 const resetPassword = async () => {
   resetInProgress.value = true;
-  const changePasswordResponse = await changePassword(
+  const changePasswordResponse = await ClientApi.Users.changePassword(
     resetToken.value,
     userPassword.value,
   );
-  console.log("Resetting", userPassword.value);
   if (changePasswordResponse.success) {
     changedPassword.value = true;
   } else {

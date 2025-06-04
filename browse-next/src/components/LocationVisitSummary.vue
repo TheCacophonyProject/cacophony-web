@@ -7,7 +7,7 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import { visitsByLocation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import type { StationId as LocationId } from "@typedefs/api/common";
 
 const currentlyHighlightedLocation = inject(

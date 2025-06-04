@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
-import type { ErrorResult } from "@api/types";
+import type { ErrorResult } from "@apiClient/types";
 import { BModal } from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
-import { createProxyDevice } from "@api/Device";
+import {ClientApi} from "@/api";
 import type { SelectedProject } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
 import { currentSelectedProject } from "@models/provides";
@@ -45,7 +45,7 @@ const createNewProxyDevice = async () => {
   submittingCreateRequest.value = true;
   const deviceName = newDeviceName.value.trim();
   const projectName = selectedProject.value.groupName;
-  const createProxyDeviceResponse = await createProxyDevice(
+  const createProxyDeviceResponse = await ClientApi.Devices.createProxyDevice(
     projectName,
     deviceName,
   );

@@ -7,10 +7,9 @@ import {
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, onMounted, ref } from "vue";
-import { getProjectsForProjectAdminByEmail } from "@api/User";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
-import { requestToJoinGroup } from "@api/User";
-import type { LoadedResource } from "@api/types.ts";
+import {ClientApi} from "@/api";
+import type { LoadedResource } from "@apiClient/types.ts";
 
 const projectAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
@@ -66,7 +65,7 @@ const resetFormValues = () => {
 
 const joinExistingGroup = async () => {
   submittingJoinRequest.value = true;
-  const joinRequestResponse = await requestToJoinGroup(
+  const joinRequestResponse = await ClientApi.Users.requestToJoinProject(
     projectAdminEmailAddress.value.trim(),
     Number(projectChosen.value),
   );
@@ -83,7 +82,7 @@ const joinExistingGroup = async () => {
 
 const getGroupsForAdmin = async () => {
   submittingJoinRequest.value = true;
-  const projectsResponse = await getProjectsForProjectAdminByEmail(
+  const projectsResponse = await ClientApi.Users.getProjectsForProjectAdminByEmail(
     projectAdminEmailAddress.value.trim(),
   );
   if (projectsResponse.success) {

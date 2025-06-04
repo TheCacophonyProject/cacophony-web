@@ -10,8 +10,9 @@ import {
   watch,
 } from "vue";
 import type { Ref, ComputedRef } from "vue";
-import { getAllVisitsForProject } from "@api/Monitoring";
+import { ClientApi } from "@/api";
 import {
+  shouldViewAsSuperUser,
   showUnimplementedModal,
   urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
@@ -20,7 +21,6 @@ import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import { getLocationsForProject } from "@api/Project";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
@@ -29,11 +29,10 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import {
-  classifications,
   getClassifications,
   displayLabelForClassificationLabel,
   getClassificationForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import TagImage from "@/components/TagImage.vue";
 import {
   activeLocations,
@@ -41,7 +40,7 @@ import {
   latLngForActiveLocations,
   userProjects,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
 import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
@@ -271,10 +270,11 @@ const earliestDate = computed<Date>(() => {
 const loadVisits = async () => {
   if (currentProject.value) {
     visitsContext.value = null;
-    const allVisits = await getAllVisitsForProject(
+    const allVisits = await ClientApi.Monitoring.getAllVisitsForProject(
       (currentProject.value as SelectedProject).id,
       timePeriodDays.value,
-      (val) => {
+      shouldViewAsSuperUser.value,
+      (val: number) => {
         // TODO - Do we want to display loading progress via the UI?
         loadingVisitsProgress.value = val;
       },
@@ -295,7 +295,6 @@ watch(currentProject, reloadDashboard);
 const loadedRouteName = ref<string>("");
 onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
-  console.log("Loaded route name", loadedRouteName.value);
   await getClassifications();
 });
 // TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
@@ -344,7 +343,7 @@ const allLocations = computed<ApiLocationResponse[]>(() => {
 const loadLocations = async () => {
   if (currentProject.value) {
     locations.value = null;
-    locations.value = await getLocationsForProject(
+    locations.value = await ClientApi.Projects.getLocationsForProject(
       (currentProject.value as SelectedProject).id.toString(),
       true,
     );
@@ -458,6 +457,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         <div class="d-flex flex-row align-items-center justify-content-between">
           <span> in the last </span>
           <select
+            id="select-dashboard-timespan"
             class="form-select form-select-sm text-end"
             v-model="timePeriodDays"
           >

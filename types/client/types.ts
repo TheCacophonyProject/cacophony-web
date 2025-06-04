@@ -1,12 +1,51 @@
-import type { GroupId, UserId } from "@typedefs/api/common";
+import type { DeviceId, GroupId, SaltId, StationId as LocationId, UserId } from "@typedefs/api/common";
 import type { HttpStatusCode } from "@typedefs/api/consts";
+import type { ApiLoggedInUserResponse } from "../api/user";
+import { RecordingType, TagMode } from "../api/consts";
+import type { ApiRecordingResponse } from "../api/recording";
+import type { IsoFormattedString } from "../api/event";
 
 export type JwtToken<_T> = string;
+export type TestHandle = string;
+export const DEFAULT_AUTH_ID = "default";
+export type UserName = TestHandle;
+export type DeviceName = TestHandle;
+export type ProjectName = TestHandle;
+
+export interface LoggedInUserWithCredentials {
+  userData: ApiLoggedInUserResponse;
+  token: JwtToken<UserId>;
+  refreshToken: string;
+}
+
+export interface LoggedInUserAuth {
+  userData: ApiLoggedInUserResponse;
+  apiToken: JwtToken<UserId>;
+  refreshToken: string;
+  decodedToken?: JwtUserAuthTokenPayload,
+}
+
+export interface LoggedInUserAuthDeserialized extends LoggedInUserAuth {
+  decodedToken: JwtUserAuthTokenPayload,
+}
+
+export interface LoggedInDeviceCredentials {
+  id: DeviceId,
+  saltId: SaltId,
+  token: JwtToken<DeviceId>
+}
 
 export interface FieldValidationError {
   msg: string;
   location: "body" | "query" | "param";
   param: string;
+}
+
+export interface BatteryInfoEvent {
+  dateTime: IsoFormattedString | Date;
+  voltage: number | null;
+  battery: number | null;
+  batteryType: "unknown" | "lime" | "mains" | "li-ion";
 }
 
 export interface ErrorResult {

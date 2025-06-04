@@ -27,10 +27,6 @@ import {
 } from "@models/visitsUtils";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
-import {
-  deleteRecording as apiDeleteRecording,
-  getRecordingById,
-} from "@api/Recording";
 import type {
   ApiVisitResponse,
   VisitRecordingTag,
@@ -44,39 +40,33 @@ import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { useElementSize, useMediaQuery } from "@vueuse/core";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
-import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
+import type { LoggedInUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
-import { API_ROOT } from "@api/root";
+import {ClientApi} from "@/api";
 import {
   activeLocations,
   currentUser as currentUserInfo,
   currentUserCreds as currentUserCredentials,
   latLngForActiveLocations,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
+import { DEFAULT_AUTH_ID, type LoadedResource, type LoggedInUserAuth } from "@apiClient/types";
 import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.ts";
-import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
 import { urlNormaliseName } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
-import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
 ) as Ref<ApiVisitResponse | null>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 const visitsContext = inject("visitsContext") as Ref<ApiVisitResponse[] | null>;
-const currentUserCreds = inject(
-  currentUserCredentials,
-) as Ref<LoggedInUserAuth | null>;
-
 const route = useRoute();
 const emit = defineEmits<{
   (e: "close"): void;
@@ -363,7 +353,6 @@ const gotoPreviousRecordingOrVisit = async () => {
 };
 
 const gotoRecording = async (recordingId: RecordingId) => {
-  console.log("gotoRecording", recordingId);
   const params: RouteParams = {
     ...route.params,
     currentRecordingId: recordingId.toString(),
@@ -598,7 +587,7 @@ const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
 
 const trackRemoved = ({ trackId }: { trackId: TrackId }) => {
   if (recording.value) {
-    const index = recording.value.tracks.findIndex(({ id }) => id === trackId);
+    const index = recording.value.tracks.findIndex(({ id }: {id: TrackId}) => id === trackId);
     recording.value.tracks.splice(index, 1);
     if (currentTrack.value && currentTrack.value.id === trackId) {
       currentTrack.value = undefined;
@@ -751,7 +740,7 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     }
   }
 
-  const hasReferenceResponse = await hasReferenceImageForDeviceAtTime(
+  const hasReferenceResponse = await ClientApi.Devices.hasReferenceImageForDeviceAtTime(
     deviceId,
     atTime,
     true,
@@ -799,8 +788,9 @@ const loadRecording = async () => {
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
-    recording.value = await getRecordingById(currentRecordingId.value);
-    if (recording.value) {
+    const recordingResponse = await ClientApi.Recordings.getRecordingById(currentRecordingId.value);
+    if (recordingResponse) {
+      recording.value = recordingResponse;
       if (
         (recording.value.type === RecordingType.ThermalRaw &&
           recording.value.duration < 2.5 &&
@@ -858,11 +848,11 @@ const loadRecording = async () => {
       //   }
       // }
     } else {
-      console.log("Recording load failed");
-      // TODO Handle failure to get recording
+      console.warn("Recording load failed");
+      // TODO: Handle failure to get recording (it may have been deleted, or we may not have authorisation)
     }
   } else {
-    console.log("No recording id??");
+    console.warn("No recording id??");
   }
 };
 
@@ -888,7 +878,7 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   };
   if (
     recording.value &&
-    recording.value.tracks.find(({ id }) => id == trackId)
+    recording.value.tracks.find(({ id }: {id: TrackId}) => id == trackId)
   ) {
     if (!automatically) {
       // Make the player start playing at the beginning of the selected track,
@@ -1130,12 +1120,16 @@ const getExtensionForMimeType = (mimeType: string): string => {
 const requestedDownload = async () => {
   if (recording.value) {
     const rec = recording.value as ApiRecordingResponse;
-    await maybeRefreshStaleCredentials();
+    const apiToken = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
+    if (!apiToken) {
+      console.warn("api token not found");
+      return;
+    }
     const request = {
       mode: "cors",
       cache: "no-cache",
       headers: {
-        Authorization: currentUserCreds.value?.apiToken,
+        Authorization: apiToken,
       },
       method: "get",
     };
@@ -1147,8 +1141,9 @@ const requestedDownload = async () => {
       anchor.click();
     };
     const recordingId = rec.id;
+    // FIXME: This looks wrong. (maybe want authKey for getApiRoot?)
     const downloadedFileResponse = await window.fetch(
-      `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
+      `${ClientApi.getApiRoot()}/api/v1/recordings/raw/${recordingId}/archive`,
       // eslint-disable-next-line no-undef
       request as RequestInit,
     );
@@ -1204,7 +1199,7 @@ interface MaybeDeletedVisit extends ApiVisitResponse {
 const deleteRecording = async () => {
   if (recording.value) {
     const recordingIdToDelete = recording.value.id;
-    const deleteResponse = await apiDeleteRecording(recording.value.id);
+    const deleteResponse = await ClientApi.Recordings.deleteRecording(recording.value.id);
     if (deleteResponse.success) {
       const hasNextRec = hasNextRecording.value;
       const hasNextVis = hasNextVisit.value;

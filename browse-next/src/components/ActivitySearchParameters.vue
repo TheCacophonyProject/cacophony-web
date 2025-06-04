@@ -559,7 +559,6 @@ const getCurrentQuery = (): LocationQuery => {
       )
         .map(({ id }) => id)
         .join(",");
-  console.log("Tag mode", tagMode.value);
   const query: LocationQuery = {
     ...route.query,
     "display-mode": displayMode.value,
@@ -738,7 +737,6 @@ const syncParams = (
   displayMode.value = next.displayMode;
   recordingMode.value = next.recordingMode;
   tagMode.value = next.tagMode;
-  console.log("Tag mode", tagMode.value);
   if (tagMode.value === TagMode.Tagged || tagMode.value === TagMode.NoHuman) {
     selectedTags.value = next.taggedWith;
   } else {

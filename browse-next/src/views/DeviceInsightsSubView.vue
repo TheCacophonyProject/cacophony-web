@@ -2,11 +2,6 @@
 import { computed, inject, onMounted, ref, watch } from "vue";
 import type { Ref } from "vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import {
-  getLocationHistory,
-  getTracksWithTagForDeviceInProject,
-  getUniqueTrackTagsForDeviceInProject,
-} from "@api/Device";
 import { projectDevicesLoaded } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
 import { useRoute } from "vue-router";
@@ -17,10 +12,10 @@ import {
   selectedProjectDevices,
 } from "@models/provides";
 import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { DateTime } from "luxon";
-import { DeviceType } from "@typedefs/api/consts.ts";
+import {ClientApi} from "@/api";
 
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -100,10 +95,10 @@ onMounted(async () => {
   }
   if (device.value) {
     // How long has the device been in its current location?  That's the timespan we care about by default.
-    const locationHistory = await getLocationHistory(deviceId.value);
+    const locationHistory = await ClientApi.Devices.getLocationHistory(deviceId.value);
     if (locationHistory && locationHistory.length) {
       locationStartTime.value = new Date(locationHistory[0].fromDateTime);
-      trackTags.value = await getUniqueTrackTagsForDeviceInProject(
+      trackTags.value = await ClientApi.Devices.getUniqueTrackTagsForDeviceInProject(
         deviceId.value,
         locationStartTime.value,
       );
@@ -115,7 +110,7 @@ const getTracksForTag = async (tag: string | null) => {
   if (device.value && tag && locationStartTime.value) {
     computingHeatmap.value = true;
     // Maybe restrict to one month ago max?
-    tracksForSelectedTag.value = await getTracksWithTagForDeviceInProject(
+    tracksForSelectedTag.value = await ClientApi.Devices.getTracksWithTagForDeviceInProject(
       deviceId.value,
       tag,
       locationStartTime.value,

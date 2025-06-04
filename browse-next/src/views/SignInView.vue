@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref } from "vue";
-import { login } from "@models/LoggedInUser";
+import { login, refreshUserProjects, urlNormalisedCurrentProjectName } from "@models/LoggedInUser";
 import type { PendingRequest } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
@@ -15,6 +15,7 @@ const togglePasswordVisibility = () => {
 const userEmailAddress: FormInputValue = formFieldInputText();
 const userPassword: FormInputValue = formFieldInputText();
 const signInErrorMessage = ref("");
+
 const signInInProgress = reactive({
   requestPending: false,
 });
@@ -40,18 +41,20 @@ const submitLogin = async () => {
       (signInInProgress as PendingRequest).errors?.messages[0] || "";
   } else {
     const nextUrl = route.query.nextUrl;
-    const to: RouteLocationRaw = {
-      path: "/",
-    };
+    await refreshUserProjects();
     if (nextUrl) {
-      to.query = {
-        nextUrl,
+      const to: RouteLocationRaw = {
+        path: nextUrl as string,
       };
-    }
-    // Avoids a weird re-paint of the sign-in form
-    await nextTick(async () => {
       await router.push(to);
-    });
+    } else {
+      await router.push({
+        name: "dashboard",
+        params: {
+          projectName: urlNormalisedCurrentProjectName.value || "",
+        },
+      });
+    }
   }
 };
 

@@ -13,14 +13,6 @@ import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
 import { persistUserProjectSettings } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
-import { deleteTrack } from "@api/Recording.ts";
-import {
-  classifications,
-  displayLabelForClassificationLabel,
-  flatClassifications,
-  getClassificationForLabel,
-  getClassifications,
-} from "@api/Classifications";
 import type {
   CardTableRows,
   GenericCardTableValue,
@@ -35,9 +27,15 @@ import {
   currentSelectedProject as currentProject,
   currentUser,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
+import {
+  classifications,
+  displayLabelForClassificationLabel,
+  flatClassifications,
+  getClassificationForLabel, getClassifications,
+} from "@api/classificationsUtils.ts";
 
 const props = defineProps<{
   track: ApiTrackResponse;

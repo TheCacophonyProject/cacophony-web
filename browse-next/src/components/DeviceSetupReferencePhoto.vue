@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { type Ref } from "vue";
 import { computed, inject, nextTick, ref, watch } from "vue";
-import { updateReferenceImageForDeviceAtCurrentLocation } from "@api/Device";
+import {ClientApi} from "@/api";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
@@ -10,7 +10,7 @@ import type { DeviceId } from "@typedefs/api/common";
 import { drawSkewedImage } from "@/components/skew-image";
 import { useElementSize } from "@vueuse/core";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 
 /**
  * Converts an ImageData object to a WebP Blob.
@@ -535,7 +535,7 @@ const saveReferenceImage = async () => {
   renderSkewedImage();
 
   const webp = await convertImageDataToWebP(imageData);
-  const response = await updateReferenceImageForDeviceAtCurrentLocation(
+  const response = await ClientApi.Devices.updateReferenceImageForDeviceAtCurrentLocation(
     device.value!.id,
     webp,
   );

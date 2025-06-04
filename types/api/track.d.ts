@@ -1,9 +1,9 @@
-import { Seconds, TrackId } from "./common";
-import {
+import type { Seconds, TrackId } from "./common.ts";
+import type {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
   ApiTrackTag,
-} from "./trackTag";
+} from "./trackTag.ts";
 
 export interface ApiTrackPosition {
   x: number;

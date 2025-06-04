@@ -4,7 +4,6 @@ import { computed, inject, onMounted, ref } from "vue";
 import type { Ref } from "vue";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import { getLocationsForProject } from "@api/Project";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import type { NamedPoint } from "@models/mapUtils";
@@ -15,7 +14,8 @@ import {
   LocationsForCurrentProject,
   type SelectedProject,
 } from "@models/LoggedInUser";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
+import {ClientApi} from "@/api";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
 import { BPopover } from "bootstrap-vue-next";
 
@@ -32,7 +32,7 @@ onMounted(async () => {
 });
 
 const loadLocations = async () => {
-  locations.value = await getLocationsForProject(
+  locations.value = await ClientApi.Projects.getLocationsForProject(
     selectedProject.value.id.toString(),
     true,
   );
@@ -224,7 +224,7 @@ const updateLocationName = async (payload: {
   const location = (locations.value || []).find(({ id }) => id === payload.id);
   if (location) {
     location.name = payload.newName;
-    LocationsForCurrentProject.value = (await getLocationsForProject(
+    LocationsForCurrentProject.value = (await ClientApi.Projects.getLocationsForProject(
       selectedProject.value.id.toString(),
       true,
     )) as LoadedResource<ApiLocationResponse[]>;
@@ -232,7 +232,7 @@ const updateLocationName = async (payload: {
 };
 </script>
 <template>
-  <div>
+
     <section-header>Locations</section-header>
     <b-popover
       ref="popOverHint"
@@ -250,21 +250,18 @@ const updateLocationName = async (payload: {
       This location was automatically named. Rename it to a meaningful name for
       your project.
     </b-popover>
+    <div v-if="loadingLocations" class="d-flex align-items-center flex-column flex-fill">
+      <div class="d-flex align-items-center flex-fill">
+        <b-spinner variant="secondary" />
+      </div>
+    </div>
     <div
+      v-else
       class="d-flex flex-fill justify-content-between"
       ref="locationsContainer"
     >
       <div
-        class="justify-content-center align-content-center d-flex flex-fill"
-        v-if="loadingLocations"
-      >
-        <b-spinner size="xl" />
-        <span class="h3 ms-3">Loading locations...</span>
-        <!--      TODO - Maybe use bootstrap 'placeholder' elements -->
-      </div>
-      <div
         class="d-flex flex-column-reverse justify-content-between flex-fill"
-        v-else
       >
         <div v-if="!projectHasLocations" class="d-flex flex-fill">
           There are no existing locations for this project
@@ -363,7 +360,6 @@ const updateLocationName = async (payload: {
         :style="{ width: `${mapBufferWidth}px` }"
       ></div>
     </div>
-  </div>
 </template>
 <style lang="less" scoped>
 .map {

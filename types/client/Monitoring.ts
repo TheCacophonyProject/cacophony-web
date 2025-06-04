@@ -1,27 +1,33 @@
-import { shouldViewAsSuperUser } from "@models/LoggedInUser";
 import type {
   GroupId as ProjectId,
   StationId as LocationId,
 } from "@typedefs/api/common";
-import type { FetchResult } from "@api/types";
-import CacophonyApi from "./api";
 import type {
   ApiVisitResponse,
   MonitoringPageCriteria,
 } from "@typedefs/api/monitoring";
 import type { RecordingType } from "@typedefs/api/consts.ts";
-import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts.ts";
+import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts";
+import type { CacophonyApiClient } from "./api";
+import { DEFAULT_AUTH_ID, type FetchResult, type TestHandle } from "./types";
 
 export interface VisitsQueryResult {
   statusCode: number;
   visits: ApiVisitResponse[];
   params: MonitoringPageCriteria;
 }
+
+export interface BulkVisitsResponse {
+  visits: ApiVisitResponse[];
+  all: boolean;
+  success: boolean;
+}
 export type ProgressUpdater = (progress: number) => void;
-export const getVisitsForProjectNew = async (
+const getVisitsForProjectNew = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectId: ProjectId,
   fromDate: Date,
   untilDate: Date,
+  shouldViewAsSuperUser: boolean = false,
   locations?: LocationId[],
   types?: (
     | RecordingType.TrailCamVideo
@@ -45,18 +51,20 @@ export const getVisitsForProjectNew = async (
   }
   //params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
   //params.append("page-size", pageSize.toString()); // 100 recordings per page of visits, which is the max
-  if (!shouldViewAsSuperUser.value) {
+  if (!shouldViewAsSuperUser) {
     params.append("view-mode", "user");
   }
-  return (await CacophonyApi.get(
+  return api.get(
+    authKey,
     `/api/v1/monitoring/for-project/${projectId}?${params}`,
-  )) as FetchResult<VisitsQueryResult>;
+  ) as Promise<FetchResult<VisitsQueryResult>>;
 };
 
-export const getVisitsForProject = async (
+const getVisitsForProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectId: ProjectId,
   fromDate: Date,
   untilDate: Date,
+  shouldViewAsSuperUser: boolean = false,
   locations?: LocationId[],
   types?: (
     | RecordingType.TrailCamVideo
@@ -78,20 +86,22 @@ export const getVisitsForProject = async (
   }
   params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
   params.append("page-size", "50"); // 100 recordings per page of visits, which is the max
-  if (!shouldViewAsSuperUser.value) {
+  if (!shouldViewAsSuperUser) {
     params.append("view-mode", "user");
   }
   const ABORTABLE = true;
-  return (await CacophonyApi.get(
+  return api.get(
+    authKey,
     `/api/v1/monitoring/page?${params}`,
     ABORTABLE,
-  )) as FetchResult<VisitsQueryResult>;
+  ) as Promise<FetchResult<VisitsQueryResult>>;
 };
 
 // Load *all* of a date range at once.
-export const getAllVisitsForProject = async (
+const getAllVisitsForProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => async (
   projectId: ProjectId,
   numDays: number,
+  shouldViewAsSuperUser: boolean = false,
   progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is[0, 1]
 ): Promise<{
   visits: ApiVisitResponse[];
@@ -114,10 +124,11 @@ export const getAllVisitsForProject = async (
     }
 
     requestNumber++;
-    const response = await getVisitsForProject(
+    const response = await getVisitsForProject(api, authKey)(
       projectId,
       fromDate,
       untilDate,
+      shouldViewAsSuperUser,
       undefined,
       [
         ConcreteRecordingType.ThermalRaw,
@@ -164,16 +175,11 @@ export const getAllVisitsForProject = async (
   };
 };
 
-export interface BulkVisitsResponse {
-  visits: ApiVisitResponse[];
-  all: boolean;
-  success: boolean;
-}
-
-export const getAllVisitsForProjectBetweenTimes = async (
+const getAllVisitsForProjectBetweenTimes = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => async (
   projectId: ProjectId,
   fromDate: Date,
   untilDateTime: Date,
+  shouldViewAsSuperUser: boolean = false,
   locations?: LocationId[],
   types?: (
     | RecordingType.TrailCamImage
@@ -193,10 +199,11 @@ export const getAllVisitsForProjectBetweenTimes = async (
   while (morePagesExist && requestNumber < 100) {
     // We only allow up to 100 pages...
     requestNumber++;
-    const response = await getVisitsForProject(
+    const response = await getVisitsForProject(api, authKey)(
       projectId,
       fromDate,
       untilDate,
+      shouldViewAsSuperUser,
       locations,
       types,
     );
@@ -244,5 +251,20 @@ export const getAllVisitsForProjectBetweenTimes = async (
     success: true,
     visits: returnVisits,
     all: !morePagesExist,
+  };
+};
+
+export default (api: CacophonyApiClient) => {
+  return {
+    getVisitsForProjectNew: getVisitsForProjectNew(api),
+    getVisitsForProject: getVisitsForProject(api),
+    getAllVisitsForProject: getAllVisitsForProject(api),
+    getAllVisitsForProjectBetweenTimes: getAllVisitsForProjectBetweenTimes(api),
+    withAuth: (authKey: TestHandle) => ({
+      getVisitsForProjectNew: getVisitsForProjectNew(api, authKey),
+      getVisitsForProject: getVisitsForProject(api, authKey),
+      getAllVisitsForProject: getAllVisitsForProject(api, authKey),
+      getAllVisitsForProjectBetweenTimes: getAllVisitsForProjectBetweenTimes(api, authKey),
+    }),
   };
 };

@@ -154,11 +154,12 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   try {
     changes = JSON.parse(await fs.readFile("../api/schema-cache.json", "utf8"));
   } catch (e) {
-    console.log("Cache doesn't exist?", e);
+    console.log("Schema cache doesn't exist., recreating all schemas.");
   }
   const updatedSchemas = [];
+  schemaDefinitions.sort((a, b) => a.localeCompare(b));
   for (const typedefFile of schemaDefinitions) {
-    const file = await fs.readFile(typedefFile);
+    const file = await fs.readFile(typedefFile, "utf8");
     const hash = crypto.createHash("sha1");
     hash.update(file);
     const digest = hash.digest("hex");
@@ -168,7 +169,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
     ) {
       console.log(`Schema def ${typedefFile} changed, re-compiling`);
       changes[typedefFile] = digest;
-      const exportedNames = [];
+      const exportedNames: string[] = [];
       {
         // Use the typescript compiler to extract all the exported types:
         const program = ts.createProgram([typedefFile], {});
@@ -183,9 +184,10 @@ class IsoFormattedDateStringParser implements SubNodeParser {
           for (const e of exported) {
             if (e.declarations) {
               for (const declaration of e.declarations) {
-                if (declaration.modifiers) {
-                  for (const modifier of declaration.modifiers) {
+                if ((declaration as any).modifiers) {
+                  for (const modifier of (declaration as any).modifiers) {
                     if (modifier.kind === ts.SyntaxKind.ExportKeyword) {
+                      //console.log("Declaration", declaration);
                       exportedNames.push((declaration as any).name.escapedText);
                     }
                   }
@@ -203,15 +205,15 @@ class IsoFormattedDateStringParser implements SubNodeParser {
         };
 
         // Get the exported types from each of the schema files that has changed.
-        const formatter = createFormatter(config, (fmt) => {
+        const formatter = createFormatter(config as any, (fmt) => {
           // If your formatter DOES NOT support children, e.g. getChildren() { return [] }:
           fmt.addTypeFormatter(new IntegerFormatter());
           fmt.addTypeFormatter(new FloatZeroOneFormatter());
           fmt.addTypeFormatter(new IsoFormattedDateStringFormatter());
         });
 
-        const program = createProgram(config);
-        const parser = createParser(program, config, (prs) => {
+        const program = createProgram(config as any);
+        const parser = createParser(program, config as any, (prs) => {
           prs.addNodeParser(new TypeAliasParser());
           prs.addNodeParser(new FloatZeroOneParser());
           prs.addNodeParser(new IsoFormattedDateStringParser());
@@ -253,7 +255,6 @@ class IsoFormattedDateStringParser implements SubNodeParser {
       }
     } else {
       changes[typedefFile] = digest;
-      //console.log(`Schema def ${typedefFile} unchanged, skipping`);
     }
   }
   if (updatedSchemas.length) {

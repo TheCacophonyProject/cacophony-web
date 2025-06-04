@@ -26,23 +26,23 @@ import {
 import {
   projectDevicesLoaded,
   projectLocationsLoaded,
-  type SelectedProject,
+  type SelectedProject, shouldViewAsSuperUser,
 } from "@models/LoggedInUser";
 import type {
   FetchResult,
   LoadedResource,
   SuccessFetchResult,
-} from "@api/types";
+} from "@apiClient/types";
 import type {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
 } from "@typedefs/api/recording";
-import {
-  type BulkRecordingsResponse,
-  getAllRecordingsForProjectBetweenTimes,
-  queryRecordingsInProjectNew,
-  type QueryRecordingsOptions,
-} from "@api/Recording";
+// import {
+//   type BulkRecordingsResponse,
+//   getAllRecordingsForProjectBetweenTimes,
+//   queryRecordingsInProjectNew,
+//   type QueryRecordingsOptions,
+// } from "@api/Recording";
 import {
   type RecordingType,
   RecordingType as ConcreteRecordingType,
@@ -78,11 +78,11 @@ import {
 import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import {
-  getAllVisitsForProjectBetweenTimes,
-  getVisitsForProject,
-  type VisitsQueryResult,
-} from "@api/Monitoring";
+// import {
+//   getAllVisitsForProjectBetweenTimes,
+//   getVisitsForProject,
+//   type VisitsQueryResult,
+// } from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
 import {
   ActivitySearchDisplayMode,
@@ -96,7 +96,7 @@ import {
   displayLabelForClassificationLabel,
   flatClassifications,
   getClassifications,
-} from "@api/Classifications.ts";
+} from "@api/classificationsUtils";
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
 import { delayMs } from "@/utils.ts";
 import {
@@ -105,8 +105,11 @@ import {
   humanTagsForRecording,
 } from "@models/recordingUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { CurrentViewAbortController } from "@/router";
-import { getDevicesForProject } from "@api/Project.ts";
+// import { CurrentViewAbortController } from "@/router";
+// import { getDevicesForProject } from "@api/Project.ts";
+import type { BulkRecordingsResponse, QueryRecordingsOptions } from "@apiClient/Recording.ts";
+import { ClientApi, CurrentViewAbortController } from "@/api";
+import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -1301,7 +1304,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         // NOTE: Not sure we need to ever get the total count for this query for the
         //  purposes of this UI?
         CurrentViewAbortController.newView();
-        response = await queryRecordingsInProjectNew(project.id, {
+        response = await ClientApi.Recordings.queryRecordingsInProjectNew(project.id, {
           ...query,
           limit: twoPagesWorth,
           fromDateTime: dateRange.value[0],
@@ -1323,13 +1326,14 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         // Make it the lesser of the current date range or 2 pages worth of days.
         //const pageSize = 100;
         CurrentViewAbortController.newView();
-        response = await getVisitsForProject(
+        response = await ClientApi.Monitoring.getVisitsForProject(
           project.id,
           dateRange.value[0] as Date,
           minDate(
             currentQueryCursor.value.untilDateTime as Date,
             endOfDay(maxDateForSelectedLocations.value),
           ),
+          shouldViewAsSuperUser.value,
           //pageSize,
           query.locations,
           query.types as
@@ -1635,10 +1639,11 @@ const doExport = async () => {
     exportProgress.value = 0;
     if (inVisitsMode.value) {
       // Get all the responses
-      const visitsResponse = await getAllVisitsForProjectBetweenTimes(
+      const visitsResponse = await ClientApi.Monitoring.getAllVisitsForProjectBetweenTimes(
         project.id,
         fromDateTime,
         untilDateTime,
+        shouldViewAsSuperUser.value,
         query.locations,
         query.types as
           | (
@@ -1664,7 +1669,7 @@ const doExport = async () => {
     } else if (inRecordingsMode.value) {
       query.fromDateTime = fromDateTime;
       query.untilDateTime = untilDateTime;
-      const recordings = await getAllRecordingsForProjectBetweenTimes(
+      const recordings = await ClientApi.Recordings.getAllRecordingsForProjectBetweenTimes(
         project.id,
         query,
         () => {
@@ -1912,7 +1917,7 @@ const localDateString = (d: Date): string => {
 
 const loadActiveAndInactiveDevices = async () => {
   if (!devices.value && currentProject.value) {
-    devices.value = await getDevicesForProject(
+    devices.value = await ClientApi.Projects.getDevicesForProject(
       currentProject.value.id,
       true,
       true,

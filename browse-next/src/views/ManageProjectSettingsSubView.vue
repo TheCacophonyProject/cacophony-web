@@ -20,7 +20,7 @@ import { capitalize } from "@/utils.ts";
 import {
   displayLabelForClassificationLabel,
   getClassifications,
-} from "@api/Classifications.ts";
+} from "@api/classificationsUtils.ts";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 

@@ -86,7 +86,7 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
     <!--      >Fix locations</router-link-->
     <!--    >-->
   </overflowing-tab-list>
-  <div class="py-3">
+  <div class="py-3 d-flex flex-fill flex-column">
     <router-view />
   </div>
 </template>

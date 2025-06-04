@@ -1,4 +1,4 @@
-import { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common";
+import type { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common.ts";
 import { RecordingProcessingState, RecordingType } from "./consts.js";
 
 export interface MonitoringRequest {

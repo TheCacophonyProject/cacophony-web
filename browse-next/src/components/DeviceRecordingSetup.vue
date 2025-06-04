@@ -8,17 +8,12 @@ import type {
 } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
-import type { LoadedResource } from "@api/types.ts";
-import {
-  getDeviceModel,
-  getDeviceNodeGroup,
-  getSettingsForDevice,
-  updateDeviceSettings,
-} from "@api/Device.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import Datepicker from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
 import type { DeviceTypeUnion } from "@typedefs/api/consts";
+import { ClientApi } from "@/api";
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -81,7 +76,7 @@ const timeObjToTimeStr = (time: Time): string => {
 };
 
 const fetchSettings = async () => {
-  const response = await getSettingsForDevice(deviceId.value);
+  const response = await ClientApi.Devices.getSettingsForDevice(deviceId.value);
   if (response && response.success && response.result.settings) {
     return response.result.settings;
   }
@@ -157,7 +152,7 @@ onBeforeMount(async () => {
   await projectDevicesLoaded();
   await loadResource(settings, fetchSettings);
   await loadResource(deviceModel, async () => {
-    const res = await getDeviceModel(deviceId.value);
+    const res = await ClientApi.Devices.getDeviceModel(deviceId.value);
     if (res.success) {
       return res.result.type;
     }
@@ -165,7 +160,7 @@ onBeforeMount(async () => {
   initialised.value = true;
   if (settings.value && !settings.value.synced) {
     // Load last synced settings
-    const response = await getSettingsForDevice(deviceId.value, true);
+    const response = await ClientApi.Devices.getSettingsForDevice(deviceId.value, true);
     if (response && response.success && response.result.settings) {
       syncedSettings.value = response.result.settings;
     }
@@ -518,7 +513,7 @@ const savingAudioSettings = ref<boolean>(false);
 watch([audioMode, audioSeed], async () => {
   if (settings.value && initialised.value) {
     savingAudioSettings.value = true;
-    await updateDeviceSettings(deviceId.value, settings.value);
+    await ClientApi.Devices.updateDeviceSettings(deviceId.value, settings.value);
     savingAudioSettings.value = false;
   }
 });
@@ -528,28 +523,28 @@ const savingRecordingWindowSettings = ref<boolean>(false);
 watch(useLowPowerMode, async () => {
   if (settings.value && initialised.value) {
     savingPowerModeSettings.value = true;
-    await updateDeviceSettings(deviceId.value, settings.value);
+    await ClientApi.Devices.updateDeviceSettings(deviceId.value, settings.value);
     savingPowerModeSettings.value = false;
   }
 });
 watch(recordingWindowSetting, async () => {
   if (settings.value && initialised.value) {
     savingRecordingWindowSettings.value = true;
-    await updateDeviceSettings(deviceId.value, settings.value);
+    await ClientApi.Devices.updateDeviceSettings(deviceId.value, settings.value);
     savingRecordingWindowSettings.value = false;
   }
 });
 watch(customRecordingWindowStart, async () => {
   if (settings.value && initialised.value) {
     savingRecordingWindowSettings.value = true;
-    await updateDeviceSettings(deviceId.value, settings.value);
+    await ClientApi.Devices.updateDeviceSettings(deviceId.value, settings.value);
     savingRecordingWindowSettings.value = false;
   }
 });
 watch(customRecordingWindowStop, async () => {
   if (settings.value && initialised.value) {
     savingRecordingWindowSettings.value = true;
-    await updateDeviceSettings(deviceId.value, settings.value);
+    await ClientApi.Devices.updateDeviceSettings(deviceId.value, settings.value);
     savingRecordingWindowSettings.value = false;
   }
 });

@@ -1,51 +1,44 @@
+import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
   createRouter,
   createWebHistory,
+  isNavigationFailure,
+  NavigationFailureType,
   type RouteLocationRaw,
   type RouteRecordRaw,
 } from "vue-router";
-import type { NavigationGuardNext, RouteLocationNormalized } from "vue-router";
 import {
   currentEUAVersion,
   currentSelectedProject,
+  currentUserIsSuperUser,
   DevicesForCurrentProject,
-  forgetUserOnCurrentDevice,
   isFetchingProjects,
-  isLoggingInAutomatically,
   isResumingSession,
+  isViewingAsSuperUser,
+  LocationsForCurrentProject,
+  NonUserProjects,
   pinSideNav,
   refreshUserProjects,
   switchCurrentProject,
-  tryLoggingInRememberedUser,
   urlNormalisedCurrentProjectName,
-  UserProjects,
   userHasConfirmedEmailAddress,
   userHasProjects,
   userIsAdminForCurrentSelectedProject,
   userIsLoggedIn,
-  LocationsForCurrentProject,
-  currentUserIsSuperUser,
-  NonUserProjects,
-  isViewingAsSuperUser,
+  UserProjects,
 } from "@/models/LoggedInUser";
-import { getEUAVersion } from "@api/User";
-import { getDevicesForProject, getLocationsForProject } from "@api/Project";
+// import { getEUAVersion } from "@api/User";
+// import { getDevicesForProject, getLocationsForProject } from "@api/Project";
 import { nextTick } from "vue";
-import { decodeJWT, urlNormaliseName } from "@/utils";
+import { urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DeviceType } from "@typedefs/api/consts.ts";
-import type { LoadedResource } from "@api/types.ts";
-
-// Allows us to abort all pending fetch requests when switching between major views.
-export const CurrentViewAbortController = {
-  newView() {
-    this.controller && this.controller.abort();
-    this.controller = new AbortController();
-  },
-  controller: new AbortController(),
-};
+import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
+import { ClientApi, CurrentUser, CurrentViewAbortController } from "@/api";
+import { decodeJWT } from "@apiClient/utils.ts";
+// import { CurrentViewAbortController } from "@api/fetch.ts";
 
 const cancelPendingRequests = (
   to: RouteLocationNormalized,
@@ -356,10 +349,17 @@ const router = createRouter({
       path: "/sign-out",
       name: "sign-out",
       meta: { requiresLogin: true, nonMainView: true, title: "Signing out" },
-      component: () => import("@/views/UserPreferencesView.vue"),
-      beforeEnter: cancelPendingRequests,
+      redirect: () => {
+        userIsLoggedIn.value = false;
+        UserProjects.value = null;
+        NonUserProjects.value = null;
+        DevicesForCurrentProject.value = null;
+        LocationsForCurrentProject.value = null;
+        return {
+          name: "sign-in",
+        };
+      },
     },
-
     {
       path: "/sign-in",
       name: "sign-in",
@@ -436,6 +436,17 @@ const router = createRouter({
   ],
 });
 
+const nonProjectPrefixedRouteNames = [
+  "confirm-email",
+  "accept-project-invite",
+  "confirm-project-membership-request",
+  "user-settings",
+  "setup",
+  "end-user-agreement",
+  "register",
+  "register-with-token",
+];
+
 const DEFAULT_TITLE = "Cacophony Browse";
 
 const interpolateTitle = (
@@ -477,7 +488,23 @@ const interpolateTitle = (
   return output;
 };
 
-router.afterEach(async (to) => {
+router.onError((e) => {
+  console.warn("unhandled router error!!", e);
+  return () => {};
+});
+
+router.afterEach(async (to, from , failure) => {
+  if (failure) {
+    let type = "unknown";
+    if (isNavigationFailure(failure, NavigationFailureType.aborted)) {
+      type = "aborted";
+    } else if (isNavigationFailure(failure, NavigationFailureType.cancelled)) {
+      type = "cancelled";
+    } else if (isNavigationFailure(failure, NavigationFailureType.duplicated)) {
+      type = "duplicated";
+    }
+    console.warn("NAVIGATION FAILURE", type, failure, to, from);
+  }
   // Use next tick to handle router history correctly
   // see: https://github.com/vuejs/vue-router/issues/914#issuecomment-384477609
   await nextTick(() => {
@@ -488,92 +515,117 @@ router.afterEach(async (to) => {
 });
 
 router.beforeEach(async (to, from, next) => {
-  if (to.name === "sign-out") {
-    userIsLoggedIn.value = false;
-    forgetUserOnCurrentDevice();
-    return next({
-      name: "sign-in",
-    });
+  const toName = to.name;
+  const requiresCreds = to.meta.requiresLogin || to.path === "/";
+  if (!requiresCreds) {
+    // If we don't require creds, we can just go to route most of the time
+    pinSideNav.value = false;
+    console.warn(`Navigating to non-creds route '${String(to.name || to.path)}'`, to.fullPath, to);
+    return next();
   }
-  let jwtToken;
-  if (to.params.token) {
-    // Process a JWT token
-    const token = (to.params.token as string).replace(/:/g, ".");
-    jwtToken = decodeJWT(token);
-    // If we're logged in, redirect to the appropriate place for the token type.
-
-    // If we're not logged in, we need to
+  const credsRequirementMet = !requiresCreds || (requiresCreds && await ClientApi.getCredentials(DEFAULT_AUTH_ID));
+  if (!credsRequirementMet) {
+    // Make sure we refresh any tokens before checking if user is logged in.
+    return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
   }
-
-  if (userIsLoggedIn.value && to.query.nextUrl) {
+  console.assert(userIsLoggedIn.value, "User should be logged in", to.meta.requiresLogin, to.path);
+  let nextUrl = {};
+  if (to.query.nextUrl) {
+    nextUrl = { query: { nextUrl: to.query.nextUrl } };
+  }
+  if (
+    toName !== "setup" &&
+    toName !== "confirm-email" &&
+    !userHasConfirmedEmailAddress.value
+  ) {
+    return next({ name: "setup", ...nextUrl });
+  }
+  console.assert(credsRequirementMet, "Should be logged in");
+  if (!UserProjects.value) {
+    // Grab the users' projects, and select the first one.
+    isFetchingProjects.value = true;
+    await refreshUserProjects();
+    isFetchingProjects.value = false;
+    if (
+      UserProjects.value !== null &&
+      (UserProjects.value || []).length === 0
+    ) {
+      if (to.name !== "setup" && to.name !== "confirm-email") {
+        return next({ name: "setup", ...nextUrl });
+      }
+    }
+  }
+  if (to.query.nextUrl) {
+    // After sign-in, redirect to to.query.nextUrl
+    console.assert(from.name === "sign-in", "Should be coming from sign-in route");
     // Make sure we follow any nextUrl on login
     return next({
       path: to.query.nextUrl as string,
     });
   }
-  // TODO: Match groupName, and set currentSelectedGroup.
-  // NOTE: Check for a logged in user here.
-  if (!userIsLoggedIn.value && (to.meta.requiresLogin || to.path === "/")) {
-    isResumingSession.value = true;
-    //console.log("--- Trying to resume saved session");
-    const [_, euaResponse] = await Promise.all([
-      tryLoggingInRememberedUser(isLoggingInAutomatically),
-      getEUAVersion(),
-    ]);
-    if (euaResponse.success) {
-      currentEUAVersion.value = euaResponse.result.euaVersion;
-    }
-
-    // FIXME If we've got a currentSelectedGroup we can continue, and load the rest of the groups
-    //  in the background without blocking.
-    if (
-      userIsLoggedIn.value &&
-      !currentSelectedProject.value &&
-      !isFetchingProjects.value
-    ) {
-      //console.log("User is logged in, refresh projects (2)");
-      const projectsResponse = await refreshUserProjects();
-      if (projectsResponse.status === 401) {
-        return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-      } else if (UserProjects.value && UserProjects.value?.length === 0) {
-        if (to.query.nextUrl) {
-          return next({ path: to.query.nextUrl as string });
-        } else if (jwtToken) {
-          // Follow the path to process the token.
-          return next();
-        }
-        return next({ name: "setup" });
-      }
-    }
-    if (userIsLoggedIn.value) {
-      console.warn("Resumed session");
-    } else {
-      console.warn(
-        "Failed to resume session or no session to resume",
-        to.fullPath,
+  // Check to see if we match the first part of the path to any of our group names:
+  let potentialProjectName = to.path
+    .split("/")
+    .filter((item) => item !== "")
+    .shift();
+  if (potentialProjectName) {
+    potentialProjectName = urlNormaliseName(potentialProjectName);
+    let matchedProject = (
+      (UserProjects.value as ApiGroupResponse[]) || []
+    ).find(
+      ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName,
+    );
+    if (!matchedProject && currentUserIsSuperUser.value) {
+      matchedProject = (
+        (NonUserProjects.value as ApiGroupResponse[]) || []
+      ).find(
+        ({ groupName }) =>
+          urlNormaliseName(groupName) === potentialProjectName,
       );
-      if (to.meta.requiresLogin || to.path === "/") {
-        console.warn("Redirect to sign-in");
-        return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-      } else {
-        isResumingSession.value = false;
-        return next();
-      }
     }
-    isResumingSession.value = false;
-  }
-  if (to.path === "/") {
-    if (!userIsLoggedIn.value && to.name !== "sign-in") {
-      return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-    } else {
-      if (
-        (to.name !== "setup" &&
-          to.name !== "confirm-email" &&
-          !userHasConfirmedEmailAddress.value) ||
-        !userHasProjects.value
-      ) {
-        return next({ name: "setup" });
+    if (matchedProject) {
+      // Don't persist the admin property in user settings, since that could change
+      const switchedProject = switchCurrentProject({
+        groupName: matchedProject.groupName,
+        id: matchedProject.id,
+      });
+      if (currentSelectedProject.value) {
+        // Get the devices and locations for the current group.
+        if (
+          !DevicesForCurrentProject.value ||
+          !LocationsForCurrentProject.value ||
+          switchedProject
+        ) {
+          LocationsForCurrentProject.value = null;
+          DevicesForCurrentProject.value = null;
+          const [devices, locations] = await Promise.all([
+            ClientApi.Projects.getDevicesForProject(
+              currentSelectedProject.value.id,
+              false,
+              true,
+            ),
+            ClientApi.Projects.getLocationsForProject(
+              currentSelectedProject.value.id.toString(),
+              true,
+            ),
+          ]);
+          DevicesForCurrentProject.value = devices as LoadedResource<
+            ApiDeviceResponse[]
+          >;
+          LocationsForCurrentProject.value = locations as LoadedResource<
+            ApiLocationResponse[]
+          >;
+        }
       } else {
+        LocationsForCurrentProject.value = null;
+        DevicesForCurrentProject.value = null;
+      }
+    } else {
+      const unknownMatch = to.matched.length === 1 && to.matched[0].name === "dashboard";
+      const unknownRoute = to.name &&
+        !nonProjectPrefixedRouteNames.includes(to.name as string);
+      if (unknownMatch || unknownRoute) {
+        // Project in url not found, redirect to our last selected project dashboard.
         return next({
           name: "dashboard",
           params: {
@@ -581,162 +633,6 @@ router.beforeEach(async (to, from, next) => {
           },
         });
       }
-    }
-  } else {
-    if (!userIsLoggedIn.value && to.meta.requiresLogin) {
-      return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-    }
-    if (
-      userIsLoggedIn.value &&
-      to.name !== "setup" &&
-      to.name !== "confirm-email" &&
-      !userHasConfirmedEmailAddress.value
-    ) {
-      return next({ name: "setup" });
-    }
-    // Check to see if we match the first part of the path to any of our group names:
-    let potentialProjectName = to.path
-      .split("/")
-      .filter((item) => item !== "")
-      .shift();
-    if (userIsLoggedIn.value && !UserProjects.value) {
-      // Grab the users' groups, and select the first one.
-      // console.log(
-      //   "User is logged in, refresh projects",
-      //   userIsLoggedIn.value,
-      //   CurrentUser.value
-      // );
-      const projectsResponse = await refreshUserProjects();
-      if (projectsResponse.status === 401) {
-        return next({ name: "sign-out" });
-      } else if (
-        UserProjects.value !== null &&
-        (UserProjects.value || []).length === 0
-      ) {
-        if (to.name !== "setup" && to.name !== "confirm-email") {
-          return next({ name: "setup" });
-        } else {
-          return next();
-        }
-      }
-    }
-    if (potentialProjectName) {
-      potentialProjectName = urlNormaliseName(potentialProjectName);
-      let matchedProject = (
-        (UserProjects.value as ApiGroupResponse[]) || []
-      ).find(
-        ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName,
-      );
-      if (!matchedProject && currentUserIsSuperUser.value) {
-        matchedProject = (
-          (NonUserProjects.value as ApiGroupResponse[]) || []
-        ).find(
-          ({ groupName }) =>
-            urlNormaliseName(groupName) === potentialProjectName,
-        );
-      }
-
-      // TODO: In super-user mode, match on a different set of groups.  I guess we should maybe store all those
-      //  groups globally the first time they're requested?
-
-      // console.warn("Found match", matchedGroup);
-      /*
-      if (currentSelectedGroup.value) {
-          getDevicesForGroup(
-              currentSelectedGroup.value.id
-          ).then((devicesResponse) => {
-            if (devicesResponse.success) {
-              console.log("Setting devices");
-              DevicesForCurrentGroup.value = devicesResponse.result.devices;
-            }
-          });
-        } else {
-          DevicesForCurrentGroup.value = null;
-        }
-       */
-      if (matchedProject) {
-        // Don't persist the admin property in user settings, since that could change
-        const switchedProject = switchCurrentProject({
-          groupName: matchedProject.groupName,
-          id: matchedProject.id,
-        });
-        if (currentSelectedProject.value) {
-          // Get the devices and locations for the current group.
-          if (
-            !DevicesForCurrentProject.value ||
-            !LocationsForCurrentProject.value ||
-            switchedProject
-          ) {
-            LocationsForCurrentProject.value = null;
-            DevicesForCurrentProject.value = null;
-            const [devices, locations] = await Promise.all([
-              getDevicesForProject(
-                currentSelectedProject.value.id,
-                false,
-                true,
-              ),
-              getLocationsForProject(
-                currentSelectedProject.value.id.toString(),
-                true,
-              ),
-            ]);
-            DevicesForCurrentProject.value = devices as LoadedResource<
-              ApiDeviceResponse[]
-            >;
-            LocationsForCurrentProject.value = locations as LoadedResource<
-              ApiLocationResponse[]
-            >;
-          }
-        } else {
-          LocationsForCurrentProject.value = null;
-          DevicesForCurrentProject.value = null;
-        }
-      } else if (userIsLoggedIn.value) {
-        if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
-          // Group in url not found, redirect to our last selected group.
-          return next({
-            name: "dashboard",
-            params: {
-              projectName: urlNormalisedCurrentProjectName.value,
-            },
-          });
-        } else if (
-          to.name &&
-          ![
-            "confirm-email",
-            "accept-project-invite",
-            "confirm-project-membership-request",
-            "user-settings",
-            "setup",
-            "end-user-agreement",
-            "register",
-            "register-with-token",
-          ].includes(to.name as string)
-        ) {
-          // Unknown project name, redirect to dashboard of first project match
-          if (UserProjects.value && UserProjects.value.length) {
-            return next({
-              name: "dashboard",
-              params: {
-                projectName: urlNormalisedCurrentProjectName.value,
-              },
-            });
-          } else {
-            return next({ name: "sign-out" });
-          }
-        }
-      }
-      // else {
-      //   if (to.matched.length === 1 && to.matched[0].name === "dashboard") {
-      //     // Group in url not found, redirect to our last selected group.
-      //     return next({
-      //       name: "dashboard",
-      //       params: {
-      //         projectName: urlNormalisedCurrentProjectName.value,
-      //       },
-      //     });
-      //   }
-      // }
     }
   }
 
@@ -756,7 +652,6 @@ router.beforeEach(async (to, from, next) => {
 
   if (
     to.name === "setup" &&
-    userIsLoggedIn.value &&
     userHasProjects.value &&
     userHasConfirmedEmailAddress.value
   ) {
@@ -768,31 +663,10 @@ router.beforeEach(async (to, from, next) => {
     });
   }
 
-  // Slight wait so that we can break infinite navigation loops while developing.
-  if (to.meta.requiresLogin && !userIsLoggedIn.value) {
-    return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
-  }
-
-  if (from.meta.requiresLogin && to.query.nextUrl && userIsLoggedIn.value) {
-    // We just logged in.
-    return next({
-      path: to.query.nextUrl as string,
-    });
-  }
-
-  // Finally, redirect to the sign-in page.
-  if (!to.name && !userIsLoggedIn.value) {
-    return next({
-      name: "sign-in",
-      query: {
-        nextUrl: to.fullPath,
-      },
-    });
-  } else {
-    pinSideNav.value = false;
-    console.warn(`Navigating to '${String(to.name)}'`, to.fullPath, to);
-    return next();
-  }
+  // Finally, go to the route asked for
+  pinSideNav.value = false;
+  console.warn(`Navigating to '${String(to.name)}'`, to.fullPath, to);
+  return next();
 });
 
 export default router;

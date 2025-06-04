@@ -6,8 +6,8 @@ import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
 import { formFieldInputText, isValidName } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
-import type { ErrorResult, FieldValidationError } from "@api/types";
-import { updateUserFields } from "@api/User";
+import type { ErrorResult, FieldValidationError } from "@apiClient/types";
+import {ClientApi} from "@/api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import router from "@/router";
 import { currentUser as currentUserInfo } from "@models/provides";
@@ -136,7 +136,7 @@ const updateUserDisplayName = async () => {
   };
 
   userUpdateInProgress.value = true;
-  const updatedUserResponse = await updateUserFields({ userName: name });
+  const updatedUserResponse = await ClientApi.Users.updateUserFields({ userName: name });
 
   if (updatedUserResponse.success) {
     const currentUserInfo = currentUser.value || {};
@@ -159,7 +159,7 @@ const updateUserEmailAddress = async () => {
   };
 
   userUpdateInProgress.value = true;
-  const updatedUserResponse = await updateUserFields({ email: emailAddress });
+  const updatedUserResponse = await ClientApi.Users.updateUserFields({ email: emailAddress });
 
   if (updatedUserResponse.success) {
     const currentUserInfo = currentUser.value || {};

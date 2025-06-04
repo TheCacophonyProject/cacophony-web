@@ -9,7 +9,7 @@ import { DEFAULT_AUDIO_TAGS, DEFAULT_CAMERA_TAGS } from "@/consts";
 import {
   displayLabelForClassificationLabel,
   getClassifications,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import { capitalize } from "@/utils";
 import { currentSelectedProject } from "@models/provides";

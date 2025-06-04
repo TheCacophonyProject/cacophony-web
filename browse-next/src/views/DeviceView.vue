@@ -19,14 +19,9 @@ import type {
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import OverflowingTabList from "@/components/OverflowingTabList.vue";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import {
-  getDeviceById,
-  getLatestStatusRecordingForDevice,
-  getMaskRegionsForDevice,
-  getReferenceImageForDeviceAtCurrentLocation,
-} from "@api/Device.ts";
+import {ClientApi} from "@/api";
 import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { DateTime } from "luxon";
 
@@ -57,7 +52,7 @@ const loadDevice = async (deviceId: DeviceId) => {
       device.value = targetDevice;
     } else {
       // Device could be inactive, so try loading it by id
-      const deviceResponse = await getDeviceById(deviceId, true);
+      const deviceResponse = await ClientApi.Devices.getDeviceById(deviceId, true);
       if (deviceResponse.success) {
         device.value = deviceResponse.result.device;
       }
@@ -73,7 +68,7 @@ const loadDevice = async (deviceId: DeviceId) => {
 
 const loadReferenceImage = (deviceId: DeviceId) => {
   latestReferenceImageURL.value = null;
-  getReferenceImageForDeviceAtCurrentLocation(deviceId).then(
+  ClientApi.Devices.getReferenceImageForDeviceAtCurrentLocation(deviceId).then(
     ({ result, success }) => {
       if (success) {
         latestReferenceImageURL.value = URL.createObjectURL(result);
@@ -93,12 +88,12 @@ onBeforeMount(async () => {
   ) {
     //  TODO: Latest status recording should match current location.
     //  TODO: Use meta/status to get low power 2s recordings
-    getLatestStatusRecordingForDevice(
+    ClientApi.Devices.getLatestStatusRecordingForDevice(
       device.value.id,
       device.value.groupId,
     ).then((result) => (latestStatusRecording.value = result));
     loadReferenceImage(device.value.id);
-    getMaskRegionsForDevice(device.value.id, true).then(
+    ClientApi.Devices.getMaskRegionsForDevice(device.value.id, true).then(
       ({ success, result }) => {
         if (success) {
           latestMaskRegions.value = {
@@ -250,7 +245,7 @@ const _deviceType = computed<string>(() => {
     <router-view
       @start-blocking-work="() => emit('start-blocking-work')"
       @end-blocking-work="() => emit('end-blocking-work')"
-      @updated-regions="(e) => (latestMaskRegions = e)"
+      @updated-regions="(e: ApiMaskRegionsData) => (latestMaskRegions = e)"
       @updated-reference-image="
         () => {
           if (device) loadReferenceImage(device.id);

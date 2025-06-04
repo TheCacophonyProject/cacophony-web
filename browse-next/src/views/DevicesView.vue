@@ -3,7 +3,7 @@ import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { getDevicesForProject } from "@api/Project";
+import {ClientApi} from "@/api";
 import {
   DevicesForCurrentProject,
   type SelectedProject,
@@ -23,13 +23,6 @@ import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
 import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import {
-  deleteDevice,
-  getDeviceConfig,
-  getDeviceLocationAtTime,
-  getLastKnownDeviceBatteryLevel,
-  setDeviceActive,
-} from "@api/Device";
 import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
@@ -43,7 +36,7 @@ import {
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
 import type { ApiStationResponse } from "@typedefs/api/station";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 
@@ -124,7 +117,7 @@ watch(route, async (next) => {
 });
 
 const reloadAllDevices = async () => {
-  const devicesResponse = await getDevicesForProject(
+  const devicesResponse = await ClientApi.Projects.getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
     true,
   );
@@ -146,7 +139,7 @@ const findProbablyOnlineDevices = async () => {
       activeProjectDevices.value.filter((device) => device.isHealthy) || [];
     const configPromises = [];
     for (const device of healthyDevices) {
-      configPromises.push(getDeviceConfig(device.id));
+      configPromises.push(ClientApi.Devices.getDeviceConfig(device.id));
     }
     Promise.all(configPromises).then((configs) => {
       const now = new Date();
@@ -221,7 +214,7 @@ const batteryLevelForDevice = async (
 ): Promise<"unknown" | number> => {
   const status = statusForDevice(device);
   if (status === "online" || status == "standby") {
-    const response = await getLastKnownDeviceBatteryLevel(device.id);
+    const response = await ClientApi.Devices.getLastKnownDeviceBatteryLevel(device.id);
     if (response) {
       if (response.battery === null) {
         return "unknown";
@@ -427,12 +420,12 @@ const someDevicesHaveKnownLocations = computed<boolean>(() =>
 );
 
 const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
-  await deleteDevice(selectedProject.value.id, deviceId);
+  await ClientApi.Devices.deleteDevice(selectedProject.value.id, deviceId);
   await reloadAllDevices();
 };
 
 const unarchiveDevice = async (deviceId: DeviceId) => {
-  await setDeviceActive(selectedProject.value.id, deviceId);
+  await ClientApi.Devices.setDeviceActive(selectedProject.value.id, deviceId);
   await reloadAllDevices();
 };
 
@@ -464,7 +457,7 @@ const selectedDevice = computed<ApiDeviceResponse | null>(() => {
 const deviceLocation = ref<LoadedResource<ApiStationResponse>>(null);
 const getSelectedDeviceLocation = async () => {
   if (selectedDevice.value?.location) {
-    deviceLocation.value = await getDeviceLocationAtTime(
+    deviceLocation.value = await ClientApi.Devices.getDeviceLocationAtTime(
       selectedDevice.value.id,
       true,
     );

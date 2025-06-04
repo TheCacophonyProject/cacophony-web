@@ -8,9 +8,9 @@
         "baseUrl": ".",
         "typeRoots": ["./cypress/support", "./cypress/commands"],
         "paths": {
+            "@shared/*":  ["../types/*"],
             "@typedefs/*":  ["../types/*"],
             "@commands/*": ["./cypress/commands/*"],
-            "@api/*": ["../api/*"],
             "@/*": ["./cypress/*"],
         }
     },

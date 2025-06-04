@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { type Spectastiq } from "spectastiq";
-//import { type Spectastiq } from "./spectastiq";
 import {
   computed,
   type ComputedRef,
@@ -13,38 +12,33 @@ import {
   watch,
   type WatchStopHandle,
 } from "vue";
-import {createUserDefinedTrack, replaceTrackTag, updateResizedTrack} from "@api/Recording.ts";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { TagColours } from "@/consts.ts";
 import type { RecordingId, TrackId, UserId } from "@typedefs/api/common";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
-import type {
-  ApiAutomaticTrackTagResponse,
-  ApiTrackTagResponse,
-  TrackTagData,
-} from "@typedefs/api/trackTag";
 import {
   currentSelectedProject as currentActiveProject,
   currentUser as currentUserInfo,
 } from "@models/provides.ts";
 import {
-  CurrentUserCreds,
   type LoggedInUser,
-  type LoggedInUserAuth,
   type SelectedProject,
   userIsLoggedIn,
 } from "@models/LoggedInUser.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
-import {displayLabelForClassificationLabel, getClassificationForLabel} from "@api/Classifications.ts";
+import {displayLabelForClassificationLabel, getClassificationForLabel} from "@api/classificationsUtils.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
-import type { LoadedResource } from "@api/types.ts";
-import { API_ROOT } from "@api/root.ts";
-import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
-import { decodeJWT } from "@/utils.ts";
+import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
 import { useMediaQuery, useWindowSize } from "@vueuse/core";
 import { useRoute } from "vue-router";
+import {ClientApi} from "@/api";
+import type {
+  ApiAutomaticTrackTagResponse,
+  ApiHumanTrackTagResponse,
+  ApiTrackTagResponse,
+} from "@typedefs/api/trackTag";
 
 const props = defineProps<{
   userSelectedTrack?: ApiTrackResponse;
@@ -80,26 +74,18 @@ const emit = defineEmits<{
 
 const loadRecording = async () => {
   if (userIsLoggedIn.value) {
-    await maybeRefreshStaleCredentials();
-    if (CurrentUserCreds.value) {
-      const apiToken = decodeJWT(
-        (CurrentUserCreds.value as LoggedInUserAuth).apiToken,
-      );
-      const now = new Date();
-      if ((apiToken?.expiresAt as Date).getTime() < now.getTime() + 5000) {
-        debugger;
-      }
-
-      audioRequestHeaders.value = JSON.stringify({
-        Authorization: (CurrentUserCreds.value as LoggedInUserAuth).apiToken,
-      });
+    const apiToken = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
+    if (!apiToken) {
+      return;
     }
+    audioRequestHeaders.value = JSON.stringify({
+      Authorization: apiToken,
+    });
+    audioUrl.value = `${ClientApi.getApiRoot()}/api/v1/recordings/raw/${props.recordingId}`;
   }
-  audioUrl.value = `${API_ROOT}/api/v1/recordings/raw/${props.recordingId}`;
 };
 onBeforeMount(() => {
-  currentPalette.value =
-    localStorage.getItem("spectastiq-palette") || "Viridis";
+  currentPalette.value = localStorage.getItem("spectastiq-palette") || "Viridis";
   loadRecording();
 
   if (props.recording) {
@@ -604,16 +590,16 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
         minFreq: minFreqHz,
         maxFreq: maxFreqHz,
         automatic: false,
-        tags: [{ what: "unnamed", confidence: 0.5, id: -1 } as any],
-      } as any;
+        tags: [{ what: "unnamed", confidence: 0.5, id: -1, path: "unnamed", automatic: false } as ApiHumanTrackTagResponse],
+      } as ApiTrackResponse;
 
       emit("track-tag-changed", {
         track: pendingTrack.value,
         tag: "unnamed",
         action: "add",
-      } as any);
+      });
       // FIXME: Delete pendingTrack once created.
-      await selectTrackRegionAndPlay(pendingTrack.value as any, false);
+      await selectTrackRegionAndPlay(pendingTrack.value, false);
       spectastiq.exitCustomInteractionMode();
       if (spectastiqEl.value) {
         spectastiqEl.value.style.cursor = "auto";
@@ -1075,7 +1061,7 @@ const confirmTrackResizeOperation = async () => {
   updateInProgress.value = true;
   if (currentTrack.value) {
     const {id, start, end, minFreq, maxFreq} = currentTrack.value;
-    await updateResizedTrack(props.recordingId, id, start, end, minFreq, maxFreq);
+    await ClientApi.Recordings.updateResizedTrack(props.recordingId, id, start, end, minFreq, maxFreq);
   }
   exitResizeMode();
   updateInProgress.value = false;
@@ -1214,7 +1200,7 @@ watch(pendingTrackClass, async (classification: string[]) => {
         automatic: false,
       };
 
-      const response = await createUserDefinedTrack(props.recording, payload);
+      const response = await ClientApi.Recordings.createUserDefinedTrack(props.recording, payload);
       if (response.success) {
         emit("track-selected", {
           trackId: response.result.trackId,
@@ -1229,7 +1215,7 @@ watch(pendingTrackClass, async (classification: string[]) => {
           userId: currentUser.value?.id,
         });
 
-        await replaceTrackTag(
+        await ClientApi.Recordings.replaceTrackTag(
             tagToReplace,
             props.recording.id,
             response.result.trackId,

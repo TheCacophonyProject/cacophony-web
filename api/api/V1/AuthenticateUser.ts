@@ -193,7 +193,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/refresh-session-token`,
     validateFields([body("refreshToken").exists()]),
     extractJWTInfo(body("refreshToken")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       // NOTE: The key insight for refresh tokens is that they are "one-time-use" tokens.  Every time we give out
       //  a new refresh token, we invalidate the old one.
 

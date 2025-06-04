@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { computed, onBeforeMount, ref, watch } from "vue";
-import {
-  type BatteryInfoEvent,
-  getLastKnownDeviceBatteryLevel,
-} from "@api/Device.ts";
-import type { LoadedResource } from "@api/types.ts";
+// import {
+//   type BatteryInfoEvent,
+//   getLastKnownDeviceBatteryLevel,
+// } from "@api/Device.ts";
+import type { LoadedResource } from "@apiClient//types.ts";
+import {ClientApi} from "@/api";
 import { resourceFailedLoading, resourceIsLoading } from "@/helpers/utils.ts";
+import type { BatteryInfoEvent } from "@apiClient/Device.ts";
 
 const props = withDefaults(
   defineProps<{
@@ -38,7 +40,7 @@ const loadInfo = async () => {
     ).deviceBatteryInfoMap[`__${props.device.id}`];
   } else {
     batteryLevelInfo.value = null;
-    batteryLevelInfo.value = await getLastKnownDeviceBatteryLevel(
+    batteryLevelInfo.value = await ClientApi.Devices.getLastKnownDeviceBatteryLevel(
       props.device.id,
     );
     // batteryLevelInfo.value = batteryLevelInfo.value || {

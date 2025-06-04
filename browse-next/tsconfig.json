@@ -15,7 +15,8 @@
       "@api/*": ["./src/api/*"],
       "@views/*": ["./src/views/*"],
       "@models/*": ["./src/models/*"],
-      "@typedefs/*":  ["../types/*"]
+      "@typedefs/*":  ["../types/*"],
+      "@apiClient/*":  ["../types/client/*"]
     },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

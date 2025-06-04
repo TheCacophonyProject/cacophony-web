@@ -1,11 +1,11 @@
 // Station data as supplied to API on creation.
-import {
+import type {
   GroupId,
   IsoFormattedDateString,
   LatLng,
   StationId,
   UserId,
-} from "./common";
+} from "./common.ts";
 
 export interface ApiCreateStationData {
   name: string;

@@ -3,19 +3,21 @@ import { computed, nextTick, onBeforeMount, onUpdated, ref } from "vue";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import type { DeviceEvent } from "@typedefs/api/event";
-import {
-  type EventApiParams,
-  getKnownEventTypesForDeviceInLastMonth,
-  getLatestEventsByDeviceId,
-} from "@api/Device.ts";
+// import {
+//   type EventApiParams,
+//   getKnownEventTypesForDeviceInLastMonth,
+//   getLatestEventsByDeviceId,
+// } from "@api/Device.ts";
 import Multiselect from "@vueform/multiselect";
 import {
   type MaybeElement,
   useIntersectionObserver,
   useWindowSize,
 } from "@vueuse/core";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import { DateTime } from "luxon";
+import {ClientApi} from "@/api";
+import type { EventApiParams } from "@apiClient/Device.ts";
 
 const route = useRoute();
 const deviceId = computed<DeviceId>(
@@ -93,7 +95,7 @@ const loadSomeEvents = async (filterByEvents?: string[]) => {
     } else if (selectedEventTypes.value.length && !filterByEvents) {
       params.type = selectedEventTypes.value;
     }
-    const response = await getLatestEventsByDeviceId(deviceId.value, params);
+    const response = await ClientApi.Devices.getLatestEventsByDeviceId(deviceId.value, params);
     if (response.success) {
       if (response.result.rows.length !== 0) {
         const earliestEvent =
@@ -127,7 +129,7 @@ onBeforeMount(async () => {
 
   // Load up to one month worth of events – historical events older than that generally aren't that useful.
   // Lazy load up to two pages worth of event items with the current filters.
-  const types = await getKnownEventTypesForDeviceInLastMonth(deviceId.value);
+  const types = await ClientApi.Devices.getKnownEventTypesForDeviceInLastMonth(deviceId.value);
   if (types.success) {
     knownEventTypes.value = types.result.eventTypes;
   }

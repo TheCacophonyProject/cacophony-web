@@ -8,15 +8,19 @@ export type AlertId = number;
 export type TagId = number;
 export type FileId = number;
 export type UserId = number;
+export type DeviceId = number;
+export type AuthId = (UserId | DeviceId);
 export type GroupInvitationId = number;
 export type RecordingId = number;
 export type TrackId = number;
 export type TrackTagId = number;
-export type DeviceId = number;
+
 export type StationId = number;
+export type LocationId = StationId;
 export type ScheduleId = number;
 export type SaltId = number;
 export type GroupId = number;
+export type ProjectId = GroupId;
 export type EventId = number;
 export type EndUserAgreementVersion = number;
 

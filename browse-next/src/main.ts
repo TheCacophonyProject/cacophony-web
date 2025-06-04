@@ -8,7 +8,6 @@ import FontAwesomeIcon from "./font-awesome-icons";
 import {
   currentSelectedProject,
   currentUser,
-  currentUserCreds,
   selectedProjectDevices,
   urlNormalisedCurrentSelectedProjectName,
   userIsLoggedIn,
@@ -16,12 +15,9 @@ import {
   userProjects,
   userHasProjects,
   allHistoricLocations,
-  currentUserCredsDev,
 } from "@models/provides";
 import {
   currentSelectedProject as fallibleCurrentSelectedProject,
-  CurrentUser,
-  CurrentUserCreds,
   DevicesForCurrentProject,
   urlNormalisedCurrentProjectName,
   userIsAdminForCurrentSelectedProject,
@@ -29,8 +25,8 @@ import {
   userHasProjects as hasProjects,
   UserProjects,
   LocationsForCurrentProject,
-  CurrentUserCredsDev,
 } from "@models/LoggedInUser";
+import { CurrentUser } from "@/api";
 
 const app = createApp(App);
 app.component("font-awesome-icon", FontAwesomeIcon);
@@ -45,8 +41,6 @@ app.provide(
   urlNormalisedCurrentProjectName,
 );
 app.provide(currentUser, CurrentUser);
-app.provide(currentUserCreds, CurrentUserCreds);
-app.provide(currentUserCredsDev, CurrentUserCredsDev);
 app.provide(userIsProjectAdmin, userIsAdminForCurrentSelectedProject);
 app.provide(userIsLoggedIn, hasLoggedInUser);
 app.provide(userProjects, UserProjects);
