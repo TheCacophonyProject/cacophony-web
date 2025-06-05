@@ -343,7 +343,7 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/:id/reference-photo`,
     extractJwtAuthorizedUser,
-    fetchAdminAuthorizedRequiredStationById(param("id")),
+    fetchAuthorizedRequiredStationById(param("id")),
     util.multipartUpload(
       "f",
       async (
@@ -506,6 +506,72 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Updated station", {
         ...(proximityWarnings.length && { warnings: proximityWarnings }),
       });
+    },
+  );
+
+  /**
+   * @api {patch} /api/v1/stations/:id/name Update station name
+   * @apiName UpdateStationName
+   * @apiGroup Station
+   * @apiDescription Update the name of a station. Any authorized user in the group can update the station name.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Number} id Station ID
+   * @apiBody {String} name New name for the station
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/:id/name`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      body("name").isString().trim().notEmpty().withMessage("Name is required"),
+    ]),
+    fetchAuthorizedRequiredStationById(param("id")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const station = response.locals.station;
+      const newName = request.body.name;
+      
+      // Check if another active station in the group already has this name
+      const existingStation = await models.Station.findOne({
+        where: {
+          GroupId: station.GroupId,
+          name: newName,
+          id: { [Op.ne]: station.id },
+          [Op.or]: [
+            { retiredAt: null },
+            { retiredAt: { [Op.gt]: new Date() } },
+          ],
+        },
+      });
+
+      if (existingStation) {
+        return next(
+          new ClientError(
+            `An active station with the name '${newName}' already exists in this group.`,
+          ),
+        );
+      }
+
+      const updates: any = {
+        name: newName,
+        lastUpdatedById: response.locals.requestUser.id,
+      };
+
+      // If the station was automatically created and needs renaming, update the flags
+      if (station.needsRename === true) {
+        updates.needsRename = false;
+      }
+      if (station.automatic === true) {
+        updates.automatic = false;
+      }
+
+      await station.update(updates);
+      
+      return successResponse(response, "Updated station name");
     },
   );
 

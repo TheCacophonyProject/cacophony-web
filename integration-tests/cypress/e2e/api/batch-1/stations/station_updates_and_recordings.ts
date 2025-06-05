@@ -24,7 +24,7 @@ const templateExpectedCypressRecording: ApiThermalRecordingResponse =
   JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
 
 const templateExpectedStation = {
-  location,
+  location: { lat: NOT_NULL, lng: NOT_NULL },
   name: NOT_NULL_STRING,
   id: NOT_NULL,
   lastThermalRecordingTime: NOT_NULL_STRING,

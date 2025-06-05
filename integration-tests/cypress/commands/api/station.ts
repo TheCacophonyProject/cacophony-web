@@ -272,6 +272,59 @@ Cypress.Commands.add(
   },
 );
 
+Cypress.Commands.add(
+  "apiStationUpdateName",
+  (
+    userName: string,
+    stationIdOrName: string,
+    newName: string,
+    statusCode: number = 200,
+    additionalChecks: any = {},
+  ) => {
+    let stationId: string;
+
+    //Get station ID from name (unless we're asked not to)
+    if (additionalChecks["useRawStationId"] === true) {
+      stationId = stationIdOrName;
+    } else {
+      stationId = getCreds(getTestName(stationIdOrName)).id.toString();
+    }
+
+    //Make new station name unique unless we're asked not to
+    const finalName = additionalChecks["useRawStationName"] !== true 
+      ? getTestName(newName)
+      : newName;
+
+    logTestDescription(
+      `Update station name ${stationId} to '${finalName}'`,
+      { userName },
+    );
+
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "PATCH",
+        url: v1ApiPath(`stations/${stationId}/name`),
+        body: {
+          name: finalName,
+        },
+      },
+      userName,
+      statusCode,
+    ).then((response) => {
+      if (statusCode == 200) {
+        //store station Ids against names
+        saveIdOnly(finalName, Number(stationId));
+      }
+      if (additionalChecks["warnings"]) {
+        checkWarnings(response, additionalChecks["warnings"]);
+      }
+      if (additionalChecks["messages"]) {
+        checkMessages(response, additionalChecks["messages"]);
+      }
+    });
+  },
+);
+
 export function TestCreateStationData(
   prefix: string,
   identifier: number,

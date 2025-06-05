@@ -86,6 +86,7 @@ export enum HttpStatusCode {
   BadRequest = 400,
   AuthorizationError = 401,
   Forbidden = 403,
+  NotFound = 404,
   Unprocessable = 422,
   ServerError = 500,
 }

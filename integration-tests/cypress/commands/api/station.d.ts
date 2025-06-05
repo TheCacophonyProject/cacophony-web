@@ -79,5 +79,23 @@ declare namespace Cypress {
       retirementDate?: string,
       additionalChecks?: any
     ): Cypress.Chainable<void>;
+
+    /**
+     * PATCH to api/v1/stations/:stationId/name to update station name
+     * Optionally check for fail response (statusCode!=200)
+     * By default stationId is looked up from name in stationIdOrName.
+     * Optionally: use the raw stationId provided (additionalChecks["useRawStationId"]=true)
+     * By default the newName is made unique by adding test prefix.
+     * Optionally: use the raw newName provided (additionalChecks["useRawStationName"]=true)
+     * Optionally: check for returned additionalChecks["messages"]
+     * Optionally: check for returned additionalChecks["warnings"]
+     */
+    apiStationUpdateName(
+      userName: string,
+      stationIdOrName: string,
+      newName: string,
+      statusCode?: number,
+      additionalChecks?: any
+    ): any;
   }
 }
