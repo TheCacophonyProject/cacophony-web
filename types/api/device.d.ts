@@ -76,6 +76,11 @@ export type WindowsSettings = {
   powerOn?: string;
   powerOff?: string;
 } & SettingsBase;
+
+export type BatterySettings = {
+  chemistry?: string;
+  manualCellCount?: number;
+} & SettingsBase;
 export type ImageMimeTypes =
   | "image/jpeg"
   | "image/png"
@@ -101,5 +106,6 @@ export interface ApiDeviceHistorySettings {
   thermalRecording?: ThermalRecordingSettings;
   audioRecording?: AudioRecordingSettings;
   windows?: WindowsSettings;
+  battery?: BatterySettings;
   synced?: boolean;
 }

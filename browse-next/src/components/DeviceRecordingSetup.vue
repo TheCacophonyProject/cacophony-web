@@ -5,6 +5,7 @@ import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   AudioModes,
+  BatterySettings,
 } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
@@ -523,6 +524,81 @@ watch([audioMode, audioSeed], async () => {
   }
 });
 
+// Battery Configuration
+const batteryChemistryOptions = [
+  { value: "", text: "Auto-detect" },
+  { value: "lead-acid", text: "Lead Acid (1.94V-2.15V per cell)" },
+  { value: "lifepo4", text: "LiFePO4 (2.5V-3.4V per cell)" },
+  { value: "li-ion", text: "Li-Ion (3.2V-4.2V per cell)" },
+  { value: "lipo", text: "LiPo (3.27V-4.2V per cell)" },
+];
+
+const batteryChemistry = computed<string>({
+  get: () => {
+    return (
+      (settings.value as ApiDeviceHistorySettings)?.battery?.chemistry ?? ""
+    );
+  },
+  set: (val: string) => {
+    if (settings.value) {
+      (settings.value as ApiDeviceHistorySettings).battery = {
+        ...((settings.value as ApiDeviceHistorySettings).battery || {}),
+        chemistry: val || undefined,
+        updated: new Date().toISOString(),
+      };
+      settings.value.synced = false;
+    }
+  },
+});
+
+const batteryCellCount = computed<number>({
+  get: () => {
+    return (
+      (settings.value as ApiDeviceHistorySettings)?.battery?.manualCellCount ?? 0
+    );
+  },
+  set: (val: number) => {
+    if (settings.value) {
+      (settings.value as ApiDeviceHistorySettings).battery = {
+        ...((settings.value as ApiDeviceHistorySettings).battery || {}),
+        manualCellCount: val || undefined,
+        updated: new Date().toISOString(),
+      };
+      settings.value.synced = false;
+    }
+  },
+});
+
+const batteryVoltageRange = computed<string>(() => {
+  if (!batteryChemistry.value || !batteryCellCount.value) {
+    return "";
+  }
+  
+  const chemistryProfile = batteryChemistryOptions.find(
+    opt => opt.value === batteryChemistry.value
+  );
+  if (!chemistryProfile) return "";
+  
+  // Extract voltage range from text
+  const match = chemistryProfile.text.match(/\((.+)V-(.+)V per cell\)/);
+  if (!match) return "";
+  
+  const minVoltage = parseFloat(match[1]) * batteryCellCount.value;
+  const maxVoltage = parseFloat(match[2]) * batteryCellCount.value;
+  
+  return `${minVoltage.toFixed(1)}V - ${maxVoltage.toFixed(1)}V`;
+});
+
+const savingBatterySettings = ref<boolean>(false);
+
+watch([batteryChemistry, batteryCellCount], async () => {
+  if (settings.value && initialised.value) {
+    savingBatterySettings.value = true;
+    await updateDeviceSettings(deviceId.value, settings.value);
+    savingBatterySettings.value = false;
+  }
+});
+
 const savingPowerModeSettings = ref<boolean>(false);
 const savingRecordingWindowSettings = ref<boolean>(false);
 watch(useLowPowerMode, async () => {
@@ -707,6 +783,48 @@ watch(customRecordingWindowStop, async () => {
                   ></div>
                 </div>
               </div>
+            </div>
+          </div>
+          <hr />
+        </div>
+        <div v-if="isTc2Device">
+          <div class="h5">Battery Configuration</div>
+          <p>
+            By default, the battery chemistry and cell count are automatically detected based on voltage readings. 
+            If the detection is incorrect, you can manually specify these values.
+          </p>
+          <div class="alert-light alert">
+            <b-form-group label="Battery Chemistry">
+              <b-form-select
+                v-model="batteryChemistry"
+                :options="batteryChemistryOptions"
+                :disabled="savingBatterySettings"
+              ></b-form-select>
+            </b-form-group>
+            <b-form-group 
+              label="Cell Count" 
+              v-if="batteryChemistry"
+              description="Leave empty for auto-detection (1-24 cells)"
+            >
+              <b-form-input
+                v-model.number="batteryCellCount"
+                type="number"
+                min="1"
+                max="24"
+                placeholder="Auto-detect"
+                :disabled="savingBatterySettings || !batteryChemistry"
+              />
+              <small v-if="batteryVoltageRange" class="form-text text-info">
+                Expected voltage range: {{ batteryVoltageRange }}
+              </small>
+            </b-form-group>
+            <div class="d-flex justify-content-end">
+              <b-spinner
+                class="ms-2"
+                v-if="savingBatterySettings"
+                variant="secondary"
+                small
+              />
             </div>
           </div>
           <hr />
