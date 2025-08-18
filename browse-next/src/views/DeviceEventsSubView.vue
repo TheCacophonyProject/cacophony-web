@@ -212,6 +212,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
         v-model="selectedEventTypes"
         :options="knownEventTypesOptions"
         placeholder="all"
+        searchable
         mode="tags"
         :can-clear="false"
         @change="reloadEvents"

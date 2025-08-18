@@ -307,6 +307,7 @@ const groupedSystemErrors = async (
   )
     .filter(
       (event) =>
+        typeof event.EventDetail.details === "object" &&
         "unitName" in event.EventDetail.details &&
         "logs" in event.EventDetail.details,
     )

@@ -436,7 +436,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredDevicesInGroup(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got devices for group", {
         devices: mapDevicesResponse(
           response.locals.devices,
@@ -469,7 +469,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const users = await response.locals.group.getUsers({
         attributes: ["id", "userName"],
         through: { where: { removedAt: { [Op.eq]: null } } },
@@ -525,7 +525,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("groupIdOrName"))]),
     fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got schedules for group", {
         schedules: response.locals.schedules.map(mapSchedule),
       });

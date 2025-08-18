@@ -102,6 +102,9 @@ const uploadEvent = async (
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
       if (details.location !== null && details.location.latitude !== undefined && details.location.longitude !== undefined) {
+        try {
+          // FIXME: Need to handle bogus locations here otherwise we crash the API.
+          //  Also add a test for this case.
         await maybeUpdateDeviceHistory(
           models,
           device,
@@ -109,6 +112,11 @@ const uploadEvent = async (
           new Date(details.location.updated),
           "config",
         );
+        } catch (e) {
+          return next(
+            new ClientError(`Failed to update DeviceHistory`),
+          );
+        }
       }
     }
   }
