@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields } from "../middleware.js";
+import { expectedTypeOf, validateFields, requestWrapper } from "../middleware.js";
 import modelsInit from "@models/index.js";
 import type { Event, QueryOptions } from "@models/Event.js";
 import { successResponse } from "./responseUtil.js";
@@ -43,10 +43,11 @@ import {
   idOf,
   integerOf,
 } from "../validation-middleware.js";
-import { ClientError } from "../customErrors.js";
+import { ClientError, UnprocessableError } from "@api/customErrors.js";
 import type { IsoFormattedDateString } from "@typedefs/api/common.js";
 import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { isLatLon } from "@models/util/validation.js";
 import util from "@api/V1/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import config from "@config";
@@ -101,14 +102,43 @@ const uploadEvent = async (
 
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
-      if (details.location !== null && details.location.latitude !== undefined && details.location.longitude !== undefined) {
-        await maybeUpdateDeviceHistory(
-          models,
-          device,
-          { lat: details.location.latitude, lng: details.location.longitude },
-          new Date(details.location.updated),
-          "config",
-        );
+      if (
+        details.location !== null &&
+        details.location.latitude !== undefined &&
+        details.location.longitude !== undefined
+      ) {
+        const lat = details.location.latitude;
+        const lng = details.location.longitude;
+        // Pre-validate to avoid server-side crashes on invalid inputs
+        if (!isLatLon({ lat, lng }, false)) {
+          return next(
+            new UnprocessableError(
+              `Invalid location '{"lat":${lat},"lng":${lng}}'`,
+            ),
+          );
+        }
+        try {
+          await maybeUpdateDeviceHistory(
+            models,
+            device,
+            { lat, lng },
+            new Date(details.location.updated),
+            "config",
+          );
+        } catch (e: any) {
+          const message = e?.message || "unknown error";
+          if (
+            e?.name === "SequelizeValidationError" ||
+            message.includes("Location is not valid")
+          ) {
+            return next(
+              new UnprocessableError(
+                `Invalid location '{"lat":${lat},"lng":${lng}}'`,
+              ),
+            );
+          }
+          return next(new ClientError(`Failed to update device history: ${message}`));
+        }
       }
     }
   }
@@ -211,7 +241,7 @@ export default function (app: Application, baseUrl: string) {
       next();
     },
     // Finally, upload event(s)
-    uploadEvent,
+    requestWrapper(uploadEvent),
   );
 
   /**
@@ -361,7 +391,7 @@ export default function (app: Application, baseUrl: string) {
       next();
     },
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    uploadEvent,
+    requestWrapper(uploadEvent),
   );
 
   /**
