@@ -191,7 +191,12 @@
           "display": "insect/spider",
           "children": [
             {
-              "label": "weta"
+              "label": "weta",
+              "children": [
+                {
+                  "label": "tree weta"
+                }
+              ]
             }
           ]
         },

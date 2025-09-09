@@ -41,6 +41,7 @@
   "frog": "all.other.frog",
   "insect": "all.other.insect",
   "weta": "all.other.insect.weta",
+  "tree weta": "all.other.insect.weta.tree_weta",
   "interesting": "all.other.interesting",
   "lizard": "all.other.lizard",
   "part": "all.other.part",
