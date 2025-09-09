@@ -196,7 +196,7 @@ export const mapTrack = (
   if (!minimal && track.data && track.data.positions && track.data.positions.length) {
     t.positions = track.data.positions.map(mapPosition);
   }
-  if (!minimal) {
+  if (!minimal && track.data && track.data.tracking_score) {
     t.tracking_score = track.data.tracking_score;
   }
   return t;
