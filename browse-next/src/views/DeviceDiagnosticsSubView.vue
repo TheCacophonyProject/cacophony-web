@@ -541,7 +541,7 @@ const init = async () => {
 onBeforeMount(init);
 
 const getLatestVersion = (packageName: string, channel: string): string => {
-  const model = channel.includes("tc2") ? "tc2" : "pi";
+  const model = channel.includes("pi") ? "pi" : "tc2";
   const branch = model === "pi" ? channel.split("-")[0] : channel.split("-")[1];
   if (latestVersionInfo.value) {
     return latestVersionInfo.value[branch][model][packageName] || "not found";
@@ -552,7 +552,7 @@ const getLatestVersion = (packageName: string, channel: string): string => {
 const versionInfoTable = computed<
   CardTableRows<string | { version: string; latestVersion: string }>
 >(() => {
-  const channel = saltNodeGroup.value;
+  const channel = saltNodeGroup.value || "";
   return Object.entries(versionInfo.value || []).map(([software, version]) => {
     const latestVersion = getLatestVersion(software, channel as string);
     return {
