@@ -542,6 +542,9 @@ onBeforeMount(init);
 
 const getLatestVersion = (packageName: string, channel: string): string => {
   const model = channel.includes("pi") ? "pi" : "tc2";
+  if (channel.trim() === "") {
+    return "unknown";
+  }
   const branch = model === "pi" ? channel.split("-")[0] : channel.split("-")[1];
   if (latestVersionInfo.value) {
     return latestVersionInfo.value[branch][model][packageName] || "not found";
