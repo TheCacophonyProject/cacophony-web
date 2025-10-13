@@ -777,7 +777,7 @@ describe("Recordings - reprocessing tests", () => {
 
 
 
-    it("Reprocess only tried to reproces supplied recording if you request as a super user", () => {
+    it("Reprocess only tries to reprocess supplied recording if you request as a super user", () => {
       const recording22 = TestCreateRecordingData(templateRecording);
       const recording21 = TestCreateRecordingData(templateRecording);
       recording21.processingState = RecordingProcessingState.Finished;
