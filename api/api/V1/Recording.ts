@@ -2312,6 +2312,117 @@ export default (app: Application, baseUrl: string) => {
     },
   );
 
+
+
+  /**
+   * @api {post} /api/v1/recordings/:id/tracks/trackTags
+   * Add tag to track
+   * @apiName PostTrackTag
+   * @apiGroup Tracks
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {Boolean} automatic "true" if tag is machine generated, "false"
+   * otherwise.
+   * @apiBody {String} [tagJWT] JWT token to tag a recording/track that the user
+   * would not otherwise have permission to view.
+   * @apiBody {JSON} [data] Data Additional tag data.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/trackTags`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+     
+    ]),
+    // FIXME - JSON schema for allowed data? At least a limit to how many
+    // chars etc?
+    parseJSONField(body("data")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      if (request.body.tagJWT) {
+        return next();
+      } else {
+        await fetchAuthorizedRequiredFlatRecordingById(param("id"))(
+          request,
+          response,
+          next,
+        );
+      }
+    },
+    async (request: Request, response: Response, next: NextFunction) => {
+      let track;
+
+      if (Number(request.params.trackId) === 1 && request.body.automatic) {
+        // NOTE: Dummy track that was masked out by mask regions.
+        // Just succeed here so that processing doesn't break when trying to add tags.
+        return successResponse(response, "Track tag added.", {
+          trackTagId: 1,
+        });
+      }
+
+      if (request.body.tagJWT) {
+        // If there's a tagJWT, then we don't need to check the users'
+        // recording update permissions.
+        const tagJWT = request.body.tagJWT;
+        try {
+          const jwtDecoded = jwt.verify(
+            tagJWT,
+            config.server.passportSecret,
+          ) as JwtPayload;
+          if (
+            jwtDecoded._type === "tagPermission" &&
+            jwtDecoded.recordingId === request.params.id
+          ) {
+            track = await models.Track.findByPk(request.params.trackId);
+          } else {
+            return next(
+              new AuthorizationError(
+                "JWT does not have permissions to tag this recording",
+              ),
+            );
+          }
+        } catch (e) {
+          return next(new AuthorizationError("Failed to verify JWT."));
+        }
+      } else {
+        // Otherwise, just check that the user can update this track.
+        track = await response.locals.recording.getTrack(
+          request.params.trackId,
+        );
+      }
+      if (!track) {
+        return next(new ClientError("Track does not exist"));
+      }
+      // Ensure track belongs to this recording.
+      if (track.RecordingId !== request.params.id) {
+        return next(new ClientError("Track does not belong to recording"));
+      }
+      if (request.body.what === "unknown") {
+        request.body.what = "unidentified";
+      }
+      const tag = await track.addTag(
+        request.body.what,
+        request.body.confidence,
+        request.body.automatic,
+        response.locals.data || "",
+        response.locals.requestUser.id,
+      );
+      return successResponse(response, "Track tag added.", {
+        trackTagId: tag.id,
+      });
+    },
+  );
+
   /**
    * @api {delete} /api/v1/recordings/:id/tracks/:trackId/tags/:trackTagId
    * Delete a track tag

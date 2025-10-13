@@ -64,3 +64,21 @@ export interface ApiClassificationResponse {
   version: number;
   children: Classification[];
 }
+
+export interface ApiTrackTagBulk{
+  trackTags: ApiTrackTag[];
+  data: ApiTrackDataRequest;
+  algorithm?: Object | Array<number>;
+}
+export interface ApiTrackTag{
+  trackId: number | null;
+  what : string; 
+  confidence: float;
+  data: ApiTrackTagData;
+
+}
+
+export interface ApiTrackTagData{
+
+}
+
