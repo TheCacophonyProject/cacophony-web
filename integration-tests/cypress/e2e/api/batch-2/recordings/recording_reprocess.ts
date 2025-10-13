@@ -774,9 +774,79 @@ describe("Recordings - reprocessing tests", () => {
         });
       });
     });
+
+
+
+    it("Reprocess only tries to reprocess supplied recording if you request as a super user", () => {
+      const recording22 = TestCreateRecordingData(templateRecording);
+      const recording21 = TestCreateRecordingData(templateRecording);
+      recording21.processingState = RecordingProcessingState.Finished;
+      recording22.processingState = RecordingProcessingState.Finished;
+
+      let expectedRecording1: ApiThermalRecordingResponse;
+      let expectedRecording2: ApiThermalRecordingResponse;
+      cy.log("Add 2 recordings as device");
+      cy.apiRecordingAdd(
+        "rrpCamera1",
+        recording21,
+        "oneframe.cptv",
+        "rrpRecording21",
+      ).then(() => {
+              cy.apiRecordingAdd(
+        "rrpCamera1",
+        recording22,
+        "oneframe.cptv",
+        "rrpRecording22",
+      );
+        expectedRecording1 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "rrpRecording21",
+          "rrpCamera1",
+          "rrpGroup",
+          null,
+          recording21,
+        );
+        cy.log("Check recording");
+        expectedRecording1.processingState = RecordingProcessingState.Finished;
+        expectedRecording1.processing = false;
+        cy.apiRecordingCheck(
+          "rrpGroupAdmin",
+          "rrpRecording21",
+          expectedRecording1,
+          EXCLUDE_IDS,
+        );
+
+        cy.log("Mark for reprocessing");
+        // this call will fail if more than requested rec id is matched
+        cy.apiReprocess(superuser, [getCreds("rrpRecording21").id]);
+
+        cy.log("Check recording status - original tags deleted");
+        expectedRecording2 = TestCreateExpectedRecordingData(
+          templateExpectedRecording,
+          "rrpRecording21",
+          "rrpCamera1",
+          "rrpGroup",
+          null,
+          recording21,
+        );
+
+        expectedRecording2.processingState = RecordingProcessingState.Reprocess;
+        expectedRecording2.processing = false;
+        expectedRecording2.tracks[0].tags = [];
+        expectedRecording2.tracks[0].filtered = true;
+        cy.apiRecordingCheck(
+          "rrpGroupAdmin",
+          "rrpRecording21",
+          expectedRecording2,
+          EXCLUDE_IDS,
+        );
+      });
+    });
+
   } else {
     it.skip(
       "NOTE: reprocess tests disables as environment variables have superuser access disabled",
     );
   }
 });
+
