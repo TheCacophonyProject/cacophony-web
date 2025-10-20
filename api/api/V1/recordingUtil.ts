@@ -27,7 +27,7 @@ import config from "@config";
 import type { Recording, RecordingQueryOptions } from "@models/Recording.js";
 import type { Event, QueryOptions } from "@models/Event.js";
 import type { User } from "@models/User.js";
-import Sequelize, { Op, QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
 import { DeviceSummary, NON_ANIMAL_TAGS, Visit } from "./Visits.js";
 import type { Station } from "@models/Station.js";
@@ -89,7 +89,6 @@ async function createIRThumbnail(
   frame,
   thumbnail: TrackFramePosition,
 ): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
-  const frameMeta = frame.meta.imageData;
   try {
     const thumbMeta = {
       region: JSON.stringify(thumbnail),
@@ -166,7 +165,7 @@ export async function getIRFrame(
     });
     return frames;
   } catch (e) {
-    fs.unlink(tempName, (err) => {});
+    fs.unlink(tempName, (_err) => {});
   }
 
   return null;
@@ -2282,18 +2281,6 @@ const addAITrackTags = async (
     }
   }
   return Promise.all(trackTags);
-};
-
-// FIXME - unused - why?
-const calculateAndAddAIMasterTag = async (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  recording: Recording,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  rawTracks: RawTrack[],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  tracks: Track[],
-): Promise<TrackTagId> => {
-  return 0;
 };
 
 const calculateTrackMovement = (track: RawTrack): number => {

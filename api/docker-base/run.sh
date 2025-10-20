@@ -30,7 +30,7 @@ fi
 chmod +x /minio
 chmod +x /mc
 
-#install nodex
+#install node
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 apt-get install -y nodejs
 

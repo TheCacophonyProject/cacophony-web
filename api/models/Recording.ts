@@ -296,7 +296,7 @@ export interface RecordingStatic extends ModelStaticCommon<Recording> {
     [RecordingType.Audio]: string[];
   };
   uploadedState: (type: RecordingType) => RecordingProcessingState;
-  finishedState: (type: RecordingType) => RecordingProcessingState;
+  finishedState: () => RecordingProcessingState;
 
   getOneForProcessing: (
     type: RecordingType,
@@ -547,7 +547,7 @@ export default function (
     const jobs = Recording.processingStates[this.type];
     let nextState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
-      nextState = Recording.finishedState(this.type);
+      nextState = Recording.finishedState();
     } else if (this.processingState == RecordingProcessingState.ReTrack) {
       nextState = RecordingProcessingState.Analyse;
     } else if (
@@ -1282,7 +1282,7 @@ export default function (
       return RecordingProcessingState.TrackAndAnalyse;
     }
   };
-  Recording.finishedState = function (type: RecordingType) {
+  Recording.finishedState = function () {
     return RecordingProcessingState.Finished;
   };
   Recording.processingAttributes = [

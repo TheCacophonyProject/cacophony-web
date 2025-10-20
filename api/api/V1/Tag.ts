@@ -24,7 +24,6 @@ import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredFlatRecordingById,
-  fetchAuthorizedRequiredLimitedRecordingById,
   parseJSONField,
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";

@@ -81,7 +81,7 @@ import {
   fetchAuthorizedRequiredFullRecordingById,
   fetchAuthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredFlatRecordingById,
-  fetchUnauthorizedRequiredFullRecordingById, fetchUnauthorizedRequiredGroupByNameOrId,
+  fetchUnauthorizedRequiredFullRecordingById,
   fetchUnauthorizedRequiredRecordingTagById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
@@ -168,7 +168,6 @@ const mapTrackTag = (
 
 const mapTrackTags = (
   trackTags: TrackTag[],
-  minimal = false,
 ): (ApiHumanTrackTagResponse | ApiAutomaticTrackTagResponse)[] => {
   const t = trackTags.map(mapTrackTag);
   // Make sure tags are always in some deterministic order for testing purposes.
@@ -184,7 +183,7 @@ export const mapTrack = (
     id: track.id,
     start: track.startSeconds,
     end: track.endSeconds,
-    tags: (track.TrackTags && mapTrackTags(track.TrackTags, minimal)) || [],
+    tags: (track.TrackTags && mapTrackTags(track.TrackTags)) || [],
   };
   if (track.minFreqHz !== null) {
     t.minFreq = track.minFreqHz;

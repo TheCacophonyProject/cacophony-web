@@ -10,6 +10,10 @@ module.exports = {
     node: true,
     es6: true,
   },
+  globals: {
+      "ReadableStream": "readonly",
+      "ReadableStreamDefaultReader": "readonly",
+  },
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 8,

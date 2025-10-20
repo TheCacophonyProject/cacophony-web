@@ -1,6 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
 import { ExtractJwt } from "passport-jwt";
-import jwt from "jsonwebtoken";
 import type { DecodedJWTToken } from "./auth.js";
 import { getVerifiedJWTFromBody } from "./auth.js";
 import {
@@ -15,7 +14,6 @@ import log from "../logging.js";
 import { createHash } from "crypto";
 import { modelTypeName, modelTypeNamePlural } from "./middleware.js";
 import type { ValidationChain } from "express-validator";
-import { validationResult } from "express-validator";
 import {
   AuthenticationError,
   AuthorizationError,
@@ -29,12 +27,11 @@ import type { Group } from "models/Group.js";
 import type { Recording } from "models/Recording.js";
 import type { Station } from "@/models/Station.js";
 import type { Schedule } from "@/models/Schedule.js";
-import { RecordingType, UserGlobalPermission } from "@typedefs/api/consts.js";
+import { UserGlobalPermission } from "@typedefs/api/consts.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 import { SuperUsers } from "@/Globals.js";
 import type { Alert } from "@models/Alert.js";
 import type { Event } from "@models/Event.js";
-import config from "@/config.js";
 import { delayMs, userShouldBeRateLimited } from "@/Server.js";
 import { getTrackData } from "@models/Track.js";
 

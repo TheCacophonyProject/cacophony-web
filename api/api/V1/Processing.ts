@@ -31,7 +31,7 @@ import {
   extractValFromRequest,
   fetchUnauthorizedRequiredFlatRecordingById,
 } from "@api/extract-middleware.js";
-import track, {
+import {
   getTrackData,
   saveTrackData,
   type Track,
@@ -205,7 +205,7 @@ export default function (app: Application, baseUrl: string) {
           }
           const nextJob = recording.getNextState();
           const complete =
-            nextJob == models.Recording.finishedState(recording.type);
+            nextJob == models.Recording.finishedState();
           recording.processingState = nextJob;
           recording.processingEndTime = new Date().toISOString();
           recording.processingFailedCount = 0;
@@ -598,7 +598,6 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
     async (_request: Request, response) => {
-      const { data, filtered, AlgorithmId } = response.locals.track;
       const existingData = await getTrackData(response.locals.track.id);
       existingData.thumbnail = response.locals.data;
       await saveTrackData(response.locals.track.id, existingData);

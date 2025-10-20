@@ -24,8 +24,6 @@ import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredFlatRecordingById,
   fetchAuthorizedRequiredFlatRecordingsByIds,
-  fetchAuthorizedRequiredLimitedRecordingById,
-  fetchAuthorizedRequiredLimitedRecordingsByIds,
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";
 import { successResponse } from "./responseUtil.js";

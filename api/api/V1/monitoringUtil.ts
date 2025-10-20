@@ -1,12 +1,10 @@
 import type { GroupId, StationId } from "@typedefs/api/common.js";
 import type { TrackId } from "@typedefs/api/common.js";
-import {
-  type RecordingProcessingState,
-  type RecordingType,
-  TagMode,
+import type {
+  RecordingProcessingState,
+  RecordingType,
 } from "@typedefs/api/consts.js";
 import type { Recording } from "@models/Recording.js";
-import { queryRecordingsInProject } from "@api/V1/recordingsBulkQueryUtil.js";
 import {
   getCommonAncestorForTags,
   NON_ANIMAL_TAGS,
@@ -20,7 +18,6 @@ const models = await modelsInit();
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
 const MAX_SECS_VIDEO_LENGTH = 10 * MINUTE;
-const RECORDINGS_LIMIT = 2000;
 const MAX_MINS_AFTER_TIME = 70;
 
 export interface MonitoringPageCriteria2 {

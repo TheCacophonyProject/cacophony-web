@@ -40,10 +40,7 @@ import {
 import type { Station } from "@models/Station.js";
 import type { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
-import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
-import logger from "@log";
-import type { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
 
 const cameraTypes = [
   RecordingType.ThermalRaw,
@@ -218,25 +215,6 @@ const mapPartName = (partKey: string, partName: string): string => {
   }
   return partKey;
 };
-
-function appendToArrayBuffer(originalBuffer, newData) {
-  // Create a new ArrayBuffer with the size of the original plus the new data
-  const newBuffer = new ArrayBuffer(
-    originalBuffer.byteLength + newData.byteLength,
-  );
-
-  // Create typed arrays to work with the data
-  const originalView = new Uint8Array(originalBuffer);
-  const newView = new Uint8Array(newBuffer);
-  const additionalView = new Uint8Array(newData);
-
-  // Copy the original data to the new buffer
-  newView.set(originalView, 0);
-  // Copy the new data to the new buffer
-  newView.set(additionalView, originalView.length);
-
-  return newBuffer; // Return the new ArrayBuffer
-}
 
 const processFilePart = async (
   partKey: string,
@@ -751,7 +729,7 @@ export const uploadGenericRecording =
       const metadataSupplied =
         (data.metadata && data.metadata.metadata_source) ||
         wouldHaveSuppliedTracks;
-      const wouldHaveSuppliedTracksWithPredictions =
+      const _wouldHaveSuppliedTracksWithPredictions =
         dataHasSuppliedTracksWithPredictions(data);
       setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
@@ -785,7 +763,7 @@ export const uploadGenericRecording =
 
       const recordingHasFinishedProcessing =
         recording.processingState ===
-        models.Recording.finishedState(data.type as RecordingType);
+        models.Recording.finishedState();
       if (recordingHasFinishedProcessing) {
         // NOTE: Should only occur during testing.
         const twentyFourHoursMs = 24 * 60 * 60 * 1000;

@@ -129,8 +129,6 @@ export async function tryToMatchRecordingToStation(
   return null;
 }
 
-const EPSILON = 0.000000000001;
-
 export const canonicalLatLng = (
   location: LatLng | { coordinates: [number, number] } | [number, number],
 ): LatLng => {
