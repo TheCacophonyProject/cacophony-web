@@ -14,30 +14,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import bcrypt from "bcrypt";
-import { format } from "util";
-import type { FindOptions } from "sequelize";
-import Sequelize, { QueryTypes } from "sequelize";
-import type {
-  ModelCommon,
-  ModelsDictionary,
-  ModelStaticCommon,
-} from "./index.js";
-import type { User } from "./User.js";
-import type { Group } from "./Group.js";
-import type { Event } from "./Event.js";
+import {format} from "util";
+import type {FindOptions} from "sequelize";
+import Sequelize, {QueryTypes} from "sequelize";
+import type {ModelCommon, ModelsDictionary, ModelStaticCommon} from "./index.js";
+import type {User} from "./User.js";
+import type {Group} from "./Group.js";
+import type {Event} from "./Event.js";
 import logger from "../logging.js";
-import { DeviceType } from "@typedefs/api/consts.js";
-import type {
-  DeviceId,
-  GroupId,
-  LatLng,
-  ScheduleId,
-  UserId,
-} from "@typedefs/api/common.js";
-import type { Station } from "@models/Station.js";
-import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
-import { locationField } from "@models/util/util.js";
-import { ClientError } from "@api/customErrors.js";
+import {DeviceType} from "@typedefs/api/consts.js";
+import type {DeviceId, GroupId, LatLng, ScheduleId, UserId} from "@typedefs/api/common.js";
+import type {Station} from "@models/Station.js";
+import {tryToMatchLocationToStationInGroup} from "@models/util/locationUtils.js";
+import {locationField} from "@models/util/util.js";
+import {ClientError} from "@api/customErrors.js";
 
 const Op = Sequelize.Op;
 
@@ -908,6 +898,8 @@ order by hour;
           await station.update({ lastActiveThermalTime: now });
         } else if (this.kind === DeviceType.Audio) {
           await station.update({ lastActiveAudioTime: now });
+        } else if (this.kind == DeviceType.Hybrid) {
+            await station.update({ lastActiveThermalTime: now, lastActiveAudioTime: now });
         }
       }
     }

@@ -645,6 +645,14 @@ export const uploadGenericRecording =
         );
         recordingTemplate.fileSize = derivedUploadResult.fileLength;
       }
+      if (recordingTemplate.recordingDateTime.toString() === "Invalid Date") {
+          return next(
+              new UnprocessableError(
+                  `Unable to parse recording date (${recordingTemplate.recordingDateTime}) (from ${data}).`,
+              ),
+          );
+      }
+
       // Work out which group and station to assign based on recordingDateTime, device history etc.
       const {
         deviceId,

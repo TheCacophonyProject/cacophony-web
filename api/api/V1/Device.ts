@@ -27,15 +27,12 @@ import {
   UnprocessableError,
 } from "../customErrors.js";
 import {
-  extractJWTInfo,
   extractJwtAuthorisedDevice,
-  extractJwtAuthorizedActivatedUser,
   extractJwtAuthorizedUser,
   extractJwtAuthorizedUserFromBody,
   extractJwtAuthorizedUserOrDevice,
   fetchAdminAuthorizedRequiredDeviceById,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
-  fetchAuthorizedOptionalDeviceByNameOrId,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
@@ -44,7 +41,6 @@ import {
   fetchAuthorizedRequiredStationById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredScheduleById,
-  fetchUnauthorizedRequiredUserById,
   parseJSONField,
 } from "../extract-middleware.js";
 import {
