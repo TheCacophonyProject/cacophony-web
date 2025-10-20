@@ -1261,6 +1261,7 @@ const getRecordings =
         ],
       };
     }
+    getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
     getRecordingOptions = getRecordingRelationships(
       getRecordingOptions,
       includeRelationships,
