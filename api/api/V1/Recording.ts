@@ -112,7 +112,6 @@ import {
 } from "./recordingUtil.js";
 import { serverErrorResponse, successResponse } from "./responseUtil.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
-import fs from "fs/promises";
 import {
   uploadGenericRecordingFromDevice,
   uploadGenericRecordingOnBehalfOfDevice,
@@ -1444,21 +1443,6 @@ export default (app: Application, baseUrl: string) => {
         .replace(/:/g, "_")
         .replace(".", "_");
       const fileName = `${recordingItem.id}@${time}.${fileExt}`;
-
-      if (config.server.isLocalDev && fileMimeType === "application/x-cptv") {
-        const file = await fs.readFile("./debug-files/2-second-status.cptv");
-        response.setHeader(
-          "Content-disposition",
-          "attachment; filename=" + fileName,
-        );
-        response.setHeader(
-          "Content-type",
-          fileMimeType || "application/octet-stream",
-        );
-        response.setHeader("Content-Length", file.byteLength);
-        response.write(file, "binary");
-        return response.end(null, "binary");
-      }
       return streamS3Object(
         request,
         response,

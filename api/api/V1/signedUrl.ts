@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import middleware from "../middleware.js";
+import config from "@config";
 import { ClientError } from "../customErrors.js";
 import type { Application, Request, Response } from "express";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
@@ -27,6 +28,7 @@ import { openS3 } from "@models/util/util.js";
 import { signedUrl } from "@api/auth.js";
 import type { ReadableStream } from "stream/web";
 import { serverErrorResponse } from "@api/V1/responseUtil.js";
+import fs from "fs/promises";
 
 const models = await modelsInit();
 
@@ -40,6 +42,27 @@ export const streamS3Object = async (
   groupId?: GroupId,
   fileSize?: number,
 ) => {
+  const requestIsCptv = mimeType === "application/x-cptv";
+  const recordingIsSecret = () => {
+    const recordingIsPartOfSecretGroup = groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
+    const requestUserIsSuperUser = userId && response.locals.viewAsSuperUser && !config.processingUserIds.includes(userId);
+    return recordingIsPartOfSecretGroup && requestUserIsSuperUser;
+  };
+  if (requestIsCptv && (config.server.isLocalDev || recordingIsSecret())) {
+    const file = await fs.readFile("./debug-files/2-second-status.cptv");
+    response.setHeader(
+      "Content-disposition",
+      "attachment; filename=" + fileName,
+    );
+    response.setHeader(
+      "Content-type",
+      mimeType,
+    );
+    response.setHeader("Content-Length", fileSize);
+    response.write(file, "binary");
+    return response.end(null, "binary");
+  }
+
   // NOTE: The internal NodeJS writable stream that is in an express object
   //  doesn't allow you to set a lower highwaterMark to allow a bit of back-pressure
   //  on slower connections, and therefore restrict how much data we're pulling from
