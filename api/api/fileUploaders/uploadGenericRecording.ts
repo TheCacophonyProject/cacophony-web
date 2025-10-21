@@ -624,9 +624,20 @@ export const uploadGenericRecording =
           recordingTemplate.fileSize = derivedUploadResult.fileLength;
         }
         if (recordingTemplate.recordingDateTime.toString() === "Invalid Date") {
+          log.warning("Discarding recording for DeviceId(%s) with invalid recordingDateTime: %s", recordingTemplate.DeviceId, recordingTemplate.recordingDateTime);
           return next(
             new UnprocessableError(
-              `Unable to parse recording date (${recordingTemplate.recordingDateTime}) (from ${data}).`,
+              `Unable to parse recording date (${recordingTemplate.recordingDateTime}) (from ${JSON.stringify(data)}).`,
+            ),
+          );
+        }
+        // Allow recordings to be from 10mins in the future, to allow for RTC drift on devices.
+        if (recordingTemplate.recordingDateTime.getTime() > (Date.now() + 1000 * 60 * 10)) {
+          // Recording is from the future, reject it.
+          log.warning("Discarding recording for DeviceId(%s) with future recordingDateTime: %s", recordingTemplate.DeviceId, recordingTemplate.recordingDateTime);
+          return next(
+            new UnprocessableError(
+              `Recording has future date (${recordingTemplate.recordingDateTime}) (from ${JSON.stringify(data)}).`,
             ),
           );
         }

@@ -741,4 +741,50 @@ describe("Recordings (thermal): add, get, delete", () => {
       );
     });
   });
+
+  it("Recordings with invalid recordingDateTimes are rejected", () => {
+      const recording1 = TestCreateRecordingData(templateRecording);
+      recording1.recordingDateTime = "Not a date";
+      delete recording1.processingState;
+
+      cy.log("Add invalid recording as device");
+      cy.apiRecordingAdd(
+          "raCamera1",
+          recording1,
+          "invalid.cptv",
+          "invalidDate",
+          422,
+      );
+  });
+
+  it("Recordings with future recordingDateTimes are rejected", () => {
+      const recording1 = TestCreateRecordingData(templateRecording);
+      recording1.recordingDateTime = "2160-01-01T07:22:56.000Z";
+      delete recording1.processingState;
+
+      cy.log("Add far future recording as device");
+      cy.apiRecordingAdd(
+          "raCamera1",
+          recording1,
+          "invalid.cptv",
+          "futureDate",
+          422,
+      );
+  });
+
+    it("Recordings with *minor* future recordingDateTimes are allowed", () => {
+        const recording1 = TestCreateRecordingData(templateRecording);
+        // Five minutes in the future
+        recording1.recordingDateTime = new Date(Date.now() + 1000 * 5 * 60).toISOString();
+        delete recording1.processingState;
+
+        cy.log("Add slight future recording as device");
+        cy.apiRecordingAdd(
+            "raCamera1",
+            recording1,
+            "invalid.cptv",
+            "slightFutureDate",
+            200,
+        );
+    });
 });
