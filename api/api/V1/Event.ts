@@ -142,12 +142,19 @@ const uploadEvent = async (
       }
     }
   }
+  const now = new Date();
   const eventList = request.body.dateTimes.map((dateTime: IsoFormattedDateString) => ({
     DeviceId: device.id,
     EventDetailId: detailsId,
-    dateTime,
+    dateTime: new Date(dateTime),
     env,
-  }));
+  })).filter((event) => {
+    if (event.dateTime > now) {
+      logger.warning("Discarding event with invalid future dateTime %s.", JSON.stringify(event));
+      return false;
+    }
+    return true;
+  });
   const count = eventList.length;
   try {
     // Batch inserting events to max 100 events at a time, to spare DB memory usage.

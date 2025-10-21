@@ -155,6 +155,15 @@ describe("Events - add event as a device", () => {
       cy.apiEventsAdd("evCamera9", eventDetail, eventDates);
   });
 
+  it("Silently discards events with future dateTimes", () => {
+      const eventDetail = {
+          type: "alert",
+          details: { recId: 2, alertId: 2, success: true, trackId: 3 },
+      };
+      const eventDates = ["2019-01-05T07:22:56.000Z", "2160-01-05T07:22:56.000Z"];
+      cy.apiEventsAdd("evCamera9", eventDetail, eventDates);
+  });
+
   it("Can add multiple occurrences of an event", () => {
     const time11 = "2019-01-01T07:22:56.000Z";
     const time12 = "2019-01-02T07:22:56.000Z";
