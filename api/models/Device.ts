@@ -116,7 +116,7 @@ export interface DeviceStatic extends ModelStaticCommon<Device> {
     interval: String,
     recordingType: string
   ) => Promise<
-    { deviceId: DeviceId; from: string; what: string; count: number }[]
+  { deviceId: DeviceId; from: string; what: string; count: number }[]
   >;
   getDaysActive: (
     authUser: any,
@@ -389,31 +389,31 @@ where
     const counts = [];
     let stepSizeInMs;
     switch (interval) {
-      case "hours":
-        stepSizeInMs = 60 * 60 * 1000;
-        break;
-      case "days":
-        stepSizeInMs = 24 * 60 * 60 * 1000;
-        break;
-      case "weeks":
-        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "months": {
-        const currMonthDays = new Date(
-          from.getFullYear(),
-          from.getMonth() + 1,
-          0,
-        ).getDate();
-        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      case "years": {
-        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      default:
-        throw new Error(`Invalid interval: ${interval}`);
+    case "hours":
+      stepSizeInMs = 60 * 60 * 1000;
+      break;
+    case "days":
+      stepSizeInMs = 24 * 60 * 60 * 1000;
+      break;
+    case "weeks":
+      stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+      break;
+    case "months": {
+      const currMonthDays = new Date(
+        from.getFullYear(),
+        from.getMonth() + 1,
+        0,
+      ).getDate();
+      stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    case "years": {
+      const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+      stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    default:
+      throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
 
@@ -510,35 +510,35 @@ order by hour;
     recordingType,
   ): Promise<
     { deviceId: DeviceId; from: string; what: string; count: number }[]
-  > {
+    > {
     const counts = [];
     let stepSizeInMs;
     switch (interval) {
-      case "hours":
-        stepSizeInMs = 60 * 60 * 1000;
-        break;
-      case "days":
-        stepSizeInMs = 24 * 60 * 60 * 1000;
-        break;
-      case "weeks":
-        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "months": {
-        const currMonthDays = new Date(
-          from.getFullYear(),
-          from.getMonth() + 1,
-          0,
-        ).getDate();
-        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      case "years": {
-        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      default:
-        throw new Error(`Invalid interval: ${interval}`);
+    case "hours":
+      stepSizeInMs = 60 * 60 * 1000;
+      break;
+    case "days":
+      stepSizeInMs = 24 * 60 * 60 * 1000;
+      break;
+    case "weeks":
+      stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+      break;
+    case "months": {
+      const currMonthDays = new Date(
+        from.getFullYear(),
+        from.getMonth() + 1,
+        0,
+      ).getDate();
+      stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    case "years": {
+      const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+      stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    default:
+      throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
     for (let i = 0; i < steps; i++) {
@@ -899,7 +899,7 @@ order by hour;
         } else if (this.kind === DeviceType.Audio) {
           await station.update({ lastActiveAudioTime: now });
         } else if (this.kind == DeviceType.Hybrid) {
-            await station.update({ lastActiveThermalTime: now, lastActiveAudioTime: now });
+          await station.update({ lastActiveThermalTime: now, lastActiveAudioTime: now });
         }
       }
     }

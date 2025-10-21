@@ -26,6 +26,7 @@ describe("Events - add event as a device", () => {
     cy.testCreateUserGroupAndDevice("evGroupAdmin", "evGroup", "evCamera");
     cy.testCreateUserGroupAndDevice("evGroupAdmin2", "evGroup2", "evCamera2");
     cy.testCreateUserGroupAndDevice("evGroupAdmin8", "evGroup8", "evCamera8");
+    cy.testCreateUserGroupAndDevice("evGroupAdmin9", "evGroup9", "evCamera9");
 
     //Create some events to reuse / query
     cy.apiEventsAdd("evCamera", eventDetails1, [time1]).then(
@@ -137,6 +138,21 @@ describe("Events - add event as a device", () => {
       [expectedEvent7a, expectedEvent7b, expectedEvent7c, expectedEvent7d],
       EXCL_ID_CREATED,
     );
+  });
+
+  it("Can add way too many event times", () => {
+      cy.log("Adding way too many events");
+      const eventDetail = {
+          type: "alert",
+          details: { recId: 2, alertId: 2, success: true, trackId: 3 },
+      };
+      const eventDates = [];
+      const baseDate = Date.parse("2019-01-05T07:22:56.000Z");
+      const oneHour = 1000 * 60 * 60;
+      for (let i = 0; i < 10000; i++) {
+          eventDates.push((new Date(baseDate + (oneHour * i))).toISOString());
+      }
+      cy.apiEventsAdd("evCamera9", eventDetail, eventDates);
   });
 
   it("Can add multiple occurrences of an event", () => {
@@ -278,7 +294,7 @@ describe("Events - add event as a device", () => {
       true,
       HttpStatusCode.Unprocessable,
     );
-    cy.log("list containing invaid time");
+    cy.log("list containing invalid time");
     cy.apiEventsAdd(
       "evCamera",
       eventDetails1,

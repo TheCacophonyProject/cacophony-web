@@ -6,12 +6,15 @@ const server = {
   loggerLevel: "info",
 };
 import { fileURLToPath } from "url";
+import type {ServerConfig} from "@typedefs/api/serverConfig.js";
+import LoadedServerConfigSchema from "@schemas/api/serverConfig/LoadedServerConfig.schema.json" assert { type: "json" };
+import {Ajv} from "ajv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const timeZone = "Pacific/Auckland";
 
-function loadConfigFromArgs(strict: boolean = false) {
+function loadConfigFromArgs(strict: boolean = false): Promise<ServerConfig> {
   return loadConfig(getConfigPathFromArgs(strict));
 }
 
@@ -33,15 +36,26 @@ function getConfigPathFromArgs(strict: boolean = false): string {
   return configPath;
 }
 
-async function loadConfig(configPath) {
+export async function loadConfig(configPath: string): Promise<ServerConfig> {
   configPath = path.resolve(__dirname, configPath);
   checkConfigFileExists(configPath);
   const config = (await import(configPath)).default;
+  // Validate server config against json schema:
+  const ajv = new Ajv({
+    allErrors: true,
+  });
+  const validate= ajv.compile(LoadedServerConfigSchema);
+  const isValidConfig = validate(config);
+  if (!isValidConfig) {
+    console.error("Config file validation failed");
+    console.log(validate.errors);
+  }
+
   checkDatabaseConfigAvailable(config);
   return config;
 }
 
-function checkConfigFileExists(configPath) {
+function checkConfigFileExists(configPath: string) {
   if (!fs.existsSync(configPath)) {
     throw (
       "Config file " +
@@ -61,12 +75,9 @@ function checkDatabaseConfigAvailable(config) {
 const loadedConfig = await loadConfigFromArgs();
 
 export default {
-  getConfigPathFromArgs,
-  loadConfigFromArgs,
-  loadConfig,
   timeZone,
   server,
   euaVersion: 3,
   ...loadedConfig,
   productionEnv: !loadedConfig.server.isLocalDev,
-};
+} as ServerConfig;

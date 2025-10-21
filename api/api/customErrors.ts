@@ -112,7 +112,12 @@ export class ValidationError extends CustomError {
     }
     message = message
       .filter((error) => typeof error.msg === "string")
-      .map(({ msg, location, param }) => `${location}.${param}: ${msg}`)
+      .map(({ msg, location, param }) => {
+        if (location) {
+          return `${location}.${param}: ${msg}`;
+        }
+        return msg;
+      })
       .join("; ");
     super(message, HttpStatusCode.Unprocessable);
     this.errors = errors;

@@ -82,7 +82,7 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     steps: number,
     interval: String
   ) => Promise<
-    { stationId: StationId; from: string; cacophonyIndex: number }[]
+  { stationId: StationId; from: string; cacophonyIndex: number }[]
   >;
   getSpeciesCount: (
     authUser,
@@ -99,7 +99,7 @@ export interface StationStatic extends ModelStaticCommon<Station> {
     interval: String,
     type: string
   ) => Promise<
-    { stationId: StationId; from: string; what: string; count: number }[]
+  { stationId: StationId; from: string; what: string; count: number }[]
   >;
   getDaysActive: (
     authUser,
@@ -270,31 +270,31 @@ export default function (
     const counts = [];
     let stepSizeInMs;
     switch (interval) {
-      case "hours":
-        stepSizeInMs = 60 * 60 * 1000;
-        break;
-      case "days":
-        stepSizeInMs = 24 * 60 * 60 * 1000;
-        break;
-      case "weeks":
-        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "months": {
-        const currMonthDays = new Date(
-          from.getFullYear(),
-          from.getMonth() + 1,
-          0,
-        ).getDate();
-        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      case "years": {
-        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      default:
-        throw new Error(`Invalid interval: ${interval}`);
+    case "hours":
+      stepSizeInMs = 60 * 60 * 1000;
+      break;
+    case "days":
+      stepSizeInMs = 24 * 60 * 60 * 1000;
+      break;
+    case "weeks":
+      stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+      break;
+    case "months": {
+      const currMonthDays = new Date(
+        from.getFullYear(),
+        from.getMonth() + 1,
+        0,
+      ).getDate();
+      stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    case "years": {
+      const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+      stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    default:
+      throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
 
@@ -354,35 +354,35 @@ export default function (
     type,
   ): Promise<
     { stationId: StationId; from: string; what: string; count: number }[]
-  > {
+    > {
     const counts = [];
     let stepSizeInMs;
     switch (interval) {
-      case "hours":
-        stepSizeInMs = 60 * 60 * 1000;
-        break;
-      case "days":
-        stepSizeInMs = 24 * 60 * 60 * 1000;
-        break;
-      case "weeks":
-        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "months": {
-        const currMonthDays = new Date(
-          from.getFullYear(),
-          from.getMonth() + 1,
-          0,
-        ).getDate();
-        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      case "years": {
-        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      default:
-        throw new Error(`Invalid interval: ${interval}`);
+    case "hours":
+      stepSizeInMs = 60 * 60 * 1000;
+      break;
+    case "days":
+      stepSizeInMs = 24 * 60 * 60 * 1000;
+      break;
+    case "weeks":
+      stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
+      break;
+    case "months": {
+      const currMonthDays = new Date(
+        from.getFullYear(),
+        from.getMonth() + 1,
+        0,
+      ).getDate();
+      stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    case "years": {
+      const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
+      stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
+      break;
+    }
+    default:
+      throw new Error(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
 

@@ -510,7 +510,7 @@ async function main() {
   if (!config.server) {
     throw "'server' not configured in config/app.js";
   }
-  if (!config.server.browse_url) {
+  if (!config.server.browseUrl) {
     throw "'browse_url' not configured in config/app.js";
   }
   // Make sure that we always report from the same time offset, regardless of when this script is run.
@@ -537,7 +537,7 @@ async function main() {
   }
 
   await sendDailyServiceErrorsEmail(
-    config.server.browse_url.replace("https://", ""),
+    config.server.browseUrl.replace("https://", ""),
     config.smtpDetails.serviceErrorsEmail,
     startDate,
     endDate,

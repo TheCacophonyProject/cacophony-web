@@ -147,8 +147,6 @@ const grafanaLabelRestart = async () => {
 
 (async () => {
   log.notice("Starting Full Noise.");
-  await config.loadConfigFromArgs(true);
-
   await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
   if (config.server.loggerLevel === "debug") {
@@ -188,8 +186,8 @@ const grafanaLabelRestart = async () => {
           response.locals.requestUser !== undefined
             ? "user"
             : response.locals.deviceUser !== undefined
-            ? "device"
-            : "unknown";
+              ? "device"
+              : "unknown";
         let requester = `u9999`;
         if (requesterType === "user") {
           requester = `u${response.locals.requestUser?.id}`;

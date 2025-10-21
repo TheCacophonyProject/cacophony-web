@@ -6,6 +6,7 @@ import { program } from "commander";
 import pg from "pg";
 import process from "process";
 import log from "../logging.js";
+import {loadConfig} from "@config";
 const exec = util.promisify(cp_exec);
 let Config;
 
@@ -58,7 +59,7 @@ const checkOnlyInstanceOfScriptRunning = async () => {
 
   Config = {
     ...config.default,
-    ...(await config.default.loadConfig(options.config)),
+    ...(await loadConfig(options.config)),
   };
 
   if (!Config.hasOwnProperty("s3Archive")) {

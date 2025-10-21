@@ -11,60 +11,60 @@ import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 const models = await modelsInit();
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
-  async (
-    request: Request,
-    response: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    const deviceName = extractValFromRequest(request, device);
-    const group = response.locals.group;
-    if (!group) {
-      return next(new ClientError("No group specified"));
-    }
-    let nameIsFree = await models.Device.freeDeviceName(
-      deviceName,
-      response.locals.group.id,
-    );
-    if (nameIsFree) {
-      // Check the url normalised version
-      nameIsFree = await models.Device.freeDeviceName(
-        urlNormaliseName(deviceName),
+    async (
+      request: Request,
+      response: Response,
+      next: NextFunction,
+    ): Promise<void> => {
+      const deviceName = extractValFromRequest(request, device);
+      const group = response.locals.group;
+      if (!group) {
+        return next(new ClientError("No group specified"));
+      }
+      let nameIsFree = await models.Device.freeDeviceName(
+        deviceName,
         response.locals.group.id,
       );
-    }
-
-    if (nameIsFree) {
-      // Check that the device name is not a reserved api path fragment:
-      if (
-        [
-          "create-proxy-device",
-          "fix-location",
-          "users",
-          "assign-schedule",
-          "remove-schedule",
-          "cacophony-index",
-          "cacophony-index-histogram",
-          "reregister",
-          "heartbeat",
-          "history",
-          "locations",
-          "location",
-          "in-group",
-          "reference-image",
-          "location-history",
-          "unique-track-tags",
-          "tracks-with-tag",
-        ].includes(deviceName)
-      ) {
-        return next(new ClientError(`Device name ${deviceName} reserved`));
+      if (nameIsFree) {
+      // Check the url normalised version
+        nameIsFree = await models.Device.freeDeviceName(
+          urlNormaliseName(deviceName),
+          response.locals.group.id,
+        );
       }
-    }
 
-    if (!nameIsFree) {
-      return next(new ClientError(`Device name ${deviceName} in use`));
-    }
-    next();
-  };
+      if (nameIsFree) {
+      // Check that the device name is not a reserved api path fragment:
+        if (
+          [
+            "create-proxy-device",
+            "fix-location",
+            "users",
+            "assign-schedule",
+            "remove-schedule",
+            "cacophony-index",
+            "cacophony-index-histogram",
+            "reregister",
+            "heartbeat",
+            "history",
+            "locations",
+            "location",
+            "in-group",
+            "reference-image",
+            "location-history",
+            "unique-track-tags",
+            "tracks-with-tag",
+          ].includes(deviceName)
+        ) {
+          return next(new ClientError(`Device name ${deviceName} reserved`));
+        }
+      }
+
+      if (!nameIsFree) {
+        return next(new ClientError(`Device name ${deviceName} in use`));
+      }
+      next();
+    };
 
 export const idOf = (field: ValidationChain): ValidationChain =>
   field.exists().isInt().toInt().withMessage(expectedTypeOf("integer"));
@@ -133,8 +133,8 @@ type AnyOf = Middleware & { run: (req: Request) => Promise<Result> };
 // Wrapping 'oneOf' with a useful error message.
 export const anyOf = (
   ...fields:
-    | (ValidationChain | AnyOf | AnyOf[])[]
-    | (ValidationChain | AnyOf | AnyOf[])[][]
+  | (ValidationChain | AnyOf | AnyOf[])[]
+  | (ValidationChain | AnyOf | AnyOf[])[][]
 ): AnyOf => {
   if (fields.length === 1 && Array.isArray(fields[0])) {
     fields = fields[0];
@@ -184,7 +184,6 @@ export const anyOf = (
       }
     }
   }
-
   let message;
   if (fieldNames.length === 1) {
     message = `Missing required field '${fieldNames[0]}'`;

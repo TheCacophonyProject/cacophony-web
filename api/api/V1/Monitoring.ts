@@ -319,21 +319,21 @@ export default function (app: Application, baseUrl: string) {
 
       const loggingFn =
         (sqlPasses: string[], sqlTimings: number[]) =>
-        (message: string, time: number) => {
-          const store = asyncLocalStorage.getStore() as Map<string, number>;
-          const dbQueryCount = store?.get("queryCount") as number;
-          const dbQueryTime = store?.get("queryTime") as number;
-          store?.set("queryCount", dbQueryCount + 1);
-          store?.set("queryTime", dbQueryTime + time);
-          if (query.debug) {
-            sqlPasses.push(
-              sqlFormat(message.replace("Executed (default): ", ""), {
-                language: "postgresql",
-              }),
-            );
-            sqlTimings.push(time);
-          }
-        };
+          (message: string, time: number) => {
+            const store = asyncLocalStorage.getStore() as Map<string, number>;
+            const dbQueryCount = store?.get("queryCount") as number;
+            const dbQueryTime = store?.get("queryTime") as number;
+            store?.set("queryCount", dbQueryCount + 1);
+            store?.set("queryTime", dbQueryTime + time);
+            if (query.debug) {
+              sqlPasses.push(
+                sqlFormat(message.replace("Executed (default): ", ""), {
+                  language: "postgresql",
+                }),
+              );
+              sqlTimings.push(time);
+            }
+          };
       const logging = loggingFn(sqlPasses, sqlTimings);
       const searchDetails = {
         group: groupId,

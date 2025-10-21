@@ -152,64 +152,64 @@ const extractJwtAuthenticatedEntity =
     requireSuperAdmin = false,
     requireActivatedUser = false,
   ) =>
-  async (
-    request: Request,
-    response: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
-      response.locals.token = getVerifiedJWT(request) as DecodedJWTToken;
-      const jwtDecoded = response.locals.token;
-      await extractJwtAuthenticatedEntityCommon(
-        jwtDecoded,
-        types,
-        request,
-        response,
-        next,
-        reqAccess,
-        requireSuperAdmin,
-        requireActivatedUser,
-      );
-      return next();
-    } catch (e) {
+    async (
+      request: Request,
+      response: Response,
+      next: NextFunction,
+    ): Promise<void> => {
+      try {
+        response.locals.token = getVerifiedJWT(request) as DecodedJWTToken;
+        const jwtDecoded = response.locals.token;
+        await extractJwtAuthenticatedEntityCommon(
+          jwtDecoded,
+          types,
+          request,
+          response,
+          next,
+          reqAccess,
+          requireSuperAdmin,
+          requireActivatedUser,
+        );
+        return next();
+      } catch (e) {
       // We might need to rate limit this.
-      const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
-      if (!token) {
+        const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
+        if (!token) {
         // User IP address for rate limiting
-        let ip =
+          let ip =
           request.headers["x-forwarded-for"] || request.socket.remoteAddress;
-        if (Array.isArray(ip)) {
-          ip = ip.join("");
+          if (Array.isArray(ip)) {
+            ip = ip.join("");
+          }
+          if (ip) {
+            const hashedIp = createHash("sha1")
+              .update(ip, "utf8")
+              .digest("hex")
+              .substring(0, 10);
+            response.locals.requestUser = {
+              id: hashedIp,
+              hasGlobalRead: () => false,
+              hasGlobalWrite: () => false,
+              globalPermission: UserGlobalPermission.Off,
+            };
+          }
         }
-        if (ip) {
-          const hashedIp = createHash("sha1")
-            .update(ip, "utf8")
-            .digest("hex")
-            .substring(0, 10);
+        if (token && token._type && token._type === "user") {
           response.locals.requestUser = {
-            id: hashedIp,
+            id: token.id || -1,
             hasGlobalRead: () => false,
             hasGlobalWrite: () => false,
             globalPermission: UserGlobalPermission.Off,
           };
+          if (userShouldBeRateLimited(response.locals.requestUser.id)) {
+            response.locals.requestUser.wasRateLimited = true;
+            // Stagger the amount of rate-limiting to try and spread out repeat requests
+            await delayMs(3000 + Math.floor(Math.random() * 4000));
+          }
         }
+        return next(e);
       }
-      if (token && token._type && token._type === "user") {
-        response.locals.requestUser = {
-          id: token.id || -1,
-          hasGlobalRead: () => false,
-          hasGlobalWrite: () => false,
-          globalPermission: UserGlobalPermission.Off,
-        };
-        if (userShouldBeRateLimited(response.locals.requestUser.id)) {
-          response.locals.requestUser.wasRateLimited = true;
-          // Stagger the amount of rate-limiting to try and spread out repeat requests
-          await delayMs(3000 + Math.floor(Math.random() * 4000));
-        }
-      }
-      return next(e);
-    }
-  };
+    };
 
 const extractJwtAuthenticatedEntityFromBody =
   (
@@ -219,32 +219,32 @@ const extractJwtAuthenticatedEntityFromBody =
     requireSuperAdmin = false,
     requireActivatedUser = false,
   ) =>
-  async (
-    request: Request,
-    response: Response,
-    next: NextFunction,
-  ): Promise<void> => {
-    try {
-      const jwtDecoded = getVerifiedJWTFromBody(
-        tokenField,
-        request,
-      ) as DecodedJWTToken;
-      response.locals.tokenInfo = jwtDecoded;
-      await extractJwtAuthenticatedEntityCommon(
-        jwtDecoded,
-        types,
-        request,
-        response,
-        next,
-        reqAccess,
-        requireSuperAdmin,
-        requireActivatedUser,
-      );
-      return next();
-    } catch (e) {
-      return next(e);
-    }
-  };
+    async (
+      request: Request,
+      response: Response,
+      next: NextFunction,
+    ): Promise<void> => {
+      try {
+        const jwtDecoded = getVerifiedJWTFromBody(
+          tokenField,
+          request,
+        ) as DecodedJWTToken;
+        response.locals.tokenInfo = jwtDecoded;
+        await extractJwtAuthenticatedEntityCommon(
+          jwtDecoded,
+          types,
+          request,
+          response,
+          next,
+          reqAccess,
+          requireSuperAdmin,
+          requireActivatedUser,
+        );
+        return next();
+      } catch (e) {
+        return next(e);
+      }
+    };
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
 export const extractJwtAuthorizedActivatedUser = extractJwtAuthenticatedEntity(
   ["user"],
@@ -307,168 +307,168 @@ const getGroupInclude = (
 
 const getDeviceInclude =
   (deviceWhere: any, groupWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
-    where: {
-      ...deviceWhere,
-      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
-    },
-    attributes: deviceAttributes,
-    include: [
-      {
-        model: models.Group,
-        attributes: ["id", "groupName"],
-        required:
+    (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+      where: {
+        ...deviceWhere,
+        [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      },
+      attributes: deviceAttributes,
+      include: [
+        {
+          model: models.Group,
+          attributes: ["id", "groupName"],
+          required:
           Object.keys(groupWhere).length !== 0 &&
           Object.keys(deviceWhere).length === 0,
-        where: groupWhere,
-        include: [
-          {
-            model: models.User,
-            attributes: ["id"],
-            required: false,
-            through: {
-              where: {
-                ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
+          where: groupWhere,
+          include: [
+            {
+              model: models.User,
+              attributes: ["id"],
+              required: false,
+              through: {
+                where: {
+                  ...useAdminAccess,
+                  removedAt: { [Op.eq]: null },
+                  pending: { [Op.eq]: null },
+                },
+                attributes: ["admin", "UserId"],
               },
-              attributes: ["admin", "UserId"],
+              where: { id: requestUserId },
             },
-            where: { id: requestUserId },
-          },
-        ],
-      },
-    ],
-  });
+          ],
+        },
+      ],
+    });
 
 const getStationInclude =
   (stationWhere: any, groupWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
-    where: {
-      ...stationWhere,
-    },
-    include: [
-      {
-        model: models.Group,
-        attributes: ["id", "groupName"],
-        required: true,
-        where: groupWhere,
-        include: [
-          {
-            model: models.User,
-            attributes: ["id"],
-            required: true,
-            through: {
-              where: {
-                ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
-              attributes: ["UserId"],
-            },
-            where: { id: requestUserId },
-          },
-        ],
+    (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+      where: {
+        ...stationWhere,
       },
-    ],
-  });
+      include: [
+        {
+          model: models.Group,
+          attributes: ["id", "groupName"],
+          required: true,
+          where: groupWhere,
+          include: [
+            {
+              model: models.User,
+              attributes: ["id"],
+              required: true,
+              through: {
+                where: {
+                  ...useAdminAccess,
+                  removedAt: { [Op.eq]: null },
+                  pending: { [Op.eq]: null },
+                },
+                attributes: ["UserId"],
+              },
+              where: { id: requestUserId },
+            },
+          ],
+        },
+      ],
+    });
 
 const getScheduleInclude =
   (groupWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
-    where: {
-      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
-    },
-    include: [
-      {
-        model: models.Group,
-        attributes: ["id", "groupName"],
-        required: Object.keys(groupWhere).length !== 0,
-        where: groupWhere,
-        include: [
-          {
-            model: models.User,
-            attributes: ["id"],
-            required: false,
-            through: {
-              where: {
-                ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
-              attributes: ["admin", "UserId"],
-            },
-            where: { id: requestUserId },
-          },
-        ],
+    (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+      where: {
+        [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
       },
-    ],
-  });
+      include: [
+        {
+          model: models.Group,
+          attributes: ["id", "groupName"],
+          required: Object.keys(groupWhere).length !== 0,
+          where: groupWhere,
+          include: [
+            {
+              model: models.User,
+              attributes: ["id"],
+              required: false,
+              through: {
+                where: {
+                  ...useAdminAccess,
+                  removedAt: { [Op.eq]: null },
+                  pending: { [Op.eq]: null },
+                },
+                attributes: ["admin", "UserId"],
+              },
+              where: { id: requestUserId },
+            },
+          ],
+        },
+      ],
+    });
 
 const getRecordingInclude =
   (recordingsWhere: any, groupWhere: any, deviceWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
-    where: {
-      ...recordingsWhere,
-      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
-    },
-    // TODO - RecordingAttributes
-    //attributes: deviceAttributes,
-    include: [
-      {
-        model: models.Group,
-        attributes: ["id", "groupName"],
-        required: false,
-        where: groupWhere,
-        include: [
-          {
-            model: models.User,
-            attributes: ["id"],
-            required: false,
-            through: {
-              where: {
-                ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
+    (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+      where: {
+        ...recordingsWhere,
+        [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      },
+      // TODO - RecordingAttributes
+      //attributes: deviceAttributes,
+      include: [
+        {
+          model: models.Group,
+          attributes: ["id", "groupName"],
+          required: false,
+          where: groupWhere,
+          include: [
+            {
+              model: models.User,
+              attributes: ["id"],
+              required: false,
+              through: {
+                where: {
+                  ...useAdminAccess,
+                  removedAt: { [Op.eq]: null },
+                  pending: { [Op.eq]: null },
+                },
+                attributes: ["admin", "UserId"],
               },
-              attributes: ["admin", "UserId"],
+              where: { id: requestUserId },
             },
-            where: { id: requestUserId },
-          },
-        ],
-      },
-      {
-        model: models.Device,
-        attributes: ["id", "deviceName"],
-        required: false,
-        where: deviceWhere,
-      },
-    ],
-  });
+          ],
+        },
+        {
+          model: models.Device,
+          attributes: ["id", "deviceName"],
+          required: false,
+          where: deviceWhere,
+        },
+      ],
+    });
 
 export const parseJSONField =
   (field: ValidationChain) =>
-  (request: Request, response: Response, next: NextFunction) => {
-    let value = extractValFromRequest(request, field);
-    const location = extractFieldLocationFromRequest(request, field);
-    const key = extractFieldNameFromRequest(request, field);
-    if (value) {
-      if (typeof value === "string") {
-        try {
-          value = JSON.parse(value);
-        } catch (e) {
-          return next(
-            new ClientError(`Malformed JSON for '${location}.${key}'`),
-          );
+    (request: Request, response: Response, next: NextFunction) => {
+      let value = extractValFromRequest(request, field);
+      const location = extractFieldLocationFromRequest(request, field);
+      const key = extractFieldNameFromRequest(request, field);
+      if (value) {
+        if (typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch (e) {
+            return next(
+              new ClientError(`Malformed JSON for '${location}.${key}'`),
+            );
+          }
         }
+        if (typeof value !== "object") {
+          throw new ClientError(`Malformed json`);
+        }
+        response.locals[key] = value;
       }
-      if (typeof value !== "object") {
-        throw new ClientError(`Malformed json`);
-      }
-      response.locals[key] = value;
-    }
-    next();
-  };
+      next();
+    };
 
 export const extractValFromRequest = (
   request: Request,
@@ -531,100 +531,100 @@ export const fetchModel =
     primary: ValidationChain | number | string,
     secondary?: ValidationChain | number | string,
   ) =>
-  async (request: Request, response: Response, next: NextFunction) => {
-    const modelName = modelTypeName(modelType);
+    async (request: Request, response: Response, next: NextFunction) => {
+      const modelName = modelTypeName(modelType);
 
-    let id;
-    if (typeof primary === "number" || typeof primary === "string") {
-      id = primary;
-    } else {
-      id = extractValFromRequest(request, primary) as string;
-    }
-    if (!id && !required) {
-      return next();
-    }
-    let id2;
-    if (typeof secondary === "number" || typeof secondary === "string") {
-      id2 = secondary;
-    } else {
-      id2 = extractValFromRequest(request, secondary) as string;
-    }
-    response.locals.onlyActive = true; // Default to only showing active devices.
-    response.locals.withRecordings = false; // Default to showing stations without any recordings.
-    if (
-      ("onlyActive" in request.query &&
+      let id;
+      if (typeof primary === "number" || typeof primary === "string") {
+        id = primary;
+      } else {
+        id = extractValFromRequest(request, primary) as string;
+      }
+      if (!id && !required) {
+        return next();
+      }
+      let id2;
+      if (typeof secondary === "number" || typeof secondary === "string") {
+        id2 = secondary;
+      } else {
+        id2 = extractValFromRequest(request, secondary) as string;
+      }
+      response.locals.onlyActive = true; // Default to only showing active devices.
+      response.locals.withRecordings = false; // Default to showing stations without any recordings.
+      if (
+        ("onlyActive" in request.query &&
         Boolean(request.query.onlyActive) === false) ||
       ("only-active" in request.query &&
         Boolean(request.query["only-active"]) === false)
-    ) {
-      response.locals.onlyActive = false;
-    }
-    if (
-      "with-recordings" in request.query &&
+      ) {
+        response.locals.onlyActive = false;
+      }
+      if (
+        "with-recordings" in request.query &&
       Boolean(request.query["with-recordings"]) === true
-    ) {
-      response.locals.withRecordings = true;
-    }
-    if ("deleted" in request.query) {
-      response.locals.deleted = Boolean(request.query.deleted);
-    }
+      ) {
+        response.locals.withRecordings = true;
+      }
+      if ("deleted" in request.query) {
+        response.locals.deleted = Boolean(request.query.deleted);
+      }
 
-    let model;
-    try {
-      model = await modelGetter(id, id2, response.locals);
-    } catch (e) {
-      log.error("%s", e.sql);
-      return next(e);
-    }
-    if (model instanceof ClientError) {
-      return next(model);
-    } else if (model === null) {
-      if (required) {
-        const forUser = !!response.locals.requestUser;
-        if (byName && byId) {
+      let model;
+      try {
+        model = await modelGetter(id, id2, response.locals);
+      } catch (e) {
+        log.error("%s", e.sql);
+        return next(e);
+      }
+      if (model instanceof ClientError) {
+        return next(model);
+      } else if (model === null) {
+        if (required) {
+          const forUser = !!response.locals.requestUser;
+          if (byName && byId) {
           // TODO - provide better error messages in the case the group (id2) doesn't exist?
-          return next(
-            new AuthorizationError(
-              `Could not find a ${modelName} with a name or id of '${id}'${
-                id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-            ),
-          );
-        } else if (byId) {
-          return next(
-            new AuthorizationError(
-              `Could not find a ${modelName} with an id of '${id}'${
-                id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-            ),
-          );
-        } else if (byName) {
-          return next(
-            new AuthorizationError(
-              `Could not find a ${modelName} with a name of '${id}'${
-                id2 ? ` in ${id2}` : ""
-              }${forUser ? " for user" : ""}`,
-            ),
-          );
+            return next(
+              new AuthorizationError(
+                `Could not find a ${modelName} with a name or id of '${id}'${
+                  id2 ? ` in ${id2}` : ""
+                }${forUser ? " for user" : ""}`,
+              ),
+            );
+          } else if (byId) {
+            return next(
+              new AuthorizationError(
+                `Could not find a ${modelName} with an id of '${id}'${
+                  id2 ? ` in ${id2}` : ""
+                }${forUser ? " for user" : ""}`,
+              ),
+            );
+          } else if (byName) {
+            return next(
+              new AuthorizationError(
+                `Could not find a ${modelName} with a name of '${id}'${
+                  id2 ? ` in ${id2}` : ""
+                }${forUser ? " for user" : ""}`,
+              ),
+            );
+          } else {
+            return next(
+              new AuthorizationError(
+                `Could not find any ${modelTypeNamePlural(modelType)}${
+                  forUser ? " for user" : ""
+                }`,
+              ),
+            );
+          }
+        }
+      } else {
+        if (Array.isArray(model)) {
+          response.locals[modelTypeNamePlural(modelType)] = model;
         } else {
-          return next(
-            new AuthorizationError(
-              `Could not find any ${modelTypeNamePlural(modelType)}${
-                forUser ? " for user" : ""
-              }`,
-            ),
-          );
+          response.locals[modelName] = model;
         }
       }
-    } else {
-      if (Array.isArray(model)) {
-        response.locals[modelTypeNamePlural(modelType)] = model;
-      } else {
-        response.locals[modelName] = model;
-      }
-    }
-    next();
-  };
+      next();
+    };
 
 export const fetchRequiredModel = <T>(
   modelType: ModelStaticCommon<T>,
@@ -643,7 +643,7 @@ export const fetchRequiredModels = <T>(
   primary?: ValidationChain,
   secondary?: ValidationChain,
 ) =>
-  fetchModel(modelType, true, byName, byId, modelsGetter, primary, secondary);
+    fetchModel(modelType, true, byName, byId, modelsGetter, primary, secondary);
 
 export const fetchOptionalModel = <T>(
   modelType: ModelStaticCommon<T>,
@@ -653,357 +653,357 @@ export const fetchOptionalModel = <T>(
   primary: ValidationChain | string | number,
   secondary?: ValidationChain | string | number,
 ) =>
-  fetchModel(modelType, false, byName, byId, modelGetter, primary, secondary);
+    fetchModel(modelType, false, byName, byId, modelGetter, primary, secondary);
 
 const getDevices =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
-  (
-    groupNameOrId?: string,
-    unused2?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
-    let getDeviceOptions;
-    let groupWhere = {};
+    (
+      groupNameOrId?: string,
+      unused2?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
+      let getDeviceOptions;
+      let groupWhere = {};
 
-    const groupIsId =
+      const groupIsId =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
-    if (groupNameOrId) {
-      if (groupIsId) {
-        groupWhere = { id: parseInt(groupNameOrId) };
-      } else {
-        groupWhere = { groupName: groupNameOrId };
-      }
-    }
-
-    const allDevicesOptions = {
-      where: {},
-      include: [
-        {
-          model: models.Group,
-          required: true,
-          where: groupWhere,
-        },
-      ],
-    };
-
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getDeviceOptions = getIncludeForUser(
-          context,
-          getDeviceInclude({}, groupWhere),
-          asAdmin,
-        );
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
-      }
-    } else {
-      getDeviceOptions = allDevicesOptions;
-    }
-
-    if (!getDeviceOptions.where) {
-      getDeviceOptions = allDevicesOptions;
-    }
-
-    if (context.onlyActive) {
-      (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
-      (getDeviceOptions as any).where.active = true;
-    }
-    getDeviceOptions.subQuery = false;
-    return models.Device.findAll({
-      ...getDeviceOptions,
-      order: ["deviceName"],
-    });
-  };
-
-const getStations =
-  (forRequestUser: boolean = false, asAdmin: boolean) =>
-  (
-    groupNameOrId?: string,
-    unused2?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Station>[] | ClientError | null> => {
-    let getStationsOptions;
-    let groupWhere = {};
-
-    const groupIsId =
-      groupNameOrId &&
-      !isNaN(parseInt(groupNameOrId)) &&
-      parseInt(groupNameOrId).toString() === String(groupNameOrId);
-    if (groupNameOrId) {
-      if (groupIsId) {
-        groupWhere = { id: parseInt(groupNameOrId) };
-      } else {
-        groupWhere = { groupName: groupNameOrId };
-      }
-    }
-    const allStationsOptions = {
-      where: {},
-      include: [
-        {
-          model: models.Group,
-          required: true,
-          where: groupWhere,
-          attributes: ["id", "groupName"],
-        },
-      ],
-    };
-
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getStationsOptions = getIncludeForUser(
-          context,
-          getStationInclude({}, groupWhere),
-          asAdmin,
-        );
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
-      }
-    } else {
-      getStationsOptions = allStationsOptions;
-    }
-
-    if (!getStationsOptions.where) {
-      getStationsOptions = allStationsOptions;
-    }
-
-    if (context.onlyActive) {
-      (getStationsOptions as any).where =
-        (getStationsOptions as any).where || {};
-      (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
-    }
-    if (context.withRecordings) {
-      (getStationsOptions as any).where =
-        (getStationsOptions as any).where || {};
-      (getStationsOptions as any).where[Op.and] = [
-        {
-          [Op.or]: [
-            {
-              lastThermalRecordingTime: { [Op.ne]: null },
-              lastAudioRecordingTime: { [Op.ne]: null },
-              automatic: true,
-            },
-            {
-              automatic: false,
-            },
-          ],
-        },
-      ];
-    }
-
-    return models.Station.findAll({
-      ...getStationsOptions,
-      order: ["name"],
-      subQuery: false,
-    });
-  };
-
-const getStation =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
-  (
-    stationNameOrId: string,
-    groupNameOrId?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
-    const groupIsId =
-      groupNameOrId &&
-      !isNaN(parseInt(groupNameOrId)) &&
-      parseInt(groupNameOrId).toString() === String(groupNameOrId);
-
-    const stationIsId =
-      !isNaN(parseInt(stationNameOrId)) &&
-      parseInt(stationNameOrId).toString() === String(stationNameOrId);
-
-    let stationWhere;
-    let groupWhere = {};
-
-    let groupNameMatch: any = groupNameOrId;
-    if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
-      groupNameMatch = {
-        [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
-      };
-    }
-    let stationNameMatch: any = stationNameOrId;
-    if (!stationIsId && stationNameOrId !== urlNormaliseName(stationNameOrId)) {
-      stationNameMatch = {
-        [Op.in]: [stationNameOrId, urlNormaliseName(stationNameOrId)],
-      };
-    }
-
-    if (groupIsId && stationIsId) {
-      stationWhere = {
-        id: parseInt(stationNameOrId),
-        GroupId: parseInt(groupNameOrId),
-      };
-    } else if (stationIsId && groupNameOrId) {
-      stationWhere = {
-        id: parseInt(stationNameOrId),
-        "$Group.groupName$": groupNameMatch,
-      };
-    } else if (stationIsId && !groupNameOrId) {
-      stationWhere = {
-        id: parseInt(stationNameOrId),
-      };
-    } else if (groupIsId) {
-      stationWhere = {
-        name: stationNameOrId,
-        GroupId: parseInt(groupNameOrId),
-      };
-    } else {
-      stationWhere = {
-        name: stationNameMatch,
-        "$Group.groupName$": groupNameMatch,
-      };
-    }
-    if (groupIsId) {
-      groupWhere = {
-        id: parseInt(groupNameOrId),
-      };
-    } else if (groupNameOrId) {
-      groupWhere = { groupName: groupNameMatch };
-    }
-
-    let getStationOptions;
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-
-        getStationOptions = getIncludeForUser(
-          context,
-          getStationInclude(stationWhere, groupWhere),
-          asAdmin,
-        );
-        if (!getStationOptions.where && stationWhere) {
-          getStationOptions = {
-            where: stationWhere,
-            include: [
-              {
-                model: models.Group,
-                required: true,
-                attributes: ["groupName"],
-                where: groupWhere,
-              },
-            ],
-          };
+      if (groupNameOrId) {
+        if (groupIsId) {
+          groupWhere = { id: parseInt(groupNameOrId) };
+        } else {
+          groupWhere = { groupName: groupNameOrId };
         }
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
       }
-    } else {
-      getStationOptions = {
-        where: stationWhere,
+
+      const allDevicesOptions = {
+        where: {},
         include: [
           {
             model: models.Group,
             required: true,
-            attributes: ["groupName"],
             where: groupWhere,
           },
         ],
       };
-    }
 
-    if (context.onlyActive || !stationIsId) {
-      (getStationOptions as any).where = (getStationOptions as any).where || {};
-      (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
-    }
-    getStationOptions.subQuery = false;
-    return models.Station.findOne(getStationOptions);
-  };
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getDeviceOptions = getIncludeForUser(
+            context,
+            getDeviceInclude({}, groupWhere),
+            asAdmin,
+          );
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      } else {
+        getDeviceOptions = allDevicesOptions;
+      }
 
-const getSchedules =
+      if (!getDeviceOptions.where) {
+        getDeviceOptions = allDevicesOptions;
+      }
+
+      if (context.onlyActive) {
+        (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
+        (getDeviceOptions as any).where.active = true;
+      }
+      getDeviceOptions.subQuery = false;
+      return models.Device.findAll({
+        ...getDeviceOptions,
+        order: ["deviceName"],
+      });
+    };
+
+const getStations =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
-  (
-    groupNameOrId?: string,
-    unused2?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Schedule>[] | ClientError | null> => {
-    let getScheduleOptions;
-    let groupWhere = {};
+    (
+      groupNameOrId?: string,
+      unused2?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Station>[] | ClientError | null> => {
+      let getStationsOptions;
+      let groupWhere = {};
 
-    const groupIsId =
+      const groupIsId =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
-    if (groupNameOrId) {
-      if (groupIsId) {
-        groupWhere = { id: parseInt(groupNameOrId) };
-      } else {
-        groupWhere = { groupName: groupNameOrId };
+      if (groupNameOrId) {
+        if (groupIsId) {
+          groupWhere = { id: parseInt(groupNameOrId) };
+        } else {
+          groupWhere = { groupName: groupNameOrId };
+        }
       }
-    }
+      const allStationsOptions = {
+        where: {},
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            where: groupWhere,
+            attributes: ["id", "groupName"],
+          },
+        ],
+      };
 
-    const allSchedulesOptions = {
-      where: {},
-      include: [
-        {
-          model: models.Group,
-          required: true,
-          where: groupWhere,
-        },
-      ],
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getStationsOptions = getIncludeForUser(
+            context,
+            getStationInclude({}, groupWhere),
+            asAdmin,
+          );
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      } else {
+        getStationsOptions = allStationsOptions;
+      }
+
+      if (!getStationsOptions.where) {
+        getStationsOptions = allStationsOptions;
+      }
+
+      if (context.onlyActive) {
+        (getStationsOptions as any).where =
+        (getStationsOptions as any).where || {};
+        (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
+      }
+      if (context.withRecordings) {
+        (getStationsOptions as any).where =
+        (getStationsOptions as any).where || {};
+        (getStationsOptions as any).where[Op.and] = [
+          {
+            [Op.or]: [
+              {
+                lastThermalRecordingTime: { [Op.ne]: null },
+                lastAudioRecordingTime: { [Op.ne]: null },
+                automatic: true,
+              },
+              {
+                automatic: false,
+              },
+            ],
+          },
+        ];
+      }
+
+      return models.Station.findAll({
+        ...getStationsOptions,
+        order: ["name"],
+        subQuery: false,
+      });
     };
 
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getScheduleOptions = getIncludeForUser(
-          context,
-          getScheduleInclude(groupWhere),
-          asAdmin,
-        );
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
-      }
-    } else {
-      getScheduleOptions = allSchedulesOptions;
-    }
+const getStation =
+  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+    (
+      stationNameOrId: string,
+      groupNameOrId?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
+      const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
-    if (!getScheduleOptions.where) {
-      getScheduleOptions = allSchedulesOptions;
-    }
-    return models.Schedule.findAll(getScheduleOptions);
-  };
+      const stationIsId =
+      !isNaN(parseInt(stationNameOrId)) &&
+      parseInt(stationNameOrId).toString() === String(stationNameOrId);
+
+      let stationWhere;
+      let groupWhere = {};
+
+      let groupNameMatch: any = groupNameOrId;
+      if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+        groupNameMatch = {
+          [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+        };
+      }
+      let stationNameMatch: any = stationNameOrId;
+      if (!stationIsId && stationNameOrId !== urlNormaliseName(stationNameOrId)) {
+        stationNameMatch = {
+          [Op.in]: [stationNameOrId, urlNormaliseName(stationNameOrId)],
+        };
+      }
+
+      if (groupIsId && stationIsId) {
+        stationWhere = {
+          id: parseInt(stationNameOrId),
+          GroupId: parseInt(groupNameOrId),
+        };
+      } else if (stationIsId && groupNameOrId) {
+        stationWhere = {
+          id: parseInt(stationNameOrId),
+          "$Group.groupName$": groupNameMatch,
+        };
+      } else if (stationIsId && !groupNameOrId) {
+        stationWhere = {
+          id: parseInt(stationNameOrId),
+        };
+      } else if (groupIsId) {
+        stationWhere = {
+          name: stationNameOrId,
+          GroupId: parseInt(groupNameOrId),
+        };
+      } else {
+        stationWhere = {
+          name: stationNameMatch,
+          "$Group.groupName$": groupNameMatch,
+        };
+      }
+      if (groupIsId) {
+        groupWhere = {
+          id: parseInt(groupNameOrId),
+        };
+      } else if (groupNameOrId) {
+        groupWhere = { groupName: groupNameMatch };
+      }
+
+      let getStationOptions;
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+
+          getStationOptions = getIncludeForUser(
+            context,
+            getStationInclude(stationWhere, groupWhere),
+            asAdmin,
+          );
+          if (!getStationOptions.where && stationWhere) {
+            getStationOptions = {
+              where: stationWhere,
+              include: [
+                {
+                  model: models.Group,
+                  required: true,
+                  attributes: ["groupName"],
+                  where: groupWhere,
+                },
+              ],
+            };
+          }
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      } else {
+        getStationOptions = {
+          where: stationWhere,
+          include: [
+            {
+              model: models.Group,
+              required: true,
+              attributes: ["groupName"],
+              where: groupWhere,
+            },
+          ],
+        };
+      }
+
+      if (context.onlyActive || !stationIsId) {
+        (getStationOptions as any).where = (getStationOptions as any).where || {};
+        (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
+      }
+      getStationOptions.subQuery = false;
+      return models.Station.findOne(getStationOptions);
+    };
+
+const getSchedules =
+  (forRequestUser: boolean = false, asAdmin: boolean) =>
+    (
+      groupNameOrId?: string,
+      unused2?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Schedule>[] | ClientError | null> => {
+      let getScheduleOptions;
+      let groupWhere = {};
+
+      const groupIsId =
+      groupNameOrId &&
+      !isNaN(parseInt(groupNameOrId)) &&
+      parseInt(groupNameOrId).toString() === String(groupNameOrId);
+      if (groupNameOrId) {
+        if (groupIsId) {
+          groupWhere = { id: parseInt(groupNameOrId) };
+        } else {
+          groupWhere = { groupName: groupNameOrId };
+        }
+      }
+
+      const allSchedulesOptions = {
+        where: {},
+        include: [
+          {
+            model: models.Group,
+            required: true,
+            where: groupWhere,
+          },
+        ],
+      };
+
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getScheduleOptions = getIncludeForUser(
+            context,
+            getScheduleInclude(groupWhere),
+            asAdmin,
+          );
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      } else {
+        getScheduleOptions = allSchedulesOptions;
+      }
+
+      if (!getScheduleOptions.where) {
+        getScheduleOptions = allSchedulesOptions;
+      }
+      return models.Schedule.findAll(getScheduleOptions);
+    };
 
 const getGroups =
   (forRequestUser: boolean = false, asAdmin: boolean) =>
-  (
-    unused1?: string,
-    unused2?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Group>[] | ClientError | null> => {
-    let getGroupOptions;
-    if (forRequestUser) {
-      if (context && context.requestUser) {
+    (
+      unused1?: string,
+      unused2?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Group>[] | ClientError | null> => {
+      let getGroupOptions;
+      if (forRequestUser) {
+        if (context && context.requestUser) {
         // Insert request user constraints
-        getGroupOptions = getIncludeForUser(context, getGroupInclude, asAdmin);
+          getGroupOptions = getIncludeForUser(context, getGroupInclude, asAdmin);
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
       } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
+        getGroupOptions = {
+          where: {},
+        };
       }
-    } else {
-      getGroupOptions = {
-        where: {},
-      };
-    }
-    return models.Group.findAll({
-      ...getGroupOptions,
-      order: ["groupName"],
-      subQuery: false,
-    });
-  };
+      return models.Group.findAll({
+        ...getGroupOptions,
+        order: ["groupName"],
+        subQuery: false,
+      });
+    };
 
 const getRecordingRelationships = (
   recordingQuery: any,
@@ -1125,87 +1125,87 @@ const getRecording =
     includeTrackMetadata = false,
     includeRelationships = false,
   ) =>
-  (
-    recordingId: string,
-    unused: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
-    const recordingWhere = {
-      id: parseInt(recordingId),
-    };
-    if ("deleted" in context) {
-      if (context.deleted === true) {
-        (recordingWhere as any).deletedAt = { [Op.ne]: null };
-      } else if (context.deleted === false) {
-        (recordingWhere as any).deletedAt = { [Op.eq]: null };
-      }
-    }
-
-    let getRecordingOptions;
-    const groupWhere = {};
-    const deviceWhere = {};
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getRecordingOptions = getIncludeForUser(
-          context,
-          getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
-          asAdmin,
-        );
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
-      }
-    }
-    if (
-      !getRecordingOptions ||
-      (getRecordingOptions && !getRecordingOptions.include)
-    ) {
-      if (!getRecordingOptions) {
-        getRecordingOptions = {};
-      }
-      if (includeRelationships) {
-        getRecordingOptions.include = [
-          {
-            model: models.Group,
-            required: true,
-            where: groupWhere,
-          },
-          {
-            model: models.Device,
-            required: true,
-            where: deviceWhere,
-          },
-        ];
-      }
-    }
-    getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
-    getRecordingOptions = getRecordingRelationships(
-      getRecordingOptions,
-      includeRelationships,
-    );
-    return models.Recording.findOne(getRecordingOptions).then((rec) => {
-      if (includeTrackMetadata) {
-        // TODO: M Fetch all the metadata for tracks.
-        if (rec) {
-          const trackMetas = [];
-          for (const track of rec.Tracks) {
-            trackMetas.push(getTrackData(track.id));
-          }
-          return Promise.all(trackMetas).then((trackMetadatas) => {
-            for (let i = 0; i < trackMetadatas.length; i++) {
-              if (Object.keys(trackMetadatas[i]).length > 0) {
-                rec.Tracks[i].data = trackMetadatas[i];
-              }
-            }
-            return rec;
-          });
+    (
+      recordingId: string,
+      unused: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
+      const recordingWhere = {
+        id: parseInt(recordingId),
+      };
+      if ("deleted" in context) {
+        if (context.deleted === true) {
+          (recordingWhere as any).deletedAt = { [Op.ne]: null };
+        } else if (context.deleted === false) {
+          (recordingWhere as any).deletedAt = { [Op.eq]: null };
         }
       }
-      return rec;
-    });
-  };
+
+      let getRecordingOptions;
+      const groupWhere = {};
+      const deviceWhere = {};
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getRecordingOptions = getIncludeForUser(
+            context,
+            getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
+            asAdmin,
+          );
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      }
+      if (
+        !getRecordingOptions ||
+      (getRecordingOptions && !getRecordingOptions.include)
+      ) {
+        if (!getRecordingOptions) {
+          getRecordingOptions = {};
+        }
+        if (includeRelationships) {
+          getRecordingOptions.include = [
+            {
+              model: models.Group,
+              required: true,
+              where: groupWhere,
+            },
+            {
+              model: models.Device,
+              required: true,
+              where: deviceWhere,
+            },
+          ];
+        }
+      }
+      getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
+      getRecordingOptions = getRecordingRelationships(
+        getRecordingOptions,
+        includeRelationships,
+      );
+      return models.Recording.findOne(getRecordingOptions).then((rec) => {
+        if (includeTrackMetadata) {
+        // TODO: M Fetch all the metadata for tracks.
+          if (rec) {
+            const trackMetas = [];
+            for (const track of rec.Tracks) {
+              trackMetas.push(getTrackData(track.id));
+            }
+            return Promise.all(trackMetas).then((trackMetadatas) => {
+              for (let i = 0; i < trackMetadatas.length; i++) {
+                if (Object.keys(trackMetadatas[i]).length > 0) {
+                  rec.Tracks[i].data = trackMetadatas[i];
+                }
+              }
+              return rec;
+            });
+          }
+        }
+        return rec;
+      });
+    };
 
 const getRecordings =
   (
@@ -1213,64 +1213,64 @@ const getRecordings =
     asAdmin: boolean = false,
     includeRelationships = false,
   ) =>
-  (
-    recordingIds: string,
-    unused: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
-    const recordingWhere = {
-      id: { [Op.in]: recordingIds },
-    };
-    if ("deleted" in context) {
-      if (context.deleted === true) {
-        (recordingWhere as any).deletedAt = { [Op.ne]: null };
-      } else if (context.deleted === false) {
-        (recordingWhere as any).deletedAt = { [Op.eq]: null };
-      }
-    }
-    let getRecordingOptions;
-    const groupWhere = {};
-    const deviceWhere = {};
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getRecordingOptions = getIncludeForUser(
-          context,
-          getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
-          asAdmin,
-        );
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
-      }
-    } else {
-      getRecordingOptions = {
-        where: recordingWhere,
-        include: [
-          {
-            model: models.Group,
-            required: true,
-            where: groupWhere,
-          },
-          {
-            model: models.Device,
-            required: true,
-            where: deviceWhere,
-          },
-        ],
+    (
+      recordingIds: string,
+      unused: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
+      const recordingWhere = {
+        id: { [Op.in]: recordingIds },
       };
-    }
-    getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
-    getRecordingOptions = getRecordingRelationships(
-      getRecordingOptions,
-      includeRelationships,
-    );
-    return models.Recording.findAll({
-      ...getRecordingOptions,
-      order: ["recordingDateTime"],
-    });
-  };
+      if ("deleted" in context) {
+        if (context.deleted === true) {
+          (recordingWhere as any).deletedAt = { [Op.ne]: null };
+        } else if (context.deleted === false) {
+          (recordingWhere as any).deletedAt = { [Op.eq]: null };
+        }
+      }
+      let getRecordingOptions;
+      const groupWhere = {};
+      const deviceWhere = {};
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getRecordingOptions = getIncludeForUser(
+            context,
+            getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
+            asAdmin,
+          );
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      } else {
+        getRecordingOptions = {
+          where: recordingWhere,
+          include: [
+            {
+              model: models.Group,
+              required: true,
+              where: groupWhere,
+            },
+            {
+              model: models.Device,
+              required: true,
+              where: deviceWhere,
+            },
+          ],
+        };
+      }
+      getRecordingOptions.where = getRecordingOptions.where || recordingWhere;
+      getRecordingOptions = getRecordingRelationships(
+        getRecordingOptions,
+        includeRelationships,
+      );
+      return models.Recording.findAll({
+        ...getRecordingOptions,
+        order: ["recordingDateTime"],
+      });
+    };
 
 const getDevice =
   (
@@ -1278,119 +1278,119 @@ const getDevice =
     asAdmin: boolean = false,
     forDevice: boolean = false,
   ) =>
-  (
-    deviceNameOrId: string,
-    groupNameOrId?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Device> | ClientError | null> => {
-    const deviceIsId =
+    (
+      deviceNameOrId: string,
+      groupNameOrId?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Device> | ClientError | null> => {
+      const deviceIsId =
       !isNaN(parseInt(deviceNameOrId)) &&
       parseInt(deviceNameOrId).toString() === String(deviceNameOrId);
-    const groupIsId =
+      const groupIsId =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
-    let deviceWhere;
-    let groupWhere = {};
+      let deviceWhere;
+      let groupWhere = {};
 
-    let groupNameMatch: any = groupNameOrId;
-    if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
-      groupNameMatch = {
-        [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
-      };
-    }
-    let deviceNameMatch: any = deviceNameOrId;
-    if (!deviceIsId && deviceNameOrId !== urlNormaliseName(deviceNameOrId)) {
-      deviceNameMatch = {
-        [Op.in]: [deviceNameOrId, urlNormaliseName(deviceNameOrId)],
-      };
-    }
-
-    if (deviceIsId && groupIsId) {
-      deviceWhere = {
-        id: parseInt(deviceNameOrId),
-        GroupId: parseInt(groupNameOrId),
-      };
-    } else if (deviceIsId && groupNameOrId) {
-      deviceWhere = {
-        id: parseInt(deviceNameOrId),
-        "$Group.groupName$": groupNameMatch,
-      };
-    } else if (deviceIsId && !groupNameOrId) {
-      deviceWhere = {
-        id: parseInt(deviceNameOrId),
-      };
-    } else if (groupIsId) {
-      deviceWhere = {
-        deviceName: deviceNameMatch,
-        GroupId: parseInt(groupNameOrId),
-      };
-    } else {
-      deviceWhere = {
-        deviceName: deviceNameMatch,
-        "$Group.groupName$": groupNameMatch,
-      };
-    }
-    if (groupIsId) {
-      groupWhere = {
-        id: parseInt(groupNameOrId),
-      };
-    } else if (groupNameOrId) {
-      groupWhere = { groupName: groupNameMatch };
-    }
-
-    let getDeviceOptions;
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getDeviceOptions = getIncludeForUser(
-          context,
-          getDeviceInclude(deviceWhere, groupWhere),
-          asAdmin,
-        );
-        if (!getDeviceOptions.where && deviceWhere) {
-          getDeviceOptions = {
-            where: deviceWhere,
-            attributes: deviceAttributes,
-            include: [
-              {
-                model: models.Group,
-                required: true,
-                where: groupWhere,
-              },
-            ],
-          };
-        }
-      } else if (!forDevice) {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
+      let groupNameMatch: any = groupNameOrId;
+      if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+        groupNameMatch = {
+          [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+        };
       }
-    }
-    if (!getDeviceOptions) {
-      getDeviceOptions = {
-        where: deviceWhere,
-        attributes: deviceAttributes,
-        include: [
-          {
-            model: models.Group,
-            required: true,
-            where: groupWhere,
-          },
-        ],
-      };
-    }
+      let deviceNameMatch: any = deviceNameOrId;
+      if (!deviceIsId && deviceNameOrId !== urlNormaliseName(deviceNameOrId)) {
+        deviceNameMatch = {
+          [Op.in]: [deviceNameOrId, urlNormaliseName(deviceNameOrId)],
+        };
+      }
 
-    // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
-    //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
-    if (context.onlyActive) {
-      (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
-      (getDeviceOptions as any).where.active = true;
-    }
-    getDeviceOptions.subQuery = false;
-    return models.Device.findOne(getDeviceOptions);
-  };
+      if (deviceIsId && groupIsId) {
+        deviceWhere = {
+          id: parseInt(deviceNameOrId),
+          GroupId: parseInt(groupNameOrId),
+        };
+      } else if (deviceIsId && groupNameOrId) {
+        deviceWhere = {
+          id: parseInt(deviceNameOrId),
+          "$Group.groupName$": groupNameMatch,
+        };
+      } else if (deviceIsId && !groupNameOrId) {
+        deviceWhere = {
+          id: parseInt(deviceNameOrId),
+        };
+      } else if (groupIsId) {
+        deviceWhere = {
+          deviceName: deviceNameMatch,
+          GroupId: parseInt(groupNameOrId),
+        };
+      } else {
+        deviceWhere = {
+          deviceName: deviceNameMatch,
+          "$Group.groupName$": groupNameMatch,
+        };
+      }
+      if (groupIsId) {
+        groupWhere = {
+          id: parseInt(groupNameOrId),
+        };
+      } else if (groupNameOrId) {
+        groupWhere = { groupName: groupNameMatch };
+      }
+
+      let getDeviceOptions;
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getDeviceOptions = getIncludeForUser(
+            context,
+            getDeviceInclude(deviceWhere, groupWhere),
+            asAdmin,
+          );
+          if (!getDeviceOptions.where && deviceWhere) {
+            getDeviceOptions = {
+              where: deviceWhere,
+              attributes: deviceAttributes,
+              include: [
+                {
+                  model: models.Group,
+                  required: true,
+                  where: groupWhere,
+                },
+              ],
+            };
+          }
+        } else if (!forDevice) {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      }
+      if (!getDeviceOptions) {
+        getDeviceOptions = {
+          where: deviceWhere,
+          attributes: deviceAttributes,
+          include: [
+            {
+              model: models.Group,
+              required: true,
+              where: groupWhere,
+            },
+          ],
+        };
+      }
+
+      // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
+      //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
+      if (context.onlyActive) {
+        (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
+        (getDeviceOptions as any).where.active = true;
+      }
+      getDeviceOptions.subQuery = false;
+      return models.Device.findOne(getDeviceOptions);
+    };
 
 const getIncludeForUser = (
   context: any,
@@ -1419,175 +1419,175 @@ const getIncludeForUser = (
 
 const getGroup =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
-  (
-    groupNameOrId?: string,
-    unusedParam?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Group> | ClientError | null> => {
+    (
+      groupNameOrId?: string,
+      unusedParam?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Group> | ClientError | null> => {
     // @ts-ignore
-    const groupIsId =
+      const groupIsId =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
-    let groupWhere;
-    if (groupIsId) {
-      groupWhere = {
-        id: parseInt(groupNameOrId),
-      };
-    } else {
-      let groupNameMatch: any = groupNameOrId;
-      if (groupNameOrId !== urlNormaliseName(groupNameOrId)) {
-        groupNameMatch = {
-          [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+      let groupWhere;
+      if (groupIsId) {
+        groupWhere = {
+          id: parseInt(groupNameOrId),
+        };
+      } else {
+        let groupNameMatch: any = groupNameOrId;
+        if (groupNameOrId !== urlNormaliseName(groupNameOrId)) {
+          groupNameMatch = {
+            [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
+          };
+        }
+        groupWhere = { groupName: groupNameMatch };
+      }
+      let getGroupOptions;
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getGroupOptions = getIncludeForUser(context, getGroupInclude, asAdmin);
+          getGroupOptions.where = groupWhere;
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      } else {
+        getGroupOptions = {
+          where: groupWhere,
         };
       }
-      groupWhere = { groupName: groupNameMatch };
-    }
-    let getGroupOptions;
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getGroupOptions = getIncludeForUser(context, getGroupInclude, asAdmin);
-        getGroupOptions.where = groupWhere;
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
-      }
-    } else {
-      getGroupOptions = {
-        where: groupWhere,
-      };
-    }
-    getGroupOptions.subQuery = false;
-    return models.Group.findOne(getGroupOptions);
-  };
+      getGroupOptions.subQuery = false;
+      return models.Group.findOne(getGroupOptions);
+    };
 
 const getEvent =
   (forRequestUser: boolean = false, asAdmin: boolean = false) =>
-  (
-    eventDetailId?: string,
-    unusedParam?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Event> | ClientError | null> => {
-    let eventWhere;
-    if (eventDetailId) {
-      eventWhere = {
-        id: parseInt(eventDetailId),
-      };
-    }
-    let getEventOptions;
-    if (forRequestUser) {
-      if (context && context.requestUser) {
-        // Insert request user constraints
-        getEventOptions = getIncludeForUser(
-          context,
-          (asAdmin, userId) => {
-            return {
-              attributes: ["dateTime", "id"],
-              include: [
-                {
-                  model: models.DetailSnapshot,
-                  as: "EventDetail",
-                  required: true,
-                  attributes: ["type", "details"],
-                },
-                {
-                  model: models.Device,
-                  attributes: [],
-                  required: true,
-                  include: [
-                    {
-                      model: models.Group,
-                      attributes: [],
-                      required: true,
-                      where: {},
-                      include: [
-                        {
-                          model: models.User,
-                          attributes: [],
-                          required: true,
-                          through: {
-                            where: {
-                              ...asAdmin,
-                              removedAt: { [Op.eq]: null },
-                              pending: { [Op.eq]: null },
-                            },
-                            attributes: [],
-                          },
-                          where: { id: userId },
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            };
-          },
-          asAdmin,
-        );
-        getEventOptions.where = eventWhere;
-      } else {
-        return Promise.resolve(
-          new ClientError("No authorizing user specified"),
-        );
+    (
+      eventDetailId?: string,
+      unusedParam?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Event> | ClientError | null> => {
+      let eventWhere;
+      if (eventDetailId) {
+        eventWhere = {
+          id: parseInt(eventDetailId),
+        };
       }
-    } else {
-      getEventOptions = {
-        where: eventWhere,
-      };
-    }
-    return models.Event.findOne(getEventOptions);
-  };
+      let getEventOptions;
+      if (forRequestUser) {
+        if (context && context.requestUser) {
+        // Insert request user constraints
+          getEventOptions = getIncludeForUser(
+            context,
+            (asAdmin, userId) => {
+              return {
+                attributes: ["dateTime", "id"],
+                include: [
+                  {
+                    model: models.DetailSnapshot,
+                    as: "EventDetail",
+                    required: true,
+                    attributes: ["type", "details"],
+                  },
+                  {
+                    model: models.Device,
+                    attributes: [],
+                    required: true,
+                    include: [
+                      {
+                        model: models.Group,
+                        attributes: [],
+                        required: true,
+                        where: {},
+                        include: [
+                          {
+                            model: models.User,
+                            attributes: [],
+                            required: true,
+                            through: {
+                              where: {
+                                ...asAdmin,
+                                removedAt: { [Op.eq]: null },
+                                pending: { [Op.eq]: null },
+                              },
+                              attributes: [],
+                            },
+                            where: { id: userId },
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              };
+            },
+            asAdmin,
+          );
+          getEventOptions.where = eventWhere;
+        } else {
+          return Promise.resolve(
+            new ClientError("No authorizing user specified"),
+          );
+        }
+      } else {
+        getEventOptions = {
+          where: eventWhere,
+        };
+      }
+      return models.Event.findOne(getEventOptions);
+    };
 
 const getUser =
   () =>
-  (
-    userEmailOrId: string,
-  ): Promise<ModelStaticCommon<User> | ClientError | null> => {
+    (
+      userEmailOrId: string,
+    ): Promise<ModelStaticCommon<User> | ClientError | null> => {
     // @ts-ignore
-    const userIsId =
+      const userIsId =
       !isNaN(parseInt(userEmailOrId)) &&
       parseInt(userEmailOrId).toString() === String(userEmailOrId);
-    let userWhere;
-    if (userIsId) {
-      userWhere = {
-        id: parseInt(userEmailOrId),
-      };
-    } else {
-      userWhere = {
-        email: userEmailOrId.toLowerCase(),
-      };
-    }
-    return models.User.findOne({
-      where: userWhere,
-    });
-  };
+      let userWhere;
+      if (userIsId) {
+        userWhere = {
+          id: parseInt(userEmailOrId),
+        };
+      } else {
+        userWhere = {
+          email: userEmailOrId.toLowerCase(),
+        };
+      }
+      return models.User.findOne({
+        where: userWhere,
+      });
+    };
 
 const getAlert =
   (forRequestUser: boolean = false) =>
-  (
-    alertId: string,
-    unusedParam?: string,
-    context?: any,
-  ): Promise<ModelStaticCommon<Alert> | ClientError | null> => {
-    if (forRequestUser) {
-      return models.Alert.findOne({
-        where: { id: parseInt(alertId), UserId: context.requestUser.id },
-      });
-    }
-    {
-      return models.Alert.findOne({
-        where: { id: parseInt(alertId) },
-      });
-    }
-  };
+    (
+      alertId: string,
+      unusedParam?: string,
+      context?: any,
+    ): Promise<ModelStaticCommon<Alert> | ClientError | null> => {
+      if (forRequestUser) {
+        return models.Alert.findOne({
+          where: { id: parseInt(alertId), UserId: context.requestUser.id },
+        });
+      }
+      {
+        return models.Alert.findOne({
+          where: { id: parseInt(alertId) },
+        });
+      }
+    };
 
 const getUnauthorizedGenericModelById =
   <T>(modelType: ModelStaticCommon<T>) =>
-  <T>(id: string): Promise<T | ClientError | null> => {
-    return modelType.findByPk(id) as unknown as Promise<T | null>;
-  };
+    <T>(id: string): Promise<T | ClientError | null> => {
+      return modelType.findByPk(id) as unknown as Promise<T | null>;
+    };
 
 const getDeviceUnauthenticated = getDevice();
 const getDeviceForRequestUser = getDevice(true);
@@ -1835,57 +1835,57 @@ export const fetchAdminAuthorizedRequiredGroupById = (
 
 export const extractJWTInfo =
   (field: ValidationChain) =>
-  async (request: Request, response: Response, next: NextFunction) => {
-    const token = extractValFromRequest(request, field) as string;
-    let tokenInfo;
-    try {
-      tokenInfo = getDecodedToken(token);
-    } catch (e) {
-      return next(e);
-    }
-    response.locals.tokenInfo = tokenInfo;
-    next();
-  };
+    async (request: Request, response: Response, next: NextFunction) => {
+      const token = extractValFromRequest(request, field) as string;
+      let tokenInfo;
+      try {
+        tokenInfo = getDecodedToken(token);
+      } catch (e) {
+        return next(e);
+      }
+      response.locals.tokenInfo = tokenInfo;
+      next();
+    };
 
 export const extractOptionalJWTInfo =
   (field: ValidationChain) =>
-  async (request: Request, response: Response, next: NextFunction) => {
-    const token = extractValFromRequest(request, field) as string;
-    if (!token) {
-      return next();
-    }
-    let tokenInfo;
-    try {
-      tokenInfo = getDecodedToken(token, false);
-    } catch (e) {
-      return next(e);
-    }
-    response.locals.tokenInfo = tokenInfo;
-    next();
-  };
+    async (request: Request, response: Response, next: NextFunction) => {
+      const token = extractValFromRequest(request, field) as string;
+      if (!token) {
+        return next();
+      }
+      let tokenInfo;
+      try {
+        tokenInfo = getDecodedToken(token, false);
+      } catch (e) {
+        return next(e);
+      }
+      response.locals.tokenInfo = tokenInfo;
+      next();
+    };
 
 export const fetchUnauthorizedRequiredUserByResetToken =
   (field: ValidationChain) =>
-  async (request: Request, response: Response, next: NextFunction) => {
-    const token = extractValFromRequest(request, field) as string;
-    let resetInfo;
-    try {
-      resetInfo = getDecodedToken(token);
-    } catch (e) {
-      return next(e);
-    }
-    response.locals.resetInfo = resetInfo;
-    const user = await models.User.findByPk(response.locals.resetInfo.id);
-    if (!user) {
-      return next(
-        new AuthorizationError(
-          `Could not find a user with id '${response.locals.resetInfo.id}'`,
-        ),
-      );
-    }
-    response.locals.user = user;
-    next();
-  };
+    async (request: Request, response: Response, next: NextFunction) => {
+      const token = extractValFromRequest(request, field) as string;
+      let resetInfo;
+      try {
+        resetInfo = getDecodedToken(token);
+      } catch (e) {
+        return next(e);
+      }
+      response.locals.resetInfo = resetInfo;
+      const user = await models.User.findByPk(response.locals.resetInfo.id);
+      if (!user) {
+        return next(
+          new AuthorizationError(
+            `Could not find a user with id '${response.locals.resetInfo.id}'`,
+          ),
+        );
+      }
+      response.locals.user = user;
+      next();
+    };
 
 export const fetchUnauthorizedRequiredUserByEmailOrId = (
   userEmailOrId: ValidationChain,

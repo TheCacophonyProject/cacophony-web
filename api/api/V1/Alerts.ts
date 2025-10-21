@@ -70,8 +70,8 @@ const mapAlertResponse = (alert: Alert): ApiAlertResponse => {
   const alertScope = alert.DeviceId
     ? "device"
     : alert.StationId
-    ? "location"
-    : "project";
+      ? "location"
+      : "project";
   return {
     conditions: alert.conditions,
     frequencySeconds: alert.frequencySeconds,

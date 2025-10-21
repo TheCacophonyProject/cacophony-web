@@ -206,12 +206,12 @@ interface RecordingFileUploadResult {
 
 const mapPartName = (partKey: string, partName: string): string => {
   switch (partName) {
-    case "file":
-      return `raw/${partKey}`;
-    case "derived":
-      return `rec/${partKey}`;
-    case "thumb":
-      return `raw/${partKey}-thumb`;
+  case "file":
+    return `raw/${partKey}`;
+  case "derived":
+    return `rec/${partKey}`;
+  case "thumb":
+    return `raw/${partKey}-thumb`;
   }
   return partKey;
 };
@@ -399,401 +399,401 @@ export const uploadGenericRecordingOnBehalfOfDevice = (
 
 export const uploadGenericRecording =
   (models: ModelsDictionary, fromDevice: boolean) =>
-  async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, next: NextFunction) => {
     // If it was the actual device uploading the recording, not a user
     // on the devices' behalf, set the lastConnectionTime for the device.
-    const canceledRequest = { canceled: false };
-    const uploader = fromDevice ? "device" : "user";
+      const canceledRequest = { canceled: false };
+      const uploader = fromDevice ? "device" : "user";
 
-    // NOTE: Get the real device - do we always have this here, or just the device.id?
-    let uploadingUser: User;
-    const recordingDeviceId: DeviceId =
+      // NOTE: Get the real device - do we always have this here, or just the device.id?
+      let uploadingUser: User;
+      const recordingDeviceId: DeviceId =
       (response.locals.requestDevice && response.locals.requestDevice.id) ||
       response.locals.device.id;
-    let recordingDevice: Device = response.locals.requestDevice;
-    if (
-      !recordingDevice ||
+      let recordingDevice: Device = response.locals.requestDevice;
+      if (
+        !recordingDevice ||
       (recordingDevice && !response.locals.requestDevice.deviceName)
-    ) {
-      recordingDevice =
+      ) {
+        recordingDevice =
         response.locals.device ||
         (await models.Device.findByPk(recordingDeviceId, {
           include: [models.Group],
         }));
-    }
-
-    if (!recordingDevice) {
-      return next(
-        new UnprocessableError(
-          `No device found for ID ${recordingDeviceId}. Cannot proceed with upload.`,
-        ),
-      );
-    }
-    if (!recordingDevice.GroupId) {
-      return next(
-        new UnprocessableError(
-          `Device ${recordingDeviceId} is not assigned to any group. Cannot upload a recording.`,
-        ),
-      );
-    }
-    if (!recordingDevice.Group) {
-      // If we rely on `recordingDevice.Group` from `include: [models.Group]`
-      return next(
-        new UnprocessableError(
-          `Device ${recordingDeviceId} has GroupId = ${recordingDevice.GroupId}, but no matching group found.`,
-        ),
-      );
-    }
-
-    if (response.locals.requestUser) {
-      uploadingUser = response.locals.requestUser;
-    }
-    const fileUploadsInProgress: Promise<RecordingFileUploadResult>[] = [];
-    const partKey = `${recordingDevice.GroupId}/${moment().format(
-      "YYYY/MM/DD/",
-    )}${uuidv4()}`;
-    const form = new multiparty.Form();
-    form.on("error", (error: Error) => {
-      if (error instanceof CustomError && !canceledRequest.canceled) {
-        canceledRequest.canceled = true;
-        if (error.message.startsWith("Duplicate recording found for device")) {
-          if (!response.headersSent) {
-            const recordingId = Number(error.message.split(":")[1].trim());
-            return successResponse(
-              response,
-              "Duplicate recording found for device",
-              {
-                recordingId,
-              },
-            );
-          }
-        }
       }
-      return next(error);
-    });
 
-    // TODO - depending on the kind of asset we're uploading, it can go to different object storage providers and buckets.
-    //  Choose destination based on object type, and potentially owning group.
-
-    const recognisedFileParts = ["file", "derived", "thumb"];
-    let dataPromise: Promise<any>;
-    form.on("part", async (part: MultipartFormPart) => {
-      if (canceledRequest.canceled) {
-        part.destroy();
-        return;
-      }
-      part.on("error", (error) => {
-        if (error instanceof CustomError) {
-          // Emit our custom errors to the form error handler,
-          // which can then handle canceling the request.
-          form.emit("error", error);
-        }
-      });
-
-      if (part.name === "data") {
-        dataPromise = processAndValidateDataPart(
-          part,
-          recordingDeviceId,
-          models,
-        );
-      } else if (recognisedFileParts.includes(part.name)) {
-        fileUploadsInProgress.push(
-          processFilePart(
-            mapPartName(partKey, part.name),
-            part,
-            request,
-            canceledRequest,
+      if (!recordingDevice) {
+        return next(
+          new UnprocessableError(
+            `No device found for ID ${recordingDeviceId}. Cannot proceed with upload.`,
           ),
         );
-      } else {
-        part.emit(
-          "error",
-          new UnprocessableError(`Unknown form field '${part.name}'`),
+      }
+      if (!recordingDevice.GroupId) {
+        return next(
+          new UnprocessableError(
+            `Device ${recordingDeviceId} is not assigned to any group. Cannot upload a recording.`,
+          ),
         );
       }
-    });
+      if (!recordingDevice.Group) {
+      // If we rely on `recordingDevice.Group` from `include: [models.Group]`
+        return next(
+          new UnprocessableError(
+            `Device ${recordingDeviceId} has GroupId = ${recordingDevice.GroupId}, but no matching group found.`,
+          ),
+        );
+      }
 
-    // Only once all the parts are finished do we create the recording.
-    form.on("close", async () => {
-      let data = await dataPromise;
-      const uploadResults = await Promise.all(fileUploadsInProgress);
-      if (canceledRequest.canceled) {
-        await deleteUploads(uploadResults);
-        return;
+      if (response.locals.requestUser) {
+        uploadingUser = response.locals.requestUser;
       }
-      const rawFileUploadResult = uploadResults.find(
-        (part) => part.partName === "file",
-      );
-      const derivedUploadResult = uploadResults.find(
-        (part) => part.partName === "derived",
-      );
-      try {
-        data = mergeEmbeddedDataWithSuppliedRecordingData(
-          data,
-          rawFileUploadResult,
-        );
-      } catch (error) {
+      const fileUploadsInProgress: Promise<RecordingFileUploadResult>[] = [];
+      const partKey = `${recordingDevice.GroupId}/${moment().format(
+        "YYYY/MM/DD/",
+      )}${uuidv4()}`;
+      const form = new multiparty.Form();
+      form.on("error", (error: Error) => {
         if (error instanceof CustomError && !canceledRequest.canceled) {
           canceledRequest.canceled = true;
-          await deleteUploads(uploadResults);
-          return next(error);
+          if (error.message.startsWith("Duplicate recording found for device")) {
+            if (!response.headersSent) {
+              const recordingId = Number(error.message.split(":")[1].trim());
+              return successResponse(
+                response,
+                "Duplicate recording found for device",
+                {
+                  recordingId,
+                },
+              );
+            }
+          }
         }
-      }
+        return next(error);
+      });
 
-      // Reject recordings with invalid locations
-      if (data.location && !isLatLon(data.location, false)) {
-        if (!canceledRequest.canceled) {
-          canceledRequest.canceled = true;
-          await deleteUploads(uploadResults);
-          return next(
-            new UnprocessableError(
-              `Invalid location '${JSON.stringify(data.location)}'`,
-            ),
+      // TODO - depending on the kind of asset we're uploading, it can go to different object storage providers and buckets.
+      //  Choose destination based on object type, and potentially owning group.
+
+      const recognisedFileParts = ["file", "derived", "thumb"];
+      let dataPromise: Promise<any>;
+      form.on("part", async (part: MultipartFormPart) => {
+        if (canceledRequest.canceled) {
+          part.destroy();
+          return;
+        }
+        part.on("error", (error) => {
+          if (error instanceof CustomError) {
+          // Emit our custom errors to the form error handler,
+          // which can then handle canceling the request.
+            form.emit("error", error);
+          }
+        });
+
+        if (part.name === "data") {
+          dataPromise = processAndValidateDataPart(
+            part,
+            recordingDeviceId,
+            models,
           );
-        }
-      }
-
-      if (
-        data &&
-        data.fileHash &&
-        data.fileHash !== rawFileUploadResult.sha1Hash
-      ) {
-        // File was corrupted during upload, so we should reject it.
-        log.error(
-          "File hash check failed, for device %s, deleting key: %s",
-          recordingDeviceId,
-          rawFileUploadResult.key,
-        );
-        // Hash check failed, delete the file from s3, and return an error which the client can respond
-        // to in order to decide whether to retry immediately.
-        await deleteUploads(uploadResults);
-        if (!canceledRequest.canceled) {
-          return next(
-            new BadRequestError(
-              "Uploaded file integrity check failed, please retry.",
+        } else if (recognisedFileParts.includes(part.name)) {
+          fileUploadsInProgress.push(
+            processFilePart(
+              mapPartName(partKey, part.name),
+              part,
+              request,
+              canceledRequest,
             ),
           );
         } else {
+          part.emit(
+            "error",
+            new UnprocessableError(`Unknown form field '${part.name}'`),
+          );
+        }
+      });
+
+      // Only once all the parts are finished do we create the recording.
+      form.on("close", async () => {
+        let data = await dataPromise;
+        const uploadResults = await Promise.all(fileUploadsInProgress);
+        if (canceledRequest.canceled) {
+          await deleteUploads(uploadResults);
           return;
         }
-      }
-      // NOTE: Temporary until we get audio files with embedded location metadata:
-      if (
-        data.type === RecordingType.Audio &&
+        const rawFileUploadResult = uploadResults.find(
+          (part) => part.partName === "file",
+        );
+        const derivedUploadResult = uploadResults.find(
+          (part) => part.partName === "derived",
+        );
+        try {
+          data = mergeEmbeddedDataWithSuppliedRecordingData(
+            data,
+            rawFileUploadResult,
+          );
+        } catch (error) {
+          if (error instanceof CustomError && !canceledRequest.canceled) {
+            canceledRequest.canceled = true;
+            await deleteUploads(uploadResults);
+            return next(error);
+          }
+        }
+
+        // Reject recordings with invalid locations
+        if (data.location && !isLatLon(data.location, false)) {
+          if (!canceledRequest.canceled) {
+            canceledRequest.canceled = true;
+            await deleteUploads(uploadResults);
+            return next(
+              new UnprocessableError(
+                `Invalid location '${JSON.stringify(data.location)}'`,
+              ),
+            );
+          }
+        }
+
+        if (
+          data &&
+        data.fileHash &&
+        data.fileHash !== rawFileUploadResult.sha1Hash
+        ) {
+        // File was corrupted during upload, so we should reject it.
+          log.error(
+            "File hash check failed, for device %s, deleting key: %s",
+            recordingDeviceId,
+            rawFileUploadResult.key,
+          );
+          // Hash check failed, delete the file from s3, and return an error which the client can respond
+          // to in order to decide whether to retry immediately.
+          await deleteUploads(uploadResults);
+          if (!canceledRequest.canceled) {
+            return next(
+              new BadRequestError(
+                "Uploaded file integrity check failed, please retry.",
+              ),
+            );
+          } else {
+            return;
+          }
+        }
+        // NOTE: Temporary until we get audio files with embedded location metadata:
+        if (
+          data.type === RecordingType.Audio &&
         !data.location &&
         recordingDevice &&
         recordingDevice.location
-      ) {
-        data.location = recordingDevice.location;
-      }
+        ) {
+          data.location = recordingDevice.location;
+        }
 
-      const recordingTemplate = createRecording(
-        models,
-        data,
-        uploader,
-        recordingDevice,
-        uploadingUser,
-      );
-      recordingTemplate.rawFileHash = rawFileUploadResult.sha1Hash;
+        const recordingTemplate = createRecording(
+          models,
+          data,
+          uploader,
+          recordingDevice,
+          uploadingUser,
+        );
+        recordingTemplate.rawFileHash = rawFileUploadResult.sha1Hash;
 
-      // NOTE: If processingState is supplied, we're in a test, and should not mark files as corrupt.
-      //  We only detect corrupt thermalRaw files currently.
-      if (
-        data &&
+        // NOTE: If processingState is supplied, we're in a test, and should not mark files as corrupt.
+        //  We only detect corrupt thermalRaw files currently.
+        if (
+          data &&
         !data.processingState &&
         rawFileUploadResult.isCorrupt &&
         data.type === RecordingType.ThermalRaw
-      ) {
+        ) {
         // The file couldn't be parsed, but it matches what was uploaded, so mark
         // it as corrupt and keep the file for investigation.
-        recordingTemplate.processingState = RecordingProcessingState.Corrupt;
-      }
-      recordingTemplate.rawFileKey = rawFileUploadResult.key;
-      recordingTemplate.rawMimeType = guessMimeType(
-        recordingTemplate.type,
-        rawFileUploadResult.fileName,
-      );
-
-      recordingTemplate.rawFileSize = rawFileUploadResult.fileLength;
-      if (derivedUploadResult) {
-        recordingTemplate.fileKey = derivedUploadResult.key;
-        recordingTemplate.fileMimeType = guessMimeType(
+          recordingTemplate.processingState = RecordingProcessingState.Corrupt;
+        }
+        recordingTemplate.rawFileKey = rawFileUploadResult.key;
+        recordingTemplate.rawMimeType = guessMimeType(
           recordingTemplate.type,
-          derivedUploadResult.fileName,
+          rawFileUploadResult.fileName,
         );
-        recordingTemplate.fileSize = derivedUploadResult.fileLength;
-      }
-      if (recordingTemplate.recordingDateTime.toString() === "Invalid Date") {
-          return next(
-              new UnprocessableError(
-                  `Unable to parse recording date (${recordingTemplate.recordingDateTime}) (from ${data}).`,
-              ),
+
+        recordingTemplate.rawFileSize = rawFileUploadResult.fileLength;
+        if (derivedUploadResult) {
+          recordingTemplate.fileKey = derivedUploadResult.key;
+          recordingTemplate.fileMimeType = guessMimeType(
+            recordingTemplate.type,
+            derivedUploadResult.fileName,
           );
-      }
+          recordingTemplate.fileSize = derivedUploadResult.fileLength;
+        }
+        if (recordingTemplate.recordingDateTime.toString() === "Invalid Date") {
+          return next(
+            new UnprocessableError(
+              `Unable to parse recording date (${recordingTemplate.recordingDateTime}) (from ${data}).`,
+            ),
+          );
+        }
 
-      // Work out which group and station to assign based on recordingDateTime, device history etc.
-      const {
-        deviceId,
-        groupId,
-        station: stationToAssignToRecording,
-      } = await assignGroupAndStationToRecording(
-        models,
-        recordingDevice,
-        recordingTemplate.recordingDateTime,
-        recordingTemplate.location,
-      );
-
-      if (!deviceId || !groupId) {
-        // We can throw a 422 or similar
-        await deleteUploads(uploadResults);
-        return next(
-          new UnprocessableError(
-            `Unable to determine valid device (${deviceId}) or group (${groupId}) for this recording.`,
-          ),
+        // Work out which group and station to assign based on recordingDateTime, device history etc.
+        const {
+          deviceId,
+          groupId,
+          station: stationToAssignToRecording,
+        } = await assignGroupAndStationToRecording(
+          models,
+          recordingDevice,
+          recordingTemplate.recordingDateTime,
+          recordingTemplate.location,
         );
-      }
 
-      recordingTemplate.DeviceId = deviceId;
-      recordingTemplate.GroupId = groupId;
+        if (!deviceId || !groupId) {
+        // We can throw a 422 or similar
+          await deleteUploads(uploadResults);
+          return next(
+            new UnprocessableError(
+              `Unable to determine valid device (${deviceId}) or group (${groupId}) for this recording.`,
+            ),
+          );
+        }
 
-      // TODO: Decide what we're doing about thumbnails etc.
-      let recordingGroup: Group = recordingDevice.Group;
-      console.assert(!!recordingDevice.Group, "NO DEVICE GROUP");
-      if (deviceId !== recordingDevice.id) {
+        recordingTemplate.DeviceId = deviceId;
+        recordingTemplate.GroupId = groupId;
+
+        // TODO: Decide what we're doing about thumbnails etc.
+        let recordingGroup: Group = recordingDevice.Group;
+        console.assert(!!recordingDevice.Group, "NO DEVICE GROUP");
+        if (deviceId !== recordingDevice.id) {
         // Get the actual device at the recording time.
-        recordingDevice = await models.Device.findByPk(deviceId, {
-          include: [models.Group],
-        });
-      }
-      if (groupId !== recordingDevice.GroupId) {
+          recordingDevice = await models.Device.findByPk(deviceId, {
+            include: [models.Group],
+          });
+        }
+        if (groupId !== recordingDevice.GroupId) {
         // We are uploading old recordings from a device that has since been reassigned to another group.
         // TODO: Rename s3 objects to start with the correct group name.
         // Get the actual group at the recording time.
-        recordingGroup = await models.Group.findByPk(groupId);
-      }
-      let recordingDeviceUpdatePayload = {};
-      if (fromDevice) {
-        let shouldSetActive = false;
-        if (!recordingDevice.active) {
+          recordingGroup = await models.Group.findByPk(groupId);
+        }
+        let recordingDeviceUpdatePayload = {};
+        if (fromDevice) {
+          let shouldSetActive = false;
+          if (!recordingDevice.active) {
           // Check if the device has been re-assigned to another group:
-          const activeDevice = await models.Device.findOne({
-            where: {
-              saltId: recordingDevice.saltId,
-              active: true,
-            },
-          });
-          if (!activeDevice) {
-            shouldSetActive = true;
+            const activeDevice = await models.Device.findOne({
+              where: {
+                saltId: recordingDevice.saltId,
+                active: true,
+              },
+            });
+            if (!activeDevice) {
+              shouldSetActive = true;
+            }
           }
-        }
-        // Set the device active and update its connection time.
-        recordingDeviceUpdatePayload = {
-          lastConnectionTime: new Date(),
-        };
-        if (shouldSetActive) {
-          (recordingDeviceUpdatePayload as any).active = true;
-        }
-      } else if (
-        !fromDevice &&
+          // Set the device active and update its connection time.
+          recordingDeviceUpdatePayload = {
+            lastConnectionTime: new Date(),
+          };
+          if (shouldSetActive) {
+            (recordingDeviceUpdatePayload as any).active = true;
+          }
+        } else if (
+          !fromDevice &&
         (recordingTemplate.recordingDateTime >
           recordingDevice.lastConnectionTime ||
           !recordingDevice.lastConnectionTime)
-      ) {
-        let shouldSetActive = false;
-        if (!recordingDevice.active) {
+        ) {
+          let shouldSetActive = false;
+          if (!recordingDevice.active) {
           // Check if the device has been re-assigned to another group:
-          const activeDevice = await models.Device.findOne({
-            where: {
-              saltId: recordingDevice.saltId,
-              active: true,
-            },
-          });
-          if (!activeDevice) {
-            shouldSetActive = true;
+            const activeDevice = await models.Device.findOne({
+              where: {
+                saltId: recordingDevice.saltId,
+                active: true,
+              },
+            });
+            if (!activeDevice) {
+              shouldSetActive = true;
+            }
+          }
+          // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
+          // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
+          // which indicates that this device is now "offline".
+          // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
+          recordingDeviceUpdatePayload = {
+            lastConnectionTime: null,
+          };
+          if (shouldSetActive) {
+            (recordingDeviceUpdatePayload as any).active = true;
           }
         }
-        // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
-        // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
-        // which indicates that this device is now "offline".
-        // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
-        recordingDeviceUpdatePayload = {
-          lastConnectionTime: null,
-        };
-        if (shouldSetActive) {
-          (recordingDeviceUpdatePayload as any).active = true;
-        }
-      }
 
-      const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
-      // or with supplied tracks to support existing devices
-      const metadataSupplied =
+        const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
+        // or with supplied tracks to support existing devices
+        const metadataSupplied =
         (data.metadata && data.metadata.metadata_source) ||
         wouldHaveSuppliedTracks;
-      const _wouldHaveSuppliedTracksWithPredictions =
+        const _wouldHaveSuppliedTracksWithPredictions =
         dataHasSuppliedTracksWithPredictions(data);
-      setInitialProcessingState(recordingTemplate, data, metadataSupplied);
+        setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
-      const [recording, _station] = await Promise.all([
-        recordingTemplate.save(),
-        maybeUpdateLastRecordingTimesForStation(
-          recordingTemplate,
-          fromDevice,
-          stationToAssignToRecording,
-        ),
-        maybeUpdateLastRecordingTimesForDeviceAndGroup(
-          recordingTemplate,
-          recordingDevice,
-          recordingDeviceUpdatePayload,
-          recordingGroup,
-        ),
-      ]);
+        const [recording, _station] = await Promise.all([
+          recordingTemplate.save(),
+          maybeUpdateLastRecordingTimesForStation(
+            recordingTemplate,
+            fromDevice,
+            stationToAssignToRecording,
+          ),
+          maybeUpdateLastRecordingTimesForDeviceAndGroup(
+            recordingTemplate,
+            recordingDevice,
+            recordingDeviceUpdatePayload,
+            recordingGroup,
+          ),
+        ]);
 
-      if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
-        recording.additionalMetadata = {
-          ...recording.additionalMetadata,
-          metadataSource: data.metadata.metadata_source,
-        };
-        await recording.save();
-      }
+        if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
+          recording.additionalMetadata = {
+            ...recording.additionalMetadata,
+            metadataSource: data.metadata.metadata_source,
+          };
+          await recording.save();
+        }
 
-      if (wouldHaveSuppliedTracks) {
+        if (wouldHaveSuppliedTracks) {
         // Now that we have a recording saved to the DB, we can creat./e any associated track items
-        await tracksFromMeta(models, recording, data.metadata);
-      }
+          await tracksFromMeta(models, recording, data.metadata);
+        }
 
-      const recordingHasFinishedProcessing =
+        const recordingHasFinishedProcessing =
         recording.processingState ===
         models.Recording.finishedState();
-      if (recordingHasFinishedProcessing) {
+        if (recordingHasFinishedProcessing) {
         // NOTE: Should only occur during testing.
-        const twentyFourHoursMs = 24 * 60 * 60 * 1000;
-        const recordingAgeMs =
+          const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+          const recordingAgeMs =
           new Date().getTime() - recording.recordingDateTime.getTime();
-        if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
+          if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
           // Alerts should only be sent for uploading devices.
-          await sendAlerts(models, recording.id);
+            await sendAlerts(models, recording.id);
+          }
         }
-      }
 
-      // console.log(uploadResults);
-      // console.log(data);
-      // console.log(recording.get({ plain: true }));
+        // console.log(uploadResults);
+        // console.log(data);
+        // console.log(recording.get({ plain: true }));
 
-      // Add file data info to data (length, key, mimeType etc)
+        // Add file data info to data (length, key, mimeType etc)
 
-      // Create recording, adding any embedded metadata from the file(s), and assigning location,
-      // updating device history, etc.
+        // Create recording, adding any embedded metadata from the file(s), and assigning location,
+        // updating device history, etc.
 
-      // Insert recording into DB.
-      if (!response.headersSent) {
-        return successResponse(response, "Thanks for the data", {
-          recordingId: recording.id,
-        });
-      }
-    });
+        // Insert recording into DB.
+        if (!response.headersSent) {
+          return successResponse(response, "Thanks for the data", {
+            recordingId: recording.id,
+          });
+        }
+      });
 
-    form.parse(request);
-  };
+      form.parse(request);
+    };
 
 const deleteUploads = async (uploadResults: RecordingFileUploadResult[]) => {
   const deleteUploadPromises = [];

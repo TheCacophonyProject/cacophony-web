@@ -122,8 +122,8 @@ function multipartUpload(
     let data;
     const uploadPromises = {};
     const fileDataPromises: Record<
-      string,
-      Promise<{ key: string; buffer: Buffer }>
+    string,
+    Promise<{ key: string; buffer: Buffer }>
     > = {};
 
     let uploadingDevice =

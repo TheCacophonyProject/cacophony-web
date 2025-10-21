@@ -19,7 +19,7 @@ import type { GroupId, UserId } from "@typedefs/api/common.js";
 
 export interface GroupInvites
   extends Sequelize.Model,
-    ModelCommon<GroupInvites> {
+  ModelCommon<GroupInvites> {
   GroupId: GroupId;
   email: string;
   createdAt: Date;

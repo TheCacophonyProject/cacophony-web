@@ -142,8 +142,7 @@ const uploadEvent = async (
       }
     }
   }
-
-  const eventList = request.body.dateTimes.map((dateTime) => ({
+  const eventList = request.body.dateTimes.map((dateTime: IsoFormattedDateString) => ({
     DeviceId: device.id,
     EventDetailId: detailsId,
     dateTime,
@@ -151,7 +150,10 @@ const uploadEvent = async (
   }));
   const count = eventList.length;
   try {
-    await models.Event.bulkCreate(eventList);
+    // Batch inserting events to max 100 events at a time, to spare DB memory usage.
+    for (let i = 0; i < eventList.length; i += 100) {
+      await models.Event.bulkCreate(eventList.slice(i, Math.min(i + 100, eventList.length)));
+    }
   } catch (exception) {
     return next(
       new ClientError(`Failed to record events. ${exception.message}`),
@@ -171,8 +173,6 @@ interface ApiEventsRequestBody {
   dateTimes: IsoFormattedDateString[]; // Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
 }
 
-// TODO(jon): Consider whether extracting this is worth it compared with just
-//  duplicating and having things be explicit in each api endpoint?
 const commonEventFields = [
   deprecatedField(body("Timestamp")),
   anyOf(

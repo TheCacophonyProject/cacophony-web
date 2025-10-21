@@ -4,7 +4,7 @@ import type { TrackTagId } from "@models/TrackTag.js";
 
 export interface TrackTagUserData
   extends Sequelize.Model,
-    ModelCommon<TrackTagUserData> {
+  ModelCommon<TrackTagUserData> {
   TrackTagId: TrackTagId;
   gender?: "male" | "female" | null;
   maturity?: "juvenile" | "adult" | null;

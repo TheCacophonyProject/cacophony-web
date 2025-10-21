@@ -34,7 +34,7 @@ export type DeviceHistorySetBy =
 
 export interface DeviceHistory
   extends Sequelize.Model,
-    ModelCommon<DeviceHistory> {
+  ModelCommon<DeviceHistory> {
   DeviceId: DeviceId;
   GroupId: GroupId;
   stationId?: StationId;

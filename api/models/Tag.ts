@@ -27,8 +27,8 @@ import { AcceptableTag } from "@typedefs/api/consts.js";
 
 export interface Tag
   extends ApiRecordingTagResponse,
-    Sequelize.Model,
-    ModelCommon<Tag> {}
+  Sequelize.Model,
+  ModelCommon<Tag> {}
 
 export interface TagStatic extends ModelStaticCommon<Tag> {
   buildSafely: (fields: ApiRecordingTagRequest) => Tag;

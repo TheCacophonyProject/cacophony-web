@@ -24,7 +24,7 @@ const Op = Sequelize.Op;
 export type DetailSnapshotId = number;
 export interface DetailSnapShot
   extends Sequelize.Model,
-    ModelCommon<DetailSnapShot> {
+  ModelCommon<DetailSnapShot> {
   getFile: () => Promise<File>;
   id: DetailSnapshotId;
   type: string;

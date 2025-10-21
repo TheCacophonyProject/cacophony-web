@@ -51,8 +51,8 @@ export const checkThatStationsAreNotTooCloseTogether = (
     }
   });
   const tooClosePairs: Record<
-    string,
-    { station: CreateStationData; others: CreateStationData[] }
+  string,
+  { station: CreateStationData; others: CreateStationData[] }
   > = {};
   for (const a of allStations) {
     for (const b of allStations) {

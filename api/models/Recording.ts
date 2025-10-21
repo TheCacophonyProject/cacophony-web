@@ -162,8 +162,8 @@ export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
   relativeToDusk: number;
   version: string;
   additionalMetadata:
-    | ApiThermalRecordingMetadataResponse
-    | ApiAudioRecordingMetadataResponse;
+  | ApiThermalRecordingMetadataResponse
+  | ApiAudioRecordingMetadataResponse;
   cacophonyIndex: CacophonyIndex[];
   comment: string;
   public: boolean;
@@ -595,12 +595,12 @@ export default function (
       return "." + ext;
     }
     switch (this.type) {
-      case "thermalRaw":
-        return ".cptv";
-      case "audio":
-        return ".mpga";
-      default:
-        return "";
+    case "thermalRaw":
+      return ".cptv";
+    case "audio":
+      return ".mpga";
+    default:
+      return "";
     }
   };
 
@@ -797,8 +797,8 @@ export default function (
     const noArchived = { archivedAt: null };
     const onlyMasterModel = options.filterModel
       ? {
-          used: true,
-        }
+        used: true,
+      }
       : {};
     if (hideFiltered) {
       const filteredSQL = `(
@@ -817,20 +817,20 @@ export default function (
     const requireGroupMembership = viewAsSuperUser
       ? []
       : [
-          {
-            model: models.User,
-            attributes: [],
-            required: true,
-            where: { id: userId },
-            ...(options.checkIsGroupAdmin && {
-              through: { where: { admin: true } },
-            }),
-            // If not viewing as super user, make sure the user is a member of the recording group.
-            // This may need to change if we start caring about showing everyone all public recordings.
-            // However, since we're still going to be showing things as "Group centric"  We'd probably just
-            // make the group public - or use a totally different query.
-          },
-        ];
+        {
+          model: models.User,
+          attributes: [],
+          required: true,
+          where: { id: userId },
+          ...(options.checkIsGroupAdmin && {
+            through: { where: { admin: true } },
+          }),
+          // If not viewing as super user, make sure the user is a member of the recording group.
+          // This may need to change if we start caring about showing everyone all public recordings.
+          // However, since we're still going to be showing things as "Group centric"  We'd probably just
+          // make the group public - or use a totally different query.
+        },
+      ];
 
     this.query = {
       where: {

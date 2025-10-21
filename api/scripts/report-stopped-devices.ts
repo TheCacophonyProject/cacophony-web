@@ -11,20 +11,20 @@ import type { Group } from "@models/Group.js";
 const models = await modelsInit();
 
 type UserGroupDevices = Record<
-  UserId,
-  {
-    user: User;
-    groups: Record<GroupId, { group: Group; stoppedDevices: Device[] }>;
-  }
+UserId,
+{
+  user: User;
+  groups: Record<GroupId, { group: Group; stoppedDevices: Device[] }>;
+}
 >;
 
 type GroupUserDevices = Record<
-  GroupId,
-  {
-    group: Group;
-    stoppedDevices: Device[];
-    users: User[];
-  }
+GroupId,
+{
+  group: Group;
+  stoppedDevices: Device[];
+  users: User[];
+}
 >;
 
 const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
@@ -104,7 +104,7 @@ async function main() {
       emailConfirmed,
     }));
     const successes = await sendStoppedDevicesReportEmail(
-      config.server.browse_url.replace("https://", ""),
+      config.server.browseUrl.replace("https://", ""),
       group.groupName,
       stoppedDevices.map((device) => device.deviceName),
       userEmails,

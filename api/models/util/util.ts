@@ -227,12 +227,12 @@ export async function deleteFile(fileKey: string) {
 
 const geometrySetter = (
   val:
-    | { coordinates: [number, number] }
-    | [number, number]
-    | LatLng
-    | string
-    | undefined
-    | null,
+  | { coordinates: [number, number] }
+  | [number, number]
+  | LatLng
+  | string
+  | undefined
+  | null,
 ): { type: "Point"; coordinates: [number, number] } | null => {
   if (val === undefined || val === null || typeof val === "string") {
     return null;

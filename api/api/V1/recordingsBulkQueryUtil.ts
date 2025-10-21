@@ -43,8 +43,8 @@ export const getFirstPass = (
       ...(includeDeletedRecordings
         ? {}
         : {
-            deletedAt: { [Op.eq]: null },
-          }),
+          deletedAt: { [Op.eq]: null },
+        }),
       ...(types.length !== 0 ? { type: { [Op.in]: types } } : {}),
       ...(processingState !== undefined ? { processingState } : {}),
       ...(devices.length !== 0 ? { DeviceId: { [Op.in]: devices } } : {}),
@@ -52,13 +52,13 @@ export const getFirstPass = (
       ...(from || until
         ? from && until
           ? {
-              recordingDateTime: {
-                [Op.and]: [{ [Op.gte]: from }, { [Op.lt]: until }],
-              },
-            }
+            recordingDateTime: {
+              [Op.and]: [{ [Op.gte]: from }, { [Op.lt]: until }],
+            },
+          }
           : from
-          ? { recordingDateTime: { [Op.gte]: from } }
-          : { recordingDateTime: { [Op.lt]: until } }
+            ? { recordingDateTime: { [Op.gte]: from } }
+            : { recordingDateTime: { [Op.lt]: until } }
         : {}),
       GroupId: projectId,
       ...(types.includes(RecordingType.Audio) && !includeFilteredTracks
@@ -70,19 +70,19 @@ export const getFirstPass = (
       [Op.and]: [
         ...(tagMode === TagMode.UnTagged
           ? [
-              {
-                [Op.or]: [
-                  sequelize.where(sequelize.col(`"Tracks".id`), Op.eq, null),
-                  sequelize.where(
-                    sequelize.col(`"Tracks->TrackTags".id`),
-                    Op.eq,
-                    null,
-                  ),
-                ],
-              },
-            ]
+            {
+              [Op.or]: [
+                sequelize.where(sequelize.col(`"Tracks".id`), Op.eq, null),
+                sequelize.where(
+                  sequelize.col(`"Tracks->TrackTags".id`),
+                  Op.eq,
+                  null,
+                ),
+              ],
+            },
+          ]
           : taggedWith.length !== 0 && withTags
-          ? [
+            ? [
               {
                 [Op.or]: [
                   sequelize.where(sequelize.col(`"Tracks->TrackTags".what`), {
@@ -90,30 +90,30 @@ export const getFirstPass = (
                   }),
                   ...(subClassTags
                     ? taggedWith.map((tag) =>
-                        sequelize.where(
-                          sequelize.col("\"Tracks->TrackTags\".path"),
-                          "~",
-                          `*.${tag.replace(/-/g, "_")}.*`,
-                        ),
-                      )
+                      sequelize.where(
+                        sequelize.col("\"Tracks->TrackTags\".path"),
+                        "~",
+                        `*.${tag.replace(/-/g, "_")}.*`,
+                      ),
+                    )
                     : []),
                 ],
               },
             ]
-          : []),
+            : []),
         ...(labelledWith.length !== 0
           ? [
-              sequelize.where(sequelize.col(`"Tags".detail`), {
-                [Op.in]: labelledWith,
-              }),
-            ]
-           : []),
+            sequelize.where(sequelize.col(`"Tags".detail`), {
+              [Op.in]: labelledWith,
+            }),
+          ]
+          : []),
         ...(!includeFilteredTracks && !requiresTags
           ? [
-              sequelize.where(sequelize.col(`"Tracks".filtered`), {
-                [Op.eq]: false,
-              }),
-            ]
+            sequelize.where(sequelize.col(`"Tracks".filtered`), {
+              [Op.eq]: false,
+            }),
+          ]
           : []),
       ],
     },
@@ -137,29 +137,29 @@ export const getFirstPass = (
             include: [],
             ...(tagMode !== TagMode.UnTagged
               ? {
-                  where: {
-                    used: true,
-                    archivedAt: {
-                      [Op.is]: null,
-                    },
-                    ...(!includeFilteredTracks && {
-                      what: { [Op.ne]: "false-positive" },
-                    }),
-                    ...(automatic !== null ? { automatic } : {}),
+                where: {
+                  used: true,
+                  archivedAt: {
+                    [Op.is]: null,
                   },
-                }
+                  ...(!includeFilteredTracks && {
+                    what: { [Op.ne]: "false-positive" },
+                  }),
+                  ...(automatic !== null ? { automatic } : {}),
+                },
+              }
               : {}),
           },
         ],
       },
       ...(labelled
         ? [
-            {
-              model: models.Tag,
-              attributes: [],
-              required: true,
-            },
-          ]
+          {
+            model: models.Tag,
+            attributes: [],
+            required: true,
+          },
+        ]
         : []),
     ],
     // NOTE: Turning off sub-queries here and forcing an inner join is important, as it makes queries > 10X faster.
@@ -217,39 +217,39 @@ export const getSelfJoinForTagMode = (
     return `and ${tableName}.what in (:taggedWith) ${
       subClassTags
         ? tags
-            .map((_, index) => `or ${tableName}.path ~ :tag_${index}`)
-            .join(" ")
+          .map((_, index) => `or ${tableName}.path ~ :tag_${index}`)
+          .join(" ")
         : ""
     }`;
   };
   switch (tagMode) {
-    case TagMode.UnTagged: {
-      // NOTE: Recordings that don't have any tracks,
-      //  or have tracks that are somehow untagged by either AI or human taggers.
-      const innerSql = getRawSql(models, options(false, null));
-      return `
+  case TagMode.UnTagged: {
+    // NOTE: Recordings that don't have any tracks,
+    //  or have tracks that are somehow untagged by either AI or human taggers.
+    const innerSql = getRawSql(models, options(false, null));
+    return `
         select ${recordingIds("untagged_recordings")}
         from 
         (${innerSql}) as untagged_recordings
         ${limit("untagged_recordings")}        
       `;
-    }
-    case TagMode.HumanTagged: {
-      // NOTE: Recordings that are tagged by a human (but can also be optionally tagged by AI).
-      const innerSql = getRawSql(models, options(true, false));
-      return `
+  }
+  case TagMode.HumanTagged: {
+    // NOTE: Recordings that are tagged by a human (but can also be optionally tagged by AI).
+    const innerSql = getRawSql(models, options(true, false));
+    return `
         select ${recordingIds("human_tagged_recordings")}
         from    
         (${innerSql}) as human_tagged_recordings
         ${limit("human_tagged_recordings")}                       
       `;
-    }
-    case TagMode.HumanOnly: {
-      // NOTE: Recordings that are tagged by *only* a human.
-      //  FIXME: Query needs to check that there's not also an AI tag for this recording.
-      const automaticSql = getRawSql(models, options(false, true));
-      const humanSql = getRawSql(models, options(true, false));
-      return `
+  }
+  case TagMode.HumanOnly: {
+    // NOTE: Recordings that are tagged by *only* a human.
+    //  FIXME: Query needs to check that there's not also an AI tag for this recording.
+    const automaticSql = getRawSql(models, options(false, true));
+    const humanSql = getRawSql(models, options(true, false));
+    return `
         select ${recordingIds("human_only_recordings")} 
         from 
         (${automaticSql}) as automatic_recordings 
@@ -261,25 +261,25 @@ export const getSelfJoinForTagMode = (
         human_only_recordings.automatic = false
         ${limit("human_only_recordings")}            
       `;
-    }
-    case TagMode.AutomaticallyTagged: {
-      // NOTE: Recordings that are tagged by an AI.  Can also be tagged by a human.
-      // TODO: In the case where we're looking for a specific tag, if the AI tag was
-      //  superseded by a different human tag, should the AI tag still get returned?
-      const innerSql = getRawSql(models, options(true, true));
-      return `
+  }
+  case TagMode.AutomaticallyTagged: {
+    // NOTE: Recordings that are tagged by an AI.  Can also be tagged by a human.
+    // TODO: In the case where we're looking for a specific tag, if the AI tag was
+    //  superseded by a different human tag, should the AI tag still get returned?
+    const innerSql = getRawSql(models, options(true, true));
+    return `
         select ${recordingIds("automatic_recordings")}
         from    
         (${innerSql}) as automatic_recordings     
         ${limit("automatic_recordings")}             
       `;
-    }
-    case TagMode.AutomaticHumanUrlSafe: {
-      // NOTE: Recordings that are tagged by *both* a human and an AI.
-      //  The tags must agree (and in hierarchical mode, it's okay if one is an ancestor of the other)
-      const automaticSql = getRawSql(models, options(true, true));
-      const humanSql = getRawSql(models, options(false, false));
-      return `
+  }
+  case TagMode.AutomaticHumanUrlSafe: {
+    // NOTE: Recordings that are tagged by *both* a human and an AI.
+    //  The tags must agree (and in hierarchical mode, it's okay if one is an ancestor of the other)
+    const automaticSql = getRawSql(models, options(true, true));
+    const humanSql = getRawSql(models, options(false, false));
+    return `
         select ${recordingIds("automatic_recordings")} 
         from 
         (${automaticSql}) as automatic_recordings 
@@ -295,14 +295,14 @@ export const getSelfJoinForTagMode = (
         ${whereTaggedWith("human_recordings", taggedWith)}
         ${limit("automatic_recordings")}       
       `;
-    }
-    case TagMode.AutomaticOnly: {
-      // NOTE: Recordings that are tagged by *only* an AI.
-      // TODO: False-positive filtering?
-      const automaticSql = getRawSql(models, options(true, true));
-      const humanSql = getRawSql(models, options(true, false));
+  }
+  case TagMode.AutomaticOnly: {
+    // NOTE: Recordings that are tagged by *only* an AI.
+    // TODO: False-positive filtering?
+    const automaticSql = getRawSql(models, options(true, true));
+    const humanSql = getRawSql(models, options(true, false));
 
-      return `with all_recs as (
+    return `with all_recs as (
         select 
           distinct(automatic_recordings.id),
           automatic_recordings.automatic as automatic,
@@ -318,14 +318,14 @@ export const getSelfJoinForTagMode = (
             select 1 from all_recs t2 where t1.id = t2.id and t2.human = true 
           )
           ${limit("t1")}`;
-    }
-    case TagMode.Tagged: {
-      // NOTE: Recordings that are tagged by either of or both a human and AI.
-      //  If we find recordings tagged by both, we need to make sure they both agree with the tag we're searching for,
-      //  or that the human tag agrees and the AI tag didn't pass the tag filter (is null).
-      const automaticSql = getRawSql(models, options(true, true));
-      const humanSql = getRawSql(models, options(false, false));
-      return `
+  }
+  case TagMode.Tagged: {
+    // NOTE: Recordings that are tagged by either of or both a human and AI.
+    //  If we find recordings tagged by both, we need to make sure they both agree with the tag we're searching for,
+    //  or that the human tag agrees and the AI tag didn't pass the tag filter (is null).
+    const automaticSql = getRawSql(models, options(true, true));
+    const humanSql = getRawSql(models, options(false, false));
+    return `
         select distinct 
           coalesce(
             automatic_recordings.id, 
@@ -349,13 +349,13 @@ export const getSelfJoinForTagMode = (
         or human_recordings.automatic is null                  
         ${limit()}       
       `;
-    }
-    case TagMode.NoHuman: {
-      // NOTE: Recordings that have either an AI tag, in the case where we're filtering on tags,
-      //  or no tag or no track if we're not filtering on tags.
-      const automaticSql = getRawSql(models, options(true, true));
-      const humanSql = getRawSql(models, options(false, false));
-      return `
+  }
+  case TagMode.NoHuman: {
+    // NOTE: Recordings that have either an AI tag, in the case where we're filtering on tags,
+    //  or no tag or no track if we're not filtering on tags.
+    const automaticSql = getRawSql(models, options(true, true));
+    const humanSql = getRawSql(models, options(false, false));
+    return `
         with all_recs as (
         select 
           distinct(automatic_recordings.id),
@@ -373,17 +373,17 @@ export const getSelfJoinForTagMode = (
           )
           ${limit("t1")}
       `;
-    }
-    case TagMode.Any: {
-      // NOTE: Any recordings, tagged or untagged – but not false-positive only/filtered by default.
-      //  If filtering by tags, this won't get used – it will switch to using TagMode.Tagged
+  }
+  case TagMode.Any: {
+    // NOTE: Any recordings, tagged or untagged – but not false-positive only/filtered by default.
+    //  If filtering by tags, this won't get used – it will switch to using TagMode.Tagged
 
-      // TODO: Improve this query, since it doesn't really need the left join as we're not checking tags - although we
-      //  are filtering false positives
-      if (!includeFilteredTracks) {
-        const automaticSql = getRawSql(models, options(true, true));
-        const humanSql = getRawSql(models, options(false, false));
-        return `
+    // TODO: Improve this query, since it doesn't really need the left join as we're not checking tags - although we
+    //  are filtering false positives
+    if (!includeFilteredTracks) {
+      const automaticSql = getRawSql(models, options(true, true));
+      const humanSql = getRawSql(models, options(false, false));
+      return `
         select ${recordingIds("automatic_recordings")} 
         from 
         (${automaticSql}) as automatic_recordings 
@@ -392,20 +392,20 @@ export const getSelfJoinForTagMode = (
         on automatic_recordings.id = human_recordings.id                 
         ${limit("automatic_recordings")}       
       `;
-      } else {
-        // TODO: keep this?
-        const sql = getRawSql(models, options(false, null));
-        return `
+    } else {
+      // TODO: keep this?
+      const sql = getRawSql(models, options(false, null));
+      return `
         select ${recordingIds("all_recordings")} 
         from 
         (${sql}) as all_recordings                
         ${limit("all_recordings")}
         `;
-      }
     }
-    default: {
-      throw new Error("Unknown case");
-    }
+  }
+  default: {
+    throw new Error("Unknown case");
+  }
   }
 };
 
@@ -427,10 +427,10 @@ export const sqlDebugOutput = (
   if (records) {
     recordsOutput = `
     <pre style="background: black;" class="language-json theme-atom-one-dark"><code class="code">${JSON.stringify(
-      records,
-      null,
-      "\t",
-    )}</code></pre>
+    records,
+    null,
+    "\t",
+  )}</code></pre>
     `;
   }
 
@@ -441,24 +441,24 @@ export const sqlDebugOutput = (
           <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>       
           <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
             <h1 style="color: white;">${numResults} recordings, DB: ${queryTime}ms (${queryTimes.join(
-    "ms, ",
-  )}ms), Sequelize: ${Math.round(totalTime - queryTime)}ms</h1>
+  "ms, ",
+)}ms), Sequelize: ${Math.round(totalTime - queryTime)}ms</h1>
             <pre style="background: black;" class="language-json theme-atom-one-dark"><code class="code">${JSON.stringify(
-              queryParams,
-              null,
-              "\t",
-            )}</code></pre>     
+    queryParams,
+    null,
+    "\t",
+  )}</code></pre>     
             ${recordsOutput}    
             ${queriesSQL
-              .map(
-                (query, index) => `
+    .map(
+      (query, index) => `
             <div style="position: relative">
               <pre style="background: black;" class="language-sql theme-atom-one-dark"><code class="code">${query}</code></pre>
               <button class="btn" style="position: absolute; right: 20px; top: 20px;">Copy (${queryTimes[index]}ms)</button>
             </div>
             `,
-              )
-              .join("")}
+    )
+    .join("")}
           </body>
           <script>
             hljs.highlightAll();

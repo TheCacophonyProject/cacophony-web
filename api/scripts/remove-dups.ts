@@ -1,4 +1,4 @@
-import config from "../config.js";
+import config, {loadConfig} from "../config.js";
 
 const args = require("commander");
 const process = require("process");
@@ -13,7 +13,7 @@ async function main() {
 
   Config = {
     ...config,
-    ...(await config.loadConfig(args.config)),
+    ...(await loadConfig(args.config)),
   };
 
   const client = await pgConnect();

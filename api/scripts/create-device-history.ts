@@ -161,11 +161,11 @@ async function main() {
       }
       const recordingTimeWindow = nextEntry
         ? {
-            [Op.and]: [
-              { [Op.gte]: history.fromDateTime },
-              { [Op.lt]: nextEntry.fromDateTime },
-            ],
-          }
+          [Op.and]: [
+            { [Op.gte]: history.fromDateTime },
+            { [Op.lt]: nextEntry.fromDateTime },
+          ],
+        }
         : { [Op.gte]: history.fromDateTime };
       await models.Recording.update(
         { StationId: history.stationId },

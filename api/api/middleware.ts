@@ -326,18 +326,18 @@ export const requestWrapper = (fn) => (request, response: Response, next) => {
 
 export const expectedTypeOf =
   (...type: string[]) =>
-  (val) => {
-    let typeOf = typeof val as string;
-    if (typeOf === "object" && Array.isArray(val)) {
-      typeOf = "array";
-    }
-    if (type.length > 1) {
-      return `expected one of ${(type as string[])
-        .map((t) => `'${t}'`)
-        .join(", ")}, got ${typeOf}`;
-    }
-    return `expected ${type[0]}, got ${typeOf} : (${val})`;
-  };
+    (val) => {
+      let typeOf = typeof val as string;
+      if (typeOf === "object" && Array.isArray(val)) {
+        typeOf = "array";
+      }
+      if (type.length > 1) {
+        return `expected one of ${(type as string[])
+          .map((t) => `'${t}'`)
+          .join(", ")}, got ${typeOf}`;
+      }
+      return `expected ${type[0]}, got ${typeOf} : (${val})`;
+    };
 
 export const isIntArray = (val) => {
   if (Array.isArray(val)) {
@@ -417,8 +417,8 @@ const checkForUnknownFields = (
 export const validateFields = (
   validations: (
     | (((req: Request, res: any, next: (err?: any) => void) => void) & {
-        run: (req: Request) => Promise<Result>;
-      })
+      run: (req: Request) => Promise<Result>;
+    })
     | ValidationChain
   )[],
   sequentially: boolean = false,

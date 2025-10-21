@@ -10,7 +10,7 @@ export interface EmailImageAttachment {
 }
 
 function resetBody(userTitle: string, token: string): string[] {
-  const resetUrl = `${config.server.browse_url}/new-password/?token=${token}`;
+  const resetUrl = `${config.server.browseUrl}/new-password/?token=${token}`;
   let html = `Hello ${userTitle},<br><br>`;
   html += `We received a request to reset your Cacophony password.<br>`;
   html += `Click the link below to set a new password<br><br>`;

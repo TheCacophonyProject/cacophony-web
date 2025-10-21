@@ -216,7 +216,7 @@ class CptvDecoderInterface {
   }
 
   async getMetadata(): Promise<
-    (CptvHeader & { duration: number; totalFrames: number }) | string
+  (CptvHeader & { duration: number; totalFrames: number }) | string
   > {
     const header = await this.getHeader();
     let totalFrameCount = 0;
@@ -329,63 +329,63 @@ class CptvDecoderInterface {
 const player = new CptvDecoderInterface();
 context.addListener("message", async (data) => {
   switch (data.type) {
-    case "initWithLocalCptvFile":
-      {
-        const result = await player.initWithFileBytes(data.arrayBuffer);
-        context.postMessage({ type: data.type, data: result });
-      }
-      break;
-    case "initWithReadableStream":
-      {
-        const result = await player.initWithReadableStream(data.streamReader);
-        context.postMessage({ type: data.type, data: result });
-      }
-      break;
-    case "getBytesMetadata":
-      {
-        const header = await player.getBytesMetadata(data.arrayBuffer);
-        context.postMessage({ type: data.type, data: header });
-      }
-      break;
-    case "getStreamMetadata":
-      {
-        const result = await player.getStreamMetadata(data.streamReader);
-        context.postMessage({ type: data.type, data: result });
-      }
-      break;
-    case "getNextFrame":
-      {
-        const frame = await player.fetchNextFrame();
-        context.postMessage({ type: data.type, data: frame });
-      }
-      break;
-    case "getHeader":
-      {
-        const header = await player.getHeader();
-        context.postMessage({ type: data.type, data: header });
-      }
-      break;
-    case "hasStreamError":
-      {
-        const hasError = player.hasStreamError();
-        context.postMessage({ type: data.type, data: hasError });
-      }
-      break;
-    case "getStreamError":
-      {
-        const error = player.streamError;
-        context.postMessage({ type: data.type, data: error });
-      }
-      break;
-    case "freeResources":
-      {
-        player.free();
-        context.postMessage({ type: data.type, data: true });
-      }
-      break;
-    default:
-      context.postMessage(data);
-      return;
+  case "initWithLocalCptvFile":
+    {
+      const result = await player.initWithFileBytes(data.arrayBuffer);
+      context.postMessage({ type: data.type, data: result });
+    }
+    break;
+  case "initWithReadableStream":
+    {
+      const result = await player.initWithReadableStream(data.streamReader);
+      context.postMessage({ type: data.type, data: result });
+    }
+    break;
+  case "getBytesMetadata":
+    {
+      const header = await player.getBytesMetadata(data.arrayBuffer);
+      context.postMessage({ type: data.type, data: header });
+    }
+    break;
+  case "getStreamMetadata":
+    {
+      const result = await player.getStreamMetadata(data.streamReader);
+      context.postMessage({ type: data.type, data: result });
+    }
+    break;
+  case "getNextFrame":
+    {
+      const frame = await player.fetchNextFrame();
+      context.postMessage({ type: data.type, data: frame });
+    }
+    break;
+  case "getHeader":
+    {
+      const header = await player.getHeader();
+      context.postMessage({ type: data.type, data: header });
+    }
+    break;
+  case "hasStreamError":
+    {
+      const hasError = player.hasStreamError();
+      context.postMessage({ type: data.type, data: hasError });
+    }
+    break;
+  case "getStreamError":
+    {
+      const error = player.streamError;
+      context.postMessage({ type: data.type, data: error });
+    }
+    break;
+  case "freeResources":
+    {
+      player.free();
+      context.postMessage({ type: data.type, data: true });
+    }
+    break;
+  default:
+    context.postMessage(data);
+    return;
   }
 });
 context.postMessage({ type: "init" });

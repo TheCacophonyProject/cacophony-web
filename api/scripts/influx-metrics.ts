@@ -1,28 +1,14 @@
-import * as config from "../config.js";
-
 import * as Influx from "influx";
 import process from "process";
-import { program } from "commander";
 import pg from "pg";
 import moment from "moment";
 import os from "os";
 import { RecordingProcessingState } from "@typedefs/api/consts.js";
-
-let Config;
+import config from "../config.js";
 
 const timeout = 1000;
 
 (async function main() {
-  program
-    .option("--config <path>", "Configuration file", "./config/app.js")
-    .parse(process.argv);
-  const options = program.opts();
-
-  Config = {
-    ...config.default,
-    ...(await config.default.loadConfig(options.config)),
-  };
-
   try {
     const pgClient = await pgConnect();
     const influx = await influxConnect();
@@ -129,10 +115,10 @@ async function influxConnect() {
     (val) => (processingFields[val] = Influx.FieldType.INTEGER),
   );
   return new Influx.InfluxDB({
-    host: Config.influx.host,
-    database: Config.influx.database,
-    username: Config.influx.username,
-    password: Config.influx.password,
+    host: config.influx.host,
+    database: config.influx.database,
+    username: config.influx.username,
+    password: config.influx.password,
     protocol: "https",
     port: 443,
     schema: [
@@ -161,7 +147,7 @@ async function influxConnect() {
 }
 
 async function pgConnect() {
-  const dbConf = Config.database;
+  const dbConf = config.database;
   const client = new pg.Client({
     host: dbConf.host,
     port: dbConf.port,

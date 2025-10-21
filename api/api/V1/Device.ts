@@ -1322,15 +1322,15 @@ export default function (app: Application, baseUrl: string) {
       const newSettings =
         referenceType === "pov"
           ? {
-              referenceImagePOV: key,
-              referenceImagePOVFileSize: size,
-              referenceImagePOVMimeType: contentType,
-            }
+            referenceImagePOV: key,
+            referenceImagePOVFileSize: size,
+            referenceImagePOVMimeType: contentType,
+          }
           : {
-              referenceImageInSitu: key,
-              referenceImageInSituFileSize: size,
-              referenceImageInSituMimeType: contentType,
-            };
+            referenceImageInSitu: key,
+            referenceImageInSituFileSize: size,
+            referenceImageInSituMimeType: contentType,
+          };
 
       if (hadPreviousReferenceImage) {
         // Create a new entry at `at-time` for the new reference image, leaving the old

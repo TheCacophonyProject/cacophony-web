@@ -1039,13 +1039,13 @@ export async function getTrackTags(
   const requireGroupMembership = viewAsSuperUser
     ? []
     : [
-        {
-          model: models.User,
-          attributes: [],
-          required: true,
-          where: { id: userId },
-        },
-      ];
+      {
+        model: models.User,
+        attributes: [],
+        required: true,
+        where: { id: userId },
+      },
+    ];
   const rows = await models.TrackTag.findAll({
     attributes: ["id", "what", "UserId"],
     where: {
@@ -1105,9 +1105,9 @@ export async function getTrackTags(
     },
     station: row.Track.Recording.Station
       ? {
-          id: row.Track.Recording.Station.id,
-          name: row.Track.Recording.Station.name,
-        }
+        id: row.Track.Recording.Station.id,
+        name: row.Track.Recording.Station.name,
+      }
       : "No Station",
     group: {
       id: row.Track.Recording.Group.id,
@@ -1270,8 +1270,8 @@ export async function reportRecordings(
 
   const audioFileNames = new Map();
   const audioEvents: Map<
-    RecordingId,
-    { timestamp: Date; volume: number; fileId: FileId }
+  RecordingId,
+  { timestamp: Date; volume: number; fileId: FileId }
   > = new Map();
 
   if (includeAudiobait) {
@@ -1296,7 +1296,7 @@ export async function reportRecordings(
     }
   }
 
-  const recording_url_base = config.server.recording_url_base || "";
+  const recordingUrlBase = config.server.recordingUrlBase || "";
   const labels = [
     "Id",
     "Type",
@@ -1397,7 +1397,7 @@ export async function reportRecordings(
     }
 
     thisRow.push(
-      `${recording_url_base}/${r.id.toString()}`,
+      `${recordingUrlBase}/${r.id.toString()}`,
       cacophonyIndex,
       "",
     );
@@ -1465,12 +1465,12 @@ export const guessMimeType = (type, filename): string => {
     return mimeType;
   }
   switch (type) {
-    case RecordingType.ThermalRaw:
-      return "application/x-cptv";
-    case RecordingType.Audio:
-      return "audio/mp4";
-    default:
-      return "application/octet-stream";
+  case RecordingType.ThermalRaw:
+    return "application/x-cptv";
+  case RecordingType.Audio:
+    return "audio/mp4";
+  default:
+    return "application/octet-stream";
   }
 };
 
@@ -1601,14 +1601,14 @@ export async function queryVisits(
   userId: UserId,
   options: RecordingQueryOptions,
 ): Promise<{
-  visits: Visit[];
-  summary: DeviceSummary;
-  hasMoreVisits: boolean;
-  queryOffset: number;
-  totalRecordings: number;
-  numRecordings: number;
-  numVisits: number;
-}> {
+    visits: Visit[];
+    summary: DeviceSummary;
+    hasMoreVisits: boolean;
+    queryOffset: number;
+    totalRecordings: number;
+    numRecordings: number;
+    numVisits: number;
+  }> {
   const maxVisitQueryResults = 5000;
   const requestVisits = options.limit || maxVisitQueryResults;
   const queryMax = maxVisitQueryResults * 2;
@@ -1785,7 +1785,7 @@ export async function reportVisits(
 ) {
   const results = await queryVisits(models, userId, options);
   const out = reportDeviceVisits(results.summary.deviceMap);
-  const recordingUrlBase = config.server.recording_url_base || "";
+  const recordingUrlBase = config.server.recordingUrlBase || "";
   out.push([]);
   out.push([
     "Visit ID",
@@ -2031,8 +2031,8 @@ export async function sendAlerts(
     return;
   }
   const tagCounts: Record<
-    string,
-    { count: number; tracks: { track: Track; trackTag: TrackTag }[] }
+  string,
+  { count: number; tracks: { track: Track; trackTag: TrackTag }[] }
   > = {};
   let excludedTags = [...NON_ANIMAL_TAGS, "false-positive"];
   // NOTE: We are explicitly allowing unidentified tags to alert.
@@ -2114,8 +2114,8 @@ export async function sendAlerts(
             alert.GroupId !== null
               ? "project"
               : alert.StationId !== null
-              ? "station"
-              : "device",
+                ? "station"
+                : "device",
             thumbnail && {
               buffer: Buffer.from(thumbnail),
               cid: "thumbnail",

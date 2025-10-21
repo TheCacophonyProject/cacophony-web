@@ -865,14 +865,14 @@ export default (app: Application, baseUrl: string) => {
         const requireGroupMembership = viewAsSuperUser
           ? []
           : [
-              {
-                model: models.User,
-                attributes: [],
-                required: true,
-                where: { id: userId },
-                through: { where: { admin: true } },
-              },
-            ];
+            {
+              model: models.User,
+              attributes: [],
+              required: true,
+              where: { id: userId },
+              through: { where: { admin: true } },
+            },
+          ];
 
         ids = (
           await models.Recording.findAll({
@@ -1413,31 +1413,31 @@ export default (app: Application, baseUrl: string) => {
       }
       let fileExt: string = "raw";
       switch (fileMimeType) {
-        case "audio/ogg":
-          fileExt = "ogg";
-          break;
-        case "audio/wav":
-          fileExt = "wav";
-          break;
-        case "audio/mp4":
-          fileExt = "m4a";
-          break;
-        case "video/mp4":
-          fileExt = "m4v";
-          break;
-        case "audio/mpeg":
-          fileExt = "mp3";
-          break;
-        case "image/webp":
-          fileExt = "webp";
-          break;
-        case "image/jpeg":
-        case "image/jpg":
-          fileExt = "jpg";
-          break;
-        case "application/x-cptv":
-          fileExt = "cptv";
-          break;
+      case "audio/ogg":
+        fileExt = "ogg";
+        break;
+      case "audio/wav":
+        fileExt = "wav";
+        break;
+      case "audio/mp4":
+        fileExt = "m4a";
+        break;
+      case "video/mp4":
+        fileExt = "m4v";
+        break;
+      case "audio/mpeg":
+        fileExt = "mp3";
+        break;
+      case "image/webp":
+        fileExt = "webp";
+        break;
+      case "image/jpeg":
+      case "image/jpg":
+        fileExt = "jpg";
+        break;
+      case "application/x-cptv":
+        fileExt = "cptv";
+        break;
       }
       const time = recordingItem.recordingDateTime
         ?.toISOString()
@@ -2651,21 +2651,21 @@ export default (app: Application, baseUrl: string) => {
 
         const loggingFn =
           (sqlPasses: string[], sqlTimings: number[]) =>
-          (message: string, time: number) => {
-            const store = asyncLocalStorage.getStore() as Map<string, number>;
-            const dbQueryCount = store?.get("queryCount") as number;
-            const dbQueryTime = store?.get("queryTime") as number;
-            store?.set("queryCount", dbQueryCount + 1);
-            store?.set("queryTime", dbQueryTime + time);
-            if (query.debug) {
-              sqlPasses.push(
-                sqlFormat(message.replace("Executed (default): ", ""), {
-                  language: "postgresql",
-                }),
-              );
-              sqlTimings.push(time);
-            }
-          };
+            (message: string, time: number) => {
+              const store = asyncLocalStorage.getStore() as Map<string, number>;
+              const dbQueryCount = store?.get("queryCount") as number;
+              const dbQueryTime = store?.get("queryTime") as number;
+              store?.set("queryCount", dbQueryCount + 1);
+              store?.set("queryTime", dbQueryTime + time);
+              if (query.debug) {
+                sqlPasses.push(
+                  sqlFormat(message.replace("Executed (default): ", ""), {
+                    language: "postgresql",
+                  }),
+                );
+                sqlTimings.push(time);
+              }
+            };
         const logging = query.debug
           ? loggingFn(sqlPasses, sqlTimings)
           : undefined;

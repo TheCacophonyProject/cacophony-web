@@ -1,68 +1,71 @@
-import { Validator } from "jsonschema";
-import type { Schema, ValidationError } from "jsonschema/lib";
-import { ClientError } from "./customErrors.js";
+import {ClientError} from "./customErrors.js";
+import type {DefinedError, ValidateFunction} from "ajv";
+import {Ajv} from "ajv";
+import addFormats from "ajv-formats";
+const ajv = addFormats.default(
+  new Ajv({ allErrors: true, verbose: true  }),
+  { mode: "fast", formats: ["date-time"] },
+);
+const Validators = new Map<string, ValidateFunction>();
 
-export const JsonSchema = new Validator();
-Validator.prototype.customFormats.FloatZeroOne = (val) => {
-  return typeof val === "number" && val >= 0 && val <= 1;
-};
-Validator.prototype.customFormats.IsoFormattedDateString = (val) => {
-  if (typeof val !== "string") {
-    return false;
-  }
-  const d = Date.parse(val);
-  return !isNaN(d);
-};
+export interface Schema {
+    $id?: string
+    id?: string
+    $schema?: string
+    $ref?: string
+    title?: string
+    description?: string
+    multipleOf?: number
+    maximum?: number
+    exclusiveMaximum?: number | boolean
+    minimum?: number
+    exclusiveMinimum?: number | boolean
+    maxLength?: number
+    minLength?: number
+    pattern?: string | RegExp
+    additionalItems?: boolean | Schema
+    items?: Schema | Schema[]
+    maxItems?: number
+    minItems?: number
+    uniqueItems?: boolean
+    maxProperties?: number
+    minProperties?: number
+    required?: string[] | boolean
+    additionalProperties?: boolean | Schema
+    definitions?: {
+        [name: string]: Schema
+    }
+    properties?: {
+        [name: string]: Schema
+    }
+    patternProperties?: {
+        [name: string]: Schema
+    }
+    dependencies?: {
+        [name: string]: Schema | string[]
+    }
+    const?: any
+    "enum"?: any[]
+    type?: string | string[]
+    format?: string
+    allOf?: Schema[]
+    anyOf?: Schema[]
+    oneOf?: Schema[]
+    not?: Schema
+    if?: Schema
+    then?: Schema
+    else?: Schema
+}
 
-const SpecialFormats = {
-  FloatZeroOne: "floating point number from 0.0 to 1.0 inclusive",
-  IsoFormattedDateString: "ISO formatted date string",
-};
-
-const getPathType = (
-  item: object,
-  path: (string | number)[] | string,
-  instance?: any,
-) => {
-  if (item === null) {
-    return "'null'";
-  }
-  const name = getPathName(item, path, instance);
-  if (name === "array") {
-    return name;
-  }
-  if (name === null) {
-    return "'null'";
-  }
-  return typeof name;
-};
-
-const getPathName = (
-  item: object,
-  path: (string | number)[] | string,
-  instance?: any,
-) => {
-  if (path.length === 0) {
-    return Array.isArray(instance) ? "array" : instance;
-  }
-  let stack = item;
-  if (!Array.isArray(path)) {
-    path = [path];
-  }
-  while (path.length) {
-    const piece = path.shift();
-    stack = stack[piece];
-  }
-  return stack;
-};
-const printPath = (path: (string | number)[], property?: string): string => {
-  if (path.length === 0 && property && typeof property === "string") {
-    return property; //.split('.').pop();
-  }
-  return path
+const printPath = (path: (string | number)[], instancePath?: string): string => {
+  const p = path
     .map((item) => (typeof item === "number" ? `[${item}]` : item))
     .join(".")
     .replace(/\.\[/g, "[");
+  if (instancePath) {
+    return `${p}[${instancePath.slice(1)}]`;
+  }
+  return p;
 };
 const printInstance = (instance: any): string => {
   if (typeof instance === "object") {
@@ -72,12 +75,13 @@ const printInstance = (instance: any): string => {
 };
 
 export const arrayOf = (schemaOriginal: Schema): Schema => {
-  const schema = JSON.parse(JSON.stringify(schemaOriginal));
+  const schema = structuredClone(schemaOriginal);
+  const definitions = Object.keys(schema.definitions);
   // Wrap schema in array type.
-  if (schema.definitions.length > 1) {
+  if (definitions.length > 1) {
     throw new ClientError("arrayOf error");
   }
-  const definition = Object.keys(schema.definitions)[0];
+  const definition = definitions[0];
   schema.$ref = `#/definitions/${definition}s`;
   schema.definitions[`${definition}s`] = {
     type: "array",
@@ -90,82 +94,62 @@ export const arrayOf = (schemaOriginal: Schema): Schema => {
 
 export const jsonSchemaOf =
   (schema: Schema) =>
-  (val: string | object, { location, path: requestPath }) => {
-    if (typeof val === "string") {
-      try {
-        val = JSON.parse(val);
-      } catch (e) {
+    (val: string | object, { location, path: requestPath }) => {
+      if (typeof val === "string") {
+        try {
+          val = JSON.parse(val);
+        } catch (e) {
+          throw new ClientError("Malformed json");
+        }
+      }
+      if (val === "") {
         throw new ClientError("Malformed json");
       }
-    }
-    if (typeof val !== "object") {
-      throw new ClientError("Malformed json");
-    }
-    const result = JsonSchema.validate(val, schema, {
-      allowUnknownAttributes: false,
-    });
-    if (result.errors.length) {
-      const errors: ValidationError[] = result.errors;
+      if (typeof val !== "object") {
+        throw new ClientError("Malformed json");
+      }
+      if (!schema.$ref) {
+        throw new ClientError("Schema definition not found");
+      }
+      if (!Validators.has(schema.$ref)) {
+        Validators.set(schema.$ref, ajv.compile(schema));
+      }
+      const validator = Validators.get(schema.$ref);
+      const  isValid = validator(val);
+      if (isValid) {
+        return true;
+      }
+
+      const errors = validator.errors as DefinedError[];
+      const path = `${location}.${requestPath}`.split(".");
+      const formattedErrors = errors.map((error) => {
+        switch (error.keyword) {
+        case "format":
+        case "type":
+          return `field '${printPath(path, error.instancePath)}' expected '${
+            error.params[error.keyword]
+          }', got '${printInstance(error.data)}'`;
+        case "additionalProperties":
+          return `field '${
+            error.params.additionalProperty
+          }', not allowed in '${printPath(path, error.instancePath)}'`;
+        case "required":
+          return `missing required field '${printPath(path, error.instancePath)}${
+            path.length ? "." : ""
+          }${error.params.missingProperty}'`;
+        default: {
+          console.warn(
+            "Unhandled JSON schema error formatter",
+            error,
+            location,
+            requestPath,
+          );
+          return error.message;
+        }
+        }
+      });
+
       throw new ClientError(
-        "JSON Schema error(s): " +
-          errors
-            .map(
-              ({
-                message,
-                name,
-                path,
-                property,
-                argument,
-                stack,
-                instance,
-              }) => {
-                switch (name) {
-                  case "type":
-                    return `field '${printPath(
-                      path,
-                      requestPath,
-                    )}' expected ${name} ${argument}, got ${getPathType(
-                      val as object,
-                      path,
-                    )}`;
-
-                  case "required":
-                    return `required field '${printPath(path)}${
-                      path.length ? "." : ""
-                    }${argument}' is missing`;
-
-                  case "format":
-                    return `field '${printPath(path, property)}' expected ${
-                      SpecialFormats[argument]
-                    }, got ${getPathType(
-                      val as object,
-                      path,
-                      instance,
-                    )} '${printInstance(instance)}'`;
-
-                  case "additionalProperties":
-                    return `'${printPath(
-                      path,
-                      property === "instance"
-                        ? `${location}.${requestPath}`
-                        : property,
-                    )}' is not allowed to have the additional property '${argument}'`;
-                  case "enum":
-                    return `!!${path}, ${stack}`;
-                  default:
-                    console.warn(
-                      "Unhandled JSON schema error formatter",
-                      name,
-                      message,
-                      property,
-                      argument,
-                    );
-                    return message;
-                }
-              },
-            )
-            .join("; "),
+        `JSON Schema error(s): ${formattedErrors.join(", ")}`,
       );
-    }
-    return result.valid;
-  };
+    };

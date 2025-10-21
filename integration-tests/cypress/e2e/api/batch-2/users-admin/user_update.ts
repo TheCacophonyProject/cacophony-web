@@ -262,7 +262,7 @@ describe("User: update", () => {
     });
   });
 
-  it("Invaliid passwords rejected", () => {
+  it("Invalid passwords rejected", () => {
     cy.apiUserAdd("uupUser8").then(() => {
       cy.log("Blank password");
       cy.apiUserUpdate(

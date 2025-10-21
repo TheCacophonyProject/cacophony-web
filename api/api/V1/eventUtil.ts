@@ -55,20 +55,20 @@ export class PowerEvents {
     }
     const eventDate = moment(event.dateTime);
     switch (event.EventDetail.type) {
-      case "rpi-power-on":
-        if (this.lastStarted == null || eventDate.isAfter(this.lastStarted)) {
-          this.lastStarted = eventDate;
-        }
-        break;
-      case "daytime-power-off":
-        if (this.lastStopped == null || eventDate.isAfter(this.lastStopped)) {
-          this.lastStopped = eventDate;
-        }
-        break;
-      case "stop-reported":
-        if (this.lastReported == null || eventDate.isAfter(this.lastReported)) {
-          this.lastReported = eventDate;
-        }
+    case "rpi-power-on":
+      if (this.lastStarted == null || eventDate.isAfter(this.lastStarted)) {
+        this.lastStarted = eventDate;
+      }
+      break;
+    case "daytime-power-off":
+      if (this.lastStopped == null || eventDate.isAfter(this.lastStopped)) {
+        this.lastStopped = eventDate;
+      }
+      break;
+    case "stop-reported":
+      if (this.lastReported == null || eventDate.isAfter(this.lastReported)) {
+        this.lastReported = eventDate;
+      }
     }
   }
   checkIfStopped(): boolean {

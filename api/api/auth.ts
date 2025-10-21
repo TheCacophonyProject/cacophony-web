@@ -278,14 +278,14 @@ export async function lookupEntity(
   jwtDecoded: DecodedJWTToken,
 ) {
   switch (jwtDecoded._type) {
-    case "user":
-      return models.User.findByPk(jwtDecoded.id);
-    case "device":
-      return models.Device.findByPk(jwtDecoded.id);
-    case "fileDownload":
-      return jwtDecoded;
-    default:
-      return null;
+  case "user":
+    return models.User.findByPk(jwtDecoded.id);
+  case "device":
+    return models.Device.findByPk(jwtDecoded.id);
+  case "fileDownload":
+    return jwtDecoded;
+  default:
+    return null;
   }
 }
 
