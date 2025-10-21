@@ -10,8 +10,8 @@ export const server = {
     active: true,
     port: 1080,
   },
-  recording_url_base: "http://test.site/recording",
-  browse_url: "http://test.site",
+  recordingUrlBase: "http://test.site/recording",
+  browseUrl: "http://test.site",
   isLocalDev: true,
 };
 export const s3Local = {

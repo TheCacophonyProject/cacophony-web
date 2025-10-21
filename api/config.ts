@@ -47,12 +47,10 @@ export async function loadConfig(configPath: string): Promise<ServerConfig> {
   const validate= ajv.compile(LoadedServerConfigSchema);
   const isValidConfig = validate(config);
   if (!isValidConfig) {
-    console.error("Config file validation failed");
     console.log(validate.errors);
+    throw new Error("Server config file validation failed");
   }
-
-  checkDatabaseConfigAvailable(config);
-  return config;
+  return config as ServerConfig;
 }
 
 function checkConfigFileExists(configPath: string) {
@@ -63,12 +61,6 @@ function checkConfigFileExists(configPath: string) {
       " does not exist. See README.md for config setup. " +
       "NB: The default config file has been renamed to ./config/app.js"
     );
-  }
-}
-
-function checkDatabaseConfigAvailable(config) {
-  if (!("database" in config)) {
-    throw "Could not find database configuration. database.js has been merged into app.js";
   }
 }
 
