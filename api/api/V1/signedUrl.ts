@@ -45,20 +45,21 @@ export const streamS3Object = async (
   const requestIsCptv = mimeType === "application/x-cptv";
   const recordingIsSecret = () => {
     const recordingIsPartOfSecretGroup = groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
-    const requestUserIsSuperUser = userId && response.locals.viewAsSuperUser && !config.processingUserIds.includes(userId);
+    const requestUserIsSuperUser = userId && SuperUsers.has(userId) && !config.processingUserIds.includes(userId);
     return recordingIsPartOfSecretGroup && requestUserIsSuperUser;
   };
-  if (requestIsCptv && (config.server.isLocalDev || recordingIsSecret())) {
+  const isCiRequest = "user-agent" in request.headers && request.headers["user-agent"].includes("Cypress");
+  if (requestIsCptv && ((config.server.isLocalDev && !isCiRequest) || recordingIsSecret())) {
     const file = await fs.readFile("./debug-files/2-second-status.cptv");
     response.setHeader(
       "Content-disposition",
-      "attachment; filename=" + fileName,
+      `attachment; filename=${fileName}`,
     );
     response.setHeader(
       "Content-type",
       mimeType,
     );
-    response.setHeader("Content-Length", fileSize);
+    response.setHeader("Content-Length", file.length);
     response.write(file, "binary");
     return response.end(null, "binary");
   }
@@ -70,7 +71,7 @@ export const streamS3Object = async (
   //  So in terms of recording bytes transferred for billing purposes, we basically
   //  may have to attribute more bytes to the download than were actually used by the
   //  end-user browser request.
-  response.setHeader("Content-disposition", "attachment; filename=" + fileName);
+  response.setHeader("Content-disposition", `attachment; filename=${fileName}`);
   if (!request.headers.range) {
     //seems like this removes content-length header and breaks chrome for mp4
     response.setHeader("Transfer-Encoding", "chunked");

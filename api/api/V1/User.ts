@@ -271,7 +271,7 @@ export default function (app: Application, baseUrl: string) {
           );
         }
 
-        // NOTE: Only destroy users in a production env  if emailing fails, since
+        // NOTE: Only destroy users in a production env if emailing fails, since
         //  otherwise we'd slow down tests too much by having to process emails for all
         //  created users.
         if (!sendEmailSuccess && config.productionEnv) {

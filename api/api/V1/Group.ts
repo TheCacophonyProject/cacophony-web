@@ -258,7 +258,6 @@ export default function (app: Application, baseUrl: string) {
         );
 
         const urlNormalisedGroupName = urlNormaliseName(groupName);
-
         if (RESERVED_GROUP_NAMES.includes(urlNormalisedGroupName)) {
           return next(
             new ClientError(
@@ -286,9 +285,17 @@ export default function (app: Application, baseUrl: string) {
       next();
     },
     async (request: Request, response: Response) => {
-      const newGroup = await models.Group.create({
-        groupName: request.body.groupname || request.body.groupName,
-      });
+      const groupName = (request.body.groupname || request.body.groupName).trim();
+      const newGroup = await models.Group.create({ groupName });
+      if (!config.productionEnv) {
+        for (const secretName of (config.groupNamesWithRedactedThermalRecordings || [])) {
+          if (groupName.includes(secretName)) {
+            // NOTE: in CI testing, this group name is used to add a group to the
+            // secret thermal-redacted list.
+            config.groupIdsWithRedactedThermalRecordings.push(newGroup.id);
+          }
+        }
+      }
       await newGroup.addUser(response.locals.requestUser.id, {
         // Creating user is set as the group owner by default.
         through: { admin: true, owner: true },

@@ -71,13 +71,6 @@ export const processingUserIds = [];
 // from this group account.
 export const groupIdsWithRedactedThermalRecordings = [];
 
-// When testing, we don't know what ID a group will be assigned, so we use the group name
-// to determine if a groups' thermal recordings should not be available even to non-processing
-// super-users.
-export const groupNamesWithRedactedThermalRecordings = [
-  "super-secret-squirrels",
-];
-
 // List of devices to ignore when making the service error report.
 export const deviceErrorIgnoreList = [];
 // List of Cacophony users to ignore in platform usage report
