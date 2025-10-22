@@ -103,9 +103,9 @@ export const getJoinGroupRequestToken = (
   return jwt.sign(
     { id: userId, group: groupId, _type: "join-group" },
     config.server.passportSecret,
-    // {
-    //   expiresIn: 60 * 60 * 24 * 7,
-    // },
+    {
+      expiresIn: 60 * 60 * 24 * 365,
+    },
   );
 };
 
@@ -117,9 +117,9 @@ export const getInviteToGroupToken = (
   return jwt.sign(
     { id: inviteId, group: groupId, _type: "invite-new-user" },
     config.server.passportSecret,
-    // {
-    //   expiresIn: 60 * 60 * 24 * 7,
-    // },
+    {
+      expiresIn: 60 * 60 * 24 * 365,
+    },
   );
 };
 
@@ -131,9 +131,9 @@ export const getInviteToGroupTokenExistingUser = (
   return jwt.sign(
     { id: userId, group: groupId, _type: "invite-existing-user" },
     config.server.passportSecret,
-    // {
-    //   expiresIn: 60 * 60 * 24 * 7,
-    // },
+    {
+      expiresIn: 60 * 60 * 24 * 365,
+    },
   );
 };
 

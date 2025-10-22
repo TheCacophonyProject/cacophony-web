@@ -249,16 +249,28 @@ export function sortArrayOnHash(theArray: any, theKey: string) {
   return theArray;
 }
 
-export function sortArrayOn(theArray: any, theKey: string) {
-  theArray.sort(function (a: any, b: any) {
-    if (a[theKey] < b[theKey]) {
-      return -1;
-    }
-    if (a[theKey] > b[theKey]) {
-      return 1;
-    }
-    return 0;
-  });
+export function sortArrayOn(theArray: any, theKey: string, sortOrder?: string) {
+  if (sortOrder) {
+      theArray.sort((a: any, b: any) => {
+          if (sortOrder.indexOf(a[theKey]) < sortOrder.indexOf(b[theKey])) {
+              return -1;
+          }
+          if (sortOrder.indexOf(a[theKey]) > sortOrder.indexOf(b[theKey])) {
+              return 1;
+          }
+          return 0;
+      });
+  } else {
+      theArray.sort((a: any, b: any) => {
+          if (a[theKey] < b[theKey]) {
+              return -1;
+          }
+          if (a[theKey] > b[theKey]) {
+              return 1;
+          }
+          return 0;
+      });
+  }
   return theArray;
 }
 

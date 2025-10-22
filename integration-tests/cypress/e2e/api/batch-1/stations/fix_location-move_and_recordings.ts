@@ -10,12 +10,13 @@ import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType } from "@typedefs/api/consts";
 
-// NOTE: Make day zero a bit in the future still, or stations will be created before device registration time.
-const dayZero = new Date(new Date().setHours(new Date().getHours() + 1));
-const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
-const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
-const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
-const dayFour = new Date(new Date().setDate(new Date().getDate() + 4));
+const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+const dayZero = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+const dayOne = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+const dayTwo = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
+const dayThree = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 4));
+const dayFour = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 5));
+
 const firstName = "flmr_recording 1";
 const secondName = "flmr_recording 2";
 const thirdName = "flmr_recording 3";

@@ -46,9 +46,9 @@ describe("Stations: assign recordings to stations", () => {
 
   it("Adding a recording in a new location automatically creates a new station, deviceHistory", () => {
     const deviceName = "new-device";
-    const recordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 1),
-    );
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const recordingTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+
     const location = TestGetLocation(1);
     const expectedStation1 = JSON.parse(
       JSON.stringify(templateExpectedStation),
@@ -96,8 +96,9 @@ describe("Stations: assign recordings to stations", () => {
     const deviceName = "new-device-2";
     const location = TestGetLocation(2);
     const nearbyLocation = TestGetLocation(2, 0.0001);
-    const oneDayLater = new Date(new Date().setDate(new Date().getDate() + 1));
-    const twoDaysLater = new Date(new Date().setDate(new Date().getDate() + 2));
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const oneDayLater = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const twoDaysLater = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
     const expectedStation1 = JSON.parse(
       JSON.stringify(templateExpectedStation),
     );
@@ -175,11 +176,10 @@ describe("Stations: assign recordings to stations", () => {
     const stationName = "new-station-3";
     const location = TestGetLocation(3);
     const nearbyLocation = TestGetLocation(3, 0.0001);
-    const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
-    const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
-    const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
-    );
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const oneDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const twoDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+    const threeDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
     const expectedStation1 = JSON.parse(
       JSON.stringify(templateExpectedStation),
     );
@@ -278,11 +278,10 @@ describe("Stations: assign recordings to stations", () => {
     const deviceName = "new-device-22";
     const stationName = "new-station-22";
     const location = TestGetLocation(22);
-    const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
-    const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
-    const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
-    );
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const oneDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const twoDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+    const threeDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
     const expectedStation1 = JSON.parse(
       JSON.stringify(templateExpectedStation),
     );
@@ -412,8 +411,9 @@ describe("Stations: assign recordings to stations", () => {
   it("Adding a recording matching location before automatic start-time extends start-time backwards", () => {
     const deviceName = "new-device-5";
     const nearbyLocation = TestGetLocation(5, 0.0001);
-    const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
-    const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const oneDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const twoDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
     const expectedStation1 = JSON.parse(
       JSON.stringify(templateExpectedStation),
     );
@@ -484,11 +484,10 @@ describe("Stations: assign recordings to stations", () => {
     const location1 = TestGetLocation(6);
     const location1Nearby = TestGetLocation(6, 0.0001);
     const location2 = TestGetLocation(0);
-    const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
-    const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
-    const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
-    );
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const oneDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const twoDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+    const threeDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
     const expectedHistory: DeviceHistoryEntry[] = [];
     cy.apiDeviceAdd(deviceName, group);
     cy.apiGroupStationAdd(
@@ -556,11 +555,10 @@ describe("Stations: assign recordings to stations", () => {
     const location1 = TestGetLocation(7);
     const location1Nearby = TestGetLocation(7, 0.0001);
     const location2 = TestGetLocation(8);
-    const oneDaysTime = new Date(new Date().setDate(new Date().getDate() + 1));
-    const twoDaysTime = new Date(new Date().setDate(new Date().getDate() + 2));
-    const threeDaysTime = new Date(
-      new Date().setDate(new Date().getDate() + 3),
-    );
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const oneDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const twoDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+    const threeDaysTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
     const expectedHistory: DeviceHistoryEntry[] = [];
     cy.apiDeviceAdd(deviceName, group);
     cy.apiGroupStationAdd(
@@ -651,9 +649,11 @@ describe("Stations: assign recordings to stations", () => {
     const stationName = "Josie-station-10";
     const location = TestGetLocation(10);
     cy.apiDeviceAdd(deviceName, group);
-    const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
-    const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
-    const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const dayOne = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const dayTwo = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+    const dayThree = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
+
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const expectedStation = JSON.parse(JSON.stringify(templateExpectedStation));
@@ -811,9 +811,12 @@ describe("Stations: assign recordings to stations", () => {
     const recording2Name = "new-recording-15-2";
     const location = TestGetLocation(15);
     const nearbyLocation = TestGetLocation(15, 0.0001);
-    const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
-    const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
-    const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const dayOne = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const dayTwo = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+    const dayThree = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
+
+
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const expectedStation1 = JSON.parse(
@@ -1172,9 +1175,11 @@ describe("Stations: assign recordings to stations", () => {
     const thermalRecordingName = "new-recording-21t";
     const location = TestGetLocation(21);
     const nearbyLocation = TestGetLocation(21, 0.0001);
-    const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
-    const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
-    const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+    const dayOne = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+    const dayTwo = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+    const dayThree = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
+
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const expectedStation1 = JSON.parse(
