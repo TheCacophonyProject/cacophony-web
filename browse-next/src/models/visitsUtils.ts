@@ -301,14 +301,7 @@ export const dayAndTimeAtLocation = (
 ): string => {
   const zone = timezoneForLatLng(location);
   const localTime = DateTime.fromISO(timeIsoString, { zone });
-  return localTime.toLocaleString({
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hourCycle: "h12",
-  });
+  return localTime.toFormat("yyyy-LL-dd HH:mm");
 };
 
 export const intlFormatForLocation = (location: LatLng) => {

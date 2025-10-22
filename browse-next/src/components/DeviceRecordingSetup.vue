@@ -575,13 +575,17 @@ const batteryVoltageRange = computed<string>(() => {
   }
   
   const chemistryProfile = batteryChemistryOptions.find(
-    opt => opt.value === batteryChemistry.value
+    opt => opt.value === batteryChemistry.value,
   );
-  if (!chemistryProfile) return "";
+  if (!chemistryProfile) {
+return "";
+}
   
   // Extract voltage range from text
   const match = chemistryProfile.text.match(/\((.+)V-(.+)V per cell\)/);
-  if (!match) return "";
+  if (!match) {
+return "";
+}
   
   const minVoltage = parseFloat(match[1]) * batteryCellCount.value;
   const maxVoltage = parseFloat(match[2]) * batteryCellCount.value;

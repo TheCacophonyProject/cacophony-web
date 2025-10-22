@@ -307,8 +307,8 @@ const initBatteryInfoTimeSeries = () => {
           meta: {
             voltage: item.voltage,
             battery: item.battery,
-            dateTime: item.dateTime
-          }
+            dateTime: item.dateTime,
+          },
         }));
       axisLabelFormat = (value) => `${value}%`;
     } else if (hasVoltage) {
@@ -321,8 +321,8 @@ const initBatteryInfoTimeSeries = () => {
           meta: {
             voltage: item.voltage,
             battery: null,
-            dateTime: item.dateTime
-          }
+            dateTime: item.dateTime,
+          },
         }));
 
       const voltageValues = primaryData.map(item => item.y);
@@ -342,7 +342,7 @@ const initBatteryInfoTimeSeries = () => {
             {
               name: "battery",
               data: primaryData,
-            }
+            },
           ],
         },
         {
@@ -360,9 +360,9 @@ const initBatteryInfoTimeSeries = () => {
               }),
           },
           axisY: {
-            labelInterpolationFnc: axisLabelFormat
+            labelInterpolationFnc: axisLabelFormat,
           },
-          plugins: []
+          plugins: [],
         },
       );
 
@@ -377,7 +377,7 @@ const initBatteryInfoTimeSeries = () => {
               if (ctValue) {
                 const [x, y] = ctValue.split(",").map(Number);
                 const dataPoint = primaryData.find(d =>
-                  d.x.getTime() === x && d.y === y
+                  d.x.getTime() === x && d.y === y,
                 );
 
                 if (dataPoint && dataPoint.meta) {
@@ -386,7 +386,7 @@ const initBatteryInfoTimeSeries = () => {
                     month: "short",
                     day: "numeric",
                     hour: "2-digit",
-                    minute: "2-digit"
+                    minute: "2-digit",
                   })}</strong><br/>`;
 
                   if (dataPoint.meta.battery !== null) {
@@ -407,7 +407,7 @@ const initBatteryInfoTimeSeries = () => {
                   const containerRect = batteryTimeSeries.value!.getBoundingClientRect();
                   tooltipPosition.value = {
                     x: rect.left - containerRect.left + rect.width / 2,
-                    y: rect.top - containerRect.top - 10
+                    y: rect.top - containerRect.top - 10,
                   };
                   tooltipVisible.value = true;
                 }
