@@ -25,7 +25,7 @@ const createUser = async (userName: string): Promise<TestHandle> => {
   expect(userResponse.success).to.be.true;
   if (userResponse.success) {
     TestApi.registerCredentials(userHandle, {
-      refreshingToken: null,
+      userData: userResponse.result.userData,
       refreshToken: userResponse.result.refreshToken,
       apiToken: userResponse.result.token,
     });
@@ -99,6 +99,8 @@ describe("Activity bookkeeping", () => {
   let project: ProjectBundle;
   before(async () => {
     project = await createProjectWithUserAndDevice();
+
+    // TODO: List all the things I want to test
 
     //const users = await API.Users.withAuth(project.userHandles[0]).list();
     //cy.log(JSON.stringify(users));

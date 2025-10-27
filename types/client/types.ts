@@ -22,6 +22,7 @@ export interface LoggedInUserAuth {
   userData: ApiLoggedInUserResponse;
   apiToken: JwtToken<UserId>;
   refreshToken: string;
+  refreshingToken?: Promise<boolean>;
   decodedToken?: JwtUserAuthTokenPayload,
 }
 

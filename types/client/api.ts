@@ -69,8 +69,8 @@ interface RequestStateResolvers {
 const getScreenOrientation = (): string => {
   if (window !== undefined && window.screen.orientation) {
     return window.screen.orientation?.type;
-  } else if (window && typeof window.orientation !== "undefined") {
-    if (Math.abs(window.orientation) == 90) {
+  } else if (window && typeof (window as any).orientation !== "undefined") {
+    if (Math.abs((window as any).orientation) == 90) {
       return "landscape";
     } else {
       return "portrait";
@@ -126,7 +126,7 @@ const cacophonyFetchWrapper = async <T>(
   // Check if the credentials are stale?
   // If so, attempt to refresh them
   // Then use them
-  if (credentials) { // Could this be derived from whether or not we have a valid token?
+  if (credentials) { // Could this be derived from whether we have a valid token?
     (request.headers as Record<string, string>).Authorization = credentials;
   } else if (window !== undefined) {
     // Are we logging in?  Maybe check the route before adding these headers
