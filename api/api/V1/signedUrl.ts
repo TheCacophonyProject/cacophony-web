@@ -43,13 +43,19 @@ export const streamS3Object = async (
   fileSize?: number,
 ) => {
   const requestIsCptv = mimeType === "application/x-cptv";
-  const recordingIsSecret = () => {
+  const recordingIsSecret = async () => {
     const recordingIsPartOfSecretGroup = groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
     const requestUserIsSuperUser = userId && SuperUsers.has(userId) && !config.processingUserIds.includes(userId);
+    if (requestUserIsSuperUser && recordingIsPartOfSecretGroup) {
+      const superUserIsPartOfSecretGroup = await models.GroupUsers.findOne({where: {UserId: userId}});
+      if (superUserIsPartOfSecretGroup) {
+        return false;
+      }
+    }
     return recordingIsPartOfSecretGroup && requestUserIsSuperUser;
   };
   const isCiRequest = "user-agent" in request.headers && request.headers["user-agent"].includes("Cypress");
-  if (requestIsCptv && ((config.server.isLocalDev && !isCiRequest) || recordingIsSecret())) {
+  if (requestIsCptv && ((config.server.isLocalDev && !isCiRequest) || await recordingIsSecret())) {
     const file = await fs.readFile("./debug-files/2-second-status.cptv");
     response.setHeader(
       "Content-disposition",
