@@ -18,7 +18,7 @@ export type LoadedServerConfig = {
         loggerLevel: "info" | "debug" | "warn" | "error";
         http: {
             active: true,
-            port: 1080
+            port: number
         },
         recordingUrlBase: string;
         browseUrl: string;
@@ -30,7 +30,7 @@ export type LoadedServerConfig = {
         privateKey: string;
         bucket: string;
         endpoint: string;
-        rootPath: string;  // Root of the minio storage directory, so we can work out total and available disk space.
+        rootPath?: string;  // Root of the minio storage directory, so we can work out total and available disk space.
     },
     s3Archive: {
         publicKey: string;
@@ -46,7 +46,7 @@ export type LoadedServerConfig = {
     development: DatabaseConfig,
     smtpDetails: {
         host: string;
-        port: 25 | 7777;  // default for service is 25. 7777 used for smtp-tester
+        port: number;  // default for service is 25. 7777 used for smtp-tester
         tls: boolean; // default is `true`.  `false` used for smtp-tester
         fromName: string;
         platformUsageEmail: string;
