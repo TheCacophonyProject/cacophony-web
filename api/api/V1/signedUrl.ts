@@ -47,7 +47,7 @@ export const streamS3Object = async (
     const recordingIsPartOfSecretGroup = groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
     const requestUserIsSuperUser = userId && SuperUsers.has(userId) && !config.processingUserIds.includes(userId);
     if (requestUserIsSuperUser && recordingIsPartOfSecretGroup) {
-      const superUserIsPartOfSecretGroup = await models.GroupUsers.findOne({where: {UserId: userId}});
+      const superUserIsPartOfSecretGroup = await models.GroupUsers.findOne({where: {UserId: userId, GroupId: groupId}});
       if (superUserIsPartOfSecretGroup) {
         return false;
       }
@@ -79,7 +79,7 @@ export const streamS3Object = async (
   //  end-user browser request.
   response.setHeader("Content-disposition", `attachment; filename=${fileName}`);
   if (!request.headers.range) {
-    //seems like this removes content-length header and breaks chrome for mp4
+    // seems like this removes content-length header and breaks chrome for mp4
     response.setHeader("Transfer-Encoding", "chunked");
 
     // Set a custom header, so we can still know the total length of the streaming file

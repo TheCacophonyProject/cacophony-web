@@ -907,7 +907,7 @@ describe("Recordings query using where", () => {
   it.skip("Super-user should see all recordings", () => {});
 
   if (Cypress.env("running_in_a_dev_environment") == true) {
-    it("Non processing super-user should not be able to see actual thermal recordings from secret projects", () => {
+    it.only("Non processing super-user should not be able to see actual thermal recordings from secret projects", () => {
         // Create project with name `super-secret-squirrels`.
         // Upon creation, this project id is added to the list of redacted projects in the API.
         cy.apiSignInAs(null, superuser, suPassword);

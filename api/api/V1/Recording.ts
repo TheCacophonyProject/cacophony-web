@@ -1495,6 +1495,12 @@ export default (app: Application, baseUrl: string) => {
     },
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
+      const groupId = rec.GroupId;
+      const recordingIsPartOfSecretGroup = groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
+      if (recordingIsPartOfSecretGroup) {
+        return next(new ClientError("No thumbnail exists"));
+      }
+
       const fileKey = rec.rawFileKey;
       let mimeType = "image/png";
       let ext = "png";
