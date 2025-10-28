@@ -2,8 +2,11 @@ import {ClientError} from "./customErrors.js";
 import type {DefinedError, ValidateFunction} from "ajv";
 import {Ajv} from "ajv";
 import addFormats from "ajv-formats";
+
+// NOTE: Early failure makes the API validation a bit faster, but a user
+// can only find out about a single error at a time.
 const ajv = addFormats.default(
-  new Ajv({ allErrors: true, verbose: true  }),
+  new Ajv({ allErrors: false, verbose: true  }),
   { mode: "fast", formats: ["date-time"] },
 );
 const Validators = new Map<string, ValidateFunction>();
