@@ -771,10 +771,10 @@ describe("Recordings (thermal): add, get, delete", () => {
           200,
       ).then(id => {
         cy.apiRecordingGet(
-          "saAdmin",
+          "raGroupAdmin",
           id,
-        ).then(recording => {
-          const recDateTime = new Date(recording.recordingDateTime);
+        ).then((response) => {
+          const recDateTime = new Date(response.body.recording.recordingDateTime);
           expect(recDateTime.getTime()).to.be.closeTo(now.getTime(), 5000);
         });
       });
