@@ -757,19 +757,27 @@ describe("Recordings (thermal): add, get, delete", () => {
       );
   });
 
-  it("Recordings with future recordingDateTimes are rejected", () => {
+  it("Recordings with future recordingDateTimes are allowed, but have their recordingDateTime set to now", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       recording1.recordingDateTime = "2160-01-01T07:22:56.000Z";
       delete recording1.processingState;
-
+      const now = new Date();
       cy.log("Add far future recording as device");
       cy.apiRecordingAdd(
           "raCamera1",
           recording1,
           "invalid.cptv",
           "futureDate",
-          422,
-      );
+          200,
+      ).then(id => {
+        cy.apiRecordingGet(
+          "saAdmin",
+          id,
+        ).then(recording => {
+          const recDateTime = new Date(recording.recordingDateTime);
+          expect(recDateTime.getTime()).to.be.closeTo(now.getTime(), 5000);
+        });
+      });
   });
 
     it("Recordings with *minor* future recordingDateTimes are allowed", () => {

@@ -633,13 +633,9 @@ export const uploadGenericRecording =
         }
         // Allow recordings to be from 10mins in the future, to allow for RTC drift on devices.
         if (recordingTemplate.recordingDateTime.getTime() > (Date.now() + 1000 * 60 * 10)) {
-          // Recording is from the future, reject it.
-          log.warning("Discarding recording for DeviceId(%s) with future recordingDateTime: %s", recordingTemplate.DeviceId, recordingTemplate.recordingDateTime);
-          return next(
-            new UnprocessableError(
-              `Recording has future date (${recordingTemplate.recordingDateTime}) (from ${JSON.stringify(data)}).`,
-            ),
-          );
+          // Recording is from the future, set the recordingDateTime to "now".
+          log.warning("Got recording for DeviceId(%s) with future recordingDateTime: %s", recordingTemplate.DeviceId, recordingTemplate.recordingDateTime);
+          recordingTemplate.recordingDateTime = new Date();
         }
 
         // Work out which group and station to assign based on recordingDateTime, device history etc.
