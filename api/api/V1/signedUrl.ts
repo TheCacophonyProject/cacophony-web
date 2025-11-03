@@ -47,7 +47,7 @@ export const streamS3Object = async (
     const recordingIsPartOfSecretGroup = groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
     const requestUserIsSuperUser = userId && SuperUsers.has(userId) && !config.processingUserIds.includes(userId);
     if (requestUserIsSuperUser && recordingIsPartOfSecretGroup) {
-      const superUserIsPartOfSecretGroup = await models.GroupUsers.findOne({where: {UserId: userId, GroupId: groupId}});
+      const superUserIsPartOfSecretGroup = await models.GroupUsers.findOne({where: { UserId: userId, GroupId: groupId, removedAt: null }});
       if (superUserIsPartOfSecretGroup) {
         return false;
       }
