@@ -8,7 +8,7 @@ type DatabaseConfig = {
     port?: number;
     host: string;
     dialect: string;
-    slowQueryLogThresholdMs: number;
+    slowQueryLogThresholdMs?: number;
 };
 
 export type LoadedServerConfig = {
