@@ -281,39 +281,47 @@ const processFilePart = async (
   let embeddedMetadata: CptvHeader | string | Record<string, any>;
   let cptvStreamError = "";
   let uploaded = false;
-
+  let decoder: CptvDecoder;
   if (mightBeCptvFile) {
     // If the device is a known thermal camera, we can validate the cptv file, and potentially
     // exit early if it is found to be corrupt.
-    const decoder = new CptvDecoder();
-    embeddedMetadata = await decoder.getStreamMetadata(cptvDecodeStream);
-    if (!canceledRequest.canceled) {
-      if (typeof embeddedMetadata === "string") {
-        cptvStreamError = embeddedMetadata;
-        // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
-        isCorrupt = true;
-        wasValidCptvFile = false;
-        // TODO: The file could be corrupt, but we could still get a valid CPTV header out.
-        //  test this case.
-        const header = await decoder.getHeader();
-        if (header) {
-          embeddedMetadata = header;
+    try {
+      decoder = new CptvDecoder();
+      embeddedMetadata = await decoder.getStreamMetadata(cptvDecodeStream);
+      if (!canceledRequest.canceled) {
+        if (typeof embeddedMetadata === "string") {
+          cptvStreamError = embeddedMetadata;
+          // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
+          isCorrupt = true;
+          wasValidCptvFile = false;
+          // TODO: The file could be corrupt, but we could still get a valid CPTV header out.
+          //  test this case.
+          const header = await decoder.getHeader();
+          if (header) {
+            embeddedMetadata = header;
+          }
         }
+        await upload.done().catch((error) => {
+          if (error.name !== "AbortError") {
+            log.error("Upload error: %s", error.toString());
+            decoder.close().then(() => {
+              part.emit(
+                "error",
+                new UnprocessableError(`Upload error: '${part.name}'`),
+              );
+            });
+          }
+        });
+        uploaded = true;
       }
-      await upload.done().catch((error) => {
-        if (error.name !== "AbortError") {
-          log.error("Upload error: %s", error.toString());
-          decoder.close().then(() => {
-            part.emit(
-              "error",
-              new UnprocessableError(`Upload error: '${part.name}'`),
-            );
-          });
-        }
-      });
-      uploaded = true;
+      await decoder.close();
+    } catch (e) {
+      decoder && await decoder.close();
+      part.emit(
+        "error",
+        new UnprocessableError(`Upload error: '${part.name}'`),
+      );
     }
-    await decoder.close();
   }
   if (mightBeTc2AudioFile && (!mightBeCptvFile || !wasValidCptvFile)) {
     const metadata = await tryReadingM4aMetadata(m4aDecodeStream);

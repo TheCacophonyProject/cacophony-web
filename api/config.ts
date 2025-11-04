@@ -38,6 +38,17 @@ function getConfigPathFromArgs(strict: boolean = false): string {
 
 export async function loadConfig(configPath: string): Promise<ServerConfig> {
   configPath = path.resolve(__dirname, configPath);
+  const parts = configPath.split(".");
+
+  // Try different file extensions until we find one that exists
+  const possibleExtensions = ["mjs", "js"];
+  const configBase = parts.join(".");
+  for (const ext of possibleExtensions) {
+    configPath = `${configBase}.${ext}`;
+    if (fs.existsSync(configPath)) {
+      break;
+    }
+  }
   checkConfigFileExists(configPath);
   const config = (await import(configPath)).default;
   // Validate server config against json schema:

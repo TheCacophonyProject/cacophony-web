@@ -1,11 +1,7 @@
-# Build:                   sudo docker build --no-cache . -t cacophony-api
-# Run interactive session: sudo docker run -it cacophony-api
+# Build:                   sudo docker build --no-cache . -t cacophony-web
+# Run interactive session: sudo docker run -it cacophony-web
 
-FROM cacophonyproject/server-base:ubuntu2204_amd64
-# Use for arm64 dev environments
-#FROM cacophonyproject/server-base:ubuntu2204_arm64
-RUN apt-get update
-RUN apt-get -y install ffmpeg
+FROM cacophonyproject/server-base:latest
 
 WORKDIR /app
 
@@ -25,6 +21,4 @@ EXPOSE 9229
 EXPOSE 5432
 
 COPY docker-entrypoint.sh /
-
-
 ENTRYPOINT ["/docker-entrypoint.sh"]

@@ -10,6 +10,7 @@ import { generateVisits, type Visit } from "@api/V1/monitoringVisit.js";
 import { displayLabelForClassificationLabel } from "@/classifications/classifications.js";
 import type { GroupId } from "@typedefs/api/common.js";
 import type { User } from "@models/User.js";
+import os from "os";
 const models = await modelsInit();
 
 const allVisitsForProjectInTimespan = async (
@@ -69,6 +70,10 @@ const allVisitsForProjectInTimespan = async (
 };
 
 (async () => {
+  if (os.hostname() === "prod-api-processing") {
+    return;
+  }
+
   // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
   const timespan = process.argv[2] || "daily";
   let numDays = 1;

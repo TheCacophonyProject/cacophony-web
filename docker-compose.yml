@@ -1,6 +1,6 @@
 services:
   server:
-    container_name: cacophony-api
+    container_name: cacophony-web
     build:
       context: .
     environment:
@@ -22,3 +22,4 @@ services:
       - /app/api/docker-base/
       - /app/api/node_modules/
       - /app/api/sql/
+      - /app/api/json-schemas/api

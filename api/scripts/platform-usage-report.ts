@@ -7,6 +7,7 @@ const { Client } = pkg;
 import { sendPlatformUsageEmail } from "@/emails/transactionalEmails.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import { embedImage } from "@/emails/htmlEmailUtils.js";
+import os from "os";
 
 const CACOPHONY_GROUPS = config.cacophonyGroupIds || [];
 const CACOPHONY_USERS = config.cacophonyUserIds || [];
@@ -508,6 +509,10 @@ const stackedGraph = (
   ];
 };
 async function main() {
+  if (os.hostname() === "prod-api-processing") {
+    return;
+  }
+
   if (config.server.browseUrl !== "https://browse.cacophony.org.nz") {
     log.info("Platform usage report only runs on production");
     return;

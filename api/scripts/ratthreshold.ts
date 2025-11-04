@@ -4,6 +4,7 @@ import modelsInit from "@models/index.js";
 import { QueryTypes } from "sequelize";
 import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
 import { getTrackData } from "@models/Track.js";
+import os from "os";
 const models = await modelsInit();
 const HEIGHT = 120;
 const WIDTH = 160;
@@ -13,6 +14,9 @@ const rows = Math.ceil(HEIGHT / BOX_DIM);
 const columns = Math.ceil(WIDTH / BOX_DIM);
 
 async function main() {
+  if (os.hostname() === "prod-api-processing") {
+    return;
+  }
   const devices = await getDeviceLocation();
   for (const devHistory of devices) {
     const { DeviceId: deviceId, GroupId: groupId, location } = devHistory;

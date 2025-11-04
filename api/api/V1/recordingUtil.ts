@@ -310,11 +310,12 @@ export async function getCPTVFrames(
   recording: Recording,
   frameNumbers: Set<number>,
 ): Promise<any | undefined> {
+  let decoder: CptvDecoder;
   try {
     const stream = (
       await openS3().getObject(recording.rawFileKey)
     ).Body.transformToWebStream();
-    const decoder = new CptvDecoder();
+    decoder = new CptvDecoder();
     const result = await decoder.initWithReadableStream(
       stream as ReadableStream,
     );
@@ -355,6 +356,7 @@ export async function getCPTVFrames(
     await decoder.close();
     return frames;
   } catch (err) {
+    decoder && await decoder.close();
     return;
   }
 }

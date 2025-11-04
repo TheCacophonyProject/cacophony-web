@@ -1,4 +1,5 @@
 import config, {loadConfig} from "../config.js";
+import os from "os";
 
 const args = require("commander");
 const process = require("process");
@@ -6,6 +7,9 @@ const process = require("process");
 const { Client } = require("pg");
 let Config;
 async function main() {
+  if (os.hostname() === "prod-api-processing") {
+    return;
+  }
   args
     .option("--config <path>", "Configuration file", "./config/app.js")
     .option("--delete", "Actually delete objects (dry run by default)")

@@ -6,6 +6,7 @@ import type { DeviceId } from "@typedefs/api/common.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
 import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
+import os from "os";
 
 const models = await modelsInit();
 
@@ -501,6 +502,9 @@ const groupedSystemErrors = async (
 };
 
 async function main() {
+  if (os.hostname() === "prod-api-processing") {
+    return;
+  }
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }

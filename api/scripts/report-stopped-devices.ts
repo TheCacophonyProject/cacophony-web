@@ -7,6 +7,7 @@ import { sendStoppedDevicesReportEmail } from "@/emails/transactionalEmails.js";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
 import type { User } from "@models/User.js";
 import type { Group } from "@models/Group.js";
+import os from "os";
 
 const models = await modelsInit();
 
@@ -71,6 +72,9 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
 };
 
 async function main() {
+  if (os.hostname() === "prod-api-processing") {
+    return;
+  }
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
