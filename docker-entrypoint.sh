@@ -4,7 +4,6 @@ set -e
 #echo "---- Syncing time ----"
 #timedatectl set-ntp on
 #timedatectl
-mv /app/minio /minio
 cd /
 sudo chmod +x /minio
 sudo chmod +x /mc
@@ -13,7 +12,6 @@ echo "---- Starting Minio ----"
 
 echo "---- Starting PostgreSQL ----"
 service postgresql start
-
 
 # Check if postgres user test is created
 if ! sudo -u postgres psql -c "SELECT 1 FROM pg_roles WHERE rolname='test'" | grep -q 1; then
@@ -33,7 +31,7 @@ if ./mc ls myminio | grep -q cacophony; then
     echo "---- Minio already setup ----"
 else
     echo "---- Setting up Minio ----"
-    ./mc config host add myminio http://127.0.0.1:9001 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+    ./mc alias set myminio http://127.0.0.1:9001 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
     ./mc mb myminio/cacophony
     ./mc mb myminio/cacophony-archived
 fi
@@ -48,7 +46,6 @@ fi
 
 
 echo "---- install npm packages ----"
-
 npm install --omit=optional --no-audit
 mv ../bcrypt ./node_modules/
 mv ../sharp ./node_modules/

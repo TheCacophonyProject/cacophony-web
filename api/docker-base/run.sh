@@ -27,14 +27,14 @@ ARCH=$(uname -m)
 
 if [ "$ARCH" == "aarch64" ]; then
   # arm64 builds
-  curl --location --fail --silent --show-error --remote-name https://dl.minio.io/server/minio/release/linux-arm64/minio > /minio
+  curl --location --fail --silent --show-error https://dl.minio.io/server/minio/release/linux-arm64/minio > /minio
   curl --location --fail --silent --show-error https://dl.minio.io/client/mc/release/linux-arm64/mc > /mc
 else
   # Default is amd64
   # install minio
   # https://minio.io/downloads.html#download-server-linux-x64
   # https://docs.minio.io/docs/minio-client-complete-guide
-  curl --location --fail --silent --show-error --remote-name https://dl.minio.io/server/minio/release/linux-amd64/minio > /minio
+  curl --location --fail --silent --show-error https://dl.minio.io/server/minio/release/linux-amd64/minio > /minio
   curl --location --fail --silent --show-error https://dl.minio.io/client/mc/release/linux-amd64/mc > /mc
 fi
 chmod +x /minio
@@ -46,18 +46,19 @@ apt-get install -y nodejs
 
 # install packages - this still has to be done each time because of updates but doing it
 # on the base means there are fewer packages to install
-npm i -g npm
 npm install --no-audit
 npm cache ls
 # Bcrypt are sharp are natively compiled, so we can't just get them from the npm cache.
 # Instead we copy them over to avoid having to ship all the native build tools in the docker image.
-# mv ./node_modules/bcrypt ./bcrypt && mv ./node_modules/sharp ./sharp && mv ./node_modules/detect-libc ./detect-libc && mv ./node_modules/color ./color
+mv ./node_modules/bcrypt ./bcrypt && mv ./node_modules/sharp ./sharp && mv ./node_modules/detect-libc ./detect-libc && mv ./node_modules/color ./color
 rm -rf ./node_modules
 npm cache verify
 
+# Make sure `apt-get autoremove` doesn't remove nodejs, since it falsely thinks it's an unused dependency of another package.
+apt-mark manual nodejs
 # clean up our apt modules if we've already used them
-apt-get -y remove make build-essential g++ python3 curl ca-certificates
-apt-get -y autoremove
-dpkg --list |grep "^rc" | cut -d " " -f 3 | xargs sudo dpkg --purge
-apt-get clean
-rm -rf /var/lib/apt/lists/*
+#apt-get -y remove make build-essential g++ python3 curl ca-certificates
+#apt-get -y autoremove
+#dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs sudo dpkg --purge
+#apt-get clean
+#rm -rf /var/lib/apt/lists/*

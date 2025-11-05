@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:experimental
 # Build:                   sudo docker build --no-cache . -t cacophony-web
 # Run interactive session: sudo docker run -it cacophony-web
 

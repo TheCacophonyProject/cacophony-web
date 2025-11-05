@@ -9,6 +9,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     ActivitySearchDescription: typeof import('./src/components/ActivitySearchDescription.vue')['default']
     ActivitySearchParameters: typeof import('./src/components/ActivitySearchParameters.vue')['default']
+    AppMainNav: typeof import('./src/components/AppMainNav.vue')['default']
     BAlert: typeof import('bootstrap-vue-next')['BAlert']
     BBadge: typeof import('bootstrap-vue-next')['BBadge']
     BButton: typeof import('bootstrap-vue-next')['BButton']
@@ -38,6 +39,7 @@ declare module 'vue' {
     BPopover: typeof import('bootstrap-vue-next')['BPopover']
     BProgress: typeof import('bootstrap-vue-next')['BProgress']
     BSpinner: typeof import('bootstrap-vue-next')['BSpinner']
+    Card: typeof import('./src/components/Card.vue')['default']
     CardTable: typeof import('./src/components/CardTable.vue')['default']
     CptvPlayer: typeof import('./src/components/cptv-player/CptvPlayer.vue')['default']
     CptvSingleFrame: typeof import('./src/components/CptvSingleFrame.vue')['default']
@@ -75,6 +77,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     ScrubberWrapper: typeof import('./src/components/ScrubberWrapper.vue')['default']
+    SectionCard: typeof import('./src/components/SectionCard.vue')['default']
     SectionHeader: typeof import('./src/components/SectionHeader.vue')['default']
     SpectrogramViewer: typeof import('./src/components/SpectrogramViewer.vue')['default']
     SwitchProjectsModal: typeof import('./src/components/SwitchProjectsModal.vue')['default']

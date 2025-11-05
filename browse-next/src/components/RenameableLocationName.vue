@@ -14,17 +14,18 @@ import { changeLocationName } from "@api/Location.ts";
 import { userIsProjectAdmin } from "@models/provides.ts";
 
 const { location } = defineProps<{ location: ApiLocationResponse }>();
-
 const editLocationField = useTemplateRef("input");
 watch(editLocationField, (next) => {
   // Edit location field is mounted
   if (next) {
     (next as typeof BFormInput).focus();
+    ((next as typeof BFormInput).$el as HTMLInputElement).select();
   }
 });
-const clickedRename = () => {
+const clickedRename = (e: MouseEvent) => {
   errorMessage.value = "";
   editingLocationName.value = true;
+  locationName.value = location.name;
 };
 const editingLocationName = ref<boolean>(false);
 const savingLocation = ref<boolean>(false);
@@ -119,7 +120,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
           <span class="me-2">Rename</span>
           <font-awesome-icon icon="pencil" size="sm" color="#666" />
         </span>
-        <font-awesome-icon v-else icon="pencil" size="sm" color="#bbb" />
+        <font-awesome-icon v-else icon="pencil" size="sm" color="#666" />
       </b-button>
     </div>
   </div>

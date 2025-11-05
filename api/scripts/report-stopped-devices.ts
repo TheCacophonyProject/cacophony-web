@@ -38,7 +38,7 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
             [Op.or]: [
               {
                 admin: true,
-                [Op.or]: [
+                [Op.and]: [
                   {
                     "settings.notificationPreferences.reportStoppedDevices": {
                       [Op.ne]: false,
