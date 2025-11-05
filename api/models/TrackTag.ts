@@ -20,7 +20,7 @@ import type { TrackId, UserId } from "@typedefs/api/common.js";
 import type Sequelize from "sequelize";
 import type { ModelCommon, ModelStaticCommon } from "./index.js";
 import type { User } from "./User.js";
-import LabelPaths from "../classifications/label_paths.json" assert { type: "json" };
+import LabelPaths from "../classifications/label_paths.json" with { type: "json" };
 import type { TrackTagUserData } from "@models/TrackTagUserData.js";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
@@ -113,7 +113,7 @@ export default function (
   // INSTANCE
   //---------------
 
-  TrackTag.prototype.isAdditionalTag = function () {
+  (TrackTag.prototype as any).isAdditionalTag = function () {
     return additionalTags.includes(this.what);
   };
   return TrackTag;

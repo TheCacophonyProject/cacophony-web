@@ -52,7 +52,7 @@ import type {
   ApiThermalRecordingMetadataResponse,
   CacophonyIndex,
 } from "@typedefs/api/recording.js";
-import labelPath from "../classifications/label_paths.json" assert { type: "json" };
+import labelPath from "../classifications/label_paths.json" with { type: "json" };
 import type { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import { locationField } from "@models/util/util.js";
 import type { ApiTrackPosition } from "@typedefs/api/track.js";
@@ -539,11 +539,11 @@ export default function (
   //------------------
   // INSTANCE METHODS
   //------------------
-  Recording.prototype.isFailed = function (): boolean {
+  (Recording.prototype as any).isFailed = function (): boolean {
     return this.processingState.endsWith(".failed");
   };
 
-  Recording.prototype.getNextState = function (): RecordingProcessingState {
+  (Recording.prototype as any).getNextState = function (): RecordingProcessingState {
     const jobs = Recording.processingStates[this.type];
     let nextState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
@@ -567,26 +567,26 @@ export default function (
     return nextState;
   };
 
-  Recording.prototype.setStation = async function (station: { id: number }) {
+  (Recording.prototype as any).setStation = async function (station: { id: number }) {
     this.StationId = station.id;
     return this.save();
   };
 
-  Recording.prototype.getFileBaseName = function (): string {
+  (Recording.prototype as any).getFileBaseName = function (): string {
     return moment(new Date(this.recordingDateTime))
       .tz(config.timeZone)
       .format("YYYYMMDD-HHmmss");
   };
 
-  Recording.prototype.getRawFileName = function () {
+  (Recording.prototype as any).getRawFileName = function () {
     return this.getFileBaseName() + this.getRawFileExt();
   };
 
-  Recording.prototype.getFileName = function () {
+  (Recording.prototype as any).getFileName = function () {
     return this.getFileBaseName() + this.getFileExt();
   };
 
-  Recording.prototype.getRawFileExt = function () {
+  (Recording.prototype as any).getRawFileExt = function () {
     if (this.rawMimeType == "application/x-cptv") {
       return ".cptv";
     }
@@ -605,7 +605,7 @@ export default function (
   };
 
   /* eslint-disable indent */
-  Recording.prototype.getActiveTracksTagsAndTagger =
+    (Recording.prototype as any).getActiveTracksTagsAndTagger =
     async function (): Promise<any> {
       return await this.getTracks({
         where: {
@@ -629,7 +629,7 @@ export default function (
       });
     };
 
-  Recording.prototype.getFileExt = function () {
+    (Recording.prototype as any).getFileExt = function () {
     if (this.fileMimeType == "application/x-cptv") {
       return ".cptv";
     }
@@ -640,7 +640,7 @@ export default function (
     return "";
   };
 
-  Recording.prototype.filterData = function (options: { latLongPrec: any }) {
+    (Recording.prototype as any).filterData = function (options: { latLongPrec: any }) {
     if (this.location) {
       this.location.coordinates = reduceLatLonPrecision(
         this.location,
@@ -668,7 +668,7 @@ export default function (
   }
 
   // retry processing this recording
-  Recording.prototype.retryFailed = async function () {
+    (Recording.prototype as any).retryFailed = async function () {
     if (!this.processingState.endsWith(".failed")) {
       return false;
     }
@@ -679,7 +679,7 @@ export default function (
   };
 
   // reprocess a recording and set all active tracks to archived
-  Recording.prototype.reprocess = async function () {
+    (Recording.prototype as any).reprocess = async function () {
     const tags = await this.getTags();
     if (tags.length > 0) {
       const meta = this.additionalMetadata || {};
@@ -710,7 +710,7 @@ export default function (
   };
 
   // Return a specific track for the recording.
-  Recording.prototype.getTrack = async function (
+    (Recording.prototype as any).getTrack = async function (
     trackId: TrackId,
   ): Promise<Track | null> {
     const track = await models.Track.findByPk(trackId);
@@ -725,7 +725,7 @@ export default function (
     return track as Track;
   };
 
-  Recording.prototype.addTrack = async function ({
+    (Recording.prototype as any).addTrack = async function ({
     data,
     startSeconds,
     endSeconds,

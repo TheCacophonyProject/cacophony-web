@@ -63,9 +63,9 @@ import type {
   ApiDeviceResponse,
   MaskRegion,
 } from "@typedefs/api/device.js";
-import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
-import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" assert { type: "json" };
-import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" assert { type: "json" };
+import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" with { type: "json" };
+import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" with { type: "json" };
+import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" with { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";

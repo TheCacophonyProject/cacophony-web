@@ -65,11 +65,12 @@ sudo -i -u postgres psql cacophonytest -f /app/api/db-seed.sql
 echo "alias psqltest='sudo -i -u postgres psql cacophonytest'" > ~/.bashrc
 
 echo "---- Compiling JSON schemas ----"
-cd ../types && npm run generate-schemas
+cd ../types
+npm run generate-schemas
 cd ../api
 
 echo "---- Compiling typescript and starting module ----"
 ./node_modules/.bin/tsc
 #sleep 10000
 chmod a+x ./node_modules/.bin/tsc-watch
-./node_modules/.bin/tsc-watch --noClear --onSuccess "node --loader esm-module-alias/loader --no-warnings=ExperimentalWarnings --inspect=0.0.0.0:9229 ./Server.js --config=$CONFIG"
+./node_modules/.bin/tsc-watch --noClear --onSuccess "node --loader esm-module-alias/loader --inspect=0.0.0.0:9229 ./Server.js --config=$CONFIG"

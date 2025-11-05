@@ -1,4 +1,4 @@
-import Classifications from "@/classifications/classification.json" assert { type: "json" };
+import Classifications from "@/classifications/classification.json" with { type: "json" };
 import type { Classification } from "@typedefs/api/trackTag.js";
 
 const flattenNodes = (

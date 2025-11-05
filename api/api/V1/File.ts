@@ -34,7 +34,7 @@ import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware.js";
 import { AuthorizationError } from "@api/customErrors.js";
 import type { ApiAudiobaitFileResponse } from "@typedefs/api/file.js";
-import classification from "@/classifications/classification.json" assert { type: "json" };
+import classification from "@/classifications/classification.json" with { type: "json" };
 import type { User } from "@models/User.js";
 
 const models = await modelsInit();

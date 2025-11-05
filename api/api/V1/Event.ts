@@ -32,8 +32,8 @@ import {
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
 } from "../extract-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
-import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" assert { type: "json" };
-import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" assert { type: "json" };
+import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" with { type: "json" };
+import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" with { type: "json" };
 import type { EventDescription } from "@typedefs/api/event.js";
 import logger from "@log";
 import {

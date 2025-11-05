@@ -28,10 +28,10 @@ import type { Tag } from "@models/Tag.js";
 import type { Track } from "@models/Track.js";
 import { getTrackData, getTrackTagData, saveTrackData } from "@models/Track.js";
 import type { TrackTag } from "@models/TrackTag.js";
-import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" assert { type: "json" };
-import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
-import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json" assert { type: "json" };
-import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" assert { type: "json" };
+import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" with { type: "json" };
+import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" with { type: "json" };
+import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json" with { type: "json" };
+import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" with { type: "json" };
 import {
   HttpStatusCode,
   RecordingProcessingState,
@@ -63,7 +63,7 @@ import * as csv from "fast-csv";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
-import LabelPaths from "../../classifications/label_paths.json" assert { type: "json" };
+import LabelPaths from "../../classifications/label_paths.json" with { type: "json" };
 
 import {
   AuthorizationError,

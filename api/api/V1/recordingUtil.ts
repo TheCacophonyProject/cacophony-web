@@ -2240,13 +2240,6 @@ export async function sendEventAlerts(
   return alerts;
 }
 
-const compressString = (text: string): Promise<Buffer> => {
-  return new Promise((resolve) => {
-    const buf = new Buffer(text, "utf-8"); // Choose encoding for the string.
-    zlib.gzip(buf, (_, result) => resolve(result));
-  });
-};
-
 interface TrackData {
   start_s: number;
   end_s: number;

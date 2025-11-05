@@ -58,7 +58,7 @@ import {
 } from "../extract-middleware.js";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json" assert { type: "json" };
+import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json" with { type: "json" };
 import type { ApiGroupResponse } from "@typedefs/api/group.js";
 import {
   sendAddedToGroupNotificationEmail,

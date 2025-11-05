@@ -103,7 +103,7 @@ export default function (sequelize, DataTypes): DetailSnapshotStatic {
   // INSTANCE METHODS
   //-----------------
 
-  DetailSnapshot.prototype.getFile = async function () {
+  (DetailSnapshot.prototype as any).getFile = async function () {
     const fid = this.details.fileId;
     if (!fid) {
       return null;

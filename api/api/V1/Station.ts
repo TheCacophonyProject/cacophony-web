@@ -22,7 +22,7 @@ import {
   stringOf,
 } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" assert { type: "json" };
+import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" with { type: "json" };
 import { stationLocationHasChanged } from "@models/Group.js";
 import modelsInit from "@models/index.js";
 import util from "@api/V1/util.js";

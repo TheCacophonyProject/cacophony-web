@@ -80,7 +80,7 @@ export const saveTrackTagData = async (
     });
   }
   const key = `TrackTag/${trackTagId}`;
-  const body = await gzip(Buffer.from(JSON.stringify(updatedData), "utf-8"));
+  const body = await gzip(new TextEncoder().encode(JSON.stringify(updatedData)));
   if (client) {
     const length = body.length || 0; //"length" in body ? body.length : 0;
     const payload: PutObjectCommandInput = {
@@ -120,7 +120,7 @@ export const saveTrackData = async (
     ...newData,
   };
   if (Object.keys(updatedData).length !== 0) {
-    const body = await gzip(Buffer.from(JSON.stringify(updatedData), "utf-8"));
+    const body = await gzip(new TextEncoder().encode(JSON.stringify(updatedData)));
     const key = `Track/${trackId}`;
     if (client) {
       const length = body.length || 0; //"length" in body ? body.length : 0;
@@ -231,7 +231,7 @@ export default function (
 
   //add or replace a tag, such that this track only has 1 animal tag by this user
   //and no duplicate tags
-  Track.prototype.replaceTag = async function (
+  (Track.prototype as any).replaceTag = async function (
     tag: TrackTag,
     userData?: any,
   ): Promise<TrackTag | void> {
@@ -268,7 +268,7 @@ export default function (
   };
 
   // Update tag data
-  Track.prototype.updateTag = async function (
+  (Track.prototype as any).updateTag = async function (
     tagId: TrackTagId,
     data: TrackTagData,
   ): Promise<TrackTag | void> {
@@ -283,7 +283,7 @@ export default function (
 
   // Adds a tag to a track and checks if any alerts need to be sent. All trackTags
   // should be added this way
-  Track.prototype.addTag = async function (
+  (Track.prototype as any).addTag = async function (
     what: string,
     confidence: number,
     automatic: boolean,
@@ -315,7 +315,7 @@ export default function (
     return tag;
   };
   // Return a specific track tag for the track.
-  Track.prototype.getTrackTag = async function (trackTagId: TrackTagId) {
+  (Track.prototype as any).getTrackTag = async function (trackTagId: TrackTagId) {
     const trackTag = await models.TrackTag.findByPk(trackTagId);
     if (!trackTag) {
       return null;
@@ -329,7 +329,7 @@ export default function (
     return trackTag as TrackTag;
   };
 
-  Track.prototype.updateIsFiltered = async function () {
+  (Track.prototype as any).updateIsFiltered = async function () {
     const trackId = this.id;
     return sequelize.transaction(async function (t) {
       const track = await models.Track.findByPk(trackId, {
@@ -349,7 +349,7 @@ export default function (
   };
 
   // Archive Track for soft-delete
-  Track.prototype.archive = async function () {
+  (Track.prototype as any).archive = async function () {
     const trackId = this.id;
     return sequelize.transaction(async function (t) {
       const track = await models.Track.findByPk(trackId, {
@@ -372,7 +372,7 @@ export default function (
   };
 
   // Retrieve Track from Archive
-  Track.prototype.unarchive = async function () {
+  (Track.prototype as any).unarchive = async function () {
     const trackId = this.id;
     return sequelize.transaction(async function (t) {
       const track = await models.Track.findByPk(trackId, {
@@ -397,7 +397,7 @@ export default function (
   };
 
   // Archives tags for reprocessing
-  Track.prototype.archiveTags = async function () {
+  (Track.prototype as any).archiveTags = async function () {
     await models.TrackTag.update(
       {
         archivedAt: Date.now(),

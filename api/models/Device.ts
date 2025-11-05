@@ -609,14 +609,14 @@ order by hour;
   // INSTANCE METHODS
   //------------------
 
-  Device.prototype.getJwtDataValues = function () {
+  (Device.prototype as any).getJwtDataValues = function () {
     return {
       id: this.getDataValue("id"),
       _type: "device",
     };
   };
 
-  Device.prototype.comparePassword = function (password) {
+  (Device.prototype as any).comparePassword = function (password) {
     const device = this;
     return new Promise(function (resolve, reject) {
       bcrypt.compare(password, device.password, function (err, isMatch) {
@@ -630,7 +630,7 @@ order by hour;
   };
 
   // Will register as a new device
-  Device.prototype.reRegister = async function (
+  (Device.prototype as any).reRegister = async function (
     models: ModelsDictionary,
     newName: string,
     newGroup: Group,
@@ -880,7 +880,7 @@ order by hour;
     return newDevice;
   };
 
-  Device.prototype.updateHeartbeat = async function (
+  (Device.prototype as any).updateHeartbeat = async function (
     models: ModelsDictionary,
     nextHeartbeat: Date,
   ) {

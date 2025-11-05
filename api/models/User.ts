@@ -189,17 +189,17 @@ export default function (
   // INSTANCE METHODS
   //------------------
 
-  User.prototype.hasGlobalWrite = function () {
+  (User.prototype as any).hasGlobalWrite = function () {
     return UserGlobalPermission.Write === this.globalPermission;
   };
 
-  User.prototype.hasGlobalRead = function () {
+  (User.prototype as any).hasGlobalRead = function () {
     return [UserGlobalPermission.Read, UserGlobalPermission.Write].includes(
       this.globalPermission,
     );
   };
 
-  User.prototype.getWhereDeviceVisible = async function () {
+  (User.prototype as any).getWhereDeviceVisible = async function () {
     if (this.hasGlobalRead()) {
       return null;
     }
@@ -207,7 +207,7 @@ export default function (
     return { DeviceId: { [Op.in]: allDeviceIds } };
   };
 
-  User.prototype.getJwtDataValues = function () {
+  (User.prototype as any).getJwtDataValues = function () {
     const jwtPayload = {
       id: this.getDataValue("id"),
       _type: "user",
@@ -220,12 +220,12 @@ export default function (
 
   // Returns the groups that are associated with this user (via
   // GroupUsers).
-  User.prototype.getGroupsIds = async function (): Promise<GroupId[]> {
+  (User.prototype as any).getGroupsIds = async function (): Promise<GroupId[]> {
     const groups = await this.getGroups();
     return groups.map((g) => g.id);
   };
 
-  User.prototype.getDeviceIds = async function (): Promise<DeviceId[]> {
+  (User.prototype as any).getDeviceIds = async function (): Promise<DeviceId[]> {
     const devices = (await models.Device.findAll({
       where: {},
       include: [
@@ -254,7 +254,7 @@ export default function (
     return [];
   };
 
-  User.prototype.getStationIds = async function (): Promise<StationId[]> {
+  (User.prototype as any).getStationIds = async function (): Promise<StationId[]> {
     try {
       const stations = (await models.Station.findAll({
         where: {},
@@ -288,7 +288,7 @@ export default function (
     }
   };
 
-  User.prototype.comparePassword = function (
+  (User.prototype as any).comparePassword = function (
     password: string,
   ): Promise<boolean> {
     const user = this;
@@ -303,7 +303,7 @@ export default function (
     });
   };
 
-  User.prototype.resetPassword = async function (): Promise<boolean> {
+  (User.prototype as any).resetPassword = async function (): Promise<boolean> {
     return sendResetEmail(this, this.password);
   };
 

@@ -7,7 +7,7 @@ const server = {
 };
 import { fileURLToPath } from "url";
 import type {ServerConfig} from "@typedefs/api/serverConfig.js";
-import LoadedServerConfigSchema from "@schemas/api/serverConfig/LoadedServerConfig.schema.json" assert { type: "json" };
+import LoadedServerConfigSchema from "@schemas/api/serverConfig/LoadedServerConfig.schema.json" with { type: "json" };
 import {Ajv} from "ajv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,7 +39,7 @@ function getConfigPathFromArgs(strict: boolean = false): string {
 export async function loadConfig(configPath: string): Promise<ServerConfig> {
   configPath = path.resolve(__dirname, configPath);
   const parts = configPath.split(".");
-
+  parts.pop();
   // Try different file extensions until we find one that exists
   const possibleExtensions = ["mjs", "js"];
   const configBase = parts.join(".");

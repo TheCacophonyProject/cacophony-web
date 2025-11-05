@@ -22,7 +22,7 @@ import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
-import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" assert { type: "json" };
+import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" with { type: "json" };
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredAlertById,

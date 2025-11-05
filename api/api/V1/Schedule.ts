@@ -30,7 +30,7 @@ import {
 } from "@api/extract-middleware.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json" assert { type: "json" };
+import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json" with { type: "json" };
 import type {
   ApiScheduleResponse,
   ScheduleConfig,

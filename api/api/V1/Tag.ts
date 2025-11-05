@@ -28,7 +28,7 @@ import {
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
-import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
+import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" with { type: "json" };
 import { ClientError } from "@api/customErrors.js";
 import { addTag } from "@api/V1/recordingUtil.js";
 

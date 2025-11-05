@@ -41,9 +41,9 @@ import {
   parseJSONField,
 } from "../extract-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
-import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json" assert { type: "json" };
-import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json" assert { type: "json" };
-import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json" assert { type: "json" };
+import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json" with { type: "json" };
+import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json" with { type: "json" };
+import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json" with { type: "json" };
 import {
   anyOf,
   booleanOf,

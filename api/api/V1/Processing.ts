@@ -12,8 +12,8 @@ import {
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
-import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" assert { type: "json" };
+import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
+import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" with { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { AuthorizationError, ClientError } from "../customErrors.js";
