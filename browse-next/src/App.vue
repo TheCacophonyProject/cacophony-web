@@ -263,9 +263,10 @@ const pollFrameTimes = () => {
 </style>
 
 <style lang="less" scoped>
+@import "./assets/less/breakpoints";
 #main-wrapper {
   position: relative;
-  @media (min-width: 639px) {
+  @media (min-width: @breakpoint-xs-max) {
     padding-left: var(--global-side-nav-collapsed-width);
   }
   max-height: 100svh;
