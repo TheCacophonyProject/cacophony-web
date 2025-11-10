@@ -456,7 +456,7 @@ onMounted(() => {
     }
   }
 
-  @media screen and (@breakpoint-sm) {
+  @media screen and (min-width: @breakpoint-sm) {
     &:hover,
     &.pinned {
       transform: translateX(0);
