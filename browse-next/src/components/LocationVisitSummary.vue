@@ -144,7 +144,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
+@import "../assets/less/typography.less";
 
 .map {
   height: 150px;

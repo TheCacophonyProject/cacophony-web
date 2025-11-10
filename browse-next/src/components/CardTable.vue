@@ -296,36 +296,40 @@ const displayedItems = computed<{
 </script>
 
 <style scoped lang="less">
-@import "../assets/mixins.less";
-@import "../assets/font-sizes.less";
+@import "../assets/less/elevation.less";
+@import "../assets/less/typography.less";
 
 .card-table {
   width: 100%;
   thead {
-    background: #fafafa;
-    color: #888;
+    //background: #fafafa;
+    //color: #888;
     text-transform: capitalize;
-    border-top: 0.5px solid white;
-    border-bottom: 1px solid #eee;
-  }
-  thead,
-  tbody {
-    font-weight: 500;
-    .fs-7();
+    border-bottom: 1px solid var(--border-color-light);
+    tr:hover {
+      background: transparent;
+    }
   }
   th {
     user-select: none;
+    font-weight: var(--font-weight--medium);
     &.sortable {
       cursor: pointer;
     }
+/*    &:first-of-type {
+      padding-left: 0 !important;
+    }*/
   }
   tr {
     user-select: none;
-    &:nth-child(even) {
-      background: #fafafa;
+    &:not(:last-of-type) {
+      border-bottom: 1px solid var(--border-color-light);
     }
     &.highlighted {
       background: #ddd;
+    }
+    &:hover {
+      background: #fafafa;
     }
   }
   .card-table-card {

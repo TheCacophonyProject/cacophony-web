@@ -71,14 +71,6 @@ onMounted(() => {
   setTimeout(pollFrameTimes, 1000);
 });
 
-onBeforeMount(() => {
-  // Override bootstrap CSS variables.
-  // This has to appear after the original bootstrap CSS variable declarations in the DOM to take effect.
-  const styleOverrides = document.createElement("style");
-  styleOverrides.innerText = `:root { --bs-body-font-family: "Roboto", sans-serif; } body { font-family: var(--bs-body-font-family); }`;
-  document.body.insertBefore(styleOverrides, document.body.firstChild);
-});
-
 const frameTimes: number[] = [];
 const pollFrameTimes = () => {
   frameTimes.push(performance.now());
@@ -198,17 +190,16 @@ const pollFrameTimes = () => {
 </template>
 
 <style lang="less">
+@import "./assets/less/base.less";
+
 :root {
-  --bs-body-font-size: 1rem;
-  --bs-btn-disabled-border-color: transparent;
-  --bs-btn-focus-border-color: transparent;
-  --bs-btn-active-border-color: transparent;
   // Multiselect tag colour
   --ms-tag-bg: var(--bs-secondary);
   --ms-option-bg-selected: var(--bs-secondary);
-  --global-side-nav-collapsed-width: 3.5rem;
-  --global-side-nav-expanded-width: 20rem;
+  --global-side-nav-collapsed-width: calc(var(--grid--base) * 19); // 76px
+  --global-side-nav-expanded-width: calc(var(--grid--base) * 68); // 272px
 }
+
 #app {
   display: flex;
   flex-direction: column;
@@ -218,7 +209,6 @@ const pollFrameTimes = () => {
 #unimplemented-modal {
   z-index: 20000;
 }
-@import "./assets/font-sizes.less";
 
 .dropdown-btn {
   height: 100%;

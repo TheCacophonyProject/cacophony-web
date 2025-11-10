@@ -277,57 +277,65 @@ const changePassword = async () => {
 </script>
 <template>
   <section-header>Account Settings</section-header>
-  <p>Your details across the Cacophony Monitoring Platform. These settings don't affect projects.</p>
-
-  <section-card>
-    <template #header-title>
-      My details
-    </template>
-    <div>
-      <div class="account-settings-list d-flex justify-content-between align-items-center">
-        <strong>My display name</strong>
-        <span data-cy="user display name">{{ currentUser?.userName }}</span>
-        <button
-            type="button"
-            class="btn ms-2"
-            data-cy="change display name button"
-            @click="() => (changeDisplayNameModal = true)"
-        >
-          <font-awesome-icon icon="pencil-alt" size="xs" />
-        </button>
-      </div>
+  <div class="row">
+    <div class="col-lg-3">
+      <h3 class="h4 mt-0 mb-2 my-md-3">User Settings</h3>
+      <p class="text-secondary">Your details across the Cacophony Monitoring Platform. These settings don't affect projects.</p>
     </div>
-    <div>
-      <span>My email (you use this when you sign in)</span>
-      <div class="d-flex align-items-center">
-        <span cy-data="user email">{{ currentUser?.email }}</span>
-        <button
-            type="button"
-            class="btn ms-2"
-            data-cy="change email address button"
-            @click.prevent="() => (changeEmailModal = true)"
-        >
-          <font-awesome-icon icon="pencil-alt" size="xs" />
-        </button>
-      </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title>
+          My details
+        </template>
+        <div class="account-settings-list row py-2 d-flex align-items-center">
+          <span class="col-sm-3 fw-medium">Name</span>
+          <div class="d-flex align-items-center col-sm-9">
+            <span data-cy="user display name">{{ currentUser?.userName }}</span>
+            <button
+                type="button"
+                class="btn ms-2"
+                data-cy="change display name button"
+                @click="() => (changeDisplayNameModal = true)"
+            >
+              <font-awesome-icon icon="pencil-alt" size="xs" />
+            </button>
+          </div>
+        </div>
+        <div class="account-settings-list row py-2 d-flex align-items-center">
+          <span class="col-sm-3 fw-medium">Email address</span>
+          <div class="col-sm-9 d-flex align-items-center">
+            <span cy-data="user email">{{ currentUser?.email }}</span>
+            <button
+                type="button"
+                class="btn ms-2"
+                data-cy="change email address button"
+                @click.prevent="() => (changeEmailModal = true)"
+            >
+              <font-awesome-icon icon="pencil-alt" size="xs" />
+            </button>
+          </div>
+        </div>
+        <!-- New password change section -->
+        <div class="account-settings-list py-2 d-flex align-items-center">
+          <span class="col-sm-3 fw-medium">Password</span>
+          <div class="col-sm-9 d-flex align-items-center">
+            <button
+                type="button"
+                class="btn btn-light ms-2"
+                data-cy="change password button"
+                @click="() => (changePasswordModal = true)"
+            >
+              <font-awesome-icon icon="pencil-alt" size="xs" class="me-2" />Change
+            </button>
+          </div>
+        </div>
+      </section-card>
     </div>
-    <!-- New password change section -->
-    <div>
-      <span>Change password</span>
-      <button
-          type="button"
-          class="btn ms-2"
-          data-cy="change password button"
-          @click="() => (changePasswordModal = true)"
-      >
-        <font-awesome-icon icon="pencil-alt" size="xs" />
-      </button>
-    </div>
-  </section-card>
+  </div>
 
   <b-modal
     v-model="changeDisplayNameModal"
-    title="Change your display name"
+    title="Change name"
     id="change-display-name"
     @ok="updateUserDisplayName"
     @hidden="resetFormFields"
@@ -347,20 +355,25 @@ const changePassword = async () => {
       >
         {{ userUpdateErrorMessagesDisplay }}
       </b-alert>
-      <b-form-input
-        type="text"
-        v-model="userName.value"
-        @blur="() => (userName.touched = true)"
-        :state="needsValidationAndIsValidUserName"
-        aria-label="New display name"
-        placeholder="new display name"
-        data-cy="display name"
-        :disabled="userUpdateInProgress"
-        required
-      />
+      <b-form-group label="Name"
+        description="The name displayed in your projects and used to identify you."
+      >
+        <b-form-input
+          id="name"
+          type="text"
+          v-model="userName.value"
+          @blur="() => (userName.touched = true)"
+          :state="needsValidationAndIsValidUserName"
+          aria-label="New display name"
+          placeholder="New display name"
+          data-cy="display name"
+          :disabled="userUpdateInProgress"
+          required
+        />
+      </b-form-group>
       <b-form-invalid-feedback :state="needsValidationAndIsValidUserName">
         <span v-if="userNameIsTooShort">
-          Username must be at least 3 characters
+          Username must be at least 3 characters.
         </span>
         <span v-else-if="!isValidName(userName.value.trim())">
           Username must contain at least one letter (either case). It can also
@@ -376,7 +389,7 @@ const changePassword = async () => {
   
   <b-modal
     v-model="changeEmailModal"
-    title="Change your account email address"
+    title="Change email address"
     @ok="updateUserEmailAddress"
     id="change-email-address"
     @hidden="resetFormFields"
@@ -396,20 +409,24 @@ const changePassword = async () => {
       >
         {{ userUpdateErrorMessagesDisplay }}
       </b-alert>
-      <b-form-input
-        type="text"
-        v-model="userEmailAddress.value"
-        @blur="() => (userEmailAddress.touched = true)"
-        :state="needsValidationAndIsValidEmailAddress"
-        aria-label="New email address"
-        placeholder="new email address"
-        data-cy="email address"
-        :disabled="userUpdateInProgress"
-        required
-      />
+      <b-form-group label="Email"
+          description="The email you use to sign into Cacophony."
+      >
+        <b-form-input
+          type="text"
+          v-model="userEmailAddress.value"
+          @blur="() => (userEmailAddress.touched = true)"
+          :state="needsValidationAndIsValidEmailAddress"
+          aria-label="New email address"
+          placeholder="New email address"
+          data-cy="email address"
+          :disabled="userUpdateInProgress"
+          required
+        />
+      </b-form-group>
       <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
         <span v-if="emailInUse">{{ emailFieldValidationErrorMessage }}</span>
-        <span v-else>Enter a valid email address</span>
+        <span v-else>Enter a valid email address.</span>
       </b-form-invalid-feedback>
     </b-form>
   </b-modal>
@@ -449,6 +466,7 @@ const changePassword = async () => {
           data-cy="current-password"
           :disabled="userUpdateInProgress"
           required
+          class="mb-3"
         />
       </b-form-group>
       
@@ -463,6 +481,7 @@ const changePassword = async () => {
           data-cy="new-password"
           :disabled="userUpdateInProgress"
           required
+          class="mb-3"
         />
         <b-form-invalid-feedback v-if="showPasswordErrors && !isValidPassword">
           Password must be at least 8 characters long and contain uppercase, lowercase and digit
@@ -500,3 +519,11 @@ const changePassword = async () => {
   <!--    <li>Global transactional email settings</li>-->
   <!--  </ul>-->
 </template>
+
+<style scoped lang="less">
+.account-settings-list {
+  &:not(:last-of-type) {
+    border-bottom: 1px solid #eee;
+  }
+}
+</style>

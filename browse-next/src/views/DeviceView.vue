@@ -261,8 +261,8 @@ const _deviceType = computed<string>(() => {
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
-@import "../assets/mixins.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
 .device-view-header {
   border-bottom: 2px solid #e1e1e1;

@@ -830,7 +830,7 @@ onMounted(async () => {
   </div>
 </template>
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
+@import "../assets/less/typography.less";
 
 .details-toggle-btn,
 .details-toggle-btn:active,

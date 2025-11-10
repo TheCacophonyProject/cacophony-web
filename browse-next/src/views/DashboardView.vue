@@ -443,10 +443,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       <!--        v-if="currentSelectedProjectHasAudioAndThermal"-->
       <!--      />-->
       <div
-        class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
+        class="scope-filters d-flex align-items-sm-center flex-row mb-3 mb-sm-0"
       >
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span>Visits&nbsp;</span>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-secondary">Visits in the last</span>
           <!--          <select-->
           <!--            class="form-select form-select-sm text-end"-->
           <!--            v-model="visitsOrRecordings"-->
@@ -455,8 +455,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
           <!--            <option>recordings</option>-->
           <!--          </select>-->
         </div>
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span> in the last </span>
+        <div class="d-flex align-items-center justify-content-between">
           <select
             class="form-select form-select-sm text-end"
             v-model="timePeriodDays"
@@ -479,7 +478,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       </div>
     </div>
   </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
     Species summary
   </h2>
   <horizontal-overflow-carousel
@@ -490,22 +489,22 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       <div
         v-for="[key, val] in speciesSummarySorted"
         :key="key"
-        class="d-flex flex-row species-summary-item align-items-center"
+        class="species-summary__item d-flex flex-row align-items-center p-2"
         @click="showVisitsForTag(key)"
       >
         <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
         <div
           class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
         >
-          <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
-          <div class="species-name lh-sm small text-capitalize">
+          <div class="species-summary__item__count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
+          <div class="species-summary__item__name lh-sm text-capitalize">
             {{ displayLabelForClassificationLabel(key) }}
           </div>
         </div>
       </div>
     </div>
   </horizontal-overflow-carousel>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
     Visits summary
   </h2>
   <div class="d-md-flex flex-md-row">
@@ -528,7 +527,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       "
     />
   </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
     Locations summary
   </h2>
   <horizontal-overflow-carousel
@@ -600,29 +599,8 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   />
 </template>
 <style lang="less" scoped>
-@import "../assets/font-sizes.less";
-
-.group-name {
-  text-transform: uppercase;
-  color: #aaa;
-  font-family: "Roboto Medium", "Roboto Regular", Roboto, sans-serif;
-  font-weight: 500;
-  // font-size: var(--bs-body-font-size);
-  // FIXME - Use modified bs-body-font-size?
-  font-size: 14px;
-}
-h1 {
-  font-family: "Roboto Bold", "Roboto Regular", "Roboto", sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: #444;
-}
-h2 {
-  font-family: "Roboto Medium", "Roboto Regular", "Roboto", sans-serif;
-  font-weight: 500;
-  color: #444;
-  font-size: 17px;
-}
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 .header-container {
   @media screen and (min-width: 576px) {
     position: relative;
@@ -636,8 +614,6 @@ h2 {
   }
 }
 .scope-filters {
-  font-size: 14px;
-  color: #999;
   .form-select {
     background-color: unset;
     border: 0;
@@ -648,95 +624,54 @@ h2 {
   }
 }
 
+.dashboard-subhead {
+  margin-bottom: var(--spacing--sm);
+}
+
 .species-summary-container {
   @media screen and (min-width: 576px) {
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
     background: white;
+    .standard-shadow();
   }
 }
 
 .species-summary {
-  min-height: 68px;
   user-select: none;
-  .species-summary-item {
-    border: 1px solid #ccc;
-    // From card
-    border-radius: unset;
-    //border-width: 0;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-    @media screen and (min-width: 576px) {
-      box-shadow: unset;
-      border-left-width: 0;
-      border-bottom-width: 0;
-      border-top-width: 0;
-      border-right-width: 1px;
-      margin: unset;
-      &:last-child {
-        border-right-width: 0;
-      }
-    }
-    //
+  gap: var(--spacing--xxs);
 
-    &:nth-child(even) {
-      margin: 0 0 4px 2px;
-    }
-    &:nth-child(odd) {
-      margin: 0 2px 4px 0;
-    }
-    height: 47px;
-    @media screen and (min-width: 576px) {
-      height: unset;
-      &:nth-child(even) {
-        margin: unset;
-      }
-      &:nth-child(odd) {
-        margin: unset;
-      }
-    }
+  &__item {
+    background: #fff;
+    //height: 47px;
     cursor: pointer;
-    user-select: none;
-    text-decoration: none;
-    color: inherit;
-    padding: 2px;
-    width: calc(50% - 2px);
-    //min-width: 130px; // TODO @media breakpoints
-    transition: background-color 0.2s ease-in-out;
-
+    @media screen and (max-width: 575px) {
+      //flex-basis: calc(50% - (var(--spacing--xxs)));
+      flex: 0 0 calc(50% - calc(var(--spacing--xxs) / 2));
+      border: 1px solid var(--border-color-light);
+    }
+    @media screen and (min-width: 576px) {
+      border-right: 1px solid var(--border-color-light);
+      transition: background-color 0.2s ease-in-out;
+      &:last-child {
+        border-right: none;
+      }
+      flex: 1 1 128px;
+      //min-width: 130px; // TODO @media breakpoints
+    }
     &:hover {
       background-color: #ececec;
     }
-    @media screen and (min-width: 576px) {
-      //width: unset;
-      margin: unset;
-    }
-
-    .species-count {
-      font-weight: 500;
-    }
-    .species-name,
-    .species-count {
-      .fs-7();
-    }
-    @media screen and (min-width: 576px) {
-      .species-count {
-        .fs-4();
-      }
-      .species-name {
-        .fs-6();
+    &__count {
+      font-weight: var(--font-weight--medium);
+      @media screen and (min-width: 576px) {
+        font-size: var(--font-size--h3);
       }
     }
   }
 }
 
-.dashboard-subhead {
-  .fs-6();
-  @media screen and (min-width: 576px) {
-    font-size: unset;
-  }
-}
 </style>
 <style lang="less">
-.species-summary-item {
+.species-summary__item {
   > img {
     min-width: 24px;
     min-height: 24px;

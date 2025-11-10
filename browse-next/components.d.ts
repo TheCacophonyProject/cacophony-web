@@ -39,6 +39,7 @@ declare module 'vue' {
     BPopover: typeof import('bootstrap-vue-next')['BPopover']
     BProgress: typeof import('bootstrap-vue-next')['BProgress']
     BSpinner: typeof import('bootstrap-vue-next')['BSpinner']
+    BTooltip: typeof import('bootstrap-vue-next')['BTooltip']
     Card: typeof import('./src/components/Card.vue')['default']
     CardTable: typeof import('./src/components/CardTable.vue')['default']
     CptvPlayer: typeof import('./src/components/cptv-player/CptvPlayer.vue')['default']

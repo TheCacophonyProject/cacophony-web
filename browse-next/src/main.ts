@@ -5,6 +5,8 @@ import App from "./App.vue";
 import router from "./router";
 import { createBootstrap } from "bootstrap-vue-next";
 import FontAwesomeIcon from "./font-awesome-icons";
+import materialSymbolsPlugin from '@dbetka/vue-material-symbols';
+/*import 'material-symbols/index.css';*/
 import {
   currentSelectedProject,
   currentUser,
@@ -36,6 +38,7 @@ const app = createApp(App);
 app.component("font-awesome-icon", FontAwesomeIcon);
 app.use(router);
 app.use(createBootstrap());
+app.use(materialSymbolsPlugin);
 
 app.provide(selectedProjectDevices, DevicesForCurrentProject);
 app.provide(allHistoricLocations, LocationsForCurrentProject);

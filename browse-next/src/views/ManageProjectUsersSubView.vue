@@ -20,6 +20,7 @@ import {
   currentSelectedProject as selectedProject,
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
+import SectionCard from "@/components/SectionCard.vue";
 const projectUsers = ref<LoadedResource<ApiProjectUserResponse[]>>(null);
 const loadingUsers = ref(false);
 const fallibleCurrentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
@@ -206,109 +207,112 @@ const permissionsOptions = computed(() => [
 ]);
 </script>
 <template>
-  <h1 class="d-none d-md-block h5">Users</h1>
-  <div
-    class="d-flex flex-column flex-md-row flex-fill mb-3 justify-content-md-between"
-  >
-    <p class="">
-      Manage the users associated with {{ currentSelectedProject.groupName }}.
-    </p>
-    <div class="d-flex justify-content-end ms-md-5">
-      <button
-        type="button"
-        class="btn btn-outline-secondary ms-2"
-        @click.stop.prevent="() => (showInviteUserModal = true)"
-        data-cy="invite someone to project button"
-      >
-        <font-awesome-icon icon="envelope" />
-        <span class="ps-2">Invite someone</span>
-      </button>
+  <div class="row">
+    <div class="col-lg-3">
+      <h3 class="h4 my-3">Project users</h3>
+      <p class="text-secondary">Manage the users associated with {{ currentSelectedProject.groupName }}.
+      </p>
     </div>
-  </div>
-  <div
-    v-if="loadingUsers"
-    class="d-flex align-items-center justify-content-center"
-  >
-    <b-spinner variant="secondary" />
-  </div>
-  <card-table :items="tableItems" compact v-else :max-card-width="730">
-    <template #card="{ card }">
-      <div class="d-flex align-items-center justify-content-between">
-        <div>
-          <span>{{ card.user.value.userName }}</span>
-          <b-badge
-            v-if="userIsCurrentUser(card.user.value)"
-            variant="secondary"
-            class="ms-2 fs-8"
-            >You</b-badge
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title>
+          Users
+        </template>
+        <template #header-action>
+          <button
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              @click.stop.prevent="() => (showInviteUserModal = true)"
+              data-cy="invite someone to project button"
           >
-          <b-badge
-            v-else-if="card.user.value.pending === 'requested'"
-            variant="primary"
-            class="ms-2 fs-8"
-            >Wants to join</b-badge
-          >
-          <b-badge
-            v-else-if="card.user.value.pending === 'invited'"
-            class="ms-2 fs-8"
-            variant="warning"
-            >Invited</b-badge
-          >
+            <font-awesome-icon icon="envelope" />
+            <span class="ps-2">Invite someone</span>
+          </button>
+        </template>
+        <div
+            v-if="loadingUsers"
+            class="d-flex align-items-center justify-content-center"
+        >
+          <b-spinner variant="secondary" />
         </div>
-        <two-step-action-button
-          v-if="card.user.value.pending === 'requested'"
-          class="text-end"
-          :action="() => acceptPendingUser(card.user.value)"
-          icon="check"
-          variant="outline-secondary"
-          :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
-          label="Approve request"
-          classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
-          alignment="right"
-        />
-      </div>
-      <div
-        class="d-flex justify-content-between align-items-center mt-2 flex-row-reverse"
-      >
-        <button
-          type="button"
-          class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
-          @click.prevent="() => editUserAdmin(card.permissions.value)"
-          :disabled="
+        <card-table :items="tableItems" compact v-else :max-card-width="730">
+          <template #card="{ card }">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <span>{{ card.user.value.userName }}</span>
+                <b-badge
+                    v-if="userIsCurrentUser(card.user.value)"
+                    variant="secondary"
+                    class="ms-2 fs-8"
+                >You</b-badge
+                >
+                <b-badge
+                    v-else-if="card.user.value.pending === 'requested'"
+                    variant="primary"
+                    class="ms-2 fs-8"
+                >Wants to join</b-badge
+                >
+                <b-badge
+                    v-else-if="card.user.value.pending === 'invited'"
+                    class="ms-2 fs-8"
+                    variant="warning"
+                >Invited</b-badge
+                >
+              </div>
+              <two-step-action-button
+                  v-if="card.user.value.pending === 'requested'"
+                  class="text-end"
+                  :action="() => acceptPendingUser(card.user.value)"
+                  icon="check"
+                  variant="outline-secondary"
+                  :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
+                  label="Approve request"
+                  classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
+                  alignment="right"
+              />
+            </div>
+            <div
+                class="d-flex justify-content-between align-items-center mt-2 flex-row-reverse"
+            >
+              <button
+                  type="button"
+                  class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                  @click.prevent="() => editUserAdmin(card.permissions.value)"
+                  :disabled="
             isLastOwnerUser(card.permissions.value) &&
             isLastAdminUser(card.permissions.value)
           "
-        >
-          <font-awesome-icon icon="pencil-alt" />
-          <span class="ps-2">Change permissions</span>
-        </button>
-        <div class="d-flex">
-          <div
-            class="fs-7 text-secondary d-flex align-items-center me-2"
-            v-if="card.permissions.value.admin"
-          >
-            <font-awesome-icon icon="check-circle" class="fs-6" />
-            <span class="ps-2">admin</span>
-          </div>
-          <div
-            class="fs-7 text-secondary d-flex align-items-center"
-            v-if="card.permissions.value.owner"
-          >
-            <font-awesome-icon icon="check-circle" class="fs-6" />
-            <span class="ps-2">owner</span>
-          </div>
-        </div>
-      </div>
-      <div class="d-flex justify-content-end mt-2">
-        <two-step-action-button
-          class="text-end"
-          :classes="['fs-7', 'text-nowrap', 'ms-2']"
-          :action="() => removeUser(card._deleteAction.value)"
-          icon="trash-can"
-          :disabled="isLastAdminUser(card._deleteAction.value)"
-          label="Remove user"
-          variant="outline-secondary"
-          :confirmation-label="
+              >
+                <font-awesome-icon icon="pencil-alt" />
+                <span class="ps-2">Change permissions</span>
+              </button>
+              <div class="d-flex">
+                <div
+                    class="fs-7 text-secondary d-flex align-items-center me-2"
+                    v-if="card.permissions.value.admin"
+                >
+                  <font-awesome-icon icon="check-circle" class="fs-6" />
+                  <span class="ps-2">admin</span>
+                </div>
+                <div
+                    class="fs-7 text-secondary d-flex align-items-center"
+                    v-if="card.permissions.value.owner"
+                >
+                  <font-awesome-icon icon="check-circle" class="fs-6" />
+                  <span class="ps-2">owner</span>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex justify-content-end mt-2">
+              <two-step-action-button
+                  class="text-end"
+                  :classes="['fs-7', 'text-nowrap', 'ms-2']"
+                  :action="() => removeUser(card._deleteAction.value)"
+                  icon="trash-can"
+                  :disabled="isLastAdminUser(card._deleteAction.value)"
+                  label="Remove user"
+                  variant="btn-light"
+                  :confirmation-label="
             userIsCurrentUser(card._deleteAction.value)
               ? 'Leave group'
               : card._deleteAction.value.pending === 'requested'
@@ -317,81 +321,81 @@ const permissionsOptions = computed(() => [
                   ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
                   : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
           "
-          alignment="right"
-        />
-      </div>
-    </template>
-    <template #user="{ cell }">
-      <div class="d-flex align-items-center">
-        <div>
-          <span class="text-nowrap">{{ cell.value.userName }}</span>
-          <b-badge
-            v-if="userIsCurrentUser(cell.value)"
-            variant="secondary"
-            class="ms-2 fs-8"
-            >You</b-badge
-          >
-          <b-badge
-            v-else-if="cell.value.pending === 'requested'"
-            variant="primary"
-            class="ms-2 fs-8"
-            >Wants to join</b-badge
-          >
-          <b-badge
-            v-else-if="cell.value.pending === 'invited'"
-            class="ms-2 fs-8"
-            variant="warning"
-            >Invited</b-badge
-          >
-        </div>
-        <two-step-action-button
-          v-if="cell.value.pending === 'requested'"
-          class="text-end"
-          :action="() => acceptPendingUser(cell.value)"
-          icon="check"
-          variant="outline-secondary"
-          :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into project`"
-          label="Approve request"
-          :classes="['fs-7', 'text-nowrap', 'ms-2']"
-          alignment="centered"
-        />
-      </div>
-    </template>
-    <template #permissions="{ cell }">
-      <div
-        class="fs-7 text-secondary d-flex align-items-center"
-        v-if="cell.value.admin"
-      >
-        <font-awesome-icon icon="check-circle" class="fs-6" />
-        <span class="ps-2">admin</span>
-      </div>
+                  alignment="right"
+              />
+            </div>
+          </template>
+          <template #user="{ cell }">
+            <div class="d-flex align-items-center">
+              <div>
+                <span class="text-nowrap">{{ cell.value.userName }}</span>
+                <b-badge
+                    v-if="userIsCurrentUser(cell.value)"
+                    variant="secondary"
+                    class="ms-2 fs-8"
+                >You</b-badge
+                >
+                <b-badge
+                    v-else-if="cell.value.pending === 'requested'"
+                    variant="primary"
+                    class="ms-2 fs-8"
+                >Wants to join</b-badge
+                >
+                <b-badge
+                    v-else-if="cell.value.pending === 'invited'"
+                    class="ms-2 fs-8"
+                    variant="warning"
+                >Invited</b-badge
+                >
+              </div>
+              <two-step-action-button
+                  v-if="cell.value.pending === 'requested'"
+                  class="text-end"
+                  :action="() => acceptPendingUser(cell.value)"
+                  icon="check"
+                  variant="outline-secondary"
+                  :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into project`"
+                  label="Approve request"
+                  :classes="['fs-7', 'text-nowrap', 'ms-2']"
+                  alignment="centered"
+              />
+            </div>
+          </template>
+          <template #permissions="{ cell }">
+            <div
+                class="fs-7 text-secondary d-flex align-items-center"
+                v-if="cell.value.admin"
+            >
+              <font-awesome-icon icon="check-circle" class="fs-6" />
+              <span class="ps-2">admin</span>
+            </div>
 
-      <div
-        class="fs-7 text-secondary d-flex align-items-center ms-3"
-        v-if="cell.value.owner"
-      >
-        <font-awesome-icon icon="check-circle" class="fs-6" />
-        <span class="ps-2">owner</span>
-      </div>
-      <button
-        type="button"
-        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-3"
-        @click.prevent="() => editUserAdmin(cell.value)"
-        :disabled="isLastOwnerUser(cell.value) && isLastAdminUser(cell.value)"
-      >
-        <font-awesome-icon icon="pencil-alt" />
-        <span class="ps-2 change-permissions-btn-text">Change permissions</span>
-      </button>
-    </template>
-    <template #_deleteAction="{ cell }">
-      <two-step-action-button
-        class="text-end"
-        :classes="['fs-7', 'text-nowrap', 'ms-2']"
-        variant="outline-secondary"
-        :action="() => removeUser(cell.value)"
-        icon="trash-can"
-        :disabled="isLastAdminUser(cell.value)"
-        :confirmation-label="
+            <div
+                class="fs-7 text-secondary d-flex align-items-center ms-3"
+                v-if="cell.value.owner"
+            >
+              <font-awesome-icon icon="check-circle" class="fs-6" />
+              <span class="ps-2">owner</span>
+            </div>
+            <button
+                type="button"
+                class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-3"
+                @click.prevent="() => editUserAdmin(cell.value)"
+                :disabled="isLastOwnerUser(cell.value) && isLastAdminUser(cell.value)"
+            >
+              <font-awesome-icon icon="pencil-alt" />
+              <span class="ps-2 change-permissions-btn-text">Change permissions</span>
+            </button>
+          </template>
+          <template #_deleteAction="{ cell }">
+            <two-step-action-button
+                class="text-end"
+                :classes="['fs-7', 'text-nowrap', 'ms-2']"
+                variant="outline-secondary"
+                :action="() => removeUser(cell.value)"
+                icon="trash-can"
+                :disabled="isLastAdminUser(cell.value)"
+                :confirmation-label="
           userIsCurrentUser(cell.value)
             ? 'Leave group'
             : cell.value.pending === 'requested'
@@ -400,10 +404,14 @@ const permissionsOptions = computed(() => [
                 ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
                 : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
         "
-        alignment="right"
-      />
-    </template>
-  </card-table>
+                alignment="right"
+            />
+          </template>
+        </card-table>
+      </section-card>
+    </div>
+  </div>
+
   <project-invite-modal
     v-model="showInviteUserModal"
     @invited="loadProjectUsers"

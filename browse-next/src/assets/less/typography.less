@@ -1,0 +1,99 @@
+:root {
+  --font-family: Lexend, sans-serif;
+  --font-size--h1: 1.5rem; // 24px
+  --font-size--h2: 1.3125rem; // 21px
+  --font-size--h3: 1.125rem; // 18px
+  --font-size--h4: 1rem; // 16px
+  --font-size--h5: 0.875rem; // 14px
+  --font-size--md: 0.875rem; // 14px
+  --font-size--sm: 0.75rem; //12px;
+
+  --font-weight--regular: 350;
+  --font-weight--medium: 450;
+  --font-weight--semilbold: 550;
+  --font-weight--bold: 650;
+
+  --line-height--lg: 1.6;
+  --line-height--md: 1.4;
+  --line-height--sm: 1.2;
+}
+
+/* Headings */
+
+.h1 {
+  font-weight: var(--font-weight--bold);
+  @media screen and (max-width: 575px) {
+    font-size: var(--font-size--h3);
+  }
+  @media screen and (min-width: 576px) {
+    font-size: var(--font-size--h1);
+  }
+}
+
+.h2 {
+  font-size: var(--font-size--h2);
+}
+
+.h3 {
+  font-size: var(--font-size--h3);
+}
+
+.h4 {
+  font-weight: var(--font-weight--semilbold);
+  @media screen and (max-width: 575px) {
+    font-size: var(--font-size--h5);
+  }
+  @media screen and (min-width: 576px) {
+    font-size: var(--font-size--h4);
+  }
+}
+
+.h5 {
+  font-size: var(--font-size--h5);
+}
+
+/* Font sizes only */
+
+.fs-1 {
+  font-size: var(--font-size--h1);
+}
+.fs-2 {
+  font-size: var(--font-size--h2);
+}
+.fs-3 {
+  font-size: var(--font-size--h3);
+}
+.fs-4 {
+  font-size: var(--font-size--h4);
+}
+.fs-5 {
+  font-size: var(--font-size--h5);
+}
+.fs-6 {
+  font-size: var(--font-size--md);
+}
+/*.fw-bold {
+  font-weight: 500 !important;
+}*/
+.fs-7 {
+  font-size: var(--font-size--md);
+}
+.fs-8 {
+  font-size: var(--font-size--sm);
+}
+.fs-9 {
+  font-size: var(--font-size--sm);
+}
+
+
+/*
+10px = 0.625rem
+12px = 0.75rem
+14px = 0.875rem
+16px = 1rem (base)
+18px = 1.125rem
+20px = 1.25rem
+24px = 1.5rem
+30px = 1.875rem
+32px = 2rem
+*/

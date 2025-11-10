@@ -2198,8 +2198,8 @@ const inlineModal = ref<boolean>(false);
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
-@import "../assets/mixins.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
 .overflow-x-hidden {
   overflow-x: hidden;
