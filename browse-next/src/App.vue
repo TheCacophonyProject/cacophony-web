@@ -276,7 +276,7 @@ const pollFrameTimes = () => {
 }
 
 #main-content {
-  background: #f6f6f6;
+  background: var(--app-bg-color);
   width: 100%;
   overflow-y: auto;
   transition: margin-left 0.2s;
@@ -292,13 +292,11 @@ main {
 }
 .account-setup {
   @media (min-width: 768px) {
-    background: #95a5a6;
+    background: var(--app-bg-color);
   }
 }
 .logged-out {
-  @media (min-width: 768px) {
-    background: #95a5a6;
-  }
+  background: var(--app-bg-color);
 }
 
 .debug {

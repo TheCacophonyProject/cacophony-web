@@ -1,14 +1,35 @@
 :root {
-    --bs-body-font-family: var(--font-family);
-    --bs-body-font-size: var(--font-size--md);
-    --bs-btn-disabled-border-color: transparent;
-    --bs-btn-focus-border-color: transparent;
-    --bs-btn-active-border-color: transparent;
+  --bs-body-font-family: var(--font-family);
+  --bs-body-font-size: var(--font-size--md);
+  --bs-btn-disabled-border-color: transparent;
+  --bs-btn-focus-border-color: transparent;
+  --bs-btn-active-border-color: transparent;
+  --bs-link-color: var(--color-cp-green-600);
+  --bs-link-color-rgb: 44, 79,1; // same as --color-cp-green-800
+  --bs-link-hover-color: var(--color-cp-green-700);
+  --bs-link-hover-color-rgb: 65, 118, 1; // same as --color-cp-green-700
+/*  --bs-primary: var(--color-cp-green-600);*/
 }
 .btn {
   --bs-btn-font-size:  var(--font-size--md);
 }
 
+.btn-primary {
+  --bs-btn-bg: var(--color-cp-green-600);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-bg: var(--color-cp-green-700);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-bg: var(--color-cp-green-800);
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-bg: color-mix(in oklch, var(--color-cp-green-600), transparent 5%);
+  --bs-btn-disabled-border-color: transparent;
+}
+
 .btn-outline-secondary {
   --bs-btn-border-color: #ddd;
+}
+
+// Font size of inputs
+.form-control {
+  font-size: var(--font-size--md);;
 }
