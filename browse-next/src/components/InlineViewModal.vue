@@ -81,7 +81,7 @@ const isBusy = ref<boolean>(false);
       v-model="show"
       centered
       lazy
-      hide-footer
+      no-footer
       hide-header
       :no-fade="noFadeInternal"
       ref="modal"

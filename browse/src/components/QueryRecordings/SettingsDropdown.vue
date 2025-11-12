@@ -27,7 +27,7 @@
         id="delete-all"
         size="sm"
         title="Delete Recordings"
-        hide-footer
+        no-footer
         hide-backdrop
       >
         <p class="text-center">
