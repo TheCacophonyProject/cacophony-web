@@ -6,7 +6,7 @@ import router from "./router";
 import { createBootstrap } from "bootstrap-vue-next";
 import FontAwesomeIcon from "./font-awesome-icons";
 import materialSymbolsPlugin from '@dbetka/vue-material-symbols';
-/*import 'material-symbols/index.css';*/
+import 'material-symbols/index.css';
 import {
   currentSelectedProject,
   currentUser,

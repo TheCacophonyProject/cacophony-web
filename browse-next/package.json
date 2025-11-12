@@ -28,6 +28,7 @@
     "hash-wasm": "^4.9.0",
     "leaflet": "^1.9.3",
     "luxon": "^3.3.0",
+    "material-symbols": "^0.39.2",
     "scale-color-perceptual": "^1.1.2",
     "spectastiq": "github:hardiesoft/spectastiq#v0.9.14",
     "suncalc": "^1.9.0",
