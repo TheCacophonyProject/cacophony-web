@@ -52,11 +52,12 @@ const calculateListOverflow = (availableWidth: number) => {
     let totalWidth = 0;
     const widths = [];
     const extraWidth = 34;
+    const gap = 16; // gap between items
     let safeNum = 0;
     let overflows = false;
     for (const child of Array.from(children)) {
       if (!child.classList.contains("btn-group")) {
-        const width = child.getBoundingClientRect().width;
+        const width = child.querySelector(".text")!.getBoundingClientRect().width + gap;
         totalWidth += width;
         if (totalWidth + extraWidth > availableWidth) {
           safeNum = widths.length;
@@ -97,7 +98,7 @@ const activeItemTitle = ref<string>("");
 
 <template>
   <ul
-    class="overflow-tab-list nav nav-underline nav-justified justify-content-center justify-content-evenly"
+    class="overflow-tab-list nav nav-underline nav-justified justify-content-center justify-content-evenly mb-lg-2"
     ref="navList"
   >
     <component
@@ -136,7 +137,7 @@ const activeItemTitle = ref<string>("");
         padding-top: var(--spacing--md);
         padding-bottom: var(--spacing--md);
       }
-      @media (min-width: @breakpoint-sm) {
+      @media (min-width: @breakpoint-md) {
         font-size: var(--font-size--h4);
       }
       &.active {
