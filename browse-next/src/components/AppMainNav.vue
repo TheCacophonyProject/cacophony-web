@@ -124,8 +124,8 @@ onMounted(() => {
               class="group-dropdown"
           >
             <template #button-content>
-              <span id="create-project-btn">
-                <MaterialSymbol name="add" size="1.25rem"/><span class="visually-hidden">Create or join project</span>
+              <span id="create-project-btn" class="d-flex py-1">
+                <material-symbol name="add" size="1.25rem"/><span class="visually-hidden">Create or join project</span>
               </span>
             </template>
             <b-dropdown-item-button
@@ -155,7 +155,7 @@ onMounted(() => {
               id="switch-project-btn"
           >
             <span class="overflow-hidden text-truncate text-nowrap">{{ selectedProject.groupName }}</span>
-            <MaterialSymbol name="keyboard_arrow_down" class="ms-1"/>
+            <material-symbol name="keyboard_arrow_down" class="ms-1"/>
           </button>
           <span
               v-else
@@ -188,7 +188,7 @@ onMounted(() => {
             data-bs-original-title="Dashboard"
         >
           <span class="nav-icon-wrapper d-flex">
-            <MaterialSymbol name="dashboard_2"/>
+            <material-symbol name="dashboard_2"/>
           </span>
           <span class="nav-text ms-3">Dashboard</span>
         </router-link>
@@ -208,7 +208,7 @@ onMounted(() => {
             data-bs-original-title="Locations"
         >
           <span class="nav-icon-wrapper d-flex ">
-            <MaterialSymbol name="pin_drop"/>
+            <material-symbol name="pin_drop"/>
           </span>
           <span class="nav-text ms-3">Locations</span>
         </router-link>
@@ -228,7 +228,7 @@ onMounted(() => {
             data-bs-original-title="Search"
         >
           <span class="nav-icon-wrapper d-flex">
-           <MaterialSymbol name="search"/>
+           <material-symbol name="search"/>
           </span>
           <span class="nav-text ms-3">Activity</span>
         </router-link>
@@ -248,7 +248,7 @@ onMounted(() => {
             data-bs-original-title="Devices"
         >
           <span class="nav-icon-wrapper d-flex">
-            <MaterialSymbol name="memory"/>
+            <material-symbol name="memory"/>
             <svg
                 class="alert-icon"
                 width="12"
@@ -300,7 +300,7 @@ onMounted(() => {
             data-bs-original-title="My preferences"
         >
             <span class="nav-icon-wrapper d-flex">
-              <MaterialSymbol name="settings"/>
+              <material-symbol name="settings"/>
             </span>
           <span class="nav-text ms-3">My&nbsp;preferences</span>
         </router-link>
@@ -320,7 +320,7 @@ onMounted(() => {
             data-bs-original-title="Manage project"
         >
             <span class="nav-icon-wrapper d-flex">
-              <MaterialSymbol name="handyman"/>
+              <material-symbol name="handyman"/>
             </span>
           <span class="nav-text ms-3">Manage&nbsp;project</span>
         </router-link>
@@ -333,7 +333,7 @@ onMounted(() => {
           data-cy="user settings nav button"
       >
         <span class="nav-icon-wrapper d-flex">
-          <MaterialSymbol name="account_circle"/>
+          <material-symbol name="account_circle"/>
           <svg
               v-if="!CurrentUser.emailConfirmed"
               class="alert-icon"
@@ -356,7 +356,7 @@ onMounted(() => {
           id="sign-out-link"
       >
           <span class="nav-icon-wrapper">
-            <MaterialSymbol name="logout" size="1.25rem"/><span class="visually-hidden">Sign out</span>
+            <material-symbol name="logout" size="1.25rem"/><span class="visually-hidden">Sign out</span>
           </span>
       </router-link>
       <b-tooltip target="sign-out-link" triggers="hover" placement="bottom">

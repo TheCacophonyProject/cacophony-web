@@ -168,10 +168,10 @@ const pendingTagIsValid = computed<boolean>(() => {
 });
 </script>
 <template>
-  <div class="row mb-5">
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="h4 my-3">Automatic filtering of human voices</h3>
-      <p class="text-secondary">Configure the AI to automatically delete recordings that contain human voices.
+      <h3 class="section-card-heading">Automatic filtering of human voices</h3>
+      <p class="text-secondary pb-1">Configure the AI to automatically delete recordings that contain human voices.
       </p>
     </div>
     <div class="col-lg-9">
@@ -195,10 +195,10 @@ const pendingTagIsValid = computed<boolean>(() => {
     </div>
   </div>
 
-  <div class="row mb-3">
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="h4 my-3">Ignored Dashboard tags</h3>
-      <p class="text-secondary">Filter out tags from your project dashboard.
+      <h3 class="section-card-heading">Ignored Dashboard tags</h3>
+      <p class="text-secondary pb-1">Filter out tags from your project dashboard.
         Tags follow a classification hierarchy; e.g. filtering out the tag leporidae will also filter rabbits and hares.
       </p>
     </div>

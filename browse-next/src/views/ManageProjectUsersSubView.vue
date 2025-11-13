@@ -207,10 +207,10 @@ const permissionsOptions = computed(() => [
 ]);
 </script>
 <template>
-  <div class="row">
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="h4 my-3">Project users</h3>
-      <p class="text-secondary">Manage the users associated with {{ currentSelectedProject.groupName }}.
+      <h3 class="section-card-heading">Project users</h3>
+      <p class="text-secondary pb-1">Manage the users associated with {{ currentSelectedProject.groupName }}.
       </p>
     </div>
     <div class="col-lg-9">

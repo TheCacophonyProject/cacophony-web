@@ -10,6 +10,7 @@ import {
   watch,
 } from "vue";
 import { useElementSize } from "@vueuse/core";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const navList = ref<HTMLUListElement>();
 const slots = useSlots();
@@ -96,7 +97,7 @@ const activeItemTitle = ref<string>("");
 
 <template>
   <ul
-    class="nav nav-tabs justify-content-center justify-content-evenly overflow-tab-list"
+    class="overflow-tab-list nav nav-underline nav-justified justify-content-center justify-content-evenly"
     ref="navList"
   >
     <component
@@ -111,7 +112,7 @@ const activeItemTitle = ref<string>("");
       class="more-btn"
     >
       <template #button-content>
-        <font-awesome-icon icon="ellipsis" color="#666" />
+        <material-symbol name="more_horiz" />
       </template>
       <b-dropdown-item v-for="(item, index) in overFlowingItems" :key="index">
         <component :is="item" />
@@ -122,19 +123,43 @@ const activeItemTitle = ref<string>("");
     {{ activeItemTitle }}
   </h6>
 </template>
+
 <style lang="less">
+@import "../assets/less/breakpoints";
+@import "../assets/less/bootstrap-custom";
 .overflow-tab-list {
-  min-height: 42px;
-}
-.more-btn .btn.btn-light {
-  background-color: unset;
-  border: unset;
-}
-.more-btn {
-  border-radius: 0;
-  &:has(a.active) {
-    box-sizing: border-box;
-    border-bottom: 3px solid #6dbd4b;
+  &.nav-underline {
+    border-bottom: 1px solid  var(--bs-border-color);
+    .nav-link {
+      min-height: calc(var(--grid--base) * 11); // 44px
+      @media (min-width: @breakpoint-sm) {
+        padding-top: var(--spacing--md);
+        padding-bottom: var(--spacing--md);
+      }
+      @media (min-width: @breakpoint-sm) {
+        font-size: var(--font-size--h4);
+      }
+      &.active {
+        font-weight: var(--font-weight--medium);
+        border-bottom-color: var(--color-cp-primary);
+        color: var(--color-cp-green-800);
+      }
+    }
+    .dropdown-item {
+      .nav-link {
+        border-bottom: none;
+      }
+    }
+  }
+
+  .more-btn .btn.btn-light {
+    .btn-icon();
+  }
+  .more-btn {
+    &:has(a.active) {
+      box-sizing: border-box;
+      border-bottom: 2px solid var(--color-cp-primary);
+    }
   }
 }
 </style>

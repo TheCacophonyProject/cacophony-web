@@ -192,10 +192,10 @@ const reset = () => {
 </script>
 <template>
 
-  <div class="row mb-5">
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="h4 my-3">Project label settings</h3>
-      <p class="text-secondary">Manage the set of default labels that users can apply to camera recordings
+      <h3 class="section-card-heading">Project label settings</h3>
+      <p class="text-secondary pb-1">Manage the set of default labels that users can apply to camera recordings
         or bird recordings, and what those labels mean in the context of your
         project.
       </p>

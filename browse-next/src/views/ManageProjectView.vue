@@ -9,7 +9,7 @@ const activeTabName = computed(() => {
   return route.name;
 });
 
-const navLinkClasses = ["nav-item", "nav-link", "border-0"];
+const navLinkClasses = ["nav-item", "nav-link"];
 </script>
 <template>
   <section-header>Manage project</section-header>
@@ -36,8 +36,11 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       :to="{
         name: 'project-users',
       }"
-      >Users</router-link
-    >
+      >
+        <span class="text">
+          Users
+        </span>
+    </router-link>
     <router-link
       :class="[
         ...navLinkClasses,
@@ -47,9 +50,12 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       :to="{
         name: 'project-tagging-settings',
       }"
-      >Tag<span class="d-none d-sm-inline-block">ging</span
-      ><span class="d-sm-none">s</span></router-link
-    >
+      >
+        <span class="text">
+          Tag<span class="d-none d-sm-inline-block">ging</span>
+          <span class="d-sm-none">s</span>
+        </span>
+    </router-link>
     <router-link
       :class="[
         ...navLinkClasses,
@@ -59,8 +65,11 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       :to="{
         name: 'project-label-settings',
       }"
-      >Labels</router-link
-    >
+      >
+      <span class="text">
+        Labels
+      </span>
+    </router-link>
     <router-link
       :class="[
         ...navLinkClasses,
@@ -70,10 +79,11 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
       :to="{
         name: 'project-misc-settings',
       }"
-      ><span
-        >Other<span class="d-none d-sm-inline-block">&nbsp;settings</span></span
-      ></router-link
-    >
+      >
+      <span class="text">
+        <span>Other<span class="d-none d-sm-inline-block">&nbsp;settings</span></span>
+      </span>
+    </router-link>
     <!--    <router-link-->
     <!--      :class="[-->
     <!--        ...navLinkClasses,-->
@@ -90,28 +100,3 @@ const navLinkClasses = ["nav-item", "nav-link", "border-0"];
     <router-view />
   </div>
 </template>
-<style lang="less" scoped>
-.group-name {
-  text-transform: uppercase;
-  color: #aaa;
-  font-weight: 500;
-  // font-size: var(--bs-body-font-size);
-  // FIXME - Use modified bs-body-font-size?
-  font-size: 14px;
-}
-h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #444;
-}
-h2 {
-  font-weight: 500;
-  color: #444;
-  font-size: 17px;
-}
-
-.nav-item.active {
-  background: unset;
-  border-bottom: 3px solid #6dbd4b !important;
-}
-</style>

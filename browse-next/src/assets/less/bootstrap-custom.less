@@ -8,8 +8,9 @@
   --bs-link-color-rgb: 44, 79,1; // same as --color-cp-green-800
   --bs-link-hover-color: var(--color-cp-green-700);
   --bs-link-hover-color-rgb: 65, 118, 1; // same as --color-cp-green-700
-/*  --bs-primary: var(--color-cp-green-600);*/
+  --bs-primary: var(--color-cp-green-600);
 }
+
 .btn {
   --bs-btn-font-size:  var(--font-size--md);
 }
@@ -29,7 +30,34 @@
   --bs-btn-border-color: #ddd;
 }
 
+.btn-icon {
+  --bs-btn-font-weight: 600;
+  //--bs-btn-color: var(--bs-primary);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bd-violet-bg);
+  //--bs-btn-hover-color: var(--bs-white);
+  --bs-btn-hover-bg: var(--bs-gray-100);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: transparent;
+  --bs-btn-active-color: var(--bs-btn-hover-color);
+  --bs-btn-active-bg: var(--bs-gray-200);
+  --bs-btn-active-border-color: transparent;
+}
+
+
 // Font size of inputs
 .form-control {
-  font-size: var(--font-size--md);;
+  font-size: var(--font-size--md);
+}
+
+.nav-tabs {
+  --bs-nav-tabs-link-active-color: var(--color-cp-green-800);
+}
+
+.badge {
+  --bs-badge-font-size: var(--font-size--sm);
+  --bs-badge-font-weight: 500;
+  &.text-bg-secondary {
+    background-color: var(--bs-black) !important;
+  }
 }

@@ -1,28 +1,24 @@
 <template>
   <b-link
-    class="d-inline-flex align-items-center"
+    class="d-inline-flex align-items-center align-items-center"
     v-if="to"
     :to="to"
-    style="color: #666"
     variant="secondary"
   >
-    <span class="ms-1 me-2 align-self-center position-relative">
-      <font-awesome-icon :icon="deviceTypeIcon" class="me-2" />
-      <font-awesome-icon
-        v-if="type === 'hybrid-thermal-audio'"
-        icon="music"
-        class="position-absolute inner-icon align-self-center"
-        size="xs"
-        color="white"
+    <span class="me-2 align-self-center position-relative">
+      <material-symbol
+        :name="deviceTypeIcon"
+        size="1.125rem"
+        class="me-2"
       />
+       <material-symbol
+         v-if="type === 'hybrid-thermal-audio'"
+         name="music_video"
+         size="1.125rem"
+         class="me-2"
+       />
     </span>
-    <span class="me-2 me-md-0">{{ name }}</span
-    ><font-awesome-icon
-      icon="arrow-turn-down"
-      :rotation="270"
-      size="xs"
-      class="ps-1 d-sm-inline-block d-md-none align-self-center"
-    />
+    <span class="me-2 me-md-0">{{ name }}</span>
   </b-link>
   <span class="d-inline-flex align-items-center" v-else>
     <span
@@ -32,16 +28,10 @@
         'me-2': !props.noMargin,
         'me-1': props.noMargin,
       }"
-      ><font-awesome-icon
-        :icon="deviceTypeIcon"
-        :color="props.color || 'inherit'"
-      />
-      <font-awesome-icon
-        v-if="type === 'hybrid-thermal-audio'"
-        icon="music"
-        class="position-absolute inner-icon align-self-center"
-        size="xs"
-        color="white"
+      >
+      <material-symbol
+        :name="deviceTypeIcon"
+        size="1.125rem"
       />
     </span>
     {{ name }}</span
@@ -55,6 +45,8 @@ import {
   DeviceType as ConcreteDeviceType,
 } from "@typedefs/api/consts.ts";
 import type { RouteLocationRaw } from "vue-router";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import type {IconsProp} from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
 
 // NOTE: For some reason importing this enum from global consts fails :-/
 // enum DeviceType {
@@ -73,26 +65,18 @@ const props = defineProps<{
   noMargin?: boolean;
 }>();
 
-const deviceTypeIcon = computed<string>(() => {
+const deviceTypeIcon = computed<IconsProp | "">(() => {
   switch (props.type) {
     case ConcreteDeviceType.Audio:
-      return "music";
+      return "music_note";
     case ConcreteDeviceType.Thermal:
     case ConcreteDeviceType.Hybrid:
-      return "video";
+      return "videocam";
     case ConcreteDeviceType.Unknown:
-      return "question";
+      return "question_mark";
     case ConcreteDeviceType.TrailCam:
-      return "camera";
+      return "photo_camera";
   }
   return "";
 });
 </script>
-
-<style scoped lang="less">
-.inner-icon {
-  left: -0.5px;
-  top: 25%;
-  scale: 70%;
-}
-</style>

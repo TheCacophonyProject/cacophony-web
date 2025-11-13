@@ -277,10 +277,10 @@ const changePassword = async () => {
 </script>
 <template>
   <section-header>Account Settings</section-header>
-  <div class="row">
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="h4 mt-0 mb-2 my-md-3">User Settings</h3>
-      <p class="text-secondary">Your details across the Cacophony Monitoring Platform. These settings don't affect projects.</p>
+      <h3 class="section-card-heading">User Settings</h3>
+      <p class="text-secondary pb-1">Your details across the Cacophony Monitoring Platform. These settings don't affect projects.</p>
     </div>
     <div class="col-lg-9">
       <section-card>

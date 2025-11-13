@@ -230,12 +230,12 @@ const pendingTagIsValid = computed<boolean>(() => {
 </script>
 <template>
 
-  <div class="row mb-5">
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="h4 my-3">Project tagging settings</h3>
+      <h3 class="section-card-heading">Project tagging settings</h3>
       <p class="text-secondary">Manage the set of default tags that users see for this project when
         tagging either camera recordings or bird recordings.</p>
-      <p class="text-secondary">Users can also
+      <p class="text-secondary pb-1">Users can also
         add and pin their own most-used tags via each tagging interface.
       </p>
     </div>
