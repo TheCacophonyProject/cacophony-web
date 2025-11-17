@@ -75,7 +75,7 @@
         @mouseenter="enteredItem(card)"
         @mouseleave="leftItem(card)"
         @click="(e) => selectedItem(e, sortedItems[cardIndex])"
-        class="card-table-card py-2 ps-3 pe-2 my-2"
+        class="card-table-card py-3 px-3 py-md-4 px-md-4 mb-3"
         :class="{ highlighted: eq(card, highlightedItem) }"
       >
         <slot name="card" v-bind="{ card }">
@@ -329,14 +329,14 @@ const displayedItems = computed<{
       background: #ddd;
     }
     &:hover {
-      background: #fafafa;
+      background: var(--bs-gray-100);
     }
   }
   .card-table-card {
-    background: white;
+    background: var(--bs-white);
     transition: background-color 0.3s linear;
     &.highlighted {
-      background: #ddd;
+      background: var(--bs-gray-200);
     }
     cursor: default;
   }

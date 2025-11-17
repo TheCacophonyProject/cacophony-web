@@ -187,21 +187,19 @@ const projectHasLocations = computed<boolean>(() => {
   );
 });
 
+const { width: windowWidth } = useWindowSize();
+
 const mapWidthPx = computed<number>(() => {
-  if (windowWidth.value >= 1066) {
-    return 500;
-  } else if (windowWidth.value >= 768) {
-    return 250;
-  } else {
+  if (mapBuffer.value === null) {
     return 0;
   }
+  const mapBufferWidth = mapBuffer.value!.offsetWidth;
+  if (windowWidth.value >= 992) {
+    return mapBufferWidth;
+  }
+  return 0;
 });
 
-const { width: windowWidth } = useWindowSize();
-const mapBufferWidth = computed<number>(() => {
-  const right = windowWidth.value - locationContainerRight.value;
-  return Math.max(0, mapWidthPx.value - right);
-});
 interface PopOverElement {
   show: () => void;
   hide: () => void;
@@ -232,7 +230,7 @@ const updateLocationName = async (payload: {
 };
 </script>
 <template>
-  <div>
+  <div class="d-flex flex-column flex-fill">
     <section-header>Locations</section-header>
     <b-popover
       ref="popOverHint"
@@ -255,13 +253,14 @@ const updateLocationName = async (payload: {
       ref="locationsContainer"
     >
       <div
-        class="justify-content-center align-content-center d-flex flex-fill"
+        class="justify-content-center align-items-center d-flex flex-fill"
         v-if="loadingLocations"
       >
-        <b-spinner size="xl" />
-        <span class="h3 ms-3">Loading locations...</span>
+        <b-spinner size="xl" class="text-secondary" />
+        <span class="h3 m-0 ms-3 text-secondary">Loading locations...</span>
         <!--      TODO - Maybe use bootstrap 'placeholder' elements -->
       </div>
+
       <div
         class="d-flex flex-column-reverse justify-content-between flex-fill"
         v-else
@@ -269,7 +268,7 @@ const updateLocationName = async (payload: {
         <div v-if="!projectHasLocations" class="d-flex flex-fill">
           There are no existing locations for this project
         </div>
-        <div v-else class="d-flex flex-fill flex-column me-md-3 mt-4 mt-md-0">
+        <div v-else class="col col-12 col-lg-8 col-xl-7 d-flex flex-fill flex-column me-md-3 mt-4 mt-lg-0">
           <!--        <h6>Things that need to appear here:</h6>-->
           <!--        <ul>-->
           <!--          <li>-->
@@ -279,7 +278,7 @@ const updateLocationName = async (payload: {
           <!--          <li>Show active vs inactive stations</li>-->
           <!--        </ul>-->
           <!--        TODO: Split into: stations active in the last week, last month, last year, older, retired -->
-          <h6 v-if="locationsActiveInLastWeek.length">Active in past week</h6>
+          <h3 v-if="locationsActiveInLastWeek.length" class="h4 mb-3">Active in past week</h3>
           <locations-overview-table
             v-if="locationsActiveInLastWeek.length"
             :locations="locationsActiveInLastWeek"
@@ -289,10 +288,10 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-4"
+            class="mb-3 mb-sm-4"
           />
 
-          <h6 v-if="locationsActiveInLastMonth.length">Active in past month</h6>
+          <h6 v-if="locationsActiveInLastMonth.length" class="h4 mb-3">Active in past month</h6>
           <locations-overview-table
             v-if="locationsActiveInLastMonth.length"
             :locations="locationsActiveInLastMonth"
@@ -302,10 +301,10 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-4"
+            class="mb-3 mb-sm-4"
           />
 
-          <h6 v-if="locationsActiveInLastYear.length">Active in past year</h6>
+          <h6 v-if="locationsActiveInLastYear.length" class="h4 mb-3">Active in past year</h6>
           <locations-overview-table
             v-if="locationsActiveInLastYear.length"
             :locations="locationsActiveInLastYear"
@@ -315,10 +314,10 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-4"
+            class="mb-3 mb-sm-4"
           />
 
-          <h6 v-if="locationsNotActiveInLastYear.length">
+          <h6 v-if="locationsNotActiveInLastYear.length" class="h4 mb-3">
             Not active in past year
           </h6>
           <locations-overview-table
@@ -330,9 +329,9 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-4"
+            class="mb-3 mb-sm-4"
           />
-          <h6 v-if="retiredLocations.length">Retired</h6>
+          <h6 v-if="retiredLocations.length" class="h4 mb-3">Retired</h6>
           <locations-overview-table
             v-if="retiredLocations.length"
             :locations="retiredLocations"
@@ -342,9 +341,13 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-4"
+            class="mb-3 mb-sm-4"
           />
         </div>
+        <div
+          class="map-buffer col col-12 col-lg-4 col-xl-5"
+          ref="mapBuffer"
+        ></div>
         <map-with-points
           ref="mapContainer"
           v-if="projectHasLocations"
@@ -357,19 +360,23 @@ const updateLocationName = async (payload: {
           :radius="30"
         />
       </div>
-      <div
-        class="map-buffer"
-        ref="mapBuffer"
-        :style="{ width: `${mapBufferWidth}px` }"
-      ></div>
+
     </div>
   </div>
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints";
 .map {
-  height: 400px !important;
-  position: unset;
-  @media screen and (min-width: 768px) {
+  @media screen and (min-width: @breakpoint-xs) and (max-width: @breakpoint-md-max) {
+    position: unset;
+  }
+  @media screen and (max-width: @breakpoint-xs-max) {
+    height: 288px !important;
+  }
+  @media screen and (min-width: @breakpoint-sm) and (max-width: @breakpoint-md-max) {
+    height: 400px !important;
+  }
+  @media screen and (min-width: @breakpoint-lg) {
     position: absolute !important;
     right: 0;
     top: 0;

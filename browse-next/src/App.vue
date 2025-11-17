@@ -161,7 +161,7 @@ const pollFrameTimes = () => {
       :class="{ 'offset-content': isWideScreen }"
       class="d-flex"
     >
-      <div class="container-xxl py-0 d-flex flex-fill flex-column">
+      <div class="container-xxl px-sm-3 px-md-4 py-0 d-flex flex-fill flex-column">
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
         <div class="d-flex flex-column router-view flex-fill">

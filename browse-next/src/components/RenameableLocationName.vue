@@ -8,10 +8,11 @@ import {
   useTemplateRef,
   watch,
 } from "vue";
-import { BFormInput } from "bootstrap-vue-next";
+import {BBadge, BFormInput} from "bootstrap-vue-next";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { changeLocationName } from "@api/Location.ts";
 import { userIsProjectAdmin } from "@models/provides.ts";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const { location } = defineProps<{ location: ApiLocationResponse }>();
 const editLocationField = useTemplateRef("input");
@@ -89,38 +90,39 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         @keyup.enter="saveLocationName"
         @keyup.esc="exitEditMode"
       />
-      <strong
+      <h4
         v-else
         class="location-name"
-        :class="{ 'needs-rename': !!location.needsRename }"
-        >{{ location.name }}</strong
+        :class="['h4 me-2', {'needs-rename text-break': !!location.needsRename }]"
+        >{{ location.name }}</h4
       >
       <b-spinner small v-if="savingLocation" class="ms-3" />
     </div>
-    <div>
+    <div class="d-flex align-items-center">
+       <span
+         class="d-flex align-items-center"
+         @mouseover.stop.prevent="showRenameHint"
+         @mouseout.stop.prevent="hideRenameHint"
+         v-if="location.needsRename"
+       >
+          <b-badge variant="warning" class="rename-hint d-flex flex-row align-items-center me-2">
+            <material-symbol
+              name="warning"
+              filled
+              size="1rem"
+              class="me-1"
+            />
+            Rename
+          </b-badge>
+        </span>
       <b-button
         variant="light"
-        class="ms-2"
+        class="btn-icon"
         size="sm"
         @click="clickedRename"
         v-if="isProjectAdmin"
       >
-        <span
-          class="rename-hint fs-7"
-          @mouseover.stop.prevent="showRenameHint"
-          @mouseout.stop.prevent="hideRenameHint"
-          v-if="location.needsRename"
-        >
-          <font-awesome-icon
-            icon="exclamation-triangle"
-            size="sm"
-            class="me-1"
-            :color="'#e39768'"
-          />
-          <span class="me-2">Rename</span>
-          <font-awesome-icon icon="pencil" size="sm" color="#666" />
-        </span>
-        <font-awesome-icon v-else icon="pencil" size="sm" color="#666" />
+        <material-symbol name="edit" size="1.125rem"/>
       </b-button>
     </div>
   </div>
@@ -135,9 +137,4 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
 </template>
 
 <style scoped lang="less">
-@media screen and (max-width: 575px) {
-  .location-name.needs-rename {
-    max-width: 230px;
-  }
-}
 </style>
