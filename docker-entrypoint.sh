@@ -46,7 +46,7 @@ fi
 
 #ls -la /app/api/node_modules
 echo "---- Installing npm packages ----"
-npm ci --omit=optional --no-audit
+npm install --omit=optional --no-audit
 mv /app/bcrypt /app/api/node_modules/
 mv /app/sharp /app/api/node_modules/
 
@@ -54,7 +54,7 @@ mv /app/sharp /app/api/node_modules/
 if [ ! -d "./node_modules/detect-libc" ]; then
   mv /app/detect-libc /app/api/node_modules/
 fi
-cd /app/types && npm ci --no-audit
+cd /app/types && npm install --no-audit
 cd /app/api
 
 echo "---- Using config $CONFIG ----"

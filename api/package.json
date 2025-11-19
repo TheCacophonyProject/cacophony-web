@@ -78,8 +78,7 @@
     "prettier": "^3.6.2",
     "smtp-tester": "^2.0.1",
     "tsc-watch": "^7.2.0",
-    "typescript": "^5.9.3",
-    "@typescript/native-preview": "^7.0.0-dev.20251116.1"
+    "typescript": "^5.9.3"
   },
   "optionalDependencies": {
     "bcrypt": "^5.0.1",
