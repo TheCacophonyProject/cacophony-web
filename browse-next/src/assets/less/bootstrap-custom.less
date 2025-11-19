@@ -9,6 +9,8 @@
   --bs-link-hover-color: var(--color-cp-green-700);
   --bs-link-hover-color-rgb: 65, 118, 1; // same as --color-cp-green-700
   --bs-primary: var(--color-cp-green-600);
+  --bs-body-line-height: 1.6;
+  --bs-primary-rgb: 87, 158, 2; // same as --color-cp-green-600
 }
 
 .btn {
@@ -50,6 +52,23 @@
   font-size: var(--font-size--md);
 }
 
+.form-select {
+  font-size: var(--font-size--md);
+}
+
+// Switch styles
+.form-check-input {
+  &:checked {
+    background-color: var(--color-cp-green-600);
+    border-color: var(--color-cp-green-600);
+  }
+  &:focus {
+    border-color: var(--color-cp-green-400);
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--color-cp-green-600), transparent 80%);
+  }
+}
+
 .nav-tabs {
   --bs-nav-tabs-link-active-color: var(--color-cp-green-800);
 }
@@ -60,4 +79,10 @@
   &.text-bg-secondary {
     background-color: var(--bs-black) !important;
   }
+}
+
+
+b,
+strong {
+  font-weight: var(--font-weight--semilbold);
 }

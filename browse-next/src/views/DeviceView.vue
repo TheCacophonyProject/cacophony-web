@@ -13,8 +13,6 @@ import {
 } from "@models/LoggedInUser";
 import type {
   DeviceId,
-  LatLng,
-  StationId as LocationId,
 } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
@@ -27,8 +25,6 @@ import {
   getMaskRegionsForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
 } from "@api/Device.ts";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { DateTime } from "luxon";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
@@ -115,7 +111,7 @@ onBeforeMount(async () => {
 const activeTabPath = computed(() => {
   return route.matched.map((item) => item.name);
 });
-const navLinkClasses = ["nav-item", "nav-link", "border-0"];
+const navLinkClasses = ["nav-item", "nav-link"];
 
 const _deviceType = computed<string>(() => {
   if (device.value) {
@@ -166,8 +162,9 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-events',
         }"
-        >Events</router-link
-      >
+        >
+          <span class="text">Events</span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -183,8 +180,9 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-diagnostics',
         }"
-        >Diagnostics</router-link
-      >
+        >
+          <span class="text">Diagnostics</span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -201,8 +199,9 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-setup',
         }"
-        >Setup</router-link
-      >
+        >
+          <span class="text">Setup</span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -219,8 +218,9 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-insights',
         }"
-        >Insights</router-link
-      >
+        >
+          <span class="text">Insights</span>
+      </router-link>
       <!--      <router-link-->
       <!--        v-if="[DeviceType.Audio, DeviceType.Hybrid].includes((device as ApiDeviceResponse).type)"-->
       <!--        :class="[-->
@@ -244,8 +244,9 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-uploads',
         }"
-        >Manual Uploads</router-link
-      >
+        >
+        <span class="text">Manual Uploads</span>
+      </router-link>
     </overflowing-tab-list>
     <router-view
       @start-blocking-work="() => emit('start-blocking-work')"

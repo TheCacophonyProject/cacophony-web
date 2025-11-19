@@ -5,14 +5,12 @@ import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   AudioModes,
-  BatterySettings,
 } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import type { LoadedResource } from "@api/types.ts";
 import {
   getDeviceModel,
-  getDeviceNodeGroup,
   getSettingsForDevice,
   updateDeviceSettings,
 } from "@api/Device.ts";
@@ -20,6 +18,9 @@ import Datepicker from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
 import type { DeviceTypeUnion } from "@typedefs/api/consts";
+import SectionCard from "@/components/SectionCard.vue";
+import {BAlert, BBadge, BFormGroup, BFormInput, BFormRadio, BFormRadioGroup, BSpinner} from "bootstrap-vue-next";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -294,13 +295,6 @@ const customRecordingWindowStop = computed<Time>({
   },
 });
 
-const audioModeOptions = [
-  { value: "Disabled", text: "Disabled" },
-  { value: "AudioOnly", text: "Audio Only" },
-  { value: "AudioAndThermal", text: "Audio and Thermal" },
-  { value: "AudioOrThermal", text: "Audio or Thermal" },
-];
-
 // Computed property for Audio Mode
 const audioMode = computed<AudioModes>({
   get: () => {
@@ -320,18 +314,7 @@ const audioMode = computed<AudioModes>({
     }
   },
 });
-const audioModeExplanation = computed<string>(() => {
-  switch (audioMode.value) {
-    case "AudioOnly":
-      return "Records audio in a 24-hour window and disables thermal recording.";
-    case "AudioOrThermal":
-      return "Records audio outside of the thermal recording window.";
-    case "AudioAndThermal":
-      return "Records audio in a 24-hour window; however, the camera cannot record during the 1 minute of audio recording.";
-    default:
-      return "";
-  }
-});
+
 function timeToMinutes(timeStr: string): number {
   const [hours, minutes] = timeStr.split(":").map(Number);
   return hours * 60 + minutes;
@@ -639,24 +622,26 @@ watch(customRecordingWindowStop, async () => {
   <div
     class="d-flex justify-content-center align-items-center justify-content-lg-start align-items-lg-start"
   >
+    <!-- FIXME: Choose device types using TC2 channel -->
     <div
-      class="mt-4 mt-lg-0 settings-config w-100 justify-content-center align-items-center"
+      class="mt-4 mt-lg-0 justify-content-center align-items-center"
       v-if="
         device &&
         (device.type === 'thermal' || device.type === 'hybrid-thermal-audio')
       "
     >
-      <div class="alert alert-info">
-        If your device has a connection to the internet, you can
-        <strong>setup recording modes remotely</strong>, and when your device
-        next comes online it will <strong>synchronise</strong> these settings.
-      </div>
-      <div class="alert alert-warning" v-if="!device.lastConnectionTime">
-        <strong>Note: </strong> It looks like your device has never connected to
-        the Cacophony Platform in its current location, so remote setup may not
-        be available.
-      </div>
-      <div class="h5">Current settings summary</div>
+      <!-- FIXME: Should the warning always be here? -->
+      <b-alert
+        :model-value="!device.lastConnectionTime"
+        variant="warning"
+        :no-animation="true"
+      >
+        <div class="d-flex">
+          <material-symbol name="warning" class="me-2" size="1.25rem"/>
+          This device has never connected to the Cacophony Platform in its current location,
+          so remote setup may not be available.
+        </div>
+      </b-alert>
       <!--      <span v-if="lastSyncedSettingsLoading">-->
       <!--        <b-spinner small class="me-2" />-->
       <!--      </span>-->
@@ -669,250 +654,384 @@ watch(customRecordingWindowStop, async () => {
         <b-spinner small class="me-2" />
       </span>
       <div v-else-if="settings" class="mt-3">
-        <div>
-          <strong>Synced with remote device:</strong>
-          {{ settings.synced ? "Yes" : "No" }}
-        </div>
-        <span>
-          <span v-if="!settings.synced">Once synced, w</span>
-          <span v-else>W</span>ill {{ recordingWindow }} in
-          <span v-if="useLowPowerMode">low</span>
-          <span v-else>high</span> power mode
-          <span v-if="audioMode !== 'Disabled'">
-            and
-            <span v-if="audioMode === 'AudioOnly'">audio only</span>
-            <span v-else-if="audioMode === 'AudioAndThermal'"
-              >audio and thermal</span
-            >
-            <span v-else-if="audioMode === 'AudioOrThermal'"
-              >audio or thermal</span
-            > </span
-          >.
-        </span>
-        <hr />
-        <div v-if="isTc2Device">
-          <div class="h5">Set power profile</div>
-          <p>
-            <strong><em>Low power mode</em></strong> means that your device will
-            only connect to the Cacophony Platform once per day to offload any
-            recordings that it has made.
-          </p>
-          <div class="alert alert-light">
-            <b-form-checkbox switch v-model="useLowPowerMode"
-              >Use low power mode<b-spinner
-                class="ms-1"
-                v-if="savingPowerModeSettings"
-                variant="secondary"
-                small
-            /></b-form-checkbox>
-          </div>
-          <p>
-            For most users doing passive monitoring, this should be the
-            preferred mode, as it will make the battery last many times longer
-            in the field.<br />You might want to consider disabling this mode if
-            you are tracking an incursion and require
-            <router-link :to="{ name: 'user-project-settings' }"
-              >real-time alerts</router-link
-            >
-            of species detected.
-          </p>
-          <hr />
-        </div>
-        <div v-if="isTc2Device">
-          <div class="h5">Set Audio Recording Settings</div>
-          <p>
-            Audio recordings are made 32 times a day for one minute at random
-            intervals.
-          </p>
-          <div class="alert-light alert">
-            <b-form-group label="Audio Mode">
-              <b-form-select
-                v-model="audioMode"
-                :options="audioModeOptions"
-                :disabled="savingAudioSettings"
-              ></b-form-select>
-            </b-form-group>
-            <div class="d-flex justify-content-end">
-              <b-spinner
-                class="ms-2"
-                v-if="savingAudioSettings"
-                variant="secondary"
-                small
-              />
+        <section-card class="mb-3 mb-lg-4">
+          <template #header-title>
+            Settings summary
+          </template>
+          <b-alert
+            :model-value="true"
+            variant="light"
+            :no-animation="true"
+            class="mb-4"
+          >
+            <div class="d-flex">
+              <material-symbol name="info" class="me-2" size="1.25rem"/>
+              <span>If your device has a connection to the internet, you can
+              <strong>setup recording modes remotely</strong>, and when your device
+              next comes online it will <strong>synchronise</strong> these settings.</span>
+
             </div>
-            <div class="pt-2">{{ audioModeExplanation }}</div>
+          </b-alert>
+          <div>
+            <dl class="settings-summary mb-0">
+              <div class="row">
+                <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Synced with remote device</dt>
+                <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+                  <span v-if="settings.synced" class="d-flex d-inline-flex align-items-center px-1 rounded bg-success-subtle text-success-emphasis">
+                    <material-symbol name="check" size="1.125rem" class="me-1"></material-symbol>
+                    Yes
+                  </span>
+                  <span v-else class="d-flex d-inline-flex align-items-center px-1 rounded bg-warning-subtle text-warning-emphasis">
+                    <material-symbol name="close" size="1.125rem" class="me-1"></material-symbol>
+                    No
+                  </span>
+                </dd>
+              </div>
+
+              <div class="row">
+                <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Power profile</dt>
+                <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+                  <span v-if="useLowPowerMode">Low power mode</span>
+                  <span v-else>High power mode</span>
+                </dd>
+              </div>
+
+              <div class="row">
+                <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Recording Settings</dt>
+                <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+                  <span v-if="audioMode === 'Disabled'">Video only</span>
+                  <span v-if="audioMode === 'AudioOnly'">Audio only</span>
+                  <span v-else-if="audioMode === 'AudioAndThermal'">Audio and thermal</span>
+                  <span v-else-if="audioMode === 'AudioOrThermal'">Audio or thermal</span>
+                </dd>
+              </div>
+
+              <div v-if="audioMode !== 'Disabled'" class="row">
+                <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-0 pb-0 py-sm-2 fw-medium">Thermal video recording schedule</dt>
+                <dd class="col-sm-8 d-sm-inline-flex flex mb-3 mb-sm-0 pt-1 py-sm-2">{{ recordingWindow }}</dd>
+              </div>
+            </dl>
           </div>
           <div v-if="audioMode !== 'Disabled' || recordingWindow" class="mt-4">
-            <div class="d-flex align-items-center">
-              <div :style="{ width: '71px' }"></div>
-              <div class="d-flex w-100 justify-content-between text-muted">
-                <div>00:00</div>
-                <div>12:00</div>
-                <div>24:00</div>
-              </div>
-            </div>
-            <div class="d-flex flex-column mt-2">
-              <div class="d-flex align-items-center mb-2">
-                <h6 class="text-muted mb-0 py-1" :style="{ width: '71px' }">
-                  Thermal:
-                </h6>
-                <div
-                  class="position-relative flex-fill rounded bg-light p-0"
-                  :style="{ height: '1em' }"
-                  v-if="audioMode !== 'AudioOnly'"
-                >
-                  <!-- Thermal Recording Windows -->
-                  <div
-                    v-for="(style, index) in thermalBarStyles"
-                    :key="'thermal-' + index"
-                    class="position-absolute h-100 bg-success p-0"
-                    :style="style"
-                  ></div>
+            <h5 class="h5">Recording window</h5>
+            <p>Visualise how the recording settings and thermal video recording schedule are applied over a 24-hour period.</p>
+            <div class="mb-0 ps-3 pe-4 py-3 border-0 bg-light bg-opacity-75 rounded">
+              <div>
+                <div class="d-flex align-items-center flex-fill">
+                  <div :style="{ width: '72px' }"></div>
+                  <div class="d-flex flex-fill justify-content-between lh-1 font-monospace">
+                    <small class="text-center" :style="{ marginLeft: '-18px', width: '40px' }">00:00</small>
+                    <small class="text-center" :style="{ width: '40px' }">12:00</small>
+                    <small class="text-center" :style="{ marginRight: '-18px', width: '40px' }">24:00</small>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center flex-fill lh-1 mt-1 text-body-tertiary">
+                  <div :style="{ width: '72px' }"></div>
+                  <div class="d-flex flex-fill justify-content-between">
+                    <small>❘</small>
+                    <small>❘</small>
+                    <small>❘</small>
+                  </div>
                 </div>
               </div>
-              <div class="d-flex align-items-center">
-                <h6 class="text-muted mb-0 py-1" :style="{ width: '71px' }">
-                  Audio:
-                </h6>
-                <div
-                  class="position-relative flex-fill rounded bg-light"
-                  :style="{ height: '1em' }"
-                >
-                  <!-- Audio Recording Windows -->
+              <div class="d-flex flex-column mt-1">
+                <div class="d-flex align-items-center mb-2">
+                <span class="mb-0" :style="{ width: '72px' }">
+                  Thermal:
+                </span>
                   <div
-                    v-for="(style, index) in audioBarStyles"
-                    :key="'audio-' + index"
-                    class="position-absolute h-100 bg-primary"
-                    :style="style"
-                  ></div>
+                    class="position-relative flex-fill bg-secondary-subtle p-0"
+                    :style="{ height: '0.7rem' }"
+                  >
+                    <!-- Thermal Recording Windows -->
+                    <div
+                      v-for="(style, index) in thermalBarStyles"
+                      :key="'thermal-' + index"
+                      class="position-absolute h-100 bg-success p-0"
+                      :style="style"
+                    ></div>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center">
+                <span class="mb-0" :style="{ width: '72px' }">
+                  Audio:
+                </span>
+                  <div
+                    class="position-relative flex-fill bg-secondary-subtle"
+                    :style="{ height: '0.7rem' }"
+                  >
+                    <!-- Audio Recording Windows -->
+                    <div
+                      v-for="(style, index) in audioBarStyles"
+                      :key="'audio-' + index"
+                      class="position-absolute h-100 bg-primary"
+                      :style="style"
+                    ></div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <hr />
-        </div>
-        <div v-if="isTc2Device">
-          <div class="h5">Battery Configuration</div>
-          <p>
-            By default, the battery chemistry and cell count are automatically detected based on voltage readings. 
-            If the detection is incorrect, you can manually specify these values.
-          </p>
-          <div class="alert-light alert">
-            <b-form-group label="Battery Chemistry">
-              <b-form-select
-                v-model="batteryChemistry"
-                :options="batteryChemistryOptions"
-                :disabled="savingBatterySettings"
-              ></b-form-select>
-            </b-form-group>
-            <b-form-group 
-              label="Cell Count" 
-              v-if="batteryChemistry"
-              description="Leave empty for auto-detection (1-24 cells)"
-            >
-              <b-form-input
-                v-model.number="batteryCellCount"
-                type="number"
-                min="1"
-                max="24"
-                placeholder="Auto-detect"
-                :disabled="savingBatterySettings || !batteryChemistry"
-              />
-              <small v-if="batteryVoltageRange" class="form-text text-info">
-                Expected voltage range: {{ batteryVoltageRange }}
-              </small>
-            </b-form-group>
-            <div class="d-flex justify-content-end">
+
+        </section-card>
+
+        <section-card v-if="isTc2Device" class="mb-3 mb-lg-4">
+          <template #header-title>
+            Power profile
+          </template>
+          <template #header-action>
+            <div v-if="savingPowerModeSettings">
               <b-spinner
-                class="ms-2"
-                v-if="savingBatterySettings"
+                class="me-2"
                 variant="secondary"
                 small
               />
+              <span class="text-secondary">Saving</span>
             </div>
-          </div>
-          <hr />
-        </div>
-        <div>
-          <div class="h5">Set recording time windows</div>
-          <p>
-            <strong><em>By default</em></strong> your camera will be actively
-            monitoring and ready to make thermal recordings from 30 minutes
-            before sunset until 30 minutes after sunrise.<br />In this mode the
-            battery life on your device will vary throughout the year as the
-            length of the days change with the seasons.
-            <strong
-              >For most users doing monitoring of nocturnal predators, this is
-              the recommended mode.</strong
-            >
-            <br /><em
-              >NOTE: It's important that the location of your device is set
-              correctly so that the correct dusk/dawn window can be
-              calculated.</em
-            >
+          </template>
+          <b-form-checkbox switch v-model="useLowPowerMode" class="mb-3 fw-medium"
+          >Use low power mode</b-form-checkbox>
+
+          <p>Devices in low power mode will only connect to the Cacophony Platform once per day to offload recordings.
+            This is the recommended mode for projects doing passive monitoring, as the battery will last much longer in the field.
           </p>
-          <div class="alert-light alert">
+
+          <p class="mb-0">Projects tracking an incursion that require
+            <router-link :to="{ name: 'user-project-settings' }">
+              real-time alerts</router-link> of species detected should disable low power mode.
+          </p>
+        </section-card>
+
+        <section-card v-if="isTc2Device" class="mb-3 mb-lg-4">
+          <template #header-title>
+            Recording settings
+          </template>
+          <template #header-action>
+            <div v-if="savingAudioSettings" class="d-flex align-items-center">
+              <b-spinner
+                class="me-2"
+                variant="secondary"
+                small
+              />
+              <span class="text-secondary">Saving</span>
+            </div>
+          </template>
+
+          <h5 class="h5">Recording mode</h5>
+          <p class="mb-4">
+            Configure this device to record audio, thermal video or both.
+          </p>
+
+          <b-form-radio-group
+            stacked
+            v-model="audioMode"
+            :disabled="savingAudioSettings"
+          >
+            <b-form-radio value="Disabled" class="mb-1">
+              <p class="fw-medium mb-1">Thermal video only</p>
+              <p class="text-secondary">Disables audio recording and records only thermal video.</p>
+            </b-form-radio>
+            <b-form-radio value="AudioOnly" class="mb-1">
+              <p class="fw-medium mb-1">Audio only</p>
+              <p class="text-secondary">Records audio in a 24-hour window and disables thermal recording.</p>
+            </b-form-radio>
+            <b-form-radio value="AudioAndThermal" class="mb-1">
+              <p class="fw-medium mb-1">Audio And Thermal</p>
+              <p class="text-secondary">Records audio outside of the thermal recording window.</p>
+            </b-form-radio>
+            <b-form-radio value="AudioOrThermal" class="mb-1">
+              <p class="fw-medium mb-1"> Audio Or Thermal</p>
+              <p class="text-secondary"> Records a one-minute clip of audio 32 times a day,
+                at random intervals during the day. The camera won't be able to record thermal video
+                while the audio is being recorded.</p>
+            </b-form-radio>
+          </b-form-radio-group>
+        </section-card>
+
+        <section-card class="mb-3 mb-lg-4">
+          <template #header-title>
+            Thermal video recording schedule
+          </template>
+          <template #header-action>
+            <div v-if="savingRecordingWindowSettings">
+              <b-spinner
+                class="me-2"
+                variant="secondary"
+                small
+              />
+              <span class="text-secondary">Saving</span>
+            </div>
+          </template>
+          <div>
+            <p class="mb-4">Select the default mode if your project is doing monitoring of nocturnal predators.
+              If your project has different objectives, you can set the device to record 24/7 or specify a
+              custom time window.</p>
             <div class="d-flex justify-content-between">
               <b-form-radio-group stacked v-model="recordingWindowSetting">
-                <b-form-radio value="default"
-                  >Ready to record from dusk until dawn (default)</b-form-radio
-                >
-                <b-form-radio value="always">Ready to record 24/7</b-form-radio>
-                <b-form-radio value="custom"
-                  >Custom recording window</b-form-radio
-                >
+                <b-form-radio value="default" class="mb-1">
+                  <p class="fw-medium mb-1">Ready to record from dusk until dawn <b-badge class="ms-1">Default</b-badge></p>
+                  <p class="text-secondary">The device will be actively
+                    monitoring and ready to make thermal recordings from 30 minutes
+                    before sunset until 30 minutes after sunrise. The
+                    battery life on the device will vary throughout the year as the
+                    length of the days change with the seasons.</p>
+                  <b-alert
+                    :model-value="recordingWindowSetting === 'default'"
+                    variant="warning"
+                    :no-animation="true"
+                  >
+                    <div class="d-flex">
+                      <material-symbol name="warning" class="me-2" size="1.25rem"/>
+                      Devices must have a location assigned to them to be able to record.
+                      Set the location of your device on the Cacophony Sidekick mobile app when you
+                      deploy it in the field. Remember to update the location when a device is moved
+                      so that the correct dusk/dawn window can be calculated.
+                    </div>
+                  </b-alert>
+                </b-form-radio>
+                <b-form-radio value="always" class="mb-1">
+                  <p class="fw-medium mb-1">Ready to record 24/7</p>
+                  <p class="text-secondary">Record non-stop.</p>
+                  <b-alert
+                    :model-value="recordingWindowSetting === 'always'"
+                    variant="light"
+                    :no-animation="true"
+                  >
+                    <div class="d-flex">
+                      <material-symbol name="info" class="me-2" size="1.25rem"/>
+                      Recording during daytime works best in shade. Sun moving through
+                      the field of view and heating and cooling items in the scene can
+                      result in a higher volume of false-triggers.
+                    </div>
+                  </b-alert>
+                </b-form-radio>
+                <b-form-radio value="custom" class="mb-1">
+                  <p class="fw-medium mb-1">Custom recording window</p>
+                  <p class="text-secondary mb-1">Set the device to enter and exit the active 'ready-to-record' state at fixed times each day.</p>
+                  <div
+                    class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mt-3"
+                    v-if="recordingWindowSetting === 'custom'"
+                  >
+                    <label for="start-time" class="text-nowrap me-2 fw-medium mb-1 mb-sm-0">Start time:</label>
+                    <datepicker
+                      class="me-2 mb-2 mb-sm-0"
+                      v-model="customRecordingWindowStart"
+                      time-picker
+                      required
+                      placeholder="Recording start"
+                      id="start-time"
+                    />
+                    <label for="start-time" class="text-nowrap fw-medium me-2 ms-0 ms-sm-1 mb-1 mb-sm-0 mt-1 mt-sm-0">End time:</label>
+                    <datepicker
+                      v-model="customRecordingWindowStop"
+                      time-picker
+                      required
+                      placeholder="Recording end"
+                      id="end-time"
+                    />
+                  </div>
+                  <b-alert
+                    :model-value="recordingWindowSetting === 'custom'"
+                    variant="light"
+                    :no-animation="true"
+                    class="mt-3"
+                  >
+                    <div class="d-flex">
+                      <material-symbol name="info" class="me-2" size="1.25rem"/>
+                      Recording during daytime works best in shade. Sun moving through
+                      the field of view and heating and cooling items in the scene can
+                      result in a higher volume of false-triggers.
+                    </div>
+                  </b-alert>
+                </b-form-radio>
               </b-form-radio-group>
+            </div>
+          </div>
+        </section-card>
+
+        <section-card v-if="isTc2Device" class="mb-3 mb-lg-4">
+          <template #header-title>
+            Battery configuration
+          </template>
+          <template #header-action>
+            <div v-if="savingBatterySettings">
               <b-spinner
-                class="ms-1"
-                v-if="savingRecordingWindowSettings"
+                class="me-2"
                 variant="secondary"
                 small
               />
+              <span class="text-secondary">Saving</span>
             </div>
-
-            <div
-              class="justify-content-between d-flex mt-2"
-              v-if="recordingWindowSetting === 'custom'"
-            >
-              <datepicker
-                class="me-2"
-                v-model="customRecordingWindowStart"
-                time-picker
-                required
-                placeholder="Recording start"
-              />
-              <datepicker
-                v-model="customRecordingWindowStop"
-                time-picker
-                required
-                placeholder="Recording end"
-              />
-            </div>
-          </div>
-
+          </template>
           <p>
-            If your project has different objectives, you can set the camera to
-            enter and exit the active 'ready-to-record' state at fixed times
-            each day, or you can disable the active window entirely to record
-            24/7.
-            <em
-              >Recording during daytime works best in shade. Sun moving through
-              the field of view and heating and cooling items in the scene can
-              result in a higher volume of false-triggers.</em
-            >
+            Battery chemistry and cell count are automatically detected based on voltage readings.
+            These values are used to calculate the expected battery duration and don't affect the
+            operation of the device.
           </p>
-        </div>
-        <hr />
+          <p class="mb-4">
+            These values should only be specified manually if the detection is incorrect.
+          </p>
+
+          <b-form-group label="Battery Chemistry" class="mb-1 fw-medium">
+            <b-form-select
+              v-model="batteryChemistry"
+              :options="batteryChemistryOptions"
+              :disabled="savingBatterySettings"
+            ></b-form-select>
+          </b-form-group>
+
+          <b-form-group
+            v-if="batteryChemistry"
+            label="Cell Count"
+            description="Leave empty for auto-detection (1-24 cells)"
+            class="mt-3 fw-medium"
+          >
+            <b-form-input
+              v-model.number="batteryCellCount"
+              type="number"
+              min="1"
+              max="24"
+              placeholder="Auto-detect"
+              :disabled="savingBatterySettings || !batteryChemistry"
+            />
+            <small v-if="batteryVoltageRange" class="form-text text-primary">
+              Expected voltage range: {{ batteryVoltageRange }}
+            </small>
+          </b-form-group>
+        </section-card>
+
       </div>
     </div>
   </div>
 </template>
 
 <style scoped lang="less">
-.settings-config {
-  max-width: 640px;
+@import "../assets/less/breakpoints";
+
+.settings-summary {
+  @media (min-width: @breakpoint-xs-max) {
+    div:not(:last-of-type) {
+      dt,
+      dd {
+        border-bottom: 1px solid var(--border-color-light);
+      }
+    }
+  }
 }
 </style>
 <style lang="css">
 @import url("@vuepic/vue-datepicker/dist/main.css");
+
+/* TODO: move somewhere else? Or leave here, given the component is not used in any other places? */
+.dp__input {
+  font-family: var(--font-family);
+  font-size: var(--font-size--md);
+}
+
+.dp__action_select {
+  background: var(--color-cp-green-600);
+  &:hover {
+    background: var(--color-cp-green-700);
+  }
+}
 </style>

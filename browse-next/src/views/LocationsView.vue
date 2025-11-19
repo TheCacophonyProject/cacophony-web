@@ -266,6 +266,7 @@ const updateLocationName = async (payload: {
         v-else
       >
         <div v-if="!projectHasLocations" class="d-flex flex-fill">
+          <!-- TODO: Styles for empty state -->
           There are no existing locations for this project
         </div>
         <div v-else class="col col-12 col-lg-8 col-xl-7 d-flex flex-fill flex-column me-md-3 mt-4 mt-lg-0">
