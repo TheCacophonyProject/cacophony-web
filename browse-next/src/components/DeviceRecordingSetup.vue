@@ -19,7 +19,16 @@ import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
 import type { DeviceTypeUnion } from "@typedefs/api/consts";
 import SectionCard from "@/components/SectionCard.vue";
-import {BAlert, BBadge, BFormGroup, BFormInput, BFormRadio, BFormRadioGroup, BSpinner} from "bootstrap-vue-next";
+import {
+  BAlert,
+  BBadge,
+  BFormCheckbox,
+  BFormGroup,
+  BFormInput,
+  BFormRadio,
+  BFormRadioGroup,
+  BSpinner
+} from "bootstrap-vue-next";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<

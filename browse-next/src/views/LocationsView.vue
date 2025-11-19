@@ -17,7 +17,7 @@ import {
 } from "@models/LoggedInUser";
 import type { LoadedResource } from "@api/types";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
-import { BPopover } from "bootstrap-vue-next";
+import {BPopover, BSpinner} from "bootstrap-vue-next";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
