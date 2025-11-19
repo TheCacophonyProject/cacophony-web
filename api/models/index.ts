@@ -19,7 +19,6 @@ import config from "../config.js";
 import Sequelize, {
   InferAttributes,
   InferCreationAttributes,
-  Model,
   NonAttribute,
 } from "sequelize";
 import path from "path";
@@ -49,8 +48,9 @@ const __dirname = path.dirname(__filename);
 const basename = path.basename(__filename);
 const dbConfig = config.database;
 const IS_DEBUG = config.server.loggerLevel === "debug";
+const IS_CI_ENV = !!process.env.IS_CI_ENV;
 // Have sequelize send us query execution timings
-dbConfig.benchmark = true;
+dbConfig.benchmark = !IS_CI_ENV;
 
 // export interface ModelCommon<T> extends Sequelize.Model {
 //   getJwtDataValues: () => { _type: string; id: unknown };
@@ -155,8 +155,7 @@ export default async function () {
         // NOTE: Currently outputting slow queries and timings on production.
         // Send logs via winston
         logging:
-          // eslint-disable-next-line no-constant-condition
-          IS_DEBUG || true
+          !IS_CI_ENV && (IS_DEBUG || true)
             ? async (msg: string, timeMs: number) => {
                 // Sequelize seems to happen in its own async context?
                 const store = asyncLocalStorage.getStore();
