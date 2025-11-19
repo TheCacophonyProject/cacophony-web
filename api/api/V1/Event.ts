@@ -16,9 +16,13 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields, requestWrapper } from "../middleware.js";
+import {
+  expectedTypeOf,
+  validateFields,
+  requestWrapper,
+} from "../middleware.js";
 import modelsInit from "@models/index.js";
-import type { Event, QueryOptions } from "@models/Event.js";
+import type { QueryOptions } from "@models/Event.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -51,7 +55,10 @@ import { isLatLon } from "@models/util/validation.js";
 import util from "@api/V1/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import config from "@config";
-import { QueryTypes } from "sequelize";
+import Sequelize, { QueryTypes } from "sequelize";
+import { Device } from "@models/Device.js";
+import { Event } from "@models/Event.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
 
 const models = await modelsInit();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -66,7 +73,7 @@ const uploadEvent = async (
     // The device is connecting directly, so update the last connected time.
     if (!device.deviceName) {
       // If we just have a device JWT id, get the actual device at this point.
-      device = await models.Device.findByPk(device.id);
+      device = await Device.findByPk(device.id);
     }
     await device.update({ lastConnectionTime: new Date() });
   }
@@ -75,10 +82,10 @@ const uploadEvent = async (
   if (!detailsId) {
     const description: EventDescription = request.body.description;
 
-    let details: any = description.details || {};
+    let details: Sequelize.WhereOptions | object = description.details || {};
     if (typeof description.details === "string") {
       try {
-        details = JSON.parse(description.details);
+        details = JSON.parse(description.details as string);
       } catch (e) {
         //
         logger.error(
@@ -89,12 +96,12 @@ const uploadEvent = async (
       }
     }
 
-    env = details.env || "unknown";
+    env = details["env"] || "unknown";
     if (["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
       env = "unknown";
     }
-    delete details.env;
-    const detail = await models.DetailSnapshot.getOrCreateMatching(
+    delete details["env"];
+    const detail = await DetailSnapshot.getOrCreateMatching(
       description.type,
       details,
     );
@@ -103,12 +110,12 @@ const uploadEvent = async (
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
       if (
-        details.location !== null &&
-        details.location.latitude !== undefined &&
-        details.location.longitude !== undefined
+        details["location"] &&
+        details["location"].latitude !== undefined &&
+        details["location"].longitude !== undefined
       ) {
-        const lat = details.location.latitude;
-        const lng = details.location.longitude;
+        const lat = details["location"].latitude;
+        const lng = details["location"].longitude;
         // Pre-validate to avoid server-side crashes on invalid inputs
         if (!isLatLon({ lat, lng }, false)) {
           return next(
@@ -119,13 +126,12 @@ const uploadEvent = async (
         }
         try {
           await maybeUpdateDeviceHistory(
-            models,
             device,
             { lat, lng },
-            new Date(details.location.updated),
+            new Date(details["location"].updated),
             "config",
           );
-        } catch (e: any) {
+        } catch (e) {
           const message = e?.message || "unknown error";
           if (
             e?.name === "SequelizeValidationError" ||
@@ -137,29 +143,38 @@ const uploadEvent = async (
               ),
             );
           }
-          return next(new ClientError(`Failed to update device history: ${message}`));
+          return next(
+            new ClientError(`Failed to update device history: ${message}`),
+          );
         }
       }
     }
   }
   const now = new Date();
-  const eventList = request.body.dateTimes.map((dateTime: IsoFormattedDateString) => ({
-    DeviceId: device.id,
-    EventDetailId: detailsId,
-    dateTime: new Date(dateTime),
-    env,
-  })).filter((event) => {
-    if (event.dateTime > now) {
-      logger.warning("Discarding event with invalid future dateTime %s.", JSON.stringify(event));
-      return false;
-    }
-    return true;
-  });
+  const eventList = request.body.dateTimes
+    .map((dateTime: IsoFormattedDateString) => ({
+      DeviceId: device.id,
+      EventDetailId: detailsId,
+      dateTime: new Date(dateTime),
+      env,
+    }))
+    .filter((event) => {
+      if (event.dateTime > now) {
+        logger.warning(
+          "Discarding event with invalid future dateTime %s.",
+          JSON.stringify(event),
+        );
+        return false;
+      }
+      return true;
+    });
   const count = eventList.length;
   try {
     // Batch inserting events to max 100 events at a time, to spare DB memory usage.
     for (let i = 0; i < eventList.length; i += 100) {
-      await models.Event.bulkCreate(eventList.slice(i, Math.min(i + 100, eventList.length)));
+      await Event.bulkCreate(
+        eventList.slice(i, Math.min(i + 100, eventList.length)),
+      );
     }
   } catch (exception) {
     return next(
@@ -278,7 +293,6 @@ export default function (app: Application, baseUrl: string) {
         data,
         keys,
         _uploadedFileDatas,
-        _locals,
       ): Promise<Event> => {
         console.assert(
           keys.length === 1,
@@ -293,17 +307,19 @@ export default function (app: Application, baseUrl: string) {
             ...data,
           },
         };
-        delete description.details.type;
-        delete description.details.filename;
-        delete description.details.dateTimes;
-        const detail = await models.DetailSnapshot.getOrCreateMatching(
+        delete description.details["type"];
+        delete description.details["filename"];
+        delete description.details["dateTimes"];
+        const detail = await DetailSnapshot.getOrCreateMatching(
           description.type,
           description.details,
         );
         const dateTime =
-          (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
+          (data["dateTimes"] &&
+            data["dateTimes"].length &&
+            data["dateTimes"][0]) ||
           new Date().toISOString();
-        return await models.Event.create({
+        return await Event.create({
           DeviceId: uploadingDevice.id,
           EventDetailId: detail.id,
           dateTime,
@@ -472,7 +488,7 @@ export default function (app: Application, baseUrl: string) {
         options = { eventType: query.type } as QueryOptions;
       }
       const includeCount = query["include-count"] as unknown as boolean;
-      const result = await models.Event.query(
+      const result = await Event.query(
         response.locals.requestUser.id,
         query.startTime as string,
         query.endTime as string,
@@ -491,9 +507,7 @@ export default function (app: Application, baseUrl: string) {
           : result,
       };
       if (includeCount) {
-        (payload as any).count = (
-          result as { rows: Event[]; count: number }
-        ).count;
+        payload["count"] = (result as { rows: Event[]; count: number }).count;
       }
       return successResponse(response, "Completed query.", payload);
     },

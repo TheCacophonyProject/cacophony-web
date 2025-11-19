@@ -37,7 +37,10 @@ const INVALID_DATAPOINT_UPDATE_REQUEST =
 
 function send(
   response: Response,
-  data: { statusCode: HttpStatusCode; messages: string[] } & Record<string, any>,
+  data: { statusCode: HttpStatusCode; messages: string[] } & Record<
+    string,
+    unknown
+  >,
 ) {
   // Check that the data is valid.
   if (
@@ -54,10 +57,10 @@ function send(
   }
   if (CACOPHONY_WEB_VERSION.version !== "unknown") {
     // In production, we add the cacophony-web version to each request
-    (data as any).cwVersion = CACOPHONY_WEB_VERSION.version;
+    data.cwVersion = CACOPHONY_WEB_VERSION.version;
   }
   const statusCode = data.statusCode;
-  (data as any).success = 200 <= statusCode && statusCode <= 299;
+  data.success = 200 <= statusCode && statusCode <= 299;
   delete data.statusCode;
   return response.status(statusCode).json(data);
 }
@@ -133,10 +136,10 @@ function validFileRequest(response, data) {
 export const someResponse = (
   response: Response,
   statusCode: HttpStatusCode,
-  messageOrData: string | string[] | Record<string, any> = "",
-  data: Record<string, any> = {},
+  messageOrData: string | string[] | Record<string, unknown> = "",
+  data: Record<string, unknown> = {},
 ) => {
-  const dataMessages = data.messages || [];
+  const dataMessages: string[] = (data.messages as string[]) || [];
   if (typeof messageOrData === "string" || Array.isArray(messageOrData)) {
     const serverError =
       statusCode === HttpStatusCode.ServerError ? ["Server error. Sorry!"] : [];
@@ -150,7 +153,7 @@ export const someResponse = (
     });
   }
   return send(response, {
-    ...(messageOrData as Record<string, any>),
+    ...(messageOrData as Record<string, unknown>),
     statusCode,
     messages: dataMessages,
   });
@@ -158,16 +161,16 @@ export const someResponse = (
 
 export const successResponse = (
   response: Response,
-  messageOrData: string | string[] | Record<string, any> = "",
-  data: Record<string, any> = {},
+  messageOrData: string | string[] | Record<string, unknown> = "",
+  data: Record<string, unknown> = {},
 ) => someResponse(response, HttpStatusCode.Ok, messageOrData, data);
 
 export const serverErrorResponse = async (
   request: Request,
   response: Response,
   error: Error,
-  messageOrData: string | string[] | Record<string, any> = "",
-  data: Record<string, any> = {},
+  messageOrData: string | string[] | Record<string, unknown> = "",
+  data: Record<string, unknown> = {},
 ) => {
   try {
     // If the payload was too large, we'd still like to know who the request is from in the logs.
@@ -182,7 +185,7 @@ export const serverErrorResponse = async (
       token._type,
       token.id,
     );
-  } catch (e) {
+  } catch (_e) {
     log.error(
       "SERVER ERROR (JWT token): %s, %s",
       error.toString(),

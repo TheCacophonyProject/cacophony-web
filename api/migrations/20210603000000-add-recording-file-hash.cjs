@@ -1,4 +1,3 @@
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await Promise.all([

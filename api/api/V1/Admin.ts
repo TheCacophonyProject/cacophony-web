@@ -75,7 +75,7 @@ export default function (app: Application, baseUrl: string) {
 
         if (!config.productionEnv) {
           // In CI, check the userName to see if it should be added to the processing users list
-          for (const userName of (config.processingSuperUserNames || [])) {
+          for (const userName of config.processingSuperUserNames || []) {
             if (userToUpdate.userName.includes(userName)) {
               config.processingUserIds.push(userToUpdate.id);
             }

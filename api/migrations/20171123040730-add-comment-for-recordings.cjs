@@ -1,11 +1,9 @@
-
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     return await queryInterface.addColumn(
       "Recordings",
       "comment",
-      Sequelize.STRING
+      Sequelize.STRING,
     );
   },
 

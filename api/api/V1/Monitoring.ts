@@ -27,25 +27,19 @@ import { format as sqlFormat } from "sql-formatter";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredGroupById,
-  fetchUnauthorizedOptionalGroupByNameOrId,
-  fetchUnauthorizedRequiredGroupById,
 } from "../extract-middleware.js";
 import modelsInit from "@models/index.js";
 import { ClientError } from "@api/customErrors.js";
 import type { GroupId, StationId } from "@typedefs/api/common.js";
+import { User } from "@models/User.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { format } from "util";
 import { idOf } from "@api/validation-middleware.js";
-import logger from "@log";
 import { asyncLocalStorage } from "@/Globals.js";
 import { sqlDebugOutput } from "@api/V1/recordingsBulkQueryUtil.js";
-import { Recording } from "@models/Recording.js";
-import { mapDeviceResponse } from "@api/V1/Device.js";
-import { mapRecordingResponse } from "@api/V1/Recording.js";
-import type { MonitoringPageCriteria2 } from "@api/V1/monitoringUtil.js";
 import { generateVisits2 } from "@api/V1/monitoringUtil.js";
 
-const models = await modelsInit();
+await modelsInit();
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;
@@ -191,9 +185,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional(),
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
-      const requestUser = await models.User.findByPk(
-        response.locals.requestUser.id,
-      );
+      const requestUser = await User.findByPk(response.locals.requestUser.id);
       const types = (((request.query.types as string) &&
         (request.query.types as string).split(",")) as (
         | RecordingType.TrailCamImage
@@ -270,7 +262,7 @@ export default function (app: Application, baseUrl: string) {
         .optional()
         .toArray()
         .isArray({ min: 1 })
-        .custom((value: any[]) => {
+        .custom((value: string[]) => {
           const allowedTypes = [
             RecordingType.ThermalRaw,
             RecordingType.TrailCamImage,
@@ -319,21 +311,21 @@ export default function (app: Application, baseUrl: string) {
 
       const loggingFn =
         (sqlPasses: string[], sqlTimings: number[]) =>
-          (message: string, time: number) => {
-            const store = asyncLocalStorage.getStore() as Map<string, number>;
-            const dbQueryCount = store?.get("queryCount") as number;
-            const dbQueryTime = store?.get("queryTime") as number;
-            store?.set("queryCount", dbQueryCount + 1);
-            store?.set("queryTime", dbQueryTime + time);
-            if (query.debug) {
-              sqlPasses.push(
-                sqlFormat(message.replace("Executed (default): ", ""), {
-                  language: "postgresql",
-                }),
-              );
-              sqlTimings.push(time);
-            }
-          };
+        (message: string, time: number) => {
+          const store = asyncLocalStorage.getStore();
+          const dbQueryCount = store?.get("queryCount") as number;
+          const dbQueryTime = store?.get("queryTime") as number;
+          store?.set("queryCount", dbQueryCount + 1);
+          store?.set("queryTime", dbQueryTime + time);
+          if (query.debug) {
+            sqlPasses.push(
+              sqlFormat(message.replace("Executed (default): ", ""), {
+                language: "postgresql",
+              }),
+            );
+            sqlTimings.push(time);
+          }
+        };
       const logging = loggingFn(sqlPasses, sqlTimings);
       const searchDetails = {
         group: groupId,

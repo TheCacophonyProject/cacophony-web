@@ -14,7 +14,7 @@ export interface ApiTrackTagAttributes {
 }
 
 export interface TrackTagData extends ApiTrackTagAttributes {
-  name: string;
+  name?: string; // Model name
   all_class_confidences?: null | Record<string, number>;
   classify_time?: number;
   message?: string;

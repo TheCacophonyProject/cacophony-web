@@ -5,7 +5,7 @@ export type EventDates = IsoFormattedDateString[];
 
 export interface EventDescription {
   type: string; // Name of the type of event (required if description is included).
-  details?: any; // Metadata of the event.
+  details?: object; // Metadata of the event.
 }
 
 type IsoFormattedString = string;
@@ -18,7 +18,7 @@ export interface DeviceEvent {
   Device: { deviceName: string };
   EventDetail: {
     type: DeviceEventType;
-    details?: any;
+    details?: object;
   };
 }
 

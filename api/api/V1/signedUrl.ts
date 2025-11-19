@@ -29,8 +29,10 @@ import { signedUrl } from "@api/auth.js";
 import type { ReadableStream } from "stream/web";
 import { serverErrorResponse } from "@api/V1/responseUtil.js";
 import fs from "fs/promises";
+import { GroupUsers } from "@models/GroupUsers.js";
+import { User } from "@models/User.js";
 
-const models = await modelsInit();
+await modelsInit();
 
 export const streamS3Object = async (
   request: Request,
@@ -44,27 +46,35 @@ export const streamS3Object = async (
 ) => {
   const requestIsCptv = mimeType === "application/x-cptv";
   const recordingIsSecret = async () => {
-    const recordingIsPartOfSecretGroup = groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
-    const requestUserIsSuperUser = userId && SuperUsers.has(userId) && !config.processingUserIds.includes(userId);
+    const recordingIsPartOfSecretGroup =
+      groupId && config.groupIdsWithRedactedThermalRecordings.includes(groupId);
+    const requestUserIsSuperUser =
+      userId &&
+      SuperUsers.has(userId) &&
+      !config.processingUserIds.includes(userId);
     if (requestUserIsSuperUser && recordingIsPartOfSecretGroup) {
-      const superUserIsPartOfSecretGroup = await models.GroupUsers.findOne({where: { UserId: userId, GroupId: groupId, removedAt: null }});
+      const superUserIsPartOfSecretGroup = await GroupUsers.findOne({
+        where: { UserId: userId, GroupId: groupId, removedAt: null },
+      });
       if (superUserIsPartOfSecretGroup) {
         return false;
       }
     }
     return recordingIsPartOfSecretGroup && requestUserIsSuperUser;
   };
-  const isCiRequest = "user-agent" in request.headers && request.headers["user-agent"].includes("Cypress");
-  if (requestIsCptv && ((config.server.isLocalDev && !isCiRequest) || await recordingIsSecret())) {
+  const isCiRequest =
+    "user-agent" in request.headers &&
+    request.headers["user-agent"].includes("Cypress");
+  if (
+    requestIsCptv &&
+    ((config.server.isLocalDev && !isCiRequest) || (await recordingIsSecret()))
+  ) {
     const file = await fs.readFile("./debug-files/2-second-status.cptv");
     response.setHeader(
       "Content-disposition",
       `attachment; filename=${fileName}`,
     );
-    response.setHeader(
-      "Content-type",
-      mimeType,
-    );
+    response.setHeader("Content-type", mimeType);
     response.setHeader("Content-Length", file.length);
     response.write(file, "binary");
     return response.end(null, "binary");
@@ -121,7 +131,7 @@ export const streamS3Object = async (
     }
     if (userId && groupId) {
       // Log out to the DB how much we streamed for this user.
-      const groupUser = await models.GroupUsers.findOne({
+      const groupUser = await GroupUsers.findOne({
         where: {
           UserId: userId,
           GroupId: groupId,
@@ -130,7 +140,7 @@ export const streamS3Object = async (
       });
       if (!groupUser && SuperUsers.has(userId)) {
         // NOTE: If the user is a super-user, just attribute it to their user.
-        const user = await models.User.getFromId(userId);
+        const user = await User.findByPk(userId);
         if (user) {
           await user.increment({
             transferredBytes: dataStreamed,

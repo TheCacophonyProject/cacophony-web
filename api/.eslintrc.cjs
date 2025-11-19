@@ -1,3 +1,4 @@
+
 module.exports = {
   plugins: ["@typescript-eslint"],
   root: true,
@@ -11,8 +12,8 @@ module.exports = {
     es6: true,
   },
   globals: {
-      "ReadableStream": "readonly",
-      "ReadableStreamDefaultReader": "readonly",
+    ReadableStream: "readonly",
+    ReadableStreamDefaultReader: "readonly",
   },
   parser: "@typescript-eslint/parser",
   parserOptions: {
@@ -20,9 +21,9 @@ module.exports = {
     sourceType: "module",
   },
   rules: {
-    "indent": ["error", 2], // Enforces 2-space indentation
-    "semi-spacing": ["error", {"before": false, "after": true}], // No space before, one space after
-    "keyword-spacing": ["error", {"before": true, "after": true}], // Space before and after keywords
+    indent: ["error", 2], // Enforces 2-space indentation
+    "semi-spacing": ["error", { before: false, after: true }], // No space before, one space after
+    "keyword-spacing": ["error", { before: true, after: true }], // Space before and after keywords
     "no-prototype-builtins": "off",
     "linebreak-style": ["error", "unix"],
     semi: ["error", "always"],

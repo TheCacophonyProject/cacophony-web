@@ -9,9 +9,11 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import { generateVisits, type Visit } from "@api/V1/monitoringVisit.js";
 import { displayLabelForClassificationLabel } from "@/classifications/classifications.js";
 import type { GroupId } from "@typedefs/api/common.js";
-import type { User } from "@models/User.js";
+import { User } from "@models/User.js";
 import os from "os";
-const models = await modelsInit();
+import { Group } from "@models/Group.js";
+
+await modelsInit();
 
 const allVisitsForProjectInTimespan = async (
   projectId: GroupId,
@@ -37,7 +39,7 @@ const allVisitsForProjectInTimespan = async (
   searchDetails.compareAi = "Master";
   searchDetails.types = params.types;
   const visits = [];
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     const visitsPage = await generateVisits(user.id, searchDetails, false);
 
@@ -85,11 +87,11 @@ const allVisitsForProjectInTimespan = async (
   now.setHours(9, 0, 0, 0);
   const startOfPeriod = new Date(now);
   startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
-  const digestGroups = await models.Group.findAll({
+  const digestGroups = await Group.findAll({
     attributes: ["groupName", "id"],
     include: [
       {
-        model: models.User,
+        model: User,
         through: {
           where: {
             ...(timespan === "daily"

@@ -1,11 +1,9 @@
-
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await queryInterface.addColumn(
       "Recordings",
       "rawMimeType",
-      Sequelize.STRING
+      Sequelize.STRING,
     );
     await queryInterface.sequelize.query(`
         UPDATE "Recordings"

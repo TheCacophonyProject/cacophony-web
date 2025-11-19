@@ -6,6 +6,9 @@ import process from "process";
 import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts.js";
+import { Device } from "@models/Device.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
+import { Recording } from "@models/Recording.js";
 
 const models = await modelsInit();
 const dbOptions = (config) => ({
@@ -53,7 +56,7 @@ async function main() {
   const allDevices = [];
   for (const { saltId } of saltIds.rows) {
     // Find all versions of the device with this saltId
-    const devices = await models.Device.findAll({ where: { saltId } });
+    const devices = await Device.findAll({ where: { saltId } });
     allDevices.push(...devices);
   }
 
@@ -93,7 +96,6 @@ async function main() {
         Number(configChangeForDevice.lng) !== 0
       ) {
         await maybeUpdateDeviceHistory(
-          models,
           device,
           {
             lat: configChangeForDevice.lat,
@@ -131,7 +133,6 @@ async function main() {
         Number(automaticLocationChangeForDevice.lng) !== 0
       ) {
         await maybeUpdateDeviceHistory(
-          models,
           device,
           {
             lat: automaticLocationChangeForDevice.lat,
@@ -144,7 +145,7 @@ async function main() {
     }
     // Now that we have "complete" device history, we should be able to stations to recordings.
     // Get all the histories for the device:
-    const historyEntries = await models.DeviceHistory.findAll({
+    const historyEntries = await DeviceHistory.findAll({
       where: {
         DeviceId: device.id,
         location: { [Op.ne]: null },
@@ -161,11 +162,11 @@ async function main() {
       }
       const recordingTimeWindow = nextEntry
         ? {
-          [Op.and]: [
-            { [Op.gte]: history.fromDateTime },
-            { [Op.lt]: nextEntry.fromDateTime },
-          ],
-        }
+            [Op.and]: [
+              { [Op.gte]: history.fromDateTime },
+              { [Op.lt]: nextEntry.fromDateTime },
+            ],
+          }
         : { [Op.gte]: history.fromDateTime };
       await models.Recording.update(
         { StationId: history.stationId },
@@ -179,7 +180,7 @@ async function main() {
       );
     }
     // Update device lastRecordingTime and kind
-    const latestRecordingForDevice = await models.Recording.findOne({
+    const latestRecordingForDevice = await Recording.findOne({
       where: {
         DeviceId: device.id,
       },

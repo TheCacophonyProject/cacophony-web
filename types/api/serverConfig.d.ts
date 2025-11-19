@@ -7,7 +7,7 @@ type DatabaseConfig = {
     database: string;
     port?: number;
     host: string;
-    dialect: string;
+    dialect: "postgres";
     slowQueryLogThresholdMs?: number;
 };
 

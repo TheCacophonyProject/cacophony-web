@@ -74,9 +74,7 @@ export const groupNamesWithRedactedThermalRecordings = [
 
 // When testing, we don't know what ID a user will be assigned, so we use the user name
 // to determine if a user' thermal recordings should be available to a processing user.
-export const processingSuperUserNames = [
-    "processing-super-user",
-];
+export const processingSuperUserNames = ["processing-super-user"];
 
 // This is needed because Sequelize looks for development by default
 // when using db:migrate

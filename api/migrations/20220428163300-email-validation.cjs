@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     // Stations get a start date, allowing null for now

@@ -1,6 +1,4 @@
-
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 
 module.exports = {
   up: async function (queryInterface, Sequelize) {
@@ -50,7 +48,7 @@ module.exports = {
     await util.migrationRemoveBelongsTo(
       queryInterface,
       "Recordings",
-      "Stations"
+      "Stations",
     );
     await queryInterface.dropTable("Stations");
   },

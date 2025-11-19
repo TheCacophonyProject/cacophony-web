@@ -1,28 +1,30 @@
 import modelsInit from "@models/index.js";
 import type { Device } from "@models/Device.js";
-import type { Event, QueryOptions } from "@models/Event.js";
 import type { Moment } from "moment";
+import { Event } from "@models/Event.js";
 import moment from "moment";
+import QueryString from "qs";
+import { RequestContext } from "@api/extract-middleware.js";
 
-const models = await modelsInit();
+await modelsInit();
 
 export async function powerEventsPerDevice(
-  request: { query: any; res: any },
+  request: { query: QueryString.ParsedQs; res: { locals: RequestContext } },
   admin?: boolean,
 ): Promise<PowerEvents[]> {
   const query = request.query;
-  const options = {} as QueryOptions;
-  options.eventType = ["rpi-power-on", "daytime-power-off", "stop-reported"];
-  options.admin = admin === true;
-  options.useCreatedDate = false;
-  const result = await models.Event.latestEvents(
+  const result = await Event.latestEvents(
     request.res.locals.requestUser.id,
-    query.deviceId,
-    options,
+    Number(query.deviceId),
+    {
+      eventType: ["rpi-power-on", "daytime-power-off", "stop-reported"],
+      admin: admin === true,
+      useCreatedDate: false,
+    },
   );
   const deviceEvents = {};
   for (const event of result) {
-    if (deviceEvents.hasOwnProperty(event.DeviceId)) {
+    if (event.DeviceId in deviceEvents) {
       deviceEvents[event.DeviceId].update(event);
     } else {
       deviceEvents[event.DeviceId] = new PowerEvents(event);
@@ -55,20 +57,20 @@ export class PowerEvents {
     }
     const eventDate = moment(event.dateTime);
     switch (event.EventDetail.type) {
-    case "rpi-power-on":
-      if (this.lastStarted == null || eventDate.isAfter(this.lastStarted)) {
-        this.lastStarted = eventDate;
-      }
-      break;
-    case "daytime-power-off":
-      if (this.lastStopped == null || eventDate.isAfter(this.lastStopped)) {
-        this.lastStopped = eventDate;
-      }
-      break;
-    case "stop-reported":
-      if (this.lastReported == null || eventDate.isAfter(this.lastReported)) {
-        this.lastReported = eventDate;
-      }
+      case "rpi-power-on":
+        if (this.lastStarted == null || eventDate.isAfter(this.lastStarted)) {
+          this.lastStarted = eventDate;
+        }
+        break;
+      case "daytime-power-off":
+        if (this.lastStopped == null || eventDate.isAfter(this.lastStopped)) {
+          this.lastStopped = eventDate;
+        }
+        break;
+      case "stop-reported":
+        if (this.lastReported == null || eventDate.isAfter(this.lastReported)) {
+          this.lastReported = eventDate;
+        }
     }
   }
   checkIfStopped(): boolean {

@@ -8,7 +8,7 @@ const exec = util.promisify(cp_exec);
 
 const checkOnlyInstanceOfScriptRunning = async () => {
   const me = [process.pid, process.ppid];
-  // eslint-disable-next-line no-undef
+
   const { stdout } = await exec("pgrep -f mailServerStub");
   const lines = stdout.split("\n");
   const processes = lines
@@ -40,39 +40,53 @@ const checkOnlyInstanceOfScriptRunning = async () => {
   writeFile(stubFile, "SERVER: started", (err) => {
     if (err) {
       console.error(err);
-      appendFile(stubFile, err.toString(), () => {});
+      appendFile(stubFile, err.toString(), () => {
+        return;
+      });
       return;
     }
   });
 
   // process single emails
-  mailServer.bind((addr: string, id: number, email: any) => {
-    if (email.headers.to.includes("pump-smtp")) {
-      // A special email address to simply pump the SMTP stub,
-      // when we're expecting *NO* email to be sent on an event,
-      // but we don't want the cypress test to just timeout.
-      const content: string = "SERVER: received email\n";
-      appendFile(stubFile, content, (err) => {
-        if (err) {
-          console.error(err);
-          return;
-        }
-      });
-    } else {
-      let content: string = "";
-      content += "SERVER: received email\n";
-      content += `SERVER: from: ${email.sender}\n`;
-      content += `SERVER: subject: ${email.headers.subject}\n`;
-      content += `SERVER: to: ${email.headers.to}\n`;
-      content += `SERVER: body: ${email.data}\n`;
-      content += "SERVER: end of mail\n";
-      writeFile(stubFile, content, (err) => {
-        if (err) {
-          console.error(err);
-          appendFile(stubFile, err.toString(), () => {});
-          return;
-        }
-      });
-    }
-  });
+  mailServer.bind(
+    (
+      addr: string,
+      id: number,
+      email: {
+        sender: string;
+        headers: { subject: string; to: string[]; data: string };
+        data: string;
+      },
+    ) => {
+      if (email.headers.to.includes("pump-smtp")) {
+        // A special email address to simply pump the SMTP stub,
+        // when we're expecting *NO* email to be sent on an event,
+        // but we don't want the cypress test to just timeout.
+        const content = "SERVER: received email\n";
+        appendFile(stubFile, content, (err) => {
+          if (err) {
+            console.error(err);
+            return;
+          }
+        });
+      } else {
+        let content = "";
+        content += "SERVER: received email\n";
+        content += `SERVER: from: ${email.sender}\n`;
+        content += `SERVER: subject: ${email.headers.subject}\n`;
+        content += `SERVER: to: ${email.headers.to}\n`;
+        content += `SERVER: body: ${email.data}\n`;
+        content += "SERVER: end of mail\n";
+        writeFile(stubFile, content, (err) => {
+          if (err) {
+            console.error(err);
+            appendFile(stubFile, err.toString(), () => {
+              return;
+            });
+            return;
+          }
+        });
+      }
+    },
+  );
 })();

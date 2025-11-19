@@ -130,7 +130,7 @@ class DeviceSummary {
   }
 
   // generates visits from a list of recordings in descending date time order
-  generateVisits(recordings: any[], queryOffset: number) {
+  generateVisits(recordings: Recording[], queryOffset: number) {
     for (const [i, rec] of recordings.entries()) {
       this.lastRecTime = moment(rec.recordingDateTime);
       let devVisits = this.deviceMap[rec.DeviceId];
@@ -190,12 +190,12 @@ class DeviceSummary {
     for (const device of Object.values(this.deviceMap)) {
       device.removeIncompleteVisits();
       if (device.visits.length == 0) {
-        delete this.deviceMap[device];
+        delete this.deviceMap[device.id];
       }
     }
   }
   allAudioFileIds(): Set<number> {
-    const audioFileIds: Set<number> = new Set();
+    const audioFileIds = new Set<number>();
 
     for (const device of Object.values(this.deviceMap)) {
       device.audioFileIds.forEach((id) => audioFileIds.add(id));
@@ -248,11 +248,10 @@ class DeviceVisits {
   audioBait: boolean;
   visits: Visit[];
   constructor(
-    // eslint-disable-next-line no-unused-vars
     public deviceName: string,
-    // eslint-disable-next-line no-unused-vars
+
     public groupName: string,
-    // eslint-disable-next-line no-unused-vars
+
     public id: number,
   ) {
     this.firstVisit = null;
@@ -306,7 +305,7 @@ class DeviceVisits {
     }
   }
 
-  updateSummary(rec: any) {
+  updateSummary(rec: Recording) {
     //update tally of visits and counts and start end time of the device summary
     const currentVisit = this.currentVisit();
     this.audioBait = this.audioBait || currentVisit.audioBaitDay;
@@ -338,7 +337,7 @@ class DeviceVisits {
     return currentVisit.isPartOfVisit(time);
   }
 
-  calculateNewVisits(rec: any, queryOffset: number): Visit[] {
+  calculateNewVisits(rec: Recording, queryOffset: number): Visit[] {
     sortTracks(rec.Tracks);
     if (rec.Tracks.length == 0) {
       return this.visits;
@@ -391,14 +390,18 @@ class Visit {
   audioBaitVisit: boolean;
   audioBaitEvents: Event[];
   complete: boolean;
-  tagCount: any;
-  constructor(rec: any, public queryOffset: number, tracks?: Track[]) {
+  tagCount: Record<string, { tag: TrackTag; count: number }>;
+  constructor(
+    rec: Recording,
+    public queryOffset: number,
+    tracks?: Track[],
+  ) {
     visitID += 1;
     this.tagCount = {};
     this.visitID = visitID;
     this.events = [];
     this.deviceId = rec.Device.id;
-    this.stationId = rec.stationId;
+    this.stationId = rec.StationId;
     this.deviceName = rec.Device.deviceName;
     this.groupName = rec.Group.groupName;
     this.audioBaitEvents = [];
@@ -452,7 +455,7 @@ class Visit {
     this.complete = true;
   }
 
-  addRecording(rec: any, tracks: Track[]) {
+  addRecording(rec: Recording, tracks: Track[]) {
     for (const track of tracks) {
       const taggedAs = getCanonicalTrackTag(track.TrackTags || []);
       const event = new VisitEvent(rec, track, null, taggedAs);
@@ -564,10 +567,7 @@ class TrackStartEnd {
     this.recStart = moment(rec.recordingDateTime);
     this.trackStart = moment(rec.recordingDateTime);
     this.trackEnd = moment(rec.recordingDateTime);
-    if (
-      track.hasOwnProperty("startSeconds") &&
-      track.hasOwnProperty("endSeconds")
-    ) {
+    if ("startSeconds" in track && "endSeconds" in track) {
       this.trackStart = this.trackStart.add(track.startSeconds * 1000, "ms");
       this.trackEnd = this.trackEnd.add(track.endSeconds * 1000, "ms");
     } else {
@@ -581,15 +581,9 @@ function isWithinVisitInterval(firstTime: Moment, secondTime: Moment): boolean {
   const secondsDiff = Math.abs(firstTime.diff(secondTime, "seconds"));
   return secondsDiff <= eventMaxTimeSeconds;
 }
-interface DeviceAnimals {
-  [key: number]: AnimalSummary;
-}
-interface DeviceVisitMap {
-  [key: number]: DeviceVisits;
-}
-interface AnimalSummary {
-  [key: string]: VisitSummary;
-}
+type DeviceAnimals = Record<number, AnimalSummary>;
+type DeviceVisitMap = Record<number, DeviceVisits>;
+type AnimalSummary = Record<string, VisitSummary>;
 export default function () {
   console.log("");
 }

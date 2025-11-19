@@ -2,7 +2,10 @@ import Classifications from "@/classifications/classification.json" with { type:
 import type { Classification } from "@typedefs/api/trackTag.js";
 
 const flattenNodes = (
-  acc: Record<string, { label: string; display: string; path: string, displayAudio: string }>,
+  acc: Record<
+    string,
+    { label: string; display: string; path: string; displayAudio: string }
+  >,
   node: Classification,
   parentPath: string,
 ) => {
@@ -39,5 +42,11 @@ export const displayLabelForClassificationLabel = (
     return "Unidentified";
   }
   const classifications = flatClassifications;
-  return (classifications[label] && (isAudioContext ? classifications[label].displayAudio || classifications[label].display : classifications[label].display)) || label;
+  return (
+    (classifications[label] &&
+      (isAudioContext
+        ? classifications[label].displayAudio || classifications[label].display
+        : classifications[label].display)) ||
+    label
+  );
 };

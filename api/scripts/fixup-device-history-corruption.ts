@@ -2,6 +2,7 @@ import log from "@log";
 import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
 import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
 const models = await modelsInit();
 (async () => {
   const results = await models.sequelize.query(`
@@ -21,7 +22,7 @@ const models = await modelsInit();
       dh."fromDateTime" desc
   `);
   for (const item of results[0]) {
-    const allEntries = await models.DeviceHistory.findAll({
+    const allEntries = await DeviceHistory.findAll({
       where: {
         DeviceId: item["DeviceId"],
         GroupId: item["GroupId"],
@@ -85,7 +86,7 @@ const models = await modelsInit();
       };
       prevEntry = entry;
     }
-    await models.DeviceHistory.updateDeviceSettings(
+    await DeviceHistory.updateDeviceSettings(
       item["DeviceId"],
       item["GroupId"],
       settings,

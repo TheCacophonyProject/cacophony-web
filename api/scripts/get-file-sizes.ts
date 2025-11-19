@@ -6,7 +6,7 @@ import { program } from "commander";
 import pg from "pg";
 import process from "process";
 import log from "../logging.js";
-import {loadConfig} from "@config";
+import { loadConfig } from "@config";
 const exec = util.promisify(cp_exec);
 let Config;
 
@@ -62,14 +62,14 @@ const checkOnlyInstanceOfScriptRunning = async () => {
     ...(await loadConfig(options.config)),
   };
 
-  if (!Config.hasOwnProperty("s3Archive")) {
+  if (!("s3Archive" in Config)) {
     log.warning(
       "An archive target and bucket needs to be configured in config/app.js in order to archive old recordings",
     );
     process.exit(0);
   }
 
-  if (!Config.s3Local.hasOwnProperty("rootPath")) {
+  if (!("rootPath" in Config.s3Local)) {
     log.warning(
       "No object storage 'rootPath' property found in s3Local config - this is a required field",
     );

@@ -1,37 +1,44 @@
 import config from "../config.js";
 import log from "../logging.js";
-import type { Device } from "@models/Device.js";
+import { Device } from "@models/Device.js";
+import { Event } from "@models/Event.js";
 import modelsInit from "@models/index.js";
-import { Op } from "sequelize";
+import {
+  BelongsTo,
+  BelongsToManyGetAssociationsMixin,
+  BelongsToManyGetAssociationsMixinOptions,
+  Op,
+} from "sequelize";
 import { sendStoppedDevicesReportEmail } from "@/emails/transactionalEmails.js";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
 import type { User } from "@models/User.js";
 import type { Group } from "@models/Group.js";
 import os from "os";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
 
-const models = await modelsInit();
+await modelsInit();
 
-type UserGroupDevices = Record<
-UserId,
-{
-  user: User;
-  groups: Record<GroupId, { group: Group; stoppedDevices: Device[] }>;
-}
+type _UserGroupDevices = Record<
+  UserId,
+  {
+    user: User;
+    groups: Record<GroupId, { group: Group; stoppedDevices: Device[] }>;
+  }
 >;
 
 type GroupUserDevices = Record<
-GroupId,
-{
-  group: Group;
-  stoppedDevices: Device[];
-  users: User[];
-}
+  GroupId,
+  {
+    group: Group;
+    stoppedDevices: Device[];
+    users: User[];
+  }
 >;
 
 const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
   const recipientUsers = {};
   for (const device of devices) {
-    if (!recipientUsers.hasOwnProperty(device.GroupId)) {
+    if (!Object.prototype.hasOwnProperty.call(recipientUsers, device.GroupId)) {
       recipientUsers[device.GroupId] = await device.Group.getUsers({
         through: {
           where: {
@@ -56,7 +63,7 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
             removedAt: { [Op.eq]: null },
           },
         },
-      });
+      } as BelongsToManyGetAssociationsMixinOptions);
     }
   }
   const groupUserDevices = {};
@@ -78,14 +85,14 @@ async function main() {
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
-  const stoppedEvents = await models.Event.latestEvents(null, null, {
+  const stoppedEvents = await Event.latestEvents(null, null, {
     useCreatedDate: false,
     admin: true,
     eventType: ["stop-reported"],
   });
 
   // filter devices which have already been alerted on
-  const devices = (await models.Device.stoppedDevices()).filter((device) => {
+  const devices = (await Device.stoppedDevices()).filter((device) => {
     const hasAlerted =
       stoppedEvents.find(
         (event) =>
@@ -127,10 +134,7 @@ async function main() {
     );
   }
 
-  const detail = await models.DetailSnapshot.getOrCreateMatching(
-    "stop-reported",
-    {},
-  );
+  const detail = await DetailSnapshot.getOrCreateMatching("stop-reported", {});
   const detailsId = detail.id;
   const eventList = [];
   const time = new Date();
@@ -143,7 +147,7 @@ async function main() {
     });
   }
   try {
-    await models.Event.bulkCreate(eventList);
+    await Event.bulkCreate(eventList);
   } catch (exception) {
     log.error("Failed to record stop-reported events. %s", exception.message);
   }
