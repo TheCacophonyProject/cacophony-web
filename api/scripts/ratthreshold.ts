@@ -5,6 +5,7 @@ import { QueryTypes } from "sequelize";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory.js";
 import { Track } from "@models/Track.js";
 import os from "os";
+import config from "@config";
 const models = await modelsInit();
 const HEIGHT = 120;
 const WIDTH = 160;
@@ -14,7 +15,7 @@ const rows = Math.ceil(HEIGHT / BOX_DIM);
 const columns = Math.ceil(WIDTH / BOX_DIM);
 
 async function main() {
-  if (os.hostname() === "prod-api-processing") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
   const devices = await getDeviceLocation();

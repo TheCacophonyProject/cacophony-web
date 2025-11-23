@@ -12,6 +12,7 @@ import type { GroupId } from "@typedefs/api/common.js";
 import { User } from "@models/User.js";
 import os from "os";
 import { Group } from "@models/Group.js";
+import config from "@config";
 
 await modelsInit();
 
@@ -72,10 +73,9 @@ const allVisitsForProjectInTimespan = async (
 };
 
 (async () => {
-  if (os.hostname() === "prod-api-processing") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
-
   // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
   const timespan = process.argv[2] || "daily";
   let numDays = 1;

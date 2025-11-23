@@ -79,7 +79,7 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
 };
 
 async function main() {
-  if (os.hostname() === "prod-api-processing") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
   if (!config.smtpDetails) {

@@ -27,6 +27,5 @@ export const SuperUsers = new Map<
   number,
   { userName: string; globalPermission: UserGlobalPermission }
 >();
-// FIXME: Should these also be in async local store for correctness?
 export const RequesterStore = new Map<string, SessionTimingInfo[]>();
 export const RouteStore = new Map<string, SessionTimingInfo[]>();

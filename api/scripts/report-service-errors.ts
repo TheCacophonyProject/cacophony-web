@@ -509,7 +509,7 @@ const groupedSystemErrors = async (
 };
 
 async function main() {
-  if (os.hostname() === "prod-api-processing") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
   if (!config.smtpDetails) {

@@ -5,7 +5,7 @@ import process from "process";
 import { Client } from "pg";
 let Config;
 async function main() {
-  if (os.hostname() === "prod-api-processing") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
   program
