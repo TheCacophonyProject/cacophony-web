@@ -97,10 +97,6 @@ let AllModels: ModelsDictionary;
 
 export default async function () {
   if (!AllModels) {
-    // String-based operators are deprecated in sequelize v4 as a security concern.
-    // http://docs.sequelizejs.com/manual/tutorial/querying.html#operators-security
-    // Because they are currently used via the API, we need to keep them enabled.
-    // The following definition explicitly enables the aliases we want to support.
     const Op = Sequelize.Op;
 
     // If we're running in debug mode, we want to be able to see requestIds with every
@@ -110,16 +106,19 @@ export default async function () {
     // requestIds.  Setting the pools to timeout after idle for 1ms and having max 1 connection
     // resolves this issue for debugging purposes, but this is not something you'd
     // want to do in production!
-    const poolOptions = IS_DEBUG
-      ? {
-          pool: {
-            max: 1,
-            min: 0,
-            idle: 1,
-            evict: 1,
-          },
-        }
-      : {};
+
+    // TODO: We also don't want to restrict pooling when running local cypress tests really.
+    const poolOptions =
+      IS_DEBUG && !IS_CI_ENV
+        ? {
+            pool: {
+              max: 1,
+              min: 0,
+              idle: 1,
+              evict: 1,
+            },
+          }
+        : {};
 
     const sequelizeInstance = new Sequelize.Sequelize(
       dbConfig.database,
@@ -128,6 +127,10 @@ export default async function () {
       {
         ...dbConfig,
         logQueryParameters: true,
+        // String-based operators are deprecated in sequelize v4 as a security concern.
+        // http://docs.sequelizejs.com/manual/tutorial/querying.html#operators-security
+        // Because they are currently used via the API, we need to keep them enabled.
+        // The following definition explicitly enables the aliases we want to support.
         operatorsAliases: {
           $eq: Op.eq,
           $ne: Op.ne,
