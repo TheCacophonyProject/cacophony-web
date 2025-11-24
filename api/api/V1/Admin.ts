@@ -28,6 +28,7 @@ import { anyOf, idOf } from "@api/validation-middleware.js";
 import { ClientError } from "@api/customErrors.js";
 import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts.js";
 import { SuperUsers } from "@/Globals.js";
+import config from "@config";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiUpdateGlobalPermissionRequestBody {
@@ -69,8 +70,17 @@ export default function (app: Application, baseUrl: string) {
       async (request, response) => {
         const permission: UserGlobalPermission = request.body.permission;
         const userToUpdate = response.locals.user;
-        response.locals.user.globalPermission = permission;
+        userToUpdate.globalPermission = permission;
         await userToUpdate.save();
+
+        if (!config.productionEnv) {
+          // In CI, check the userName to see if it should be added to the processing users list
+          for (const userName of config.processingSuperUserNames || []) {
+            if (userToUpdate.userName.includes(userName)) {
+              config.processingUserIds.push(userToUpdate.id);
+            }
+          }
+        }
 
         // Update global super admin cache:
         if (

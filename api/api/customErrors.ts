@@ -27,19 +27,17 @@ function errorHandler(
   err: Error,
   request: Request,
   response: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  next: NextFunction,
+  _next: NextFunction,
 ) {
-  if (
-    err instanceof SyntaxError &&
-    (err as any).type === "entity.parse.failed"
-  ) {
+  if (err instanceof SyntaxError && err["type"] === "entity.parse.failed") {
     err = new ClientError(err.message, HttpStatusCode.Unprocessable); // Convert invalid JSON body error to UnprocessableEntity
   }
   const session = asyncLocalStorage.getStore();
   let requestId;
   if (session) {
-    requestId = (session as Map<string, any>).get("requestId").split("-")[0];
+    requestId = (
+      (session as Map<string, unknown>).get("requestId") as string
+    ).split("-")[0];
   }
   if (err instanceof CustomError) {
     log.warning(err.toString());
@@ -73,7 +71,7 @@ function errorHandler(
 export class CustomError extends Error {
   statusCode: HttpStatusCode;
   constructor(
-    message: string = "Internal server error.",
+    message = "Internal server error.",
     statusCode: HttpStatusCode = HttpStatusCode.ServerError,
   ) {
     super();
@@ -102,7 +100,7 @@ export class CustomError extends Error {
 }
 
 export class ValidationError extends CustomError {
-  errors: Record<string, any>;
+  errors: Record<string, unknown>;
   constructor(errors) {
     let message;
     if (errors.array) {
@@ -112,7 +110,12 @@ export class ValidationError extends CustomError {
     }
     message = message
       .filter((error) => typeof error.msg === "string")
-      .map(({ msg, location, param }) => `${location}.${param}: ${msg}`)
+      .map(({ msg, location, path }) => {
+        if (location) {
+          return `${location}.${path}: ${msg}`;
+        }
+        return msg;
+      })
       .join("; ");
     super(message, HttpStatusCode.Unprocessable);
     this.errors = errors;
@@ -122,9 +125,9 @@ export class ValidationError extends CustomError {
     return {
       errorType: this.getErrorType(),
       message: `${
-        (this.errors.array && this.errors.array().length) || this.errors.length
+        this.errors.length
       } request validation errors found. Request payload could not be processed.`,
-      errors: (this.errors.array && this.errors.array()) || this.errors,
+      errors: this.errors,
     };
   }
 }

@@ -11,11 +11,13 @@ import { updateUserFields } from "@api/User";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import router from "@/router";
 import { currentUser as currentUserInfo } from "@models/provides";
+import SectionCard from "@/components/SectionCard.vue";
 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 
 const changeDisplayNameModal = ref<boolean>(false);
 const changeEmailModal = ref<boolean>(false);
+const changePasswordModal = ref<boolean>(false); // New modal for password change
 
 const updateUserErrorMessage = ref<ErrorResult | false>(false);
 const userUpdateInProgress = ref(false);
@@ -119,12 +121,51 @@ const needsValidationAndIsValidEmailAddress =
     userEmailAddress.touched ? isValidEmailAddress.value : undefined,
   );
 
+// ---------- password ------------
+const currentPassword: FormInputValue = formFieldInputText();
+const newPassword: FormInputValue = formFieldInputText();
+const confirmPassword: FormInputValue = formFieldInputText();
+
+const passwordError = ref<string>("");
+const showPasswordErrors = ref<boolean>(false);
+
+const isValidPassword = computed<boolean>(() => {
+  if (newPassword.value.trim().length < 8) {
+    return false;
+  }
+  // Check for at least one uppercase letter, one lowercase letter, and one digit
+  const hasUpper = /[A-Z]/.test(newPassword.value);
+  const hasLower = /[a-z]/.test(newPassword.value);
+  const hasDigit = /\d/.test(newPassword.value);
+  
+  return hasUpper && hasLower && hasDigit;
+});
+
+const passwordsMatch = computed<boolean>(() => {
+  return newPassword.value === confirmPassword.value;
+});
+
+const isPasswordValid = computed<boolean>(() => {
+  if (newPassword.value.trim() === "") {
+    return true;
+  }
+  return isValidPassword.value && passwordsMatch.value;
+});
+
 const resetFormFields = () => {
   userEmailAddress.value = "";
   userEmailAddress.touched = false;
   userName.value = "";
   userName.touched = false;
+  currentPassword.value = "";
+  currentPassword.touched = false;
+  newPassword.value = "";
+  newPassword.touched = false;
+  confirmPassword.value = "";
+  confirmPassword.touched = false;
   submittedDetails.value = null;
+  passwordError.value = "";
+  showPasswordErrors.value = false;
 };
 
 const updateUserDisplayName = async () => {
@@ -180,21 +221,77 @@ const updateUserEmailAddress = async () => {
   }
   userUpdateInProgress.value = false;
 };
+
+const changePassword = async () => {
+  // Validate that all fields are filled
+  if (!currentPassword.value.trim() || !newPassword.value.trim() || !confirmPassword.value.trim()) {
+    passwordError.value = "All fields are required";
+    showPasswordErrors.value = true;
+    return;
+  }
+
+  // Validate new password strength
+  if (newPassword.value.trim().length < 8) {
+    passwordError.value = "New password must be at least 8 characters long";
+    showPasswordErrors.value = true;
+    return;
+  }
+
+  // Check for required character types
+  const hasUpper = /[A-Z]/.test(newPassword.value);
+  const hasLower = /[a-z]/.test(newPassword.value);
+  const hasDigit = /\d/.test(newPassword.value);
+  
+  if (!(hasUpper && hasLower && hasDigit)) {
+    passwordError.value = "New password must contain uppercase, lowercase and digit";
+    showPasswordErrors.value = true;
+    return;
+  }
+
+  // Check if passwords match
+  if (newPassword.value !== confirmPassword.value) {
+    passwordError.value = "Passwords do not match";
+    showPasswordErrors.value = true;
+    return;
+  }
+
+  // Clear any errors
+  updateUserErrorMessage.value = false;
+  passwordError.value = "";
+  showPasswordErrors.value = false;
+
+  userUpdateInProgress.value = true;
+  
+  // Note: This is a placeholder implementation - you would need to implement the actual API call for password change
+  // const updatedUserResponse = await updatePassword({
+  //   currentPassword: currentPassword.value,
+  //   newPassword: newPassword.value
+  // });
+  
+  // For now, just simulate success
+  // If you were implementing this properly, you'd handle the API response here
+  
+  userUpdateInProgress.value = false;
+  changePasswordModal.value = false; // Close modal after successful change
+};
 </script>
 <template>
-  <section-header>User preferences</section-header>
+  <section-header>Account Settings</section-header>
+  <p>Your details across the Cacophony Monitoring Platform. These settings don't affect projects.</p>
 
-  <div>
-    <h1 class="h5">My details</h1>
+  <section-card>
+    <template #header-title>
+      My details
+    </template>
     <div>
-      <span>My display name</span>
-      <div class="d-flex align-items-center">
+      <div class="account-settings-list d-flex justify-content-between align-items-center">
+        <strong>My display name</strong>
         <span data-cy="user display name">{{ currentUser?.userName }}</span>
         <button
-          type="button"
-          class="btn ms-2"
-          data-cy="change display name button"
-          @click="() => (changeDisplayNameModal = true)"
+            type="button"
+            class="btn ms-2"
+            data-cy="change display name button"
+            @click="() => (changeDisplayNameModal = true)"
         >
           <font-awesome-icon icon="pencil-alt" size="xs" />
         </button>
@@ -205,16 +302,28 @@ const updateUserEmailAddress = async () => {
       <div class="d-flex align-items-center">
         <span cy-data="user email">{{ currentUser?.email }}</span>
         <button
-          type="button"
-          class="btn ms-2"
-          data-cy="change email address button"
-          @click.prevent="() => (changeEmailModal = true)"
+            type="button"
+            class="btn ms-2"
+            data-cy="change email address button"
+            @click.prevent="() => (changeEmailModal = true)"
         >
           <font-awesome-icon icon="pencil-alt" size="xs" />
         </button>
       </div>
     </div>
-  </div>
+    <!-- New password change section -->
+    <div>
+      <span>Change password</span>
+      <button
+          type="button"
+          class="btn ms-2"
+          data-cy="change password button"
+          @click="() => (changePasswordModal = true)"
+      >
+        <font-awesome-icon icon="pencil-alt" size="xs" />
+      </button>
+    </div>
+  </section-card>
 
   <b-modal
     v-model="changeDisplayNameModal"
@@ -264,6 +373,7 @@ const updateUserEmailAddress = async () => {
       </b-form-invalid-feedback>
     </b-form>
   </b-modal>
+  
   <b-modal
     v-model="changeEmailModal"
     title="Change your account email address"
@@ -301,6 +411,85 @@ const updateUserEmailAddress = async () => {
         <span v-if="emailInUse">{{ emailFieldValidationErrorMessage }}</span>
         <span v-else>Enter a valid email address</span>
       </b-form-invalid-feedback>
+    </b-form>
+  </b-modal>
+  
+  <!-- New password change modal -->
+  <b-modal
+    v-model="changePasswordModal"
+    title="Change your password"
+    id="change-password"
+    @ok="changePassword"
+    @hidden="resetFormFields"
+    ok-title="Save"
+  >
+    <b-form
+      class="d-flex flex-column"
+      @submit.stop.prevent="changePassword"
+      novalidate
+    >
+      <b-alert
+        v-model="hasNonValidationError"
+        variant="danger"
+        dismissible
+        class="text-center"
+        @dismissed="hasNonValidationError = false"
+      >
+        {{ userUpdateErrorMessagesDisplay }}
+      </b-alert>
+      
+      <!-- Current password field -->
+      <b-form-group label="Current Password">
+        <b-form-input
+          type="password"
+          v-model="currentPassword.value"
+          @blur="() => (currentPassword.touched = true)"
+          aria-label="Current password"
+          placeholder="current password"
+          data-cy="current-password"
+          :disabled="userUpdateInProgress"
+          required
+        />
+      </b-form-group>
+      
+      <!-- New password field -->
+      <b-form-group label="New Password">
+        <b-form-input
+          type="password"
+          v-model="newPassword.value"
+          @blur="() => (newPassword.touched = true)"
+          aria-label="New password"
+          placeholder="new password"
+          data-cy="new-password"
+          :disabled="userUpdateInProgress"
+          required
+        />
+        <b-form-invalid-feedback v-if="showPasswordErrors && !isValidPassword">
+          Password must be at least 8 characters long and contain uppercase, lowercase and digit
+        </b-form-invalid-feedback>
+      </b-form-group>
+      
+      <!-- Confirm password field -->
+      <b-form-group label="Confirm New Password">
+        <b-form-input
+          type="password"
+          v-model="confirmPassword.value"
+          @blur="() => (confirmPassword.touched = true)"
+          aria-label="Confirm new password"
+          placeholder="confirm new password"
+          data-cy="confirm-password"
+          :disabled="userUpdateInProgress"
+          required
+        />
+        <b-form-invalid-feedback v-if="showPasswordErrors && !passwordsMatch">
+          Passwords do not match
+        </b-form-invalid-feedback>
+      </b-form-group>
+      
+      <!-- General error message -->
+      <div v-if="passwordError" class="text-danger mb-2">
+        {{ passwordError }}
+      </div>
     </b-form>
   </b-modal>
 

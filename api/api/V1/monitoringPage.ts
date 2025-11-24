@@ -16,15 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type { User } from "@models/User.js";
+import { User } from "@models/User.js";
 import { QueryTypes } from "sequelize";
 import modelsInit from "@models/index.js";
 import type { GroupId, StationId } from "@typedefs/api/common.js";
 import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
 import { RecordingType } from "@typedefs/api/consts.js";
-import type { Recording } from "@models/Recording.js";
+import { Recording } from "@models/Recording.js";
 
-const models = await modelsInit();
+const { sequelize } = await modelsInit();
 
 export interface MonitoringParams {
   groups: GroupId[];
@@ -112,7 +112,7 @@ async function getDatesForSearch(
     PAGING: null,
   };
 
-  const countRet = await models.sequelize.query(
+  const countRet = await sequelize.query(
     replaceInSQL(VISITS_COUNT_SQL, replacements),
     { type: QueryTypes.SELECT },
   );
@@ -125,9 +125,9 @@ async function getDatesForSearch(
     const limit: number = Number(params.pageSize) + 1;
     const offset: number = (params.page - 1) * params.pageSize;
     replacements.PAGING = ` LIMIT ${limit} OFFSET ${offset}`;
-    const results: Recording[] = await models.sequelize.query(
+    const results: Recording[] = await sequelize.query(
       replaceInSQL(VISIT_STARTS_SQL, replacements),
-      { model: models.Recording },
+      { model: Recording },
     );
 
     if (results.length > 0) {
@@ -169,7 +169,7 @@ function createPageCriteria(
 
 function replaceInSQL(
   sql: string,
-  replacements: { [key: string]: string },
+  replacements: Record<string, string>,
 ): string {
   for (const [placeholder, replacement] of Object.entries(replacements)) {
     sql = sql.replace(new RegExp(`{${placeholder}}`, "g"), replacement);

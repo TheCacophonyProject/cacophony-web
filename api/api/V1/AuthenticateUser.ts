@@ -39,7 +39,7 @@ import {
 } from "../extract-middleware.js";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
 import { mapUser } from "@api/V1/User.js";
-import type { User } from "@models/User.js";
+import { User } from "@models/User.js";
 import modelsInit from "@/models/index.js";
 import type { IsoFormattedDateString, UserId } from "@typedefs/api/common.js";
 import jwt from "jsonwebtoken";
@@ -61,7 +61,7 @@ import {
   UnprocessableError,
 } from "@api/customErrors.js";
 
-const models = await modelsInit();
+const { sequelize } = await modelsInit();
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiAuthenticateUserRequestBody {
@@ -69,7 +69,6 @@ interface ApiAuthenticateUserRequestBody {
   email: string; // Email identifying a valid user account
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface ApiLoggedInUserResponseData {
   userData: ApiLoggedInUserResponse;
 }
@@ -113,14 +112,14 @@ export default function (app: Application, baseUrl: string) {
 
         if (isNewEndPoint) {
           // Clear out any out of date sessions for this user from the DB
-          await models.sequelize.query(
+          await sequelize.query(
             `delete from "UserSessions" where "UserSessions"."userId" = ${response.locals.user.id} and "UserSessions"."updatedAt" < now() - interval '15 days'`,
           );
         }
 
         await response.locals.user.update({ lastActiveAt: new Date() });
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
-          models,
+          sequelize,
           response.locals.user,
           request.headers["viewport"] as string,
           request.headers["user-agent"],
@@ -193,11 +192,11 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/refresh-session-token`,
     validateFields([body("refreshToken").exists()]),
     extractJWTInfo(body("refreshToken")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       // NOTE: The key insight for refresh tokens is that they are "one-time-use" tokens.  Every time we give out
       //  a new refresh token, we invalidate the old one.
 
-      const result = await models.sequelize.query(
+      const result = await sequelize.query(
         `
             select * from "UserSessions" 
             where "refreshToken" = :refreshToken 
@@ -231,14 +230,16 @@ export default function (app: Application, baseUrl: string) {
         }
 
         const refreshToken = randomUUID();
-        const user = await models.User.findByPk(validToken.userId);
+        const user = await User.findByPk(validToken.userId);
         await user.update({ lastActiveAt: new Date() });
         const expiry = new Date(
-          new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5)),
+          new Date().setSeconds(
+            new Date().getSeconds() + (ttlTypes.medium - 5),
+          ),
         );
 
         const now = new Date().toISOString();
-        await models.sequelize.query(
+        await sequelize.query(
           `
             update "UserSessions" 
             set "refreshToken" = :refreshToken, "updatedAt" = :updatedAt
@@ -365,7 +366,7 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     "/token",
     validateFields([body("ttl").optional(), body("access").optional()]),
-    authenticateUser(models),
+    authenticateUser(),
     middleware.requestWrapper(async (request, response) => {
       // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
@@ -386,7 +387,10 @@ export default function (app: Application, baseUrl: string) {
         const user = response.locals.user as User;
         const isNewEndpoint = request.path.endsWith("reset-password");
         if (isNewEndpoint) {
-          const token = getPasswordResetToken(user.id, (user as any).password);
+          const token = getPasswordResetToken(user.id, user.password);
+
+          // FIXME: Once we make browse-next the default, we need to make it so we don't
+          //  rely on host headers - sidekick sends this header to make sure we target browse-next currently.
           const sendingSuccess = await sendPasswordResetEmail(
             request.headers.host,
             token,
@@ -493,7 +497,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
       const browseNextLaunchDate = new Date(); // FIXME Fix this to a specific date once browse-next goes live.
-      const user = await models.User.findByPk(response.locals.requestUser.id);
+      const user = await User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
           user.id,
@@ -547,7 +551,7 @@ export default function (app: Application, baseUrl: string) {
       validateFields([body("email")]),
       async (request: Request, response: Response, next: NextFunction) => {
         const email = request.body.email.toLowerCase();
-        const user = await models.User.findOne({
+        const user = await User.findOne({
           where: { email },
         });
         if (!user) {
@@ -602,9 +606,9 @@ export default function (app: Application, baseUrl: string) {
         //  again.  Either way we should return a new set of user keys.
         // Generate a new set of tokens to be replaced.
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
-          models,
+          sequelize,
           user,
-          request.headers["viewport"] as string,
+          request.headers["viewport"] as unknown as string,
           request.headers["user-agent"],
         );
 

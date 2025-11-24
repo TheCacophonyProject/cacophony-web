@@ -26,21 +26,24 @@ import responseUtil, {
 } from "./responseUtil.js";
 import crypto from "crypto";
 import type { NextFunction, Request, Response } from "express";
-import type { Device } from "@models/Device.js";
-import type { ModelCommon } from "@models/index.js";
-import modelsInit from "@models/index.js";
-import type { User } from "@models/User.js";
+import { Device } from "@models/Device.js";
+import modelsInit, { ModelStaticCommon } from "@models/index.js";
+import { User } from "@models/User.js";
+import { Event } from "@models/Event.js";
+import { File } from "@models/File.js";
+import { Recording } from "@models/Recording.js";
 import type { Stream } from "stream";
 import stream from "stream";
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts.js";
 import config from "@config";
 import { Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
+import { RequestContext } from "@api/extract-middleware.js";
 
-const models = await modelsInit();
+await modelsInit();
 
 interface MultiPartFormPart extends stream.Readable {
-  headers: Record<string, any>;
+  headers: Record<string, unknown>;
   name: string;
   filename?: string;
   byteOffset: number;
@@ -78,7 +81,21 @@ export const uploadFileStream = async (
     fullKey = `${keyPrefix}/${moment().format("YYYY/MM/DD/")}${uuidv4()}`;
   }
 
+  // FIXME: Elsewhere we use the webstream API rather than passthrough
   const hash = crypto.createHash("sha1");
+
+  /*
+    const transform = new TransformStream({
+        transform(chunk, controller) {
+            if (canceledRequest.canceled) {
+                upload.abort();
+            }
+            length += chunk.length;
+            sha1Hash.update(chunk, "binary");
+            controller.enqueue(chunk);
+        },
+    });
+    */
 
   const pass = new stream.PassThrough();
   let dataLength = 0;
@@ -91,7 +108,12 @@ export const uploadFileStream = async (
     hash.update(d, "binary");
   });
   request.pipe(pass);
-  const upload = openS3().uploadStreaming(fullKey, pass);
+
+  // FIXME: Make sure this case is actually safe, otherwise use the streamWeb transform method used elsewhere
+  const upload = openS3().uploadStreaming(
+    fullKey,
+    pass as unknown as ReadableStream,
+  );
   // upload.on("httpUploadProgress", (p) => {
   //   console.log(p);
   // });
@@ -105,17 +127,17 @@ export const uploadFileStream = async (
   };
 };
 
-function multipartUpload(
+function multipartUpload<T extends ModelStaticCommon<T>>(
   keyPrefix: string,
-  onFileUploadComplete: <T>(
+  onFileUploadComplete: (
     uploader: "device" | "user",
     uploadingDevice: Device,
     uploadingUser: User | null,
-    data: any,
+    data: object,
     keys: string[],
     uploadedFileDatas: { key: string; data: Uint8Array; filename: string }[],
-    locals: Record<string, any>
-  ) => Promise<ModelCommon<T> | string>,
+    locals?: RequestContext,
+  ) => Promise<T | string>,
 ) {
   return async (request: Request, response: Response, _next: NextFunction) => {
     const key = `${keyPrefix}/${moment().format("YYYY/MM/DD")}/${uuidv4()}`;
@@ -136,7 +158,7 @@ function multipartUpload(
         !response.locals.requestDevice.deviceName
       ) {
         // We just have a device id, so get the actual device object to update.
-        uploadingDevice = await models.Device.findByPk(
+        uploadingDevice = await Device.findByPk(
           response.locals.requestDevice.id,
         );
         // Update the last connection time for the uploading device, and set the device to active (just in case it's been set inactive)
@@ -153,7 +175,7 @@ function multipartUpload(
     const form = new multiparty.Form();
     let canceledRequest = false;
     // Handle the "data" field.
-    form.on("field", async (name: string, value: any) => {
+    form.on("field", async (name: string, value: string) => {
       if (name !== "data") {
         return;
       }
@@ -162,7 +184,7 @@ function multipartUpload(
         data = JSON.parse(value);
         if (keyPrefix === "raw") {
           if (
-            (data.hasOwnProperty("recordingDateTime") ||
+            ("recordingDateTime" in data ||
               data.type === RecordingType.Audio) &&
             isNaN(Date.parse(data.recordingDateTime))
           ) {
@@ -183,14 +205,13 @@ function multipartUpload(
         ) {
           // Try and handle duplicates early in the upload if possible,
           // so that we can return early and not waste bandwidth
-          const existingRecordingWithHashForDevice =
-            await models.Recording.findOne({
-              where: {
-                DeviceId: uploadingDevice.id,
-                rawFileHash: data.fileHash,
-                deletedAt: { [Op.eq]: null },
-              },
-            });
+          const existingRecordingWithHashForDevice = await Recording.findOne({
+            where: {
+              DeviceId: uploadingDevice.id,
+              rawFileHash: data.fileHash,
+              deletedAt: { [Op.eq]: null },
+            },
+          });
           if (existingRecordingWithHashForDevice !== null) {
             log.warning(
               "Recording with hash %s for device %s already exists, discarding duplicate",
@@ -226,9 +247,13 @@ function multipartUpload(
       }
       const uploadStream = (key) => {
         const pass = new stream.PassThrough();
+        // FIXME: Make sure this case is actually safe, otherwise use the streamWeb transform method used elsewhere
         return {
           writeStream: pass,
-          upload: openS3().uploadStreaming(key, pass),
+          upload: openS3().uploadStreaming(
+            key,
+            pass as unknown as ReadableStream,
+          ),
         };
       };
       let partKey = key;
@@ -278,7 +303,7 @@ function multipartUpload(
         return;
       }
 
-      let dbRecordOrFileKey: any;
+      let dbRecordOrFileKey;
       try {
         const uploadKeys = Object.keys(fileDataPromises);
         const numUploads = Object.values(uploadPromises).length;
@@ -322,8 +347,7 @@ function multipartUpload(
             // Hash the full file
             const checkHash = crypto
               .createHash("sha1")
-              // @ts-ignore
-              .update(fileDataArray, "binary")
+              .update(fileDataArray)
               .digest("hex");
 
             if (data.fileHash !== checkHash) {
@@ -351,18 +375,16 @@ function multipartUpload(
             // duplicates.
             data.fileHash = crypto
               .createHash("sha1")
-              // @ts-ignore
-              .update(fileDataArray, "binary")
+              .update(fileDataArray)
               .digest("hex");
 
-            const existingRecordingWithHashForDevice =
-              await models.Recording.findOne({
-                where: {
-                  DeviceId: uploadingDevice.id,
-                  rawFileHash: data.fileHash,
-                  deletedAt: { [Op.eq]: null },
-                },
-              });
+            const existingRecordingWithHashForDevice = await Recording.findOne({
+              where: {
+                DeviceId: uploadingDevice.id,
+                rawFileHash: data.fileHash,
+                deletedAt: { [Op.eq]: null },
+              },
+            });
             if (existingRecordingWithHashForDevice !== null) {
               for (const key of uploadKeys) {
                 log.warning(
@@ -398,20 +420,16 @@ function multipartUpload(
           data,
           uploadKeys,
           fileDataArrays,
-          response.locals,
         );
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();
           if (dbRecordOrFileKey.type === "audioBait" && !canceledRequest) {
             // FIXME - this is pretty nasty.
             responseUtil.validAudiobaitUpload(response, dbRecordOrFileKey.id);
-          } else if (
-            dbRecordOrFileKey instanceof models.Event &&
-            !canceledRequest
-          ) {
+          } else if (dbRecordOrFileKey instanceof Event && !canceledRequest) {
             responseUtil.validEventThumbnailUpload(
               response,
-              (dbRecordOrFileKey as any).id,
+              dbRecordOrFileKey.id,
             );
           } else if (!canceledRequest) {
             responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);

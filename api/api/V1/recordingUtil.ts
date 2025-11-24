@@ -16,33 +16,27 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import sharp from "sharp";
-import zlib from "zlib";
-import type { Alert, AlertStatic } from "@models/Alert.js";
-import type { TrackTag } from "@models/TrackTag.js";
+import { Alert } from "@models/Alert.js";
 import tzLookup from "tz-lookup-oss";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
-import moment from "moment";
 import config from "@config";
-import type { Recording, RecordingQueryOptions } from "@models/Recording.js";
-import type { Event, QueryOptions } from "@models/Event.js";
-import type { User } from "@models/User.js";
-import Sequelize, { Op, QueryTypes } from "sequelize";
-import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
-import { DeviceSummary, NON_ANIMAL_TAGS, Visit } from "./Visits.js";
-import type { Station } from "@models/Station.js";
-import type { Device } from "@models/Device.js";
+import type { RecordingQueryOptions } from "@models/Recording.js";
+import { Recording } from "@models/Recording.js";
+import { Event } from "@models/Event.js";
+import { User } from "@models/User.js";
+import { Op, QueryTypes } from "sequelize";
+import { getCanonicalTrackTag, NON_ANIMAL_TAGS } from "./tagUtil.js";
+import { Station } from "@models/Station.js";
+import { Device } from "@models/Device.js";
 import type { PutObjectCommandOutput } from "@aws-sdk/client-s3";
-import type {
-  DeviceHistory,
-  DeviceHistorySetBy,
-} from "@models/DeviceHistory.js";
-import type { Tag } from "@models/Tag.js";
-import type { Track } from "@models/Track.js";
-import { getTrackData } from "@models/Track.js";
+import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
+import { Tag } from "@models/Tag.js";
+import { Track } from "@models/Track.js";
+import { TrackTag } from "@models/TrackTag.js";
 import type {
   DeviceId,
-  FileId,
   GroupId,
   IsoFormattedDateString,
   LatLng,
@@ -68,13 +62,18 @@ import {
 } from "@models/util/locationUtils.js";
 import { openS3 } from "@models/util/util.js";
 import type { ReadableStream } from "stream/web";
-import type { ModelsDictionary } from "@models";
+import modelsInit from "@models/index.js";
 import ffmpeg from "fluent-ffmpeg";
 import { Writable } from "stream";
 import temp from "temp";
 import fs from "fs";
 import { sendAnimalAlertEmail } from "@/emails/transactionalEmails.js";
 import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { Group } from "@models/Group.js";
+import { RecordingDataSuppliedMetadata } from "@api/fileUploaders/uploadGenericRecording.js";
+
+const { sequelize } = await modelsInit();
 
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -86,10 +85,9 @@ temp.track();
 //render the png in THUMBNAIL_PALETTE
 //returns {data: buffer, meta: metadata about image}
 async function createIRThumbnail(
-  frame,
+  frame: IRFrame,
   thumbnail: TrackFramePosition,
-): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
-  const frameMeta = frame.meta.imageData;
+): Promise<{ data: Buffer; meta: { palette: string; region: unknown } }> {
   try {
     const thumbMeta = {
       region: JSON.stringify(thumbnail),
@@ -107,10 +105,17 @@ async function createIRThumbnail(
   }
   return null;
 }
+
+export interface IRFrame {
+  data: Uint8Array;
+  frameNumber: number;
+  meta: { imageData: { width: number; height: number } };
+}
+
 export async function getIRFrame(
-  recording: any,
+  recording: Recording,
   frameNumbers: Set<number>,
-): Promise<any | undefined> {
+): Promise<Record<number, IRFrame> | undefined> {
   const fileData = await openS3().getObject(recording.rawFileKey as string);
   const bodyBuffer = await fileData.Body.transformToByteArray();
   // const bodyBuffer = fileData.Body.data as ArrayBufferView;
@@ -143,7 +148,7 @@ export async function getIRFrame(
           // .on("start", function (commandLine) {
           //   console.log("Spawned Ffmpeg with command: " + commandLine);
           // })
-          .on("end", function () {
+          .on("end", () => {
             const frame = {
               data: screenData,
               frameNumber: frameNumber,
@@ -155,7 +160,7 @@ export async function getIRFrame(
             return reject(new Error(err));
           })
           .run();
-      }).then((response: any) => {
+      }).then((response: IRFrame) => {
         frames[response.frameNumber] = response;
       });
     }
@@ -165,8 +170,10 @@ export async function getIRFrame(
       }
     });
     return frames;
-  } catch (e) {
-    fs.unlink(tempName, (err) => {});
+  } catch (_e) {
+    fs.unlink(tempName, (_err) => {
+      return;
+    });
   }
 
   return null;
@@ -214,42 +221,55 @@ export async function getThumbnail(
   } else {
     // choose best track based off visit tag and highest score
     if (rec.Tracks.length !== 0) {
-      const recVisit = new Visit(rec, 0, rec.Tracks);
-      const commonTag = recVisit.mostCommonTag();
+      const trackTags: Record<
+        string,
+        { count: number; tracks: Record<number, Track> }
+      > = {};
+      for (const track of rec.Tracks) {
+        if (track.TrackTags && track.TrackTags.length !== 0) {
+          const canonicalTag = getCanonicalTrackTag(track.TrackTags);
+          if (canonicalTag) {
+            const trackTag = canonicalTag.what;
+            trackTags[trackTag] = trackTags[trackTag] || {
+              count: 0,
+              tracks: {},
+            };
+            trackTags[trackTag].count += 1;
+            trackTags[trackTag].tracks[track.id] = track;
+          }
+        }
+      }
+      let commonTag: string | null = null;
+      const sortedTags = Object.entries(trackTags).sort(
+        (a, b) => a[1].count - b[1].count,
+      );
       let bestTracks = [];
+      if (sortedTags.length !== 0) {
+        commonTag = sortedTags[0][0];
+        bestTracks = Object.values(sortedTags[0][1].tracks);
+      }
+
       if (commonTag !== null) {
-        const trackIds = recVisit.events
-          .filter(
-            (event) => event.trackTag && event.trackTag.what == commonTag.what,
-          )
-          .map((event) => event.trackID);
-        bestTracks = rec.Tracks.filter((track) => trackIds.includes(track.id));
-        if (bestTracks.length !== 0) {
-          if (
-            !bestTracks.some((track) =>
-              track.dataValues.hasOwnProperty("thumbnailScore"),
-            )
-          ) {
-            for (const track of bestTracks) {
-              track.data = await getTrackData(track.id);
-              if (!track.data.thumbnail) {
-                track.data.thumbnail = {
-                  score: 0,
-                };
-              }
+        if (!bestTracks.some((track) => "thumbnailScore" in track.dataValues)) {
+          for (const track of bestTracks) {
+            track.data = await Track.getTrackData(track.id);
+            if (!track.data.thumbnail) {
+              track.data.thumbnail = {
+                score: 0,
+              };
             }
           }
-          bestTracks.sort((a, b) => {
-            if (
-              a.dataValues.hasOwnProperty("thumbnailScore") &&
-              b.dataValues.hasOwnProperty("thumbnailScore")
-            ) {
-              return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
-            }
-            return b.data.thumbnail.score - a.data.thumbnail.score;
-          });
-          thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
         }
+        bestTracks.sort((a, b) => {
+          if (
+            "thumbnailScore" in a.dataValues &&
+            "thumbnailScore" in b.dataValues
+          ) {
+            return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+          }
+          return b.data.thumbnail.score - a.data.thumbnail.score;
+        });
+        thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
       }
       try {
         if (thumbKey.startsWith("a_")) {
@@ -310,12 +330,13 @@ export const THUMBNAIL_PALETTE = "Viridis";
 export async function getCPTVFrames(
   recording: Recording,
   frameNumbers: Set<number>,
-): Promise<any | undefined> {
+): Promise<Record<number, CptvFrame> | undefined> {
+  let decoder: CptvDecoder;
   try {
     const stream = (
       await openS3().getObject(recording.rawFileKey)
     ).Body.transformToWebStream();
-    const decoder = new CptvDecoder();
+    decoder = new CptvDecoder();
     const result = await decoder.initWithReadableStream(
       stream as ReadableStream,
     );
@@ -355,7 +376,10 @@ export async function getCPTVFrames(
     }
     await decoder.close();
     return frames;
-  } catch (err) {
+  } catch (_err) {
+    if (decoder) {
+      await decoder.close();
+    }
     return;
   }
 }
@@ -395,20 +419,20 @@ export async function saveThumbnailInfo(
   }
   const frameUploads = [];
   for (const track of thumbnailTracks) {
-    const frame = frames[track.data.thumbnail.region.frame_number];
+    const frame = frames[track.data.thumbnail?.region?.frame_number];
     if (!frame) {
       frameUploads.push(
         Error(
-          `Failed to extract CPTV frame for track ${track.id}, frame  ${track.data.thumbnail.region.frame_number}`,
+          `Failed to extract CPTV frame for track ${track.id}, frame  ${track.data.thumbnail?.region?.frame_number}`,
         ),
       );
       continue;
     }
     let thumb;
     if (recording.type == RecordingType.InfraredVideo) {
-      thumb = await createIRThumbnail(frame, track.data.thumbnail.region);
+      thumb = await createIRThumbnail(frame, track.data.thumbnail?.region);
     } else {
-      thumb = await createThumbnail(frame, track.data.thumbnail.region);
+      thumb = await createThumbnail(frame, track.data.thumbnail?.region);
     }
     log.info("Saving track thumbnail %s", `${fileKey}-${track.id}-thumb`);
     frameUploads.push(
@@ -477,7 +501,7 @@ function squareRegion(
 }
 
 //pad a region such that it still fits in resX and resY (Not used at the moment)
-function padRegion(
+function _padRegion(
   thumbnail: TrackFramePosition,
   padding: number,
   resX: number,
@@ -509,7 +533,7 @@ async function createThumbnail(
   frame,
   thumbnail: TrackFramePosition,
   colourPalette: string = THUMBNAIL_PALETTE,
-): Promise<{ data: Buffer; meta: { palette: string; region: any } }> {
+): Promise<{ data: Buffer; meta: { palette: string; region: unknown } }> {
   const resX = 160;
   const resY = 120;
   // // padding already in region so probably dont need
@@ -598,7 +622,6 @@ async function createThumbnail(
 }
 
 export const maybeUpdateDeviceHistory = async (
-  models: ModelsDictionary,
   device: Device,
   location: LatLng,
   dateTime: Date,
@@ -608,7 +631,7 @@ export const maybeUpdateDeviceHistory = async (
   deviceHistoryEntry: DeviceHistory;
 }> => {
   if (location.lat === 0 || location.lng === 0) {
-    const existingHistory = await models.DeviceHistory.findOne({
+    const existingHistory = await DeviceHistory.findOne({
       where: {
         uuid: device.uuid,
         GroupId: device.GroupId,
@@ -619,7 +642,7 @@ export const maybeUpdateDeviceHistory = async (
       order: [["fromDateTime", "DESC"]], // Get the latest one that's earlier than our current dateTime
     });
     if (existingHistory) {
-      const station = await models.Station.findByPk(existingHistory.stationId);
+      const station = await Station.findByPk(existingHistory.stationId);
       return {
         stationToAssignToRecording: station,
         deviceHistoryEntry: existingHistory,
@@ -660,7 +683,7 @@ export const maybeUpdateDeviceHistory = async (
         : [setBy];
     let shouldInsertLocation = false;
     let existingDeviceHistoryEntry;
-    const priorLocation = await models.DeviceHistory.findOne({
+    const priorLocation = await DeviceHistory.findOne({
       where: {
         uuid: device.uuid,
         GroupId: device.GroupId,
@@ -681,7 +704,7 @@ export const maybeUpdateDeviceHistory = async (
         shouldInsertLocation = true;
       } else if (locationChanged) {
         // Look later
-        const laterLocation = await models.DeviceHistory.findOne({
+        const laterLocation = await DeviceHistory.findOne({
           where: {
             uuid: device.uuid,
             GroupId: device.GroupId,
@@ -723,7 +746,7 @@ export const maybeUpdateDeviceHistory = async (
       }
     } else {
       // Look later
-      const laterLocation = await models.DeviceHistory.findOne({
+      const laterLocation = await DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
@@ -775,6 +798,7 @@ export const maybeUpdateDeviceHistory = async (
         saltId: device.saltId,
         uuid: device.uuid,
         settings: null,
+        stationId: null,
       };
       if (priorLocation && priorLocation.settings) {
         // Preserve any non-location specific settings
@@ -793,7 +817,6 @@ export const maybeUpdateDeviceHistory = async (
         newDeviceHistoryEntry.settings = settings;
       }
       let stationToAssign = await tryToMatchLocationToStationInGroup(
-        models,
         location,
         device.GroupId,
         dateTime,
@@ -806,7 +829,7 @@ export const maybeUpdateDeviceHistory = async (
       }
       if (!stationToAssign) {
         // Create new automatic station
-        stationToAssign = (await models.Station.create({
+        stationToAssign = await Station.create({
           name: `New station for ${
             device.deviceName
           }_${dateTime.toISOString()}`,
@@ -815,12 +838,12 @@ export const maybeUpdateDeviceHistory = async (
           automatic: true,
           needsRename: true,
           GroupId: device.GroupId,
-        })) as Station;
+        });
       }
 
-      (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
+      newDeviceHistoryEntry.stationId = stationToAssign.id;
       // Insert this location.
-      const newDeviceHistory = await models.DeviceHistory.create(
+      const newDeviceHistory = await DeviceHistory.create(
         newDeviceHistoryEntry,
       );
       return {
@@ -828,7 +851,7 @@ export const maybeUpdateDeviceHistory = async (
         deviceHistoryEntry: newDeviceHistory,
       };
     } else {
-      const stationToAssign = await models.Station.findByPk(
+      const stationToAssign = await Station.findByPk(
         existingDeviceHistoryEntry.stationId,
       );
       if (existingDeviceHistoryEntry.fromDateTime < stationToAssign.activeAt) {
@@ -866,8 +889,9 @@ const tryDecodeCptvMetadata = async (
   return { metadata, fileIsCorrupt };
 };
 
-const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
-  data: any,
+/*
+const _parseAndMergeEmbeddedFileMetadataIntoRecording = async (
+  data: object,
   fileData: Uint8Array,
   recording: Recording,
 ): Promise<boolean> => {
@@ -876,23 +900,17 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
   }
   if (data.type === RecordingType.ThermalRaw) {
     // Read the file back out from s3 and decode/parse it.
-    const { metadata, fileIsCorrupt: isCorrupt } = await tryDecodeCptvMetadata(
-      fileData,
-    );
+    const { metadata, fileIsCorrupt: isCorrupt } =
+      await tryDecodeCptvMetadata(fileData);
 
-    if (
-      !data.hasOwnProperty("location") &&
-      metadata.latitude &&
-      metadata.longitude
-    ) {
-      // @ts-ignore
+    if (!("location" in data) && metadata.latitude && metadata.longitude) {
       recording.location = {
         lat: metadata.latitude,
         lng: metadata.longitude,
       };
     }
     if (
-      (!data.hasOwnProperty("duration") && metadata.duration) ||
+      (!("duration" in data) && metadata.duration) ||
       (Number(data.duration) === 321 && metadata.duration)
     ) {
       // NOTE: Hack to make tests pass, but not allow sidekick uploads to set a spurious duration.
@@ -900,7 +918,7 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
       //  API settable metadata, and require tests to construct CPTV files with correct metadata.
       recording.duration = metadata.duration;
     }
-    if (!data.hasOwnProperty("recordingDateTime") && metadata.timestamp) {
+    if (!("recordingDateTime" in data) && metadata.timestamp) {
       recording.recordingDateTime = new Date(metadata.timestamp / 1000);
     } else {
       log.error("Failed setting recordingDateTime");
@@ -912,7 +930,7 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
         totalFrames: metadata.totalFrames,
       };
     }
-    if (data.hasOwnProperty("additionalMetadata")) {
+    if ("additionalMetadata" in data) {
       recording.additionalMetadata = {
         ...data.additionalMetadata,
         ...recording.additionalMetadata,
@@ -920,25 +938,25 @@ const parseAndMergeEmbeddedFileMetadataIntoRecording = async (
     }
     return isCorrupt;
   } else if (data.type === RecordingType.Audio) {
-    if (data.hasOwnProperty("additionalMetadata")) {
+    if ("additionalMetadata" in data) {
       recording.additionalMetadata = data.additionalMetadata;
     }
-    if (data.hasOwnProperty("cacophonyIndex")) {
+    if ("cacophonyIndex" in data) {
       recording.cacophonyIndex = data.cacophonyIndex;
     }
     return false;
   }
   return false;
 };
+ */
 
 export const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
-  models: ModelsDictionary,
   device: Device,
   atTime: Date,
 ): Promise<{ groupId: GroupId; deviceId: DeviceId; stationId?: StationId }> => {
   // NOTE: Use the uuid here, so we can assign old recordings that may be uploaded much later
   //  to the correct group that the device belonged to when the recording was created.
-  const deviceHistory = (await models.DeviceHistory.findOne({
+  const deviceHistory = (await DeviceHistory.findOne({
     where: {
       uuid: device.uuid,
       fromDateTime: { [Op.lte]: atTime },
@@ -960,7 +978,6 @@ export const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
 // Returns a promise for the recordings query specified in the
 // request.
 export async function queryRecordings(
-  models: ModelsDictionary,
   requestUserId: UserId,
   type: RecordingType,
   countAll: boolean,
@@ -970,11 +987,8 @@ export async function queryRecordings(
     options.where = { ...options.where, type };
   }
   // FIXME - Do this in extract-middleware as bulk recording extractor
-  const builder = new models.Recording.queryBuilder().init(
-    requestUserId,
-    options,
-  );
-  builder.query.distinct = true;
+  const builder = new Recording.queryBuilder().init(requestUserId, options);
+  builder.query["distinct"] = true;
 
   // FIXME - If getting count as super-user, we don't care about joining on all of the other tables.
   //  Even if getting count as regular user, we only care about joining through GroupUsers.
@@ -984,42 +998,37 @@ export async function queryRecordings(
   // FIXME: In the UI, when we query recordings, we don't need to get the count every time, just the first time
   //  would be fine!
   if (countAll === true) {
-    return models.Recording.findAndCountAll(builder.get());
+    return Recording.findAndCountAll(builder.get());
   }
-  const rows = await models.Recording.findAll(builder.get());
+  const rows = await Recording.findAll(builder.get());
   return { count: rows.length, rows: rows };
 }
 
 export async function bulkDelete(
-  models: ModelsDictionary,
+  // models: ModelsDictionary,
   requestUserId: UserId,
   type: RecordingType,
   options: RecordingQueryOptions,
-  _actuallyDelete: boolean = false, // FIXME - Make recordings actually be deleted?
+  _actuallyDelete = false, // FIXME - Make recordings actually be deleted?
 ): Promise<number[]> {
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };
   }
 
-  const builder = new models.Recording.queryBuilder().init(
-    requestUserId,
-    options,
-  );
+  const builder = new Recording.queryBuilder().init(requestUserId, options);
 
-  const recordings = (await models.Recording.findAll(
-    builder.get(),
-  )) as Recording[];
+  const recordings = (await Recording.findAll(builder.get())) as Recording[];
   if (recordings.length === 0) {
     throw new Error("No recordings found to delete");
   }
   const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
   const ids = recordings.map((value) => value.id);
-  const deletedValues = (await models.Recording.update(deletion, {
+  const deletedValues = (await Recording.update(deletion, {
     where: { id: ids },
     returning: ["id"],
   })) as unknown as Promise<[number, { id: number }[]]>;
   for (const recording of recordings) {
-    await fixupLatestRecordingTimesForDeletedRecording(models, recording);
+    await fixupLatestRecordingTimesForDeletedRecording(recording);
   }
   if (deletedValues[1]) {
     return deletedValues[1].map((value) => value.id);
@@ -1028,7 +1037,6 @@ export async function bulkDelete(
 }
 
 export async function getTrackTags(
-  models: ModelsDictionary,
   userId: UserId,
   viewAsSuperUser: boolean,
   includeAI: boolean,
@@ -1041,13 +1049,13 @@ export async function getTrackTags(
     ? []
     : [
         {
-          model: models.User,
+          model: User,
           attributes: [],
           required: true,
           where: { id: userId },
         },
       ];
-  const rows = await models.TrackTag.findAll({
+  const rows = await TrackTag.findAll({
     attributes: ["id", "what", "UserId"],
     where: {
       what: {
@@ -1061,12 +1069,12 @@ export async function getTrackTags(
     },
     include: [
       {
-        model: models.Track,
+        model: Track,
         attributes: ["id"],
         required: true,
         include: [
           {
-            model: models.Recording,
+            model: Recording,
             attributes: ["id"],
             required: true,
             where: {
@@ -1076,18 +1084,18 @@ export async function getTrackTags(
             },
             include: [
               {
-                model: models.Group,
+                model: Group,
                 attributes: ["id", "groupName"],
                 required: true,
                 include: requireGroupMembership,
               },
               {
-                model: models.Device,
+                model: Device,
                 attributes: ["id", "deviceName"],
                 required: true,
               },
               {
-                model: models.Station,
+                model: Station,
                 attributes: ["id", "name"],
               },
             ],
@@ -1119,7 +1127,6 @@ export async function getTrackTags(
   }));
 }
 interface TrackTagsCountOptions {
-  models: ModelsDictionary;
   userId: string;
   viewAsSuperUser: boolean;
   includeAI: boolean;
@@ -1229,182 +1236,11 @@ export async function getTrackTagsCount(options: TrackTagsCountOptions) {
     userId: options.userId,
     groupId: options.groupId,
   };
-  const result = await options.models.sequelize.query(sql, {
+  const result = await sequelize.query(sql, {
     replacements,
     type: QueryTypes.SELECT,
   });
   return result;
-}
-
-// Returns a promise for report rows for a set of recordings. Takes
-// the same parameters as query() above.
-export async function reportRecordings(
-  models: ModelsDictionary,
-  userId: UserId,
-  includeAudiobait: boolean,
-  options: RecordingQueryOptions,
-) {
-  options = { ...options, hideFiltered: false };
-  const builder = (
-    await new models.Recording.queryBuilder().init(userId, options)
-  )
-    .addColumn("comment")
-    .addColumn("additionalMetadata");
-
-  if (includeAudiobait) {
-    builder.addAudioEvents();
-  }
-
-  builder.query.include.push({
-    model: models.Station,
-    attributes: ["name"],
-  });
-
-  // NOTE: Not even going to try to attempt to add typing info to this bundle
-  //  of properties...
-  const result: any[] = await models.Recording.findAll(builder.get());
-
-  // const filterOptions = models.Recording.makeFilterOptions(
-  //   request.user,
-  //   request.filterOptions
-  // );
-
-  const audioFileNames = new Map();
-  const audioEvents: Map<
-    RecordingId,
-    { timestamp: Date; volume: number; fileId: FileId }
-  > = new Map();
-
-  if (includeAudiobait) {
-    // Our DB schema doesn't allow us to easily get from a audio event
-    // recording to a audio file name so do some work first to look these up.
-    const audioFileIds: Set<number> = new Set();
-    for (const r of result) {
-      const event = findLatestEvent(r.Device.Events);
-      if (event && event.EventDetail) {
-        const fileId = event.EventDetail.details.fileId;
-        audioEvents[r.id] = {
-          timestamp: event.dateTime,
-          volume: event.EventDetail.details.volume,
-          fileId,
-        };
-        audioFileIds.add(fileId);
-      }
-    }
-    // Bulk look up file details of played audio events.
-    for (const f of await models.File.getMultiple(Array.from(audioFileIds))) {
-      audioFileNames[f.id] = f.details.name;
-    }
-  }
-
-  const recording_url_base = config.server.recording_url_base || "";
-  const labels = [
-    "Id",
-    "Type",
-    "Group",
-    "Device",
-    "Station",
-    "Date",
-    "Time",
-    "Latitude",
-    "Longitude",
-    "Duration",
-    "BatteryPercent",
-    "Comment",
-    "Track Count",
-    "Automatic Track Tags",
-    "Human Track Tags",
-    "Recording Tags",
-    "URL",
-    "Cacophony Index",
-    "Species Classification",
-  ];
-
-  if (includeAudiobait) {
-    labels.push(
-      "Audio Bait",
-      "Audio Bait Time",
-      "Mins Since Audio Bait",
-      "Audio Bait Volume",
-    );
-  }
-
-  const out = [labels];
-  for (const r of result) {
-    //r.filterData(filterOptions);
-
-    const automatic_track_tags = new Set();
-    const human_track_tags = new Set();
-    for (const track of r.Tracks) {
-      for (const tag of track.TrackTags) {
-        const subject = tag.what || tag.detail;
-        if (tag.automatic) {
-          automatic_track_tags.add(subject);
-        } else {
-          human_track_tags.add(subject);
-        }
-      }
-    }
-
-    const recording_tags =
-      r.Tags.map((t: Tag) => [
-        (t as any).what || t.detail,
-        ...(t.comment ? [t.comment] : []),
-      ]) || [];
-    const cacophonyIndex = getCacophonyIndex(r);
-
-    const thisRow = [
-      r.id,
-      r.type,
-      r.Group.groupName,
-      r.Device.deviceName,
-      r.Station ? r.Station.name : "",
-      moment(r.recordingDateTime).tz(config.timeZone).format("YYYY-MM-DD"),
-      moment(r.recordingDateTime).tz(config.timeZone).format("HH:mm:ss"),
-      r.location ? r.location.lat : "",
-      r.location ? r.location.lng : "",
-      r.duration,
-      r.batteryLevel,
-      r.comment,
-      r.Tracks.length,
-      formatTags(automatic_track_tags),
-      formatTags(human_track_tags),
-      formatTags(recording_tags),
-    ];
-    if (includeAudiobait) {
-      let audioBaitName = "";
-      let audioBaitTime = null;
-      let audioBaitDelta = null;
-      let audioBaitVolume = null;
-      const audioEvent = audioEvents[r.id];
-      if (audioEvent) {
-        audioBaitName = audioFileNames[audioEvent.fileId];
-        audioBaitTime = moment(audioEvent.timestamp);
-        audioBaitDelta = moment
-          .duration(r.recordingDateTime - audioBaitTime)
-          .asMinutes()
-          .toFixed(1);
-        audioBaitVolume = audioEvent.volume;
-      }
-
-      thisRow.push(
-        audioBaitName,
-        audioBaitTime
-          ? audioBaitTime.tz(config.timeZone).format("HH:mm:ss")
-          : "",
-        audioBaitDelta,
-        audioBaitVolume,
-      );
-    }
-
-    thisRow.push(
-      `${recording_url_base}/${r.id.toString()}`,
-      cacophonyIndex,
-      "",
-    );
-    out.push(thisRow);
-  }
-  return out;
 }
 
 function getCacophonyIndex(recording: Recording): string | null {
@@ -1447,10 +1283,10 @@ export function signedToken(
     mimeType,
   };
   if (userId) {
-    (payload as any).userId = userId;
+    payload["userId"] = userId;
   }
   if (groupId) {
-    (payload as any).groupId = groupId;
+    payload["groupId"] = groupId;
   }
   return jsonwebtoken.sign(payload, config.server.passportSecret, {
     expiresIn: 60 * 10,
@@ -1476,13 +1312,12 @@ export const guessMimeType = (type, filename): string => {
 };
 
 export const addTag = async (
-  models: ModelsDictionary,
   user: User | null,
   recordingId: RecordingId,
   tag: ApiRecordingTagRequest,
 ): Promise<Tag> => {
-  const tagInstance = models.Tag.buildSafely(tag);
-  (tagInstance as any).RecordingId = recordingId;
+  const tagInstance = Tag.buildSafely(tag);
+  tagInstance.RecordingId = recordingId;
   if (user) {
     tagInstance.taggerId = user.id;
   }
@@ -1490,22 +1325,21 @@ export const addTag = async (
   return tagInstance;
 };
 export const tracksFromMeta = async (
-  models: ModelsDictionary,
   recording: Recording,
-  metadata: any,
+  metadata: RecordingDataSuppliedMetadata,
 ) => {
   try {
     if (!("tracks" in metadata)) {
       return false;
     }
-    const algorithmDetail = await models.DetailSnapshot.getOrCreateMatching(
+    const algorithmDetail = await DetailSnapshot.getOrCreateMatching(
       "algorithm",
-      metadata["algorithm"],
+      metadata.algorithm,
     );
 
     const promises = [];
     const tracks = [];
-    for (const trackMeta of metadata["tracks"]) {
+    for (const trackMeta of metadata.tracks) {
       const newTrack = {
         data: trackMeta,
         startSeconds: trackMeta.start_s || 0,
@@ -1521,15 +1355,12 @@ export const tracksFromMeta = async (
       promises.push(
         new Promise((resolve, _reject) => {
           recording.addTrack(newTrack).then((track) => {
-            if (
-              !("predictions" in trackMeta) ||
-              trackMeta["predictions"].length === 0
-            ) {
+            if (!trackMeta.predictions || trackMeta.predictions.length === 0) {
               track.updateIsFiltered().then(resolve);
             } else {
               tracks.push(track);
               const trackPromises = [];
-              for (const prediction of trackMeta["predictions"]) {
+              for (const prediction of trackMeta.predictions) {
                 let modelName = "unknown";
                 if (prediction.model_id) {
                   if (metadata.models) {
@@ -1542,9 +1373,10 @@ export const tracksFromMeta = async (
                   }
                 }
 
+                // FIXME: Nail down what the classifier actually outputs, or just make this a generic black box.
                 const tag_data = { name: modelName };
                 if (prediction.clarity) {
-                  tag_data["clarity"] = prediction["clarity"];
+                  tag_data["clarity"] = prediction.clarity;
                 }
                 if (prediction.classify_time) {
                   tag_data["classify_time"] = prediction["classify_time"];
@@ -1561,11 +1393,11 @@ export const tracksFromMeta = async (
                 }
                 if (prediction.all_class_confidences) {
                   tag_data["all_class_confidences"] =
-                    prediction["all_class_confidences"];
+                    prediction.all_class_confidences;
                 }
                 let tag = "unidentified";
                 if (prediction.confident_tag) {
-                  tag = prediction["confident_tag"];
+                  tag = prediction.confident_tag;
                 }
                 trackPromises.push(
                   track.addTag(tag, prediction["confidence"], true, tag_data),
@@ -1590,392 +1422,22 @@ export const tracksFromMeta = async (
   return true;
 };
 
-export async function updateMetadata(recording: Recording, metadata: any) {
+export async function updateMetadata(recording: Recording, metadata: unknown) {
   recording.additionalMetadata = metadata;
   await recording.save();
 }
-
-// Returns a promise for the recordings visits query specified in the
-// request.
-export async function queryVisits(
-  models: ModelsDictionary,
-  userId: UserId,
-  options: RecordingQueryOptions,
-): Promise<{
-  visits: Visit[];
-  summary: DeviceSummary;
-  hasMoreVisits: boolean;
-  queryOffset: number;
-  totalRecordings: number;
-  numRecordings: number;
-  numVisits: number;
-}> {
-  const maxVisitQueryResults = 5000;
-  const requestVisits = options.limit || maxVisitQueryResults;
-  const queryMax = maxVisitQueryResults * 2;
-  const queryLimit = Math.min(requestVisits * 2, queryMax);
-  options = { ...options, order: null, limit: queryLimit };
-
-  const builder = await new models.Recording.queryBuilder().init(
-    userId,
-    options,
-  );
-  builder.query.distinct = true;
-
-  const devSummary = new DeviceSummary();
-  let numRecordings = 0;
-  let remainingVisits = requestVisits;
-  let totalCount, recordings, gotAllRecordings;
-
-  while (gotAllRecordings || remainingVisits > 0) {
-    if (totalCount) {
-      recordings = await models.Recording.findAll(builder.get());
-    } else {
-      const result = await models.Recording.findAndCountAll(builder.get());
-      totalCount = result.count;
-      recordings = result.rows;
-    }
-
-    numRecordings += recordings.length;
-    gotAllRecordings = recordings.length + builder.query.offset >= recordings;
-    if (recordings.length == 0) {
-      break;
-    }
-
-    // for (const rec of recordings) {
-    //   rec.filterData(filterOptions);
-    // }
-    devSummary.generateVisits(recordings, options.offset || 0);
-
-    if (!gotAllRecordings) {
-      devSummary.checkForCompleteVisits();
-    }
-
-    remainingVisits = requestVisits - devSummary.completeVisitsCount();
-    builder.query.limit = Math.min(remainingVisits * 2, queryMax);
-    builder.query.offset += recordings.length;
-  }
-
-  let queryOffset = 0;
-  // mark all as complete
-  if (gotAllRecordings) {
-    devSummary.markCompleted();
-  } else {
-    devSummary.removeIncompleteVisits();
-  }
-
-  for (const devId in devSummary.deviceMap) {
-    const devVisits = devSummary.deviceMap[devId];
-    if (devVisits.visitCount == 0) {
-      continue;
-    }
-    const events = (await models.Event.query(
-      userId,
-      devVisits.startTime.clone().startOf("day").toISOString(),
-      devVisits.endTime.toISOString(),
-      parseInt(devId),
-      0,
-      1000,
-      false,
-      { eventType: "audioBait" } as QueryOptions,
-      false,
-    )) as Event[];
-    if (events) {
-      devVisits.addAudioBaitEvents(events);
-    }
-  }
-
-  const audioFileIds = devSummary.allAudioFileIds();
-
-  const visits = devSummary.completeVisits();
-  visits.sort(function (a, b) {
-    return b.start > a.start ? 1 : -1;
-  });
-  // get the offset to use for future queries
-  queryOffset = devSummary.earliestIncompleteOffset();
-  if (queryOffset == null && visits.length > 0) {
-    queryOffset = visits[visits.length - 1].queryOffset + 1;
-  }
-
-  // Bulk look up file details of played audio events.
-  const audioFileNames = new Map();
-  for (const f of await models.File.getMultiple(Array.from(audioFileIds))) {
-    audioFileNames[f.id] = f.details.name;
-  }
-
-  // update the references in deviceMap
-  for (const visit of visits) {
-    for (const audioEvent of visit.audioBaitEvents) {
-      audioEvent.dataValues.fileName =
-        audioFileNames[audioEvent.EventDetail.details.fileId];
-    }
-  }
-  return {
-    visits: visits,
-    summary: devSummary,
-    hasMoreVisits: !gotAllRecordings,
-    totalRecordings: totalCount,
-    queryOffset: queryOffset,
-    numRecordings: numRecordings,
-    numVisits: visits.length,
-  };
-}
-
-function reportDeviceVisits(deviceMap: DeviceVisitMap) {
-  const device_summary_out = [
-    [
-      "Device ID",
-      "Device Name",
-      "Group Name",
-      "First Visit",
-      "Last Visit",
-      "# Visits",
-      "Avg Events per Visit",
-      "Animal",
-      "Visits",
-      "Using Audio Bait",
-      "", //needed for visits columns to show
-      "",
-      "",
-    ],
-  ];
-  for (const [deviceId, deviceVisits] of Object.entries(deviceMap)) {
-    const animalSummary = deviceVisits.animalSummary();
-
-    device_summary_out.push([
-      deviceId,
-      deviceVisits.deviceName,
-      deviceVisits.groupName,
-      deviceVisits.startTime.tz(config.timeZone).format("HH:mm:ss"),
-      deviceVisits.endTime.tz(config.timeZone).format("HH:mm:ss"),
-      deviceVisits.visitCount.toString(),
-      (
-        Math.round((10 * deviceVisits.eventCount) / deviceVisits.visitCount) /
-        10
-      ).toString(),
-      Object.keys(animalSummary).join(";"),
-      Object.values(animalSummary)
-        .map((summary: VisitSummary) => summary.visitCount)
-        .join(";"),
-      deviceVisits.audioBait.toString(),
-    ]);
-
-    for (const animal in animalSummary) {
-      const summary = animalSummary[animal];
-      device_summary_out.push([
-        deviceId,
-        summary.deviceName,
-        summary.groupName,
-        summary.start.tz(config.timeZone).format("HH:mm:ss"),
-        summary.end.tz(config.timeZone).format("HH:mm:ss"),
-        summary.visitCount.toString(),
-        (summary.visitCount / summary.eventCount).toString(),
-        animal,
-        summary.visitCount.toString(),
-        deviceVisits.audioBait.toString(),
-      ]);
-    }
-  }
-  return device_summary_out;
-}
-
-export async function reportVisits(
-  models: ModelsDictionary,
-  userId: UserId,
-  options: RecordingQueryOptions,
-) {
-  const results = await queryVisits(models, userId, options);
-  const out = reportDeviceVisits(results.summary.deviceMap);
-  const recordingUrlBase = config.server.recording_url_base || "";
-  out.push([]);
-  out.push([
-    "Visit ID",
-    "Group",
-    "Device",
-    "Type",
-    "AssumedTag",
-    "What",
-    "Rec ID",
-    "Date",
-    "Start",
-    "End",
-    "Confidence",
-    "# Events",
-    "Audio Played",
-    "URL",
-  ]);
-
-  for (const visit of results.visits) {
-    addVisitRow(out, visit);
-
-    const audioEvents = visit.audioBaitEvents.sort(function (a, b) {
-      return moment(a.dateTime) > moment(b.dateTime) ? 1 : -1;
-    });
-
-    let audioEvent = audioEvents.pop();
-    let audioTime, audioBaitBefore;
-    if (audioEvent) {
-      audioTime = moment(audioEvent.dateTime);
-    }
-    // add visit events and audio bait in descending order
-    for (const event of visit.events) {
-      audioBaitBefore = audioTime && audioTime.isAfter(event.start);
-      while (audioBaitBefore) {
-        addAudioBaitRow(out, audioEvent);
-        audioEvent = audioEvents.pop();
-        if (audioEvent) {
-          audioTime = moment(audioEvent.dateTime);
-        } else {
-          audioTime = null;
-        }
-        audioBaitBefore = audioTime && audioTime.isAfter(event.start);
-      }
-      addEventRow(out, event, recordingUrlBase);
-    }
-    if (audioEvent) {
-      audioEvents.push(audioEvent);
-    }
-    for (const audioEvent of audioEvents.reverse()) {
-      addAudioBaitRow(out, audioEvent);
-    }
-  }
-  return out;
-}
-
-function addVisitRow(out: any, visit: Visit) {
-  out.push([
-    visit.visitID.toString(),
-    visit.deviceName,
-    visit.groupName,
-    "Visit",
-    visit.what,
-    visit.what,
-    "",
-    visit.start.tz(config.timeZone).format("YYYY-MM-DD"),
-    visit.start.tz(config.timeZone).format("HH:mm:ss"),
-    visit.end.tz(config.timeZone).format("HH:mm:ss"),
-    "",
-    visit.events.length.toString(),
-    visit.audioBaitVisit.toString(),
-    "",
-  ]);
-}
-
-function addEventRow(out: any, event: VisitEvent, recordingUrlBase: string) {
-  out.push([
-    "",
-    "",
-    "",
-    "Event",
-    event.assumedTag,
-    event.trackTag ? event.trackTag.what : "",
-    event.recID.toString(),
-    event.start.tz(config.timeZone).format("YYYY-MM-DD"),
-    event.start.tz(config.timeZone).format("HH:mm:ss"),
-
-    event.end.tz(config.timeZone).format("HH:mm:ss"),
-    event.trackTag ? event.trackTag.confidence + "%" : "",
-    "",
-    "",
-    `${recordingUrlBase}/${event.recID.toString()}/${event.trackID.toString()}`,
-  ]);
-}
-
-function addAudioBaitRow(out: any, audioBait: Event) {
-  let audioPlayed = audioBait.dataValues.fileName;
-  if (audioBait.EventDetail.details.volume) {
-    audioPlayed += " vol " + audioBait.EventDetail.details.volume;
-  }
-  out.push([
-    "",
-    "",
-    "",
-    "Audio Bait",
-    "",
-    audioBait.dataValues.fileName,
-    "",
-    moment(audioBait.dateTime).tz(config.timeZone).format("YYYY-MM-DD"),
-    moment(audioBait.dateTime).tz(config.timeZone).format("HH:mm:ss"),
-    "",
-    "",
-    "",
-    audioPlayed,
-    "",
-  ]);
-}
-
-// Gets a single recording with associated tables required to calculate a visit
-// calculation
-export async function getRecordingForVisit(
-  models: ModelsDictionary,
-  id: number,
-): Promise<Recording> {
-  const query = {
-    include: [
-      {
-        model: models.Group,
-        attributes: ["groupName"],
-      },
-      {
-        model: models.Track,
-        where: {
-          archivedAt: null,
-        },
-        attributes: ["id", "startSeconds", "endSeconds"],
-        required: false,
-        include: [
-          {
-            model: models.TrackTag,
-            attributes: [
-              "what",
-              "automatic",
-              "TrackId",
-              "confidence",
-              "path",
-              "model",
-            ],
-          },
-        ],
-      },
-      {
-        model: models.Device,
-        attributes: ["deviceName", "id"],
-      },
-      {
-        model: models.Station,
-        attributes: ["name", "id"],
-      },
-    ],
-    attributes: [
-      "id",
-      "recordingDateTime",
-      "DeviceId",
-      "StationId",
-      "GroupId",
-      "rawFileKey",
-      "fileKey",
-    ],
-  };
-  // @ts-ignore
-  return await models.Recording.findByPk(id, query);
-}
-
-export async function sendAlerts(
-  models: ModelsDictionary,
-  recId: RecordingId,
-  debug: boolean = false,
-) {
+export async function sendAlerts(recId: RecordingId, debug = false) {
   // Get the most common non-false-positive tag for this recording, then get the track with that tag
   // that has the best thumbnail.
-  const recording: Recording = await models.Recording.findByPk(recId, {
+  const recording: Recording = await Recording.findByPk(recId, {
     include: [
       {
-        model: models.Track,
+        model: Track,
         attributes: ["id"],
         required: true,
         include: [
           {
-            model: models.TrackTag,
+            model: TrackTag,
             required: true,
             where: {
               used: true,
@@ -1986,15 +1448,15 @@ export async function sendAlerts(
         ],
       },
       {
-        model: models.Device,
+        model: Device,
         attributes: ["deviceName", "id", "location"],
       },
       {
-        model: models.Station,
+        model: Station,
         attributes: ["name", "id"],
       },
       {
-        model: models.Group,
+        model: Group,
         attributes: ["groupName"],
       },
     ],
@@ -2017,9 +1479,9 @@ export async function sendAlerts(
   }
 
   for (const track of recording.Tracks) {
-    const trackData = await getTrackData(track.id);
+    const trackData = await Track.getTrackData(track.id);
     if (trackData.thumbnail) {
-      track.dataValues.thumbnailScore = trackData.thumbnail.score;
+      track.thumbnailScore = trackData.thumbnail.score;
     }
   }
 
@@ -2031,6 +1493,9 @@ export async function sendAlerts(
   ) {
     return;
   }
+
+  // FIXME: Logic for getting best thumbnail for a recording duplicated with thumbnail endpoint
+  //  Also, we're not loading track metadata to make the decision.
   const tagCounts: Record<
     string,
     { count: number; tracks: { track: Track; trackTag: TrackTag }[] }
@@ -2058,8 +1523,7 @@ export async function sendAlerts(
     for (const track of tracks) {
       if (
         !bestTrack ||
-        track.track.dataValues.thumbnailScore >
-          bestTrack.track.dataValues.thumbnailScore
+        track.track.thumbnailScore > bestTrack.track.thumbnailScore
       ) {
         bestTrack = track;
       }
@@ -2073,8 +1537,7 @@ export async function sendAlerts(
         const bestTrackA = bestThumbnailTrack(countA.tracks);
         const bestTrackB = bestThumbnailTrack(countB.tracks);
         return (
-          bestTrackB.track.dataValues.thumbnailScore -
-          bestTrackA.track.dataValues.thumbnailScore
+          bestTrackB.track.thumbnailScore - bestTrackA.track.thumbnailScore
         );
       }
       return countB.count - countA.count;
@@ -2089,11 +1552,13 @@ export async function sendAlerts(
   const matchedTrack: Track = bestTrack.track;
   const matchedTag: TrackTag = bestTrack.trackTag;
   // Find the hierarchy for the matchedTag
-  const alerts: Alert[] = await (models.Alert as AlertStatic).getActiveAlerts(
+
+  // FIXME: Don't calculate best track thumbnail etc if there are no possible alerts for recording?
+  const alerts: Alert[] = await Alert.getActiveAlerts(
     matchedTag.path,
-    recording.DeviceId || undefined,
-    recording.StationId || undefined,
-    recording.GroupId || undefined,
+    recording.DeviceId,
+    recording.StationId,
+    recording.GroupId,
   );
   if (alerts.length !== 0) {
     const thumbnail = await getThumbnail(recording, matchedTrack.id);
@@ -2115,8 +1580,8 @@ export async function sendAlerts(
             alert.GroupId !== null
               ? "project"
               : alert.StationId !== null
-              ? "station"
-              : "device",
+                ? "station"
+                : "device",
             thumbnail && {
               buffer: Buffer.from(thumbnail),
               cid: "thumbnail",
@@ -2166,16 +1631,13 @@ export async function sendAlerts(
           );
           if (alertSendSuccess) {
             // Log an email alert event also
-            const detail = await models.DetailSnapshot.getOrCreateMatching(
-              "alert",
-              {
-                alertId: alert.id,
-                recId: recording.id,
-                trackId: matchedTrack.id,
-                success: alertSendSuccess,
-              },
-            );
-            await models.Event.create({
+            const detail = await DetailSnapshot.getOrCreateMatching("alert", {
+              alertId: alert.id,
+              recId: recording.id,
+              trackId: matchedTrack.id,
+              success: alertSendSuccess,
+            });
+            await Event.create({
               DeviceId: recording.Device.id,
               EventDetailId: detail.id,
               dateTime: recording.recordingDateTime,
@@ -2196,8 +1658,7 @@ export async function sendAlerts(
 
 // TODO: This would be to send email alerts when we don't get recordings uploaded, we just get classification events
 //  from i.e. a Lora node.
-export async function sendEventAlerts(
-  models: ModelsDictionary,
+export async function _sendEventAlerts(
   data: { what: string; conf: number; dateTimes?: IsoFormattedDateString[] },
   device: Device,
   eventDateTime: Date,
@@ -2206,16 +1667,16 @@ export async function sendEventAlerts(
   // Find the hierarchy for the matchedTag
   const { stationId } =
     await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
-      models,
       device,
       eventDateTime,
     );
   let alerts: Alert[] = [];
   if (stationId) {
-    alerts = await (models.Alert as AlertStatic).getActiveAlerts(
+    alerts = await Alert.getActiveAlerts(
       data.what,
-      undefined,
+      device.id,
       stationId,
+      device.GroupId,
     );
     for (const _alert of alerts) {
       // TODO:
@@ -2239,14 +1700,7 @@ export async function sendEventAlerts(
   return alerts;
 }
 
-const compressString = (text: string): Promise<Buffer> => {
-  return new Promise((resolve) => {
-    const buf = new Buffer(text, "utf-8"); // Choose encoding for the string.
-    zlib.gzip(buf, (_, result) => resolve(result));
-  });
-};
-
-interface TrackData {
+interface _TrackData {
   start_s: number;
   end_s: number;
   positions: TrackFramePosition[];
@@ -2255,7 +1709,7 @@ interface TrackData {
   num_frames: number;
 }
 
-const addAITrackTags = async (
+const _addAITrackTags = async (
   recording: Recording,
   rawTracks: RawTrack[],
   tracks: Track[],
@@ -2282,18 +1736,6 @@ const addAITrackTags = async (
     }
   }
   return Promise.all(trackTags);
-};
-
-// FIXME - unused - why?
-const calculateAndAddAIMasterTag = async (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  recording: Recording,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  rawTracks: RawTrack[],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  tracks: Track[],
-): Promise<TrackTagId> => {
-  return 0;
 };
 
 const calculateTrackMovement = (track: RawTrack): number => {
@@ -2406,7 +1848,7 @@ const getSignificantTracks = (
           hasClearPrediction = true;
           const tag = prediction.label;
           prediction.tag = tag;
-          if (tags.hasOwnProperty(tag)) {
+          if (tag in tags) {
             tags[tag].confidence = Math.max(tags[tag].confidence, confidence);
           } else {
             tags[tag] = { confidence: 0 };
@@ -2443,7 +1885,7 @@ const calculateMultipleAnimalConfidence = (tracks: RawTrack[]): number => {
 };
 
 const MULTIPLE_ANIMAL_CONFIDENCE = 1;
-const calculateTags = (
+const _calculateTags = (
   tracks: RawTrack[],
 ): [RawTrack[], Record<string, { confidence: number }>, boolean] => {
   if (tracks.length === 0) {
@@ -2469,7 +1911,6 @@ const calculateTags = (
 };
 
 export const fixupLatestRecordingTimesForDeletedRecording = async (
-  models: ModelsDictionary,
   recording: Recording,
 ) => {
   // Check if there are any more device/group/station recordings, or if the latest recording of this type
@@ -2489,7 +1930,7 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
     latestGroupRecordingOfSameType,
     latestStationRecordingOfSameType,
   ] = await Promise.all([
-    models.Recording.findOne({
+    Recording.findOne({
       where: {
         DeviceId: recording.DeviceId,
         deletedAt: null,
@@ -2497,7 +1938,7 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
       },
       order: [["recordingDateTime", "DESC"]],
     }),
-    models.Recording.findOne({
+    Recording.findOne({
       where: {
         GroupId: recording.GroupId,
         deletedAt: null,
@@ -2506,7 +1947,7 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
       },
       order: [["recordingDateTime", "DESC"]],
     }),
-    models.Recording.findOne({
+    Recording.findOne({
       where: {
         StationId: recording.StationId,
         duration: { [Op.gte]: 3 },
@@ -2517,8 +1958,8 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
     }),
   ]);
   const [device, group] = await Promise.all([
-    models.Device.findByPk(recording.DeviceId),
-    models.Group.findByPk(recording.GroupId),
+    Device.findByPk(recording.DeviceId),
+    Group.findByPk(recording.GroupId),
   ]);
   if (!latestDeviceRecording) {
     await device.update({
@@ -2568,7 +2009,7 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
     }
   }
   if (recording.StationId) {
-    const station = await models.Station.findByPk(recording.StationId);
+    const station = await Station.findByPk(recording.StationId);
     if (!latestStationRecordingOfSameType) {
       if (cameras.includes(recording.type)) {
         await station.update({
@@ -2610,13 +2051,12 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
 };
 
 export const fixupLatestRecordingTimesForUndeletedRecording = async (
-  models: ModelsDictionary,
   recording: Recording,
 ) => {
   const cameras = [RecordingType.TrailCamImage, RecordingType.ThermalRaw];
   const [device, group] = await Promise.all([
-    models.Device.findByPk(recording.DeviceId),
-    models.Group.findByPk(recording.GroupId),
+    Device.findByPk(recording.DeviceId),
+    Group.findByPk(recording.GroupId),
   ]);
   if (device) {
     if (
@@ -2654,7 +2094,7 @@ export const fixupLatestRecordingTimesForUndeletedRecording = async (
     }
   }
   if (recording.StationId) {
-    const station = await models.Station.findByPk(recording.StationId);
+    const station = await Station.findByPk(recording.StationId);
     if (station) {
       if (
         (cameras.includes(recording.type) &&

@@ -1,24 +1,23 @@
 import type { Moment } from "moment";
 import moment from "moment";
 import modelsInit from "@models/index.js";
-import type { Recording } from "@models/Recording.js";
+import { Recording } from "@models/Recording.js";
 import {
   getCanonicalTrackTag,
   NON_ANIMAL_TAGS,
   UNIDENTIFIED_TAGS,
-} from "./Visits.js";
+} from "./tagUtil.js";
 import { ClientError } from "../customErrors.js";
 import type { StationId, TrackId, UserId } from "@typedefs/api/common.js";
 import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
-import { Op } from "sequelize";
+import Sequelize, { Op } from "sequelize";
 import type { RecordingProcessingState } from "@typedefs/api/consts.js";
 import { RecordingType } from "@typedefs/api/consts.js";
-import type { Station } from "@models/Station.js";
-import type { ApiTrackTagResponse } from "@typedefs/api/trackTag.js";
-import type { TrackTag } from "@models/TrackTag.js";
-import { getTrackData } from "@models/Track.js";
+import { Station } from "@models/Station.js";
+import { TrackTag } from "@models/TrackTag.js";
+import { Track } from "@models/Track.js";
 
-const models = await modelsInit();
+await modelsInit();
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -89,7 +88,7 @@ export class Visit {
     return true;
   }
 
-  async calculateTags(aiModel: string, dontSplit: boolean = false) {
+  async calculateTags(aiModel: string, dontSplit = false) {
     this.recordings = (this.rawRecordings || []).map((rec) =>
       this.calculateTrackTags(rec, aiModel),
     );
@@ -137,7 +136,7 @@ export class Visit {
         let bestTag;
         for (const [tag, tracks] of bestAiTags) {
           for (const track of tracks) {
-            const data = await getTrackData(track.id);
+            const data = await Track.getTrackData(track.id);
             const mass =
               (data.positions &&
                 data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
@@ -167,7 +166,7 @@ export class Visit {
       let bestTag;
       for (const [tag, tracks] of aiGuess) {
         for (const track of tracks) {
-          const data = await getTrackData(track.id);
+          const data = await Track.getTrackData(track.id);
           const mass =
             (data.positions &&
               data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
@@ -189,16 +188,16 @@ export class Visit {
     return { split: false };
   }
 
-  calculateTrackTags(recording, aiModel: string): VisitRecording {
+  calculateTrackTags(recording: Recording, aiModel: string): VisitRecording {
     const newVisitRecording: VisitRecording = {
       recId: recording.id,
       start: recording.recordingDateTime,
       processingState: recording.processingState,
       tracks: [],
     };
-    for (const track of (recording as any).Tracks) {
+    for (const track of recording.Tracks) {
       const bestTag = getCanonicalTrackTag(track.TrackTags);
-      const aiTag: ApiTrackTagResponse = (track.TrackTags || []).find(
+      const aiTag = (track.TrackTags || []).find(
         (tag) => tag.model === aiModel && tag.automatic,
       );
       const thisTrack: VisitTrack = {
@@ -300,7 +299,7 @@ function getBestGuessOverall(
     // We may be able to tie-break best guesses for multiple human tags that have the same ancestor.
     // Add hierarchical tag parents here, so that if a user tags a track with mustelid, and another with
     // stoat, the best guess tag will be the common ancestor.
-    const allTrackTags: any[] = [];
+    const allTrackTags: { id: number; automatic: boolean; what: string }[] = [];
     for (const track of tracks) {
       allTrackTags.push({
         id: track.id,
@@ -341,7 +340,7 @@ function getBestGuess(
 
 interface VisitRecording {
   recId: number;
-  start: string;
+  start: Date;
   tracks: VisitTrack[];
   processingState: RecordingProcessingState;
 }
@@ -354,8 +353,8 @@ interface VisitTrack {
   tag: string;
   aiTag: string;
   isAITagged: boolean;
-  start: string;
-  end: string;
+  start: number;
+  end: number;
   mass: number; // For tie-breaking purposes with AI only visits
   userTagsConflict?: boolean;
 }
@@ -477,7 +476,7 @@ async function getRecordings(
       types.push(type);
     }
   }
-  const where: any = {
+  const where: Sequelize.WhereOptions = {
     duration: { [Op.gte]: "3" }, // Ignore our 2 second health-check recordings
     type: { [Op.in]: types },
     deletedAt: { [Op.eq]: null },
@@ -489,15 +488,15 @@ async function getRecordings(
   if (params.groups) {
     where.GroupId = params.groups;
   }
-  const order = [["recordingDateTime", "ASC"]];
-  const builder = await new models.Recording.queryBuilder().init(userId, {
+  const order: Sequelize.Order = [["recordingDateTime", "ASC"]];
+  const builder = await new Recording.queryBuilder().init(userId, {
     where,
     limit: RECORDINGS_LIMIT,
     order,
     viewAsSuperUser,
   });
 
-  return models.Recording.findAll(builder.get());
+  return Recording.findAll(builder.get());
 }
 
 function groupRecordingsIntoVisits(
@@ -506,25 +505,27 @@ function groupRecordingsIntoVisits(
   end: Moment,
   isLastPage: boolean,
 ): Visit[] {
-  const currentVisitForStation: { [key: number]: Visit } = {};
+  const currentVisitForStation: Record<number, Visit> = {};
   const visitsStartingInPeriod: Visit[] = [];
   const earlierVisits: Visit[] = [];
 
-  recordings.forEach((rec) => {
-    const recording = rec as any;
+  recordings.forEach((recording) => {
     const stationId = recording.StationId || 0;
-    const currentVisit: Visit = currentVisitForStation[rec.StationId];
+    const currentVisit: Visit = currentVisitForStation[recording.StationId];
     const matchingVisit =
       currentVisit && currentVisit.stationsMatch(stationId)
         ? currentVisit
         : null;
-    if (!matchingVisit || !matchingVisit.addRecordingIfWithinTimeLimits(rec)) {
-      if (end.isSameOrAfter(rec.recordingDateTime)) {
+    if (
+      !matchingVisit ||
+      !matchingVisit.addRecordingIfWithinTimeLimits(recording)
+    ) {
+      if (end.isSameOrAfter(recording.recordingDateTime)) {
         // start a new visit
-        const newVisit = new Visit(stationId, recording.Station, rec);
+        const newVisit = new Visit(stationId, recording.Station, recording);
         // we want to keep adding recordings to this visit even if first recording is
         // before the search period
-        currentVisitForStation[rec.StationId] = newVisit;
+        currentVisitForStation[recording.StationId] = newVisit;
 
         if (newVisit.timeStart.isAfter(start)) {
           visitsStartingInPeriod.push(newVisit);

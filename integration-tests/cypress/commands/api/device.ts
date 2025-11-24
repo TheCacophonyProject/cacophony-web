@@ -160,11 +160,16 @@ Cypress.Commands.add(
         const deviceHistory = response.body.history;
         expect(deviceHistory.length).to.equal(expectedHistory.length);
         let devCount: number;
-        const sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
-        const sortExpectedHistory = sortArrayOn(
+        let sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
+        let sortExpectedHistory = sortArrayOn(
           expectedHistory,
           "fromDateTime",
         );
+
+        // JS sort is stable, so we can re-sort to put `register` at the beginning.
+        const sortOrder = ["register", "automatic", "user"];
+        sortHistory = sortArrayOn(deviceHistory, "setBy", sortOrder);
+        sortExpectedHistory = sortArrayOn(expectedHistory,"setBy", sortOrder);
         for (devCount = 0; devCount < expectedHistory.length; devCount++) {
           checkTreeStructuresAreEqualExcept(
             sortExpectedHistory[devCount],

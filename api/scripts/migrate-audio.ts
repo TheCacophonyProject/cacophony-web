@@ -1,18 +1,8 @@
 import process from "process";
-import { program } from "commander";
 import pkg from "pg";
 const { Client } = pkg;
-import * as config from "../config.js";
-let Config;
+import config from "../config.js";
 async function main() {
-  program
-    .option("--config <path>", "Configuration file", "./config/app.js")
-    .parse(process.argv);
-  const options = program.opts();
-  Config = {
-    ...config.default,
-    ...(await config.default.loadConfig(options.config)),
-  };
   console.log("Connecting to db");
   const pgClient = await pgConnect();
 
@@ -81,7 +71,7 @@ async function geTracks(client, r_id) {
   return res;
 }
 async function pgConnect() {
-  const dbconf = Config.database;
+  const dbconf = config.database;
   const client = new Client({
     host: dbconf.host,
     port: dbconf.port,

@@ -1,7 +1,7 @@
-import viridis from "scale-color-perceptual/rgb/viridis.json" assert { type: "json" };
-import plasma from "scale-color-perceptual/rgb/plasma.json" assert { type: "json" };
-import magma from "scale-color-perceptual/rgb/magma.json" assert { type: "json" };
-import inferno from "scale-color-perceptual/rgb/inferno.json" assert { type: "json" };
+import viridis from "scale-color-perceptual/rgb/viridis.json" with { type: "json" };
+import plasma from "scale-color-perceptual/rgb/plasma.json" with { type: "json" };
+import magma from "scale-color-perceptual/rgb/magma.json" with { type: "json" };
+import inferno from "scale-color-perceptual/rgb/inferno.json" with { type: "json" };
 
 import defaultColourmap from "./DefaultColourmap.js";
 type RgbZeroOneArray = [number, number, number][];

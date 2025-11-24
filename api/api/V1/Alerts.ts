@@ -22,7 +22,7 @@ import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
-import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" assert { type: "json" };
+import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" with { type: "json" };
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredAlertById,
@@ -42,12 +42,12 @@ import type {
   ApiAlertCondition,
   ApiAlertResponse,
 } from "@typedefs/api/alerts.js";
-import type { Alert } from "@models/Alert.js";
+import { Alert } from "@models/Alert.js";
 import type { Request, Response } from "express";
 import { AuthorizationError } from "@api/customErrors.js";
 import logger from "@log";
 
-const models = await modelsInit();
+await modelsInit();
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
@@ -70,8 +70,8 @@ const mapAlertResponse = (alert: Alert): ApiAlertResponse => {
   const alertScope = alert.DeviceId
     ? "device"
     : alert.StationId
-    ? "location"
-    : "project";
+      ? "location"
+      : "project";
   return {
     conditions: alert.conditions,
     frequencySeconds: alert.frequencySeconds,
@@ -158,18 +158,21 @@ export default function (app: Application, baseUrl: string) {
         conditions: response.locals.conditions,
         frequencySeconds: request.body.frequencySeconds,
         UserId: response.locals.requestUser.id,
+        DeviceId: null,
+        StationId: null,
+        GroupId: null,
       };
       if (response.locals.device) {
-        (alert as any).DeviceId = response.locals.device.id;
+        alert.DeviceId = response.locals.device.id;
       } else if (response.locals.station) {
-        (alert as any).StationId = response.locals.station.id;
+        alert.StationId = response.locals.station.id;
       } else if (response.locals.group) {
-        (alert as any).GroupId = response.locals.group.id;
+        alert.GroupId = response.locals.group.id;
       } else {
         return next(new AuthorizationError("Invalid alert scope"));
       }
       logger.warning("Alert %s", JSON.stringify(alert, null, "\t"));
-      const { id } = await models.Alert.create(alert);
+      const { id } = (await Alert.create(alert)) as Alert;
       return successResponse(response, "Created new Alert.", { id });
     },
   );
@@ -200,7 +203,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response) => {
       const alerts = (
-        await models.Alert.queryUserDevice(
+        await Alert.queryUserDevice(
           response.locals.device.id,
           response.locals.requestUser.id,
           null,
@@ -237,7 +240,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredStationById(param("stationId")),
     async (_request: Request, response: Response) => {
       const alerts = (
-        await models.Alert.queryUserStation(
+        await Alert.queryUserStation(
           response.locals.station.id,
           response.locals.requestUser.id,
           null,
@@ -274,7 +277,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupById(param("projectId")),
     async (_request: Request, response: Response) => {
       const alerts = (
-        await models.Alert.queryUserProject(
+        await Alert.queryUserProject(
           response.locals.group.id,
           response.locals.requestUser.id,
           null,
@@ -307,12 +310,12 @@ export default function (app: Application, baseUrl: string) {
       let alerts: ApiAlertResponse[];
       if (!response.locals.viewAsSuperUser) {
         alerts = (
-          await models.Alert.findAll({
+          await Alert.findAll({
             where: { UserId: response.locals.requestUser.id },
           })
         ).map(mapAlertResponse);
       } else {
-        alerts = (await models.Alert.findAll()).map(mapAlertResponse);
+        alerts = (await Alert.findAll()).map(mapAlertResponse);
       }
       return successResponse(response, { alerts });
     },

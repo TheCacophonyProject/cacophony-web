@@ -1,3 +1,4 @@
+
 module.exports = {
   plugins: ["@typescript-eslint"],
   root: true,
@@ -10,12 +11,19 @@ module.exports = {
     node: true,
     es6: true,
   },
+  globals: {
+    ReadableStream: "readonly",
+    ReadableStreamDefaultReader: "readonly",
+  },
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: 8,
     sourceType: "module",
   },
   rules: {
+    indent: ["error", 2], // Enforces 2-space indentation
+    "semi-spacing": ["error", { before: false, after: true }], // No space before, one space after
+    "keyword-spacing": ["error", { before: true, after: true }], // Space before and after keywords
     "no-prototype-builtins": "off",
     "linebreak-style": ["error", "unix"],
     semi: ["error", "always"],
@@ -46,5 +54,8 @@ module.exports = {
       },
     ],
     "@typescript-eslint/no-import-type-side-effects": "error",
+    // "@typescript-eslint/indent": ["error", 2, {
+    //     "SwitchCase": 1 // This indents 'case' clauses by one level relative to the 'switch' statement
+    // }],
   },
 };

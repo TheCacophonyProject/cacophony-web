@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await queryInterface.addColumn("Recordings", "processingFailedCount", {
@@ -9,7 +7,7 @@ module.exports = {
     await queryInterface.addColumn(
       "Recordings",
       "currentStateStartTime",
-      Sequelize.DATE
+      Sequelize.DATE,
     );
   },
 

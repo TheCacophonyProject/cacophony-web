@@ -16,7 +16,7 @@ module.exports = {
         fields: ["dateTime"],
         name: "events_datetime_idx",
       },
-      { order: "DESC" }
+      { order: "DESC" },
     );
   },
 

@@ -60,7 +60,8 @@ class IsoFormattedDateStringFormatter implements SubTypeFormatter {
     // Return a custom schema for the function property.
     return {
       type: "string",
-      format: "IsoFormattedDateString",
+      format: "date-time",
+      // Is it worth validating minimum and maximum dates here?
     };
   }
 
@@ -78,7 +79,8 @@ class FloatZeroOneFormatter implements SubTypeFormatter {
     // Return a custom schema for the function property.
     return {
       type: "number",
-      format: "FloatZeroOne",
+      minimum: 0.0,
+      maximum: 1.0,
     };
   }
 
@@ -146,6 +148,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
 
 // We configure the parser an add our custom parser to it.
 (async () => {
+  console.log("Generating schemas");
   const files = await readdir("api");
 
   const schemaDefinitions = files.filter((file) => file.endsWith(".d.ts"));
@@ -157,9 +160,11 @@ class IsoFormattedDateStringParser implements SubNodeParser {
     console.log("Cache doesn't exist?", e);
   }
   const updatedSchemas = [];
+  const thisFile = await fs.readFile("./build-schemas.ts", "utf8");
   for (const typedefFile of schemaDefinitions) {
     const file = await fs.readFile(typedefFile);
     const hash = crypto.createHash("sha1");
+    hash.update(thisFile);
     hash.update(file);
     const digest = hash.digest("hex");
     if (

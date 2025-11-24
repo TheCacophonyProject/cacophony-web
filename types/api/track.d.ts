@@ -4,6 +4,7 @@ import {
   ApiHumanTrackTagResponse,
   ApiTrackTag,
 } from "./trackTag";
+import {TrackFramePosition} from "./fileProcessing";
 
 export interface ApiTrackPosition {
   x: number;
@@ -11,6 +12,7 @@ export interface ApiTrackPosition {
   width: number;
   height: number;
   order?: number;
+  frame_number?: number;
   frameTime?: number;
   mass?: number;
   blank?: boolean;
@@ -48,4 +50,10 @@ export interface ApiTrackDataRequest {
   message?: string;
   tag?: string;
   tracker_version?: number | string;
+  tracking_score?: number;
+
+  thumbnail?: {
+      region?: TrackFramePosition;
+      palette?: string;
+  };
 }

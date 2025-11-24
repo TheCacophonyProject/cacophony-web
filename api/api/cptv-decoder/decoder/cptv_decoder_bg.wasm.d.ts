@@ -1,4 +1,3 @@
-/* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export function __wbg_cptvdecodercontext_free(a: number): void;

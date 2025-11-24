@@ -43,7 +43,9 @@ export default async function (app: Application) {
   for (const route of apiRoutes) {
     try {
       const routeModule = await import(path.join(__dirname, route));
-      routeModule.default && routeModule.default(app, "/api/v1");
+      if (routeModule.default) {
+        routeModule.default(app, "/api/v1");
+      }
     } catch (e) {
       logger.warning(e.message);
     }

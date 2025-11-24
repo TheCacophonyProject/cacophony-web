@@ -7,6 +7,7 @@ const { Client } = pkg;
 import { sendPlatformUsageEmail } from "@/emails/transactionalEmails.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import { embedImage } from "@/emails/htmlEmailUtils.js";
+import os from "os";
 
 const CACOPHONY_GROUPS = config.cacophonyGroupIds || [];
 const CACOPHONY_USERS = config.cacophonyUserIds || [];
@@ -451,8 +452,8 @@ const stackedGraph = (
   height = 50,
 ): [string, string] => {
   const colours = [];
-  for (let i = 0; i < allSeries.length; i++) {
-    colours.push(allSeries[i][2]);
+  for (const [_a, _b, colour] of allSeries) {
+    colours.push(colour);
   }
   let max = 0;
   for (const [_, series] of allSeries) {
@@ -508,7 +509,11 @@ const stackedGraph = (
   ];
 };
 async function main() {
-  if (config.server.browse_url !== "https://browse.cacophony.org.nz") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
+    return;
+  }
+
+  if (config.server.browseUrl !== "https://browse.cacophony.org.nz") {
     log.info("Platform usage report only runs on production");
     return;
   }
@@ -728,8 +733,8 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           newUserSignups,
         )}</span> new user sign-up${maybePlural(
-    last(newUserSignups),
-  )}</p>        
+          last(newUserSignups),
+        )}</p>        
         <img alt="Signups per week: ${newUserSignups.join(
           ", ",
         )}" src='${signupsPerWeekGraph}' width='100%' height='auto' />
@@ -746,12 +751,12 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           camerasActive,
         )}</span> camera${maybePlural(
-    last(camerasActive),
-  )} recording, out of <strong>${last(
-    totalCamerasRegistered,
-  )}</strong> total registered camera${maybePlural(
-    last(totalCamerasRegistered),
-  )}</p>
+          last(camerasActive),
+        )} recording, out of <strong>${last(
+          totalCamerasRegistered,
+        )}</strong> total registered camera${maybePlural(
+          last(totalCamerasRegistered),
+        )}</p>
         <img alt="Weekly active cameras: ${camerasActive.join(
           ", ",
         )}" src='${activeCamerasGraph}' width='100%' height='auto' />
@@ -769,12 +774,12 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           birdMonitorsActive,
         )}</span> bird monitor${maybePlural(
-    last(birdMonitorsActive),
-  )} recording, out of <strong>${last(
-    totalBirdMonitorsRegistered,
-  )}</strong> total registered bird monitor${maybePlural(
-    last(totalBirdMonitorsRegistered),
-  )}</p>
+          last(birdMonitorsActive),
+        )} recording, out of <strong>${last(
+          totalBirdMonitorsRegistered,
+        )}</strong> total registered bird monitor${maybePlural(
+          last(totalBirdMonitorsRegistered),
+        )}</p>
         <img alt="Weekly active bird monitors: ${birdMonitorsActive.join(
           ", ",
         )}" src='${activeBirdMonitorsGraph}' width='100%' height='auto' />
@@ -800,8 +805,8 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           trackTagsAdded,
         )}</span> user classification${maybePlural(
-    last(trackTagsAdded),
-  )} added</p>
+          last(trackTagsAdded),
+        )} added</p>
         <img alt="Added tags per week: ${trackTagsAdded.join(
           ", ",
         )}" src='${addedTagsGraph}' width='100%' height='auto' />
@@ -810,8 +815,8 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           animalAlertEmails,
         )}</span> alert notification${maybePlural(
-    last(animalAlertEmails),
-  )} sent</p>
+          last(animalAlertEmails),
+        )} sent</p>
         <img alt="Alerts per week: ${animalAlertEmails.join(
           ", ",
         )}" src='${emailAlertsGraph}' width='100%' height='auto' />
@@ -827,7 +832,7 @@ async function main() {
     </div>
 `;
   await sendPlatformUsageEmail(
-    config.server.browse_url.replace("https://", ""),
+    config.server.browseUrl.replace("https://", ""),
     config.smtpDetails.platformUsageEmail,
     weekEndDate,
     emailHtml,

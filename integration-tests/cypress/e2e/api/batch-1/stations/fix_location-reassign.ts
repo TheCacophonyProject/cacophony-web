@@ -30,13 +30,13 @@ const templateExpectedStation = {
   groupName: NOT_NULL_STRING,
 };
 
-const beforeRecordings = new Date();
-const firstTime = new Date(new Date().setDate(new Date().getDate() + 1));
-const secondTime = new Date(new Date().setDate(new Date().getDate() + 2));
-const thirdTime = new Date(new Date().setDate(new Date().getDate() + 3));
-const fourthTime = new Date(new Date().setDate(new Date().getDate() + 4));
-const afterRecordings = new Date(new Date().setDate(new Date().getDate() + 5));
-const fifthTime = new Date(new Date().setDate(new Date().getDate() + 6));
+const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
+const firstTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
+const secondTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
+const thirdTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
+const fourthTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 4));
+const afterRecordings = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 5));
+const fifthTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 6));
 const firstName = "recording 1";
 const secondName = "recording 2";
 const thirdName = "recording 3";
@@ -119,7 +119,7 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
             { ...oldLocation, time: fourthTime, noTracks: true },
             fourthName,
           );
-          //Device history for frstTime, oldLocation, autoStation added
+          //Device history for firstTime, oldLocation, autoStation added
 
           // USER ADDS STATION AND FIXES RECORDINGS
 

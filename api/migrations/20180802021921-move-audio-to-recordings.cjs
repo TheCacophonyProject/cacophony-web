@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface) {
     // Move audio recordings to Recordings. Leave the source data

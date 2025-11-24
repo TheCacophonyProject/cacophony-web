@@ -33,8 +33,7 @@ import { AuthenticationError, ClientError } from "../customErrors.js";
 import type { DeviceId } from "@typedefs/api/common.js";
 import { createEntityJWT } from "@api/auth.js";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiAuthenticateDeviceRequestBody {
+export interface ApiAuthenticateDeviceRequestBody {
   password: string; // Password for the device account
   deviceName?: string; // The name identifying a valid device account.  Must be paired with groupName
   groupName?: string; // The name identifying the group to which the device account belongs
@@ -77,7 +76,7 @@ export default function (app: Application) {
         query("only-active").default(false).isBoolean().toBoolean(),
       ),
     ]),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, _response: Response, next: NextFunction) => {
       const b = request.body;
       if ((b.deviceName || b.devicename) && (b.groupName || b.groupname)) {
         next();
@@ -128,13 +127,12 @@ export default function (app: Application) {
       next();
     },
     async (request: Request, response: Response, next: NextFunction) => {
-      const passwordMatch = await (
-        response.locals.device as Device
-      ).comparePassword(request.body.password);
+      const device = response.locals.device as Device;
+      const passwordMatch = await device.comparePassword(request.body.password);
       if (passwordMatch) {
         return successResponse(response, "Successful login.", {
-          id: response.locals.device.id,
-          token: `JWT ${createEntityJWT(response.locals.device)}`,
+          id: device.id,
+          token: `JWT ${createEntityJWT(device)}`,
         });
       } else {
         return next(new AuthenticationError("Wrong password or deviceName."));

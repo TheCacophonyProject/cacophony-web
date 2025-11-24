@@ -98,7 +98,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
       });
     });
 
-    it("When a new user joins a from a group invite link they should receive a special welcome email, and their email should be automatically confirmed", () => {
+    it("When a new user joins a project from a group invite link they should receive a special welcome email, and their email should be automatically confirmed", () => {
       const adminUser = uniqueName("admin");
       const normalUser = uniqueName("user");
       const group = uniqueName("group");
@@ -107,6 +107,10 @@ describe("Transactional emails for different user lifecycle actions", () => {
       clearMailServerLog();
       cy.apiGroupUserInvite(adminUser, normalUser, group);
       waitForEmail("invite").then((email) => {
+        expect(getEmailSubject(email)).to.equal(
+        "You've been invited to join a group on Cacophony Monitoring",
+        );
+
         const { token } = extractTokenStartingWith(email, ACCEPT_INVITE_PREFIX);
         cy.log("User signs up to browse via invite link");
         cy.apiUserAdd(

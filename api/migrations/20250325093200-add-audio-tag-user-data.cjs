@@ -2,10 +2,10 @@ const util = require("./util/util.cjs");
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await queryInterface.sequelize.query(
-      `drop type if exists "enum_TrackTags_gender";`
+      `drop type if exists "enum_TrackTags_gender";`,
     );
     await queryInterface.sequelize.query(
-      `drop type if exists "enum_TrackTags_maturity";`
+      `drop type if exists "enum_TrackTags_maturity";`,
     );
 
     await queryInterface.createTable("TrackTagUserData", {
@@ -34,30 +34,30 @@ module.exports = {
       queryInterface,
       "TrackTagUserData",
       "TrackTags",
-      "strict"
+      "strict",
     );
 
     // DROP JSONB columns entirely.
     await queryInterface.sequelize.query(
-      `alter table "TrackTags" drop column if exists "data";`
+      `alter table "TrackTags" drop column if exists "data";`,
     );
     await queryInterface.sequelize.query(
-      `alter table "Tracks" drop column if exists "data";`
+      `alter table "Tracks" drop column if exists "data";`,
     );
   },
   down: async function (queryInterface, Sequelize) {
     await util.migrationRemoveBelongsTo(
       queryInterface,
       "TrackTagUserData",
-      "TrackTags"
+      "TrackTags",
     );
     await queryInterface.dropTable("TrackTagUserData");
 
     await queryInterface.sequelize.query(
-      'drop type if exists "enum_TrackTagUserData_gender";'
+      'drop type if exists "enum_TrackTagUserData_gender";',
     );
     await queryInterface.sequelize.query(
-      'drop type if exists "enum_TrackTagUserData_maturity";'
+      'drop type if exists "enum_TrackTagUserData_maturity";',
     );
 
     await queryInterface.addColumn("Tracks", "data", {

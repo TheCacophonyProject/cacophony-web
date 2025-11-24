@@ -16,99 +16,68 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import config from "../config.js";
-import Sequelize from "sequelize";
+import Sequelize, {
+  InferAttributes,
+  InferCreationAttributes,
+  NonAttribute,
+} from "sequelize";
 import path from "path";
 import fs from "fs";
 import log from "../logging.js";
-import type { AlertStatic } from "./Alert.js";
-import type { UserStatic } from "./User.js";
-import type { TagStatic } from "./Tag.js";
-import type { RecordingStatic } from "./Recording.js";
-import type { TrackTagStatic } from "./TrackTag.js";
-import type { TrackStatic } from "./Track.js";
-import type { DetailSnapshotStatic } from "./DetailSnapshot.js";
-import type { FileStatic } from "./File.js";
-import type { EventStatic } from "./Event.js";
-import type { DeviceStatic } from "./Device.js";
-import type { GroupStatic } from "./Group.js";
-import type { GroupUsersStatic } from "./GroupUsers.js";
-import type { ScheduleStatic } from "./Schedule.js";
-import type { StationStatic } from "./Station.js";
+import { Alert } from "./Alert.js";
+import { User } from "./User.js";
+import { Tag } from "./Tag.js";
+import { Recording } from "./Recording.js";
+import { TrackTag } from "./TrackTag.js";
+import { Track } from "./Track.js";
+import { DetailSnapshot } from "./DetailSnapshot.js";
+import { File } from "./File.js";
+import { Event } from "./Event.js";
+import { Device } from "./Device.js";
+import { Group } from "./Group.js";
+import { GroupUsers } from "./GroupUsers.js";
+import { Schedule } from "./Schedule.js";
+import { Station } from "./Station.js";
 import { asyncLocalStorage } from "@/Globals.js";
-import type { DeviceHistoryStatic } from "./DeviceHistory.js";
-import type { GroupInvitesStatic } from "./GroupInvites.js";
+import { DeviceHistory } from "./DeviceHistory.js";
+import { GroupInvites } from "./GroupInvites.js";
 import { fileURLToPath } from "url";
-import type { TrackTagUserDataStatic } from "@models/TrackTagUserData.js";
+import type { TrackTagUserData } from "@models/TrackTagUserData.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const basename = path.basename(__filename);
 const dbConfig = config.database;
 const IS_DEBUG = config.server.loggerLevel === "debug";
+const IS_CI_ENV = !!process.env.IS_CI_ENV;
 // Have sequelize send us query execution timings
-dbConfig.benchmark = true;
+dbConfig.benchmark = !IS_CI_ENV;
 
-// NOTE: Currently outputting slow queries and timings on production.
-// Send logs via winston
-
-(dbConfig as any).logging =
-  // eslint-disable-next-line no-constant-condition
-  IS_DEBUG || true
-    ? async (msg: string, timeMs: number) => {
-        // Sequelize seems to happen in its own async context?
-        const store = asyncLocalStorage.getStore() as Map<string, any>;
-        let requestQueryCount = store?.get("queryCount") || 0;
-        requestQueryCount++;
-        store?.set("queryCount", requestQueryCount);
-        let requestQueryTime = store?.get("queryTime") || 0;
-        requestQueryTime += timeMs;
-        store?.set("queryTime", requestQueryTime);
-        if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
-          log.warning("Slow query: %s [%d]ms", msg, timeMs);
-        } else if (IS_DEBUG) {
-          log.info(
-            "QUERY %dms\n\t\t %s",
-            timeMs,
-            msg
-              .replace("Executed (default): ", "")
-              .replace(/\n/g, "")
-              .replace(/\t/, " ")
-              .replace(/\s+/g, " "),
-          );
-        }
-      }
-    : false;
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export interface ModelCommon<T> extends Sequelize.Model {
-  getJwtDataValues: () => { _type: string; id: any };
-}
-export interface ModelStaticCommon<T> extends Sequelize.ModelCtor<any> {
-  getFromName: (name: string) => Promise<T | null>;
-  publicFields: readonly string[];
-  apiSettableFields: readonly string[];
-  addAssociations: (models: Record<string, ModelStaticCommon<any>>) => void;
-  userGetAttributes: readonly string[];
-  getDataValue: (fieldName: string) => any;
+export class ModelStaticCommon<
+  T extends Sequelize.Model,
+> extends Sequelize.Model<InferAttributes<T>, InferCreationAttributes<T>> {
+  declare static addAssociations: () => void;
+  declare static apiSettableFields: NonAttribute<readonly string[]>;
+  declare static publicFields: NonAttribute<readonly string[]>;
 }
 
 export interface ModelsDictionary {
-  User: UserStatic;
-  Recording: RecordingStatic;
-  Tag: TagStatic;
-  TrackTag: TrackTagStatic;
-  TrackTagUserData: TrackTagUserDataStatic;
-  Track: TrackStatic;
-  DetailSnapshot: DetailSnapshotStatic;
-  File: FileStatic;
-  Event: EventStatic;
-  Device: DeviceStatic;
-  Group: GroupStatic;
-  DeviceHistory: DeviceHistoryStatic;
-  GroupInvites: GroupInvitesStatic;
-  Station: StationStatic;
-  GroupUsers: GroupUsersStatic;
-  Schedule: ScheduleStatic;
-  Alert: AlertStatic;
+  User: User;
+  Recording: Recording;
+  Tag: Tag;
+  TrackTag: TrackTag;
+  TrackTagUserData: TrackTagUserData;
+  Track: Track;
+  DetailSnapshot: DetailSnapshot;
+  File: File;
+  Event: Event;
+  Device: Device;
+  Group: Group;
+  DeviceHistory: DeviceHistory;
+  GroupInvites: GroupInvites;
+  Station: Station;
+  GroupUsers: GroupUsers;
+  Schedule: Schedule;
+  Alert: Alert;
   sequelize: Sequelize.Sequelize;
 }
 
@@ -116,10 +85,6 @@ let AllModels: ModelsDictionary;
 
 export default async function () {
   if (!AllModels) {
-    // String-based operators are deprecated in sequelize v4 as a security concern.
-    // http://docs.sequelizejs.com/manual/tutorial/querying.html#operators-security
-    // Because they are currently used via the API, we need to keep them enabled.
-    // The following definition explicitly enables the aliases we want to support.
     const Op = Sequelize.Op;
 
     // If we're running in debug mode, we want to be able to see requestIds with every
@@ -129,25 +94,31 @@ export default async function () {
     // requestIds.  Setting the pools to timeout after idle for 1ms and having max 1 connection
     // resolves this issue for debugging purposes, but this is not something you'd
     // want to do in production!
-    const poolOptions = IS_DEBUG
-      ? {
-          pool: {
-            max: 1,
-            min: 0,
-            idle: 1,
-            evict: 1,
-          },
-        }
-      : {};
 
-    // @ts-ignore
-    const sequelize = new Sequelize(
+    // TODO: We also don't want to restrict pooling when running local cypress tests really.
+    const poolOptions =
+      IS_DEBUG && !IS_CI_ENV
+        ? {
+            pool: {
+              max: 1,
+              min: 0,
+              idle: 1,
+              evict: 1,
+            },
+          }
+        : {};
+
+    const sequelizeInstance = new Sequelize.Sequelize(
       dbConfig.database,
       dbConfig.username,
       dbConfig.password,
       {
         ...dbConfig,
         logQueryParameters: true,
+        // String-based operators are deprecated in sequelize v4 as a security concern.
+        // http://docs.sequelizejs.com/manual/tutorial/querying.html#operators-security
+        // Because they are currently used via the API, we need to keep them enabled.
+        // The following definition explicitly enables the aliases we want to support.
         operatorsAliases: {
           $eq: Op.eq,
           $ne: Op.ne,
@@ -172,10 +143,39 @@ export default async function () {
           $all: Op.all,
         },
         ...poolOptions,
+        // NOTE: Currently outputting slow queries and timings on production.
+        // Send logs via winston
+        logging:
+          !IS_CI_ENV && (IS_DEBUG || true)
+            ? async (msg: string, timeMs: number) => {
+                // Sequelize seems to happen in its own async context?
+                const store = asyncLocalStorage.getStore();
+                let requestQueryCount =
+                  (store?.get("queryCount") as number) || 0;
+                requestQueryCount++;
+                store?.set("queryCount", requestQueryCount);
+                let requestQueryTime = (store?.get("queryTime") as number) || 0;
+                requestQueryTime += timeMs;
+                store?.set("queryTime", requestQueryTime);
+                if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
+                  log.warning("Slow query: %s [%d]ms", msg, timeMs);
+                } else if (IS_DEBUG) {
+                  log.info(
+                    "QUERY %dms\n\t\t %s",
+                    timeMs,
+                    msg
+                      .replace("Executed (default): ", "")
+                      .replace(/\n/g, "")
+                      .replace(/\t/, " ")
+                      .replace(/\s+/g, " "),
+                  );
+                }
+              }
+            : false,
       },
     );
 
-    const db: Record<string, any> = {};
+    const db: Record<string, ModelStaticCommon<never>> = {};
 
     const files = fs.readdirSync(__dirname).filter((file) => {
       return (
@@ -185,22 +185,22 @@ export default async function () {
     for (const file of files) {
       try {
         const filePath = path.join(__dirname, file);
-        const model = await import(filePath);
-        const m = model.default(sequelize, Sequelize.DataTypes);
-        db[m.name] = m;
+        const { init } = await import(filePath);
+        const model = init(sequelizeInstance);
+        db[model.name] = model;
       } catch (e) {
         console.error(`Error loading model ${file}`, e);
       }
     }
 
-    Object.keys(db).forEach((modelName) => {
-      if (db[modelName].addAssociations) {
-        db[modelName].addAssociations(db);
+    Object.entries(db).forEach(([_modelName, model]) => {
+      if (model["addAssociations"]) {
+        model["addAssociations"]();
       }
     });
     AllModels = {
       ...db,
-      sequelize,
+      sequelize: sequelizeInstance,
     } as ModelsDictionary;
   }
   return AllModels;

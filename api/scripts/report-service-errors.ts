@@ -1,17 +1,21 @@
 import config from "../config.js";
 import log from "../logging.js";
 import { sendDailyServiceErrorsEmail } from "@/emails/transactionalEmails.js";
-import type { Event } from "@models/Event.js";
+import { Event } from "@models/Event.js";
 import type { DeviceId } from "@typedefs/api/common.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
 import modelsInit from "@models/index.js";
-import { Op } from "sequelize";
+import Sequelize, { Op } from "sequelize";
+import os from "os";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { Device } from "@models/Device.js";
 
 const models = await modelsInit();
 
 const ignoredSaltNodeGroups = ["unknown-node-group", "tc2-dev", "dev-pis"];
 
 type LogLevel = "info" | "warn" | "error" | "fatal";
+type AugmentedEvent = Event & { unitVersion: string };
 interface LogLine {
   line: string;
   level: LogLevel;
@@ -81,7 +85,9 @@ export interface GroupedServiceErrors {
 }
 
 // group provided events by logs are that are similar
-const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
+const groupSystemErrors = (
+  events: AugmentedEvent[],
+): GroupedServiceErrors[] => {
   const serviceMap: Record<string, GroupedServiceErrors> = {};
   for (const errorEvent of events) {
     const details = errorEvent.EventDetail.details;
@@ -91,10 +97,11 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
     const unitName = details["unitName"].replace(".service", "");
     const serviceError = serviceMap[unitName] || {
       unit: unitName,
+      unitVersion: null,
       errors: {},
     };
-    serviceError.errors[(errorEvent as any).unitVersion] =
-      serviceError.errors[(errorEvent as any).unitVersion] || [];
+    serviceError.errors[errorEvent.unitVersion] =
+      serviceError.errors[errorEvent.unitVersion] || [];
     serviceMap[unitName] = serviceError;
 
     // Take the first max(5) good lines.
@@ -126,7 +133,10 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
         // Parse out the log level and truncate the line
         for (const [level, code] of levels) {
           if (line.startsWith(level)) {
-            return { line: line.replace(level, "").trim(), level: code as any };
+            return {
+              line: line.replace(level, "").trim(),
+              level: code as LogLevel,
+            };
           }
         }
       }
@@ -136,9 +146,7 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
     // If the log is similar enough to an existing log, add it here, otherwise create a new log.
     let bestExistingErrorMatch: ServiceError;
     let bestMatchScore = 0;
-    for (const existingError of serviceError.errors[
-      (errorEvent as any).unitVersion
-    ]) {
+    for (const existingError of serviceError.errors[errorEvent.unitVersion]) {
       const matchScore = fuzzyErrorMatchScore(existingError.log, lines);
       if (matchScore >= 2 && matchScore > bestMatchScore) {
         bestMatchScore = matchScore;
@@ -165,7 +173,7 @@ const groupSystemErrors = (events: Event[]): GroupedServiceErrors[] => {
       }
     } else {
       // Add the error.
-      serviceError.errors[(errorEvent as any).unitVersion].push({
+      serviceError.errors[errorEvent.unitVersion].push({
         devices: [
           { id: errorEvent.DeviceId, name: errorEvent.Device.deviceName },
         ],
@@ -185,7 +193,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
   ignoredNodeGroups: string[],
 ): Promise<Record<string, { id: DeviceId; name: string }[]>> => {
   const ignoredDevices = config.deviceErrorIgnoreList || [];
-  const saltEvents = await models.Event.findAll({
+  const saltEvents = await Event.findAll({
     where: {
       DeviceId: { [Op.notIn]: ignoredDevices },
       createdAt: {
@@ -197,7 +205,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
     include: [
       {
         required: true,
-        model: models.DetailSnapshot,
+        model: DetailSnapshot,
         as: "EventDetail",
         attributes: ["type", "details"],
         where: {
@@ -207,7 +215,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
         },
       },
       {
-        model: models.Device,
+        model: Device,
         attributes: ["deviceName"],
         required: true,
       },
@@ -230,7 +238,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
   const stillFailingPromises = [];
   for (const device of failingDevices) {
     stillFailingPromises.push(
-      models.Event.findOne({
+      Event.findOne({
         where: {
           DeviceId: device.id,
         },
@@ -238,7 +246,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
         include: [
           {
             required: true,
-            model: models.DetailSnapshot,
+            model: DetailSnapshot,
             as: "EventDetail",
             attributes: ["type", "details"],
             where: {
@@ -270,7 +278,7 @@ const groupedSystemErrors = async (
   fromDate?: Date,
   untilDate?: Date,
 ): Promise<GroupedServiceErrorsByNodeGroup> => {
-  const where: any = {};
+  const where: Sequelize.WhereOptions = {};
   if (fromDate || untilDate) {
     where.createdAt = {};
     if (fromDate) {
@@ -282,13 +290,13 @@ const groupedSystemErrors = async (
   }
   const ignoredDevices = config.deviceErrorIgnoreList || [];
   const serviceErrorEvents = (
-    await models.Event.findAll({
+    await Event.findAll({
       where,
       order: [["createdAt", "DESC"]],
       include: [
         {
           required: true,
-          model: models.DetailSnapshot,
+          model: DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
           where: {
@@ -296,7 +304,7 @@ const groupedSystemErrors = async (
           },
         },
         {
-          model: models.Device,
+          model: Device,
           attributes: ["deviceName"],
           required: true,
         },
@@ -310,7 +318,8 @@ const groupedSystemErrors = async (
         "unitName" in event.EventDetail.details &&
         "logs" in event.EventDetail.details,
     )
-    .filter((event) => !ignoredDevices.includes(event.DeviceId));
+    .filter((event) => !ignoredDevices.includes(event.DeviceId))
+    .map((event) => event as AugmentedEvent);
 
   // Work out the node groups for each device of these events.
   // Get all the unique devices for the set of events:
@@ -334,7 +343,7 @@ const groupedSystemErrors = async (
   for (const [deviceId, { maxDate }] of Object.entries(devices)) {
     // What node group is the device in during the time period?
     saltUpdates.push(
-      models.Event.findOne({
+      Event.findOne({
         where: {
           DeviceId: deviceId,
           dateTime: {
@@ -347,7 +356,7 @@ const groupedSystemErrors = async (
         include: [
           {
             required: true,
-            model: models.DetailSnapshot,
+            model: DetailSnapshot,
             as: "EventDetail",
             attributes: ["type", "details"],
             where: {
@@ -360,7 +369,7 @@ const groupedSystemErrors = async (
     );
 
     versionUpdates.push(
-      models.Event.findOne({
+      Event.findOne({
         where: {
           DeviceId: deviceId,
           dateTime: {
@@ -372,7 +381,7 @@ const groupedSystemErrors = async (
         include: [
           {
             required: true,
-            model: models.DetailSnapshot,
+            model: DetailSnapshot,
             as: "EventDetail",
             attributes: ["type", "details"],
             where: {
@@ -393,7 +402,7 @@ const groupedSystemErrors = async (
       for (const event of serviceErrorEvents.filter(
         (event) => event.DeviceId === deviceId,
       )) {
-        (event as any).unitVersion = "unknown-version";
+        event.unitVersion = "unknown-version";
       }
       continue;
     }
@@ -406,10 +415,9 @@ const groupedSystemErrors = async (
         "",
       );
       if (eventUnit in versionDataEvent.EventDetail.details) {
-        (event as any).unitVersion =
-          versionDataEvent.EventDetail.details[eventUnit];
+        event.unitVersion = versionDataEvent.EventDetail.details[eventUnit];
       } else {
-        (event as any).unitVersion = "unknown-version";
+        event.unitVersion = "unknown-version";
       }
     }
   }
@@ -429,7 +437,7 @@ const groupedSystemErrors = async (
     const saltEvent = saltEvents[i];
     if (saltEvent.dateTime > devices[saltEvent.DeviceId].minDate) {
       // Get an earlier salt events for this device just in case the node-group changed
-      const earlierSaltEvent = await models.Event.findOne({
+      const earlierSaltEvent = await Event.findOne({
         where: {
           DeviceId: saltEvent.DeviceId,
           dateTime: {
@@ -442,7 +450,7 @@ const groupedSystemErrors = async (
         include: [
           {
             required: true,
-            model: models.DetailSnapshot,
+            model: DetailSnapshot,
             as: "EventDetail",
             attributes: ["type", "details"],
             where: {
@@ -494,13 +502,16 @@ const groupedSystemErrors = async (
   const groupedErrorsByNodeGroup = {};
   for (const nodeGroupEvents of Object.entries(eventsByNodeGroup)) {
     groupedErrorsByNodeGroup[nodeGroupEvents[0]] = groupSystemErrors(
-      nodeGroupEvents[1] as Event[],
+      nodeGroupEvents[1] as AugmentedEvent[],
     );
   }
   return groupedErrorsByNodeGroup;
 };
 
 async function main() {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
+    return;
+  }
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
@@ -510,7 +521,7 @@ async function main() {
   if (!config.server) {
     throw "'server' not configured in config/app.js";
   }
-  if (!config.server.browse_url) {
+  if (!config.server.browseUrl) {
     throw "'browse_url' not configured in config/app.js";
   }
   // Make sure that we always report from the same time offset, regardless of when this script is run.
@@ -537,7 +548,7 @@ async function main() {
   }
 
   await sendDailyServiceErrorsEmail(
-    config.server.browse_url.replace("https://", ""),
+    config.server.browseUrl.replace("https://", ""),
     config.smtpDetails.serviceErrorsEmail,
     startDate,
     endDate,

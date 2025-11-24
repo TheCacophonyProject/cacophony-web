@@ -2,8 +2,10 @@ import process from "process";
 import type { DeviceId, GroupId } from "@typedefs/api/common.js";
 import modelsInit from "@models/index.js";
 import { QueryTypes } from "sequelize";
-import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
-import { getTrackData } from "@models/Track.js";
+import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory.js";
+import { Track } from "@models/Track.js";
+import os from "os";
+import config from "@config";
 const models = await modelsInit();
 const HEIGHT = 120;
 const WIDTH = 160;
@@ -13,11 +15,14 @@ const rows = Math.ceil(HEIGHT / BOX_DIM);
 const columns = Math.ceil(WIDTH / BOX_DIM);
 
 async function main() {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
+    return;
+  }
   const devices = await getDeviceLocation();
   for (const devHistory of devices) {
     const { DeviceId: deviceId, GroupId: groupId, location } = devHistory;
     const earliestDateTimeAtLocation =
-      await models.DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
+      await DeviceHistory.getEarliestFromDateTimeForDeviceAtCurrentLocation(
         deviceId,
         groupId,
       );
@@ -38,7 +43,7 @@ async function main() {
           latestHumanTaggedRodentDateTime = tagTime;
         }
       }
-      const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
+      const latestDeviceHistoryEntry = await DeviceHistory.latest(
         deviceId,
         groupId,
       );
@@ -49,11 +54,11 @@ async function main() {
       if (latestHumanTaggedRodentDateTime > latestRatThreshTime) {
         // Update the ratThresh
         const gridData = [...Array(rows)].map((_e) =>
-          [...Array(columns)].map((_e) => Array()),
+          [...Array(columns)].map((_e) => []),
         );
         // get x, y values for each track
         for (const rodentRec of rodentQ) {
-          rodentRec["data"] = await getTrackData(rodentRec["id"]);
+          rodentRec["data"] = await Track.getTrackData(rodentRec["id"]);
           const positions = rodentRec["data"]["positions"].filter(
             (x) => x["mass"] > 0 && !x["blank"],
           );
@@ -84,7 +89,7 @@ async function main() {
         if (latestDeviceHistoryEntry.settings?.synced) {
           setBy = "automatic";
         }
-        await models.DeviceHistory.updateDeviceSettings(
+        await DeviceHistory.updateDeviceSettings(
           deviceId,
           groupId,
           {
@@ -174,7 +179,7 @@ const quantile = (arr, q, isSorted = false) => {
 };
 function getGridData(u_id: number, tag: string, positions, existingGridData) {
   const gridData = [...Array(rows)].map((_e) =>
-    [...Array(columns)].map((_e) => Array()),
+    [...Array(columns)].map((_e) => []),
   );
 
   for (const p of positions) {

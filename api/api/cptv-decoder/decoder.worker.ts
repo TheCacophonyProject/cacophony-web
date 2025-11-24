@@ -1,5 +1,10 @@
 import { parentPort } from "worker_threads";
-import type { CptvFrame, CptvFrameHeader, CptvHeader } from "./decoder.js";
+import type {
+  CptvFrame,
+  CptvFrameHeader,
+  CptvHeader,
+  CptvHeaderMapped,
+} from "./decoder.js";
 import type { CptvDecoderContext as DecoderContext } from "./decoder/cptv_decoder.js";
 const context = parentPort;
 import init, { CptvDecoderContext } from "./decoder/cptv_decoder.js";
@@ -14,7 +19,9 @@ class Unlocker {
     this.fn = null;
   }
   unlock() {
-    this.fn && this.fn();
+    if (this.fn) {
+      this.fn();
+    }
   }
 }
 
@@ -64,7 +71,9 @@ const FakeReader = (
         resolve();
       });
     },
-    releaseLock() {},
+    releaseLock() {
+      return;
+    },
     closed: new Promise((resolve) => {
       resolve(undefined);
     }),
@@ -91,8 +100,12 @@ class CptvDecoderInterface {
     this.consumed = false;
     this.inited = false;
     this.prevFrameHeader = null;
-    this.playerContext && this.playerContext.free();
-    this.reader && this.reader.cancel();
+    if (this.playerContext) {
+      this.playerContext.free();
+    }
+    if (this.reader) {
+      this.reader.cancel();
+    }
     this.streamError = null;
     this.reader = null;
     this.playerContext = null;
@@ -115,7 +128,7 @@ class CptvDecoderInterface {
     let result;
     try {
       const __filename = fileURLToPath(import.meta.url);
-      // eslint-disable-next-line no-undef
+
       const __dirname = path.dirname(__filename);
       const wasm = readFileSync(
         path.join(__dirname, "./decoder/cptv_decoder_bg.wasm"),
@@ -147,7 +160,7 @@ class CptvDecoderInterface {
     try {
       if (!wasmBytes) {
         const __filename = fileURLToPath(import.meta.url);
-        // eslint-disable-next-line no-undef
+
         const __dirname = path.dirname(__filename);
         wasmBytes = readFileSync(
           path.join(__dirname, "./decoder/cptv_decoder_bg.wasm"),
@@ -216,15 +229,16 @@ class CptvDecoderInterface {
   }
 
   async getMetadata(): Promise<
-    (CptvHeader & { duration: number; totalFrames: number }) | string
+    (CptvHeaderMapped & { duration: number; totalFrames: number }) | string
   > {
     const header = await this.getHeader();
     let totalFrameCount = 0;
-    if (this.hasStreamError()) {
+    if (this.hasStreamError() && typeof header === "string") {
       return this.streamError;
     } else {
-      if ((header as CptvHeader).totalFrames) {
-        totalFrameCount = (header as CptvHeader).totalFrames;
+      const h = header as CptvHeaderMapped;
+      if (h["totalFrames"]) {
+        totalFrameCount = h["totalFrames"];
       } else {
         let frame: CptvFrame | null;
         let num = 0;
@@ -240,9 +254,9 @@ class CptvDecoderInterface {
       if (this.hasStreamError()) {
         return this.streamError;
       }
-      const duration = (1 / (header as CptvHeader).fps) * totalFrameCount;
+      const duration = (1 / h.fps) * totalFrameCount;
       return {
-        ...(header as CptvHeader),
+        ...h,
         duration,
         totalFrames: totalFrameCount,
       };
@@ -261,10 +275,14 @@ class CptvDecoderInterface {
     const initedResult = await this.initWithReadableStream(stream);
     if (initedResult === true) {
       const meta = await this.getMetadata();
-      this.reader && (this.reader as any).releaseLock();
+      if (this.reader) {
+        (this.reader as ReadableStreamDefaultReader).releaseLock();
+      }
       return meta;
     }
-    this.reader && (this.reader as any).releaseLock();
+    if (this.reader) {
+      (this.reader as ReadableStreamDefaultReader).releaseLock();
+    }
     return initedResult as string;
   }
 
@@ -278,7 +296,7 @@ class CptvDecoderInterface {
     });
   }
 
-  async getHeader() {
+  async getHeader(): Promise<CptvHeaderMapped | string> {
     if (!this.reader) {
       return "You need to initialise the player with the url of a CPTV file";
     }
@@ -299,23 +317,16 @@ class CptvDecoderInterface {
         unlocker.unlock();
         this.locked = false;
         if (typeof header === "object") {
-          const h: any = { ...header };
-          h.deviceName = h.deviceName.inner;
-          if (h.brand) {
-            h.brand = h.brand.inner;
-          }
-          if (h.model) {
-            h.model = h.model.inner;
-          }
-          if (h.firmwareVersion) {
-            h.firmwareVersion = h.firmwareVersion.inner;
-          }
-          if (h.motionConfig) {
-            h.motionConfig = h.motionConfig.inner;
-          }
-          return h;
+          return {
+            ...header,
+            deviceName: header.deviceName.inner,
+            brand: header.brand && header.brand.inner,
+            model: header.model && header.model.inner,
+            firmwareVersion:
+              header.firmwareVersion && header.firmwareVersion.inner,
+            motionConfig: header.motionConfig && header.motionConfig.inner,
+          };
         }
-        return null;
       }
     }
     return this.streamError;

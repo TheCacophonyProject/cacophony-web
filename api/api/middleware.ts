@@ -18,12 +18,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import type {
   CustomValidator,
-  Result,
   ValidationChain,
+  Result,
 } from "express-validator";
 import { body, matchedData, query, validationResult } from "express-validator";
-import type { ModelStaticCommon } from "@models";
-import modelsInit from "../models/index.js";
+import modelsInit, { ModelStaticCommon } from "@/models/index.js";
 import { format } from "util";
 import log from "../logging.js";
 import customErrors, {
@@ -34,11 +33,16 @@ import customErrors, {
 import type { NextFunction, Request, Response } from "express";
 import type { DecodedJWTToken } from "./auth.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
+import { User } from "@/models/User.js";
+import { Recording } from "@models/Recording.js";
+import { File } from "@/models/File.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { Model } from "sequelize";
 
-const models = await modelsInit();
+await modelsInit();
 
-export const getModelByIdChain = <T>(
-  modelType: ModelStaticCommon<T>,
+export const getModelByIdChain = (
+  modelType: typeof ModelStaticCommon<Model>,
   fieldName: string,
   checkFunc,
 ) => {
@@ -55,8 +59,8 @@ export const getModelByIdChain = <T>(
   });
 };
 
-export const getModelById = <T>(
-  modelType: ModelStaticCommon<T>,
+export const getModelById = (
+  modelType: typeof ModelStaticCommon<Model>,
 ): CustomValidator => {
   return async (id, { req }) => {
     log.info("Get model by id %s for %s", id, modelTypeName(modelType));
@@ -74,18 +78,18 @@ export const getModelById = <T>(
 
 type ValidationMiddleware = (
   fields?: string | string[] | undefined,
-  message?: any
+  message?: string,
 ) => ValidationChain;
 
 export const getUserByEmail = function (
   checkFunc: ValidationMiddleware,
-  fieldName: string = "email",
+  fieldName = "email",
 ): ValidationChain {
   return checkFunc(fieldName)
     .isEmail()
     .custom(async (email: string, { req }) => {
       email = email.toLowerCase();
-      const user = await models.User.getFromEmail(email);
+      const user = await User.getFromEmail(email);
       if (user === null) {
         throw new Error(`Could not find user with email: ${email}`);
       }
@@ -94,11 +98,15 @@ export const getUserByEmail = function (
     });
 };
 
-export function modelTypeName(modelType: ModelStaticCommon<any>): string {
+export function modelTypeName<T extends Model>(
+  modelType: typeof ModelStaticCommon<T>,
+): string {
   return modelType.options.name.singular.toLowerCase();
 }
 
-export function modelTypeNamePlural(modelType: ModelStaticCommon<any>): string {
+export function modelTypeNamePlural(
+  modelType: typeof ModelStaticCommon<Model>,
+): string {
   return modelType.options.name.plural.toLowerCase();
 }
 
@@ -121,7 +129,7 @@ export const convertToIdArray = function (idsAsString: string): number[] {
       } else {
         return [val];
       }
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }
@@ -154,24 +162,22 @@ export const isDateArray = function (
 };
 
 export function getUserById(checkFunc: ValidationMiddleware): ValidationChain {
-  return getModelByIdChain(models.User, "userId", checkFunc);
+  return getModelByIdChain(User, "userId", checkFunc);
 }
 
 export const getDetailSnapshotById = (
   checkFunc: ValidationMiddleware,
   paramName: string,
-): ValidationChain =>
-  getModelByIdChain(models.DetailSnapshot, paramName, checkFunc);
+): ValidationChain => getModelByIdChain(DetailSnapshot, paramName, checkFunc);
 
 export const getFileById = (checkFunc: ValidationMiddleware): ValidationChain =>
-  getModelByIdChain(models.File, "id", checkFunc);
+  getModelByIdChain(File, "id", checkFunc);
 
 export const getRecordingByIdChain = (
   checkFunc: ValidationMiddleware,
-): ValidationChain => getModelByIdChain(models.Recording, "id", checkFunc);
+): ValidationChain => getModelByIdChain(Recording, "id", checkFunc);
 
-export const getRecordingById = (): CustomValidator =>
-  getModelById(models.Recording);
+export const getRecordingById = (): CustomValidator => getModelById(Recording);
 
 export const isValidName = function (
   checkFunc: ValidationMiddleware,
@@ -238,7 +244,7 @@ export const parseJSONInternal = (value, { req, location, path }) => {
     while (typeof result === "string") {
       try {
         result = JSON.parse(result);
-      } catch (e) {
+      } catch (_e) {
         throw new Error(format("Could not parse JSON field %s.", path));
       }
     }
@@ -271,7 +277,7 @@ export const parseArray = function (
     let arr;
     try {
       arr = JSON.parse(value);
-    } catch (e) {
+    } catch (_e) {
       throw new Error(format("Could not parse JSON field %s.", path));
     }
     if (Array.isArray(arr)) {
@@ -286,11 +292,14 @@ export const parseArray = function (
   });
 };
 
-export const parseBool = function (value: any): boolean {
+export const parseBool = function (value: unknown): boolean {
   if (!value) {
     return false;
   }
-  return value.toString().toLowerCase() == "true";
+  if (typeof value === "string" || typeof value === "object") {
+    return value.toString().toLowerCase() === "true";
+  }
+  return false;
 };
 
 export const requestWrapper = (fn) => (request, response: Response, next) => {
@@ -416,12 +425,16 @@ const checkForUnknownFields = (
 // sequential processing, stops running validations chain if the previous one have failed.
 export const validateFields = (
   validations: (
-    | (((req: Request, res: any, next: (err?: any) => void) => void) & {
+    | (((
+        req: Request,
+        res: Response,
+        next: (err?: unknown) => void,
+      ) => void) & {
         run: (req: Request) => Promise<Result>;
       })
     | ValidationChain
   )[],
-  sequentially: boolean = false,
+  sequentially = false,
 ) => {
   return async (request: Request, response: Response, next: NextFunction) => {
     if (sequentially) {
@@ -438,7 +451,6 @@ export const validateFields = (
         validationPromises.push(validation.run(request));
       }
       await Promise.all(validationPromises);
-      //logger.warning("%s", validationPromises);
     }
 
     const { unknownFields, suggestions } = checkForUnknownFields(

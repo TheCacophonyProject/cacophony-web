@@ -54,8 +54,11 @@ interface TrackClassification {
   average_novelty: float;
   max_novelty: float;
   all_class_confidences: Record<ClassificationClass, FloatZeroToOne>;
+  confident_tag: string;
+  prediction_frames: number[];
   predictions: integer[][];
   model_id: integer;
+  //prediction_frames:
 
   // Used in api when calculating good tags
   tag: string;
@@ -77,6 +80,8 @@ interface RawTrack {
   confidence?: FloatZeroToOne;
   message?: string;
   thumbnail?: ThumbnailInfo | null;
+  minFreq?: number;
+  maxFreq?: number;
 }
 
 export interface ThumbnailInfo {

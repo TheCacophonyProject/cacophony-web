@@ -1,10 +1,10 @@
 // How close is a station allowed to be to another station?
 import type { LatLng } from "@typedefs/api/common.js";
-import type { Station } from "@models/Station.js";
+import { Station } from "@models/Station.js";
 import type { GroupId } from "@typedefs/api/common.js";
-import type { Recording } from "@models/Recording.js";
+import { Recording } from "@models/Recording.js";
 import { Op } from "sequelize";
-import type { GroupStatic } from "@models/Group.js";
+import { Group } from "@models/Group.js";
 import type { ModelsDictionary } from "@models";
 
 export const MIN_STATION_SEPARATION_METERS = 60;
@@ -31,26 +31,22 @@ export function latLngApproxDistance(a: LatLng, b: LatLng): number {
 }
 
 export async function tryToMatchLocationToStationInGroup(
-  models: ModelsDictionary,
   location: LatLng,
   groupId: GroupId,
   activeFromDate: Date,
-  lookForwards: boolean = false,
+  lookForwards = false,
 ): Promise<Station | null> {
   // Match the recording to any stations that the group might have:
   let stations;
   if (lookForwards) {
-    stations = await models.Station.activeInGroupDuringTimeRange(
+    stations = await Station.activeInGroupDuringTimeRange(
       groupId,
       activeFromDate,
       new Date(),
       lookForwards,
     );
   } else {
-    stations = await models.Station.activeInGroupAtTime(
-      groupId,
-      activeFromDate,
-    );
+    stations = await Station.activeInGroupAtTime(groupId, activeFromDate);
   }
   const stationDistances = [];
   for (const station of stations) {
@@ -77,7 +73,6 @@ export async function tryToMatchLocationToStationInGroup(
 }
 
 export async function tryToMatchRecordingToStation(
-  staticGroup: GroupStatic,
   recording: Recording,
   stations?: Station[],
 ): Promise<Station | null> {
@@ -88,7 +83,7 @@ export async function tryToMatchRecordingToStation(
 
   // Match the recording to any stations that the group might have:
   if (!stations) {
-    const group = await staticGroup.getFromId(recording.GroupId);
+    const group = await Group.findByPk(recording.GroupId);
     stations = await group.getStations({
       where: {
         activeAt: { [Op.lte]: recording.recordingDateTime },
@@ -112,7 +107,6 @@ export async function tryToMatchRecordingToStation(
   }
   const validStationDistances = stationDistances.filter(
     ({ distanceToStation }) =>
-      // eslint-disable-next-line no-undef
       distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
   );
 
@@ -129,14 +123,12 @@ export async function tryToMatchRecordingToStation(
   return null;
 }
 
-const EPSILON = 0.000000000001;
-
 export const canonicalLatLng = (
   location: LatLng | { coordinates: [number, number] } | [number, number],
 ): LatLng => {
   if (Array.isArray(location)) {
     return { lat: location[0], lng: location[1] };
-  } else if (location.hasOwnProperty("coordinates")) {
+  } else if ("coordinates" in location) {
     // Lat lng is stored in the database as lng/lat (X,Y).
     // If we get lat/lng in this format we are getting it from the DB.
     return {

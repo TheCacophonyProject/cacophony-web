@@ -21,16 +21,17 @@ import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import { AuthenticationError } from "./customErrors.js";
-import type { ModelCommon, ModelsDictionary } from "@models";
+import { ModelsDictionary, ModelStaticCommon } from "@models";
 import type { Request } from "express";
-import type { User } from "@models/User.js";
+import { User } from "@models/User.js";
+import { Device } from "@models/Device.js";
 import type {
   GroupId,
   GroupInvitationId,
   UserId,
 } from "@typedefs/api/common.js";
 import { randomUUID } from "crypto";
-import { QueryTypes } from "sequelize";
+import Sequelize, { Model, QueryTypes } from "sequelize";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 /*
@@ -43,10 +44,14 @@ export const ttlTypes = Object.freeze({
   long: 30 * 60,
 });
 
-export function createEntityJWT<T>(
-  entity: ModelCommon<T>,
-  options?,
-  access?: {},
+export interface JwtGenerator {
+  getJwtDataValues: () => DecodedJWTToken;
+}
+
+export function createEntityJWT(
+  entity: JwtGenerator,
+  options?: { expiresIn?: number },
+  access?: Record<string, string>,
 ): string {
   const payload: DecodedJWTToken = entity.getJwtDataValues();
   if (access) {
@@ -56,7 +61,7 @@ export function createEntityJWT<T>(
 }
 
 export interface DecodedJWTToken {
-  access?: Record<string, any>;
+  access?: Record<string, string>;
   _type: string;
   activated?: boolean;
   id: number;
@@ -104,7 +109,7 @@ export const getJoinGroupRequestToken = (
     { id: userId, group: groupId, _type: "join-group" },
     config.server.passportSecret,
     {
-      expiresIn: 60 * 60 * 24 * 7,
+      expiresIn: 60 * 60 * 24 * 365,
     },
   );
 };
@@ -118,7 +123,7 @@ export const getInviteToGroupToken = (
     { id: inviteId, group: groupId, _type: "invite-new-user" },
     config.server.passportSecret,
     {
-      expiresIn: 60 * 60 * 24 * 7,
+      expiresIn: 60 * 60 * 24 * 365,
     },
   );
 };
@@ -132,21 +137,21 @@ export const getInviteToGroupTokenExistingUser = (
     { id: userId, group: groupId, _type: "invite-existing-user" },
     config.server.passportSecret,
     {
-      expiresIn: 60 * 60 * 24 * 7,
+      expiresIn: 60 * 60 * 24 * 365,
     },
   );
 };
 
 export const generateAuthTokensForUser = async (
-  models: ModelsDictionary,
+  sequelize: Sequelize.Sequelize,
   user: User,
-  viewport: string = "",
-  userAgent: string = "unknown user agent",
-  expires: boolean = true,
+  viewport = "",
+  userAgent = "unknown user agent",
+  expires = true,
 ): Promise<{ refreshToken: string; apiToken: string }> => {
   const now = new Date().toISOString();
   const refreshToken = randomUUID();
-  await models.sequelize.query(
+  await sequelize.query(
     `
               insert into "UserSessions"
               ("refreshToken", "userId", "userAgent", "createdAt", "updatedAt", "viewport")
@@ -178,8 +183,8 @@ export const generateAuthTokensForUser = async (
 
 export const getDecodedToken = (
   token: string,
-  enforceExpiry: boolean = true,
-): any => {
+  enforceExpiry = true,
+): JwtPayload | string => {
   const decodedToken = jwt.decode(token) as JwtPayload | null;
   if (
     enforceExpiry &&
@@ -190,7 +195,7 @@ export const getDecodedToken = (
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
-  } catch (e) {
+  } catch (_e) {
     throw new AuthenticationError(
       `Failed to verify JWT for token ${token} - (${
         decodedToken && JSON.stringify(decodedToken)
@@ -212,7 +217,7 @@ export const getVerifiedJWT = (
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
-  } catch (e) {
+  } catch (_e) {
     throw new AuthenticationError(
       `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`,
     );
@@ -237,7 +242,7 @@ export const getVerifiedJWTFromBody = (
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
-  } catch (e) {
+  } catch (_e) {
     throw new AuthenticationError(
       `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`,
     );
@@ -273,15 +278,12 @@ export const checkAccess = (
   return true;
 };
 
-export async function lookupEntity(
-  models: ModelsDictionary,
-  jwtDecoded: DecodedJWTToken,
-) {
+export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   switch (jwtDecoded._type) {
     case "user":
-      return models.User.findByPk(jwtDecoded.id);
+      return User.findByPk(jwtDecoded.id);
     case "device":
-      return models.Device.findByPk(jwtDecoded.id);
+      return Device.findByPk(jwtDecoded.id);
     case "fileDownload":
       return jwtDecoded;
     default:
@@ -299,7 +301,7 @@ export function signedUrl(req, res, next) {
   let jwtDecoded;
   try {
     jwtDecoded = jwt.verify(jwtParam, config.server.passportSecret);
-  } catch (e) {
+  } catch (_e) {
     return res
       .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Failed to verify JWT."] });
@@ -320,9 +322,8 @@ type AuthenticateMiddleware = (req, res, next) => Promise<void>;
  * Authenticate a JWT in the 'Authorization' header of the given type
  */
 const authenticate = (
-  models: ModelsDictionary,
   types: string[] | null,
-  reqAccess?: Record<string, any>,
+  reqAccess?: Record<string, unknown>,
 ): AuthenticateMiddleware => {
   return async (req, res, next) => {
     let jwtDecoded: DecodedJWTToken;
@@ -351,7 +352,7 @@ const authenticate = (
         .json({ messages: ["JWT does not have access."] });
       return;
     }
-    const result = await lookupEntity(models, jwtDecoded);
+    const result = await lookupEntity(jwtDecoded);
     if (!result) {
       res.status(HttpStatusCode.AuthorizationError).json({
         messages: [
@@ -365,7 +366,4 @@ const authenticate = (
   };
 };
 
-export const authenticateUser: (
-  models: ModelsDictionary
-) => AuthenticateMiddleware = (models: ModelsDictionary) =>
-  authenticate(models, ["user"]);
+export const authenticateUser = () => authenticate(["user"]);

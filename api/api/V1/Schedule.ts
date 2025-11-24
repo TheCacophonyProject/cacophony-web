@@ -30,23 +30,22 @@ import {
 } from "@api/extract-middleware.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json" assert { type: "json" };
+import ScheduleConfigSchema from "@schemas/api/schedule/ScheduleConfig.schema.json" with { type: "json" };
 import type {
   ApiScheduleResponse,
   ScheduleConfig,
 } from "@typedefs/api/schedule.js";
-import type { Schedule } from "@models/Schedule.js";
-import type { Device } from "@models/Device.js";
+import { Schedule } from "@models/Schedule.js";
+import { Device } from "@models/Device.js";
 import { ClientError } from "@api/customErrors.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
-const models = await modelsInit();
+await modelsInit();
 export const mapSchedule = (schedule: Schedule): ApiScheduleResponse => ({
   id: schedule.id,
   schedule: schedule.schedule as ScheduleConfig,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface ApiScheduleConfig {
   schedule: ScheduleConfig;
 }
@@ -81,8 +80,8 @@ export default (app: Application, baseUrl: string) => {
       body("schedule").custom(jsonSchemaOf(ScheduleConfigSchema)),
     ]),
     parseJSONField(body("schedule")),
-    async function (request, response) {
-      const schedule = models.Schedule.buildSafely({
+    async function (_request, response) {
+      const schedule = Schedule.buildSafely({
         schedule: response.locals.schedule,
       });
       schedule.UserId = response.locals.requestUser.id;
@@ -109,11 +108,11 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     apiUrl,
     extractJwtAuthorisedDevice,
-    async (request: Request, response: Response, next: NextFunction) => {
-      const device = (await models.Device.getFromId(
+    async (_request: Request, response: Response, next: NextFunction) => {
+      const device = (await Device.findByPk(
         response.locals.requestDevice.id,
       )) as Device;
-      const schedule = await models.Schedule.findByPk(device.ScheduleId);
+      const schedule = await Schedule.findByPk(device.ScheduleId);
       if (schedule) {
         return successResponse(response, {
           schedule: schedule.schedule as ScheduleConfig,
@@ -145,9 +144,9 @@ export default (app: Application, baseUrl: string) => {
   app.get(
     `${apiUrl}/for-user`,
     extractJwtAuthorizedUser,
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       // TODO - Should we allow super-users to see all schedules?
-      const schedules = await models.Schedule.findAll({
+      const schedules = await Schedule.findAll({
         where: {
           UserId: response.locals.requestUser.id,
         },

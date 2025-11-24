@@ -9,8 +9,13 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import { generateVisits, type Visit } from "@api/V1/monitoringVisit.js";
 import { displayLabelForClassificationLabel } from "@/classifications/classifications.js";
 import type { GroupId } from "@typedefs/api/common.js";
-import type { User } from "@models/User.js";
-const models = await modelsInit();
+import { User } from "@models/User.js";
+import os from "os";
+import { Group } from "@models/Group.js";
+import config from "@config";
+import { Op } from "sequelize";
+
+await modelsInit();
 
 const allVisitsForProjectInTimespan = async (
   projectId: GroupId,
@@ -36,7 +41,7 @@ const allVisitsForProjectInTimespan = async (
   searchDetails.compareAi = "Master";
   searchDetails.types = params.types;
   const visits = [];
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     const visitsPage = await generateVisits(user.id, searchDetails, false);
 
@@ -69,6 +74,9 @@ const allVisitsForProjectInTimespan = async (
 };
 
 (async () => {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
+    return;
+  }
   // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
   const timespan = process.argv[2] || "daily";
   let numDays = 1;
@@ -80,16 +88,18 @@ const allVisitsForProjectInTimespan = async (
   now.setHours(9, 0, 0, 0);
   const startOfPeriod = new Date(now);
   startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
-  const digestGroups = await models.Group.findAll({
+  const digestGroups = await Group.findAll({
     attributes: ["groupName", "id"],
     include: [
       {
-        model: models.User,
+        model: User,
         through: {
           where: {
             ...(timespan === "daily"
               ? { "settings.notificationPreferences.dailyDigest": true }
               : { "settings.notificationPreferences.weeklyDigest": true }),
+            removedAt: { [Op.eq]: null },
+            pending: { [Op.eq]: null },
           },
         },
         required: true,

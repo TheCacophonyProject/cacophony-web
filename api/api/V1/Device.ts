@@ -18,7 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { validateFields } from "../middleware.js";
 import modelsInit from "@models/index.js";
-import { successResponse } from "./responseUtil.js";
+import { someResponse, successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
@@ -27,15 +27,12 @@ import {
   UnprocessableError,
 } from "../customErrors.js";
 import {
-  extractJWTInfo,
   extractJwtAuthorisedDevice,
-  extractJwtAuthorizedActivatedUser,
   extractJwtAuthorizedUser,
   extractJwtAuthorizedUserFromBody,
   extractJwtAuthorizedUserOrDevice,
   fetchAdminAuthorizedRequiredDeviceById,
   fetchAdminAuthorizedRequiredGroupByNameOrId,
-  fetchAuthorizedOptionalDeviceByNameOrId,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
@@ -44,7 +41,6 @@ import {
   fetchAuthorizedRequiredStationById,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredScheduleById,
-  fetchUnauthorizedRequiredUserById,
   parseJSONField,
 } from "../extract-middleware.js";
 import {
@@ -60,27 +56,31 @@ import {
   validNameOf,
   validPasswordOf,
 } from "../validation-middleware.js";
-import type { Device } from "models/Device.js";
+import { Device } from "@models/Device.js";
 import type {
   ApiDeviceHistorySettings,
   ApiDeviceLocationFixup,
   ApiDeviceResponse,
+  ImageMimeTypes,
   MaskRegion,
 } from "@typedefs/api/device.js";
-import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" assert { type: "json" };
-import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" assert { type: "json" };
-import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" assert { type: "json" };
+import ApiDeviceLocationFixupSchema from "@schemas/api/device/ApiDeviceLocationFixup.schema.json" with { type: "json" };
+import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" with { type: "json" };
+import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" with { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import Sequelize, { Op, QueryTypes } from "sequelize";
-import type { DeviceHistory } from "@models/DeviceHistory.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
+import { Station, TimeInterval } from "@models/Station.js";
+import { Group } from "@models/Group.js";
 import {
   DeviceType,
   HttpStatusCode,
   RecordingType,
 } from "@typedefs/api/consts.js";
-import type { Recording } from "@models/Recording.js";
+import { Recording } from "@models/Recording.js";
+import { Track } from "@models/Track.js";
 import config from "@config";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import { uploadFileStream } from "@api/V1/util.js";
@@ -94,8 +94,11 @@ import {
   tryToMatchLocationToStationInGroup,
 } from "@/models/util/locationUtils.js";
 import { deleteFile } from "@/models/util/util.js";
+import { TrackTag } from "@models/TrackTag.js";
+import { User } from "@models/User.js";
+import { SaltId } from "@typedefs/api/common.js";
 
-const models = await modelsInit();
+const { sequelize } = await modelsInit();
 
 export const mapDeviceResponse = (
   device: Device,
@@ -111,9 +114,7 @@ export const mapDeviceResponse = (
       active: device.active,
       saltId: device.saltId,
       admin:
-        viewAsSuperUser ||
-        (device as any).Group?.Users[0]?.GroupUsers?.admin ||
-        false,
+        viewAsSuperUser || device.Group?.Users[0]?.GroupUsers?.admin || false,
     };
     if (device.lastConnectionTime) {
       mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
@@ -159,8 +160,7 @@ export const mapDevicesResponse = (
 ): ApiDeviceResponse[] =>
   devices.map((device) => mapDeviceResponse(device, viewAsSuperUser));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiRegisterDeviceRequestBody {
+export interface ApiRegisterDeviceRequestBody {
   group: string; // Name of group to assign the device to.
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
@@ -168,65 +168,53 @@ interface ApiRegisterDeviceRequestBody {
   deviceType?: DeviceType; // Hint about the kind of hardware we're registering.
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiCreateProxyDeviceRequestBody {
+export interface ApiCreateProxyDeviceRequestBody {
   group: string; // Name of group to assign the device to.
   deviceName: string; // Unique (within group) device name.
   type: DeviceType;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceLocationFixupBody {
+export interface ApiDeviceLocationFixupBody {
   setStationAtTime: ApiDeviceLocationFixup;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface MaskRegionsDataBody {
+export interface MaskRegionsDataBody {
   maskRegions: Record<string, MaskRegion[]>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDevicesResponseSuccess {
+export interface ApiDevicesResponseSuccess {
   devices: ApiDeviceResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceResponseSuccess {
+export interface ApiDeviceResponseSuccess {
   device: ApiDeviceResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationResponseSuccess {
+export interface ApiStationResponseSuccess {
   station: ApiStationResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationsResponseSuccess {
+export interface ApiStationsResponseSuccess {
   stations: ApiStationResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLocationResponseSuccess {
+export interface ApiLocationResponseSuccess {
   location: ApiStationResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLocationsResponseSuccess {
+export interface ApiLocationsResponseSuccess {
   locations: { fromDateTime: Date; location: ApiStationResponse }[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceSettingsResponseSuccess {
+export interface ApiDeviceSettingsResponseSuccess {
   settings: ApiDeviceHistorySettings;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceTypeResponseSuccess {
+export interface ApiDeviceTypeResponseSuccess {
   type: DeviceType;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceUsersResponseSuccess {
+export interface ApiDeviceUsersResponseSuccess {
   users: ApiGroupUserResponse[];
 }
 
@@ -262,13 +250,13 @@ export default function (app: Application, baseUrl: string) {
         request.body.deviceName = request.body.devicename;
         delete request.body.devicename;
       }
-      const device: Device = await models.Device.create({
+      const device: Device = await Device.create({
         deviceName: request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
         kind: request.body.deviceType,
       });
-      let saltId;
+      let saltId: SaltId;
       if (request.body.saltId) {
         /*
           NOTE: We decided not to use this check, since damage caused by someone
@@ -294,7 +282,7 @@ export default function (app: Application, baseUrl: string) {
       await Promise.all([
         device.update({ saltId, uuid: device.id }),
         // Create the initial entry in the device history table.
-        models.DeviceHistory.create({
+        DeviceHistory.create({
           saltId,
           setBy: "register",
           GroupId: device.GroupId,
@@ -338,7 +326,7 @@ export default function (app: Application, baseUrl: string) {
     checkDeviceNameIsUniqueInGroup(body("deviceName")),
     async (request: Request, response: Response) => {
       try {
-        const device: Device = await models.Device.create({
+        const device: Device = await Device.create({
           deviceName: request.body.deviceName,
           GroupId: response.locals.group.id,
           kind: request.body.type,
@@ -347,7 +335,7 @@ export default function (app: Application, baseUrl: string) {
         await Promise.all([
           device.update({ uuid: device.id, saltId: device.id }),
           // Create the initial entry in the device history table.
-          models.DeviceHistory.create({
+          DeviceHistory.create({
             saltId: device.id,
             setBy: "register",
             GroupId: device.GroupId,
@@ -392,7 +380,7 @@ export default function (app: Application, baseUrl: string) {
     async (_request: Request, response: Response, _next: NextFunction) => {
       // Get the recording count for the device.
       const deviceId = response.locals.device.id;
-      const hasRecording = await models.Recording.findOne({
+      const hasRecording = await Recording.findOne({
         where: {
           DeviceId: deviceId,
           GroupId: response.locals.group.id,
@@ -407,7 +395,7 @@ export default function (app: Application, baseUrl: string) {
           id: deviceId,
         });
       } else {
-        await models.DeviceHistory.destroy({
+        await DeviceHistory.destroy({
           where: {
             uuid: response.locals.device.uuid,
           },
@@ -514,15 +502,23 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/latest-software-versions`,
     extractJwtAuthorizedUser,
-    async function (request: Request, response: Response) {
-      const result = await (
-        await fetch(
-          "https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json",
-        )
-      ).json();
-      return successResponse(response, "Got latest software versions.", {
-        versions: result,
-      });
+    async function (_request: Request, response: Response) {
+      try {
+        const result = await (
+          await fetch(
+            "https://raw.githubusercontent.com/TheCacophonyProject/salt-version-info/main/salt-version-info.json",
+          )
+        ).json();
+        return successResponse(response, "Got latest software versions.", {
+          versions: result,
+        });
+      } catch (_error) {
+        return someResponse(
+          response,
+          HttpStatusCode.ServerError,
+          "Version info not available",
+        );
+      }
     },
   );
 
@@ -579,7 +575,7 @@ export default function (app: Application, baseUrl: string) {
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Completed get device query.", {
         device: mapDeviceResponse(
           response.locals.device,
@@ -603,7 +599,7 @@ export default function (app: Application, baseUrl: string) {
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Completed get device query.", {
         device: mapDeviceResponse(
           response.locals.device,
@@ -644,7 +640,7 @@ export default function (app: Application, baseUrl: string) {
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
       const device = response.locals.device as Device;
-      const deviceHistoryEntry = await models.DeviceHistory.findOne({
+      const deviceHistoryEntry = await DeviceHistory.findOne({
         where: {
           DeviceId: device.id,
           GroupId: device.GroupId,
@@ -653,10 +649,10 @@ export default function (app: Application, baseUrl: string) {
         },
         include: [
           {
-            model: models.Station,
+            model: Station,
             include: [
               {
-                model: models.Group,
+                model: Group,
                 attributes: ["groupName"],
               },
             ],
@@ -696,21 +692,21 @@ export default function (app: Application, baseUrl: string) {
           (request.query["until-time"] as unknown as Date)) ||
         new Date();
 
-      const timeWindow = {};
+      const timeWindow: Sequelize.WhereOptions = {};
       if (fromTime) {
-        (timeWindow as any).recordingDateTime = {
+        timeWindow.recordingDateTime = {
           [Op.and]: [{ [Op.gt]: fromTime }, { [Op.lte]: untilTime }],
         };
       }
       const tag = request.params.tag;
-      const tracks = await models.Track.findAll({
+      const tracks = await Track.findAll({
         raw: true,
         where: {
           archivedAt: { [Op.eq]: null },
         },
         include: [
           {
-            model: models.TrackTag,
+            model: TrackTag,
             required: true,
             where: {
               used: true,
@@ -718,7 +714,7 @@ export default function (app: Application, baseUrl: string) {
             attributes: ["automatic", "what"],
           },
           {
-            model: models.Recording,
+            model: Recording,
             required: true,
             where: {
               DeviceId: response.locals.device.id,
@@ -782,20 +778,20 @@ export default function (app: Application, baseUrl: string) {
         new Date();
 
       // We only want to get tracks that are not falsified by a human.
-      const timeWindow = {};
+      const timeWindow: Sequelize.WhereOptions = {};
       if (fromTime) {
-        (timeWindow as any).recordingDateTime = {
+        timeWindow.recordingDateTime = {
           [Op.and]: [{ [Op.gt]: fromTime }, { [Op.lte]: untilTime }],
         };
       }
-      const tracks = await models.Track.findAll({
+      const tracks = await Track.findAll({
         raw: true,
         where: {
           archivedAt: { [Op.eq]: null },
         },
         include: [
           {
-            model: models.TrackTag,
+            model: TrackTag,
             required: true,
             where: {
               used: true,
@@ -803,7 +799,7 @@ export default function (app: Application, baseUrl: string) {
             attributes: ["automatic", "what", "path"],
           },
           {
-            model: models.Recording,
+            model: Recording,
             required: true,
             where: {
               DeviceId: response.locals.device.id,
@@ -873,9 +869,9 @@ export default function (app: Application, baseUrl: string) {
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response, _next: NextFunction) => {
+    async (_request: Request, response: Response, _next: NextFunction) => {
       const device = response.locals.device;
-      const deviceLocations = await models.DeviceHistory.findAll({
+      const deviceLocations = await DeviceHistory.findAll({
         where: {
           DeviceId: device.id,
           GroupId: device.GroupId,
@@ -883,10 +879,10 @@ export default function (app: Application, baseUrl: string) {
         },
         include: [
           {
-            model: models.Station,
+            model: Station,
             include: [
               {
-                model: models.Group,
+                model: Group,
                 attributes: ["groupName"],
               },
             ],
@@ -957,7 +953,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:id/reference-image/:exists?`,
+    `${apiUrl}/:id/reference-image/{.:exists}`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
@@ -969,6 +965,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
+      // FIXME: NZDT timezone stuff should be location dependent
+
       const checkIfExists = request.params.exists === "exists";
       const atTime =
         (request.query["at-time"] &&
@@ -976,17 +974,10 @@ export default function (app: Application, baseUrl: string) {
         new Date();
       const device = response.locals.device as Device;
       const kind = (request.query.type as string) || "pov";
-      // const query =
-      //   kind === "pov"
-      //     ? "settings.referenceImagePOV"
-      //     : "settings.referenceImageInSitu";
-      const deviceHistoryEntry = await models.DeviceHistory.latest(
+      const deviceHistoryEntry = await DeviceHistory.latest(
         device.id,
         device.GroupId,
         atTime,
-        // {
-        //   [query]: { [Op.ne]: null },
-        // },
       );
       if (!deviceHistoryEntry) {
         return next(
@@ -995,174 +986,7 @@ export default function (app: Application, baseUrl: string) {
           ),
         );
       }
-      if (device.kind === DeviceType.TrailCam) {
-        // NOTE: If the device is a trailcam, try and use the daytime image that closest matches the requested time, if any.
-
-        //  The trailcam has been in this location since this time.
-        const fromTime = deviceHistoryEntry.fromDateTime;
-        if (!fromTime) {
-          return next(
-            new UnprocessableError(
-              "No reference image available for device at time",
-            ),
-          );
-        }
-        let recording: any;
-        // See if this device has a later location
-        const laterDeviceHistoryEntry: DeviceHistory | null =
-          await models.DeviceHistory.findOne({
-            where: [
-              {
-                DeviceId: device.id,
-                GroupId: device.GroupId,
-                fromDateTime: { [Op.gt]: fromTime },
-              },
-              models.sequelize.where(
-                Sequelize.fn("ST_X", Sequelize.col("location")),
-                { [Op.ne]: deviceHistoryEntry.location.lng },
-              ),
-              models.sequelize.where(
-                Sequelize.fn("ST_Y", Sequelize.col("location")),
-                { [Op.ne]: deviceHistoryEntry.location.lat },
-              ),
-            ] as any,
-            order: [["fromDateTime", "ASC"]],
-          });
-        const payload: { fromDateTime: Date; untilDateTime?: Date } = {
-          fromDateTime: fromTime,
-        };
-        if (laterDeviceHistoryEntry) {
-          payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
-          // Now check if there's a daytime image in that timespan, preferably without any tracks,
-          // to avoid there being animals present
-          const options = {
-            type: QueryTypes.SELECT,
-            replacements: {
-              groupId: device.GroupId,
-              deviceId: device.id,
-              atTime: fromTime,
-              untilTime: laterDeviceHistoryEntry.fromDateTime,
-            },
-          };
-          recording = await models.sequelize.query(
-            `          
-          select * from "Recordings"
-          left outer join "Tracks"
-          on "Tracks"."RecordingId" = "Tracks".id
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and "recordingDateTime" < :untilTime
-          and type = 'trailcam-image'
-          and "Tracks".id is null
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          where 
-          limit 1
-          `,
-            options,
-          );
-          if (!recording.length) {
-            recording = await models.sequelize.query(
-              `
-          select * from "Recordings" 
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and "recordingDateTime" < :untilTime
-          and type = 'trailcam-image'
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-          `,
-              options,
-            );
-          }
-        } else {
-          // Now check if there's a daytime image in that timespan, preferably without any tracks,
-          // to avoid there being animals present
-          const options = {
-            type: QueryTypes.SELECT,
-            replacements: {
-              groupId: device.GroupId,
-              deviceId: device.id,
-              atTime: fromTime,
-            },
-          };
-          recording = await models.sequelize.query(
-            `
-          select * from "Recordings" 
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and type = 'trailcam-image'
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-      `,
-            options,
-          );
-          if (!recording.length) {
-            recording = await models.sequelize.query(
-              `
-          select * from "Recordings"         
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and type = 'trailcam-image'        
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-      `,
-              options,
-            );
-          }
-        }
-        if (recording.length) {
-          if (checkIfExists) {
-            return successResponse(
-              response,
-              "Reference image exists at supplied time",
-              payload,
-            );
-          } else {
-            // Actually return the image.
-            const mimeType = "image/webp"; // Or something better
-            const time = fromTime
-              ?.toISOString()
-              .replace(/:/g, "_")
-              .replace(".", "_");
-            const filename = `device-${device.id}-reference-image@${time}.webp`;
-            // Get reference image for device at time if any.
-            return streamS3Object(
-              request,
-              response,
-              recording[0].fileKey,
-              filename,
-              mimeType,
-              response.locals.requestUser.id,
-              device.GroupId,
-              recording[0].fileSize,
-            );
-          }
-        } else {
-          return next(
-            new UnprocessableError(
-              "No reference image available for device at time",
-            ),
-          );
-        }
-      } else if (
-        [DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)
-      ) {
+      if ([DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)) {
         let referenceImage;
         let referenceImageFileSize;
 
@@ -1180,7 +1004,7 @@ export default function (app: Application, baseUrl: string) {
         if (referenceImage && fromTime && referenceImageFileSize) {
           if (checkIfExists) {
             // Build a payload showing fromDateTime & untilDateTime
-            const laterDeviceHistoryEntry = await models.DeviceHistory.findOne({
+            const laterDeviceHistoryEntry = await DeviceHistory.findOne({
               where: {
                 DeviceId: device.id,
                 GroupId: device.GroupId,
@@ -1277,7 +1101,9 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       let contentType = request.get("Content-Type");
-      if (!ALLOWED_MIME_TYPES.includes(contentType as any)) {
+      if (
+        !ALLOWED_MIME_TYPES.includes(contentType as unknown as ImageMimeTypes)
+      ) {
         contentType = "image/webp";
       }
       if (!contentType) {
@@ -1293,10 +1119,11 @@ export default function (app: Application, baseUrl: string) {
       // If the location hasn't changed, we need to carry this forward whenever we create
       // another device history entry?
       const referenceType = request.query.type || "pov";
-      const atTime = request.query["at-time"] ?? new Date();
+      const atTime =
+        (request.query["at-time"] as unknown as Date) ?? new Date();
       const device = response.locals.device as Device;
       const previousDeviceHistoryEntry: DeviceHistory =
-        await models.DeviceHistory.findOne({
+        await DeviceHistory.findOne({
           where: {
             DeviceId: device.id,
             GroupId: device.GroupId,
@@ -1308,7 +1135,9 @@ export default function (app: Application, baseUrl: string) {
       if (!previousDeviceHistoryEntry) {
         // We can't add an image, because we don't have a device location.
         return next(
-          new UnprocessableError("No location for device to tag with reference"),
+          new UnprocessableError(
+            "No location for device to tag with reference",
+          ),
         );
       }
 
@@ -1320,7 +1149,7 @@ export default function (app: Application, baseUrl: string) {
         !!previousSettings.referenceImageInSitu;
 
       // Upload with validated content type
-      const { key, size } = await uploadFileStream(request as any, "ref");
+      const { key, size } = await uploadFileStream(request, "ref");
 
       // Store MIME type in settings
       const newSettings =
@@ -1328,18 +1157,18 @@ export default function (app: Application, baseUrl: string) {
           ? {
               referenceImagePOV: key,
               referenceImagePOVFileSize: size,
-              referenceImagePOVMimeType: contentType,
+              referenceImagePOVMimeType: contentType as ImageMimeTypes,
             }
           : {
               referenceImageInSitu: key,
               referenceImageInSituFileSize: size,
-              referenceImageInSituMimeType: contentType,
+              referenceImageInSituMimeType: contentType as ImageMimeTypes,
             };
 
       if (hadPreviousReferenceImage) {
         // Create a new entry at `at-time` for the new reference image, leaving the old
         // reference image intact in the previous device history entry.
-        await models.DeviceHistory.create({
+        await DeviceHistory.create({
           ...previousDeviceHistoryEntry.get({ plain: true }),
           fromDateTime: atTime,
           settings: {
@@ -1348,7 +1177,7 @@ export default function (app: Application, baseUrl: string) {
           },
         });
       } else {
-        await models.DeviceHistory.update(
+        await DeviceHistory.update(
           {
             settings: {
               ...previousSettings,
@@ -1400,7 +1229,7 @@ export default function (app: Application, baseUrl: string) {
         const device = response.locals.device as Device;
 
         // Find relevant device history entry
-        const deviceHistoryEntrys = await models.DeviceHistory.findAll({
+        const deviceHistoryEntries = await DeviceHistory.findAll({
           where: {
             DeviceId: device.id,
             GroupId: device.GroupId,
@@ -1409,12 +1238,12 @@ export default function (app: Application, baseUrl: string) {
           order: [["fromDateTime", "DESC"]],
         });
 
-        if (!deviceHistoryEntrys) {
+        if (!deviceHistoryEntries) {
           return successResponse(response, "No reference to delete");
         }
 
         // Find entry that has referenceImage basedo n the type
-        const deviceHistoryEntry = deviceHistoryEntrys.find((dh) => {
+        const deviceHistoryEntry = deviceHistoryEntries.find((dh) => {
           if (referenceType === "pov") {
             return !!dh.settings?.referenceImagePOV;
           } else {
@@ -1447,7 +1276,7 @@ export default function (app: Application, baseUrl: string) {
           delete updatedSettings.referenceImageInSituMimeType;
         }
 
-        await models.DeviceHistory.create({
+        await DeviceHistory.create({
           ...deviceHistoryEntry.get({ plain: true }),
           settings: updatedSettings,
           fromDateTime: new Date(),
@@ -1457,7 +1286,7 @@ export default function (app: Application, baseUrl: string) {
           response,
           "Reference image deleted successfully",
         );
-      } catch (error) {
+      } catch (_e) {
         next(new FatalError("Failed to delete reference image"));
       }
     },
@@ -1490,15 +1319,14 @@ export default function (app: Application, baseUrl: string) {
       const maskRegions: Record<string, MaskRegion> = request.body.maskRegions;
       const device = response.locals.device as Device;
       try {
-        const deviceHistoryEntry: DeviceHistory =
-          await models.DeviceHistory.findOne({
-            where: {
-              DeviceId: device.id,
-              GroupId: device.GroupId,
-              location: { [Op.ne]: null },
-            },
-            order: [["fromDateTime", "DESC"]],
-          });
+        const deviceHistoryEntry: DeviceHistory = await DeviceHistory.findOne({
+          where: {
+            DeviceId: device.id,
+            GroupId: device.GroupId,
+            location: { [Op.ne]: null },
+          },
+          order: [["fromDateTime", "DESC"]],
+        });
 
         if (!deviceHistoryEntry) {
           return next(
@@ -1521,7 +1349,7 @@ export default function (app: Application, baseUrl: string) {
         if (hadMaskRegion) {
           // Create a new copy of the current DeviceHistory entry, so that previous mask regions at this location
           // are preserved.
-          await models.DeviceHistory.create({
+          await DeviceHistory.create({
             ...deviceHistoryEntry.get({ plain: true }),
             fromDateTime: new Date(),
             settings: newSettings,
@@ -1529,7 +1357,7 @@ export default function (app: Application, baseUrl: string) {
         } else {
           // Update the existing DeviceHistory entry without mask regions in place.  The mask region will apply from
           // when this location was created.
-          await models.DeviceHistory.update(
+          await DeviceHistory.update(
             {
               settings: newSettings,
             },
@@ -1543,7 +1371,7 @@ export default function (app: Application, baseUrl: string) {
           );
         }
         return successResponse(response, "Mask regions added successfully");
-      } catch (e) {
+      } catch (_e) {
         return next(
           new UnprocessableError(
             "An error occurred while processing the request",
@@ -1591,7 +1419,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
-      query("at-time").optional().isISO8601().toDate(),
+      query("at-time").isISO8601().toDate().default(new Date()).optional(),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -1599,8 +1427,14 @@ export default function (app: Application, baseUrl: string) {
       const atTime =
         (request.query["at-time"] as unknown as Date) ?? new Date();
       const device = response.locals.device as Device;
-      const deviceSettings: DeviceHistory | null =
-        await models.DeviceHistory.latest(device.id, device.GroupId, atTime);
+
+      logger.warning("@@@@@@ %s, %s", atTime, typeof atTime);
+
+      const deviceSettings: DeviceHistory | null = await DeviceHistory.latest(
+        device.id,
+        device.GroupId,
+        atTime,
+      );
       if (
         deviceSettings &&
         deviceSettings.settings &&
@@ -1647,9 +1481,9 @@ export default function (app: Application, baseUrl: string) {
         const atTime =
           (request.query["at-time"] as unknown as Date) ?? new Date();
         const device = response.locals.device as Device;
-        let deviceSettings: DeviceHistory | null = null;
+        let deviceSettings: DeviceHistory | null;
         if (request.query["latest-synced"]) {
-          deviceSettings = await models.DeviceHistory.latest(
+          deviceSettings = await DeviceHistory.latest(
             device.id,
             device.GroupId,
             atTime,
@@ -1658,7 +1492,7 @@ export default function (app: Application, baseUrl: string) {
             },
           );
         } else {
-          deviceSettings = await models.DeviceHistory.latest(
+          deviceSettings = await DeviceHistory.latest(
             device.id,
             device.GroupId,
             atTime,
@@ -1735,7 +1569,8 @@ export default function (app: Application, baseUrl: string) {
         const newLocation = request.body.location;
         const newKind = request.body.type;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
-        const latestDeviceHistoryEntry = await models.DeviceHistory.latest(
+        logger.warning("HERE");
+        const latestDeviceHistoryEntry = await DeviceHistory.latest(
           device.id,
           device.GroupId,
         );
@@ -1750,7 +1585,6 @@ export default function (app: Application, baseUrl: string) {
           }
 
           const station = await tryToMatchLocationToStationInGroup(
-            models,
             newLocation,
             device.GroupId,
             new Date(),
@@ -1765,7 +1599,7 @@ export default function (app: Application, baseUrl: string) {
                 newLocation,
               ))
           ) {
-            await models.DeviceHistory.create({
+            await DeviceHistory.create({
               DeviceId: device.id,
               GroupId: device.GroupId,
               location: newLocation,
@@ -1788,7 +1622,7 @@ export default function (app: Application, baseUrl: string) {
         // Update device settings if provided
         let updatedEntry;
         if (newSettings) {
-          updatedEntry = await models.DeviceHistory.updateDeviceSettings(
+          updatedEntry = await DeviceHistory.updateDeviceSettings(
             device.id,
             device.GroupId,
             newSettings,
@@ -1796,10 +1630,7 @@ export default function (app: Application, baseUrl: string) {
           );
         } else {
           // Fetch the latest settings entry if no new settings are provided
-          updatedEntry = await models.DeviceHistory.latest(
-            device.id,
-            device.GroupId,
-          );
+          updatedEntry = await DeviceHistory.latest(device.id, device.GroupId);
         }
 
         return successResponse(response, "Device updated successfully", {
@@ -1833,7 +1664,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([idOf(param("id"))]),
     async (request: Request, response: Response, next: NextFunction) => {
       try {
-        const device = await models.Device.findByPk(request.params.id);
+        const device = await Device.findByPk(request.params.id);
         if (!device) {
           return next(new UnprocessableError("Device not found"));
         }
@@ -1844,7 +1675,7 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Device type retrieved", {
           type: detectedType,
         });
-      } catch (e) {
+      } catch (_e) {
         return;
       }
     },
@@ -1887,7 +1718,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.setStationAtTime.stationId,
       )(request, response, next);
     },
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       if (response.locals.device.GroupId !== response.locals.station.GroupId) {
         return next(
           new ClientError(
@@ -1898,11 +1729,11 @@ export default function (app: Application, baseUrl: string) {
       const { stationId, fromDateTime, location } =
         response.locals.setStationAtTime;
       const device = response.locals.device;
-      let station = await models.Station.findByPk(stationId);
-      let fromDateTimeParsed;
+      let station = await Station.findByPk(stationId);
+      let fromDateTimeParsed: Date;
       try {
         fromDateTimeParsed = new Date(Date.parse(fromDateTime));
-      } catch (e) {
+      } catch (_e) {
         return next(
           new UnprocessableError(
             "Supplied fromDateTime is not a valid timestamp",
@@ -1916,7 +1747,7 @@ export default function (app: Application, baseUrl: string) {
       const setLocation = location || station.location;
 
       // Check if there's already a device entry at that time:
-      const deviceHistoryEntry = await models.DeviceHistory.findOne({
+      const deviceHistoryEntry = await DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
           //fromDateTime: { [Op.gte]: fromDateTime },
@@ -1934,7 +1765,7 @@ export default function (app: Application, baseUrl: string) {
           settings: oldSettings,
         });
       } else {
-        const previousEntry = await models.DeviceHistory.findOne({
+        const previousEntry = await DeviceHistory.findOne({
           where: {
             uuid: device.uuid,
             GroupId: device.GroupId,
@@ -1943,7 +1774,7 @@ export default function (app: Application, baseUrl: string) {
           order: [["fromDateTime", "DESC"]],
         });
         const oldSettings = previousEntry?.settings || {};
-        await models.DeviceHistory.create({
+        await DeviceHistory.create({
           uuid: device.uuid,
           saltId: device.saltId,
           DeviceId: device.id,
@@ -1957,7 +1788,7 @@ export default function (app: Application, baseUrl: string) {
         });
       }
       // Get the earliest history location that's later than our current fromDateTime, if any
-      const laterLocation: DeviceHistory = await models.DeviceHistory.findOne({
+      const laterLocation: DeviceHistory = await DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
           GroupId: device.GroupId,
@@ -1971,12 +1802,15 @@ export default function (app: Application, baseUrl: string) {
       const recordingTimeWindow = {
         DeviceId: device.id,
         StationId: { [Op.ne]: stationId },
-        recordingDateTime: { [Op.gte]: fromDateTime },
-      };
+        recordingDateTime: {
+          [Op.gte]: fromDateTime as Date,
+        } as Sequelize.WhereOptions,
+      } as Sequelize.WhereOptions;
       if (laterLocation) {
-        (recordingTimeWindow.recordingDateTime as any) = {
+        // FIXME: Is this a bit suspect?
+        recordingTimeWindow["recordingDateTime"] = {
           [Op.and]: [
-            { [Op.gte]: fromDateTime },
+            { [Op.gte]: fromDateTimeParsed },
             { [Op.lt]: laterLocation.fromDateTime },
           ],
         };
@@ -1985,7 +1819,7 @@ export default function (app: Application, baseUrl: string) {
         await device.update({ location: setLocation });
       }
 
-      const affectedRecordings = await models.Recording.findAll({
+      const affectedRecordings = await Recording.findAll({
         where: recordingTimeWindow,
       });
       const stationsIdsToUpdateLatestRecordingFor = Object.keys(
@@ -1997,8 +1831,7 @@ export default function (app: Application, baseUrl: string) {
         }, {}),
       ).map(Number);
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const [affectedCount] = await models.Recording.update(
+      const [affectedCount] = await Recording.update(
         {
           location: setLocation,
           StationId: station.id,
@@ -2007,9 +1840,9 @@ export default function (app: Application, baseUrl: string) {
           where: recordingTimeWindow,
         },
       );
-      let stationsToUpdateLatestRecordingFor = [];
+      let stationsToUpdateLatestRecordingFor: Station[] = [];
       if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
-        stationsToUpdateLatestRecordingFor = await models.Station.findAll({
+        stationsToUpdateLatestRecordingFor = await Station.findAll({
           where: {
             id: { [Op.in]: stationsIdsToUpdateLatestRecordingFor },
           },
@@ -2028,7 +1861,7 @@ export default function (app: Application, baseUrl: string) {
           latestAudioRecording,
           earliestRecording,
         ] = await Promise.all([
-          models.Recording.findOne({
+          Recording.findOne({
             where: {
               StationId: station.id,
               type: RecordingType.ThermalRaw,
@@ -2036,7 +1869,7 @@ export default function (app: Application, baseUrl: string) {
             },
             order: [["recordingDateTime", "DESC"]],
           }),
-          models.Recording.findOne({
+          Recording.findOne({
             where: {
               StationId: station.id,
               type: RecordingType.Audio,
@@ -2044,8 +1877,7 @@ export default function (app: Application, baseUrl: string) {
             },
             order: [["recordingDateTime", "DESC"]],
           }),
-
-          models.Recording.findOne({
+          Recording.findOne({
             where: {
               StationId: station.id,
               recordingDateTime: { [Op.ne]: null },
@@ -2053,7 +1885,11 @@ export default function (app: Application, baseUrl: string) {
             order: [["recordingDateTime", "ASC"]],
           }),
         ]);
-        let updates: any = {};
+        let updates: {
+          lastAudioRecordingTime?: Date | null;
+          lastThermalRecordingTime?: Date | null;
+          activeAt?: Date;
+        } = {};
 
         if (
           latestAudioRecording &&
@@ -2093,7 +1929,7 @@ export default function (app: Application, baseUrl: string) {
           } else if (!earliestRecording) {
             await station.destroy();
             updates = {};
-            await models.DeviceHistory.destroy({
+            await DeviceHistory.destroy({
               where: {
                 stationId: station.id,
               },
@@ -2169,7 +2005,7 @@ export default function (app: Application, baseUrl: string) {
       param("deviceName"),
       param("groupIdOrName"),
     ),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Request successful", {
         device: mapDeviceResponse(
           response.locals.device,
@@ -2180,14 +2016,14 @@ export default function (app: Application, baseUrl: string) {
   );
 
   const getUsersFns = [
-    async (request, response, next) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       await fetchAuthorizedRequiredGroupById(response.locals.device.GroupId)(
         request,
         response,
         next,
       );
     },
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const users = (
         await response.locals.group.getUsers({
           attributes: ["id", "userName"],
@@ -2195,11 +2031,11 @@ export default function (app: Application, baseUrl: string) {
             where: { removedAt: { [Op.eq]: null, pending: { [Op.eq]: null } } },
           },
         })
-      ).map((user) => ({
+      ).map((user: User) => ({
         userName: user.userName,
         id: user.id,
-        admin: (user as any).GroupUsers.admin,
-        owner: (user as any).GroupUsers.admin,
+        admin: user.GroupUsers.admin,
+        owner: user.GroupUsers.admin,
       }));
       return successResponse(response, "OK.", { users });
     },
@@ -2284,7 +2120,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
-    (request, response, next) => {
+    (_request, response, next) => {
       if (
         response.locals.schedule.UserId == response.locals.requestUser.id ||
         response.locals.requestUser.hasGlobalWrite()
@@ -2335,7 +2171,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     fetchUnauthorizedRequiredScheduleById(body("scheduleId")),
-    (request, response, next) => {
+    (_request, response, next) => {
       if (
         response.locals.schedule.UserId == response.locals.requestUser.id ||
         response.locals.requestUser.hasGlobalWrite()
@@ -2387,12 +2223,11 @@ export default function (app: Application, baseUrl: string) {
     // FIXME: Should you really be allowed to move a device into a group you aren't an admin of?
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
-      const requestDevice: Device = await models.Device.findByPk(
+      const requestDevice: Device = await Device.findByPk(
         response.locals.requestDevice.id,
       );
 
       const device = await requestDevice.reRegister(
-        models,
         request.body.newName,
         response.locals.group,
         request.body.newPassword,
@@ -2440,8 +2275,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
-      const cacophonyIndex = await models.Device.getCacophonyIndex(
-        response.locals.requestUser,
+      const cacophonyIndex = await Device.getCacophonyIndex(
         response.locals.device,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number,
@@ -2481,7 +2315,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupByNameOrId(body("newGroup")),
     async (request: Request, response: Response, next: NextFunction) => {
       // The user should be the admin of both groups
-      const requestDevice: Device = await models.Device.findByPk(
+      const requestDevice: Device = await Device.findByPk(
         response.locals.requestDevice.id,
       );
       if (!requestDevice) {
@@ -2503,7 +2337,6 @@ export default function (app: Application, baseUrl: string) {
     },
     async function (request: Request, response: Response, next: NextFunction) {
       const newDevice = await response.locals.requestDevice.reRegister(
-        models,
         request.body.newName,
         response.locals.destGroup,
         request.body.newPassword,
@@ -2550,17 +2383,18 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
+      stringOf(query("interval"))
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
-      const cacophonyIndexBulk = await models.Device.getCacophonyIndexBulk(
-        response.locals.requestUser,
+      const cacophonyIndexBulk = await Device.getCacophonyIndexBulk(
         response.locals.device,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String,
+        request.query.interval as unknown as TimeInterval,
       );
       return successResponse(response, { cacophonyIndexBulk });
     },
@@ -2595,8 +2429,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
-      const cacophonyIndex = await models.Device.getCacophonyIndexHistogram(
-        response.locals.requestUser,
+      const cacophonyIndex = await Device.getCacophonyIndexHistogram(
         response.locals.device.id,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number,
@@ -2630,17 +2463,18 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      stringOf(query("type")).default("audio"),
+      stringOf(query("type"))
+        .isIn(Object.values(RecordingType))
+        .default(RecordingType.Audio),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
-      const speciesCount = await models.Device.getSpeciesCount(
-        response.locals.requestUser,
+      const speciesCount = await Device.getSpeciesCount(
         response.locals.device.id,
         request.query.from as unknown as Date,
         request.query["window-size"] as unknown as number,
-        request.query.type as unknown as string,
+        request.query.type as unknown as RecordingType,
       );
       return successResponse(response, { speciesCount });
     },
@@ -2672,19 +2506,22 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
-      stringOf(query("type")).default("audio"),
+      stringOf(query("interval"))
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
+      stringOf(query("type"))
+        .isIn(Object.values(RecordingType))
+        .default(RecordingType.Audio),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
-      const speciesCountBulk = await models.Device.getSpeciesCountBulk(
-        response.locals.requestUser,
+      const speciesCountBulk = await Device.getSpeciesCountBulk(
         response.locals.device.id,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String,
-        request.query.type as unknown as string,
+        request.query.interval as unknown as TimeInterval,
+        request.query.type as unknown as RecordingType,
       );
       return successResponse(response, { speciesCountBulk });
     },
@@ -2716,8 +2553,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
-      const activeDaysCount = await models.Device.getDaysActive(
-        response.locals.requestUser,
+      const activeDaysCount = await Device.getDaysActive(
         response.locals.device.id,
         request.query.from as unknown as Date,
         request.query["window-size"] as unknown as number,
@@ -2743,10 +2579,10 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     validateFields([body("nextHeartbeat").isISO8601().toDate()]),
     async function (request: Request, response: Response) {
-      const requestDevice = (await models.Device.findByPk(
+      const requestDevice = (await Device.findByPk(
         response.locals.requestDevice.id,
       )) as Device;
-      await requestDevice.updateHeartbeat(models, request.body.nextHeartbeat);
+      await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
       return successResponse(response, "Heartbeat updated.");
     },
   );
@@ -2773,8 +2609,8 @@ export default function (app: Application, baseUrl: string) {
         booleanOf(query("only-active"), false),
       ]),
       fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      async function (request: Request, response: Response) {
-        const history = await models.DeviceHistory.findAll({
+      async function (_request: Request, response: Response) {
+        const history = await DeviceHistory.findAll({
           where: {
             DeviceId: response.locals.device.id,
           },

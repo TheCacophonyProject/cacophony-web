@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await Promise.all([
@@ -11,7 +9,7 @@ module.exports = {
       }),
     ]);
     return queryInterface.sequelize.query(
-      'update "Devices" set "saltId" = id where "saltId" is null;'
+      'update "Devices" set "saltId" = id where "saltId" is null;',
     );
   },
 

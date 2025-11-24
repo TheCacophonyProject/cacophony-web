@@ -78,13 +78,10 @@ describe("Stations: use cases", () => {
     const location = TestGetLocation(3);
     const fixedLocation = TestGetLocation(4);
     const movedLocation = TestGetLocation(5);
-    const oneWeekFromNow = new Date(
-      new Date().setDate(new Date().getDate() + 7),
-    );
-    const twoWeeksFromNow = new Date(
-      new Date().setDate(new Date().getDate() + 14),
-    );
-    const now = new Date();
+
+    const now = new Date(new Date().setDate(new Date().getDate() - 20));
+    const oneWeekFromNow = new Date(new Date(now).setDate(now.getDate() + 7));
+    const twoWeeksFromNow = new Date(new Date(now).setDate(now.getDate() + 14));
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const oldRecording = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
@@ -356,15 +353,11 @@ describe("Stations: use cases", () => {
     const thirdRecordingName = "sr-third-recording-5";
     const oldLocation = TestGetLocation(5);
     const newLocation = TestGetLocation(6);
-    const firstRecordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 7),
-    );
-    const secondRecordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 14),
-    );
-    const thirdRecordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 21),
-    );
+
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 30));
+    const firstRecordingTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 7));
+    const secondRecordingTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 14));
+    const thirdRecordingTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 21));
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const firstRecording = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
@@ -746,16 +739,17 @@ describe("Stations: use cases", () => {
     const stationLocation = TestGetLocation(6);
     const firstRecordingLocation = TestGetLocation(6, 0.001); //~100m off-target location
     const thirdRecordingLocation = TestGetLocation(6, -0.001); //~100m in the oppsite direction
+    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 30));
     const thirdRecordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 21),
+      new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 21),
     );
     const secondRecordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 14),
+      new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 14),
     );
     const firstRecordingTime = new Date(
-      new Date().setDate(new Date().getDate() + 7),
+      new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 7),
     );
-    const createStationTime = new Date();
+    const createStationTime = beforeRecordings;
     const expectedHistory: DeviceHistoryEntry[] = [];
 
     const firstRecording = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);

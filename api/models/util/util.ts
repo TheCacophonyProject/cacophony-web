@@ -38,8 +38,6 @@ import type { LatLng } from "@typedefs/api/common.js";
 import { DataTypes } from "sequelize";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 import { isLatLon } from "@models/util/validation.js";
-import type { Readable } from "stream";
-import type { ReadableStream } from "stream/web";
 
 export function getFileName(model) {
   let fileName;
@@ -52,7 +50,6 @@ export function getFileName(model) {
   } else {
     fileName = "file";
   }
-
   const ext = mime.getExtension(model.getDataValue("mimeType") || "");
   if (ext) {
     fileName = fileName + "." + ext;
@@ -61,17 +58,18 @@ export function getFileName(model) {
 }
 
 export function userCanEdit(id, user) {
-  const modelClass = this;
-  return new Promise((resolve) => {
-    //models.User.where
-    modelClass.getFromId(id, user, ["id"]).then((result) => {
-      if (result === null) {
-        return resolve(false);
-      } else {
-        return resolve(true);
-      }
-    });
-  });
+  return new Promise(
+    function (resolve) {
+      //models.User.where
+      this.getFromId(id, user, ["id"]).then((result) => {
+        if (result === null) {
+          return resolve(false);
+        } else {
+          return resolve(true);
+        }
+      });
+    }.bind(this),
+  );
 }
 
 export function openS3() {
@@ -96,7 +94,7 @@ export function openS3() {
     }
     let chooseProvider = "s3Local";
     if (
-      config.hasOwnProperty("s3Archive") &&
+      "s3Archive" in config &&
       ((params.Key && params.Key.startsWith("a_")) ||
         (params.Prefix && params.Prefix.startsWith("a_")) ||
         (!params.Key &&
@@ -164,7 +162,11 @@ export function openS3() {
       const { client, bucket } = getProviderForParams({ Key: key });
       return client.send(new HeadObjectCommand({ Key: key, Bucket: bucket }));
     },
-    upload(key: string, body: Buffer | Uint8Array, metadata?: any) {
+    upload(
+      key: string,
+      body: Buffer | Uint8Array,
+      metadata?: Record<string, string>,
+    ) {
       const { client, bucket } = getProviderForParams({ Key: key });
       const length = (body as Buffer).length || 0; //"length" in body ? body.length : 0;
       const payload: PutObjectCommandInput = {
@@ -180,13 +182,13 @@ export function openS3() {
     },
     uploadStreaming(
       key: string,
-      body: Readable | ReadableStream,
-      metadata?: any,
+      body: ReadableStream,
+      metadata?: Record<string, string>,
     ) {
       const { client, bucket } = getProviderForParams({ Key: key });
       const payload: PutObjectCommandInput = {
         Key: key,
-        Body: body as any,
+        Body: body,
         Bucket: bucket,
       };
       if (metadata) {
@@ -245,7 +247,7 @@ const geometrySetter = (
   };
 };
 
-export function locationField(fieldName: string = "location") {
+export function locationField(fieldName = "location") {
   return {
     type: DataTypes.GEOMETRY,
     set(value) {
@@ -259,7 +261,7 @@ export function locationField(fieldName: string = "location") {
       return null;
     },
     validate: {
-      isLatLon: isLatLon,
+      isLatLon,
     },
   };
 }

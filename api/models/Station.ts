@@ -16,178 +16,65 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type { BuildOptions, ModelAttributes } from "sequelize";
-import type Sequelize from "sequelize";
-import { Op } from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type {
-  GroupId,
-  LatLng,
-  StationId,
-  UserId,
-} from "@typedefs/api/common.js";
-import type { ApiStationSettings } from "@typedefs/api/station.js";
-import { locationField } from "@models/util/util.js";
-
 // Station data as supplied to API on creation.
+import Sequelize, {
+  CreationOptional,
+  DataTypes,
+  ForeignKey,
+  NonAttribute,
+  Op,
+} from "sequelize";
+import { locationField } from "@models/util/util.js";
+import { ModelStaticCommon } from "@models/index.js";
+import { LatLng, StationId, GroupId } from "@typedefs/api/common.js";
+import { ApiStationSettings } from "@typedefs/api/station.js";
+import { User } from "@models/User.js";
+import { RecordingType } from "@typedefs/api/consts.js";
+import { Group } from "@models/Group.js";
+
 export interface CreateStationData {
   name: string;
   lat: number;
   lng: number;
 }
 
-export interface Station extends Sequelize.Model, ModelCommon<Station> {
-  id: StationId;
-  name: string;
-  location: LatLng;
-  lastUpdatedById: UserId | null;
-  lastThermalRecordingTime: Date | null;
-  lastAudioRecordingTime: Date | null;
-  lastActiveThermalTime: Date | null;
-  lastActiveAudioTime: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-  activeAt: Date;
-  retiredAt: Date | null;
-  GroupId: GroupId;
-  automatic: boolean;
-  needsRename: boolean;
-  settings?: ApiStationSettings;
+export enum TimeInterval {
+  Years = "years",
+  Months = "months",
+  Weeks = "weeks",
+  Days = "days",
+  Hours = "hours",
 }
 
-export interface StationStatic extends ModelStaticCommon<Station> {
-  new (values?: object, options?: BuildOptions): Station;
-  getAll: (where: any) => Promise<Station[]>;
-  getFromId: (id: StationId) => Promise<Station | null>;
-  activeInGroupAtTime: (
-    groupId: GroupId,
-    atDateTime: Date
-  ) => Promise<Station[]>;
-  activeInGroupDuringTimeRange: (
-    groupId: GroupId,
-    fromTime?: Date,
-    untilTime?: Date,
-    orAutomatic?: boolean
-  ) => Promise<Station[]>;
-  getCacophonyIndex: (
-    authUser,
-    stationId,
-    from,
-    windowSizeInHours
-  ) => Promise<number>;
-  getCacophonyIndexBulk: (
-    authUser,
-    stationId: StationId,
-    from: Date,
-    steps: number,
-    interval: String
-  ) => Promise<
-    { stationId: StationId; from: string; cacophonyIndex: number }[]
-  >;
-  getSpeciesCount: (
-    authUser,
-    stationId,
-    from,
-    windowSizeInHours,
-    type
-  ) => Promise<{ what: string; count: number }[]>;
-  getSpeciesCountBulk: (
-    authUser,
-    stationId: StationId,
-    from: Date,
-    steps: number,
-    interval: String,
-    type: string
-  ) => Promise<
-    { stationId: StationId; from: string; what: string; count: number }[]
-  >;
-  getDaysActive: (
-    authUser,
-    stationId: StationId,
-    from: Date,
-    windowSizeInHours: number
-  ) => Promise<number>;
-}
-export default function (
-  sequelize: Sequelize.Sequelize,
-  DataTypes,
-): StationStatic {
-  const name = "Station";
-  const attributes: ModelAttributes = {
-    name: {
-      type: DataTypes.STRING,
-    },
-    location: locationField(),
-    lastUpdatedById: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-    },
-    retiredAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    lastThermalRecordingTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    lastAudioRecordingTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    lastActiveThermalTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    lastActiveAudioTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    activeAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    settings: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-    },
-    automatic: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      allowNull: false,
-    },
-    needsRename: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      allowNull: false,
-    },
-  };
+export class Station extends ModelStaticCommon<Station> {
+  declare id: CreationOptional<StationId>;
+  declare name: string;
+  declare location: LatLng;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare retiredAt: CreationOptional<Date>;
+  declare lastUpdatedById: CreationOptional<number>;
+  declare GroupId: ForeignKey<GroupId>;
+  declare activeAt: CreationOptional<Date>;
+  declare automatic: CreationOptional<boolean>;
+  declare needsRename: CreationOptional<boolean>;
+  declare settings?: CreationOptional<ApiStationSettings>;
+  declare lastThermalRecordingTime: CreationOptional<Date>;
+  declare lastAudioRecordingTime: CreationOptional<Date>;
 
-  // Define table
-  const Station = sequelize.define(
-    name,
-    attributes,
-  ) as unknown as StationStatic;
+  // FIXME: These two probably don't need to be separate, as most cameras are hybrid now.
+  declare lastActiveThermalTime: CreationOptional<Date>;
+  declare lastActiveAudioTime: CreationOptional<Date>;
 
-  //---------------
-  // CLASS METHODS
-  //---------------
+  declare Group?: NonAttribute<Group>;
 
-  Station.addAssociations = function (models) {
+  static addAssociations() {
+    const models = this.sequelize.models;
     models.Station.belongsTo(models.Group);
     models.Station.hasMany(models.Recording);
-  };
+  }
 
-  Station.getFromId = async function (id) {
-    return this.findByPk(id);
-  };
-
-  Station.activeInGroupAtTime = async function (
+  static async activeInGroupAtTime(
     groupId: GroupId,
     atDateTime: Date,
   ): Promise<Station[]> {
@@ -204,13 +91,13 @@ export default function (
         },
       },
     });
-  };
+  }
 
-  Station.activeInGroupDuringTimeRange = async function (
+  static async activeInGroupDuringTimeRange(
     groupId: GroupId,
     fromTime: Date = new Date(),
     untilTime: Date = new Date(),
-    orAutomatic: boolean = false,
+    orAutomatic = false,
   ): Promise<Station[]> {
     const findClause = [
       {
@@ -226,7 +113,7 @@ export default function (
       },
     ];
     if (orAutomatic) {
-      (findClause as any[]).push({
+      (findClause as object[]).push({
         [Op.and]: [{ retiredAt: { [Op.eq]: null } }, { automatic: true }],
       });
     }
@@ -236,17 +123,17 @@ export default function (
         [Op.or]: findClause,
       },
     });
-  };
+  }
 
-  Station.getCacophonyIndex = async function (
-    authUser,
-    stationId,
-    from,
-    windowSizeInHours,
-  ) {
+  static async getCacophonyIndex(
+    authUser: User,
+    stationId: StationId,
+    from: Date,
+    windowSizeInHours: number,
+  ): Promise<number> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    const [result, _] = (await sequelize.query(
+    const [result, _] = (await this.sequelize.query(
       `select round((avg(scores))::numeric, 2) as index from
       (select
         (jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
@@ -258,14 +145,14 @@ export default function (
     and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC') as cacophonyIndex`,
     )) as [{ index: number }[], unknown];
     return result[0].index;
-  };
+  }
 
-  Station.getCacophonyIndexBulk = async function (
-    authUser,
-    stationId,
-    from,
-    steps,
-    interval,
+  static async getCacophonyIndexBulk(
+    authUser: User,
+    stationId: StationId,
+    from: Date,
+    steps: number,
+    interval: TimeInterval,
   ): Promise<{ stationId: StationId; from: string; cacophonyIndex: number }[]> {
     const counts = [];
     let stepSizeInMs;
@@ -313,23 +200,22 @@ export default function (
       });
     }
     return counts;
-  };
+  }
 
-  Station.getSpeciesCount = async function (
-    authUser,
-    stationId,
-    from,
-    windowSizeInHours,
-    type,
+  static async getSpeciesCount(
+    authUser: User,
+    stationId: StationId,
+    from: Date,
+    windowSizeInHours: number,
+    type: RecordingType,
   ): Promise<{ what: string; count: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
     // Get a spread of 24 results with each result falling into an hour bucket.
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [results, _] =
-      (await sequelize.query(`SELECT tt.what, count(*) as count
+    const [results, _] = (await this.sequelize
+      .query(`SELECT tt.what, count(*) as count
       FROM "Recordings" r
       JOIN "Tracks" t ON r.id = t."RecordingId"
       JOIN "TrackTags" tt ON t.id = tt."TrackId"
@@ -343,15 +229,16 @@ export default function (
       what: String(item.what),
       count: Number(item.count),
     }));
-  };
+  }
 
-  Station.getSpeciesCountBulk = async function (
-    authUser,
-    stationId,
-    from,
-    steps,
-    interval,
-    type,
+  // FIXME: It's entirely possible that there are no consumers of these APIs, and maybe they should be removed?
+  static async getSpeciesCountBulk(
+    authUser: User,
+    stationId: StationId,
+    from: Date,
+    steps: number,
+    interval: TimeInterval,
+    type: RecordingType,
   ): Promise<
     { stationId: StationId; from: string; what: string; count: number }[]
   > {
@@ -404,15 +291,16 @@ export default function (
         })),
       );
     }
-    this.getDaysActive(authUser, 2, new Date("2023-04-20T05:02:07.000Z"), 168);
+    // FIXME: this.getDaysActive(authUser, 2, new Date("2023-04-20T05:02:07.000Z"), 168);
     return counts;
-  };
+  }
 
-  Station.getDaysActive = async function (
-    authUser,
-    stationId,
-    from,
-    windowSizeInHours,
+  // FIXME: Unused?
+  static async getDaysActive(
+    authUser: User,
+    stationId: StationId,
+    from: Date,
+    windowSizeInHours: number,
   ): Promise<number> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
@@ -424,9 +312,9 @@ export default function (
       AND "StationId" = ${stationId}
       ORDER BY DATE DESC
     `;
-    const [results, _] = (await sequelize.query(query)) as [
+    const [results, _] = (await this.sequelize.query(query)) as [
       { date: string; has_recordings: boolean }[],
-      unknown
+      unknown,
     ];
 
     const eventQuery = `
@@ -446,15 +334,78 @@ export default function (
         AND r2."recordingDateTime" <= e."dateTime"
     )
     `;
-    const [eventResults, __] = (await sequelize.query(eventQuery)) as [
+    const [eventResults, __] = (await this.sequelize.query(eventQuery)) as [
       { date: string; has_recordings: boolean }[],
-      unknown
+      unknown,
     ];
     const activeDates = new Set();
     results.forEach((item) => activeDates.add(item.date));
     eventResults.forEach((item) => activeDates.add(item.date));
     return activeDates.size;
-  };
-
-  return Station;
+  }
 }
+
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: DataTypes.STRING,
+    location: locationField(),
+    lastUpdatedById: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+    retiredAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastActiveThermalTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastActiveAudioTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    activeAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+    automatic: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+    needsRename: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false,
+    },
+  };
+  Station.init(attributes, {
+    sequelize: sequelizeInstance,
+    tableName: "Stations",
+    name: {
+      plural: "Stations",
+      singular: "Station",
+    },
+  });
+  return Station;
+};

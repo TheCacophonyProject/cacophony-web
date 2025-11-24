@@ -8,7 +8,7 @@ import {
   TEMPLATE_THERMAL_RECORDING,
 } from "@commands/dataTemplate";
 
-import { getCreds } from "@commands/server";
+import {apiPath, getCreds, makeAuthorizedRequestWithStatus} from "@commands/server";
 import { getTestName } from "@commands/names";
 
 import {
@@ -905,4 +905,42 @@ describe("Recordings query using where", () => {
 
   //TODO: wrapper would need to check results contain expected results ... not yet implemented in test wrapper
   it.skip("Super-user should see all recordings", () => {});
+
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    it("Non processing super-user should not be able to see actual thermal recordings from secret projects", () => {
+        // Create project with name `super-secret-squirrels`.
+        // Upon creation, this project id is added to the list of redacted projects in the API.
+        cy.apiSignInAs(null, superuser, suPassword);
+        cy.testCreateUserGroupAndDevice("secret-project-admin", "super-secret-squirrels", "secret-camera");
+
+        // Create a processing user
+        cy.apiUserAdd("processing-super-user").then((userId) => {
+            cy.log("Created processing user", userId);
+            makeAuthorizedRequestWithStatus(
+                {
+                    method: "PATCH",
+                    url: `${apiPath()}/api/v1/admin/global-permission/${userId}`,
+                    body: {"permission": "write"},
+                },
+                superuser,
+                200,
+            );
+        });
+        cy.apiRecordingAdd("secret-camera", recording1, undefined, "secret-recording").then((id) => {
+            cy.log("Group admin can see recording");
+            cy.apiRecordingGetFile("secret-project-admin", id).then((recResponse) => {
+                expect(recResponse.body.byteLength).to.equal(1);
+            });
+
+            cy.log("Regular super user can't see recording");
+            cy.apiRecordingGetFile(superuser, id).then((recResponse) => {
+                expect(recResponse.body.byteLength).to.not.equal(1);
+            });
+            cy.log("Processing user can see recording");
+            cy.apiRecordingGetFile("processing-super-user", id).then((recResponse) => {
+                expect(recResponse.body.byteLength).to.equal(1);
+            });
+        });
+    });
+  }
 });
