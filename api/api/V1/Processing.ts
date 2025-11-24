@@ -12,7 +12,7 @@ import {
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
+import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
 import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" assert { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
@@ -40,6 +40,9 @@ import type { DeviceHistory } from "@models/DeviceHistory.js";
 import Sequelize, { Op } from "sequelize";
 import type { TrackId } from "@typedefs/api/common.js";
 import { openS3 } from "@models/util/util.js";
+import type { Recording } from "@models/Recording.js";
+import type { TrackTagData } from "@/../types/api/trackTag.js";
+
 const NULL_TRACK_ID = 1;
 const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
@@ -356,6 +359,88 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+
+    app.post(
+      `${apiUrl}/:id/tracksAndTags`,
+      extractJwtAuthorisedSuperAdminUser,
+      validateFields([
+        idOf(param("id")),
+        body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
+        idOf(body("algorithmId")),
+
+      ]),
+      // FIXME - JSON schema for allowed data? At least a limit to how many
+      // chars etc?
+      parseJSONField(body("data")),
+      async (request: Request, response: Response, next: NextFunction) => {
+        const recording = await models.Recording.findByPk(request.params.id);
+        if (!recording) {
+          return next(
+            new AuthorizationError(
+              `Could not find a Recording with an id of '${request.params.id}'`,
+            ),
+          );
+        }
+        const data = response.locals.data;
+        const track_ids = [];
+        for(const track of data){
+          track_ids.push(await addTrack(recording,track,data.algorithmId));
+        }
+      return successResponse(response, "Tracks added.", {
+        track_ids,
+      });
+    },
+  );
+
+    const addTrack = async( recording: Recording,trackData:any,algorithmId:number):Promise<number> => {
+      const deviceId = recording.DeviceId;
+      const groupId = recording.GroupId;
+      const atTime = recording.recordingDateTime;
+      let discardMaskedTrack = false;
+      let trackId: TrackId = 1;
+      if (recording.type === RecordingType.ThermalRaw) {
+        const positions = trackData && trackData.positions;
+        if (positions) {
+          discardMaskedTrack = await trackIsMasked(
+            models,
+            deviceId,
+            groupId,
+            atTime,
+            positions,
+          );
+        }
+      }
+      if (!discardMaskedTrack) {
+        const predictions = trackData.predictions;
+        const newTrack = {
+          data: trackData,
+          AlgorithmId: algorithmId,
+          startSeconds: trackData.start_s || 0,
+          endSeconds: trackData.end_s || 0,
+          minFreqHz: null,
+          maxFreqHz: null,
+        };
+        newTrack.data.delete("predictions");
+        if (recording.type === RecordingType.Audio) {
+          newTrack.minFreqHz = trackData.minFreq || 0;
+          newTrack.maxFreqHz = trackData.maxFreq || 0;
+        }
+        const track = await recording.addTrack(newTrack);
+        trackId = track.id;
+        for(const pred of predictions){
+          const predData:TrackTagData = pred as TrackTagData;
+          const tag = await track.addTag(
+            pred.what,
+            pred.confidence,
+            true,
+            predData,
+            null,
+            false,
+          );
+        }
+      }
+      return trackId;
+    };
   /**
    * @api {post} /api/v1/processing/:id/tracks Add track to recording
    * @apiName PostTrack
@@ -378,7 +463,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
-      body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
+      body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
       idOf(body("algorithmId")),
     ]),
     parseJSONField(body("data")),

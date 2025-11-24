@@ -85,6 +85,11 @@ export interface ThumbnailInfo {
   median_diff: number;
   score: number;
 }
+
+
+
+export type MinimalTracksRequestData  =  MinimalTrackRequestData[];
+
 export interface MinimalTrackRequestData {
   tracker_version?: integer | string;
   start_s: Seconds;
