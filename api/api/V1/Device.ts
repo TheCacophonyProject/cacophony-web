@@ -524,7 +524,7 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Got latest software versions.", {
           versions: result,
         });
-      } catch (error) {
+      } catch (_error) {
         return someResponse(
           response,
           HttpStatusCode.ServerError,

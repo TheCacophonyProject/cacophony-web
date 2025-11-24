@@ -20,16 +20,13 @@ import { Alert } from "@models/Alert.js";
 import tzLookup from "tz-lookup-oss";
 import jsonwebtoken from "jsonwebtoken";
 import mime from "mime";
-import moment from "moment";
 import config from "@config";
 import type { RecordingQueryOptions } from "@models/Recording.js";
 import { Recording } from "@models/Recording.js";
-import type { QueryOptions } from "@models/Event.js";
 import { Event } from "@models/Event.js";
 import { User } from "@models/User.js";
-import Sequelize, { Op, QueryTypes } from "sequelize";
-import type { DeviceVisitMap, VisitEvent, VisitSummary } from "./Visits.js";
-import { DeviceSummary, NON_ANIMAL_TAGS, Visit } from "./Visits.js";
+import { Op, QueryTypes } from "sequelize";
+import { getCanonicalTrackTag, NON_ANIMAL_TAGS } from "./tagUtil.js";
 import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
 import type { PutObjectCommandOutput } from "@aws-sdk/client-s3";
@@ -37,11 +34,9 @@ import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Tag } from "@models/Tag.js";
 import { Track } from "@models/Track.js";
-import { File } from "@models/File.js";
 import { TrackTag } from "@models/TrackTag.js";
 import type {
   DeviceId,
-  FileId,
   GroupId,
   IsoFormattedDateString,
   LatLng,
@@ -226,40 +221,55 @@ export async function getThumbnail(
   } else {
     // choose best track based off visit tag and highest score
     if (rec.Tracks.length !== 0) {
-      const recVisit = new Visit(rec, 0, rec.Tracks);
-      const commonTag = recVisit.mostCommonTag();
+      const trackTags: Record<
+        string,
+        { count: number; tracks: Record<number, Track> }
+      > = {};
+      for (const track of rec.Tracks) {
+        if (track.TrackTags && track.TrackTags.length !== 0) {
+          const canonicalTag = getCanonicalTrackTag(track.TrackTags);
+          if (canonicalTag) {
+            const trackTag = canonicalTag.what;
+            trackTags[trackTag] = trackTags[trackTag] || {
+              count: 0,
+              tracks: {},
+            };
+            trackTags[trackTag].count += 1;
+            trackTags[trackTag].tracks[track.id] = track;
+          }
+        }
+      }
+      let commonTag: string | null = null;
+      const sortedTags = Object.entries(trackTags).sort(
+        (a, b) => a[1].count - b[1].count,
+      );
       let bestTracks = [];
+      if (sortedTags.length !== 0) {
+        commonTag = sortedTags[0][0];
+        bestTracks = Object.values(sortedTags[0][1].tracks);
+      }
+
       if (commonTag !== null) {
-        const trackIds = recVisit.events
-          .filter(
-            (event) => event.trackTag && event.trackTag.what == commonTag.what,
-          )
-          .map((event) => event.trackID);
-        bestTracks = rec.Tracks.filter((track) => trackIds.includes(track.id));
-        if (bestTracks.length !== 0) {
-          if (
-            !bestTracks.some((track) => "thumbnailScore" in track.dataValues)
-          ) {
-            for (const track of bestTracks) {
-              track.data = await Track.getTrackData(track.id);
-              if (!track.data.thumbnail) {
-                track.data.thumbnail = {
-                  score: 0,
-                };
-              }
+        if (!bestTracks.some((track) => "thumbnailScore" in track.dataValues)) {
+          for (const track of bestTracks) {
+            track.data = await Track.getTrackData(track.id);
+            if (!track.data.thumbnail) {
+              track.data.thumbnail = {
+                score: 0,
+              };
             }
           }
-          bestTracks.sort((a, b) => {
-            if (
-              "thumbnailScore" in a.dataValues &&
-              "thumbnailScore" in b.dataValues
-            ) {
-              return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
-            }
-            return b.data.thumbnail.score - a.data.thumbnail.score;
-          });
-          thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
         }
+        bestTracks.sort((a, b) => {
+          if (
+            "thumbnailScore" in a.dataValues &&
+            "thumbnailScore" in b.dataValues
+          ) {
+            return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
+          }
+          return b.data.thumbnail.score - a.data.thumbnail.score;
+        });
+        thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
       }
       try {
         if (thumbKey.startsWith("a_")) {
@@ -1233,164 +1243,6 @@ export async function getTrackTagsCount(options: TrackTagsCountOptions) {
   return result;
 }
 
-// Returns a promise for report rows for a set of recordings. Takes
-// the same parameters as query() above.
-export async function reportRecordings(
-  userId: UserId,
-  includeAudiobait: boolean,
-  options: RecordingQueryOptions,
-) {
-  options = { ...options, hideFiltered: false };
-  const builder = new Recording.queryBuilder()
-    .init(userId, options)
-    .addColumn("comment")
-    .addColumn("additionalMetadata");
-
-  if (includeAudiobait) {
-    builder.addAudioEvents();
-  }
-
-  (builder.query.include as Sequelize.Includeable[]).push({
-    model: Station,
-    attributes: ["name"],
-  });
-
-  // NOTE: Not even going to try to attempt to add typing info to this bundle
-  //  of properties...
-  const result = await Recording.findAll(builder.get());
-  const audioFileNames = new Map();
-  const audioEvents = new Map<
-    RecordingId,
-    { timestamp: Date; volume: number; fileId: FileId }
-  >();
-
-  if (includeAudiobait) {
-    // Our DB schema doesn't allow us to easily get from a audio event
-    // recording to a audio file name so do some work first to look these up.
-    const audioFileIds = new Set<number>();
-    for (const r of result) {
-      const event = findLatestEvent(r.Device.Events);
-      if (event && event.EventDetail) {
-        const fileId = event.EventDetail.details.fileId;
-        audioEvents[r.id] = {
-          timestamp: event.dateTime,
-          volume: event.EventDetail.details.volume,
-          fileId,
-        };
-        audioFileIds.add(fileId);
-      }
-    }
-    // Bulk look up file details of played audio events.
-    for (const f of await File.getMultiple(Array.from(audioFileIds))) {
-      audioFileNames[f.id] = f.details.name;
-    }
-  }
-
-  const recordingUrlBase = config.server.recordingUrlBase || "";
-  const labels = [
-    "Id",
-    "Type",
-    "Group",
-    "Device",
-    "Station",
-    "Date",
-    "Time",
-    "Latitude",
-    "Longitude",
-    "Duration",
-    "BatteryPercent",
-    "Comment",
-    "Track Count",
-    "Automatic Track Tags",
-    "Human Track Tags",
-    "Recording Tags",
-    "URL",
-    "Cacophony Index",
-    "Species Classification",
-  ];
-
-  if (includeAudiobait) {
-    labels.push(
-      "Audio Bait",
-      "Audio Bait Time",
-      "Mins Since Audio Bait",
-      "Audio Bait Volume",
-    );
-  }
-
-  const out: (string | number)[][] = [labels];
-  for (const r of result) {
-    const automatic_track_tags = new Set();
-    const human_track_tags = new Set();
-    for (const track of r.Tracks) {
-      for (const tag of track.TrackTags) {
-        const subject = tag.what;
-        if (tag.automatic) {
-          automatic_track_tags.add(subject);
-        } else {
-          human_track_tags.add(subject);
-        }
-      }
-    }
-
-    const recording_tags =
-      r.Tags.map((t: Tag) => [t.detail, ...(t.comment ? [t.comment] : [])]) ||
-      [];
-    const cacophonyIndex = getCacophonyIndex(r);
-
-    const thisRow = [
-      r.id,
-      r.type,
-      r.Group.groupName,
-      r.Device.deviceName,
-      r.Station ? r.Station.name : "",
-      moment(r.recordingDateTime).tz(config.timeZone).format("YYYY-MM-DD"),
-      moment(r.recordingDateTime).tz(config.timeZone).format("HH:mm:ss"),
-      r.location ? r.location.lat : "",
-      r.location ? r.location.lng : "",
-      r.duration,
-      r.batteryLevel,
-      r.comment,
-      r.Tracks.length,
-      formatTags(automatic_track_tags),
-      formatTags(human_track_tags),
-      formatTags(recording_tags),
-    ];
-    if (includeAudiobait) {
-      // FIXME: Do we have tes for this case anymore?
-      let audioBaitName = "";
-      let audioBaitTime = null;
-      let audioBaitDelta = null;
-      let audioBaitVolume = null;
-      const audioEvent = audioEvents[r.id];
-      if (audioEvent) {
-        audioBaitName = audioFileNames[audioEvent.fileId];
-        audioBaitTime = moment(audioEvent.timestamp);
-        audioBaitDelta = moment
-          .duration(
-            r.recordingDateTime.getTime() - audioBaitTime.dateTime.getTime(),
-          )
-          .asMinutes()
-          .toFixed(1);
-        audioBaitVolume = audioEvent.volume;
-      }
-
-      thisRow.push(
-        audioBaitName,
-        audioBaitTime
-          ? audioBaitTime.tz(config.timeZone).format("HH:mm:ss")
-          : "",
-        audioBaitDelta,
-        audioBaitVolume,
-      );
-    }
-
-    thisRow.push(`${recordingUrlBase}/${r.id.toString()}`, cacophonyIndex, "");
-    out.push(thisRow);
-  }
-  return out;
-}
-
 function getCacophonyIndex(recording: Recording): string | null {
   return (
     recording.cacophonyIndex?.map((val) => val.index_percent).join(";") || ""
@@ -1574,365 +1426,6 @@ export async function updateMetadata(recording: Recording, metadata: unknown) {
   recording.additionalMetadata = metadata;
   await recording.save();
 }
-
-// Returns a promise for the recordings visits query specified in the
-// request.
-export async function queryVisits(
-  userId: UserId,
-  options: RecordingQueryOptions,
-): Promise<{
-  visits: Visit[];
-  summary: DeviceSummary;
-  hasMoreVisits: boolean;
-  queryOffset: number;
-  totalRecordings: number;
-  numRecordings: number;
-  numVisits: number;
-}> {
-  const maxVisitQueryResults = 5000;
-  const requestVisits = options.limit || maxVisitQueryResults;
-  const queryMax = maxVisitQueryResults * 2;
-  const queryLimit = Math.min(requestVisits * 2, queryMax);
-  options = { ...options, order: null, limit: queryLimit };
-
-  const builder = await new Recording.queryBuilder().init(userId, options);
-  // FIXME: Check that this is actually valid in the generated SQL.
-  builder.query["distinct"] = true;
-
-  const devSummary = new DeviceSummary();
-  let numRecordings = 0;
-  let remainingVisits = requestVisits;
-  let totalCount, recordings, gotAllRecordings;
-
-  while (gotAllRecordings || remainingVisits > 0) {
-    if (totalCount) {
-      recordings = await Recording.findAll(builder.get());
-    } else {
-      const result = await Recording.findAndCountAll(builder.get());
-      totalCount = result.count;
-      recordings = result.rows;
-    }
-
-    numRecordings += recordings.length;
-    gotAllRecordings = recordings.length + builder.query.offset >= recordings;
-    if (recordings.length == 0) {
-      break;
-    }
-
-    devSummary.generateVisits(recordings, options.offset || 0);
-
-    if (!gotAllRecordings) {
-      devSummary.checkForCompleteVisits();
-    }
-
-    remainingVisits = requestVisits - devSummary.completeVisitsCount();
-    builder.query.limit = Math.min(remainingVisits * 2, queryMax);
-    builder.query.offset += recordings.length;
-  }
-
-  let queryOffset = 0;
-  // mark all as complete
-  if (gotAllRecordings) {
-    devSummary.markCompleted();
-  } else {
-    devSummary.removeIncompleteVisits();
-  }
-
-  for (const devId in devSummary.deviceMap) {
-    const devVisits = devSummary.deviceMap[devId];
-    if (devVisits.visitCount == 0) {
-      continue;
-    }
-    const events = (await Event.query(
-      userId,
-      devVisits.startTime.clone().startOf("day").toISOString(),
-      devVisits.endTime.toISOString(),
-      parseInt(devId),
-      0,
-      1000,
-      false,
-      { eventType: "audioBait" } as QueryOptions,
-      false,
-    )) as Event[];
-    if (events) {
-      devVisits.addAudioBaitEvents(events);
-    }
-  }
-
-  const audioFileIds = devSummary.allAudioFileIds();
-
-  const visits = devSummary.completeVisits();
-  visits.sort(function (a, b) {
-    return b.start > a.start ? 1 : -1;
-  });
-  // get the offset to use for future queries
-  queryOffset = devSummary.earliestIncompleteOffset();
-  if (queryOffset == null && visits.length > 0) {
-    queryOffset = visits[visits.length - 1].queryOffset + 1;
-  }
-
-  // Bulk look up file details of played audio events.
-  const audioFileNames = new Map();
-  for (const f of await File.getMultiple(Array.from(audioFileIds))) {
-    audioFileNames[f.id] = f.details.name;
-  }
-
-  // update the references in deviceMap
-  for (const visit of visits) {
-    for (const audioEvent of visit.audioBaitEvents) {
-      audioEvent.fileName =
-        audioFileNames[audioEvent.EventDetail.details.fileId];
-    }
-  }
-  return {
-    visits: visits,
-    summary: devSummary,
-    hasMoreVisits: !gotAllRecordings,
-    totalRecordings: totalCount,
-    queryOffset: queryOffset,
-    numRecordings: numRecordings,
-    numVisits: visits.length,
-  };
-}
-
-function reportDeviceVisits(deviceMap: DeviceVisitMap) {
-  const device_summary_out = [
-    [
-      "Device ID",
-      "Device Name",
-      "Group Name",
-      "First Visit",
-      "Last Visit",
-      "# Visits",
-      "Avg Events per Visit",
-      "Animal",
-      "Visits",
-      "Using Audio Bait",
-      "", //needed for visits columns to show
-      "",
-      "",
-    ],
-  ];
-  for (const [deviceId, deviceVisits] of Object.entries(deviceMap)) {
-    const animalSummary = deviceVisits.animalSummary();
-
-    device_summary_out.push([
-      deviceId,
-      deviceVisits.deviceName,
-      deviceVisits.groupName,
-      deviceVisits.startTime.tz(config.timeZone).format("HH:mm:ss"),
-      deviceVisits.endTime.tz(config.timeZone).format("HH:mm:ss"),
-      deviceVisits.visitCount.toString(),
-      (
-        Math.round((10 * deviceVisits.eventCount) / deviceVisits.visitCount) /
-        10
-      ).toString(),
-      Object.keys(animalSummary).join(";"),
-      Object.values(animalSummary)
-        .map((summary: VisitSummary) => summary.visitCount)
-        .join(";"),
-      deviceVisits.audioBait.toString(),
-    ]);
-
-    for (const animal in animalSummary) {
-      const summary = animalSummary[animal];
-      device_summary_out.push([
-        deviceId,
-        summary.deviceName,
-        summary.groupName,
-        summary.start.tz(config.timeZone).format("HH:mm:ss"),
-        summary.end.tz(config.timeZone).format("HH:mm:ss"),
-        summary.visitCount.toString(),
-        (summary.visitCount / summary.eventCount).toString(),
-        animal,
-        summary.visitCount.toString(),
-        deviceVisits.audioBait.toString(),
-      ]);
-    }
-  }
-  return device_summary_out;
-}
-
-export async function reportVisits(
-  userId: UserId,
-  options: RecordingQueryOptions,
-) {
-  const results = await queryVisits(userId, options);
-  const out = reportDeviceVisits(results.summary.deviceMap);
-  const recordingUrlBase = config.server.recordingUrlBase || "";
-  out.push([]);
-  out.push([
-    "Visit ID",
-    "Group",
-    "Device",
-    "Type",
-    "AssumedTag",
-    "What",
-    "Rec ID",
-    "Date",
-    "Start",
-    "End",
-    "Confidence",
-    "# Events",
-    "Audio Played",
-    "URL",
-  ]);
-
-  for (const visit of results.visits) {
-    addVisitRow(out, visit);
-
-    const audioEvents = visit.audioBaitEvents.sort(function (a, b) {
-      return moment(a.dateTime) > moment(b.dateTime) ? 1 : -1;
-    });
-
-    let audioEvent = audioEvents.pop();
-    let audioTime, audioBaitBefore;
-    if (audioEvent) {
-      audioTime = moment(audioEvent.dateTime);
-    }
-    // add visit events and audio bait in descending order
-    for (const event of visit.events) {
-      audioBaitBefore = audioTime && audioTime.isAfter(event.start);
-      while (audioBaitBefore) {
-        addAudioBaitRow(out, audioEvent);
-        audioEvent = audioEvents.pop();
-        if (audioEvent) {
-          audioTime = moment(audioEvent.dateTime);
-        } else {
-          audioTime = null;
-        }
-        audioBaitBefore = audioTime && audioTime.isAfter(event.start);
-      }
-      addEventRow(out, event, recordingUrlBase);
-    }
-    if (audioEvent) {
-      audioEvents.push(audioEvent);
-    }
-    for (const audioEvent of audioEvents.reverse()) {
-      addAudioBaitRow(out, audioEvent);
-    }
-  }
-  return out;
-}
-
-function addVisitRow(out: unknown[][], visit: Visit) {
-  out.push([
-    visit.visitID.toString(),
-    visit.deviceName,
-    visit.groupName,
-    "Visit",
-    visit.what,
-    visit.what,
-    "",
-    visit.start.tz(config.timeZone).format("YYYY-MM-DD"),
-    visit.start.tz(config.timeZone).format("HH:mm:ss"),
-    visit.end.tz(config.timeZone).format("HH:mm:ss"),
-    "",
-    visit.events.length.toString(),
-    visit.audioBaitVisit.toString(),
-    "",
-  ]);
-}
-
-function addEventRow(
-  out: unknown[][],
-  event: VisitEvent,
-  recordingUrlBase: string,
-) {
-  out.push([
-    "",
-    "",
-    "",
-    "Event",
-    event.assumedTag,
-    event.trackTag ? event.trackTag.what : "",
-    event.recID.toString(),
-    event.start.tz(config.timeZone).format("YYYY-MM-DD"),
-    event.start.tz(config.timeZone).format("HH:mm:ss"),
-
-    event.end.tz(config.timeZone).format("HH:mm:ss"),
-    event.trackTag ? event.trackTag.confidence + "%" : "",
-    "",
-    "",
-    `${recordingUrlBase}/${event.recID.toString()}/${event.trackID.toString()}`,
-  ]);
-}
-
-function addAudioBaitRow(out: unknown[][], audioBait: Event) {
-  let audioPlayed = audioBait.fileName;
-  if (audioBait.EventDetail.details.volume) {
-    audioPlayed += " vol " + audioBait.EventDetail.details.volume;
-  }
-  out.push([
-    "",
-    "",
-    "",
-    "Audio Bait",
-    "",
-    audioBait.fileName,
-    "",
-    moment(audioBait.dateTime).tz(config.timeZone).format("YYYY-MM-DD"),
-    moment(audioBait.dateTime).tz(config.timeZone).format("HH:mm:ss"),
-    "",
-    "",
-    "",
-    audioPlayed,
-    "",
-  ]);
-}
-
-// Gets a single recording with associated tables required to calculate a visit
-// calculation
-export async function _getRecordingForVisit(id: number): Promise<Recording> {
-  const query = {
-    include: [
-      {
-        model: Group,
-        attributes: ["groupName"],
-      },
-      {
-        model: Track,
-        where: {
-          archivedAt: null,
-        },
-        attributes: ["id", "startSeconds", "endSeconds"],
-        required: false,
-        include: [
-          {
-            model: TrackTag,
-            attributes: [
-              "what",
-              "automatic",
-              "TrackId",
-              "confidence",
-              "path",
-              "model",
-            ],
-          },
-        ],
-      },
-      {
-        model: Device,
-        attributes: ["deviceName", "id"],
-      },
-      {
-        model: Station,
-        attributes: ["name", "id"],
-      },
-    ],
-    attributes: [
-      "id",
-      "recordingDateTime",
-      "DeviceId",
-      "StationId",
-      "GroupId",
-      "rawFileKey",
-      "fileKey",
-    ],
-  };
-  return await Recording.findByPk(id, query);
-}
-
 export async function sendAlerts(recId: RecordingId, debug = false) {
   // Get the most common non-false-positive tag for this recording, then get the track with that tag
   // that has the best thumbnail.

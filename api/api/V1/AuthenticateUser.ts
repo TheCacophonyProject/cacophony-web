@@ -388,6 +388,9 @@ export default function (app: Application, baseUrl: string) {
         const isNewEndpoint = request.path.endsWith("reset-password");
         if (isNewEndpoint) {
           const token = getPasswordResetToken(user.id, user.password);
+
+          // FIXME: Once we make browse-next the default, we need to make it so we don't
+          //  rely on host headers - sidekick sends this header to make sure we target browse-next currently.
           const sendingSuccess = await sendPasswordResetEmail(
             request.headers.host,
             token,

@@ -6,7 +6,7 @@ import {
   getCanonicalTrackTag,
   NON_ANIMAL_TAGS,
   UNIDENTIFIED_TAGS,
-} from "./Visits.js";
+} from "./tagUtil.js";
 import { ClientError } from "../customErrors.js";
 import type { StationId, TrackId, UserId } from "@typedefs/api/common.js";
 import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
@@ -14,7 +14,6 @@ import Sequelize, { Op } from "sequelize";
 import type { RecordingProcessingState } from "@typedefs/api/consts.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { Station } from "@models/Station.js";
-import type { ApiTrackTagResponse } from "@typedefs/api/trackTag.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
 

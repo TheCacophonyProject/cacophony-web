@@ -24,9 +24,12 @@ import Sequelize, {
   NonAttribute,
 } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
-import type { Device } from "./Device.js";
-import type { DetailSnapshot, DetailSnapshotId } from "./DetailSnapshot.js";
+import { Device } from "./Device.js";
+import type { DetailSnapshotId } from "./DetailSnapshot.js";
+import { DetailSnapshot } from "./DetailSnapshot.js";
 import type { DeviceId, EventId, UserId } from "@typedefs/api/common.js";
+import { User } from "@models/User.js";
+import { Group } from "@models/Group.js";
 
 const Op = Sequelize.Op;
 
@@ -61,7 +64,7 @@ export class Event extends ModelStaticCommon<Event> {
    * arguments given.
    */
   static async query(
-    userId?: UserId,
+    userId: UserId,
     startTime?: string,
     endTime?: string,
     deviceId?: DeviceId,
@@ -90,50 +93,34 @@ export class Event extends ModelStaticCommon<Event> {
       }
     }
 
-    if (deviceId) {
-      where.DeviceId = deviceId;
-    }
     const eventWhere: Sequelize.WhereOptions = {};
     if (options && options.eventType) {
-      if (Array.isArray(options.eventType)) {
-        eventWhere.type = {};
-        eventWhere.type[Op.in] = options.eventType;
-      } else {
-        eventWhere.type = options.eventType;
-      }
+      eventWhere.type = options.eventType;
     }
-
     let order: Sequelize.Order = ["dateTime"];
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-    const models = this.sequelize.models;
-    let user;
-    if (userId) {
-      // NOTE: This function is sometimes called by scripts without a user
-      user = await models.User.findByPk(userId);
+    const user = await User.findByPk(userId);
+    if (deviceId) {
+      where.DeviceId = deviceId;
+    } else if (!user.hasGlobalRead()) {
+      const allDeviceIds = await user.getDeviceIds();
+      where.DeviceId = { [Op.in]: allDeviceIds };
     }
     return await this[includeCount ? "findAndCountAll" : "findAll"]({
-      where: {
-        [Op.and]: [
-          where, // User query
-          // FIXME: Move permissions stuff to middleware
-          (options && options.admin) || (options && options.admin && !!deviceId)
-            ? ""
-            : await user.getWhereDeviceVisible(), // can only see devices they should
-        ],
-      },
+      where,
       order,
       include: [
         {
-          model: models.DetailSnapshot,
+          model: DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
           where: eventWhere,
         },
         {
           required: !!deviceId,
-          model: models.Device,
+          model: Device,
           attributes: ["deviceName"],
         },
       ],
@@ -146,60 +133,23 @@ export class Event extends ModelStaticCommon<Event> {
   /**
    * Return the latest event of each type grouped by device id
    */
-  static async latestEvents(
-    userId?: UserId,
-    deviceId?: DeviceId,
-    options?: QueryOptions,
-  ): Promise<Event[]> {
-    const where: Sequelize.WhereOptions = {};
-
-    if (deviceId) {
-      where.DeviceId = deviceId;
-    }
-    const eventWhere: Sequelize.WhereOptions = {};
-    if (options && options.eventType) {
-      if (Array.isArray(options.eventType)) {
-        eventWhere.type = {};
-        eventWhere.type[Op.in] = options.eventType;
-      } else {
-        eventWhere.type = options.eventType;
-      }
-    }
-
-    const order: Sequelize.Order = [
-      ["EventDetail", "type", "DESC"],
-      ["DeviceId", "DESC"],
-      ["dateTime", "DESC"],
-    ];
-    const models = this.sequelize.models;
-    let user;
-    if (userId) {
-      // NOTE - This function is called by scripts without supplying a user.
-      user = await models.User.findByPk(userId);
-    }
+  static async latestEventsOfTypes(eventTypes: string[]): Promise<Event[]> {
+    // This is called by the stopped-devices report, and only ever called as admin.
     return this.findAll({
-      where: {
-        [Op.and]: [
-          where, // User query
-          // FIXME: Move permissions stuff to middleware (though this function is invoked via scripts also, so maybe not?)
-          // FIXME: Weird behaviour that this is required if a deviceId is supplied for tests to pass...
-          options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
-        ],
-      },
-      order,
+      where: {},
       include: [
         {
-          model: models.DetailSnapshot,
+          model: DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
-          where: eventWhere,
+          where: { [Op.in]: eventTypes } as Sequelize.WhereOptions,
         },
         {
-          model: models.Device,
+          model: Device,
           attributes: ["id", "deviceName", "GroupId"],
           include: [
             {
-              model: models.Group,
+              model: Group,
               attributes: ["groupName", "id"],
             },
           ],
@@ -207,7 +157,6 @@ export class Event extends ModelStaticCommon<Event> {
       ],
       attributes: [
         // the 1 is some kind of hack that makes this work in sequelize
-        // FIXME: Is this still required now that we explicitly provide an alias?
         [
           Sequelize.literal(
             'DISTINCT ON("Event"."DeviceId", "EventDetail"."type") 1',
@@ -218,22 +167,25 @@ export class Event extends ModelStaticCommon<Event> {
         "dateTime",
         "DeviceId",
       ],
+      order: [
+        ["EventDetail", "type", "DESC"],
+        ["DeviceId", "DESC"],
+        ["dateTime", "DESC"],
+      ],
     });
   }
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    Event.belongsTo(models.DetailSnapshot, {
+    this.belongsTo(DetailSnapshot, {
       as: "EventDetail",
       foreignKey: "EventDetailId",
     });
-    Event.belongsTo(models.Device);
+    this.belongsTo(Device);
   }
 }
 
 export interface QueryOptions {
-  eventType?: string | string[];
-  admin?: boolean;
+  eventType?: string;
   useCreatedDate?: boolean;
 }
 

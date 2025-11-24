@@ -9,7 +9,7 @@ import {
   getCommonAncestorForTags,
   NON_ANIMAL_TAGS,
   UNIDENTIFIED_TAGS,
-} from "@api/V1/Visits.js";
+} from "@api/V1/tagUtil.js";
 import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
 import { TrackTag } from "@models/TrackTag.js";

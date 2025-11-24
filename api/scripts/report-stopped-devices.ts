@@ -85,11 +85,7 @@ async function main() {
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
-  const stoppedEvents = await Event.latestEvents(null, null, {
-    useCreatedDate: false,
-    admin: true,
-    eventType: ["stop-reported"],
-  });
+  const stoppedEvents = await Event.latestEventsOfTypes(["stop-reported"]);
 
   // filter devices which have already been alerted on
   const devices = (await Device.stoppedDevices()).filter((device) => {

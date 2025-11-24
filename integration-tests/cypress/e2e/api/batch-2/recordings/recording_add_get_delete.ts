@@ -629,12 +629,12 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.log("Delete recording");
     cy.apiRecordingDelete("raGroupAdmin", "raRecording1");
 
-    cy.log("Check /recordings/report ignores deleted recording");
-    cy.apiRecordingsReportCheck(
-      "raGroupAdmin",
-      { where: {}, order: "[[\"id\", \"ASC\"]]" },
-      [],
-    );
+    // cy.log("Check /recordings/report ignores deleted recording");
+    // cy.apiRecordingsReportCheck(
+    //   "raGroupAdmin",
+    //   { where: {}, order: "[[\"id\", \"ASC\"]]" },
+    //   [],
+    // );
 
     cy.log("Check /recordings/id: ignores deleted recording");
     cy.apiRecordingCheck(

@@ -136,19 +136,13 @@ export class User extends ModelStaticCommon<User> {
   hasGlobalWrite() {
     return UserGlobalPermission.Write === this.globalPermission;
   }
+
   hasGlobalRead() {
     return [UserGlobalPermission.Read, UserGlobalPermission.Write].includes(
       this.globalPermission,
     );
   }
 
-  async getWhereDeviceVisible() {
-    if (this.hasGlobalRead()) {
-      return null;
-    }
-    const allDeviceIds = await this.getDeviceIds();
-    return { DeviceId: { [Op.in]: allDeviceIds } };
-  }
   async getDeviceIds(): Promise<DeviceId[]> {
     const devices = await Device.findAll({
       where: {},

@@ -103,9 +103,6 @@ import {
   getTrackTags,
   getTrackTagsCount,
   queryRecordings,
-  queryVisits,
-  reportRecordings,
-  reportVisits,
   signedToken,
 } from "./recordingUtil.js";
 import { serverErrorResponse, successResponse } from "./responseUtil.js";
@@ -595,72 +592,6 @@ export default (app: Application, baseUrl: string) => {
       uploadGenericRecordingOnBehalfOfDevice()(request, response, next),
   );
 
-  // FIXME - Should we just delete this now?
-  /**
-   * @api {get} /api/v1/recordings/visits
-   * Query available recordings and generate visits
-   * @apiName QueryVisits
-   * @apiGroup Recordings
-   *
-   * @apiParam {string} view-mode (Optional) - can be set to "user"
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiUse BaseQueryParams
-   * @apiUse RecordingOrder
-   * @apiUse MoreQueryParams
-   * @apiUse V1ResponseSuccessQuery
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/visits`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      query("view-mode").optional().equals("user"),
-      query("type").optional().isIn(["thermalRaw", "audio"]),
-      query("processingState")
-        .optional()
-        .isIn(Object.values(RecordingProcessingState)),
-      query("where").isJSON().optional(),
-      integerOf(query("offset")).optional(),
-      integerOf(query("limit")).optional(),
-      query("order").isJSON().optional(),
-      query("tags").isJSON().optional(),
-      query("tagMode")
-        .optional()
-        .custom((value) => {
-          return Recording.isValidTagMode(value);
-        }),
-      query("filterOptions").isJSON().optional(),
-    ]),
-    parseJSONField(query("order")),
-    parseJSONField(query("where")),
-    parseJSONField(query("tags")),
-    parseJSONField(query("filterOptions")), // FIXME - this doesn't seem to be used.
-    async (request: Request, response: Response) => {
-      const { viewAsSuperUser, where, tags = [] } = response.locals;
-      const { tagMode, offset, limit } = request.query;
-      const result = await queryVisits(response.locals.requestUser.id, {
-        viewAsSuperUser,
-        where,
-        tagMode: tagMode as TagMode,
-        tags,
-        offset: offset && parseInt(offset as string),
-        limit: limit && parseInt(limit as string),
-      });
-      return successResponse(response, "Completed query.", {
-        limit: request.query.limit,
-        offset: request.query.offset,
-        numRecordings: result.numRecordings,
-        numVisits: result.numVisits,
-        queryOffset: result.queryOffset,
-        totalRecordings: result.totalRecordings,
-        hasMoreVisits: result.hasMoreVisits,
-        visits: result.visits,
-        summary: result.summary.generateAnimalSummary(),
-      });
-    },
-  );
-
   /**
    * @api {get} /api/v1/recordings Query available recordings
    * @apiName QueryRecordings
@@ -1119,101 +1050,101 @@ export default (app: Application, baseUrl: string) => {
     },
   );
 
-  // FIXME: deprecate this once browse is deprecated.
-  /**
-   * @api {get} /api/v1/recordings/report
-   * Generate report for a set of recordings
-   * @apiName Report
-   * @apiGroup Recordings
-   * @apiDescription Parameters are as per GET /api/V1/recordings. On
-   * success (status 200), the response body will contain CSV
-   * formatted details of the selected recordings.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiParam {String} [jwt] Signed JWT as produced by the
-   * [Token](#api-Authentication-Token) endpoint
-   * @apiParam {string} [type] Optional type of report either recordings or
-   * visits. Recordings is default.
-   * @apiUse BaseQueryParams
-   * @apiUse RecordingOrder
-   * @apiUse MoreQueryParams
-   * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
-   * @apiParam {boolean} [audiobait] To add audiobait to a recording query set
-   * this to true.
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/report`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      query("type").isString().optional().isIn(["recordings", "visits"]),
-      query("where").isJSON().optional(),
-      query("jwt").optional(),
-      integerOf(query("offset")).optional(),
-      integerOf(query("limit")).optional(),
-      query("audiobait").isBoolean().optional(),
-      query("order").isJSON().optional(),
-      query("tags").isJSON().optional(),
-      query("exclusive").default(false).isBoolean().toBoolean(),
-      query("tagMode")
-        .optional()
-        .custom((value) => {
-          return Recording.isValidTagMode(value);
-        }),
-      query("view-mode").optional().equals("user"),
-      query("deleted").default(false).isBoolean().toBoolean(),
-      // middleware.parseJSON("filterOptions", query).optional(),
-    ]),
-    parseJSONField(query("order")),
-    parseJSONField(query("where")),
-    parseJSONField(query("tags")),
-    async (request: Request, response: Response) => {
-      // FIXME - deprecate and generate report client-side from other
-      // available API data.
-      if ("deleted" in request.query) {
-        if (request.query.deleted) {
-          response.locals.where.deletedAt = { [Op.ne]: null };
-        } else {
-          response.locals.where.deletedAt = { [Op.eq]: null };
-        }
-      }
-
-      // FIXME: !!! Does this ever get called?
-
-      // 10 minute timeout because the query can take a while to run
-      // when the result set is large.
-      const { viewAsSuperUser, where, order, tags = [] } = response.locals;
-      const { tagMode, offset, limit, audioBait, exclusive } = request.query;
-      const options = {
-        viewAsSuperUser,
-        where,
-        tags,
-        tagMode: tagMode as TagMode,
-        offset: offset && parseInt(offset as string),
-        limit: limit && parseInt(limit as string),
-      };
-
-      let rows;
-      if (request.query.type == "visits") {
-        rows = await reportVisits(response.locals.requestUser.id, options);
-      } else {
-        rows = await reportRecordings(
-          response.locals.requestUser.id,
-          Boolean(audioBait),
-          {
-            ...options,
-            order,
-            exclusive: Boolean(exclusive),
-          },
-        );
-      }
-      response.status(HttpStatusCode.Ok).set({
-        "Content-Type": "text/csv",
-        "Content-Disposition": "attachment; filename=recordings.csv",
-      });
-      csv.writeToStream(response, rows);
-    },
-  );
+  // // FIXME: deprecate this once browse is deprecated.
+  // /**
+  //  * @api {get} /api/v1/recordings/report
+  //  * Generate report for a set of recordings
+  //  * @apiName Report
+  //  * @apiGroup Recordings
+  //  * @apiDescription Parameters are as per GET /api/V1/recordings. On
+  //  * success (status 200), the response body will contain CSV
+  //  * formatted details of the selected recordings.
+  //  *
+  //  * @apiUse V1UserAuthorizationHeader
+  //  * @apiParam {String} [jwt] Signed JWT as produced by the
+  //  * [Token](#api-Authentication-Token) endpoint
+  //  * @apiParam {string} [type] Optional type of report either recordings or
+  //  * visits. Recordings is default.
+  //  * @apiUse BaseQueryParams
+  //  * @apiUse RecordingOrder
+  //  * @apiUse MoreQueryParams
+  //  * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
+  //  * @apiParam {boolean} [audiobait] To add audiobait to a recording query set
+  //  * this to true.
+  //  * @apiUse V1ResponseError
+  //  */
+  // app.get(
+  //   `${apiUrl}/report`,
+  //   extractJwtAuthorizedUser,
+  //   validateFields([
+  //     query("type").isString().optional().isIn(["recordings", "visits"]),
+  //     query("where").isJSON().optional(),
+  //     query("jwt").optional(),
+  //     integerOf(query("offset")).optional(),
+  //     integerOf(query("limit")).optional(),
+  //     query("audiobait").isBoolean().optional(),
+  //     query("order").isJSON().optional(),
+  //     query("tags").isJSON().optional(),
+  //     query("exclusive").default(false).isBoolean().toBoolean(),
+  //     query("tagMode")
+  //       .optional()
+  //       .custom((value) => {
+  //         return Recording.isValidTagMode(value);
+  //       }),
+  //     query("view-mode").optional().equals("user"),
+  //     query("deleted").default(false).isBoolean().toBoolean(),
+  //     // middleware.parseJSON("filterOptions", query).optional(),
+  //   ]),
+  //   parseJSONField(query("order")),
+  //   parseJSONField(query("where")),
+  //   parseJSONField(query("tags")),
+  //   async (request: Request, response: Response) => {
+  //     // FIXME - deprecate and generate report client-side from other
+  //     // available API data.
+  //     if ("deleted" in request.query) {
+  //       if (request.query.deleted) {
+  //         response.locals.where.deletedAt = { [Op.ne]: null };
+  //       } else {
+  //         response.locals.where.deletedAt = { [Op.eq]: null };
+  //       }
+  //     }
+  //
+  //     // FIXME: !!! Does this ever get called?
+  //
+  //     // 10 minute timeout because the query can take a while to run
+  //     // when the result set is large.
+  //     const { viewAsSuperUser, where, order, tags = [] } = response.locals;
+  //     const { tagMode, offset, limit, audioBait, exclusive } = request.query;
+  //     const options = {
+  //       viewAsSuperUser,
+  //       where,
+  //       tags,
+  //       tagMode: tagMode as TagMode,
+  //       offset: offset && parseInt(offset as string),
+  //       limit: limit && parseInt(limit as string),
+  //     };
+  //
+  //     let rows;
+  //     if (request.query.type == "visits") {
+  //       rows = await reportVisits(response.locals.requestUser.id, options);
+  //     } else {
+  //       rows = await reportRecordings(
+  //         response.locals.requestUser.id,
+  //         Boolean(audioBait),
+  //         {
+  //           ...options,
+  //           order,
+  //           exclusive: Boolean(exclusive),
+  //         },
+  //       );
+  //     }
+  //     response.status(HttpStatusCode.Ok).set({
+  //       "Content-Type": "text/csv",
+  //       "Content-Disposition": "attachment; filename=recordings.csv",
+  //     });
+  //     csv.writeToStream(response, rows);
+  //   },
+  // );
 
   /**
    * @api {get} /api/v1/recordings/:id Get a recording
