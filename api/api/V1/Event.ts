@@ -22,7 +22,6 @@ import {
   requestWrapper,
 } from "../middleware.js";
 import modelsInit from "@models/index.js";
-import type { QueryOptions } from "@models/Event.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -482,10 +481,6 @@ export default function (app: Application, baseUrl: string) {
       const query = request.query;
       const offset: number =
         (query.offset && (query.offset as unknown as number)) || 0;
-      let options: QueryOptions;
-      if (query.type) {
-        options = { eventType: query.type } as QueryOptions;
-      }
       const includeCount = query["include-count"] as unknown as boolean;
       const result = await Event.query(
         response.locals.requestUser.id,
@@ -495,7 +490,7 @@ export default function (app: Application, baseUrl: string) {
         offset,
         query.limit as unknown as number,
         query.latest as unknown as boolean,
-        options,
+        query.type as unknown as string,
         includeCount,
       );
       const payload = {

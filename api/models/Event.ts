@@ -71,7 +71,7 @@ export class Event extends ModelStaticCommon<Event> {
     offset?: number,
     limit?: number,
     latestFirst?: boolean,
-    options?: QueryOptions,
+    eventType?: string,
     includeCount?: boolean,
   ): Promise<Event[] | { rows: Event[]; count: number }> {
     const where: Sequelize.WhereOptions = {};
@@ -79,23 +79,19 @@ export class Event extends ModelStaticCommon<Event> {
     limit = limit || 100;
 
     if (startTime || endTime) {
-      let dateTime;
-      if (options && options.useCreatedDate) {
-        dateTime = where.createdAt = {};
-      } else {
-        dateTime = where.dateTime = {};
-      }
+      const dateTime = {};
       if (startTime) {
         dateTime[Op.gte] = startTime;
       }
       if (endTime) {
         dateTime[Op.lt] = endTime;
       }
+      where.dateTime = dateTime;
     }
 
     const eventWhere: Sequelize.WhereOptions = {};
-    if (options && options.eventType) {
-      eventWhere.type = options.eventType;
+    if (eventType) {
+      eventWhere.type = eventType;
     }
     let order: Sequelize.Order = ["dateTime"];
     if (latestFirst) {
@@ -183,12 +179,6 @@ export class Event extends ModelStaticCommon<Event> {
     this.belongsTo(Device);
   }
 }
-
-export interface QueryOptions {
-  eventType?: string;
-  useCreatedDate?: boolean;
-}
-
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
     id: {

@@ -38,7 +38,7 @@ export interface CreateStationData {
   lng: number;
 }
 
-export enum StationInterval {
+export enum TimeInterval {
   Years = "years",
   Months = "months",
   Weeks = "weeks",
@@ -152,7 +152,7 @@ export class Station extends ModelStaticCommon<Station> {
     stationId: StationId,
     from: Date,
     steps: number,
-    interval: StationInterval,
+    interval: TimeInterval,
   ): Promise<{ stationId: StationId; from: string; cacophonyIndex: number }[]> {
     const counts = [];
     let stepSizeInMs;
@@ -237,7 +237,7 @@ export class Station extends ModelStaticCommon<Station> {
     stationId: StationId,
     from: Date,
     steps: number,
-    interval: StationInterval,
+    interval: TimeInterval,
     type: RecordingType,
   ): Promise<
     { stationId: StationId; from: string; what: string; count: number }[]

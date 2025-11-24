@@ -41,6 +41,7 @@ import { User } from "@models/User.js";
 import { ModelStaticCommon } from "@models/index.js";
 import { Event } from "./Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { GroupUsers } from "@models/GroupUsers.js";
 //
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -126,6 +127,46 @@ export class Alert extends ModelStaticCommon<Alert> {
     tagPath: string | null = null,
     asAdmin = false,
   ): Promise<Alert[]> {
+    let groupId: GroupId;
+    if (!where["GroupId"]) {
+      if (where["DeviceId"]) {
+        const device = await Device.findOne({
+          where: { id: where["DeviceId"] },
+          include: [{ model: Group, attributes: ["id"] }],
+        });
+        if (device) {
+          groupId = device.Group.id;
+        } else {
+          logger.error(`Couldn't find Group for device ${where["DeviceId"]}`);
+          return [];
+        }
+      } else if (where["StationId"]) {
+        const station = await Station.findOne({
+          where: { id: where["StationId"] },
+          include: [{ model: Group, attributes: ["id"] }],
+        });
+        if (station) {
+          groupId = station.Group.id;
+        } else {
+          logger.error(`Couldn't find Group for station ${where["StationId"]}`);
+          return [];
+        }
+      }
+    } else {
+      groupId = where["GroupId"];
+    }
+    let groupUserIds: UserId[] = [];
+    if (groupId) {
+      groupUserIds = (await Group.getActiveUsers(groupId)).map(
+        (user) => user.UserId,
+      );
+    }
+    if (userId !== null && groupId && !groupUserIds.includes(userId)) {
+      logger.warning(
+        "Alert.query called with non-group-member, or non-active group member",
+      );
+      return [];
+    }
     if (userId === null && !asAdmin) {
       logger.warning(
         "Alert.query called without userId specified, as non-admin",
@@ -143,12 +184,19 @@ export class Alert extends ModelStaticCommon<Alert> {
       // Only return user details if we're an admin.
       whereClause.include = [
         {
-          model: this.sequelize.models.User,
+          model: User,
           attributes: ["id", "userName", "email", "emailConfirmed", "settings"],
         },
       ];
     }
-    const alerts: Alert[] = await Alert.findAll<Alert>(whereClause);
+    const alerts: Alert[] = (await Alert.findAll<Alert>(whereClause)).filter(
+      (alert) => {
+        if (alert.User && groupId && !groupUserIds.includes(alert.User.id)) {
+          return false;
+        }
+        return true;
+      },
+    );
     if (tagPath) {
       // check that any of the alert conditions are met
       return alerts.filter(({ conditions }) =>
@@ -206,23 +254,17 @@ export class Alert extends ModelStaticCommon<Alert> {
   // or are further up the hierarchy and have not been triggered already (are active)
   static async getActiveAlerts(
     tagPath: string,
-    deviceId?: DeviceId,
-    stationId?: StationId,
-    groupId?: GroupId,
+    deviceId: DeviceId,
+    stationId: StationId,
+    groupId: GroupId,
   ): Promise<Alert[]> {
-    const deviceOrLocationOrProject = [];
-    if (deviceId) {
-      deviceOrLocationOrProject.push({ DeviceId: deviceId });
-    }
-    if (stationId) {
-      deviceOrLocationOrProject.push({ StationId: stationId });
-    }
-    if (groupId) {
-      deviceOrLocationOrProject.push({ GroupId: groupId });
-    }
     return Alert.query(
       {
-        [Op.or]: deviceOrLocationOrProject,
+        [Op.or]: [
+          { DeviceId: deviceId },
+          { StationId: stationId },
+          { GroupId: groupId },
+        ],
         lastAlert: {
           [Op.or]: {
             [Op.eq]: null,

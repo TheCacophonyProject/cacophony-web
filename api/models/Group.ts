@@ -23,7 +23,6 @@ import Sequelize, {
   CreationOptional,
   DataTypes,
   HasMany,
-  HasManyAddAssociationMixin,
   HasManyGetAssociationsMixin,
   NonAttribute,
 } from "sequelize";
@@ -31,12 +30,18 @@ import { Op } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import { User } from "./User.js";
 import type { CreateStationData, Station } from "./Station.js";
-import type { GroupId, StationId, UserId } from "@typedefs/api/common.js";
+import type {
+  DeviceId,
+  GroupId,
+  StationId,
+  UserId,
+} from "@typedefs/api/common.js";
 import type { ApiGroupSettings } from "@typedefs/api/group.js";
 import { locationsAreEqual } from "@models/util/locationUtils.js";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { Recording } from "@models/Recording.js";
 import { Device } from "@models/Device.js";
+import { Alert } from "@models/Alert.js";
 
 export const stationLocationHasChanged = (
   oldStation: Station,
@@ -56,6 +61,7 @@ export class Group extends ModelStaticCommon<Group> {
   declare addUser: BelongsToManyAddAssociationMixin<User, UserId>;
   declare getUsers: BelongsToManyGetAssociationsMixin<User>; // , UserId, GroupUsers
   declare getStations: HasManyGetAssociationsMixin<Station>;
+  declare getDevices: HasManyGetAssociationsMixin<Device>;
 
   declare Users?: NonAttribute<User[]>;
 
@@ -65,6 +71,17 @@ export class Group extends ModelStaticCommon<Group> {
     Recordings: HasMany<Recording>;
     Devices: HasMany<Device>;
   };
+
+  static async getActiveUsers(groupId: GroupId): Promise<GroupUsers[]> {
+    return await GroupUsers.findAll({
+      where: {
+        GroupId: groupId,
+        removedAt: { [Op.eq]: null },
+        pending: { [Op.eq]: null },
+      },
+      attributes: ["UserId"],
+    });
+  }
 
   static addAssociations() {
     const models = this.sequelize.models;
@@ -190,6 +207,31 @@ export class Group extends ModelStaticCommon<Group> {
 
     if (groupUser === null) {
       return { removed: false, wasPending: false };
+    }
+
+    // Remove all animal alerts for this user that relate to this group.
+    const alerts = await Alert.query({}, userToRemove.id);
+    if (alerts.length !== 0) {
+      const alertsToRemove = [];
+      const groupDevices: DeviceId[] = (await group.getDevices()).map(
+        (device) => device.id,
+      );
+      const groupStations: StationId[] = (await group.getStations()).map(
+        (station) => station.id,
+      );
+      for (const alert of alerts) {
+        // Check if the alert belongs to this group
+        if (alert.DeviceId && groupDevices.includes(alert.DeviceId)) {
+          alertsToRemove.push(alert);
+        } else if (alert.StationId && groupStations.includes(alert.StationId)) {
+          alertsToRemove.push(alert);
+        } else if (alert.GroupId && group.id === alert.GroupId) {
+          alertsToRemove.push(alert);
+        }
+      }
+      if (alertsToRemove.length !== 0) {
+        await Promise.all(alertsToRemove.map((alert) => alert.destroy()));
+      }
     }
 
     if (groupUser.pending !== null) {

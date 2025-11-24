@@ -1493,6 +1493,9 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
   ) {
     return;
   }
+
+  // FIXME: Logic for getting best thumbnail for a recording duplicated with thumbnail endpoint
+  //  Also, we're not loading track metadata to make the decision.
   const tagCounts: Record<
     string,
     { count: number; tracks: { track: Track; trackTag: TrackTag }[] }
@@ -1549,11 +1552,13 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
   const matchedTrack: Track = bestTrack.track;
   const matchedTag: TrackTag = bestTrack.trackTag;
   // Find the hierarchy for the matchedTag
+
+  // FIXME: Don't calculate best track thumbnail etc if there are no possible alerts for recording?
   const alerts: Alert[] = await Alert.getActiveAlerts(
     matchedTag.path,
-    recording.DeviceId || undefined,
-    recording.StationId || undefined,
-    recording.GroupId || undefined,
+    recording.DeviceId,
+    recording.StationId,
+    recording.GroupId,
   );
   if (alerts.length !== 0) {
     const thumbnail = await getThumbnail(recording, matchedTrack.id);
@@ -1653,7 +1658,7 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
 
 // TODO: This would be to send email alerts when we don't get recordings uploaded, we just get classification events
 //  from i.e. a Lora node.
-export async function sendEventAlerts(
+export async function _sendEventAlerts(
   data: { what: string; conf: number; dateTimes?: IsoFormattedDateString[] },
   device: Device,
   eventDateTime: Date,
@@ -1667,7 +1672,12 @@ export async function sendEventAlerts(
     );
   let alerts: Alert[] = [];
   if (stationId) {
-    alerts = await Alert.getActiveAlerts(data.what, undefined, stationId);
+    alerts = await Alert.getActiveAlerts(
+      data.what,
+      device.id,
+      stationId,
+      device.GroupId,
+    );
     for (const _alert of alerts) {
       // TODO:
       /*

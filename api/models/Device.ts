@@ -14,7 +14,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import bcrypt from "bcrypt";
-import { format } from "util";
 import {
   BelongsTo,
   CreationOptional,
@@ -25,10 +24,10 @@ import {
   Transaction,
 } from "sequelize";
 import Sequelize, { QueryTypes } from "sequelize";
-import { ModelsDictionary, ModelStaticCommon } from "./index.js";
+import { ModelStaticCommon } from "./index.js";
 import { Group } from "./Group.js";
 import logger from "../logging.js";
-import { DeviceType } from "@typedefs/api/consts.js";
+import { DeviceType, RecordingType } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
   GroupId,
@@ -36,7 +35,7 @@ import type {
   SaltId,
   ScheduleId,
 } from "@typedefs/api/common.js";
-import { Station } from "@models/Station.js";
+import { Station, TimeInterval } from "@models/Station.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { locationField } from "@models/util/util.js";
 import { ClientError } from "@api/customErrors.js";
@@ -97,77 +96,6 @@ export class Device extends ModelStaticCommon<Device> {
     return device === null;
   }
 
-  static async getFromId(id: DeviceId) {
-    return Device.findByPk(id);
-  }
-
-  static async findDevice(
-    deviceID: DeviceId,
-    deviceName: string,
-    groupName: string,
-    password: string,
-  ) {
-    // attempts to find a unique device by groupName, then deviceId (deviceName if int),
-    // then deviceName, finally password
-    let model = null;
-    if (deviceID && deviceID > 0) {
-      model = this.findByPk(deviceID);
-    } else if (groupName) {
-      model = await this.getFromNameAndGroup(deviceName, groupName);
-    } else {
-      const models = await this.allWithName(deviceName);
-      //check for deviceName being id
-      deviceID = parseExactInt(deviceName);
-      if (deviceID) {
-        model = this.findByPk(deviceID);
-      }
-
-      //check for distinct name
-      if (model == null) {
-        if (models.length == 1) {
-          model = models[0];
-        }
-      }
-
-      //check for device match from password
-      if (model == null && password) {
-        model = await this.wherePasswordMatches(models, password);
-      }
-    }
-    return model;
-  }
-
-  static async wherePasswordMatches(devices: Device[], password: string) {
-    // checks if there is a unique deviceName and password match, else returns null
-    const validDevices = [];
-    let passwordMatch = false;
-    for (const device of devices) {
-      passwordMatch = await device.comparePassword(password);
-      if (passwordMatch) {
-        validDevices.push(device);
-      }
-    }
-    if (validDevices.length == 1) {
-      return validDevices[0];
-    } else {
-      if (validDevices.length > 1) {
-        throw new Error(
-          format("Multiple devices match %s and supplied password", name),
-        );
-      }
-      return null;
-    }
-  }
-
-  static async getFromNameAndPassword(name: string, password: string) {
-    const devices = await Device.allWithName(name);
-    return Device.wherePasswordMatches(devices, password);
-  }
-
-  static async allWithName(name: string) {
-    return this.findAll({ where: { deviceName: name } });
-  }
-
   static async stoppedDevices() {
     const oneDayAgo = new Date();
     const twoDaysAgo = new Date();
@@ -225,19 +153,11 @@ export class Device extends ModelStaticCommon<Device> {
     return [...stoppedAudioOnlyDevices, ...stoppedThermalDevices];
   }
 
-  static async getFromNameAndGroup(deviceName, groupName) {
-    return this.findOne({
-      where: { deviceName },
-      include: [
-        {
-          model: this.sequelize.models.Group,
-          where: { groupName },
-        },
-      ],
-    });
-  }
-
-  static async getCacophonyIndex(authUser, device, from, windowSizeInHours) {
+  static async getCacophonyIndex(
+    device: Device,
+    from: Date,
+    windowSizeInHours: number,
+  ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
 
@@ -260,11 +180,10 @@ where
   }
 
   static async getCacophonyIndexBulk(
-    authUser,
-    device,
-    from,
-    steps,
-    interval,
+    device: Device,
+    from: Date,
+    steps: number,
+    interval: TimeInterval,
   ): Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]> {
     const counts = [];
     let stepSizeInMs;
@@ -300,7 +219,6 @@ where
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
       const result = await Device.getCacophonyIndex(
-        authUser,
         device,
         windowEnd,
         stepSizeInHours,
@@ -315,10 +233,9 @@ where
   }
 
   static async getCacophonyIndexHistogram(
-    authUser,
-    deviceId,
-    from,
-    windowSizeInHours,
+    deviceId: DeviceId,
+    from: Date,
+    windowSizeInHours: number,
   ): Promise<{ hour: number; index: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
@@ -351,11 +268,10 @@ order by hour;
   }
 
   static async getSpeciesCount(
-    authUser,
-    deviceId,
-    from,
-    windowSizeInHours,
-    recordingType,
+    deviceId: DeviceId,
+    from: Date,
+    windowSizeInHours: number,
+    recordingType: RecordingType,
   ): Promise<{ what: string; count: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
@@ -380,12 +296,11 @@ order by hour;
   }
 
   static async getSpeciesCountBulk(
-    authUser,
-    deviceId,
-    from,
-    steps,
-    interval,
-    recordingType,
+    deviceId: DeviceId,
+    from: Date,
+    steps: number,
+    interval: TimeInterval,
+    recordingType: RecordingType,
   ): Promise<
     { deviceId: DeviceId; from: string; what: string; count: number }[]
   > {
@@ -422,7 +337,6 @@ order by hour;
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
       const result = await Device.getSpeciesCount(
-        authUser,
         deviceId,
         windowEnd,
         stepSizeInHours,
@@ -441,10 +355,9 @@ order by hour;
   }
 
   static async getDaysActive(
-    authUser,
-    deviceId,
-    from,
-    windowSizeInHours,
+    deviceId: DeviceId,
+    from: Date,
+    windowSizeInHours: number,
   ): Promise<number> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
@@ -783,100 +696,6 @@ order by hour;
     return newDevice;
   }
 }
-// export interface Device extends Sequelize.Model, ModelCommon<Device> {
-//   id: DeviceId;
-//   deviceName: string;
-//   groupName: string;
-//   saltId: number;
-//   uuid: number;
-//   active: boolean;
-//   public: boolean;
-//   lastConnectionTime: Date | null;
-//   lastRecordingTime: Date | null;
-//   password?: string;
-//   location?: LatLng;
-//   heartbeat: Date | null;
-//   nextHeartbeat: Date | null;
-//   comparePassword: (password: string) => Promise<boolean>;
-//   reRegister: (
-//     models: ModelsDictionary,
-//     deviceName: string,
-//     group: Group,
-//     newPassword: string,
-//     reassign?: boolean,
-//   ) => Promise<Device | false>;
-//   Group: Group;
-//   GroupId: number;
-//   ScheduleId: ScheduleId;
-//   kind: DeviceType;
-//   getEvents: (options: FindOptions) => Promise<Event[]>;
-//   getGroup: () => Promise<Group>;
-//   updateHeartbeat: (
-//     models: ModelsDictionary,
-//     nextHeartbeat: Date,
-//   ) => Promise<boolean>;
-// }
-
-// export interface DeviceStatic extends ModelStaticCommon<Device> {
-//   freeDeviceName: (name: string, id: GroupId) => Promise<boolean>;
-//   getFromId: (id: DeviceId) => Promise<Device>;
-//   findDevice: (
-//     deviceID?: DeviceId,
-//     deviceName?: string,
-//     groupName?: string,
-//     password?: string,
-//   ) => Promise<Device>;
-//   wherePasswordMatches: (
-//     devices: Device[],
-//     password: string,
-//   ) => Promise<Device>;
-//   getFromNameAndPassword: (name: string, password: string) => Promise<Device>;
-//   allWithName: (name: string) => Promise<Device[]>;
-//   getFromNameAndGroup: (name: string, groupName: string) => Promise<Device>;
-//   getCacophonyIndex: (
-//     authUser: User,
-//     deviceId: Device,
-//     from: Date,
-//     windowSize: number,
-//   ) => Promise<number>;
-//   getCacophonyIndexBulk: (
-//     authUser: User,
-//     deviceId: Device,
-//     from: Date,
-//     steps: number,
-//     interval: string,
-//   ) => Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]>;
-//   getCacophonyIndexHistogram: (
-//     authUser: User,
-//     deviceId: DeviceId,
-//     from: Date,
-//     windowSize: number,
-//   ) => Promise<{ hour: number; index: number }[]>;
-//   getSpeciesCount: (
-//     authUser: User,
-//     deviceId: DeviceId,
-//     from: Date,
-//     windowSize: number,
-//     recordingType: string,
-//   ) => Promise<{ what: string; count: number }[]>;
-//   getSpeciesCountBulk: (
-//     authUser: User,
-//     deviceId: DeviceId,
-//     from: Date,
-//     steps: number,
-//     interval: string,
-//     recordingType: string,
-//   ) => Promise<
-//     { deviceId: DeviceId; from: string; what: string; count: number }[]
-//   >;
-//   getDaysActive: (
-//     authUser: User,
-//     deviceId: DeviceId,
-//     from: Date,
-//     windowSizeInHours: number,
-//   ) => Promise<number>;
-//   stoppedDevices: () => Promise<Device[]>;
-// }
 
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
@@ -930,6 +749,13 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
       type: DataTypes.DATE,
     },
   };
+
+  const beforeModify = async (device: Device): Promise<void> | undefined => {
+    if (device.changed("password")) {
+      device.password = await bcrypt.hash(device.password, 10);
+    }
+  };
+
   Device.init(attributes, {
     sequelize: sequelizeInstance,
     tableName: "Devices",
@@ -946,22 +772,3 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
 
   return Device;
 };
-
-function parseExactInt(value) {
-  const iValue = parseInt(value);
-  if (value === iValue.toString()) {
-    return Number(iValue);
-  } else {
-    return null;
-  }
-}
-
-/********************/
-/* Validation methods */
-/********************/
-
-async function beforeModify(device: Device): Promise<void> | undefined {
-  if (device.changed("password")) {
-    device.password = await bcrypt.hash(device.password, 10);
-  }
-}

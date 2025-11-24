@@ -502,15 +502,15 @@ export default function (app: Application, baseUrl: string) {
     validateFields([body("token").exists(), validPasswordOf(body("password"))]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response, next: NextFunction) => {
-      if (
-        response.locals.user.password !== response.locals.resetInfo.password
-      ) {
+      const user = response.locals.user as User;
+      if (user.password !== response.locals.resetInfo.password) {
         return next(
           new UnprocessableError("Your password has already been changed"),
         );
       }
-      const newPasswordIsTheSameAsOld =
-        await response.locals.user.comparePassword(request.body.password);
+      const newPasswordIsTheSameAsOld = await user.comparePassword(
+        request.body.password,
+      );
       if (newPasswordIsTheSameAsOld) {
         return next(
           new UnprocessableError(
@@ -518,7 +518,7 @@ export default function (app: Application, baseUrl: string) {
           ),
         );
       }
-      const result = await response.locals.user.update({
+      const result = await user.update({
         password: request.body.password,
       });
       if (!result) {
@@ -528,14 +528,14 @@ export default function (app: Application, baseUrl: string) {
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
         sequelize,
-        response.locals.user,
+        user,
         request.headers["viewport"] as string,
         request.headers["user-agent"],
       );
       return successResponse(response, {
         token: apiToken,
         refreshToken,
-        userData: mapUser(response.locals.user),
+        userData: mapUser(user),
       });
     },
   ];

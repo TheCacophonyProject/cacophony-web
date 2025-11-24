@@ -109,7 +109,7 @@ export default (app: Application, baseUrl: string) => {
     apiUrl,
     extractJwtAuthorisedDevice,
     async (_request: Request, response: Response, next: NextFunction) => {
-      const device = (await Device.getFromId(
+      const device = (await Device.findByPk(
         response.locals.requestDevice.id,
       )) as Device;
       const schedule = await Schedule.findByPk(device.ScheduleId);

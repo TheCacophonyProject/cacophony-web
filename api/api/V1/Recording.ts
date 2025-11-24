@@ -1181,7 +1181,7 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredFullRecordingById(param("id")),
     async (request: Request, response: Response) => {
-      const recordingItem = response.locals.recording;
+      const recordingItem = response.locals.recording as Recording;
       const recording = await mapRecordingResponse(response.locals.recording);
       if (request.query["requires-signed-url"]) {
         let rawJWT;
@@ -1194,7 +1194,7 @@ export default (app: Application, baseUrl: string) => {
             recordingItem.getFileName(),
             recordingItem.fileMimeType,
             response.locals.requestUser.id,
-            recordingItem.groupId,
+            recordingItem.GroupId,
           );
           cookedSize =
             recordingItem.fileSize ||

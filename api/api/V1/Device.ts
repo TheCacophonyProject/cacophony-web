@@ -72,7 +72,7 @@ import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import Sequelize, { Op, QueryTypes } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory.js";
-import { Station } from "@models/Station.js";
+import { Station, TimeInterval } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import {
   DeviceType,
@@ -96,6 +96,7 @@ import {
 import { deleteFile } from "@/models/util/util.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { User } from "@models/User.js";
+import { SaltId } from "@typedefs/api/common.js";
 
 const { sequelize } = await modelsInit();
 
@@ -159,8 +160,7 @@ export const mapDevicesResponse = (
 ): ApiDeviceResponse[] =>
   devices.map((device) => mapDeviceResponse(device, viewAsSuperUser));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiRegisterDeviceRequestBody {
+export interface ApiRegisterDeviceRequestBody {
   group: string; // Name of group to assign the device to.
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
@@ -168,65 +168,53 @@ interface ApiRegisterDeviceRequestBody {
   deviceType?: DeviceType; // Hint about the kind of hardware we're registering.
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiCreateProxyDeviceRequestBody {
+export interface ApiCreateProxyDeviceRequestBody {
   group: string; // Name of group to assign the device to.
   deviceName: string; // Unique (within group) device name.
   type: DeviceType;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceLocationFixupBody {
+export interface ApiDeviceLocationFixupBody {
   setStationAtTime: ApiDeviceLocationFixup;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface MaskRegionsDataBody {
+export interface MaskRegionsDataBody {
   maskRegions: Record<string, MaskRegion[]>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDevicesResponseSuccess {
+export interface ApiDevicesResponseSuccess {
   devices: ApiDeviceResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceResponseSuccess {
+export interface ApiDeviceResponseSuccess {
   device: ApiDeviceResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationResponseSuccess {
+export interface ApiStationResponseSuccess {
   station: ApiStationResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationsResponseSuccess {
+export interface ApiStationsResponseSuccess {
   stations: ApiStationResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLocationResponseSuccess {
+export interface ApiLocationResponseSuccess {
   location: ApiStationResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLocationsResponseSuccess {
+export interface ApiLocationsResponseSuccess {
   locations: { fromDateTime: Date; location: ApiStationResponse }[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceSettingsResponseSuccess {
+export interface ApiDeviceSettingsResponseSuccess {
   settings: ApiDeviceHistorySettings;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceTypeResponseSuccess {
+export interface ApiDeviceTypeResponseSuccess {
   type: DeviceType;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiDeviceUsersResponseSuccess {
+export interface ApiDeviceUsersResponseSuccess {
   users: ApiGroupUserResponse[];
 }
 
@@ -268,7 +256,7 @@ export default function (app: Application, baseUrl: string) {
         GroupId: response.locals.group.id,
         kind: request.body.deviceType,
       });
-      let saltId;
+      let saltId: SaltId;
       if (request.body.saltId) {
         /*
           NOTE: We decided not to use this check, since damage caused by someone
@@ -587,7 +575,7 @@ export default function (app: Application, baseUrl: string) {
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Completed get device query.", {
         device: mapDeviceResponse(
           response.locals.device,
@@ -611,7 +599,7 @@ export default function (app: Application, baseUrl: string) {
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Completed get device query.", {
         device: mapDeviceResponse(
           response.locals.device,
@@ -986,17 +974,10 @@ export default function (app: Application, baseUrl: string) {
         new Date();
       const device = response.locals.device as Device;
       const kind = (request.query.type as string) || "pov";
-      // const query =
-      //   kind === "pov"
-      //     ? "settings.referenceImagePOV"
-      //     : "settings.referenceImageInSitu";
       const deviceHistoryEntry = await DeviceHistory.latest(
         device.id,
         device.GroupId,
         atTime,
-        // {
-        //   [query]: { [Op.ne]: null },
-        // },
       );
       if (!deviceHistoryEntry) {
         return next(
@@ -1005,171 +986,7 @@ export default function (app: Application, baseUrl: string) {
           ),
         );
       }
-      if (device.kind === DeviceType.TrailCam) {
-        // NOTE: If the device is a trailcam, try and use the daytime image that closest matches the requested time, if any.
-
-        //  The trailcam has been in this location since this time.
-        const fromTime = deviceHistoryEntry.fromDateTime;
-        if (!fromTime) {
-          return next(
-            new UnprocessableError(
-              "No reference image available for device at time",
-            ),
-          );
-        }
-        let recording;
-        // See if this device has a later location
-        const laterDeviceHistoryEntry: DeviceHistory | null =
-          await DeviceHistory.findOne({
-            where: [
-              {
-                DeviceId: device.id,
-                GroupId: device.GroupId,
-                fromDateTime: { [Op.gt]: fromTime },
-              },
-              sequelize.where(Sequelize.fn("ST_X", Sequelize.col("location")), {
-                [Op.ne]: deviceHistoryEntry.location.lng,
-              }),
-              sequelize.where(Sequelize.fn("ST_Y", Sequelize.col("location")), {
-                [Op.ne]: deviceHistoryEntry.location.lat,
-              }),
-            ] as Sequelize.WhereOptions,
-            order: [["fromDateTime", "ASC"]],
-          });
-        const payload: { fromDateTime: Date; untilDateTime?: Date } = {
-          fromDateTime: fromTime,
-        };
-        if (laterDeviceHistoryEntry) {
-          payload.untilDateTime = laterDeviceHistoryEntry.fromDateTime;
-          // Now check if there's a daytime image in that timespan, preferably without any tracks,
-          // to avoid there being animals present
-          const options = {
-            type: QueryTypes.SELECT,
-            replacements: {
-              groupId: device.GroupId,
-              deviceId: device.id,
-              atTime: fromTime,
-              untilTime: laterDeviceHistoryEntry.fromDateTime,
-            },
-          };
-          recording = await sequelize.query(
-            `          
-          select * from "Recordings"
-          left outer join "Tracks"
-          on "Tracks"."RecordingId" = "Tracks".id
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and "recordingDateTime" < :untilTime
-          and type = 'trailcam-image'
-          and "Tracks".id is null
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc 
-          limit 1
-          `,
-            options,
-          );
-          if (!recording.length) {
-            recording = await sequelize.query(
-              `
-          select * from "Recordings" 
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and "recordingDateTime" < :untilTime
-          and type = 'trailcam-image'
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-          `,
-              options,
-            );
-          }
-        } else {
-          // Now check if there's a daytime image in that timespan, preferably without any tracks,
-          // to avoid there being animals present
-          const options = {
-            type: QueryTypes.SELECT,
-            replacements: {
-              groupId: device.GroupId,
-              deviceId: device.id,
-              atTime: fromTime,
-            },
-          };
-          recording = await sequelize.query(
-            `
-          select * from "Recordings" 
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and type = 'trailcam-image'
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-      `,
-            options,
-          );
-          if (!recording.length) {
-            recording = await sequelize.query(
-              `
-          select * from "Recordings"         
-          where "DeviceId" = :deviceId
-          and "GroupId" = :groupId
-          and location is not null
-          and "recordingDateTime" >= :atTime
-          and type = 'trailcam-image'        
-          and CAST (("recordingDateTime" AT TIME ZONE 'NZST') AS time)
-          BETWEEN TIME '9:00' AND TIME '16:00'
-          order by "recordingDateTime" desc
-          limit 1
-      `,
-              options,
-            );
-          }
-        }
-        if (recording.length) {
-          if (checkIfExists) {
-            return successResponse(
-              response,
-              "Reference image exists at supplied time",
-              payload,
-            );
-          } else {
-            // Actually return the image.
-            const mimeType = "image/webp"; // Or something better
-            const time = fromTime
-              ?.toISOString()
-              .replace(/:/g, "_")
-              .replace(".", "_");
-            const filename = `device-${device.id}-reference-image@${time}.webp`;
-            // Get reference image for device at time if any.
-            return streamS3Object(
-              request,
-              response,
-              recording[0].fileKey,
-              filename,
-              mimeType,
-              response.locals.requestUser.id,
-              device.GroupId,
-              recording[0].fileSize,
-            );
-          }
-        } else {
-          return next(
-            new UnprocessableError(
-              "No reference image available for device at time",
-            ),
-          );
-        }
-      } else if (
-        [DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)
-      ) {
+      if ([DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)) {
         let referenceImage;
         let referenceImageFileSize;
 
@@ -2459,7 +2276,6 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const cacophonyIndex = await Device.getCacophonyIndex(
-        response.locals.requestUser,
         response.locals.device,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number,
@@ -2567,17 +2383,18 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
+      stringOf(query("interval"))
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const cacophonyIndexBulk = await Device.getCacophonyIndexBulk(
-        response.locals.requestUser,
         response.locals.device,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as string,
+        request.query.interval as unknown as TimeInterval,
       );
       return successResponse(response, { cacophonyIndexBulk });
     },
@@ -2613,7 +2430,6 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const cacophonyIndex = await Device.getCacophonyIndexHistogram(
-        response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number,
@@ -2647,17 +2463,18 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      stringOf(query("type")).default("audio"),
+      stringOf(query("type"))
+        .isIn(Object.values(RecordingType))
+        .default(RecordingType.Audio),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const speciesCount = await Device.getSpeciesCount(
-        response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date,
         request.query["window-size"] as unknown as number,
-        request.query.type as unknown as string,
+        request.query.type as unknown as RecordingType,
       );
       return successResponse(response, { speciesCount });
     },
@@ -2689,19 +2506,22 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
-      stringOf(query("type")).default("audio"),
+      stringOf(query("interval"))
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
+      stringOf(query("type"))
+        .isIn(Object.values(RecordingType))
+        .default(RecordingType.Audio),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const speciesCountBulk = await Device.getSpeciesCountBulk(
-        response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as string,
-        request.query.type as unknown as string,
+        request.query.interval as unknown as TimeInterval,
+        request.query.type as unknown as RecordingType,
       );
       return successResponse(response, { speciesCountBulk });
     },
@@ -2734,7 +2554,6 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async function (request: Request, response: Response) {
       const activeDaysCount = await Device.getDaysActive(
-        response.locals.requestUser,
         response.locals.device.id,
         request.query.from as unknown as Date,
         request.query["window-size"] as unknown as number,

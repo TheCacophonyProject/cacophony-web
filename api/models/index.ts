@@ -52,18 +52,6 @@ const IS_CI_ENV = !!process.env.IS_CI_ENV;
 // Have sequelize send us query execution timings
 dbConfig.benchmark = !IS_CI_ENV;
 
-// export interface ModelCommon<T> extends Sequelize.Model {
-//   getJwtDataValues: () => { _type: string; id: unknown };
-// }
-// export interface ModelStaticCommon<T> extends Sequelize.ModelStatic<T> {
-//   getFromName: (name: string) => Promise<T | null>;
-//   publicFields: readonly string[];
-//   apiSettableFields: readonly string[];
-//   addAssociations: (models: Record<string, ModelStaticCommon<unknown>>) => void;
-//   userGetAttributes: readonly string[];
-//   getDataValue: (fieldName: string) => unknown;
-// }
-
 export class ModelStaticCommon<
   T extends Sequelize.Model,
 > extends Sequelize.Model<InferAttributes<T>, InferCreationAttributes<T>> {

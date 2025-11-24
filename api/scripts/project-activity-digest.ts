@@ -13,6 +13,7 @@ import { User } from "@models/User.js";
 import os from "os";
 import { Group } from "@models/Group.js";
 import config from "@config";
+import { Op } from "sequelize";
 
 await modelsInit();
 
@@ -97,6 +98,8 @@ const allVisitsForProjectInTimespan = async (
             ...(timespan === "daily"
               ? { "settings.notificationPreferences.dailyDigest": true }
               : { "settings.notificationPreferences.weeklyDigest": true }),
+            removedAt: { [Op.eq]: null },
+            pending: { [Op.eq]: null },
           },
         },
         required: true,

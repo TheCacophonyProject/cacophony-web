@@ -18,7 +18,6 @@ import {
   booleanOf,
   idOf,
   integerOfWithDefault,
-  stringOf,
 } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" with { type: "json" };
@@ -35,20 +34,18 @@ import {
 import { Op, QueryTypes } from "sequelize";
 import { mapDeviceResponse } from "./Device.js";
 import { Device } from "@/models/Device.js";
-import { Station, StationInterval } from "@models/Station.js";
+import { Station, TimeInterval } from "@models/Station.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { Recording } from "@models/Recording.js";
 
 const { sequelize } = await modelsInit();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationsResponseSuccess {
+export interface ApiStationsResponseSuccess {
   stations: ApiStationResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationResponseSuccess {
+export interface ApiStationResponseSuccess {
   stations: ApiStationResponse;
 }
 
@@ -713,8 +710,8 @@ export default function (app: Application, baseUrl: string) {
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       query("interval")
         .optional()
-        .isIn(Object.values(StationInterval))
-        .default(StationInterval.Days),
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
@@ -724,7 +721,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.station.id,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as StationInterval,
+        request.query.interval as TimeInterval,
       );
       return successResponse(response, { cacophonyIndexBulk });
     },
@@ -802,8 +799,8 @@ export default function (app: Application, baseUrl: string) {
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       query("interval")
         .optional()
-        .isIn(Object.values(StationInterval))
-        .default(StationInterval.Days),
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
       query("type")
         .optional()
         .isIn(Object.values(RecordingType))
@@ -817,7 +814,7 @@ export default function (app: Application, baseUrl: string) {
         response.locals.station.id,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as StationInterval,
+        request.query.interval as TimeInterval,
         request.query.type as RecordingType,
       );
       return successResponse(response, { speciesCountBulk });

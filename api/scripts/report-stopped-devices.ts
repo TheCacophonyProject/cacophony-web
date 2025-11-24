@@ -48,11 +48,6 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
                 [Op.and]: [
                   {
                     "settings.notificationPreferences.reportStoppedDevices": {
-                      [Op.ne]: false,
-                    },
-                  },
-                  {
-                    "settings.notificationPreferences.reportStoppedDevices": {
                       [Op.eq]: null,
                     },
                   },

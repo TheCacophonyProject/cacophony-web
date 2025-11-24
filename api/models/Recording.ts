@@ -25,8 +25,6 @@ import {
   HasMany,
   HasManyCreateAssociationMixin,
   HasManyGetAssociationsMixin,
-  Includeable,
-  IncludeOptions,
   NonAttribute,
   Transaction,
 } from "sequelize";
@@ -39,7 +37,6 @@ import { Tag } from "./Tag.js";
 import { Device } from "./Device.js";
 import { Group } from "./Group.js";
 import { Track } from "./Track.js";
-import { Event } from "./Event.js";
 
 import { TrackTag } from "./TrackTag.js";
 import { Station } from "./Station.js";
@@ -65,7 +62,7 @@ import type {
   CacophonyIndex,
 } from "@typedefs/api/recording.js";
 import labelPath from "../classifications/label_paths.json" with { type: "json" };
-import { DetailSnapshot, DetailSnapshotId } from "@models/DetailSnapshot.js";
+import { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import { locationField } from "@models/util/util.js";
 import type { ApiTrackPosition } from "@typedefs/api/track.js";
 import { User } from "@models/User.js";
@@ -440,41 +437,6 @@ class RecordingQueryBuilder {
     return this;
   }
 
-  // Include details of recent audio bait events in the query output.
-  addAudioEvents(after?: string, before?: string) {
-    if (!after) {
-      after = '"Recording"."recordingDateTime" - interval \'30 minutes\'';
-    }
-    if (!before) {
-      before = '"Recording"."recordingDateTime"';
-    }
-    const deviceInclude = this.findInclude(Device);
-    deviceInclude.include = [
-      {
-        model: Event,
-        required: false,
-        where: {
-          dateTime: {
-            [Op.between]: [Sequelize.literal(after), Sequelize.literal(before)],
-          },
-        },
-        include: [
-          {
-            model: DetailSnapshot,
-            as: "EventDetail",
-            required: false,
-            where: {
-              type: "audioBait",
-            },
-            attributes: ["details"],
-          },
-        ],
-      },
-    ];
-
-    return this;
-  }
-
   findInclude(deviceModel: typeof Device): Sequelize.IncludeOptions {
     if (Array.isArray(this.query.include)) {
       for (const inc of this.query.include as Sequelize.IncludeOptions[]) {
@@ -544,49 +506,6 @@ export type RecordingQueryOptions = Partial<{
 }>;
 
 const MaxProcessingRetries = 1;
-// interface RecordingQueryBuilder {
-//   findInclude: (modelType: ModelStaticCommon<unknown>) => Includeable[];
-//   init: (
-//     user: UserId,
-//     options: RecordingQueryOptions,
-//   ) => RecordingQueryBuilderInstance;
-//   handleTagMode: (
-//     tagMode: TagMode,
-//     tagWhatsIn: string[],
-//     exclusive: boolean,
-//   ) => SqlString;
-//   recordingTaggedWith: (
-//     tagModes: string[],
-//     sql: SqlString,
-//     exclusive: boolean,
-//   ) => SqlString;
-//   trackTaggedWith: (
-//     tags: string[],
-//     sql: SqlString,
-//     exclusive: boolean,
-//   ) => SqlString;
-//   notTagOfType: (
-//     tags: string[],
-//     sql: SqlString,
-//     exclusive: boolean,
-//   ) => SqlString;
-//   tagOfType: (tags: string[], sql: SqlString, exclusive: boolean) => SqlString;
-//   selectByTag: (
-//     tags: string[],
-//     exclusive: boolean,
-//     tagPath?: string,
-//   ) => SqlString | null;
-// }
-
-// interface RecordingQueryBuilderInstance {
-//   addAudioEvents: (
-//     before?: string,
-//     after?: string,
-//   ) => RecordingQueryBuilderInstance;
-//   get: () => FindOptions;
-//   addColumn: (name: string) => RecordingQueryBuilderInstance;
-//   query: unknown;
-// }
 
 // Only set during recording processing?
 export type RecordingProcessingMetadata = object;
@@ -1152,118 +1071,6 @@ export class Recording extends ModelStaticCommon<Recording> {
 
   static queryBuilder = RecordingQueryBuilder;
 }
-
-// export interface Recording extends Sequelize.Model, ModelCommon<Recording> {
-//   getFileBaseName: () => string;
-//   getRawFileName: () => string;
-//   getFileName: () => string;
-//   getRawFileExt: () => string;
-//   getFileExt: () => string;
-//   getDevice: () => Promise<Device>;
-//   getGroup: () => Promise<Group>;
-//   retryFailed: () => Promise<Recording>;
-//   reprocess: () => Promise<Recording>;
-//   // NOTE: Implicitly created by sequelize associations (along with other
-//   //  potentially undocumented extension methods).
-//   getTrack: (id: TrackId) => Promise<Track | null>;
-//   getTracks: (options?: FindOptions) => Promise<Track[]>;
-//   // createTrack: ({
-//   //   data,
-//   //   start_s,
-//   //   end_s,
-//   //   AlgorithmId,
-//   //   filtered,
-//   //   archivedAt,
-//   // }: {
-//   //   data: any;
-//   //   start_s: number;
-//   //   end_s: number;
-//   //   AlgorithmId: DetailSnapshotId;
-//   //   filtered?: boolean;
-//   //   archivedAt?: Date;
-//   // }) => Promise<Track>;
-//   addTrack: ({
-//     data,
-//     startSeconds,
-//     endSeconds,
-//     minFreqHz,
-//     maxFreqHz,
-//     AlgorithmId,
-//     filtered,
-//     archivedAt,
-//   }: {
-//     data: unknown;
-//     startSeconds: number;
-//     endSeconds: number;
-//     minFreqHz: number | null;
-//     maxFreqHz: number | null;
-//     AlgorithmId: DetailSnapshotId;
-//     filtered?: boolean;
-//     archivedAt?: Date;
-//   }) => Promise<Track>;
-//   setStation: (station: Station) => Promise<void>;
-//
-//   getNextState: () => RecordingProcessingState;
-//   isFailed: () => boolean;
-//   Station?: Station;
-//   Group?: Group;
-//   Tags?: Tag[];
-//   Tracks?: Track[];
-//   Device?: Device;
-// }
-
-type CptvFile = "string";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type JwtToken<T> = string;
-type Seconds = number;
-type Rectangle = [number, number, number, number];
-export interface LimitedTrack {
-  TrackId: TrackId;
-  data: {
-    start_s: number;
-    end_s: number;
-    positions: [Seconds, Rectangle][];
-    num_frames: number;
-  };
-  tags: string[];
-  needsTagging: boolean;
-}
-
-interface TagLimitedRecording {
-  RecordingId: RecordingId;
-  DeviceId: DeviceId;
-  tracks: LimitedTrack[];
-  recordingJWT: JwtToken<CptvFile>;
-  tagJWT: JwtToken<TrackTag>;
-  fileSize: number;
-}
-
-// export interface RecordingStatic extends ModelStaticCommon<Recording> {
-//   buildSafely: (fields: Record<string, unknown>) => Recording;
-//   isValidTagMode: (mode: TagMode) => boolean;
-//   processingAttributes: (string | [Sequelize.Utils.Json, string])[];
-//   processingStates: {
-//     [RecordingType.TrailCamImage]: string[];
-//     [RecordingType.InfraredVideo]: string[];
-//     [RecordingType.ThermalRaw]: string[];
-//     [RecordingType.Audio]: string[];
-//   };
-//   uploadedState: (type: RecordingType) => RecordingProcessingState;
-//   finishedState: () => RecordingProcessingState;
-//
-//   getOneForProcessing: (
-//     type: RecordingType,
-//     state: RecordingProcessingState,
-//   ) => Promise<Recording>;
-//   userGetAttributes: readonly string[];
-//   queryGetAttributes: readonly string[];
-//   queryBuilder: RecordingQueryBuilder;
-//   getRecordingWithUntaggedTracks: (
-//     biasDeviceId?: DeviceId,
-//   ) => Promise<TagLimitedRecording>;
-// }
-
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
     id: {
