@@ -80,8 +80,3 @@ export interface ApiTrackTag{
   data: ApiTrackTagData;
 
 }
-
-export interface ApiTrackTagData{
-
-}
-

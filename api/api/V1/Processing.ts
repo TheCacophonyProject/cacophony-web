@@ -42,6 +42,9 @@ import type { TrackTagData } from "@/../types/api/trackTag.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Recording } from "@models/Recording.js";
+
+import type { MinimalTrackRequestData } from "@/../types/api/fileProcessing.js";
+
 const NULL_TRACK_ID = 1;
 await modelsInit();
 export default function (app: Application, baseUrl: string) {
@@ -357,88 +360,89 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-
-    app.post(
-      `${apiUrl}/:id/tracksAndTags`,
-      extractJwtAuthorisedSuperAdminUser,
-      validateFields([
-        idOf(param("id")),
-        body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
-        idOf(body("algorithmId")),
-
-      ]),
-      // FIXME - JSON schema for allowed data? At least a limit to how many
-      // chars etc?
-      parseJSONField(body("data")),
-      async (request: Request, response: Response, next: NextFunction) => {
-        const recording = await models.Recording.findByPk(request.params.id);
-        if (!recording) {
-          return next(
-            new AuthorizationError(
-              `Could not find a Recording with an id of '${request.params.id}'`,
-            ),
-          );
-        }
-        const data = response.locals.data;
-        const track_ids = [];
-        for(const track of data){
-          track_ids.push(await addTrack(recording,track,data.algorithmId));
-        }
+  app.post(
+    `${apiUrl}/:id/tracksAndTags`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
+      idOf(body("algorithmId")),
+    ]),
+    // FIXME - JSON schema for allowed data? At least a limit to how many
+    // chars etc?
+    parseJSONField(body("data")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const recording = await models.Recording.findByPk(request.params.id);
+      if (!recording) {
+        return next(
+          new AuthorizationError(
+            `Could not find a Recording with an id of '${request.params.id}'`,
+          ),
+        );
+      }
+      const data = response.locals.data;
+      const track_ids = [];
+      for (const track of data) {
+        track_ids.push(await addTrack(recording, track, data.algorithmId));
+      }
       return successResponse(response, "Tracks added.", {
         track_ids,
       });
     },
   );
 
-    const addTrack = async( recording: Recording,trackData:any,algorithmId:number):Promise<number> => {
-      const deviceId = recording.DeviceId;
-      const groupId = recording.GroupId;
-      const atTime = recording.recordingDateTime;
-      let discardMaskedTrack = false;
-      let trackId: TrackId = 1;
-      if (recording.type === RecordingType.ThermalRaw) {
-        const positions = trackData && trackData.positions;
-        if (positions) {
-          discardMaskedTrack = await trackIsMasked(
-            models,
-            deviceId,
-            groupId,
-            atTime,
-            positions,
-          );
-        }
+  const addTrack = async (
+    recording: Recording,
+    trackData: MinimalTrackRequestData,
+    algorithmId: number,
+  ): Promise<number> => {
+    const deviceId = recording.DeviceId;
+    const groupId = recording.GroupId;
+    const atTime = recording.recordingDateTime;
+    let discardMaskedTrack = false;
+    let trackId: TrackId = 1;
+    if (recording.type === RecordingType.ThermalRaw) {
+      const positions = trackData && trackData.positions;
+      if (positions) {
+        discardMaskedTrack = await trackIsMasked(
+          deviceId,
+          groupId,
+          atTime,
+          positions,
+        );
       }
-      if (!discardMaskedTrack) {
-        const predictions = trackData.predictions;
-        const newTrack = {
-          data: trackData,
-          AlgorithmId: algorithmId,
-          startSeconds: trackData.start_s || 0,
-          endSeconds: trackData.end_s || 0,
-          minFreqHz: null,
-          maxFreqHz: null,
-        };
-        newTrack.data.delete("predictions");
-        if (recording.type === RecordingType.Audio) {
-          newTrack.minFreqHz = trackData.minFreq || 0;
-          newTrack.maxFreqHz = trackData.maxFreq || 0;
-        }
-        const track = await recording.addTrack(newTrack);
-        trackId = track.id;
-        for(const pred of predictions){
-          const predData:TrackTagData = pred as TrackTagData;
-          const tag = await track.addTag(
-            pred.what,
-            pred.confidence,
-            true,
-            predData,
-            null,
-            false,
-          );
-        }
+    }
+    if (!discardMaskedTrack) {
+      const predictions = trackData.predictions;
+      const newTrack = {
+        data: trackData as any,
+        AlgorithmId: algorithmId,
+        startSeconds: trackData.start_s || 0,
+        endSeconds: trackData.end_s || 0,
+        minFreqHz: null,
+        maxFreqHz: null,
+      };
+      newTrack.data.delete("predictions");
+      if (recording.type === RecordingType.Audio) {
+        newTrack.minFreqHz = trackData.minFreq || 0;
+        newTrack.maxFreqHz = trackData.maxFreq || 0;
       }
-      return trackId;
-    };
+      const track = await recording.addTrack(newTrack);
+      trackId = track.id;
+      for (const pred of predictions) {
+        const predData: TrackTagData = pred as TrackTagData;
+        const tag = await track.addTag(
+          pred.tag,
+          pred.confidence,
+          true,
+          predData,
+          null,
+          false,
+        );
+      }
+    }
+    return trackId;
+  };
   /**
    * @api {post} /api/v1/processing/:id/tracks Add track to recording
    * @apiName PostTrack

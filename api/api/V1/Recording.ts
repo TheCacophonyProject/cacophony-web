@@ -2230,8 +2230,6 @@ export default (app: Application, baseUrl: string) => {
     },
   );
 
-
-
   /**
    * @api {post} /api/v1/recordings/:id/tracks/trackTags
    * Add tag to track
@@ -2259,10 +2257,7 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     `${apiUrl}/:id/tracks/trackTags`,
     extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("id")),
-     
-    ]),
+    validateFields([idOf(param("id"))]),
     // FIXME - JSON schema for allowed data? At least a limit to how many
     // chars etc?
     parseJSONField(body("data")),

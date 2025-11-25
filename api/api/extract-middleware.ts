@@ -1269,7 +1269,7 @@ const getRecordings =
           getRecordingInclude(recordingWhere, groupWhere, deviceWhere),
           asAdmin,
         );
-        getRecordingOptions.where = recordingWhere
+        getRecordingOptions.where = recordingWhere;
       } else {
         return Promise.resolve(
           new ClientError("No authorizing user specified"),
