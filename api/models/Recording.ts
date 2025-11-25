@@ -570,14 +570,13 @@ export class Recording extends ModelStaticCommon<Recording> {
   declare createTrack: HasManyCreateAssociationMixin<Track, "RecordingId">;
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsTo(models.Group);
-    this.belongsTo(models.Device);
+    this.belongsTo(Group);
+    this.belongsTo(Device);
 
     // FIXME: Does this imply that if the station is deleted, any recordings are also deleted?
-    this.belongsTo(models.Station);
-    this.hasMany(models.Tag);
-    this.hasMany(models.Track);
+    this.belongsTo(Station);
+    this.hasMany(Tag);
+    this.hasMany(Track);
   }
 
   // Attributes returned in recording query results.
@@ -719,7 +718,6 @@ export class Recording extends ModelStaticCommon<Recording> {
     type: RecordingType,
     state: RecordingProcessingState,
   ) {
-    const models = this.sequelize.models;
     let includeQ = [];
     const where = {
       type: type,
@@ -759,7 +757,7 @@ export class Recording extends ModelStaticCommon<Recording> {
       );
       includeQ = [
         {
-          model: models.Track,
+          model: Track,
           where: {
             archivedAt: null,
             createdAt: {
@@ -972,7 +970,6 @@ export class Recording extends ModelStaticCommon<Recording> {
 
   // reprocess a recording and set all active tracks to archived
   async reprocess() {
-    const models = this.sequelize.models;
     const tags = await this.getTags();
     if (tags.length > 0) {
       const meta = this.additionalMetadata || {};
@@ -982,7 +979,7 @@ export class Recording extends ModelStaticCommon<Recording> {
       this.additionalMetadata = meta;
       await this.save();
     }
-    await models.Tag.destroy({
+    await Tag.destroy({
       where: {
         RecordingId: this.id,
       },
@@ -1001,17 +998,16 @@ export class Recording extends ModelStaticCommon<Recording> {
 
   // Return a specific track for the recording.
   async getTrack(trackId: TrackId): Promise<Track | null> {
-    const models = this.sequelize.models;
-    const track = await models.Track.findByPk(trackId);
+    const track = await Track.findByPk(trackId);
     if (!track) {
       return null;
     }
 
     // Ensure track belongs to this recording.
-    if ((track as Track).RecordingId !== this.id) {
+    if (track.RecordingId !== this.id) {
       return null;
     }
-    return track as Track;
+    return track;
   }
 
   async addTrack({

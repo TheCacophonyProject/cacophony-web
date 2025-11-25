@@ -33,6 +33,7 @@ import { DecodedJWTToken } from "@api/auth.js";
 import { Group } from "@models/Group.js";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { Device } from "@models/Device.js";
+import { Alert } from "@models/Alert.js";
 
 export class User extends ModelStaticCommon<User> {
   declare id: CreationOptional<UserId>;
@@ -70,11 +71,10 @@ export class User extends ModelStaticCommon<User> {
   // CLASS METHODS
   //---------------
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsToMany(models.Group, {
-      through: models.GroupUsers,
+    this.belongsToMany(Group, {
+      through: GroupUsers,
     });
-    this.hasMany(models.Alert);
+    this.hasMany(Alert);
   }
 
   static async getAll(isSuperAdmin: boolean) {

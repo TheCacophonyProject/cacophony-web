@@ -1,6 +1,6 @@
 import Sequelize, { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 import { ModelStaticCommon } from "@models/index.js";
-import type { TrackTagId } from "@models/TrackTag.js";
+import { TrackTag, TrackTagId } from "@models/TrackTag.js";
 
 export class TrackTagUserData extends ModelStaticCommon<TrackTagUserData> {
   declare createdAt: CreationOptional<Date>;
@@ -10,9 +10,7 @@ export class TrackTagUserData extends ModelStaticCommon<TrackTagUserData> {
   declare TrackTagId: ForeignKey<TrackTagId>;
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    models.TrackTagUserData.belongsTo(models.TrackTag);
-    models.TrackTag.hasOne(models.TrackTagUserData);
+    this.belongsTo(TrackTag);
   }
 }
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {

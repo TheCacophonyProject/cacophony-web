@@ -20,6 +20,8 @@ import Sequelize, { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import type { ApiGroupUserSettings } from "@typedefs/api/group.js";
 import { GroupId, UserId } from "@typedefs/api/common.js";
+import { User } from "@models/User.js";
+import { Group } from "@models/Group.js";
 
 export class GroupUsers extends ModelStaticCommon<GroupUsers> {
   declare id: CreationOptional<number>;
@@ -38,9 +40,8 @@ export class GroupUsers extends ModelStaticCommon<GroupUsers> {
   declare pending: CreationOptional<"requested" | "invited">;
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsTo(models.User);
-    this.belongsTo(models.Group);
+    this.belongsTo(User);
+    this.belongsTo(Group);
   }
 }
 

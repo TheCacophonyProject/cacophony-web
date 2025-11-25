@@ -31,6 +31,7 @@ import { ApiStationSettings } from "@typedefs/api/station.js";
 import { User } from "@models/User.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { Group } from "@models/Group.js";
+import { Recording } from "@models/Recording.js";
 
 export interface CreateStationData {
   name: string;
@@ -69,9 +70,8 @@ export class Station extends ModelStaticCommon<Station> {
   declare Group?: NonAttribute<Group>;
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    models.Station.belongsTo(models.Group);
-    models.Station.hasMany(models.Recording);
+    this.belongsTo(Group);
+    this.hasMany(Recording);
   }
 
   static async activeInGroupAtTime(

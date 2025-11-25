@@ -72,12 +72,10 @@ export class Alert extends ModelStaticCommon<Alert> {
   declare DeviceId?: ForeignKey<DeviceId>;
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    // NOTE: Calling this just needs to be deferred until all the models are inited.
-    Alert.belongsTo(models.User);
-    Alert.belongsTo(models.Device);
-    Alert.belongsTo(models.Station);
-    Alert.belongsTo(models.Group);
+    this.belongsTo(User);
+    this.belongsTo(Device);
+    this.belongsTo(Station);
+    this.belongsTo(Group);
   }
 
   async sendAlert(

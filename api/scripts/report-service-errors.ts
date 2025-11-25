@@ -10,7 +10,7 @@ import os from "os";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Device } from "@models/Device.js";
 
-const models = await modelsInit();
+await modelsInit();
 
 const ignoredSaltNodeGroups = ["unknown-node-group", "tc2-dev", "dev-pis"];
 

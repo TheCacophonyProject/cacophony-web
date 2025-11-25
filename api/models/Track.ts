@@ -31,7 +31,7 @@ import Sequelize from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import { TrackTag, TrackTagId } from "./TrackTag.js";
 import { AI_MASTER } from "./TrackTag.js";
-import type { Recording } from "./Recording.js";
+import { Recording } from "@models/Recording.js";
 import type { RecordingId, TrackId } from "@typedefs/api/common.js";
 import type { TrackTagData } from "@/../types/api/trackTag.js";
 import { openS3 } from "@models/util/util.js";
@@ -45,6 +45,7 @@ import {
 import config from "@config";
 import { DetailSnapshot, DetailSnapshotId } from "@models/DetailSnapshot.js";
 import { ApiTrackDataRequest } from "@typedefs/api/track.js";
+import { TrackTagUserData } from "@models/TrackTagUserData.js";
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -143,13 +144,12 @@ export class Track extends ModelStaticCommon<Track> {
     existingData = {},
     client: S3Client | null = null,
   ) {
-    const models = this.sequelize.models;
     const updatedData = {
       ...(typeof existingData !== "string" && existingData),
       ...newData,
     };
     if ("gender" in updatedData || "maturity" in updatedData) {
-      const existing = await models.TrackTagUserData.findByPk(trackTagId, {
+      const existing = await TrackTagUserData.findByPk(trackTagId, {
         attributes: ["gender", "maturity"],
       });
       const userData = {
@@ -166,7 +166,7 @@ export class Track extends ModelStaticCommon<Track> {
         trackTagId,
         "",
       );
-      await models.TrackTagUserData.create({
+      await TrackTagUserData.create({
         TrackTagId: trackTagId,
         ...updatedData,
       });
@@ -198,7 +198,7 @@ export class Track extends ModelStaticCommon<Track> {
     const trackId = this.id;
     const trackTag = await this.sequelize.transaction(
       async (transaction: Transaction) => {
-        const trackTags = (await this.sequelize.models.TrackTag.findAll({
+        const trackTags = (await TrackTag.findAll({
           where: {
             UserId: tag.UserId,
             automatic: tag.automatic,
@@ -237,9 +237,7 @@ export class Track extends ModelStaticCommon<Track> {
     data: TrackTagData,
   ): Promise<TrackTag | void> {
     const trackId = this.id;
-    const tag = (await this.sequelize.models.TrackTag.findByPk(
-      tagId,
-    )) as TrackTag;
+    const tag = (await TrackTag.findByPk(tagId)) as TrackTag;
     if (!tag || tag.TrackId !== trackId) {
       return null;
     }
@@ -282,7 +280,7 @@ export class Track extends ModelStaticCommon<Track> {
   }
   // Return a specific track tag for the track.
   async getTrackTag(trackTagId: TrackTagId) {
-    const trackTag = await this.sequelize.models.TrackTag.findByPk(trackTagId);
+    const trackTag = await TrackTag.findByPk(trackTagId);
     if (!trackTag) {
       return null;
     }
@@ -297,13 +295,12 @@ export class Track extends ModelStaticCommon<Track> {
 
   async updateIsFiltered() {
     const trackId = this.id;
-    const models = this.sequelize.models;
     return this.sequelize.transaction(async (transaction: Transaction) => {
-      const track = await models.Track.findByPk(trackId, {
+      const track = await Track.findByPk(trackId, {
         lock: transaction.LOCK.UPDATE,
         transaction,
       });
-      const tags = (await models.TrackTag.findAll({
+      const tags = (await TrackTag.findAll({
         where: {
           TrackId: trackId,
           archivedAt: null,
@@ -318,13 +315,12 @@ export class Track extends ModelStaticCommon<Track> {
   // Archive Track for soft-delete
   async archive() {
     const trackId = this.id;
-    const models = this.sequelize.models;
     return this.sequelize.transaction(async (transaction: Transaction) => {
-      const track = await models.Track.findByPk(trackId, {
+      const track = await Track.findByPk(trackId, {
         lock: transaction.LOCK.UPDATE,
         transaction,
       });
-      const tags = (await models.TrackTag.findAll({
+      const tags = (await TrackTag.findAll({
         where: {
           TrackId: trackId,
           archivedAt: null,
@@ -344,13 +340,12 @@ export class Track extends ModelStaticCommon<Track> {
   // Retrieve Track from Archive
   async unarchive() {
     const trackId = this.id;
-    const models = this.sequelize.models;
     return this.sequelize.transaction(async (transaction: Transaction) => {
-      const track = await models.Track.findByPk(trackId, {
+      const track = await Track.findByPk(trackId, {
         lock: transaction.LOCK.UPDATE,
         transaction,
       });
-      const tags = (await models.TrackTag.findAll({
+      const tags = (await TrackTag.findAll({
         where: {
           TrackId: trackId,
           archivedAt: {
@@ -369,9 +364,9 @@ export class Track extends ModelStaticCommon<Track> {
 
   // Archives tags for reprocessing
   async archiveTags() {
-    await this.sequelize.models.TrackTag.update(
+    await TrackTag.update(
       {
-        archivedAt: Date.now(),
+        archivedAt: new Date(),
       },
       {
         where: {
@@ -384,13 +379,12 @@ export class Track extends ModelStaticCommon<Track> {
   }
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsTo(models.Recording);
-    this.belongsTo(models.DetailSnapshot, {
+    this.belongsTo(Recording);
+    this.belongsTo(DetailSnapshot, {
       as: "Algorithm",
       foreignKey: "AlgorithmId",
     });
-    this.hasMany(models.TrackTag);
+    this.hasMany(TrackTag);
   }
 }
 

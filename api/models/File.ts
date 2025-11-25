@@ -22,6 +22,7 @@ import { ModelStaticCommon } from "./index.js";
 import type Sequelize from "sequelize";
 import type { FileId, UserId } from "@typedefs/api/common.js";
 import { AudiobaitDetails } from "@typedefs/api/file.js";
+import { User } from "@models/User.js";
 
 const Op = sequelize.Op;
 
@@ -41,7 +42,7 @@ export class File extends ModelStaticCommon<File> {
   }
 
   static addAssociations() {
-    this.belongsTo(this.sequelize.models.User);
+    this.belongsTo(User);
   }
 
   /**
