@@ -190,7 +190,7 @@ export class CptvDecoder {
    */
   async close(): Promise<void> {
     if (this.decoder) {
-      this.decoder.terminate();
+      await this.decoder.terminate();
     }
     delete this.decoder;
   }
