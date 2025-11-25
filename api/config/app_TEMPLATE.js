@@ -15,8 +15,8 @@ export const server = {
 };
 
 export const database = {
-  username: "root",
-  password: "",
+  username: "test",
+  password: "test",
   database: "cacophony",
   host: "localhost",
   dialect: "postgres",
@@ -93,6 +93,5 @@ export default {
   cacophonyUserIds,
   cacophonyGroupIds,
   processingUserIds,
-  groupNamesWithRedactedThermalRecordings,
   groupIdsWithRedactedThermalRecordings,
 };

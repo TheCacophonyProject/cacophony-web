@@ -8,20 +8,20 @@ import {
   IsoFormattedDateString,
 } from "./common";
 
-type ClassificationClass =
-  | "bird"
-  | "cat"
-  | "false-positive"
-  | "hedgehog"
-  | "human"
-  | "leporidae"
-  | "mustelid"
-  | "possum"
-  | "rodent"
-  | "vehicle"
-  | "wallaby"
-  | "not";
-// NOTE "not" is ignored..
+// type ClassificationClass =
+//   | "bird"
+//   | "cat"
+//   | "false-positive"
+//   | "hedgehog"
+//   | "human"
+//   | "leporidae"
+//   | "mustelid"
+//   | "possum"
+//   | "rodent"
+//   | "vehicle"
+//   | "wallaby"
+//   | "not";
+// // NOTE "not" is ignored..
 
 interface CameraThresholdConfig {
   camera_model: string;
@@ -47,13 +47,13 @@ export interface TrackFramePosition {
 }
 
 interface TrackClassification {
-  classify_time: Seconds;
-  label: ClassificationClass;
+  classify_time?: Seconds;
+  label: string;
   confidence: FloatZeroToOne;
   clarity: FloatZeroToOne;
   average_novelty: float;
   max_novelty: float;
-  all_class_confidences: Record<ClassificationClass, FloatZeroToOne>;
+  all_class_confidences?: null | Record<string, number>;
   confident_tag: string;
   prediction_frames: number[];
   predictions: integer[][];
@@ -61,8 +61,13 @@ interface TrackClassification {
   //prediction_frames:
 
   // Used in api when calculating good tags
+  name?: string;
+
   tag: string;
-  message: string;
+  message?: string;
+  model_used?: string;
+  raw_tag?: string;
+
 }
 
 interface RawTrack {

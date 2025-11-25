@@ -12,10 +12,10 @@ import {
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
+import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTracksRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
 import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" with { type: "json" };
-import { jsonSchemaOf } from "../schema-validation.js";
+import { arrayOf,jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { AuthorizationError, ClientError } from "../customErrors.js";
 import util from "../V1/util.js";
@@ -372,7 +372,7 @@ export default function (app: Application, baseUrl: string) {
     // chars etc?
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const recording = await models.Recording.findByPk(request.params.id);
+      const recording = await Recording.findByPk(request.params.id);
       if (!recording) {
         return next(
           new AuthorizationError(
@@ -382,7 +382,9 @@ export default function (app: Application, baseUrl: string) {
       }
       const data = response.locals.data;
       const track_ids = [];
+      console.log("Data is")
       for (const track of data) {
+        console.log("Track is ",track)
         track_ids.push(await addTrack(recording, track, data.algorithmId));
       }
       return successResponse(response, "Tracks added.", {
@@ -465,7 +467,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
-      body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
+      body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
       idOf(body("algorithmId")),
     ]),
     parseJSONField(body("data")),

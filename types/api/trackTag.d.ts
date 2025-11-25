@@ -14,14 +14,14 @@ export interface ApiTrackTagAttributes {
 }
 
 export interface TrackTagData extends ApiTrackTagAttributes {
-  name?: string; // Model name
+  name?: string;
   all_class_confidences?: null | Record<string, number>;
   classify_time?: number;
   message?: string;
   model_used?: string;
   raw_tag?: string;
-
 }
+
 
 export interface ApiTrackTagResponse {
   what: string;
@@ -66,17 +66,4 @@ export interface ApiClassificationResponse {
   label: "root";
   version: number;
   children: Classification[];
-}
-
-export interface ApiTrackTagBulk{
-  trackTags: ApiTrackTag[];
-  data: ApiTrackDataRequest;
-  algorithm?: Object | Array<number>;
-}
-export interface ApiTrackTag{
-  trackId: number | null;
-  what : string; 
-  confidence: float;
-  data: ApiTrackTagData;
-
 }
