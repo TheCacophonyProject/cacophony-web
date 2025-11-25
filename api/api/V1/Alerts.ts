@@ -51,8 +51,7 @@ await modelsInit();
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiPostAlertRequestBody {
+export interface ApiPostAlertRequestBody {
   name: string;
   deviceId?: DeviceId;
   stationId?: StationId;
@@ -61,8 +60,7 @@ interface ApiPostAlertRequestBody {
   frequencySeconds?: Seconds; // Defaults to 30 minutes
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGetAlertsResponse {
+export interface ApiGetAlertsResponse {
   Alerts: ApiAlertResponse[];
 }
 

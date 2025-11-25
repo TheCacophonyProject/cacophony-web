@@ -436,23 +436,6 @@ class RecordingQueryBuilder {
     (this.query.attributes as string[]).push(name);
     return this;
   }
-
-  findInclude(deviceModel: typeof Device): Sequelize.IncludeOptions {
-    if (Array.isArray(this.query.include)) {
-      for (const inc of this.query.include as Sequelize.IncludeOptions[]) {
-        if (inc.model && inc.model.name === deviceModel.constructor.name) {
-          return inc;
-        }
-      }
-    } else {
-      const inc = this.query.include as Sequelize.IncludeOptions;
-      if (inc.model && inc.model.name === deviceModel.constructor.name) {
-        return inc;
-      }
-    }
-
-    throw `could not find query include for ${deviceModel}`;
-  }
 }
 
 // Mapping
@@ -881,7 +864,7 @@ export class Recording extends ModelStaticCommon<Recording> {
 
   getNextState(): RecordingProcessingState {
     const jobs = Recording.processingStates[this.type];
-    let nextState;
+    let nextState: RecordingProcessingState;
     if (this.processingState == RecordingProcessingState.Reprocess) {
       nextState = Recording.finishedState();
     } else if (this.processingState == RecordingProcessingState.ReTrack) {
@@ -902,12 +885,6 @@ export class Recording extends ModelStaticCommon<Recording> {
     }
     return nextState;
   }
-
-  async setStation(station: { id: number }) {
-    this.StationId = station.id;
-    return this.save();
-  }
-
   getFileBaseName(): string {
     return moment(new Date(this.recordingDateTime))
       .tz(config.timeZone)
@@ -951,10 +928,10 @@ export class Recording extends ModelStaticCommon<Recording> {
     return "";
   }
 
-  _reduceLatLonPrecision = (latLng: LatLng, precision: number): LatLng => {
+  _reduceLatLonPrecision(latLng: LatLng, precision: number): LatLng {
     const resolution = (precision * 360) / 40000000;
     const half_resolution = resolution / 2;
-    const reducePrecision = (val) => {
+    const reducePrecision = (val: number) => {
       val = val - (val % resolution);
       if (val > 0) {
         val += half_resolution;
@@ -967,7 +944,7 @@ export class Recording extends ModelStaticCommon<Recording> {
       lat: reducePrecision(latLng.lat),
       lng: reducePrecision(latLng.lng),
     };
-  };
+  }
 
   unsetProcessingFailureState() {
     if (!this.processingState.endsWith(".failed")) {

@@ -183,7 +183,7 @@ export interface TrackTagRow {
   station: { id: number; name: string };
   device: { id: number; name: string };
   label: string;
-  labeller: string;
+  labeler: string;
 }
 
 export interface TrackTagQuery {

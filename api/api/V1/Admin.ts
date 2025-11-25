@@ -30,8 +30,7 @@ import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts.js";
 import { SuperUsers } from "@/Globals.js";
 import config from "@config";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiUpdateGlobalPermissionRequestBody {
+export interface ApiUpdateGlobalPermissionRequestBody {
   permission: UserGlobalPermission; // Permission to apply for user
 }
 
@@ -55,7 +54,7 @@ export default function (app: Application, baseUrl: string) {
         anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
         body("permission").isIn(Object.values(UserGlobalPermission)),
       ]),
-      (request: Request, response: Response, next: NextFunction) => {
+      (_request: Request, response: Response, next: NextFunction) => {
         if (!response.locals.requestUser.hasGlobalWrite()) {
           return next(
             new ClientError(

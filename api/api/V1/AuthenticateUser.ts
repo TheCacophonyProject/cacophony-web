@@ -63,8 +63,7 @@ import {
 
 const { sequelize } = await modelsInit();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiAuthenticateUserRequestBody {
+export interface ApiAuthenticateUserRequestBody {
   password: string; // Password for the user account
   email: string; // Email identifying a valid user account
 }
@@ -111,7 +110,7 @@ export default function (app: Application, baseUrl: string) {
         const isNewEndPoint = request.path.endsWith("authenticate");
 
         if (isNewEndPoint) {
-          // Clear out any out of date sessions for this user from the DB
+          // Clear out any out-of-date sessions for this user from the DB
           await sequelize.query(
             `delete from "UserSessions" where "UserSessions"."userId" = ${response.locals.user.id} and "UserSessions"."updatedAt" < now() - interval '15 days'`,
           );
@@ -367,11 +366,11 @@ export default function (app: Application, baseUrl: string) {
     "/token",
     validateFields([body("ttl").optional(), body("access").optional()]),
     authenticateUser(),
-    middleware.requestWrapper(async (request, response) => {
+    middleware.requestWrapper(async (request: Request, response: Response) => {
       // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
       const token = createEntityJWT(
-        request.user,
+        response.locals.user,
         { expiresIn: expiry },
         request.body.access,
       );
@@ -446,7 +445,7 @@ export default function (app: Application, baseUrl: string) {
   const validateTokenOptions = [
     validateFields([body("token").exists()]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       if (
         response.locals.user.password !== response.locals.resetInfo.password
       ) {
@@ -505,7 +504,7 @@ export default function (app: Application, baseUrl: string) {
         );
         //
         const groups = await user.getGroups();
-        let sendSuccess;
+        let sendSuccess: boolean;
         if (!groups.length) {
           // If the user has no groups, re-send the welcome email,
           sendSuccess = await sendWelcomeEmailConfirmationEmail(

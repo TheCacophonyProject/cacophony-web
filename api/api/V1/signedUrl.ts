@@ -31,6 +31,7 @@ import { serverErrorResponse } from "@api/V1/responseUtil.js";
 import fs from "fs/promises";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
+import { JwtPayload } from "jsonwebtoken";
 
 await modelsInit();
 
@@ -225,15 +226,16 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${baseUrl}/signedUrl`,
     [signedUrl],
-    middleware.requestWrapper(async (request, response) => {
+    middleware.requestWrapper(async (request: Request, response: Response) => {
       // TODO: If this signed url has a user, then we can attribute downloads + bandwidth
       //  to that user for billing purposes.
-      const mimeType = request.jwtDecoded.mimeType || "";
-      const fileName = request.jwtDecoded.filename || "file";
-      const userId = request.jwtDecoded.userId;
-      const groupId = request.jwtDecoded.groupId;
+      const jwtDecoded: JwtPayload = response.locals.jwtDecoded;
+      const mimeType = jwtDecoded.mimeType || "";
+      const fileName = jwtDecoded.filename || "file";
+      const userId = jwtDecoded.userId;
+      const groupId = jwtDecoded.groupId;
 
-      const key = request.jwtDecoded.key;
+      const key = jwtDecoded.key;
       if (!key) {
         throw new ClientError("No key provided.");
       }

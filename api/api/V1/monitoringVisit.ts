@@ -133,15 +133,17 @@ export class Visit {
       if (bestAiTags.length > 1) {
         // Tie-break based on the average mass of the track in question.
         let bestMass = -1;
-        let bestTag;
+        let bestTag: string;
         for (const [tag, tracks] of bestAiTags) {
           for (const track of tracks) {
             const data = await Track.getTrackData(track.id);
-            const mass =
+            track.mass =
               (data.positions &&
-                data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+                data.positions.reduce(
+                  (a: number, { mass }) => a + (mass || 0),
+                  0,
+                )) ||
               0;
-            track.mass = mass;
           }
 
           const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
@@ -163,15 +165,17 @@ export class Visit {
     if (aiGuess.length > 1) {
       // Tie-break based on the average mass of the track in question.
       let bestMass = -1;
-      let bestTag;
+      let bestTag: string;
       for (const [tag, tracks] of aiGuess) {
         for (const track of tracks) {
           const data = await Track.getTrackData(track.id);
-          const mass =
+          track.mass =
             (data.positions &&
-              data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+              data.positions.reduce(
+                (a: number, { mass }) => a + (mass || 0),
+                0,
+              )) ||
             0;
-          track.mass = mass;
         }
 
         const mass = tracks.reduce((a, { mass }) => a + (mass || 0), 0);
@@ -489,7 +493,7 @@ async function getRecordings(
     where.GroupId = params.groups;
   }
   const order: Sequelize.Order = [["recordingDateTime", "ASC"]];
-  const builder = await new Recording.queryBuilder().init(userId, {
+  const builder = new Recording.queryBuilder().init(userId, {
     where,
     limit: RECORDINGS_LIMIT,
     order,

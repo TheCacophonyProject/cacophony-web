@@ -21,8 +21,7 @@ import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import { AuthenticationError } from "./customErrors.js";
-import { ModelsDictionary, ModelStaticCommon } from "@models";
-import type { Request } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { User } from "@models/User.js";
 import { Device } from "@models/Device.js";
 import type {
@@ -31,7 +30,7 @@ import type {
   UserId,
 } from "@typedefs/api/common.js";
 import { randomUUID } from "crypto";
-import Sequelize, { Model, QueryTypes } from "sequelize";
+import Sequelize, { QueryTypes } from "sequelize";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 /*
@@ -291,32 +290,38 @@ export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   }
 }
 
-export function signedUrl(req, res, next) {
-  const jwtParam = req.query["jwt"];
-  if (jwtParam == null) {
-    return res
+export function signedUrl(
+  request: Request,
+  response: Response,
+  next: NextFunction,
+) {
+  const jwtParam: string = request.query["jwt"] as string;
+  if (!jwtParam) {
+    return response
       .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Could not find JWT token in query params."] });
   }
-  let jwtDecoded;
+  let jwtDecoded: JwtPayload;
   try {
-    jwtDecoded = jwt.verify(jwtParam, config.server.passportSecret);
+    jwtDecoded = jwt.verify(
+      jwtParam,
+      config.server.passportSecret,
+    ) as JwtPayload;
   } catch (_e) {
-    return res
+    return response
       .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Failed to verify JWT."] });
   }
 
   if (jwtDecoded._type !== "fileDownload") {
-    return res
+    return response
       .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Incorrect JWT type."] });
   }
 
-  req.jwtDecoded = jwtDecoded;
+  response.locals.jwtDecoded = jwtDecoded;
   next();
 }
-type AuthenticateMiddleware = (req, res, next) => Promise<void>;
 
 /*
  * Authenticate a JWT in the 'Authorization' header of the given type
@@ -324,19 +329,19 @@ type AuthenticateMiddleware = (req, res, next) => Promise<void>;
 const authenticate = (
   types: string[] | null,
   reqAccess?: Record<string, unknown>,
-): AuthenticateMiddleware => {
-  return async (req, res, next) => {
+) => {
+  return async (request: Request, response: Response, next: NextFunction) => {
     let jwtDecoded: DecodedJWTToken;
     try {
-      jwtDecoded = getVerifiedJWT(req) as DecodedJWTToken;
+      jwtDecoded = getVerifiedJWT(request) as DecodedJWTToken;
     } catch (e) {
-      return res
+      return response
         .status(HttpStatusCode.AuthorizationError)
         .json({ messages: [e.message] });
     }
 
     if (types && !types.includes(jwtDecoded._type)) {
-      res.status(HttpStatusCode.AuthorizationError).json({
+      response.status(HttpStatusCode.AuthorizationError).json({
         messages: [
           `Invalid JWT access type '${jwtDecoded._type}', must be ${
             types.length > 1 ? "one of " : ""
@@ -347,21 +352,21 @@ const authenticate = (
     }
     const hasAccess = checkAccess(reqAccess, jwtDecoded);
     if (!hasAccess) {
-      res
+      response
         .status(HttpStatusCode.AuthorizationError)
         .json({ messages: ["JWT does not have access."] });
       return;
     }
     const result = await lookupEntity(jwtDecoded);
     if (!result) {
-      res.status(HttpStatusCode.AuthorizationError).json({
+      response.status(HttpStatusCode.AuthorizationError).json({
         messages: [
           `Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`,
         ],
       });
       return;
     }
-    req[jwtDecoded._type] = result;
+    response.locals[jwtDecoded._type] = result;
     next();
   };
 };

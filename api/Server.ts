@@ -187,7 +187,7 @@ const grafanaLabelRestart = async () => {
         const dbQueryCount = store?.get("queryCount");
         const dbQueryTime = store?.get("queryTime");
         const cpuUsage = store?.get("cpuUsage");
-        const requestCpuUsage = process.cpuUsage(cpuUsage);
+        const requestCpuUsage = process.cpuUsage(cpuUsage as NodeJS.CpuUsage);
         const userTimeMs = requestCpuUsage.user / 1000;
         const systemTimeMs = requestCpuUsage.system / 1000;
         const requesterType =

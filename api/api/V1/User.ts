@@ -76,12 +76,12 @@ import { GroupInvites } from "@models/GroupInvites.js";
 import { GroupUsers } from "@models/GroupUsers.js";
 
 const { sequelize } = await modelsInit();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUsersResponseSuccess {
+
+export interface ApiLoggedInUsersResponseSuccess {
   usersList: ApiLoggedInUserResponse[];
 }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUserResponseSuccess {
+
+export interface ApiLoggedInUserResponseSuccess {
   userData: ApiLoggedInUserResponse;
 }
 export const mapUser = (
@@ -105,8 +105,7 @@ export const mapUser = (
 export const mapUsers = (users: User[], omitSettings = false) =>
   users.map((user) => mapUser(user, omitSettings));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiChangePasswordRequestBody {
+export interface ApiChangePasswordRequestBody {
   password: string; // Password for the user account
   token: string; // Valid password reset token
 }
@@ -116,7 +115,7 @@ export default function (app: Application, baseUrl: string) {
 
   const listUsersOptions = [
     extractJwtAuthorisedSuperAdminUser,
-    async (_request, response) => {
+    async (_request: Request, response: Response) => {
       const users = await User.getAll(
         response.locals.requestUser.hasGlobalWrite(),
       );
@@ -171,7 +170,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     extractOptionalJWTInfo(body("inviteTokenJWT")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         return next(
           new ValidationError([
@@ -182,7 +181,7 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, _response: Response, next: NextFunction) => {
       if (
         request.body.endUserAgreement &&
         Number(request.body.endUserAgreement) !== config.euaVersion
@@ -217,7 +216,7 @@ export default function (app: Application, baseUrl: string) {
         // If the user is signing up from an email invitation, and the email
         // address matches the invite email address, we can mark the user's email as confirmed
         // and add them to any pending invited groups.
-        let sendEmailSuccess;
+        let sendEmailSuccess: boolean;
         const token = response.locals.tokenInfo;
         const isSigningUpFromEmailInvitation =
           token &&
@@ -842,7 +841,7 @@ export default function (app: Application, baseUrl: string) {
         );
       }
 
-      let device;
+      let device: Device;
 
       if (hasDeviceId) {
         // Fetch device by ID

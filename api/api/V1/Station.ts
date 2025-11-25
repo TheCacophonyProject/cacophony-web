@@ -120,7 +120,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredStations,
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got stations", {
         stations: mapStations(response.locals.stations),
       });
@@ -148,7 +148,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(), // NOTE: Don't document this, it shouldn't be changed.
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
@@ -347,12 +347,12 @@ export default function (app: Application, baseUrl: string) {
     util.multipartUpload(
       "f",
       async (
-        uploader,
-        uploadingDevice,
-        uploadingUser,
-        data,
+        _uploader,
+        _uploadingDevice,
+        _uploadingUser,
+        _data,
         keys,
-        uploadedFileDatas,
+        _uploadedFileDatas,
         locals,
       ): Promise<string> => {
         console.assert(

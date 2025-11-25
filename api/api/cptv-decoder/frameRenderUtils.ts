@@ -47,7 +47,7 @@ export const ColourMaps: readonly [string, Uint32Array][] = Object.freeze([
  */
 export const renderFrameIntoFrameBuffer = (
   targetFrameBuffer: Uint8ClampedArray,
-  frame: Uint16Array,
+  frame: Uint16Array | Uint8Array,
   colourMap: Uint32Array,
   min: number,
   max: number,

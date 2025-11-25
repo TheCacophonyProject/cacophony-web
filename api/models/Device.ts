@@ -186,7 +186,7 @@ where
     interval: TimeInterval,
   ): Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]> {
     const counts = [];
-    let stepSizeInMs;
+    let stepSizeInMs: number;
     switch (interval) {
       case "hours":
         stepSizeInMs = 60 * 60 * 1000;
@@ -304,8 +304,13 @@ order by hour;
   ): Promise<
     { deviceId: DeviceId; from: string; what: string; count: number }[]
   > {
-    const counts = [];
-    let stepSizeInMs;
+    const counts: {
+      deviceId: DeviceId;
+      from: string;
+      what: string;
+      count: number;
+    }[] = [];
+    let stepSizeInMs: number;
     switch (interval) {
       case "hours":
         stepSizeInMs = 60 * 60 * 1000;
@@ -456,7 +461,7 @@ order by hour;
   ): Promise<Device | false> {
     let newDevice: Device;
     const now = new Date();
-    let stationToAssign;
+    let stationToAssign: Station;
     // NOTE: As far as we're aware this API is only called directly
     //  from the device, and assumes the device is connected, so we will set the
     //  lastConnectionTime on the device we create/update.

@@ -70,7 +70,7 @@ import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" with
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import Sequelize, { Op, QueryTypes } from "sequelize";
+import Sequelize, { Op } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Station, TimeInterval } from "@models/Station.js";
 import { Group } from "@models/Group.js";
@@ -98,7 +98,7 @@ import { TrackTag } from "@models/TrackTag.js";
 import { User } from "@models/User.js";
 import { SaltId } from "@typedefs/api/common.js";
 
-const { sequelize } = await modelsInit();
+await modelsInit();
 
 export const mapDeviceResponse = (
   device: Device,
@@ -987,8 +987,8 @@ export default function (app: Application, baseUrl: string) {
         );
       }
       if ([DeviceType.Hybrid, DeviceType.Thermal].includes(device.kind)) {
-        let referenceImage;
-        let referenceImageFileSize;
+        let referenceImage: string;
+        let referenceImageFileSize: number;
 
         if (kind === "pov") {
           referenceImage = deviceHistoryEntry?.settings?.referenceImagePOV;
@@ -1620,7 +1620,7 @@ export default function (app: Application, baseUrl: string) {
         }
 
         // Update device settings if provided
-        let updatedEntry;
+        let updatedEntry: ApiDeviceHistorySettings;
         if (newSettings) {
           updatedEntry = await DeviceHistory.updateDeviceSettings(
             device.id,
@@ -1630,7 +1630,8 @@ export default function (app: Application, baseUrl: string) {
           );
         } else {
           // Fetch the latest settings entry if no new settings are provided
-          updatedEntry = await DeviceHistory.latest(device.id, device.GroupId);
+          updatedEntry = (await DeviceHistory.latest(device.id, device.GroupId))
+            .settings;
         }
 
         return successResponse(response, "Device updated successfully", {
@@ -2135,7 +2136,7 @@ export default function (app: Application, baseUrl: string) {
         );
       }
     },
-    async (request, response) => {
+    async (_request, response) => {
       await response.locals.device.update({
         ScheduleId: response.locals.schedule.id,
       });
@@ -2186,7 +2187,7 @@ export default function (app: Application, baseUrl: string) {
         );
       }
     },
-    async (request, response) => {
+    async (_request, response) => {
       await response.locals.device.update({
         ScheduleId: null,
       });

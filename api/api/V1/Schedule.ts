@@ -50,8 +50,7 @@ interface ApiScheduleConfig {
   schedule: ScheduleConfig;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiScheduleConfigs {
+export interface ApiScheduleConfigs {
   schedules: ScheduleConfig[];
 }
 

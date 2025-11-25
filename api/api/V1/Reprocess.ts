@@ -43,7 +43,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to retry
-   * @apiDescription Retries processing a recording thats in a failed state
+   * @apiDescription Retries processing a recording that's in a failed state
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -80,7 +80,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to reprocess
-   * @apiDescription Marks a recording for reprocessing (tracking), and archives existing tracks.
+   * @apiDescription Marks a recording for reprocessing (tracking) and archives existing tracks.
    * Used if tracking algorithms have changed
    *
    * @apiUse V1UserAuthorizationHeader

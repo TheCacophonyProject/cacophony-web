@@ -57,7 +57,6 @@ import type {
 } from "@typedefs/api/trackTag.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
-import * as csv from "fast-csv";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
@@ -343,27 +342,23 @@ export const mapRecordingResponse = async (
   }
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiTracksResponseSuccess {
+export interface ApiTracksResponseSuccess {
   tracks: ApiTrackResponse[];
 }
 
-interface ApiTracksResponseSuccess {
+export interface ApiTracksResponseSuccess {
   track: ApiTrackResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiUpdateRecordingRequestBody {
+export interface ApiUpdateRecordingRequestBody {
   updates: ApiRecordingUpdateRequest;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiRecordingResponseSuccess {
+export interface ApiRecordingResponseSuccess {
   recording: ApiGenericRecordingResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiRecordingTagRequestBody {
+export interface ApiRecordingTagRequestBody {
   tag: ApiRecordingTagRequest;
 }
 
@@ -1005,7 +1000,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Object[]} rows List of track tags.
    * @apiSuccess {String} rows.label Name of the track tag.
-   * @apiSuccess {String} rows.labeller Name of the user who created the track tag or AI.
+   * @apiSuccess {String} rows.labeler Name of the user who created the track tag or AI.
    * @apiSuccess {Object} rows.group Group of the track tag.
    * @apiSuccess {String} rows.group.id Id of the group.
    * @apiSuccess {String} rows.group.name Name of the group.
@@ -1184,10 +1179,10 @@ export default (app: Application, baseUrl: string) => {
       const recordingItem = response.locals.recording as Recording;
       const recording = await mapRecordingResponse(response.locals.recording);
       if (request.query["requires-signed-url"]) {
-        let rawJWT;
-        let cookedJWT;
-        let rawSize;
-        let cookedSize;
+        let rawJWT: string;
+        let cookedJWT: string;
+        let rawSize: number;
+        let cookedSize: number;
         if (recordingItem.fileKey) {
           cookedJWT = signedToken(
             recordingItem.fileKey,
@@ -1314,7 +1309,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/raw/:id{/:useArchival}`,
-    async (request, response, next) => {
+    async (request, _response, next) => {
       console.log("%%%%", Object.entries(request.query));
       return next();
     },
@@ -1445,8 +1440,8 @@ export default (app: Application, baseUrl: string) => {
       if (!fileKey) {
         return next(new ClientError("Rec has no raw file key."));
       }
-      let trackId;
-      let filename;
+      let trackId: TrackId;
+      let filename: string;
       if (request.query.trackId) {
         trackId = request.query.trackId as unknown as number;
         filename = `${rec.id}-${trackId}-thumb.${ext}`;
@@ -2167,7 +2162,7 @@ export default (app: Application, baseUrl: string) => {
       }
     },
     async (request: Request, response: Response, next: NextFunction) => {
-      let track;
+      let track: Track;
 
       if (Number(request.params.trackId) === 1 && request.body.automatic) {
         // NOTE: Dummy track that was masked out by mask regions.
@@ -2203,15 +2198,15 @@ export default (app: Application, baseUrl: string) => {
         }
       } else {
         // Otherwise, just check that the user can update this track.
-        track = await response.locals.recording.getTrack(
-          request.params.trackId,
+        track = await (response.locals.recording as Recording).getTrack(
+          Number(request.params.trackId),
         );
       }
       if (!track) {
         return next(new ClientError("Track does not exist"));
       }
       // Ensure track belongs to this recording.
-      if (track.RecordingId !== request.params.id) {
+      if (track.RecordingId !== Number(request.params.id)) {
         return next(new ClientError("Track does not belong to recording"));
       }
       if (request.body.what === "unknown") {
@@ -2252,7 +2247,7 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      let track;
+      let track: Track;
       if (request.query.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users'
         // recording update permissions.
@@ -2292,7 +2287,7 @@ export default (app: Application, baseUrl: string) => {
         );
       }
 
-      const tag = await track.getTrackTag(request.params.trackTagId);
+      const tag = await track.getTrackTag(Number(request.params.trackTagId));
       if (!tag) {
         return next(new AuthorizationError("No such track tag."));
       }
