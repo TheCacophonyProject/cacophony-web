@@ -12,7 +12,12 @@ import { Device } from "@models/Device.js";
 
 await modelsInit();
 
-const ignoredSaltNodeGroups = ["unknown-node-group", "tc2-dev", "dev-pis"];
+const ignoredSaltNodeGroups = [
+  "unknown-node-group",
+  "tc2-dev",
+  "dev-pis",
+  "prod-pis",
+];
 
 type LogLevel = "info" | "warn" | "error" | "fatal";
 type AugmentedEvent = Event & { unitVersion: string };
