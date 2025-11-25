@@ -2,11 +2,6 @@
 import type { LatLng } from "@typedefs/api/common.js";
 import { Station } from "@models/Station.js";
 import type { GroupId } from "@typedefs/api/common.js";
-import { Recording } from "@models/Recording.js";
-import { Op } from "sequelize";
-import { Group } from "@models/Group.js";
-import type { ModelsDictionary } from "@models";
-
 export const MIN_STATION_SEPARATION_METERS = 60;
 // The radius of the station is half the max distance between stations: any recording inside the radius can
 // be considered to belong to that station.
@@ -37,7 +32,7 @@ export async function tryToMatchLocationToStationInGroup(
   lookForwards = false,
 ): Promise<Station | null> {
   // Match the recording to any stations that the group might have:
-  let stations;
+  let stations: Station[];
   if (lookForwards) {
     stations = await Station.activeInGroupDuringTimeRange(
       groupId,
@@ -52,57 +47,6 @@ export async function tryToMatchLocationToStationInGroup(
   for (const station of stations) {
     // See if any stations match: Looking at the location distance between this recording and the stations.
     const distanceToStation = latLngApproxDistance(station.location, location);
-    stationDistances.push({ distanceToStation, station });
-  }
-  const validStationDistances = stationDistances.filter(
-    ({ distanceToStation }) =>
-      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
-  );
-
-  // There shouldn't really ever be more than one station within our threshold distance,
-  // since we check that stations aren't too close together when we add them.  However, on the off
-  // chance we *do* get two or more valid stations for a recording, take the closest one.
-  validStationDistances.sort((a, b) => {
-    return b.distanceToStation - a.distanceToStation;
-  });
-  const closest = validStationDistances.pop();
-  if (closest) {
-    return closest.station;
-  }
-  return null;
-}
-
-export async function tryToMatchRecordingToStation(
-  recording: Recording,
-  stations?: Station[],
-): Promise<Station | null> {
-  // If the recording does not yet have a location, return
-  if (!recording.location) {
-    return null;
-  }
-
-  // Match the recording to any stations that the group might have:
-  if (!stations) {
-    const group = await Group.findByPk(recording.GroupId);
-    stations = await group.getStations({
-      where: {
-        activeAt: { [Op.lte]: recording.recordingDateTime },
-        retiredAt: {
-          [Op.or]: [
-            { [Op.eq]: null },
-            { [Op.gt]: recording.recordingDateTime },
-          ],
-        },
-      },
-    });
-  }
-  const stationDistances = [];
-  for (const station of stations) {
-    // See if any stations match: Looking at the location distance between this recording and the stations.
-    const distanceToStation = latLngApproxDistance(
-      station.location,
-      recording.location,
-    );
     stationDistances.push({ distanceToStation, station });
   }
   const validStationDistances = stationDistances.filter(

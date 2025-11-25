@@ -32,45 +32,11 @@ import {
   ListObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
-import mime from "mime";
 import config from "@config";
 import type { LatLng } from "@typedefs/api/common.js";
 import { DataTypes } from "sequelize";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 import { isLatLon } from "@models/util/validation.js";
-
-export function getFileName(model) {
-  let fileName;
-  const dateStr = model.getDataValue("recordingDateTime");
-  if (dateStr) {
-    fileName = new Date(dateStr)
-      .toISOString()
-      .replace(/\..+/, "")
-      .replace(/:/g, "");
-  } else {
-    fileName = "file";
-  }
-  const ext = mime.getExtension(model.getDataValue("mimeType") || "");
-  if (ext) {
-    fileName = fileName + "." + ext;
-  }
-  return fileName;
-}
-
-export function userCanEdit(id, user) {
-  return new Promise(
-    function (resolve) {
-      //models.User.where
-      this.getFromId(id, user, ["id"]).then((result) => {
-        if (result === null) {
-          return resolve(false);
-        } else {
-          return resolve(true);
-        }
-      });
-    }.bind(this),
-  );
-}
 
 export function openS3() {
   // This is a shim around the s3 compatible object store provider.
