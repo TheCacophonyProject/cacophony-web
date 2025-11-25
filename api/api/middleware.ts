@@ -22,7 +22,7 @@ import type {
   Result,
 } from "express-validator";
 import { body, matchedData, query, validationResult } from "express-validator";
-import modelsInit, { ModelStaticCommon } from "@/models/index.js";
+import { ModelStaticCommon } from "@/models/index.js";
 import { format } from "util";
 import log from "../logging.js";
 import customErrors, {
@@ -38,8 +38,6 @@ import { Recording } from "@models/Recording.js";
 import { File } from "@/models/File.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Model } from "sequelize";
-
-await modelsInit();
 
 export const getModelByIdChain = (
   modelType: typeof ModelStaticCommon<Model>,

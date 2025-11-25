@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction } from "express";
@@ -46,8 +45,6 @@ import { Alert } from "@models/Alert.js";
 import type { Request, Response } from "express";
 import { AuthorizationError } from "@api/customErrors.js";
 import logger from "@log";
-
-await modelsInit();
 
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 

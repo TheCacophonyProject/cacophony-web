@@ -21,7 +21,7 @@ import {
   validateFields,
   requestWrapper,
 } from "../middleware.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -57,7 +57,7 @@ import { Device } from "@models/Device.js";
 import { Event } from "@models/Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 
-const models = await modelsInit();
+const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
 const uploadEvent = async (
@@ -520,7 +520,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/event-types`,
     extractJwtAuthorizedUser,
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `select distinct type from "DetailSnapshots"`,
         { type: QueryTypes.SELECT },
       );
@@ -546,7 +546,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `
       select distinct 
         type 

@@ -4,13 +4,13 @@ import { sendDailyServiceErrorsEmail } from "@/emails/transactionalEmails.js";
 import { Event } from "@models/Event.js";
 import type { DeviceId } from "@typedefs/api/common.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import Sequelize, { Op } from "sequelize";
 import os from "os";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Device } from "@models/Device.js";
 
-await modelsInit();
+await initSequelize();
 
 const ignoredSaltNodeGroups = [
   "unknown-node-group",

@@ -1,6 +1,5 @@
 import type { Moment } from "moment";
 import moment from "moment";
-import modelsInit from "@models/index.js";
 import { Recording } from "@models/Recording.js";
 import {
   getCanonicalTrackTag,
@@ -16,8 +15,6 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import { Station } from "@models/Station.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
-
-await modelsInit();
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;

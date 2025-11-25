@@ -56,7 +56,7 @@ import {
 } from "@models/util/locationUtils.js";
 import { openS3 } from "@models/util/util.js";
 import type { ReadableStream } from "stream/web";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import ffmpeg from "fluent-ffmpeg";
 import { Writable } from "stream";
 import temp from "temp";
@@ -67,7 +67,7 @@ import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Group } from "@models/Group.js";
 import { RecordingDataSuppliedMetadata } from "@api/fileUploaders/uploadGenericRecording.js";
 
-const { sequelize } = await modelsInit();
+const sequelize = await initSequelize();
 
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);

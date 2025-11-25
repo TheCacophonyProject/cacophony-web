@@ -40,7 +40,7 @@ import {
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
 import { mapUser } from "@api/V1/User.js";
 import { User } from "@models/User.js";
-import modelsInit from "@/models/index.js";
+import { initSequelize } from "@/models/index.js";
 import type { IsoFormattedDateString, UserId } from "@typedefs/api/common.js";
 import jwt from "jsonwebtoken";
 import config from "@config";
@@ -61,7 +61,7 @@ import {
   UnprocessableError,
 } from "@api/customErrors.js";
 
-const { sequelize } = await modelsInit();
+const sequelize = await initSequelize();
 
 export interface ApiAuthenticateUserRequestBody {
   password: string; // Password for the user account

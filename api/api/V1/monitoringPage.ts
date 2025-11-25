@@ -18,13 +18,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { User } from "@models/User.js";
 import { QueryTypes } from "sequelize";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import type { GroupId, StationId } from "@typedefs/api/common.js";
 import type { MonitoringPageCriteria } from "@typedefs/api/monitoring.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { Recording } from "@models/Recording.js";
 
-const { sequelize } = await modelsInit();
+const sequelize = await initSequelize();
 
 export interface MonitoringParams {
   groups: GroupId[];

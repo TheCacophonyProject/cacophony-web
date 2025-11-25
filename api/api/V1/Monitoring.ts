@@ -28,7 +28,6 @@ import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredGroupById,
 } from "../extract-middleware.js";
-import modelsInit from "@models/index.js";
 import { ClientError } from "@api/customErrors.js";
 import type { GroupId, StationId } from "@typedefs/api/common.js";
 import { User } from "@models/User.js";
@@ -38,8 +37,6 @@ import { idOf } from "@api/validation-middleware.js";
 import { asyncLocalStorage } from "@/Globals.js";
 import { sqlDebugOutput } from "@api/V1/recordingsBulkQueryUtil.js";
 import { generateVisits2 } from "@api/V1/monitoringUtil.js";
-
-await modelsInit();
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/monitoring`;

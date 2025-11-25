@@ -21,7 +21,7 @@ import util from "@api/V1/util.js";
 import config from "@config";
 import log from "@log";
 import { format as sqlFormat } from "sql-formatter";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { Recording } from "@models/Recording.js";
 import { mapPosition } from "@models/Recording.js";
 import { Tag } from "@models/Tag.js";
@@ -126,7 +126,7 @@ import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import { Device } from "@models/Device.js";
 import { Station } from "@models/Station.js";
 
-const { sequelize } = await modelsInit();
+const sequelize = await initSequelize();
 
 const mapTrackTag = (
   trackTag: TrackTag,

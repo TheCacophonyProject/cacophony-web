@@ -27,7 +27,7 @@ import responseUtil, {
 import crypto from "crypto";
 import type { NextFunction, Request, Response } from "express";
 import { Device } from "@models/Device.js";
-import modelsInit, { ModelStaticCommon } from "@models/index.js";
+import { ModelStaticCommon } from "@models/index.js";
 import { User } from "@models/User.js";
 import { Event } from "@models/Event.js";
 import { Recording } from "@models/Recording.js";
@@ -39,8 +39,6 @@ import { Model, Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
 import { RequestContext } from "@api/extract-middleware.js";
 import { IsoFormattedDateString } from "@typedefs/api/common.js";
-
-await modelsInit();
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, unknown>;

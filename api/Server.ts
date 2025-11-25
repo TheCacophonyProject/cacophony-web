@@ -4,7 +4,7 @@ import passport from "passport";
 import process from "process";
 import http from "http";
 import config from "./config.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import log, { consoleTransport } from "@log";
 import customErrors from "./api/customErrors.js";
 import { openS3 } from "./models/util/util.js";
@@ -419,7 +419,7 @@ const grafanaLabelRestart = async () => {
   // });
 
   log.notice("Initialising Sequelize models");
-  const { sequelize } = await modelsInit();
+  const sequelize = await initSequelize();
 
   log.notice("Connecting to database.....");
   try {
@@ -447,7 +447,7 @@ const grafanaLabelRestart = async () => {
         });
       }
     }
-
+    //
     await checkS3Connection();
     await openHttpServer(app);
     await grafanaLabelRestart();

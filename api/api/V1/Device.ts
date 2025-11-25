@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import { someResponse, successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -97,8 +96,6 @@ import { deleteFile } from "@/models/util/util.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { User } from "@models/User.js";
 import { SaltId } from "@typedefs/api/common.js";
-
-await modelsInit();
 
 export const mapDeviceResponse = (
   device: Device,

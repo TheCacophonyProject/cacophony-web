@@ -22,7 +22,7 @@ import {
   getEmailConfirmationToken,
   getJoinGroupRequestToken,
 } from "../auth.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, matchedData, param, query } from "express-validator";
 import {
@@ -75,7 +75,7 @@ import { Device } from "@/models/Device.js";
 import { GroupInvites } from "@models/GroupInvites.js";
 import { GroupUsers } from "@models/GroupUsers.js";
 
-const { sequelize } = await modelsInit();
+const sequelize = await initSequelize();
 
 export interface ApiLoggedInUsersResponseSuccess {
   usersList: ApiLoggedInUserResponse[];

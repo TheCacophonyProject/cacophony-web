@@ -1,12 +1,12 @@
 import log from "@log";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { Device } from "@models/Device.js";
 import { Recording } from "@models/Recording.js";
-await modelsInit();
+await initSequelize();
 (async () => {
   const stations = (await Station.findAll()) as Station[];
   for (const station of stations) {

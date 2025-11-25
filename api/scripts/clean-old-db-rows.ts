@@ -1,7 +1,6 @@
 import log from "../logging.js";
-import modelsInit from "@models/index.js";
-
-const _models = await modelsInit();
+import { initSequelize } from "@models/index.js";
+await initSequelize();
 
 async function main() {
   // log.info("Removing events older than 30 days");

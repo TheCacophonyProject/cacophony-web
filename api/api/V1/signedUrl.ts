@@ -21,7 +21,6 @@ import config from "@config";
 import { ClientError } from "../customErrors.js";
 import type { Application, Request, Response } from "express";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
-import modelsInit from "@models/index.js";
 import { SuperUsers } from "@/Globals.js";
 import { Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
@@ -32,8 +31,6 @@ import fs from "fs/promises";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
 import { JwtPayload } from "jsonwebtoken";
-
-await modelsInit();
 
 export const streamS3Object = async (
   request: Request,

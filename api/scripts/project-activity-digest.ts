@@ -1,5 +1,5 @@
 import log from "@log";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { sendProjectActivityDigestEmail } from "@/emails/transactionalEmails.js";
 import {
   calculateMonitoringPageCriteria,
@@ -15,7 +15,7 @@ import { Group } from "@models/Group.js";
 import config from "@config";
 import { Op } from "sequelize";
 
-await modelsInit();
+await initSequelize();
 
 const allVisitsForProjectInTimespan = async (
   projectId: GroupId,

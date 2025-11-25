@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import util from "./util.js";
 import { successResponse } from "./responseUtil.js";
 import config from "@config";
@@ -39,8 +38,6 @@ import type {
 import classification from "@/classifications/classification.json" with { type: "json" };
 import type { User } from "@models/User.js";
 import { File } from "@models/File.js";
-
-await modelsInit();
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
