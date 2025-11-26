@@ -1713,7 +1713,7 @@ const _addAITrackTags = async (
   recording: Recording,
   rawTracks: RawTrack[],
   tracks: Track[],
-  models: [],
+  models: ClassifierModelDescription[],
 ): Promise<TrackTagId[]> => {
   const trackTags = [];
   for (let i = 0; i < rawTracks.length; i++) {
@@ -1723,7 +1723,7 @@ const _addAITrackTags = async (
       label,
       confidence,
       classify_time,
-      all_claClassifierModelDescriptionss_confidences,
+      all_class_confidences,
       model_id,
     } of rawTrack.predictions) {
       trackTags.push(

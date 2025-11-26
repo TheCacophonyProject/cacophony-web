@@ -121,8 +121,10 @@ interface TrackClassification {
 
 }
 
+export type MinimalTrackClassifications  =  MinimalTrackClassification[];
 
-interface MinimalTrackClassification {
+
+export interface MinimalTrackClassification {
   classify_time?: Seconds;
   confidence: FloatZeroToOne;
   clarity?: FloatZeroToOne;

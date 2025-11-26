@@ -14,6 +14,8 @@ import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
 import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTracksRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
+import ApiMinimalTrackClassifications from "@schemas/api/fileProcessing/MinimalTrackClassifications.schema.json" with { type: "json" };
+
 import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" with { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
@@ -33,7 +35,7 @@ import {
   fetchUnauthorizedRequiredFlatRecordingById,
 } from "@api/extract-middleware.js";
 import { Track } from "@/models/Track.js";
-import { DeviceHistory } from "@models/DeviceHistory.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";398
 import Sequelize, { Op } from "sequelize";
 import type { TrackId } from "@typedefs/api/common.js";
 import { openS3 } from "@models/util/util.js";
@@ -43,7 +45,7 @@ import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Recording } from "@models/Recording.js";
 
-import type { MinimalTrackRequestData } from "@/../types/api/fileProcessing.js";
+import type { MinimalTrackRequestData, MinimalTrackClassification } from "@/../types/api/fileProcessing.js";
 
 const NULL_TRACK_ID = 1;
 await modelsInit();
@@ -392,7 +394,21 @@ export default function (app: Application, baseUrl: string) {
       });
     },
   );
-
+  const addTrackTag = async (track:Track, pred:MinimalTrackClassification): Promise<TrackTag> => {
+    const predData = pred as TrackTagData;
+    if (!pred.confident) {
+      predData.raw_tag = pred.tag;
+      pred.tag = "unidentified";
+    }
+    return track.addTag(
+      pred.tag,
+      pred.confidence,
+      true,
+      predData,
+      null,
+      false,
+    );
+  }
   const addTrack = async (
     recording: Recording,
     trackData: MinimalTrackRequestData,
@@ -433,19 +449,7 @@ export default function (app: Application, baseUrl: string) {
       trackId = track.id;
       if (predictions) {
         for (const pred of predictions) {
-          const predData = pred as TrackTagData;
-          if (!pred.confident) {
-            predData.raw_tag = pred.tag;
-            pred.tag = "unidentified";
-          }
-          const tag = await track.addTag(
-            pred.tag,
-            pred.confidence,
-            true,
-            predData,
-            null,
-            false,
-          );
+          await addTrackTag(track,pred);
         }
       }
     }
@@ -533,7 +537,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/processing/:id/tracks/:trackId/tags Add tag to track
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/tags Add tags to track
    * @apiName PostTrackTag
    * @apiGroup Processing
    *
@@ -554,9 +558,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
-      body("what").exists().isString(), // FIXME - Validate against valid tags?
-      body("confidence").isFloat().toFloat(),
-      body("data").isJSON().optional(),
+      body("data").custom(jsonSchemaOf(ApiMinimalTrackClassifications))
     ]),
     (request, response, next) => {
       const trackId = param("trackId");
@@ -571,16 +573,14 @@ export default function (app: Application, baseUrl: string) {
     parseJSONField(body("data")),
     async (request: Request, response: Response) => {
       if (!response.locals.skip) {
-        const tag = await response.locals.track.addTag(
-          request.body.what,
-          request.body.confidence,
-          true,
-          response.locals.data,
-          null,
-          false,
-        );
+        let trackTagIds = []
+        for(const pred of response.locals.data){
+          const tag = await addTrackTag(response.locals.track,pred);
+          trackTagIds.push(tag.id)
+        }
+
         return successResponse(response, "Track tag added.", {
-          trackTagId: tag.id,
+          trackTagIds: trackTagIds,
         });
       }
       // Returns without creating track if this is a masked out track.
