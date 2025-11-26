@@ -15,7 +15,7 @@ import { trackIsMasked } from "@api/V1/trackMasking.js";
 import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTracksRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
 import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" with { type: "json" };
-import { arrayOf,jsonSchemaOf } from "../schema-validation.js";
+import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { AuthorizationError, ClientError } from "../customErrors.js";
 import util from "../V1/util.js";
@@ -381,14 +381,16 @@ export default function (app: Application, baseUrl: string) {
         );
       }
       const data = response.locals.data;
-      const track_ids = [];
-      console.log("Data is")
+      const trackIds = [];
+      console.log("Data is");
       for (const track of data) {
-        console.log("Track is ",track)
-        track_ids.push(await addTrack(recording, track, data.algorithmId));
+        console.log("Track is ", track);
+        trackIds.push(
+          await addTrack(recording, track, request.body.algorithmId),
+        );
       }
       return successResponse(response, "Tracks added.", {
-        track_ids,
+        trackIds,
       });
     },
   );
@@ -417,30 +419,36 @@ export default function (app: Application, baseUrl: string) {
     if (!discardMaskedTrack) {
       const predictions = trackData.predictions;
       const newTrack = {
-        data: trackData as any,
+        data: trackData,
         AlgorithmId: algorithmId,
         startSeconds: trackData.start_s || 0,
         endSeconds: trackData.end_s || 0,
         minFreqHz: null,
         maxFreqHz: null,
       };
-      newTrack.data.delete("predictions");
+      delete newTrack.data.predictions;
       if (recording.type === RecordingType.Audio) {
         newTrack.minFreqHz = trackData.minFreq || 0;
         newTrack.maxFreqHz = trackData.maxFreq || 0;
       }
       const track = await recording.addTrack(newTrack);
       trackId = track.id;
-      for (const pred of predictions) {
-        const predData: TrackTagData = pred as TrackTagData;
-        const tag = await track.addTag(
-          pred.tag,
-          pred.confidence,
-          true,
-          predData,
-          null,
-          false,
-        );
+      if (predictions) {
+        for (const pred of predictions) {
+          const predData = pred as TrackTagData;
+          if (!pred.confident) {
+            predData.raw_tag = pred.tag;
+            pred.tag = "unidentified";
+          }
+          const tag = await track.addTag(
+            pred.tag,
+            pred.confidence,
+            true,
+            predData,
+            null,
+            false,
+          );
+        }
       }
     }
     return trackId;
@@ -480,39 +488,9 @@ export default function (app: Application, baseUrl: string) {
           ),
         );
       }
-      const deviceId = recording.DeviceId;
-      const groupId = recording.GroupId;
-      const atTime = recording.recordingDateTime;
-      let discardMaskedTrack = false;
-      let trackId: TrackId = 1;
       const data = response.locals.data;
-      if (recording.type === RecordingType.ThermalRaw) {
-        const positions = data && data.positions;
-        if (positions) {
-          discardMaskedTrack = await trackIsMasked(
-            deviceId,
-            groupId,
-            atTime,
-            positions,
-          );
-        }
-      }
-      if (!discardMaskedTrack) {
-        const newTrack = {
-          data,
-          AlgorithmId: request.body.algorithmId,
-          startSeconds: data.start_s || 0,
-          endSeconds: data.end_s || 0,
-          minFreqHz: null,
-          maxFreqHz: null,
-        };
-        if (recording.type === RecordingType.Audio) {
-          newTrack.minFreqHz = data.minFreq || 0;
-          newTrack.maxFreqHz = data.maxFreq || 0;
-        }
-        const track = await recording.addTrack(newTrack);
-        trackId = track.id;
-      }
+
+      const trackId = await addTrack(recording, data, request.body.algorithmId);
       // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
       // trackTags to tag id 1.
       return successResponse(response, "Track added.", {

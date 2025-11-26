@@ -96,12 +96,10 @@ export const jsonSchemaOf =
     if (typeof val === "string") {
       try {
         val = JSON.parse(val);
-        console.log(val);
       } catch (_e) {
         throw new ClientError("Malformed json");
       }
     }
-    console.log(val)
     if (val === "") {
       throw new ClientError("Malformed json");
     }
