@@ -382,9 +382,7 @@ export default function (app: Application, baseUrl: string) {
       }
       const data = response.locals.data;
       const trackIds = [];
-      console.log("Data is");
       for (const track of data) {
-        console.log("Track is ", track);
         trackIds.push(
           await addTrack(recording, track, request.body.algorithmId),
         );

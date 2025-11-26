@@ -15,8 +15,8 @@ export const server = {
 };
 
 export const database = {
-  username: "test",
-  password: "test",
+  username: "root",
+  password: "",
   database: "cacophony",
   host: "localhost",
   dialect: "postgres",
