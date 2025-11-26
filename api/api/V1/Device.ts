@@ -950,7 +950,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/:id/reference-image/{.:exists}`,
+    `${apiUrl}/:id/reference-image{/:exists}`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
