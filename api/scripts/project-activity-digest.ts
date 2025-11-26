@@ -14,6 +14,9 @@ import os from "os";
 import { Group } from "@models/Group.js";
 import config from "@config";
 import { Op } from "sequelize";
+import { GroupUsers } from "@models/GroupUsers.js";
+import { Recording } from "@models/Recording.js";
+import tzLookup from "tz-lookup-oss";
 
 await initSequelize();
 
@@ -73,6 +76,19 @@ const allVisitsForProjectInTimespan = async (
   return visits;
 };
 
+const currentHourInTimezone = (timeZone: string): number => {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-NZ", {
+    hour: "numeric",
+    hour12: false,
+    hourCycle: "h24",
+    timeZone: timeZone,
+  });
+
+  const formattedOutput = formatter.format(now);
+  return Number(formattedOutput);
+};
+
 (async () => {
   if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
@@ -107,10 +123,30 @@ const allVisitsForProjectInTimespan = async (
     ],
   });
   for (const group of digestGroups) {
+    const groupTimezoneRecording = await Recording.findOne({
+      where: { GroupId: group.id, location: { [Op.ne]: null } },
+      attributes: ["location"],
+      order: [["recordingDateTime", "DESC"]],
+      limit: 1,
+    });
+    if (groupTimezoneRecording) {
+      const timeZone = tzLookup(
+        groupTimezoneRecording.location.lat,
+        groupTimezoneRecording.location.lng,
+      );
+      // NOTE: We ignore the possibility of a project having devices in multiple timezones,
+      // or that the timezone of the project may not reflect the timezone of the recipient.
+      if (currentHourInTimezone(timeZone) !== 9) {
+        // It's not time for this projects' email
+        continue;
+      }
+    }
     const recipients = group.Users.map(({ email, userName }) => ({
       email,
       userName,
     }));
+    // TODO: Add in some bird tag stats if audio recording is happening
+
     const recordingData = {};
     // NOTE: If there was no activity, check to see if this is the *first* time there has been no activity for this time period.
     // If so, then send the email saying there was no activity, and that another email won't be sent until there is again.
@@ -118,6 +154,7 @@ const allVisitsForProjectInTimespan = async (
       group.id,
       startOfPeriod,
       now,
+      // NOTE: Any of the projects' users will do here.
       group.Users[0],
     );
     const noVisitsInTimespan = visits.length === 0;

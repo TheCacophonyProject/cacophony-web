@@ -28,6 +28,7 @@ import { fileURLToPath } from "url";
 import type { UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { User } from "@models/User.js";
+import os from "os";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -138,7 +139,7 @@ const grafanaLabelRestart = async () => {
         body: JSON.stringify({
           time: Date.now(),
           tags: ["cacophony-web-restart"],
-          text: CACOPHONY_WEB_VERSION.version,
+          text: `${os.hostname()}} ${CACOPHONY_WEB_VERSION.version}`,
         }),
       });
       if (response && response.status !== HttpStatusCode.Ok) {

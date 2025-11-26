@@ -83,6 +83,9 @@ export const initSequelize = async () => {
         // http://docs.sequelizejs.com/manual/tutorial/querying.html#operators-security
         // Because they are currently used via the API, we need to keep them enabled.
         // The following definition explicitly enables the aliases we want to support.
+
+        // NOTE: Disabling these still passes all integration tests - maybe we can safely remove them
+        //  when we deprecate legacy browse?
         operatorsAliases: {
           $eq: Op.eq,
           $ne: Op.ne,
