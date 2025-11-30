@@ -72,7 +72,7 @@ export const streamS3Object = async (
       "Content-disposition",
       `attachment; filename=${fileName}`,
     );
-    response.setHeader("Content-type", mimeType);
+    response.setHeader("Content-Type", mimeType);
     response.setHeader("Content-Length", file.length);
     response.write(file, "binary");
     return response.end(null, "binary");
@@ -97,10 +97,6 @@ export const streamS3Object = async (
     }
   }
   response.setHeader("Content-type", mimeType);
-  if (fileSize) {
-    response.setHeader("Content-Length", fileSize);
-  }
-
   const s3 = openS3();
 
   try {

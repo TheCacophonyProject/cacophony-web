@@ -14,7 +14,6 @@ import os from "os";
 import { Group } from "@models/Group.js";
 import config from "@config";
 import { Op } from "sequelize";
-import { GroupUsers } from "@models/GroupUsers.js";
 import { Recording } from "@models/Recording.js";
 import tzLookup from "tz-lookup-oss";
 
