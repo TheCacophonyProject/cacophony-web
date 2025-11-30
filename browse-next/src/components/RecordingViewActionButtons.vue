@@ -6,12 +6,11 @@ import type { SelectedProject } from "@models/LoggedInUser";
 import { CurrentUser, showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import { currentSelectedProject } from "@models/provides.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { LoadedResource } from "@api/types.ts";
-import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -213,17 +212,15 @@ const notImplemented = () => {
     >
       <font-awesome-icon icon="download" color="#666" />
     </button>
-    <two-step-action-button-popover
-      :icon="['fas', 'trash-can']"
-      :confirmation-label="'Delete recording'"
-      :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
-      color="#666"
+    <two-step-action-button
+      icon="delete"
+      tooltip-label="Delete recording"
+      confirmation-label="Delete recording"
       :action="() => emit('delete-recording')"
-      :placement="'top'"
+      placement="top"
       v-if="userIsGroupAdmin"
-      :boundary-padding="false"
     >
-    </two-step-action-button-popover>
+    </two-step-action-button>
     <!--    <button-->
     <!--      type="button"-->
     <!--      class="btn btn-square btn-hi"-->

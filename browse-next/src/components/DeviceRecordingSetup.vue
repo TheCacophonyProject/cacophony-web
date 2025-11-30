@@ -27,7 +27,7 @@ import {
   BFormInput,
   BFormRadio,
   BFormRadioGroup,
-  BSpinner
+  BSpinner,
 } from "bootstrap-vue-next";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 type Time = { hours: number; minutes: number; seconds: number };
@@ -628,12 +628,9 @@ watch(customRecordingWindowStop, async () => {
 </script>
 
 <template>
-  <div
-    class="d-flex justify-content-center align-items-center justify-content-lg-start align-items-lg-start"
-  >
     <!-- FIXME: Choose device types using TC2 channel -->
     <div
-      class="mt-4 mt-lg-0 justify-content-center align-items-center"
+      class="d-flex flex-column flex-fill"
       v-if="
         device &&
         (device.type === 'thermal' || device.type === 'hybrid-thermal-audio')
@@ -644,10 +641,11 @@ watch(customRecordingWindowStop, async () => {
         :model-value="!device.lastConnectionTime"
         variant="warning"
         :no-animation="true"
+        class="mb-4"
       >
         <div class="d-flex">
           <material-symbol name="warning" class="me-2" size="1.25rem"/>
-          This device has never connected to the Cacophony Platform in its current location,
+          This device has never connected to the Cacophony Monitoring Platform in its current location,
           so remote setup may not be available.
         </div>
       </b-alert>
@@ -659,10 +657,10 @@ watch(customRecordingWindowStop, async () => {
       <!--      </div>-->
       <!--      <span v-else>Current settings unknown, </span>-->
       <!-- TODO: Display last synced settings where possible -->
-      <span v-if="settingsLoading">
-        <b-spinner small class="me-2" />
-      </span>
-      <div v-else-if="settings" class="mt-3">
+      <div v-if="settingsLoading" class="d-flex flex-fill align-items-center justify-content-center">
+        <b-spinner class="me-2" />
+      </div>
+      <div v-else-if="settings">
         <section-card class="mb-3 mb-lg-4">
           <template #header-title>
             Settings summary
@@ -958,7 +956,7 @@ watch(customRecordingWindowStop, async () => {
           </div>
         </section-card>
 
-        <section-card v-if="isTc2Device" class="mb-3 mb-lg-4">
+        <section-card v-if="isTc2Device">
           <template #header-title>
             Battery configuration
           </template>
@@ -1010,8 +1008,16 @@ watch(customRecordingWindowStop, async () => {
         </section-card>
 
       </div>
+      <!-- TODO: What does it mean to have no settings? -->
+      <div v-else-if="!settings" class="my-5">
+        <div class="text-center text-body-tertiary">
+          <h5 class="h5">No recording settings uploaded</h5>
+          <p>It is likely that this device never connected to the Cacophony Monitoring Platform. <br />
+            Connecting is optional, and doesn't affect the ability of the device to record.</p>
+        </div>
+
+      </div>
     </div>
-  </div>
 </template>
 
 <style scoped lang="less">

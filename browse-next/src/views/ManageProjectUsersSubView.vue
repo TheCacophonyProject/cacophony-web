@@ -11,7 +11,6 @@ import {
 import type { GroupId as ProjectId } from "@typedefs/api/common";
 import type { ApiGroupUserResponse as ApiProjectUserResponse } from "@typedefs/api/group";
 import CardTable from "@/components/CardTable.vue";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import type { CardTableRows, CardTableItem } from "@/components/CardTableTypes";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
 import ProjectInviteModal from "@/components/ProjectInviteModal.vue";
@@ -21,6 +20,8 @@ import {
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
 import SectionCard from "@/components/SectionCard.vue";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import {BBadge} from "bootstrap-vue-next";
 const projectUsers = ref<LoadedResource<ApiProjectUserResponse[]>>(null);
 const loadingUsers = ref(false);
 const fallibleCurrentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
@@ -260,15 +261,12 @@ const permissionsOptions = computed(() => [
                 >
               </div>
               <two-step-action-button
-                  v-if="card.user.value.pending === 'requested'"
-                  class="text-end"
-                  :action="() => acceptPendingUser(card.user.value)"
-                  icon="check"
-                  variant="outline-secondary"
-                  :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
-                  label="Approve request"
-                  classes="btn-outline-secondary d-flex align-items-center fs-7 text-nowrap w-100"
-                  alignment="right"
+                v-if="card.user.value.pending === 'requested'"
+                :action="() => acceptPendingUser(card.user.value)"
+                icon="check"
+                :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
+                label="Approve request"
+                tooltip-label="Approve"
               />
             </div>
             <div
@@ -305,23 +303,20 @@ const permissionsOptions = computed(() => [
             </div>
             <div class="d-flex justify-content-end mt-2">
               <two-step-action-button
-                  class="text-end"
-                  :classes="['fs-7', 'text-nowrap', 'ms-2']"
-                  :action="() => removeUser(card._deleteAction.value)"
-                  icon="trash-can"
-                  :disabled="isLastAdminUser(card._deleteAction.value)"
-                  label="Remove user"
-                  variant="btn-light"
-                  :confirmation-label="
-            userIsCurrentUser(card._deleteAction.value)
-              ? 'Leave group'
-              : card._deleteAction.value.pending === 'requested'
-                ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join project`
-                : card._deleteAction.value.pending === 'invited'
-                  ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
-                  : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
-          "
-                  alignment="right"
+                :action="() => removeUser(card._deleteAction.value)"
+                icon="delete"
+                :disabled="isLastAdminUser(card._deleteAction.value)"
+                label="Remove user"
+                tooltip-label="Remove"
+                :confirmation-label="
+                  userIsCurrentUser(card._deleteAction.value)
+                    ? 'Leave group'
+                    : card._deleteAction.value.pending === 'requested'
+                      ? `Deny request from <strong><em>${card._deleteAction.value.userName}</em></strong> to join project`
+                      : card._deleteAction.value.pending === 'invited'
+                        ? `Revoke invitation to <strong><em>${card._deleteAction.value.userName}</em></strong>`
+                        : `Remove <strong><em>${card._deleteAction.value.userName}</em></strong> from project`
+                "
               />
             </div>
           </template>
@@ -349,15 +344,13 @@ const permissionsOptions = computed(() => [
                 >
               </div>
               <two-step-action-button
-                  v-if="cell.value.pending === 'requested'"
-                  class="text-end"
-                  :action="() => acceptPendingUser(cell.value)"
-                  icon="check"
-                  variant="outline-secondary"
-                  :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into project`"
-                  label="Approve request"
-                  :classes="['fs-7', 'text-nowrap', 'ms-2']"
-                  alignment="centered"
+                v-if="cell.value.pending === 'requested'"
+                :action="() => acceptPendingUser(cell.value)"
+                :confirmation-label="`Accept <strong><em>${cell.value.userName}</em></strong> into project`"
+                label="Approve request"
+                icon="check"
+                tooltip-label="Approve"
+                alignment="centered"
               />
             </div>
           </template>
@@ -389,22 +382,29 @@ const permissionsOptions = computed(() => [
           </template>
           <template #_deleteAction="{ cell }">
             <two-step-action-button
-                class="text-end"
-                :classes="['fs-7', 'text-nowrap', 'ms-2']"
-                variant="outline-secondary"
-                :action="() => removeUser(cell.value)"
-                icon="trash-can"
-                :disabled="isLastAdminUser(cell.value)"
-                :confirmation-label="
-          userIsCurrentUser(cell.value)
-            ? 'Leave group'
-            : cell.value.pending === 'requested'
-              ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join project`
-              : cell.value.pending === 'invited'
-                ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
-                : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
-        "
-                alignment="right"
+              :action="() => removeUser(cell.value)"
+              :classes="['text-nowrap']"
+              icon="delete"
+              :disabled="isLastAdminUser(cell.value)"
+              :confirmation-label="
+                userIsCurrentUser(cell.value)
+                  ? 'Leave group'
+                  : cell.value.pending === 'requested'
+                    ? `Deny request from <strong><em>${cell.value.userName}</em></strong> to join project`
+                    : cell.value.pending === 'invited'
+                      ? `Revoke invitation to <strong><em>${cell.value.userName}</em></strong>`
+                      : `Remove <strong><em>${cell.value.userName}</em></strong> from project`
+                "
+              :tooltip-label="
+                userIsCurrentUser(cell.value)
+                  ? 'Leave project'
+                  : cell.value.pending === 'requested'
+                    ? `Deny request`
+                    : cell.value.pending === 'invited'
+                      ? `Revoke invitation`
+                      : `Remove`
+                "
+              alignment="right"
             />
           </template>
         </card-table>

@@ -17,7 +17,6 @@ import {
   removeAlert,
 } from "@api/Alert";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import DeviceName from "@/components/DeviceName.vue";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
@@ -45,6 +44,7 @@ import type { LoadedResource } from "@api/types.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import SectionCard from "@/components/SectionCard.vue";
 import {BButton} from "bootstrap-vue-next";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -337,19 +337,10 @@ const alertItems = computed<AlertItem[]>(() => {
           <template #_deleteAction="{ cell }">
             <div class="d-flex align-items-center justify-content-end">
               <two-step-action-button
-                  class="text-end"
-                  variant="outline-secondary"
-                  :action="() => deleteAlert(cell)"
-                  icon="trash-can"
-                  confirmation-label="Remove alert"
-                  :classes="[
-                    'd-flex',
-                    'align-items-center',
-                    'fs-7',
-                    'text-nowrap',
-                    'ms-2',
-                  ]"
-                  alignment="right"
+                :action="() => deleteAlert(cell)"
+                icon="delete"
+                confirmation-label="Remove alert"
+                tooltip-label="Remove"
               />
             </div>
           </template>
@@ -399,19 +390,10 @@ const alertItems = computed<AlertItem[]>(() => {
               </div>
               <div class="d-flex align-items-end justify-content-end">
                 <two-step-action-button
-                    class="text-end"
-                    variant="outline-secondary"
-                    :action="() => deleteAlert(card._deleteAction)"
-                    icon="trash-can"
-                    confirmation-label="Remove alert"
-                    :classes="[
-                      'd-flex',
-                      'align-items-center',
-                      'fs-7',
-                      'text-nowrap',
-                      'ms-2',
-                    ]"
-                    alignment="right"
+                  :action="() => deleteAlert(card._deleteAction)"
+                  icon="delete"
+                  confirmation-label="Remove alert"
+                  tooltip-label="Remove"
                 />
               </div>
             </div>

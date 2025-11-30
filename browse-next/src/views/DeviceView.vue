@@ -132,7 +132,7 @@ const _deviceType = computed<string>(() => {
 });
 </script>
 <template>
-  <div class="device-view d-flex flex-column">
+  <div class="device-view d-flex flex-column flex-fill">
     <overflowing-tab-list v-if="!deviceLoading">
       <!--      <router-link-->
       <!--        v-if="currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"-->
@@ -249,6 +249,7 @@ const _deviceType = computed<string>(() => {
       </router-link>
     </overflowing-tab-list>
     <router-view
+      class="d-flex flex-fill"
       @start-blocking-work="() => emit('start-blocking-work')"
       @end-blocking-work="() => emit('end-blocking-work')"
       @updated-regions="(e) => (latestMaskRegions = e)"

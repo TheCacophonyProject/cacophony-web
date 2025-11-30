@@ -1,15 +1,6 @@
 <script setup lang="ts">
-import {
-  Comment,
-  computed,
-  Fragment,
-  onBeforeMount,
-  ref,
-  useSlots,
-  type VNode,
-  watch,
-} from "vue";
-import { useElementSize } from "@vueuse/core";
+import {Comment, computed, Fragment, onBeforeMount, ref, useSlots, type VNode, watch} from "vue";
+import {useElementSize} from "@vueuse/core";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const navList = ref<HTMLUListElement>();
@@ -17,7 +8,7 @@ const slots = useSlots();
 const items = ref<VNode[]>([]);
 
 onBeforeMount(() => {
-  items.value = (slots.default && slots.default()) || [];
+  items.value = ((slots.default && slots.default()) || []).filter(node => node.type !== Comment && node.type !== Fragment);
   visibleItems.value = items.value.length;
   findSelectedItemName();
 });
@@ -30,14 +21,13 @@ const nonOverflowingItems = computed(() => {
 });
 const overFlowingItems = computed(() => {
   return items.value
-    .slice(visibleItems.value)
-    .filter((node) => node.type !== Comment && node.type !== Fragment);
+    .slice(visibleItems.value);
 });
 
 watch(
   () => slots.default && slots.default(),
   (newItems) => {
-    items.value = newItems as VNode[];
+    items.value = (newItems as VNode[]).filter(node => node.type !== Comment && node.type !== Fragment);
     findSelectedItemName();
   },
 );
@@ -51,15 +41,17 @@ const calculateListOverflow = (availableWidth: number) => {
   if (children) {
     let totalWidth = 0;
     const widths = [];
-    const extraWidth = 34;
+    const extraWidth = 48;
     const gap = 16; // gap between items
     let safeNum = 0;
     let overflows = false;
+
     for (const child of Array.from(children)) {
       if (!child.classList.contains("btn-group")) {
         const width = child.querySelector(".text")!.getBoundingClientRect().width + gap;
         totalWidth += width;
-        if (totalWidth + extraWidth > availableWidth) {
+
+        if (Math.floor(totalWidth) + extraWidth >= availableWidth) {
           safeNum = widths.length;
           overflows = true;
           break;
