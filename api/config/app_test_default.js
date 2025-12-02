@@ -67,9 +67,7 @@ export const processingUserIds = [];
 
 // When testing, we don't know what ID a user will be assigned, so we use the user name
 // to determine if a user' thermal recordings should be available to a processing user.
-export const processingSuperUserNames = [
-    "processing-super-user",
-];
+export const processingSuperUserNames = ["processing-super-user"];
 
 // For group IDs in this array, only direct users of that group will be able to view or download
 // thermal recordings made by the group devices.  All super user accounts (excluding the one used

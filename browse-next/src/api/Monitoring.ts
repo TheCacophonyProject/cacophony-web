@@ -24,8 +24,6 @@ export const getVisitsForProjectNew = async (
   untilDate: Date,
   locations?: LocationId[],
   types?: (
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
     | RecordingType.ThermalRaw
     | RecordingType.Audio
   )[],
@@ -59,8 +57,6 @@ export const getVisitsForProject = async (
   untilDate: Date,
   locations?: LocationId[],
   types?: (
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
     | RecordingType.ThermalRaw
   )[],
 ) => {
@@ -121,8 +117,6 @@ export const getAllVisitsForProject = async (
       undefined,
       [
         ConcreteRecordingType.ThermalRaw,
-        ConcreteRecordingType.TrailCamImage,
-        ConcreteRecordingType.TrailCamVideo,
       ],
     );
     if (response && response.success) {
@@ -176,8 +170,6 @@ export const getAllVisitsForProjectBetweenTimes = async (
   untilDateTime: Date,
   locations?: LocationId[],
   types?: (
-    | RecordingType.TrailCamImage
-    | RecordingType.TrailCamVideo
     | RecordingType.ThermalRaw
   )[],
   progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is [0, 1]

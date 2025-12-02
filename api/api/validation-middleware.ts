@@ -1,76 +1,76 @@
 import { ClientError } from "./customErrors.js";
-import modelsInit from "@models/index.js";
 import type { Request, Response, NextFunction } from "express";
 import type { Result, ValidationChain } from "express-validator";
 import { oneOf } from "express-validator";
 import { expectedTypeOf } from "./middleware.js";
-import type { Middleware } from "express-validator/src/base.js";
 import { extractValFromRequest } from "./extract-middleware.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
+import { Device } from "@models/Device.js";
+import type { Middleware } from "express-validator/lib/base.d.ts";
 
-const models = await modelsInit();
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
-    async (
-      request: Request,
-      response: Response,
-      next: NextFunction,
-    ): Promise<void> => {
-      const deviceName = extractValFromRequest(request, device);
-      const group = response.locals.group;
-      if (!group) {
-        return next(new ClientError("No group specified"));
-      }
-      let nameIsFree = await models.Device.freeDeviceName(
-        deviceName,
+  async (
+    request: Request,
+    response: Response,
+    next: NextFunction,
+  ): Promise<void> => {
+    const deviceName = extractValFromRequest(request, device);
+    const group = response.locals.group;
+    if (!group) {
+      return next(new ClientError("No group specified"));
+    }
+    let nameIsFree = await Device.freeDeviceName(
+      deviceName,
+      response.locals.group.id,
+    );
+    if (nameIsFree) {
+      // Check the url normalised version
+      nameIsFree = await Device.freeDeviceName(
+        urlNormaliseName(deviceName),
         response.locals.group.id,
       );
-      if (nameIsFree) {
-      // Check the url normalised version
-        nameIsFree = await models.Device.freeDeviceName(
-          urlNormaliseName(deviceName),
-          response.locals.group.id,
-        );
-      }
+    }
 
-      if (nameIsFree) {
+    if (nameIsFree) {
       // Check that the device name is not a reserved api path fragment:
-        if (
-          [
-            "create-proxy-device",
-            "fix-location",
-            "users",
-            "assign-schedule",
-            "remove-schedule",
-            "cacophony-index",
-            "cacophony-index-histogram",
-            "reregister",
-            "heartbeat",
-            "history",
-            "locations",
-            "location",
-            "in-group",
-            "reference-image",
-            "location-history",
-            "unique-track-tags",
-            "tracks-with-tag",
-          ].includes(deviceName)
-        ) {
-          return next(new ClientError(`Device name ${deviceName} reserved`));
-        }
+      if (
+        [
+          "create-proxy-device",
+          "fix-location",
+          "users",
+          "assign-schedule",
+          "remove-schedule",
+          "cacophony-index",
+          "cacophony-index-histogram",
+          "reregister",
+          "heartbeat",
+          "history",
+          "locations",
+          "location",
+          "in-group",
+          "reference-image",
+          "location-history",
+          "unique-track-tags",
+          "tracks-with-tag",
+        ].includes(deviceName)
+      ) {
+        return next(new ClientError(`Device name ${deviceName} reserved`));
       }
+    }
 
-      if (!nameIsFree) {
-        return next(new ClientError(`Device name ${deviceName} in use`));
-      }
-      next();
-    };
+    if (!nameIsFree) {
+      return next(new ClientError(`Device name ${deviceName} in use`));
+    }
+    next();
+  };
 
 export const idOf = (field: ValidationChain): ValidationChain =>
   field.exists().isInt().toInt().withMessage(expectedTypeOf("integer"));
 
 export const deprecatedField = (field: ValidationChain): ValidationChain => {
-  (field.builder as any).deprecated = true;
+  // NOTE: avoid typescript error when adding fields to this object
+  (field.builder as object)["deprecated"] = true;
   return field;
 };
 
@@ -119,7 +119,7 @@ export const booleanOf = (
   field: ValidationChain,
   defaultVal?: boolean,
 ): ValidationChain => {
-  if (defaultVal) {
+  if (defaultVal !== undefined) {
     return field
       .default(defaultVal)
       .toBoolean()
@@ -133,8 +133,8 @@ type AnyOf = Middleware & { run: (req: Request) => Promise<Result> };
 // Wrapping 'oneOf' with a useful error message.
 export const anyOf = (
   ...fields:
-  | (ValidationChain | AnyOf | AnyOf[])[]
-  | (ValidationChain | AnyOf | AnyOf[])[][]
+    | (ValidationChain | AnyOf | AnyOf[])[]
+    | (ValidationChain | AnyOf | AnyOf[])[][]
 ): AnyOf => {
   if (fields.length === 1 && Array.isArray(fields[0])) {
     fields = fields[0];
@@ -146,9 +146,12 @@ export const anyOf = (
     if (Array.isArray(field)) {
       for (const subField of field) {
         // Check to see if this is a ValidationChain or another anyOf
-        if ((subField as any).isOneOf) {
+        // NOTE: avoid typescript error when adding/reading fields of this object
+        if ((subField as object)["isOneOf"]) {
           // process children
-          for (const fieldName of (subField as any).fieldNames) {
+          for (const fieldName of (subField as object)[
+            "fieldNames"
+          ] as string[]) {
             if (!fieldNames.includes(fieldName)) {
               fieldNames.push(fieldName);
             }
@@ -156,8 +159,8 @@ export const anyOf = (
         } else {
           // Get name from field.
           if ((subField as ValidationChain).builder) {
-            // @ts-ignore - Accessing private field
-            const subFields = (subField as ValidationChain).builder.fields;
+            // NOTE: Accessing private field 'fields'
+            const subFields = (subField as ValidationChain).builder["fields"];
             for (const fieldName of subFields) {
               if (!fieldNames.includes(fieldName)) {
                 fieldNames.push(fieldName);
@@ -168,15 +171,15 @@ export const anyOf = (
       }
     } else {
       if ((field as ValidationChain).builder) {
-        // @ts-ignore - Accessing private field
-        const fields = (field as ValidationChain).builder.fields;
+        // NOTE: Accessing private field 'fields'
+        const fields = (field as ValidationChain).builder["fields"];
         for (const fieldName of fields) {
           if (!fieldNames.includes(fieldName)) {
             fieldNames.push(fieldName);
           }
         }
-      } else if ((field as any).isOneOf) {
-        for (const fieldName of (field as any).fieldNames) {
+      } else if (field["isOneOf"]) {
+        for (const fieldName of (field as object)["fieldNames"] as string[]) {
           if (!fieldNames.includes(fieldName)) {
             fieldNames.push(fieldName);
           }
@@ -192,7 +195,12 @@ export const anyOf = (
   } else {
     message = `Expected one of ${fieldNames.map((f) => `'${f}'`).join(", ")}`;
   }
-  const oneOfChain = oneOf(fields as ValidationChain[], message);
+  const oneOfChain = oneOf(fields as ValidationChain[], {
+    message: (_nestedErrors, _opts) => {
+      // TODO: Maybe handle nested errors?
+      return message;
+    },
+  });
   // Make the fieldNames available so that they can be added to the list of known allowed field names
   Object.assign(oneOfChain, { fieldNames, isOneOf: true });
   return oneOfChain;

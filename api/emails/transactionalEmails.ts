@@ -23,7 +23,7 @@ const commonAttachments = async (): Promise<EmailImageAttachment[]> => {
 
 const commonInterpolants = (origin: string) => {
   const browseUrl = origin.startsWith("http")
-    ? origin.replace(/^https?:\/\//, "https://")   // ensure exactly one https://
+    ? origin.replace(/^https?:\/\//, "https://") // ensure exactly one https://
     : `https://${origin}`;
   return {
     cacophonyBrowseUrl: browseUrl,
@@ -51,7 +51,8 @@ export const sendWelcomeEmailConfirmationEmail = async (
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants(origin);
-    const emailConfirmationUrl = `${common.cacophonyBrowseUrl
+    const emailConfirmationUrl = `${
+      common.cacophonyBrowseUrl
     }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "welcome-confirm-email.html",
@@ -99,7 +100,8 @@ export const sendEmailConfirmationEmailLegacyUser = async (
 ): Promise<boolean> => {
   try {
     const common = commonInterpolants(origin);
-    const emailConfirmationUrl = `${common.cacophonyBrowseUrl
+    const emailConfirmationUrl = `${
+      common.cacophonyBrowseUrl
     }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
     const { text, html } = await createEmailWithTemplate(
       "confirm-email-legacy-user.html",
@@ -123,7 +125,8 @@ export const sendChangedEmailConfirmationEmail = async (
   userEmailAddress: string,
 ) => {
   const common = commonInterpolants(origin);
-  const emailConfirmationUrl = `${common.cacophonyBrowseUrl
+  const emailConfirmationUrl = `${
+    common.cacophonyBrowseUrl
   }/confirm-account-email/${emailConfirmationToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "confirm-email-change.html",
@@ -337,7 +340,8 @@ export const sendGroupMembershipRequestEmail = async (
   userEmailAddress: string,
 ) => {
   const common = commonInterpolants(origin);
-  const acceptToGroupUrl = `${common.cacophonyBrowseUrl
+  const acceptToGroupUrl = `${
+    common.cacophonyBrowseUrl
   }/confirm-group-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "group-membership-request.html",
@@ -412,7 +416,8 @@ export const sendStoppedDevicesReportEmail = async (
         confirmedEmailTemplate.html,
         confirmedEmailTemplate.text,
         recipient,
-        `💔 Possible stopped or offline device${stoppedDevicesList.length > 1 ? "s" : ""
+        `💔 Possible stopped or offline device${
+          stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
         attachments,
         !sentAdminCopy ? config.server.adminEmails : [], // Just bcc admin for the first email in a group.
@@ -427,7 +432,8 @@ export const sendStoppedDevicesReportEmail = async (
         unconfirmedEmailTemplate.html,
         unconfirmedEmailTemplate.text,
         recipient,
-        `💔 Possible stopped or offline device${stoppedDevicesList.length > 1 ? "s" : ""
+        `💔 Possible stopped or offline device${
+          stoppedDevicesList.length > 1 ? "s" : ""
         } in '${groupName}'`,
         attachments,
         !sentAdminCopy ? config.server.adminEmails : [], // Just bcc admin for the first email in a group.
@@ -492,12 +498,12 @@ export const sendAnimalAlertEmail = async (
   });
   const thumb: EmailImageAttachment[] = thumbnail
     ? [
-      {
-        buffer: thumbnail,
-        mimeType: "image/png",
-        cid: "thumbnail",
-      },
-    ]
+        {
+          buffer: thumbnail,
+          mimeType: "image/png",
+          cid: "thumbnail",
+        },
+      ]
     : [];
   return await sendEmail(
     html,
@@ -515,7 +521,8 @@ export const sendPasswordResetEmail = async (
 ) => {
   const common = commonInterpolants(origin);
   const accountEmailAddress = userEmailAddress;
-  const passwordResetUrl = `${common.cacophonyBrowseUrl
+  const passwordResetUrl = `${
+    common.cacophonyBrowseUrl
   }/reset-password/${resetPasswordToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate("reset-password.html", {
     accountEmailAddress,
@@ -541,30 +548,30 @@ export const sendPlatformUsageEmail = async (
   const common = commonInterpolants(origin);
   const getMonthName = (num: number) => {
     switch (num) {
-    case 1:
-      return "Jan";
-    case 2:
-      return "Feb";
-    case 3:
-      return "Mar";
-    case 4:
-      return "Apr";
-    case 5:
-      return "May";
-    case 6:
-      return "Jun";
-    case 7:
-      return "Jul";
-    case 8:
-      return "Aug";
-    case 9:
-      return "Sep";
-    case 10:
-      return "Oct";
-    case 11:
-      return "Nov";
-    case 12:
-      return "Dec";
+      case 1:
+        return "Jan";
+      case 2:
+        return "Feb";
+      case 3:
+        return "Mar";
+      case 4:
+        return "Apr";
+      case 5:
+        return "May";
+      case 6:
+        return "Jun";
+      case 7:
+        return "Jul";
+      case 8:
+        return "Aug";
+      case 9:
+        return "Sep";
+      case 10:
+        return "Oct";
+      case 11:
+        return "Nov";
+      case 12:
+        return "Dec";
     }
   };
 

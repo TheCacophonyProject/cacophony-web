@@ -288,15 +288,7 @@ const addOrRemoveUserTag = async ({
         // This is a dummy track and needs to be created via the API before we can actually tag it.
         const dummyTrack = mapTrack(track);
         const positions = [];
-        if (props.recording.type === RecordingType.TrailCamImage) {
-          positions.push({
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-            order: 0,
-          });
-        } else if (props.recording.type === RecordingType.ThermalRaw) {
+        if (props.recording.type === RecordingType.ThermalRaw) {
           const recording = props.recording as ApiThermalRecordingResponse;
           if (!recording.tags.some((tag) => tag.detail === "missed track")) {
             // If we're adding a dummy track to a thermal recording, also add the "missed track" tag.

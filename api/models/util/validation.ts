@@ -38,8 +38,8 @@ export function isLatLon(
     valid = false;
     logger.warning("Invalid 4");
   } else if (typeof point === "object" && !Array.isArray(point)) {
-    if (point.hasOwnProperty("coordinates")) {
-      const coordinates = (point as any).coordinates;
+    if ("coordinates" in point) {
+      const coordinates = point.coordinates;
       if (!Array.isArray(coordinates)) {
         logger.warning("Invalid 3");
         valid = false;
@@ -54,10 +54,10 @@ export function isLatLon(
         valid = false;
       }
     } else if (
-      !point.hasOwnProperty("lat") ||
-      !point.hasOwnProperty("lng") ||
-      typeof (point as any).lat !== "number" ||
-      typeof (point as any).lng !== "number"
+      !("lat" in point) ||
+      !("lng" in point) ||
+      typeof point.lat !== "number" ||
+      typeof point.lng !== "number"
     ) {
       logger.warning("Invalid 1");
       valid = false;

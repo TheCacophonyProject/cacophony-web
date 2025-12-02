@@ -1,4 +1,3 @@
-
 // CITEXT extension must be installed with a more privilaged user
 // CREATE EXTENSION IF NOT EXISTS citext;
 
@@ -28,7 +27,7 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     await queryInterface.removeConstraint(
       "Devices",
-      "Devices_devicename_group_key"
+      "Devices_devicename_group_key",
     );
     await queryInterface.addConstraint("Devices", ["devicename"], {
       type: "unique",

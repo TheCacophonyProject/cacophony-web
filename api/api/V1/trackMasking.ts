@@ -3,11 +3,10 @@ import type { TrackFramePosition } from "@typedefs/api/fileProcessing.js";
 import type { MaskRegion } from "@typedefs/api/device.js";
 import earcut from "earcut";
 import { Op } from "sequelize";
-import type { ModelsDictionary } from "@models";
 type ArrayPt = [number, number];
+import { DeviceHistory } from "@models/DeviceHistory.js";
 
 export const trackIsMasked = async (
-  models: ModelsDictionary,
   deviceId: DeviceId,
   groupId: GroupId,
   atTime: Date,
@@ -15,7 +14,7 @@ export const trackIsMasked = async (
 ): Promise<boolean> => {
   // NOTE: When track is created, we need to check against any
   //  mask regions set on the device at the time of the recording.
-  const deviceHistoryEntry = await models.DeviceHistory.findOne({
+  const deviceHistoryEntry = await DeviceHistory.findOne({
     where: {
       DeviceId: deviceId,
       GroupId: groupId,

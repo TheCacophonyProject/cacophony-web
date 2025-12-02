@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface) {
     // Disconnect ThermalVideoRecordings and IrVideoRecordings from other tables.

@@ -32,47 +32,11 @@ import {
   ListObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
-import mime from "mime";
 import config from "@config";
 import type { LatLng } from "@typedefs/api/common.js";
 import { DataTypes } from "sequelize";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 import { isLatLon } from "@models/util/validation.js";
-import type { Readable } from "stream";
-import type { ReadableStream } from "stream/web";
-
-export function getFileName(model) {
-  let fileName;
-  const dateStr = model.getDataValue("recordingDateTime");
-  if (dateStr) {
-    fileName = new Date(dateStr)
-      .toISOString()
-      .replace(/\..+/, "")
-      .replace(/:/g, "");
-  } else {
-    fileName = "file";
-  }
-
-  const ext = mime.getExtension(model.getDataValue("mimeType") || "");
-  if (ext) {
-    fileName = fileName + "." + ext;
-  }
-  return fileName;
-}
-
-export function userCanEdit(id, user) {
-  const modelClass = this;
-  return new Promise((resolve) => {
-    //models.User.where
-    modelClass.getFromId(id, user, ["id"]).then((result) => {
-      if (result === null) {
-        return resolve(false);
-      } else {
-        return resolve(true);
-      }
-    });
-  });
-}
 
 export function openS3() {
   // This is a shim around the s3 compatible object store provider.
@@ -96,7 +60,7 @@ export function openS3() {
     }
     let chooseProvider = "s3Local";
     if (
-      config.hasOwnProperty("s3Archive") &&
+      "s3Archive" in config &&
       ((params.Key && params.Key.startsWith("a_")) ||
         (params.Prefix && params.Prefix.startsWith("a_")) ||
         (!params.Key &&
@@ -164,7 +128,11 @@ export function openS3() {
       const { client, bucket } = getProviderForParams({ Key: key });
       return client.send(new HeadObjectCommand({ Key: key, Bucket: bucket }));
     },
-    upload(key: string, body: Buffer | Uint8Array, metadata?: any) {
+    upload(
+      key: string,
+      body: Buffer | Uint8Array,
+      metadata?: Record<string, string>,
+    ) {
       const { client, bucket } = getProviderForParams({ Key: key });
       const length = (body as Buffer).length || 0; //"length" in body ? body.length : 0;
       const payload: PutObjectCommandInput = {
@@ -180,13 +148,13 @@ export function openS3() {
     },
     uploadStreaming(
       key: string,
-      body: Readable | ReadableStream,
-      metadata?: any,
+      body: ReadableStream,
+      metadata?: Record<string, string>,
     ) {
       const { client, bucket } = getProviderForParams({ Key: key });
       const payload: PutObjectCommandInput = {
         Key: key,
-        Body: body as any,
+        Body: body,
         Bucket: bucket,
       };
       if (metadata) {
@@ -227,12 +195,12 @@ export async function deleteFile(fileKey: string) {
 
 const geometrySetter = (
   val:
-  | { coordinates: [number, number] }
-  | [number, number]
-  | LatLng
-  | string
-  | undefined
-  | null,
+    | { coordinates: [number, number] }
+    | [number, number]
+    | LatLng
+    | string
+    | undefined
+    | null,
 ): { type: "Point"; coordinates: [number, number] } | null => {
   if (val === undefined || val === null || typeof val === "string") {
     return null;
@@ -245,7 +213,7 @@ const geometrySetter = (
   };
 };
 
-export function locationField(fieldName: string = "location") {
+export function locationField(fieldName = "location") {
   return {
     type: DataTypes.GEOMETRY,
     set(value) {
@@ -259,7 +227,7 @@ export function locationField(fieldName: string = "location") {
       return null;
     },
     validate: {
-      isLatLon: isLatLon,
+      isLatLon,
     },
   };
 }

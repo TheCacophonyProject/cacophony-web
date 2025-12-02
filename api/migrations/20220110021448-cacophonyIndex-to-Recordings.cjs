@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     const transaction = await queryInterface.sequelize.transaction();
@@ -13,7 +11,7 @@ module.exports = {
           Sequelize.JSONB,
           {
             transaction,
-          }
+          },
         );
       }
 
@@ -29,7 +27,7 @@ module.exports = {
           RETURNING "id";`,
           {
             transaction,
-          }
+          },
         );
       }
       algorithmId = algorithmId[0][0].id;
@@ -42,7 +40,7 @@ module.exports = {
         `,
         {
           transaction,
-        }
+        },
       );
 
       console.log("Creating Tracks & Tags");
@@ -86,7 +84,7 @@ module.exports = {
                   automatic: true,
                 }),
               },
-            }
+            },
           );
           const trackId = resId[0][0].id;
 
@@ -103,7 +101,7 @@ module.exports = {
                 likelihood: likelihood ?? 0,
               },
               type: Sequelize.QueryTypes.INSERT,
-            }
+            },
           );
         }
       }
@@ -117,7 +115,7 @@ module.exports = {
         `,
         {
           transaction,
-        }
+        },
       );
 
       console.log("modifying additionalMetadata");
@@ -130,7 +128,7 @@ module.exports = {
         `,
         {
           transaction,
-        }
+        },
       );
       await transaction.commit();
     } catch (error) {
@@ -154,7 +152,7 @@ module.exports = {
         `,
         {
           transaction,
-        }
+        },
       );
 
       await Promise.all(
@@ -171,7 +169,7 @@ module.exports = {
                 replacements: {
                   recordingId,
                 },
-              }
+              },
             );
 
             const speciesIdentify = await Promise.all(
@@ -188,7 +186,7 @@ module.exports = {
                     replacements: {
                       trackId,
                     },
-                  }
+                  },
                 );
 
                 const tagIds = tags[0].map((tag) => tag.id);
@@ -202,7 +200,7 @@ module.exports = {
                   },
                   {
                     transaction,
-                  }
+                  },
                 );
 
                 console.log(tags);
@@ -216,7 +214,7 @@ module.exports = {
                   return species_identify;
                 });
                 return speciesIndentify;
-              })
+              }),
             );
 
             // Delete all tracks
@@ -231,7 +229,7 @@ module.exports = {
               },
               {
                 transaction,
-              }
+              },
             );
             const analysis = {
               species_identify: speciesIdentify.flat(2),
@@ -268,10 +266,10 @@ module.exports = {
                   id: recordingId,
                   additionalMetadata: newAdditionalMetadata,
                 },
-              }
+              },
             );
-          }
-        )
+          },
+        ),
       );
 
       console.log("Removing cacophonyIndex from Recording");

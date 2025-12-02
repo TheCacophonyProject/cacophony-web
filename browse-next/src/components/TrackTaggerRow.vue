@@ -510,7 +510,7 @@ const addCustomTag = () => {
 };
 
 const processingIsAnalysing = computed<boolean>(
-  () => props.processingState === RecordingProcessingState.Analyse,
+  () => props.processingState === RecordingProcessingState.Analyse || props.processingState === RecordingProcessingState.TrackAndAnalyse,
 );
 
 const row = ref<HTMLDivElement>();
@@ -608,7 +608,6 @@ onMounted(async () => {
               .join(", ")
           }}</span
         >
-        <!-- No AI tag, maybe this is a track for a trailcam image? -->
         <span
           class="text-capitalize d-inline-block fw-bold"
           v-else-if="consensusUserTag && !hasAiTag"

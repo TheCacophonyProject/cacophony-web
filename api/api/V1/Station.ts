@@ -9,7 +9,6 @@ import {
 import { successResponse } from "@api/V1/responseUtil.js";
 import { validateFields } from "@api/middleware.js";
 import { body, param, query } from "express-validator";
-import type { Station } from "@models/Station.js";
 import type {
   ApiCreateStationData,
   ApiStationResponse,
@@ -19,12 +18,11 @@ import {
   booleanOf,
   idOf,
   integerOfWithDefault,
-  stringOf,
 } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" assert { type: "json" };
+import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" with { type: "json" };
 import { stationLocationHasChanged } from "@models/Group.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import util from "@api/V1/util.js";
 import { openS3 } from "@models/util/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
@@ -35,17 +33,19 @@ import {
 } from "@models/util/locationUtils.js";
 import { Op, QueryTypes } from "sequelize";
 import { mapDeviceResponse } from "./Device.js";
-import type { Device } from "@/models/Device.js";
+import { Device } from "@/models/Device.js";
+import { Station, TimeInterval } from "@models/Station.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
+import { RecordingType } from "@typedefs/api/consts.js";
+import { Recording } from "@models/Recording.js";
 
-const models = await modelsInit();
+const sequelize = await initSequelize();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationsResponseSuccess {
+export interface ApiStationsResponseSuccess {
   stations: ApiStationResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationResponseSuccess {
+export interface ApiStationResponseSuccess {
   stations: ApiStationResponse;
 }
 
@@ -54,7 +54,7 @@ export const mapStation = (station: Station): ApiStationResponse => {
     name: station.name,
     id: station.id,
     groupId: station.GroupId,
-    groupName: (station as any).Group.groupName,
+    groupName: (station.Group && station.Group.groupName) || "unknown project",
     createdAt: station.createdAt.toISOString(),
     activeAt: station.activeAt.toISOString(),
     location: station.location,
@@ -120,7 +120,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredStations,
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got stations", {
         stations: mapStations(response.locals.stations),
       });
@@ -148,7 +148,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(), // NOTE: Don't document this, it shouldn't be changed.
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
@@ -200,7 +200,7 @@ export default function (app: Application, baseUrl: string) {
         userId: userId,
       };
 
-      const result = await models.sequelize.query<{
+      const result = await sequelize.query<{
         StationId: number;
         count: string;
       }>(sql, {
@@ -237,10 +237,10 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const stationdId = response.locals.station.id;
 
-      const count = await models.Recording.count({
+      const count = await Recording.count({
         where: {
           StationId: stationdId,
           deletedAt: null,
@@ -347,12 +347,12 @@ export default function (app: Application, baseUrl: string) {
     util.multipartUpload(
       "f",
       async (
-        uploader,
-        uploadingDevice,
-        uploadingUser,
-        data,
+        _uploader,
+        _uploadingDevice,
+        _uploadingUser,
+        _data,
         keys,
-        uploadedFileDatas,
+        _uploadedFileDatas,
         locals,
       ): Promise<string> => {
         console.assert(
@@ -430,7 +430,7 @@ export default function (app: Application, baseUrl: string) {
           : existingStation.retiredAt;
 
       const otherActiveStationsInTimeWindow = (
-        await models.Station.activeInGroupDuringTimeRange(
+        await Station.activeInGroupDuringTimeRange(
           existingStation.GroupId,
           activeAt,
           retiredAt,
@@ -532,11 +532,11 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const station = response.locals.station;
+      const station = response.locals.station as Station;
       const newName = request.body.name;
-      
+
       // Check if another active station in the group already has this name
-      const existingStation = await models.Station.findOne({
+      const existingStation = await Station.findOne({
         where: {
           GroupId: station.GroupId,
           name: newName,
@@ -556,21 +556,21 @@ export default function (app: Application, baseUrl: string) {
         );
       }
 
-      const updates: any = {
+      const updates = {
         name: newName,
         lastUpdatedById: response.locals.requestUser.id,
       };
 
       // If the station was automatically created and needs renaming, update the flags
       if (station.needsRename === true) {
-        updates.needsRename = false;
+        updates["needsRename"] = false;
       }
       if (station.automatic === true) {
-        updates.automatic = false;
+        updates["automatic"] = false;
       }
 
       await station.update(updates);
-      
+
       return successResponse(response, "Updated station name");
     },
   );
@@ -599,7 +599,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
       // Remove stationId from DeviceHistory entries
-      await models.DeviceHistory.update(
+      await DeviceHistory.update(
         {
           stationId: null,
         },
@@ -614,7 +614,7 @@ export default function (app: Application, baseUrl: string) {
 
       if (request.query["delete-recordings"]) {
         // Delete this station, and mark delete recordings associated with it as deleted by this user.
-        const recordings = await models.Recording.findAll({
+        const recordings = await Recording.findAll({
           where: {
             StationId: Number(request.params.id),
           },
@@ -672,7 +672,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async (request: Request, response: Response) => {
-      const cacophonyIndex = await models.Station.getCacophonyIndex(
+      const cacophonyIndex = await Station.getCacophonyIndex(
         response.locals.requestUser,
         response.locals.station.id,
         request.query.from as unknown as Date, // Get the current cacophony index
@@ -708,17 +708,20 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("stationId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
+      query("interval")
+        .optional()
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async (request: Request, response: Response) => {
-      const cacophonyIndexBulk = await models.Station.getCacophonyIndexBulk(
+      const cacophonyIndexBulk = await Station.getCacophonyIndexBulk(
         response.locals.requestUser,
         response.locals.station.id,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String,
+        request.query.interval as TimeInterval,
       );
       return successResponse(response, { cacophonyIndexBulk });
     },
@@ -749,17 +752,20 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("stationId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      query("type").optional().isString().default("audio"),
+      query("type")
+        .optional()
+        .isIn(Object.values(RecordingType))
+        .default(RecordingType.Audio),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async function (request: Request, response: Response) {
-      const speciesCount = await models.Station.getSpeciesCount(
+      const speciesCount = await Station.getSpeciesCount(
         response.locals.requestUser,
         response.locals.station.id,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number,
-        request.query.type as unknown as string,
+        request.query.type as RecordingType,
       );
       return successResponse(response, { speciesCount });
     },
@@ -791,19 +797,25 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("stationId")),
       query("from").isISO8601().toDate().default(new Date()),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
-      query("type").optional().isString().default("audio"),
+      query("interval")
+        .optional()
+        .isIn(Object.values(TimeInterval))
+        .default(TimeInterval.Days),
+      query("type")
+        .optional()
+        .isIn(Object.values(RecordingType))
+        .default(RecordingType.Audio),
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async function (request: Request, response: Response) {
-      const speciesCountBulk = await models.Station.getSpeciesCountBulk(
+      const speciesCountBulk = await Station.getSpeciesCountBulk(
         response.locals.requestUser,
         response.locals.station.id,
         request.query.from as unknown as Date,
         request.query.steps as unknown as number,
-        request.query.interval as unknown as String,
-        request.query.type as unknown as string,
+        request.query.interval as TimeInterval,
+        request.query.type as RecordingType,
       );
       return successResponse(response, { speciesCountBulk });
     },
@@ -861,7 +873,7 @@ export default function (app: Application, baseUrl: string) {
           AND latest."stationId" = :stationId
       `;
 
-      const devicesRaw = await models.sequelize.query(sql, {
+      const devicesRaw = await sequelize.query(sql, {
         replacements: {
           stationId: station.id,
           groupId: station.GroupId,
@@ -869,7 +881,7 @@ export default function (app: Application, baseUrl: string) {
         type: QueryTypes.SELECT,
         mapToModel: true,
         // mapToModel requires we pass the model: Device
-        model: models.Device,
+        model: Device,
       });
 
       // Now `devicesRaw` is an array of Device instances

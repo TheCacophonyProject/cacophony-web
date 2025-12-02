@@ -1,27 +1,23 @@
 import log from "@log";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { Op } from "sequelize";
 import { RecordingType } from "@typedefs/api/consts.js";
-import type { Station } from "@models/Station.js";
-import type { Group } from "@models/Group.js";
-import type { Device } from "@models/Device.js";
-const models = await modelsInit();
+import { Station } from "@models/Station.js";
+import { Group } from "@models/Group.js";
+import { Device } from "@models/Device.js";
+import { Recording } from "@models/Recording.js";
+await initSequelize();
 (async () => {
-  const stations = (await models.Station.findAll()) as Station[];
+  const stations = (await Station.findAll()) as Station[];
   for (const station of stations) {
     // Get the latest recording of each type.
-    const cameraRecording = await models.Recording.findOne({
+    const cameraRecording = await Recording.findOne({
       where: {
         StationId: station.id,
         deletedAt: { [Op.eq]: null },
         duration: { [Op.gte]: 3 },
         type: {
-          [Op.in]: [
-            RecordingType.InfraredVideo,
-            RecordingType.TrailCamVideo,
-            RecordingType.TrailCamImage,
-            RecordingType.ThermalRaw,
-          ],
+          [Op.in]: [RecordingType.InfraredVideo, RecordingType.ThermalRaw],
         },
       },
       attributes: ["recordingDateTime"],
@@ -29,7 +25,7 @@ const models = await modelsInit();
       order: [["recordingDateTime", "desc"]],
     });
 
-    const audioRecording = await models.Recording.findOne({
+    const audioRecording = await Recording.findOne({
       where: {
         StationId: station.id,
         deletedAt: { [Op.eq]: null },
@@ -89,21 +85,16 @@ const models = await modelsInit();
       }
     }
   }
-  const groups = (await models.Group.findAll()) as Group[];
+  const groups = (await Group.findAll()) as Group[];
   for (const group of groups) {
     // Get the latest recording of each type.
-    const cameraRecording = await models.Recording.findOne({
+    const cameraRecording = await Recording.findOne({
       where: {
         GroupId: group.id,
         deletedAt: { [Op.eq]: null },
         duration: { [Op.gte]: 3 },
         type: {
-          [Op.in]: [
-            RecordingType.InfraredVideo,
-            RecordingType.TrailCamVideo,
-            RecordingType.TrailCamImage,
-            RecordingType.ThermalRaw,
-          ],
+          [Op.in]: [RecordingType.InfraredVideo, RecordingType.ThermalRaw],
         },
       },
       attributes: ["recordingDateTime"],
@@ -111,7 +102,7 @@ const models = await modelsInit();
       order: [["recordingDateTime", "desc"]],
     });
 
-    const audioRecording = await models.Recording.findOne({
+    const audioRecording = await Recording.findOne({
       where: {
         GroupId: group.id,
         deletedAt: { [Op.eq]: null },
@@ -153,21 +144,16 @@ const models = await modelsInit();
       }
     }
   }
-  const devices = (await models.Device.findAll()) as Device[];
+  const devices = (await Device.findAll()) as Device[];
   for (const device of devices) {
     // Get the latest recording of each type.
-    const cameraRecording = await models.Recording.findOne({
+    const cameraRecording = await Recording.findOne({
       where: {
         DeviceId: device.id,
         deletedAt: { [Op.eq]: null },
         duration: { [Op.gte]: 3 },
         type: {
-          [Op.in]: [
-            RecordingType.InfraredVideo,
-            RecordingType.TrailCamVideo,
-            RecordingType.TrailCamImage,
-            RecordingType.ThermalRaw,
-          ],
+          [Op.in]: [RecordingType.InfraredVideo, RecordingType.ThermalRaw],
         },
       },
       attributes: ["recordingDateTime"],
@@ -175,7 +161,7 @@ const models = await modelsInit();
       order: [["recordingDateTime", "desc"]],
     });
 
-    const audioRecording = await models.Recording.findOne({
+    const audioRecording = await Recording.findOne({
       where: {
         DeviceId: device.id,
         deletedAt: { [Op.eq]: null },

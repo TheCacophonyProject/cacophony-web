@@ -48,15 +48,6 @@ import type { RouteLocationRaw } from "vue-router";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 import type {IconsProp} from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
 
-// NOTE: For some reason importing this enum from global consts fails :-/
-// enum DeviceType {
-//   Audio = "audio",
-//   Thermal = "thermal",
-//
-//   Trailcam = "trailcam",
-//   Unknown = "unknown",
-// }
-
 const props = defineProps<{
   name: string;
   type: DeviceType;
@@ -74,8 +65,6 @@ const deviceTypeIcon = computed<IconsProp | "">(() => {
       return "videocam";
     case ConcreteDeviceType.Unknown:
       return "question_mark";
-    case ConcreteDeviceType.TrailCam:
-      return "photo_camera";
   }
   return "";
 });

@@ -1,23 +1,21 @@
-import config, {loadConfig} from "../config.js";
+import config, { loadConfig } from "../config.js";
 import os from "os";
-
-const args = require("commander");
-const process = require("process");
-
-const { Client } = require("pg");
+import { program } from "commander";
+import process from "process";
+import { Client } from "pg";
 let Config;
 async function main() {
-  if (os.hostname() === "prod-api-processing") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
-  args
+  program
     .option("--config <path>", "Configuration file", "./config/app.js")
-    .option("--delete", "Actually delete objects (dry run by default)")
-    .parse(process.argv);
-
+    .option("--delete", "Actually delete objects (dry run by default)");
+  program.parse(process.argv);
+  const options = program.opts();
   Config = {
     ...config,
-    ...(await loadConfig(args.config)),
+    ...(await loadConfig(options.config)),
   };
 
   const client = await pgConnect();
@@ -52,7 +50,7 @@ async function main() {
       `deleted ${row.id}: device=${row.DeviceId} type=${row.type} ts=${ts}`,
     );
   }
-  if (args.delete) {
+  if (options.delete) {
     await client.query("COMMIT");
     console.log(`deleted ${res.rows.length} duplicate recording(s)`);
   } else {

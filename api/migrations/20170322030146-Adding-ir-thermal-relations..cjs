@@ -5,7 +5,7 @@ module.exports = {
     return util.migrationAddBelongsTo(
       queryInterface,
       "ThermalVideoRecordings",
-      "IrVideoRecordings"
+      "IrVideoRecordings",
     );
   },
 
@@ -13,7 +13,7 @@ module.exports = {
     return util.migrationRemoveBelongsTo(
       queryInterface,
       "ThermalVideoRecordings",
-      "IrVideoRecordings"
+      "IrVideoRecordings",
     );
   },
 };

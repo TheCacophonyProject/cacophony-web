@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface) {
     await queryInterface.addIndex("Recordings", ["recordingDateTime"]);

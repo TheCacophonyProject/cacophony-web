@@ -1,12 +1,11 @@
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await util.renameTableAndIdSeq(
       queryInterface,
       "EventDetails",
-      "DetailSnapshots"
+      "DetailSnapshots",
     );
 
     await queryInterface.createTable("Tracks", {
@@ -27,7 +26,7 @@ module.exports = {
       queryInterface,
       "Tracks",
       "Recordings",
-      "strict"
+      "strict",
     );
     await util.migrationAddBelongsTo(
       queryInterface,
@@ -36,7 +35,7 @@ module.exports = {
       {
         name: "Algorithm",
         notNull: true,
-      }
+      },
     );
 
     await queryInterface.createTable("TrackTags", {
@@ -69,7 +68,7 @@ module.exports = {
       queryInterface,
       "TrackTags",
       "Tracks",
-      "strict"
+      "strict",
     );
     await util.migrationAddBelongsTo(queryInterface, "TrackTags", "Users");
   },
@@ -78,7 +77,7 @@ module.exports = {
     await util.renameTableAndIdSeq(
       queryInterface,
       "DetailSnapshots",
-      "EventDetails"
+      "EventDetails",
     );
 
     await util.migrationRemoveBelongsTo(queryInterface, "TrackTags", "Users");
@@ -89,7 +88,7 @@ module.exports = {
       queryInterface,
       "Tracks",
       "DetailSnapshots",
-      { name: "Algorithm" }
+      { name: "Algorithm" },
     );
     await util.migrationRemoveBelongsTo(queryInterface, "Tracks", "Recordings");
     await queryInterface.dropTable("Tracks");

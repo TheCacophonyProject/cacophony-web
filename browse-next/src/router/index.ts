@@ -198,17 +198,6 @@ const router = createRouter({
           path: ":deviceId/:deviceName/:type?",
           name: "device",
           redirect: (to): RouteLocationRaw => {
-            // Redirect depends on deviceType:
-            if (to.params.type === DeviceType.TrailCam) {
-              return {
-                name: "device-uploads",
-                params: {
-                  ...to.params,
-                  // Remove type from destination route
-                  type: null,
-                },
-              };
-            } else {
               return {
                 name: "device-status",
                 params: {
@@ -217,7 +206,6 @@ const router = createRouter({
                   type: null,
                 },
               };
-            }
           }, // Make diagnostics the default tab
           meta: { title: "Manage device :deviceName" },
           component: () => import("@/views/DeviceView.vue"),
@@ -257,11 +245,6 @@ const router = createRouter({
               path: "schedules",
               name: "device-schedules",
               component: () => import("@/views/DeviceSchedulesSubView.vue"),
-            },
-            {
-              path: "manual-uploads",
-              name: "device-uploads",
-              component: () => import("@/views/DeviceUploadsSubView.vue"),
             },
             // {
             //   path: "events",

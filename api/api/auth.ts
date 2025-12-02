@@ -21,16 +21,16 @@ import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { ExtractJwt } from "passport-jwt";
 import { AuthenticationError } from "./customErrors.js";
-import type { ModelCommon, ModelsDictionary } from "@models";
-import type { Request } from "express";
-import type { User } from "@models/User.js";
+import type { NextFunction, Request, Response } from "express";
+import { User } from "@models/User.js";
+import { Device } from "@models/Device.js";
 import type {
   GroupId,
   GroupInvitationId,
   UserId,
 } from "@typedefs/api/common.js";
 import { randomUUID } from "crypto";
-import { QueryTypes } from "sequelize";
+import Sequelize, { QueryTypes } from "sequelize";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 /*
@@ -43,10 +43,14 @@ export const ttlTypes = Object.freeze({
   long: 30 * 60,
 });
 
-export function createEntityJWT<T>(
-  entity: ModelCommon<T>,
-  options?,
-  access?: {},
+export interface JwtGenerator {
+  getJwtDataValues: () => DecodedJWTToken;
+}
+
+export function createEntityJWT(
+  entity: JwtGenerator,
+  options?: { expiresIn?: number },
+  access?: Record<string, string>,
 ): string {
   const payload: DecodedJWTToken = entity.getJwtDataValues();
   if (access) {
@@ -56,7 +60,7 @@ export function createEntityJWT<T>(
 }
 
 export interface DecodedJWTToken {
-  access?: Record<string, any>;
+  access?: Record<string, string>;
   _type: string;
   activated?: boolean;
   id: number;
@@ -138,15 +142,15 @@ export const getInviteToGroupTokenExistingUser = (
 };
 
 export const generateAuthTokensForUser = async (
-  models: ModelsDictionary,
+  sequelize: Sequelize.Sequelize,
   user: User,
-  viewport: string = "",
-  userAgent: string = "unknown user agent",
-  expires: boolean = true,
+  viewport = "",
+  userAgent = "unknown user agent",
+  expires = true,
 ): Promise<{ refreshToken: string; apiToken: string }> => {
   const now = new Date().toISOString();
   const refreshToken = randomUUID();
-  await models.sequelize.query(
+  await sequelize.query(
     `
               insert into "UserSessions"
               ("refreshToken", "userId", "userAgent", "createdAt", "updatedAt", "viewport")
@@ -178,8 +182,8 @@ export const generateAuthTokensForUser = async (
 
 export const getDecodedToken = (
   token: string,
-  enforceExpiry: boolean = true,
-): any => {
+  enforceExpiry = true,
+): JwtPayload | string => {
   const decodedToken = jwt.decode(token) as JwtPayload | null;
   if (
     enforceExpiry &&
@@ -190,7 +194,7 @@ export const getDecodedToken = (
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
-  } catch (e) {
+  } catch (_e) {
     throw new AuthenticationError(
       `Failed to verify JWT for token ${token} - (${
         decodedToken && JSON.stringify(decodedToken)
@@ -212,7 +216,7 @@ export const getVerifiedJWT = (
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
-  } catch (e) {
+  } catch (_e) {
     throw new AuthenticationError(
       `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`,
     );
@@ -237,7 +241,7 @@ export const getVerifiedJWTFromBody = (
   }
   try {
     return jwt.verify(token, config.server.passportSecret);
-  } catch (e) {
+  } catch (_e) {
     throw new AuthenticationError(
       `Failed to verify JWT. (${JSON.stringify(jwt.decode(token))})`,
     );
@@ -273,69 +277,71 @@ export const checkAccess = (
   return true;
 };
 
-export async function lookupEntity(
-  models: ModelsDictionary,
-  jwtDecoded: DecodedJWTToken,
-) {
+export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   switch (jwtDecoded._type) {
-  case "user":
-    return models.User.findByPk(jwtDecoded.id);
-  case "device":
-    return models.Device.findByPk(jwtDecoded.id);
-  case "fileDownload":
-    return jwtDecoded;
-  default:
-    return null;
+    case "user":
+      return User.findByPk(jwtDecoded.id);
+    case "device":
+      return Device.findByPk(jwtDecoded.id);
+    case "fileDownload":
+      return jwtDecoded;
+    default:
+      return null;
   }
 }
 
-export function signedUrl(req, res, next) {
-  const jwtParam = req.query["jwt"];
-  if (jwtParam == null) {
-    return res
+export function signedUrl(
+  request: Request,
+  response: Response,
+  next: NextFunction,
+) {
+  const jwtParam: string = request.query["jwt"] as string;
+  if (!jwtParam) {
+    return response
       .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Could not find JWT token in query params."] });
   }
-  let jwtDecoded;
+  let jwtDecoded: JwtPayload;
   try {
-    jwtDecoded = jwt.verify(jwtParam, config.server.passportSecret);
-  } catch (e) {
-    return res
+    jwtDecoded = jwt.verify(
+      jwtParam,
+      config.server.passportSecret,
+    ) as JwtPayload;
+  } catch (_e) {
+    return response
       .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Failed to verify JWT."] });
   }
 
   if (jwtDecoded._type !== "fileDownload") {
-    return res
+    return response
       .status(HttpStatusCode.Forbidden)
       .json({ messages: ["Incorrect JWT type."] });
   }
 
-  req.jwtDecoded = jwtDecoded;
+  response.locals.jwtDecoded = jwtDecoded;
   next();
 }
-type AuthenticateMiddleware = (req, res, next) => Promise<void>;
 
 /*
  * Authenticate a JWT in the 'Authorization' header of the given type
  */
 const authenticate = (
-  models: ModelsDictionary,
   types: string[] | null,
-  reqAccess?: Record<string, any>,
-): AuthenticateMiddleware => {
-  return async (req, res, next) => {
+  reqAccess?: Record<string, unknown>,
+) => {
+  return async (request: Request, response: Response, next: NextFunction) => {
     let jwtDecoded: DecodedJWTToken;
     try {
-      jwtDecoded = getVerifiedJWT(req) as DecodedJWTToken;
+      jwtDecoded = getVerifiedJWT(request) as DecodedJWTToken;
     } catch (e) {
-      return res
+      return response
         .status(HttpStatusCode.AuthorizationError)
         .json({ messages: [e.message] });
     }
 
     if (types && !types.includes(jwtDecoded._type)) {
-      res.status(HttpStatusCode.AuthorizationError).json({
+      response.status(HttpStatusCode.AuthorizationError).json({
         messages: [
           `Invalid JWT access type '${jwtDecoded._type}', must be ${
             types.length > 1 ? "one of " : ""
@@ -346,26 +352,23 @@ const authenticate = (
     }
     const hasAccess = checkAccess(reqAccess, jwtDecoded);
     if (!hasAccess) {
-      res
+      response
         .status(HttpStatusCode.AuthorizationError)
         .json({ messages: ["JWT does not have access."] });
       return;
     }
-    const result = await lookupEntity(models, jwtDecoded);
+    const result = await lookupEntity(jwtDecoded);
     if (!result) {
-      res.status(HttpStatusCode.AuthorizationError).json({
+      response.status(HttpStatusCode.AuthorizationError).json({
         messages: [
           `Could not find entity '${jwtDecoded.id}' of type '${jwtDecoded._type}' referenced by JWT.`,
         ],
       });
       return;
     }
-    req[jwtDecoded._type] = result;
+    response.locals[jwtDecoded._type] = result;
     next();
   };
 };
 
-export const authenticateUser: (
-  models: ModelsDictionary
-) => AuthenticateMiddleware = (models: ModelsDictionary) =>
-  authenticate(models, ["user"]);
+export const authenticateUser = () => authenticate(["user"]);

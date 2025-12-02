@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: function (queryInterface) {
     return queryInterface.addIndex("Users", {

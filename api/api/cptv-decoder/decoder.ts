@@ -1,5 +1,6 @@
 import { Worker } from "worker_threads";
 import type { ReadableStream } from "stream/web";
+import * as worker_threads from "node:worker_threads";
 interface MessageData {
   type: string;
   data: unknown;
@@ -37,7 +38,9 @@ export class CptvDecoder {
         }
         const resolver = this.messageQueue[type];
         delete this.messageQueue[type];
-        resolver && resolver(data);
+        if (resolver) {
+          resolver(data);
+        }
       };
 
       this.decoder = new Worker(
@@ -59,9 +62,12 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithReadableStream";
-    const thisStream = stream as any;
-    this.decoder &&
-      this.decoder.postMessage({ type, streamReader: stream }, [thisStream]);
+    const thisStream = stream;
+    if (this.decoder) {
+      this.decoder.postMessage({ type, streamReader: stream }, [
+        thisStream as worker_threads.Transferable,
+      ]);
+    }
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -76,9 +82,12 @@ export class CptvDecoder {
   ): Promise<CptvHeader | string> {
     await this.init();
     const type = "getStreamMetadata";
-    const thisStream = stream as any;
-    this.decoder &&
-      this.decoder.postMessage({ type, streamReader: stream }, [thisStream]);
+    const thisStream = stream;
+    if (this.decoder) {
+      this.decoder.postMessage({ type, streamReader: stream }, [
+        thisStream as worker_threads.Transferable,
+      ]);
+    }
     return (await this.waitForMessage(type)) as CptvHeader | string;
   }
 
@@ -92,7 +101,9 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithLocalCptvFile";
-    this.decoder && this.decoder.postMessage({ type, arrayBuffer: fileBytes });
+    if (this.decoder) {
+      this.decoder.postMessage({ type, arrayBuffer: fileBytes });
+    }
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -104,7 +115,9 @@ export class CptvDecoder {
   async getBytesMetadata(fileBytes: Uint8Array): Promise<CptvHeader> {
     await this.init();
     const type = "getBytesMetadata";
-    this.decoder && this.decoder.postMessage({ type, arrayBuffer: fileBytes });
+    if (this.decoder) {
+      this.decoder.postMessage({ type, arrayBuffer: fileBytes });
+    }
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -113,7 +126,9 @@ export class CptvDecoder {
    */
   async getNextFrame(): Promise<CptvFrame | null> {
     const type = "getNextFrame";
-    this.decoder && this.decoder.postMessage({ type });
+    if (this.decoder) {
+      this.decoder.postMessage({ type });
+    }
     return (await this.waitForMessage(type)) as CptvFrame | null;
   }
 
@@ -123,7 +138,9 @@ export class CptvDecoder {
    */
   async getHeader(): Promise<CptvHeader> {
     const type = "getHeader";
-    this.decoder && this.decoder.postMessage({ type });
+    if (this.decoder) {
+      this.decoder.postMessage({ type });
+    }
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -133,7 +150,9 @@ export class CptvDecoder {
    */
   async hasStreamError(): Promise<boolean> {
     const type = "hasStreamError";
-    this.decoder && this.decoder.postMessage({ type });
+    if (this.decoder) {
+      this.decoder.postMessage({ type });
+    }
     return (await this.waitForMessage(type)) as boolean;
   }
 
@@ -142,7 +161,9 @@ export class CptvDecoder {
    */
   async getStreamError(): Promise<string | null> {
     const type = "getStreamError";
-    this.decoder && this.decoder.postMessage({ type });
+    if (this.decoder) {
+      this.decoder.postMessage({ type });
+    }
     return (await this.waitForMessage(type)) as string | null;
   }
 
@@ -168,7 +189,9 @@ export class CptvDecoder {
    * do this only when the thread closes.
    */
   async close(): Promise<void> {
-    this.decoder && this.decoder.terminate();
+    if (this.decoder) {
+      await this.decoder.terminate();
+    }
     delete this.decoder;
   }
 }
@@ -190,6 +213,37 @@ export interface CptvHeader {
   serialNumber: number | null;
   firmwareVersion: CptvString | null;
   motionConfig: CptvString | null;
+  previewSecs: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  locTimestamp: number | null;
+  altitude: number | null;
+  accuracy: number | null;
+  hasBackgroundFrame: boolean;
+  // Duration in seconds, *including* any background frame.  This is for compatibility with current
+  // durations stored in DB which *include* background frames, the user may wish to subtract 1/fps seconds
+  // to get the actual duration.
+  // Only set if we used one of the getFileMetadata|getStreamMetadata, and scan the entire file.
+  duration?: number;
+  totalFrames?: number;
+
+  minValue?: number;
+  maxValue?: number;
+}
+
+export interface CptvHeaderMapped {
+  timestamp: number;
+  width: number;
+  height: number;
+  compression: number;
+  deviceName: string;
+  fps: number;
+  brand: string | null;
+  model: string | null;
+  deviceId: number | null;
+  serialNumber: number | null;
+  firmwareVersion: string | null;
+  motionConfig: string | null;
   previewSecs: number | null;
   latitude: number | null;
   longitude: number | null;

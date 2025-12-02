@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import util from "./util.js";
 import { successResponse } from "./responseUtil.js";
 import config from "@config";
@@ -29,20 +28,21 @@ import {
   extractJwtAuthorizedUserOrDevice,
   fetchUnauthorizedRequiredFileById,
 } from "../extract-middleware.js";
-import type { File } from "@models/File.js";
 import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware.js";
 import { AuthorizationError } from "@api/customErrors.js";
-import type { ApiAudiobaitFileResponse } from "@typedefs/api/file.js";
-import classification from "@/classifications/classification.json" assert { type: "json" };
+import type {
+  ApiAudiobaitFileResponse,
+  AudiobaitDetails,
+} from "@typedefs/api/file.js";
+import classification from "@/classifications/classification.json" with { type: "json" };
 import type { User } from "@models/User.js";
-
-const models = await modelsInit();
+import { File } from "@models/File.js";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
     id: file.id,
-    details: file.details,
+    details: file.details as AudiobaitDetails,
     userId: file.UserId,
   };
 };
@@ -109,18 +109,18 @@ export default (app: Application, baseUrl: string) => {
     util.multipartUpload(
       "f",
       async (
-        uploader,
-        uploadingDevice,
+        _uploader,
+        _uploadingDevice,
         uploadingUser,
         data,
         keys,
         uploadedFileDatas,
-      ): Promise<File> => {
+      ) => {
         console.assert(
           keys.length === 1,
           "Only expected 1 file attachment for this end-point",
         );
-        const dbRecord = models.File.buildSafely(data);
+        const dbRecord = File.buildSafely(data);
         dbRecord.UserId = (uploadingUser as User).id;
         dbRecord.fileKey = keys[0];
         dbRecord.fileSize = uploadedFileDatas[0].data.length;
@@ -144,7 +144,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([query("type").equals("audioBait")]),
     async (request: Request, response: Response) => {
-      const result = await models.File.query(
+      const result = await File.query(
         {
           type: { [Op.eq]: request.query.type },
         },
@@ -180,8 +180,8 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUserOrDevice,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredFileById(param("id")),
-    async (request: Request, response: Response) => {
-      const file = response.locals.file;
+    async (_request: Request, response: Response) => {
+      const file = response.locals.file as File;
       const user = response.locals.requestUser;
       const device = response.locals.requestDevice;
       const downloadFileData = {
@@ -189,9 +189,9 @@ export default (app: Application, baseUrl: string) => {
         key: file.fileKey,
       };
       if (user) {
-        (downloadFileData as any).userId = user.id;
+        downloadFileData["userId"] = user.id;
       } else if (device) {
-        (downloadFileData as any).deviceId = device.id;
+        downloadFileData["deviceId"] = device.id;
       }
 
       return successResponse(response, "", {
@@ -225,7 +225,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredFileById(param("id")),
-    async (request, response, next: NextFunction) => {
+    async (_request, response, next: NextFunction) => {
       const user = response.locals.requestUser;
       const file = response.locals.file;
       if (user.hasGlobalWrite() || user.id === file.UserId) {

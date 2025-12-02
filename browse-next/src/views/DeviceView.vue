@@ -122,8 +122,6 @@ const _deviceType = computed<string>(() => {
         return "Thermal camera + Bird monitor";
       case DeviceType.Audio:
         return "Bird monitor";
-      case DeviceType.TrailCam:
-        return "Trail camera";
       case DeviceType.TrapIrCam:
         return "Trap IR camera";
     }
@@ -220,35 +218,8 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-insights',
         }"
-        >
-          <span class="text">Insights</span>
-      </router-link>
-      <!--      <router-link-->
-      <!--        v-if="[DeviceType.Audio, DeviceType.Hybrid].includes((device as ApiDeviceResponse).type)"-->
-      <!--        :class="[-->
-      <!--          ...navLinkClasses,-->
-      <!--          { active: activeTabPath.includes('device-schedules') },-->
-      <!--        ]"-->
-      <!--        title="Schedules"-->
-      <!--        :to="{-->
-      <!--          name: 'device-schedules',-->
-      <!--        }"-->
-      <!--        >Schedules</router-link-->
-      <!--      >-->
-      <!-- TODO: Specialise this for manual uploads of CPTV and audio files -->
-      <router-link
-        v-if="(device as ApiDeviceResponse).type === DeviceType.TrailCam"
-        :class="[
-          ...navLinkClasses,
-          { active: activeTabPath.includes('device-uploads') },
-        ]"
-        title="Manual uploads"
-        :to="{
-          name: 'device-uploads',
-        }"
-        >
-        <span class="text">Manual Uploads</span>
-      </router-link>
+        ><span class="text">Insights</span></router-link
+      >
     </overflowing-tab-list>
     <router-view
       class="d-flex flex-fill"

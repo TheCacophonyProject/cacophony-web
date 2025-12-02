@@ -336,30 +336,30 @@ const curvedLine = (
 
 const getMonthName = (num: number) => {
   switch (num) {
-  case 1:
-    return "Jan";
-  case 2:
-    return "Feb";
-  case 3:
-    return "Mar";
-  case 4:
-    return "Apr";
-  case 5:
-    return "May";
-  case 6:
-    return "Jun";
-  case 7:
-    return "Jul";
-  case 8:
-    return "Aug";
-  case 9:
-    return "Sep";
-  case 10:
-    return "Oct";
-  case 11:
-    return "Nov";
-  case 12:
-    return "Dec";
+    case 1:
+      return "Jan";
+    case 2:
+      return "Feb";
+    case 3:
+      return "Mar";
+    case 4:
+      return "Apr";
+    case 5:
+      return "May";
+    case 6:
+      return "Jun";
+    case 7:
+      return "Jul";
+    case 8:
+      return "Aug";
+    case 9:
+      return "Sep";
+    case 10:
+      return "Oct";
+    case 11:
+      return "Nov";
+    case 12:
+      return "Dec";
   }
 };
 const getDateLabels = (dates: Date[]): [number, undefined | string][] => {
@@ -419,8 +419,8 @@ const xAxis = (
     .map((_, index) => index * (width / numValues));
   let axis = `
       <rect x="0" y="${
-  height - 0.5
-}" height="0.5" width="${width}" fill="${colourRgb(colour)}" />
+        height - 0.5
+      }" height="0.5" width="${width}" fill="${colourRgb(colour)}" />
       <rect x="0" y="${height}" height="0.5" width="${width}" fill="white" />
     `;
   const dateLabels = getDateLabels(dates);
@@ -452,8 +452,8 @@ const stackedGraph = (
   height = 50,
 ): [string, string] => {
   const colours = [];
-  for (let i = 0; i < allSeries.length; i++) {
-    colours.push(allSeries[i][2]);
+  for (const [_a, _b, colour] of allSeries) {
+    colours.push(colour);
   }
   let max = 0;
   for (const [_, series] of allSeries) {
@@ -489,8 +489,8 @@ const stackedGraph = (
     legend += `         
           <div>
             <div style="background-color: ${colourRgb(
-    colours[i % colours.length],
-  )}; width: 13px; height: 13px; margin-left: 20px; margin-right: 7px; display: inline-block;"></div><span>${label}</span>
+              colours[i % colours.length],
+            )}; width: 13px; height: 13px; margin-left: 20px; margin-right: 7px; display: inline-block;"></div><span>${label}</span>
           </div>
         `;
   }
@@ -509,7 +509,7 @@ const stackedGraph = (
   ];
 };
 async function main() {
-  if (os.hostname() === "prod-api-processing") {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
 
@@ -689,16 +689,16 @@ async function main() {
                 <tr>
                     <td class="columnContent" style="text-align: center;">
                         <span style="max-width:${
-  absWidth - 2
-}px; font-size: 24px; font-weight: bold;" class="columnImage">${num}</span>                       
+                          absWidth - 2
+                        }px; font-size: 24px; font-weight: bold;" class="columnImage">${num}</span>                       
                     </td>
                 </tr>
                 <tr>
                     <td valign="top" style="text-align: center;">
                         <span class="columnContent" style="display: inline-block; margin-left: 10px;margin-right: 10px;">${str.replace(
-    / /g,
-    "&nbsp;",
-  )}</span>
+                          / /g,
+                          "&nbsp;",
+                        )}</span>
                     </td>
                 </tr>
             </table>
@@ -711,8 +711,8 @@ async function main() {
         <table border="0" cellpadding="0" cellspacing="0" width="${width}">
             <tr>
                 ${values
-    .map(([n, v], i, a) => column(n, v, a.length, width))
-    .join("")}                
+                  .map(([n, v], i, a) => column(n, v, a.length, width))
+                  .join("")}                
             </tr>
         </table>`;
   };
@@ -721,113 +721,113 @@ async function main() {
     <div>
         <br>
         ${columns(
-    [
-      [activeUsers, `active user${maybePlural(activeUsers)}`],
-      [newDevices, `new device${maybePlural(newDevices)}`],
-      [projectsStarted, `new project${maybePlural(projectsStarted)}`],
-    ],
-    600,
-  )}
+          [
+            [activeUsers, `active user${maybePlural(activeUsers)}`],
+            [newDevices, `new device${maybePlural(newDevices)}`],
+            [projectsStarted, `new project${maybePlural(projectsStarted)}`],
+          ],
+          600,
+        )}
         <br><br><br>       
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    newUserSignups,
-  )}</span> new user sign-up${maybePlural(
-  last(newUserSignups),
-)}</p>        
+          newUserSignups,
+        )}</span> new user sign-up${maybePlural(
+          last(newUserSignups),
+        )}</p>        
         <img alt="Signups per week: ${newUserSignups.join(
-    ", ",
-  )}" src='${signupsPerWeekGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${signupsPerWeekGraph}' width='100%' height='auto' />
         <br><br><br>
         
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    activeProjects,
-  )}</span> active project${maybePlural(last(activeProjects))}</p>
+          activeProjects,
+        )}</span> active project${maybePlural(last(activeProjects))}</p>
         <img alt="Active projects per week: ${activeProjects.join(
-    ", ",
-  )}" src='${activeProjectsGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${activeProjectsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    camerasActive,
-  )}</span> camera${maybePlural(
-  last(camerasActive),
-)} recording, out of <strong>${last(
-  totalCamerasRegistered,
-)}</strong> total registered camera${maybePlural(
-  last(totalCamerasRegistered),
-)}</p>
+          camerasActive,
+        )}</span> camera${maybePlural(
+          last(camerasActive),
+        )} recording, out of <strong>${last(
+          totalCamerasRegistered,
+        )}</strong> total registered camera${maybePlural(
+          last(totalCamerasRegistered),
+        )}</p>
         <img alt="Weekly active cameras: ${camerasActive.join(
-    ", ",
-  )}" src='${activeCamerasGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${activeCamerasGraph}' width='100%' height='auto' />
         ${activeCamerasLegend}
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    thermalRecordings,
-  )}</span> thermal recording${maybePlural(last(thermalRecordings))}</p>
+          thermalRecordings,
+        )}</span> thermal recording${maybePlural(last(thermalRecordings))}</p>
         <img alt="Thermal recordings per week: ${thermalRecordings.join(
-    ", ",
-  )}" src='${thermalRecordingsGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${thermalRecordingsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    birdMonitorsActive,
-  )}</span> bird monitor${maybePlural(
-  last(birdMonitorsActive),
-)} recording, out of <strong>${last(
-  totalBirdMonitorsRegistered,
-)}</strong> total registered bird monitor${maybePlural(
-  last(totalBirdMonitorsRegistered),
-)}</p>
+          birdMonitorsActive,
+        )}</span> bird monitor${maybePlural(
+          last(birdMonitorsActive),
+        )} recording, out of <strong>${last(
+          totalBirdMonitorsRegistered,
+        )}</strong> total registered bird monitor${maybePlural(
+          last(totalBirdMonitorsRegistered),
+        )}</p>
         <img alt="Weekly active bird monitors: ${birdMonitorsActive.join(
-    ", ",
-  )}" src='${activeBirdMonitorsGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${activeBirdMonitorsGraph}' width='100%' height='auto' />
         ${activeBirdMonitorsLegend}
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    audioRecordings,
-  )}</span> bird recording${maybePlural(last(audioRecordings))}</p>
+          audioRecordings,
+        )}</span> bird recording${maybePlural(last(audioRecordings))}</p>
         <img alt="Bird recordings per week: ${audioRecordings.join(
-    ", ",
-  )}" src='${audioRecordingsGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${audioRecordingsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    activeTaggers,
-  )}</span> active tagger${maybePlural(last(activeTaggers))}</p>
+          activeTaggers,
+        )}</span> active tagger${maybePlural(last(activeTaggers))}</p>
         <img alt="Active taggers per week: ${activeTaggers.join(
-    ", ",
-  )}" src='${activeTaggersGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${activeTaggersGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    trackTagsAdded,
-  )}</span> user classification${maybePlural(
-  last(trackTagsAdded),
-)} added</p>
+          trackTagsAdded,
+        )}</span> user classification${maybePlural(
+          last(trackTagsAdded),
+        )} added</p>
         <img alt="Added tags per week: ${trackTagsAdded.join(
-    ", ",
-  )}" src='${addedTagsGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${addedTagsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    animalAlertEmails,
-  )}</span> alert notification${maybePlural(
-  last(animalAlertEmails),
-)} sent</p>
+          animalAlertEmails,
+        )}</span> alert notification${maybePlural(
+          last(animalAlertEmails),
+        )} sent</p>
         <img alt="Alerts per week: ${animalAlertEmails.join(
-    ", ",
-  )}" src='${emailAlertsGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${emailAlertsGraph}' width='100%' height='auto' />
         <br><br><br>
 
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
-    systemErrors,
-  )}</span> device error${maybePlural(last(systemErrors))} reported</p>
+          systemErrors,
+        )}</span> device error${maybePlural(last(systemErrors))} reported</p>
         <img alt="Device errors per week: ${systemErrors.join(
-    ", ",
-  )}" src='${systemErrorsGraph}' width='100%' height='auto' />
+          ", ",
+        )}" src='${systemErrorsGraph}' width='100%' height='auto' />
         <br><br>
     </div>
 `;

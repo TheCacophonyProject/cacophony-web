@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: function (queryInterface, Sequelize) {
     return Promise.all([
@@ -7,12 +5,12 @@ module.exports = {
       queryInterface.addColumn(
         "IrVideoRecordings",
         "version",
-        Sequelize.STRING
+        Sequelize.STRING,
       ),
       queryInterface.addColumn(
         "ThermalVideoRecordings",
         "version",
-        Sequelize.STRING
+        Sequelize.STRING,
       ),
     ]);
   },

@@ -61,9 +61,10 @@ export async function sendEmail(
       subject,
       from: config.smtpDetails.fromName,
       attachment: [{ data: html, alternative: true }],
+      bcc: [],
     };
     if (adminEmails && adminEmails.length) {
-      (messageHeaders as any).bcc = adminEmails;
+      messageHeaders.bcc = adminEmails;
     }
     const message = new Message(messageHeaders);
     for (const image of imageAttachments) {

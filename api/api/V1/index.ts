@@ -31,9 +31,13 @@ export default async function (app: Application) {
     "responseUtil.js",
     "recordingUtil.js",
     "eventUtil.js",
+    "monitoringUtil.js",
     "monitoringPage.js",
     "monitoringVisit.js",
     "apidoc.js",
+    "tagUtil.js",
+    "trackMasking.js",
+    "recordingsBulkQueryUtil.js",
   ];
   // Filter out files that are not added to app directly, and filter out typescript versions of files.
 
@@ -43,7 +47,9 @@ export default async function (app: Application) {
   for (const route of apiRoutes) {
     try {
       const routeModule = await import(path.join(__dirname, route));
-      routeModule.default && routeModule.default(app, "/api/v1");
+      if (routeModule.default) {
+        routeModule.default(app, "/api/v1");
+      }
     } catch (e) {
       logger.warning(e.message);
     }

@@ -21,7 +21,7 @@ import type { DeviceId, LatLng } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
-import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import {
   deleteDevice,
   getDeviceConfig,
@@ -45,7 +45,6 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LoadedResource } from "@api/types.ts";
 import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -134,7 +133,6 @@ const reloadAllDevices = async () => {
       (device) => device.active,
     );
   }
-  showCreateProxyDevicePrompt.value = false;
   const _ = findProbablyOnlineDevices();
 };
 
@@ -206,8 +204,7 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
     (poweredDevice) => poweredDevice.id === device.id,
   );
   return device.hasOwnProperty("isHealthy") &&
-    device.active &&
-    device.type !== DeviceType.TrailCam
+    device.active
     ? device.isHealthy
       ? isPoweredOn
         ? "online"
@@ -417,8 +414,6 @@ const sortDimensions = {
   deviceName: true,
 };
 
-const showCreateProxyDevicePrompt = ref<boolean>(false);
-
 const someDevicesHaveKnownLocations = computed<boolean>(() =>
   devices.value.some(
     (device) =>
@@ -618,13 +613,6 @@ const isDevicesRoot = computed(() => {
           :can-change-base-map="false"
         />
         <div class="d-flex align-items-center justify-content-end my-2">
-          <!--          <button-->
-          <!--            type="button"-->
-          <!--            class="btn btn-outline-secondary"-->
-          <!--            @click="showCreateProxyDevicePrompt = true"-->
-          <!--          >-->
-          <!--            Register a trailcam-->
-          <!--          </button>-->
           <b-form-checkbox
             v-model="showInactiveDevicesInternalCheck"
             switch
@@ -773,24 +761,8 @@ const isDevicesRoot = computed(() => {
         <a href="#TODO"
           >Find out how to register a thermal camera or a bird monitor.</a
         >
-        <!--        <br /><br />-->
-        <!--        You can also register a trailcam. This represents a third-party trailcam-->
-        <!--        device that you plan to manually upload data for via this web-->
-        <!--        interface.<br />-->
-        <!--        <button-->
-        <!--          type="button"-->
-        <!--          class="mt-3 btn btn-outline-secondary"-->
-        <!--          @click="showCreateProxyDevicePrompt = true"-->
-        <!--        >-->
-        <!--          Register a trailcam-->
-        <!--        </button>-->
       </p>
     </div>
-    <create-proxy-device-modal
-      v-model="showCreateProxyDevicePrompt"
-      id="create-proxy-device-modal"
-      @proxy-device-created="reloadAllDevices"
-    />
   </div>
   <router-view v-else></router-view>
 </template>

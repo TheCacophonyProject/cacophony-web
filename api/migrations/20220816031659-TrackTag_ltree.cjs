@@ -1,5 +1,3 @@
-
-
 module.exports = {
   async up(queryInterface, Sequelize) {
     /**
@@ -16,7 +14,7 @@ module.exports = {
       if (!trackTags.path) {
         await queryInterface.sequelize.query(
           `ALTER TABLE "TrackTags" ADD "path" ltree`,
-          { transaction }
+          { transaction },
         );
       }
       await queryInterface.sequelize.query(
@@ -25,11 +23,11 @@ module.exports = {
       "path" = text2ltree(:paths::jsonb ->> what)
       WHERE "path" IS NULL AND :paths::jsonb ? what
       `,
-        { transaction, replacements: { paths: JSON.stringify(paths) } }
+        { transaction, replacements: { paths: JSON.stringify(paths) } },
       );
       await queryInterface.sequelize.query(
         `CREATE INDEX IF NOT EXISTS "label_idx" ON "TrackTags" USING BTREE (path)`,
-        { transaction }
+        { transaction },
       );
       await transaction.commit();
     } catch (e) {
@@ -50,11 +48,11 @@ module.exports = {
       // add new column to TrackTag for ltree
       await queryInterface.sequelize.query(
         `ALTER TABLE "TrackTags" DROP IF EXISTS "path"`,
-        { transaction }
+        { transaction },
       );
       await queryInterface.sequelize.query(
         `DROP INDEX IF EXISTS "label_idx" `,
-        { transaction }
+        { transaction },
       );
       await transaction.commit();
     } catch (e) {

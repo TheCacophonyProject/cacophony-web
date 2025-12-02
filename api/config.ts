@@ -6,19 +6,19 @@ const server = {
   loggerLevel: "info",
 };
 import { fileURLToPath } from "url";
-import type {ServerConfig} from "@typedefs/api/serverConfig.js";
-import LoadedServerConfigSchema from "@schemas/api/serverConfig/LoadedServerConfig.schema.json" assert { type: "json" };
-import {Ajv} from "ajv";
+import type { ServerConfig } from "@typedefs/api/serverConfig.js";
+import LoadedServerConfigSchema from "@schemas/api/serverConfig/LoadedServerConfig.schema.json" with { type: "json" };
+import { Ajv } from "ajv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const timeZone = "Pacific/Auckland";
 
-function loadConfigFromArgs(strict: boolean = false): Promise<ServerConfig> {
+function loadConfigFromArgs(strict = false): Promise<ServerConfig> {
   return loadConfig(getConfigPathFromArgs(strict));
 }
 
-function getConfigPathFromArgs(strict: boolean = false): string {
+function getConfigPathFromArgs(strict = false): string {
   let configPath = "./config/app.js";
   for (let i = 2; i < process.argv.length; i++) {
     const val = process.argv[i];
@@ -39,7 +39,7 @@ function getConfigPathFromArgs(strict: boolean = false): string {
 export async function loadConfig(configPath: string): Promise<ServerConfig> {
   configPath = path.resolve(__dirname, configPath);
   const parts = configPath.split(".");
-
+  parts.pop();
   // Try different file extensions until we find one that exists
   const possibleExtensions = ["mjs", "js"];
   const configBase = parts.join(".");
@@ -55,7 +55,7 @@ export async function loadConfig(configPath: string): Promise<ServerConfig> {
   const ajv = new Ajv({
     allErrors: true,
   });
-  const validate= ajv.compile(LoadedServerConfigSchema);
+  const validate = ajv.compile(LoadedServerConfigSchema);
   const isValidConfig = validate(config);
   if (!isValidConfig) {
     console.log(validate.errors);

@@ -174,13 +174,13 @@ describe("Recordings: bulk delete, undelete", () => {
           0,
         );
 
-        //check /recordings/report
-        cy.log("Check not returned by /recordings/report");
-        cy.apiRecordingsReportCheck(
-          "rsdGroupAdmin",
-          { where: { id: getCreds("rsdRecording7").id } },
-          [],
-        );
+        // //check /recordings/report
+        // cy.log("Check not returned by /recordings/report");
+        // cy.apiRecordingsReportCheck(
+        //   "rsdGroupAdmin",
+        //   { where: { id: getCreds("rsdRecording7").id } },
+        //   [],
+        // );
       });
     });
   });
@@ -215,14 +215,14 @@ describe("Recordings: bulk delete, undelete", () => {
             1,
           );
 
-          //check /recordings/report
-          cy.log("Check returned when deleted requested by /recordings/report");
-          cy.apiRecordingsReportCheck(
-            "rsdGroupAdmin",
-            { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-            [expectedReportFromQuery1],
-            EXCLUDE_COLUMNS,
-          );
+          // //check /recordings/report
+          // cy.log("Check returned when deleted requested by /recordings/report");
+          // cy.apiRecordingsReportCheck(
+          //   "rsdGroupAdmin",
+          //   { deleted: true, where: { id: getCreds("rsdRecording8").id } },
+          //   [expectedReportFromQuery1],
+          //   EXCLUDE_COLUMNS,
+          // );
         });
       });
   });

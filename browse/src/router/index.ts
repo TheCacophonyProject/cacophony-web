@@ -13,7 +13,6 @@ import RecordingView from "@/views/RecordingView.vue";
 import MonitoringView from "@/views/MonitoringView.vue";
 import AddEmailView from "@/views/AddEmailView.vue";
 import AnalysisView from "@/views/AnalysisView.vue";
-import VisitsView from "@/views/VisitsView.vue";
 import TaggingView from "@/views/TaggingView.vue";
 import EndUserAgreementView from "@/views/EndUserAgreementView.vue";
 import AiMetricsView from "@/views/AiMetricsView.vue";
@@ -179,13 +178,6 @@ function createRouter() {
         name: "analysis",
         meta: { title: "Device Activity" },
         component: AnalysisView,
-        beforeEnter: cancelPendingRequests,
-      },
-      {
-        path: "/visits",
-        name: "visits",
-        component: VisitsView,
-        meta: { title: "Visits" },
         beforeEnter: cancelPendingRequests,
       },
       {

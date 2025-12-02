@@ -7,7 +7,7 @@ type DatabaseConfig = {
     database: string;
     port?: number;
     host: string;
-    dialect: string;
+    dialect: "postgres";
     slowQueryLogThresholdMs?: number;
 };
 
@@ -88,6 +88,12 @@ export type LoadedServerConfig = {
     cacophonyUserIds: UserId[];
     // List of Cacophony groups to ignore in platform usage report
     cacophonyGroupIds: GroupId[];
+
+    // Set this to the hostname of the server that should process all transactional emails
+    // (other than animal alerts at the moment).
+    cronScriptProcessingHostname?: string;
+
+    rateLimitingEnabled?: boolean;
 }
 
 export type ServerConfig = LoadedServerConfig & {

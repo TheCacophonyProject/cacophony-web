@@ -826,9 +826,7 @@ const loadRecording = async () => {
       }
 
       if (
-        [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-          rec.type,
-        )
+          rec.type === RecordingType.ThermalRaw
       ) {
         // If not already known, check if there is a reference image for the recording device at the time
         // the recording was made.
@@ -1300,12 +1298,6 @@ const inlineModal = ref<boolean>(false);
           <span
             v-if="recordingType && recordingType === RecordingType.ThermalRaw"
             >Thermal Recording</span
-          >
-          <span
-            v-else-if="
-              recordingType && recordingType === RecordingType.TrailCamImage
-            "
-            >Trailcam image</span
           >
           <span
             v-else-if="recordingType && recordingType === RecordingType.Audio"

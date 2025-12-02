@@ -31,7 +31,7 @@ import type { NextFunction } from "express-serve-static-core";
 import { ClientError, BadRequestError } from "../customErrors.js";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
 import lodash from "lodash";
-import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" assert { type: "json" };
+import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" with { type: "json" };
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 const { uniq: dedupe } = lodash;
@@ -43,7 +43,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to retry
-   * @apiDescription Retries processing a recording thats in a failed state
+   * @apiDescription Retries processing a recording that's in a failed state
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -80,7 +80,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to reprocess
-   * @apiDescription Marks a recording for reprocessing (tracking), and archives existing tracks.
+   * @apiDescription Marks a recording for reprocessing (tracking) and archives existing tracks.
    * Used if tracking algorithms have changed
    *
    * @apiUse V1UserAuthorizationHeader

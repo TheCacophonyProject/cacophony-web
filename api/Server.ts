@@ -4,7 +4,7 @@ import passport from "passport";
 import process from "process";
 import http from "http";
 import config from "./config.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import log, { consoleTransport } from "@log";
 import customErrors from "./api/customErrors.js";
 import { openS3 } from "./models/util/util.js";
@@ -13,18 +13,22 @@ import expressWinston from "express-winston";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
+import qs from "qs";
 import { Op } from "sequelize";
 import {
   asyncLocalStorage,
   CACOPHONY_WEB_VERSION,
   RequesterStore,
   RouteStore,
+  SessionTimingInfo,
   SuperUsers,
 } from "./Globals.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { User } from "@models/User.js";
+import os from "os";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -69,6 +73,9 @@ export const delayMs = async (delayMs: number) =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
 export const userShouldBeRateLimited = (requesterId: UserId): boolean => {
+  if (!config.rateLimitingEnabled) {
+    return false;
+  }
   // NOTE: Check how much user time this user has used in the last minute in RequesterStore,
   //  If it's over 20% (20 seconds) rate limit this user.
   //  Also, if there are no other users currently using the platform in the last minute, don't rate limit.
@@ -83,12 +90,14 @@ export const userShouldBeRateLimited = (requesterId: UserId): boolean => {
   );
   const numRequesters = RequesterStore.size;
   if (numUserRequesters > 2 || numRequesters > 10) {
-    const userTimings = RequesterStore.get(`u${requesterId}`);
+    const userTimings = RequesterStore.get(
+      `u${requesterId}`,
+    ) as SessionTimingInfo[];
     if (userTimings) {
       let userTimeInLastMinute = 0;
       for (const timing of userTimings) {
-        const elapsed = process.hrtime(timing.time);
-        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        const elapsed = process.hrtime.bigint() - timing.time;
+        const elapsedMs = Number(elapsed / 1000000n);
         if (elapsedMs <= 1000 * 60) {
           userTimeInLastMinute += timing.user;
         }
@@ -130,7 +139,7 @@ const grafanaLabelRestart = async () => {
         body: JSON.stringify({
           time: Date.now(),
           tags: ["cacophony-web-restart"],
-          text: CACOPHONY_WEB_VERSION.version,
+          text: `${os.hostname()}} ${CACOPHONY_WEB_VERSION.version}`,
         }),
       });
       if (response && response.status !== HttpStatusCode.Ok) {
@@ -162,7 +171,7 @@ const grafanaLabelRestart = async () => {
   app.use((request: Request, _response: Response, next: NextFunction) => {
     // Add a unique request ID to each API request, for logging purposes.
     asyncLocalStorage.enterWith(new Map());
-    const store = asyncLocalStorage.getStore() as Map<string, any>;
+    const store = asyncLocalStorage.getStore();
     store.set("requestId", uuidv4());
     const startUsage = process.cpuUsage();
     store.set("cpuUsage", startUsage);
@@ -175,11 +184,11 @@ const grafanaLabelRestart = async () => {
       meta: false,
       metaField: null,
       msg: (request: Request, response: Response): string => {
-        const store = asyncLocalStorage.getStore() as Map<string, any>;
+        const store = asyncLocalStorage.getStore();
         const dbQueryCount = store?.get("queryCount");
         const dbQueryTime = store?.get("queryTime");
         const cpuUsage = store?.get("cpuUsage");
-        const requestCpuUsage = process.cpuUsage(cpuUsage);
+        const requestCpuUsage = process.cpuUsage(cpuUsage as NodeJS.CpuUsage);
         const userTimeMs = requestCpuUsage.user / 1000;
         const systemTimeMs = requestCpuUsage.system / 1000;
         const requesterType =
@@ -205,8 +214,8 @@ const grafanaLabelRestart = async () => {
           const timings = RequesterStore.get(requester);
           // Remove items for this user older than 5 minutes.
           while (timings.length > 0) {
-            const elapsed = process.hrtime(timings[0].time);
-            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+            const elapsed = process.hrtime.bigint() - timings[0].time;
+            const elapsedMs = Number(elapsed / 1000000n);
             if (elapsedMs > 60000 * 5) {
               timings.shift();
             } else {
@@ -215,7 +224,7 @@ const grafanaLabelRestart = async () => {
           }
         }
         RequesterStore.get(requester).push({
-          time: process.hrtime(),
+          time: process.hrtime.bigint(),
           user: userTimeMs,
           system: systemTimeMs,
         });
@@ -239,8 +248,8 @@ const grafanaLabelRestart = async () => {
           const timings = RouteStore.get(routeKeyNormalised);
           // Remove items for this user older than 5 minutes.
           while (timings.length > 0) {
-            const elapsed = process.hrtime(timings[0].time);
-            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+            const elapsed = process.hrtime.bigint() - timings[0].time;
+            const elapsedMs = Number(elapsed / 1000000n);
             if (elapsedMs > 60000 * 5) {
               timings.shift();
             } else {
@@ -249,7 +258,7 @@ const grafanaLabelRestart = async () => {
           }
         }
         RouteStore.get(routeKeyNormalised).push({
-          time: process.hrtime(),
+          time: process.hrtime.bigint(),
           user: userTimeMs,
           system: systemTimeMs,
         });
@@ -261,13 +270,25 @@ const grafanaLabelRestart = async () => {
             ? `${dbQueryCount} DB queries taking ${dbQueryTime}ms `
             : ""
         }[${
-          (response as any).responseTime
+          response["responseTime"] || 0
         }ms total response time, ${userTimeMs}ms user, ${systemTimeMs}ms system${
           wasRateLimited ? ", was rate limited" : ""
         }]`;
       },
     }),
   );
+  // NOTE: Express 4 used `qs` to parse query strings, express 5 broke &foo[0]=bar syntax for parsing arrays in urls.
+  // This syntax doesn't actually seem to be standard compared with &foo=bar&foo=baz, but we use it in tests,
+  // so opt into using `qs` again for now.
+  app.set("query parser", qs.parse);
+  app.use((request, response, next) => {
+    Object.defineProperty(request, "query", {
+      ...Object.getOwnPropertyDescriptor(request, "query"),
+      value: request.query,
+      writable: true,
+    });
+    next();
+  });
   app.use(
     express.raw({
       inflate: true,
@@ -275,7 +296,7 @@ const grafanaLabelRestart = async () => {
       type: "application/octet-stream",
     }),
   );
-  app.use(express.urlencoded({ extended: false, limit: "50Mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50Mb" }));
   app.use(express.json({ limit: "50Mb" }));
   app.use(passport.initialize());
   // Adding API documentation
@@ -284,25 +305,28 @@ const grafanaLabelRestart = async () => {
   // Adding headers to allow cross-origin HTTP request.
   // This is so the web interface running on a different port/domain can access the API.
   // This could cause security issues with Cookies but JWTs are used instead of Cookies.
-  app.all("*", (request: Request, response: Response, next: NextFunction) => {
-    response.header("Access-Control-Allow-Origin", request.headers.origin);
-    response.header(
-      "Access-Control-Allow-Methods",
-      "PUT, GET, POST, DELETE, OPTIONS, PATCH",
-    );
-    response.header(
-      "Access-Control-Allow-Headers",
-      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control",
-    );
-    response.header("Cross-Origin-Resource-Policy", "cross-origin");
+  app.all(
+    "/*catchall",
+    (request: Request, response: Response, next: NextFunction) => {
+      response.header("Access-Control-Allow-Origin", request.headers.origin);
+      response.header(
+        "Access-Control-Allow-Methods",
+        "PUT, GET, POST, DELETE, OPTIONS, PATCH",
+      );
+      response.header(
+        "Access-Control-Allow-Headers",
+        "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control",
+      );
+      response.header("Cross-Origin-Resource-Policy", "cross-origin");
 
-    // NOTE: We've seen an instance where the HOST request header is rewritten by the client, which would otherwise break
-    //  some things.  If the host is unknown, default to browse-next.
-    if (!request.headers.host.includes("cacophony.org.nz")) {
-      request.headers.host = "https://browse-next.cacophony.org.nz";
-    }
-    next();
-  });
+      // NOTE: We've seen an instance where the HOST request header is rewritten by the client, which would otherwise break
+      //  some things.  If the host is unknown, default to browse-next.
+      if (!request.headers.host.includes("cacophony.org.nz")) {
+        request.headers.host = "https://browse-next.cacophony.org.nz";
+      }
+      next();
+    },
+  );
 
   app.get("/api/v1/timings", (request: Request, response: Response) => {
     const userTimings = [];
@@ -312,8 +336,8 @@ const grafanaLabelRestart = async () => {
     for (const [userId, timings] of RequesterStore) {
       // Remove timings older than 5 mins
       while (timings.length > 0) {
-        const elapsed = process.hrtime(timings[0].time);
-        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        const elapsed = process.hrtime.bigint() - timings[0].time;
+        const elapsedMs = Number(elapsed / 1000000n);
         if (elapsedMs > 60000 * 5) {
           timings.shift();
         } else {
@@ -347,8 +371,8 @@ const grafanaLabelRestart = async () => {
     for (const [route, timings] of RouteStore) {
       // Remove timings older than 5 mins
       while (timings.length > 0) {
-        const elapsed = process.hrtime(timings[0].time);
-        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        const elapsed = process.hrtime.bigint() - timings[0].time;
+        const elapsedMs = Number(elapsed / 1000000n);
         if (elapsedMs > 60000 * 5) {
           timings.shift();
         } else {
@@ -396,11 +420,11 @@ const grafanaLabelRestart = async () => {
   // });
 
   log.notice("Initialising Sequelize models");
-  const models = await modelsInit();
+  const sequelize = await initSequelize();
 
   log.notice("Connecting to database.....");
   try {
-    await models.sequelize.authenticate();
+    await sequelize.authenticate();
     log.info("Connected to database.");
 
     {
@@ -414,7 +438,7 @@ const grafanaLabelRestart = async () => {
       log.notice(
         "If super-user permissions are changed, manually restart API server.",
       );
-      const superUsers = await models.User.findAll({
+      const superUsers = await User.findAll({
         where: { globalPermission: { [Op.ne]: "off" } },
       });
       for (const superUser of superUsers) {
@@ -424,7 +448,7 @@ const grafanaLabelRestart = async () => {
         });
       }
     }
-
+    //
     await checkS3Connection();
     await openHttpServer(app);
     await grafanaLabelRestart();

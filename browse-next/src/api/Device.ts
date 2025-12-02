@@ -28,17 +28,6 @@ import type {
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
-
-export const createProxyDevice = (
-  projectNameOrId: string,
-  deviceName: string,
-) =>
-  CacophonyApi.post(`/api/v1/devices/create-proxy-device`, {
-    group: projectNameOrId,
-    type: "trailcam",
-    deviceName,
-  }) as Promise<FetchResult<{ id: DeviceId }>>;
-
 export const deleteDevice = (
   projectNameOrId: string | ProjectId,
   deviceId: DeviceId,

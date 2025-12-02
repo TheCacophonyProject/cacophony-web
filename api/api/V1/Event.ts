@@ -16,13 +16,15 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields, requestWrapper } from "../middleware.js";
-import modelsInit from "@models/index.js";
-import type { Event, QueryOptions } from "@models/Event.js";
+import {
+  expectedTypeOf,
+  validateFields,
+  requestWrapper,
+} from "../middleware.js";
+import { initSequelize } from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
-import { powerEventsPerDevice } from "./eventUtil.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -32,8 +34,8 @@ import {
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
 } from "../extract-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
-import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" assert { type: "json" };
-import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" assert { type: "json" };
+import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" with { type: "json" };
+import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" with { type: "json" };
 import type { EventDescription } from "@typedefs/api/event.js";
 import logger from "@log";
 import {
@@ -50,10 +52,12 @@ import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { isLatLon } from "@models/util/validation.js";
 import util from "@api/V1/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
-import config from "@config";
-import { QueryTypes } from "sequelize";
+import Sequelize, { QueryTypes } from "sequelize";
+import { Device } from "@models/Device.js";
+import { Event } from "@models/Event.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
 
-const models = await modelsInit();
+const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
 const uploadEvent = async (
@@ -66,7 +70,7 @@ const uploadEvent = async (
     // The device is connecting directly, so update the last connected time.
     if (!device.deviceName) {
       // If we just have a device JWT id, get the actual device at this point.
-      device = await models.Device.findByPk(device.id);
+      device = await Device.findByPk(device.id);
     }
     await device.update({ lastConnectionTime: new Date() });
   }
@@ -75,10 +79,10 @@ const uploadEvent = async (
   if (!detailsId) {
     const description: EventDescription = request.body.description;
 
-    let details: any = description.details || {};
+    let details: Sequelize.WhereOptions | object = description.details || {};
     if (typeof description.details === "string") {
       try {
-        details = JSON.parse(description.details);
+        details = JSON.parse(description.details as string);
       } catch (e) {
         //
         logger.error(
@@ -89,12 +93,12 @@ const uploadEvent = async (
       }
     }
 
-    env = details.env || "unknown";
+    env = details["env"] || "unknown";
     if (["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
       env = "unknown";
     }
-    delete details.env;
-    const detail = await models.DetailSnapshot.getOrCreateMatching(
+    delete details["env"];
+    const detail = await DetailSnapshot.getOrCreateMatching(
       description.type,
       details,
     );
@@ -103,12 +107,12 @@ const uploadEvent = async (
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
       if (
-        details.location !== null &&
-        details.location.latitude !== undefined &&
-        details.location.longitude !== undefined
+        details["location"] &&
+        details["location"].latitude !== undefined &&
+        details["location"].longitude !== undefined
       ) {
-        const lat = details.location.latitude;
-        const lng = details.location.longitude;
+        const lat = details["location"].latitude;
+        const lng = details["location"].longitude;
         // Pre-validate to avoid server-side crashes on invalid inputs
         if (!isLatLon({ lat, lng }, false)) {
           return next(
@@ -119,13 +123,12 @@ const uploadEvent = async (
         }
         try {
           await maybeUpdateDeviceHistory(
-            models,
             device,
             { lat, lng },
-            new Date(details.location.updated),
+            new Date(details["location"].updated),
             "config",
           );
-        } catch (e: any) {
+        } catch (e) {
           const message = e?.message || "unknown error";
           if (
             e?.name === "SequelizeValidationError" ||
@@ -137,29 +140,38 @@ const uploadEvent = async (
               ),
             );
           }
-          return next(new ClientError(`Failed to update device history: ${message}`));
+          return next(
+            new ClientError(`Failed to update device history: ${message}`),
+          );
         }
       }
     }
   }
   const now = new Date();
-  const eventList = request.body.dateTimes.map((dateTime: IsoFormattedDateString) => ({
-    DeviceId: device.id,
-    EventDetailId: detailsId,
-    dateTime: new Date(dateTime),
-    env,
-  })).filter((event) => {
-    if (event.dateTime > now) {
-      logger.warning("Discarding event with invalid future dateTime %s.", JSON.stringify(event));
-      return false;
-    }
-    return true;
-  });
+  const eventList = request.body.dateTimes
+    .map((dateTime: IsoFormattedDateString) => ({
+      DeviceId: device.id,
+      EventDetailId: detailsId,
+      dateTime: new Date(dateTime),
+      env,
+    }))
+    .filter((event: { dateTime: Date }) => {
+      if (event.dateTime > now) {
+        logger.warning(
+          "Discarding event with invalid future dateTime %s.",
+          JSON.stringify(event),
+        );
+        return false;
+      }
+      return true;
+    });
   const count = eventList.length;
   try {
     // Batch inserting events to max 100 events at a time, to spare DB memory usage.
     for (let i = 0; i < eventList.length; i += 100) {
-      await models.Event.bulkCreate(eventList.slice(i, Math.min(i + 100, eventList.length)));
+      await Event.bulkCreate(
+        eventList.slice(i, Math.min(i + 100, eventList.length)),
+      );
     }
   } catch (exception) {
     return next(
@@ -172,8 +184,7 @@ const uploadEvent = async (
   });
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiEventsRequestBody {
+export interface ApiEventsRequestBody {
   Timestamp?: IsoFormattedDateString; // Deprecated, use 'dateTimes' instead
   eventDetailId?: number; // ID of existing event details entry if known. Either eventDetailId or description are required.
   description?: EventDescription; // Description of the event. Either eventDetailId or description are required.
@@ -272,13 +283,12 @@ export default function (app: Application, baseUrl: string) {
     util.multipartUpload(
       "event-thumb",
       async (
-        uploader,
+        _uploader,
         uploadingDevice,
-        uploadingUser,
+        _uploadingUser,
         data,
         keys,
         _uploadedFileDatas,
-        _locals,
       ): Promise<Event> => {
         console.assert(
           keys.length === 1,
@@ -293,17 +303,19 @@ export default function (app: Application, baseUrl: string) {
             ...data,
           },
         };
-        delete description.details.type;
-        delete description.details.filename;
-        delete description.details.dateTimes;
-        const detail = await models.DetailSnapshot.getOrCreateMatching(
+        delete description.details["type"];
+        delete description.details["filename"];
+        delete description.details["dateTimes"];
+        const detail = await DetailSnapshot.getOrCreateMatching(
           description.type,
           description.details,
         );
         const dateTime =
-          (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
+          (data["dateTimes"] &&
+            data["dateTimes"].length &&
+            data["dateTimes"][0]) ||
           new Date().toISOString();
-        return await models.Event.create({
+        return await Event.create({
           DeviceId: uploadingDevice.id,
           EventDetailId: detail.id,
           dateTime,
@@ -467,12 +479,8 @@ export default function (app: Application, baseUrl: string) {
       const query = request.query;
       const offset: number =
         (query.offset && (query.offset as unknown as number)) || 0;
-      let options: QueryOptions;
-      if (query.type) {
-        options = { eventType: query.type } as QueryOptions;
-      }
       const includeCount = query["include-count"] as unknown as boolean;
-      const result = await models.Event.query(
+      const result = await Event.query(
         response.locals.requestUser.id,
         query.startTime as string,
         query.endTime as string,
@@ -480,7 +488,7 @@ export default function (app: Application, baseUrl: string) {
         offset,
         query.limit as unknown as number,
         query.latest as unknown as boolean,
-        options,
+        query.type as unknown as string,
         includeCount,
       );
       const payload = {
@@ -491,173 +499,9 @@ export default function (app: Application, baseUrl: string) {
           : result,
       };
       if (includeCount) {
-        (payload as any).count = (
-          result as { rows: Event[]; count: number }
-        ).count;
+        payload["count"] = (result as { rows: Event[]; count: number }).count;
       }
       return successResponse(response, "Completed query.", payload);
-    },
-  );
-
-  if (!config.productionEnv) {
-    // DEPRECATED: As far as I can tell, no client ever actually calls this API endpoint, is it only used by CI?
-    /**
-     * @api {get} /api/v1/events/errors Query recorded errors
-     * @apiName QueryErrors
-     * @apiGroup Events
-     *
-     * @apiUse V1UserAuthorizationHeader
-     * @apiQuery {Datetime} [startTime] Return only errors on or after this time
-     * @apiQuery {Datetime} [endTime] Return only errors from before this time
-     * @apiQuery {Integer} [deviceId] Return only errors for this device id
-     * @apiQuery {Integer} [limit=100] Limit returned errors to this number (default is 100)
-     * @apiQuery {Integer} [offset=0] Offset returned errors by this amount (default is 0)
-     * @apiQuery {Boolean} [only-active=true] Only return errors for active devices
-     *
-     * @apiSuccess {json} rows Map of Service Name to Service errors
-     * @apiUse V1ResponseSuccess
-     * @apiSuccessExample {json} rows
-     * {
-     *   "<service-name>": {
-     *     "name": "<service-name>",
-     *     "devices": ["device1","device2"],
-     *     "errors": ApiEventError[]
-     *   },
-     *   "<service-name2>": {
-     *     "name": "<service-name2>",
-     *     "devices": ["device3","device4"],
-     *     "errors": ApiEventError[]
-     *   }
-     * }
-     * @apiSuccessExample {json} ApiEventError
-     * {
-     *   devices: ["device1", "device2"],
-     *   timestamps: ["2020-08-10T13:10:38.000Z", "2020-08-11T13:10:38.000Z"],
-     *   similar: ApiEventErrorSimilar[],
-     *   patterns: ApiEventErrorPattern[]
-     * }
-     * @apiSuccessExample {json} ApiEventErrorSimilar
-     * {
-     *   device: "device1",
-     *   timestamp: "2020-08-10T13:10:38.000Z",
-     *   lines: ["error line 1", "error line 2", "error line 3"]
-     * }
-     * @apiSuccessExample {json} ApiEventErrorPattern
-     * {
-     *   score: 100,
-     *   index: 0,
-     *   patterns: ["matched error line"]
-     * }
-     * @apiUse V1ResponseError
-     */
-    // app.get(
-    //   `${apiUrl}/errors`,
-    //   // Authenticate the session
-    //   extractJwtAuthorizedUser,
-    //   // Validate request structure
-    //   validateFields([
-    //     query("startTime").isISO8601({ strict: true }).toDate().optional(),
-    //     query("endTime").isISO8601({ strict: true }).toDate().optional(),
-    //     idOf(query("deviceId")).optional(),
-    //     integerOf(query("offset")).optional(),
-    //     integerOf(query("limit")).optional(),
-    //     query("only-active").optional().isBoolean().toBoolean(),
-    //   ]),
-    //   // Extract required resources
-    //   fetchAuthorizedOptionalDeviceById(query("deviceId")),
-    //   async (request: Request, response: Response, next: NextFunction) => {
-    //     // deviceId is optional, but if it is supplied we need to make sure that the user
-    //     // is allowed to access it.
-    //     if (request.query.deviceId && !response.locals.device) {
-    //       return next(
-    //         new ClientError(
-    //           `Could not find a device with an id of '${request.query.deviceId} for user`,
-    //           HttpStatusCode.Forbidden
-    //         )
-    //       );
-    //     }
-    //     next();
-    //   },
-    //   async (request: Request, response: Response) => {
-    //     // TODO: Fix these tests.
-    //     const query = request.query;
-    //     const startTime = query.startTime as unknown as Date | undefined;
-    //     const endTime = query.endTime as unknown as Date | undefined;
-    //     const result = await groupedSystemErrors(startTime, endTime);
-    //     return successResponse(response, "Completed query.", {
-    //       limit: query.limit,
-    //       offset: query.offset,
-    //       rows: result,
-    //     });
-    //   }
-    // );
-  }
-
-  // DEPRECATED: As far as I can tell, no client ever calls this API endpoint - is it only used by CI?
-  /**
-   * @api {get} /api/v1/events/powerEvents Query power events for devices
-   * @apiName QueryPower
-   * @apiGroup Events
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiQuery {Integer} [deviceId] Return only errors for this deviceId
-   *
-   * @apiSuccess {JSON} events Array of `ApiPowerEvent` containing details of power events matching the criteria given.
-   * @apiSuccessExample ApiPowerEvent:
-   * {
-   *   "hasStopped": true,
-   *   "lastStarted": "2021-07-21T02:00:02.929Z",
-   *   "lastReported": "2021-07-21T02:00:02.929Z",
-   *   "lastStopped": "2021-07-17T20:41:55.000Z",
-   *   "hasAlerted": true,
-   *   "Device": {
-   *     "id": 1576,
-   *     "deviceName": "test-device",
-   *     "GroupId": 246,
-   *     "Group":  {
-   *       "groupName": "test-group",
-   *       "id": 246
-   *     }
-   *    }
-   *  }
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/powerEvents`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(query("deviceId")).optional(),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    // Extract required resources
-    fetchAuthorizedOptionalDeviceById(query("deviceId")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // FIXME - can this be incorporated into our fetch logic?
-      // deviceId is optional, but if it is supplied we need to make sure that the user
-      // is allowed to access it.
-      if (request.query.deviceId && !response.locals.device) {
-        return next(
-          new ClientError(
-            `Could not find a device with an id of '${request.query.deviceId} for user`,
-            HttpStatusCode.Forbidden,
-          ),
-        );
-      }
-      next();
-    },
-    async (request: Request, response: Response) => {
-      logger.info(
-        "Get power events for %s at time %s",
-        response.locals.requestUser,
-        new Date(),
-      );
-      const events = await powerEventsPerDevice({
-        query: { ...request.query },
-        res: { locals: { ...response.locals } },
-      });
-      return successResponse(response, "Completed query.", {
-        events,
-      });
     },
   );
 
@@ -676,7 +520,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/event-types`,
     extractJwtAuthorizedUser,
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `select distinct type from "DetailSnapshots"`,
         { type: QueryTypes.SELECT },
       );
@@ -702,7 +546,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `
       select distinct 
         type 
@@ -736,7 +580,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredEventById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const event = response.locals.event;
       const details = {
         ...event.EventDetail.details,

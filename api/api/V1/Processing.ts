@@ -2,7 +2,6 @@ import { successResponse } from "../V1/responseUtil.js";
 import middleware, { validateFields } from "../middleware.js";
 import log from "@log";
 import { body, param, query, oneOf } from "express-validator";
-import modelsInit from "@models/index.js";
 import _ from "lodash";
 import {
   saveThumbnailInfo,
@@ -12,8 +11,8 @@ import {
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" assert { type: "json" };
-import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" assert { type: "json" };
+import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
+import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" with { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
 import { AuthorizationError, ClientError } from "../customErrors.js";
@@ -31,17 +30,16 @@ import {
   extractValFromRequest,
   fetchUnauthorizedRequiredFlatRecordingById,
 } from "@api/extract-middleware.js";
-import {
-  getTrackData,
-  saveTrackData,
-  type Track,
-} from "@/models/Track.js";
-import type { DeviceHistory } from "@models/DeviceHistory.js";
+import { Track } from "@/models/Track.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
 import Sequelize, { Op } from "sequelize";
 import type { TrackId } from "@typedefs/api/common.js";
 import { openS3 } from "@models/util/util.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { TrackTag } from "@models/TrackTag.js";
+import { Recording } from "@models/Recording.js";
 const NULL_TRACK_ID = 1;
-const models = await modelsInit();
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/processing`;
 
@@ -75,7 +73,6 @@ export default function (app: Application, baseUrl: string) {
           query("type").isIn([
             RecordingType.InfraredVideo,
             RecordingType.ThermalRaw,
-            RecordingType.TrailCamImage,
           ]),
           query("state").isIn([
             RecordingProcessingState.Reprocess,
@@ -90,7 +87,7 @@ export default function (app: Application, baseUrl: string) {
     middleware.requestWrapper(async (request: Request, response: Response) => {
       const type = request.query.type as RecordingType;
       const state = request.query.state as RecordingProcessingState;
-      const recording = await models.Recording.getOneForProcessing(type, state);
+      const recording = await Recording.getOneForProcessing(type, state);
       if (recording === null) {
         log.debug(
           "No file to be processed for '%s' in state '%s.",
@@ -105,7 +102,7 @@ export default function (app: Application, baseUrl: string) {
           recording.getRawFileName(),
           recording.rawMimeType,
         );
-        const rec = (recording as any).dataValues;
+        const rec = recording.dataValues;
         if (rec.location) {
           // Some versions of postgres seem to put this in.
           delete rec.location.crs;
@@ -173,7 +170,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("result")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const recording = await models.Recording.findByPk(request.body.id);
+      const recording = await Recording.findByPk(request.body.id);
       if (!recording) {
         return next(
           new ClientError(
@@ -204,8 +201,7 @@ export default function (app: Application, baseUrl: string) {
             recording.fileKey = newProcessedFileKey;
           }
           const nextJob = recording.getNextState();
-          const complete =
-            nextJob == models.Recording.finishedState();
+          const complete = nextJob == Recording.finishedState();
           recording.processingState = nextJob;
           recording.processingEndTime = new Date().toISOString();
           recording.processingFailedCount = 0;
@@ -232,7 +228,7 @@ export default function (app: Application, baseUrl: string) {
           if (complete) {
             tracks = (await recording.getTracks()) || [];
             for (const track of tracks) {
-              track.data = await getTrackData(track.id);
+              track.data = await Track.getTrackData(track.id);
               await track.updateIsFiltered();
             }
           }
@@ -242,7 +238,7 @@ export default function (app: Application, baseUrl: string) {
             if (shouldFilter) {
               let hasHuman = false;
               for (const t of tracks) {
-                const tags = await t.getTrackTags({});
+                const tags = await t.getTrackTags();
                 hasHuman = tags.some((tt) => tt.what === "human");
                 if (hasHuman) {
                   break;
@@ -311,7 +307,7 @@ export default function (app: Application, baseUrl: string) {
             recording.uploader === "device" &&
             recordingAgeMs < twentyFourHoursMs
           ) {
-            await sendAlerts(models, recording.id);
+            await sendAlerts(recording.id);
           }
         } catch (e) {
           log.error("Failed to save recording: %s", e);
@@ -383,7 +379,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const recording = await models.Recording.findByPk(request.params.id);
+      const recording = await Recording.findByPk(request.params.id);
       if (!recording) {
         return next(
           new AuthorizationError(
@@ -401,7 +397,6 @@ export default function (app: Application, baseUrl: string) {
         const positions = data && data.positions;
         if (positions) {
           discardMaskedTrack = await trackIsMasked(
-            models,
             deviceId,
             groupId,
             atTime,
@@ -452,7 +447,7 @@ export default function (app: Application, baseUrl: string) {
       const tracks = (await response.locals.recording.getTracks()) as Track[];
       const promises = [];
       for (const track of tracks) {
-        const trackTags = await models.TrackTag.findAll({
+        const trackTags = await TrackTag.findAll({
           where: {
             TrackId: track.id,
           },
@@ -545,7 +540,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([body("algorithm").isJSON()]),
     parseJSONField(body("algorithm")),
     async (_request, response) => {
-      const algorithm = await models.DetailSnapshot.getOrCreateMatching(
+      const algorithm = await DetailSnapshot.getOrCreateMatching(
         "algorithm",
         response.locals.algorithm,
       );
@@ -598,9 +593,9 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
     async (_request: Request, response) => {
-      const existingData = await getTrackData(response.locals.track.id);
+      const existingData = await Track.getTrackData(response.locals.track.id);
       existingData.thumbnail = response.locals.data;
-      await saveTrackData(response.locals.track.id, existingData);
+      await Track.saveTrackData(response.locals.track.id, existingData);
       return successResponse(response, "Track updated");
     },
   );
@@ -631,7 +626,7 @@ export default function (app: Application, baseUrl: string) {
       // make a copy of the original track
       let d;
       const { data, filtered, AlgorithmId } = response.locals.track;
-      const oldData = await getTrackData(response.locals.track.id);
+      const oldData = await Track.getTrackData(response.locals.track.id);
       if (Object.keys(oldData).length === 0) {
         d = data;
       } else {
@@ -663,7 +658,7 @@ export default function (app: Application, baseUrl: string) {
         update.maxFreqHz = newData.maxFreq || 0;
       }
       await response.locals.track.update(update);
-      await saveTrackData(response.locals.track.id, newData);
+      await Track.saveTrackData(response.locals.track.id, newData);
 
       return successResponse(response, "Track updated");
     },
@@ -697,28 +692,27 @@ export default function (app: Application, baseUrl: string) {
           (request.query["at-time"] as unknown as Date)) ||
         new Date();
       const device = response.locals.device;
-      const deviceHistoryEntry: DeviceHistory =
-        await models.DeviceHistory.findOne({
-          where: {
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            fromDateTime: { [Op.lte]: atTime },
-          },
-          order: [["fromDateTime", "DESC"]],
-          attributes: [
-            "DeviceId",
-            "fromDateTime",
-            "location",
-            [
-              Sequelize.fn(
-                "json_build_object",
-                "ratThresh",
-                Sequelize.literal(`"DeviceHistory"."settings"#>'{ratThresh}'`),
-              ),
-              "settings",
-            ],
+      const deviceHistoryEntry: DeviceHistory = await DeviceHistory.findOne({
+        where: {
+          DeviceId: device.id,
+          GroupId: device.GroupId,
+          fromDateTime: { [Op.lte]: atTime },
+        },
+        order: [["fromDateTime", "DESC"]],
+        attributes: [
+          "DeviceId",
+          "fromDateTime",
+          "location",
+          [
+            Sequelize.fn(
+              "json_build_object",
+              "ratThresh",
+              Sequelize.literal(`"DeviceHistory"."settings"#>'{ratThresh}'`),
+            ),
+            "settings",
           ],
-        });
+        ],
+      });
       return successResponse(response, "Got device history", {
         deviceHistoryEntry,
       });

@@ -136,8 +136,6 @@ export interface QueryRecordingsOptions {
   durationMaxSecs?: number;
 
   types?: (
-    | RecordingType.TrailCamImage
-    | RecordingType.TrailCamVideo
     | RecordingType.ThermalRaw
     | RecordingType.Audio
   )[];

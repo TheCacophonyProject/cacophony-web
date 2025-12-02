@@ -7,11 +7,9 @@ export const consoleTransport = new winston.transports.Console({
   level: config.server.loggerLevel,
   format: format.combine(
     format((info) => {
-      const asyncStore =
-        asyncLocalStorage &&
-        (asyncLocalStorage.getStore() as Map<string, string>);
+      const asyncStore = asyncLocalStorage && asyncLocalStorage.getStore();
       if (asyncStore) {
-        const requestId = asyncStore.get("requestId");
+        const requestId = asyncStore.get("requestId") as string;
         if (requestId) {
           info.message = `${requestId.split("-")[0]}: ${info.message}`;
         }

@@ -56,9 +56,11 @@ npm cache verify
 
 # Make sure `apt-get autoremove` doesn't remove nodejs, since it falsely thinks it's an unused dependency of another package.
 apt-mark manual nodejs
+apt-mark hold nodejs
 # clean up our apt modules if we've already used them
-#apt-get -y remove make build-essential g++ python3 curl ca-certificates
-#apt-get -y autoremove
-#dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs sudo dpkg --purge
-#apt-get clean
-#rm -rf /var/lib/apt/lists/*
+apt-get -y remove make build-essential g++ python3 curl ca-certificates
+apt-get -y autoremove
+dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs sudo dpkg --purge
+apt-get install -y nodejs
+apt-get clean
+rm -rf /var/lib/apt/lists/*
