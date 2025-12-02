@@ -82,7 +82,7 @@ const isBusy = ref<boolean>(false);
       centered
       lazy
       no-footer
-      hide-header
+      no-header
       :no-fade="noFadeInternal"
       ref="modal"
       @hide="show = false"

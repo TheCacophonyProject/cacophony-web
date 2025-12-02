@@ -20,7 +20,6 @@
         "eslint-utils": "^3.0.0",
         "prettier": "^2.8.8",
         "typescript": "^5.9.3",
-        "@types/recursive-readdir": "^2.2.0",
-        "@tsconfig/node16": "^16.1.6"
+        "@types/recursive-readdir": "^2.2.0"
     }
 }

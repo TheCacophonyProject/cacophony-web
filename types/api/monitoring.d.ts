@@ -1,5 +1,5 @@
 import type { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common.ts";
-import { RecordingProcessingState, RecordingType } from "./consts.js";
+import { RecordingProcessingState, RecordingType } from "./consts.ts";
 
 export interface MonitoringRequest {
   perPage?: number;

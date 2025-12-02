@@ -41,12 +41,13 @@ export interface FieldValidationError {
   location: "body" | "query" | "param";
   param: string;
 }
-
-export interface BatteryInfoEvent {
+export interface BatteryInfo {
+    voltage: number | null;
+    battery: number | null;
+    batteryType: "unknown" | "lime" | "mains" | "li-ion";
+}
+export interface BatteryInfoEvent extends BatteryInfo {
   dateTime: IsoFormattedString | Date;
-  voltage: number | null;
-  battery: number | null;
-  batteryType: "unknown" | "lime" | "mains" | "li-ion";
 }
 
 export interface ErrorResult {

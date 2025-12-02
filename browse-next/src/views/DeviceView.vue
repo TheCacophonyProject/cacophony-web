@@ -20,14 +20,6 @@ import OverflowingTabList from "@/components/OverflowingTabList.vue";
 import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import {ClientApi} from "@/api";
-import {
-  getDeviceById,
-  getLatestStatusRecordingForDevice,
-  getMaskRegionsForDevice,
-  getReferenceImageForDeviceAtCurrentLocation,
-} from "@api/Device.ts";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { DateTime } from "luxon";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);

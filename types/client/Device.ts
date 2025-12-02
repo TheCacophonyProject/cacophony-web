@@ -25,23 +25,14 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { type CacophonyApiClient, optionalQueryString, unwrapLoadedResource } from "./api";
 import {
-  type BatteryInfoEvent,
-  DEFAULT_AUTH_ID,
-  type FetchResult,
-  type LoadedResource,
-  type LoggedInDeviceCredentials,
-  type TestHandle,
+    BatteryInfo,
+    type BatteryInfoEvent,
+    DEFAULT_AUTH_ID,
+    type FetchResult,
+    type LoadedResource,
+    type LoggedInDeviceCredentials,
+    type TestHandle,
 } from "./types";
-
-const createProxyDevice = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
-  projectNameOrId: string,
-  deviceName: string,
-) =>
-  api.post(authKey, `/api/v1/devices/create-proxy-device`, {
-    group: projectNameOrId,
-    type: "trailcam",
-    deviceName,
-  }) as Promise<FetchResult<{ id: DeviceId }>>;
 
 const deleteDevice = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectNameOrId: string | ProjectId,
@@ -176,7 +167,7 @@ const getDeviceNodeGroup = (api: CacophonyApiClient, authKey: TestHandle | null 
     }).then((response) => {
       if (response.success && response.result.rows.length) {
         resolve(
-          response.result.rows[0].EventDetail.details.nodegroup ||
+            (response.result.rows[0].EventDetail.details as {nodegroup: string}).nodegroup ||
             "unknown channel",
         );
       } else {
@@ -243,18 +234,22 @@ const getBatteryInfo = (api: CacophonyApiClient, authKey: TestHandle | null = DE
       )) as unknown as FetchResult<{ rows: DeviceEvent[] }>;
       if (response && response.success) {
         const eventsSubset = response.result.rows.map(
-          ({
+          (event) => {
+          const {
             dateTime,
             EventDetail: {
-              details: { voltage, battery, batteryType },
+              details,
             },
-          }) => ({
+          } = event;
+          const { voltage, battery, batteryType } = details as BatteryInfo;
+
+          return {
             dateTime,
             voltage,
             battery,
             batteryType,
-          }),
-        );
+          };
+        });
         events.push(...eventsSubset);
         if (eventsSubset.length === 0) {
           stillHasEvents = false;
@@ -300,7 +295,7 @@ const getDeviceVersionInfo = (api: CacophonyApiClient, authKey: TestHandle | nul
       limit: 1,
     }).then((response) => {
       if (response.success && response.result.rows.length) {
-        resolve(response.result.rows[0].EventDetail.details);
+        resolve(response.result.rows[0].EventDetail.details as Record<string, string>);
       } else {
         resolve(false);
       }
@@ -356,7 +351,7 @@ const getDeviceConfig = (api: CacophonyApiClient, authKey: TestHandle | null = D
       limit: 1,
     }).then((response) => {
       if (response && response.success && response.result.rows.length) {
-        resolve(response.result.rows[0].EventDetail.details);
+        resolve(response.result.rows[0].EventDetail.details as DeviceConfigDetail);
       } else {
         resolve(false);
       }
@@ -698,7 +693,6 @@ const registerDevice = (api: CacophonyApiClient, authKey: TestHandle | null = DE
 export default (api: CacophonyApiClient) => {
   // NOTE: this is a bit tedious, but it makes the type inference work for the return type.
   return {
-    createProxyDevice: createProxyDevice(api),
     deleteDevice: deleteDevice(api),
     setDeviceActive: setDeviceActive(api),
     getDeviceById: getDeviceById(api),
@@ -736,7 +730,6 @@ export default (api: CacophonyApiClient) => {
     getDeviceModel: getDeviceModel(api),
     registerDevice: registerDevice(api),
     withAuth: (authKey: TestHandle) => ({
-      createProxyDevice: createProxyDevice(api, authKey),
       deleteDevice: deleteDevice(api, authKey),
       setDeviceActive: setDeviceActive(api, authKey),
       getDeviceById: getDeviceById(api, authKey),

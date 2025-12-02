@@ -9,7 +9,7 @@ import type {
 } from "./common.ts";
 import type { ApiRecordingTagResponse } from "./tag.ts";
 import type { ApiTrackResponse } from "./track.ts";
-import { RecordingProcessingState, RecordingType } from "./consts.js";
+import { RecordingProcessingState, RecordingType } from "./consts.ts";
 import type { DeviceBatteryChargeState } from "./device.ts";
 
 export interface ApiRecordingResponse {

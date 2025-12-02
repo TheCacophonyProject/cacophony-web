@@ -1,16 +1,16 @@
 import {
-  BaseType,
-  SubNodeParser,
-  Context,
-  ReferenceType,
-  SubTypeFormatter,
-  FunctionType,
-  Definition,
-  createFormatter,
-  createProgram,
-  createParser,
-  SchemaGenerator,
-  ts,
+    BaseType,
+    SubNodeParser,
+    Context,
+    ReferenceType,
+    SubTypeFormatter,
+    FunctionType,
+    Definition,
+    createFormatter,
+    createProgram,
+    createParser,
+    SchemaGenerator,
+    ts, CompletedConfig, DEFAULT_CONFIG,
 } from "ts-json-schema-generator";
 import fs from "fs/promises";
 import crypto from "crypto";
@@ -187,39 +187,30 @@ class IsoFormattedDateStringParser implements SubNodeParser {
             .getTypeChecker()
             .getExportsOfModule(fileSymbol);
           for (const e of exported) {
-            if (e.declarations) {
-              for (const declaration of e.declarations) {
-                if (declaration.modifiers) {
-                  for (const modifier of declaration.modifiers) {
-                    if (modifier.kind === ts.SyntaxKind.ExportKeyword) {
-                      exportedNames.push((declaration as any).name.escapedText);
-                    }
-                  }
-                }
-              }
-            }
+            exportedNames.push(e.name);
           }
         }
       }
       for (const exportedName of exportedNames) {
-        const config = {
+        const config: CompletedConfig = {
+          ...DEFAULT_CONFIG,
           path: typedefFile,
           tsconfig: "./tsconfig.json",
           type: exportedName, // Or <type-name> if you want to generate schema for that one type only
           topRef: true,
           additionalProperties: false,
-        } as any;
+        };
 
         // Get the exported types from each of the schema files that has changed.
-        const formatter = createFormatter(config as any, (fmt) => {
+        const formatter = createFormatter(config, (fmt) => {
           // If your formatter DOES NOT support children, e.g. getChildren() { return [] }:
           fmt.addTypeFormatter(new IntegerFormatter());
           fmt.addTypeFormatter(new FloatZeroOneFormatter());
           fmt.addTypeFormatter(new IsoFormattedDateStringFormatter());
         });
 
-        const program = createProgram(config as any);
-        const parser = createParser(program, config as any, (prs) => {
+        const program = createProgram(config);
+        const parser = createParser(program, config, (prs) => {
           prs.addNodeParser(new TypeAliasParser());
           prs.addNodeParser(new FloatZeroOneParser());
           prs.addNodeParser(new IsoFormattedDateStringParser());

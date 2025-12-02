@@ -1,5 +1,5 @@
 import type { IsoFormattedDateString, DeviceId } from "./common.ts";
-import { DeviceEventType } from "./consts.js";
+import { DeviceEventType } from "./consts.ts";
 
 export type EventDates = IsoFormattedDateString[];
 
@@ -18,7 +18,7 @@ export interface DeviceEvent {
   Device: { deviceName: string };
   EventDetail: {
     type: DeviceEventType;
-    details?: object;
+    details: object;
   };
 }
 

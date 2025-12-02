@@ -1694,16 +1694,6 @@ watch(
     }
   },
 );
-
-const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
-const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
-const creds = computed<LoggedInUserAuth | null>(() => {
-  if (import.meta.env.DEV) {
-    return devCreds.value;
-  }
-  return prodCreds.value;
-});
-
 let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
