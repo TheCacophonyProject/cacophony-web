@@ -703,9 +703,9 @@ const showSoftwareInformation = ref<boolean>(false);
                 <div v-else-if="powerProfile === DevicePowerProfile.HighPower" class="d-flex align-items-center">
                   <span>High Power mode</span>
                   <b-button
-                    variant="outline-secondary"
+                    variant="light"
                     size="sm"
-                    class="btn-icon d-flex"
+                    class="btn-icon d-inline-flex"
                     aria-label="View mode details"
                     id="high-power-mode-description"
                   >
@@ -722,9 +722,9 @@ const showSoftwareInformation = ref<boolean>(false);
                 <div v-else-if="powerProfile === DevicePowerProfile.LowPower">
                   <span>Low Power mode</span>
                   <b-button
-                    variant="outline-secondary"
+                    variant="light"
                     size="sm"
-                    class="btn-icon"
+                    class="btn-icon d-inline-flex"
                     aria-label="View mode details"
                     id="low-power-mode-description"
                   >
