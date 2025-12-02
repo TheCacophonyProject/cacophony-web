@@ -1215,7 +1215,7 @@ const minDate = (a: Date, b: Date): Date => {
 const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
   if (searchParams.value.recordingMode === "cameras") {
     return [
-      ConcreteRecordingType.ThermalRaw
+      ConcreteRecordingType.ThermalRaw,
     ];
   } else {
     return [ConcreteRecordingType.Audio];
