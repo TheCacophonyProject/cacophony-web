@@ -1,24 +1,26 @@
 import { fileURLToPath, URL } from "url";
 
-import { defineConfig, searchForWorkspaceRoot } from "vite";
+import { Connect, defineConfig, PreviewServer, searchForWorkspaceRoot, ViteDevServer } from "vite";
 import vue from "@vitejs/plugin-vue";
 import eslintPlugin from "vite-plugin-eslint";
 import Components from "unplugin-vue-components/vite";
 import { BootstrapVueNextResolver } from "unplugin-vue-components/resolvers";
+import http from "node:http";
 
-function crossOriginIsolationMiddleware(_: any, response: any, next: any) {
+function crossOriginIsolationMiddleware(_: http.IncomingMessage, response: http.ServerResponse, next: Connect.NextFunction) {
+  // Was this to allow wasm threads?  It kills maps locally...
   response.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-  response.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  response.setHeader("Cross-Origin-Embedder-Policy", "credentialless"); // was require-corp
   response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   next();
 }
 
 const crossOriginIsolation = {
   name: "cross-origin-isolation",
-  configureServer: (server: any) => {
+  configureServer: (server: ViteDevServer) => {
     server.middlewares.use(crossOriginIsolationMiddleware);
   },
-  configurePreviewServer: (server: any) => {
+  configurePreviewServer: (server: PreviewServer) => {
     server.middlewares.use(crossOriginIsolationMiddleware);
   },
 };
@@ -63,6 +65,9 @@ export default defineConfig({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       "@typedefs": fileURLToPath(new URL("../types", import.meta.url)),
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      "@apiClient": fileURLToPath(new URL("../types/client", import.meta.url)),
     },
   },
   define: {

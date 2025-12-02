@@ -92,7 +92,7 @@ const mapEl = ref<HTMLDivElement | null>(null);
 
 const pointKey = (point: NamedPoint) => {
   if (!point.location) {
-    debugger;
+    console.warn("No location for point found", point);
   }
   return `${point.project}|${point.name}|${point.location.lat}|${point.location.lng}`;
 };

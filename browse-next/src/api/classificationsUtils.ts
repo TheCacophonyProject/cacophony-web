@@ -1,13 +1,6 @@
-import type { ApiClassificationResponse } from "@typedefs/api/trackTag";
-import type { FetchResult } from "@api/types";
-import CacophonyApi from "./api";
-import type { Classification } from "@typedefs/api/trackTag";
 import { computed, ref } from "vue";
-
-const apiGetClassifications = (version?: string) =>
-  CacophonyApi.get(
-    `/api/v1/files/classifications${version ? `?version=${version}` : ""}`,
-  ) as Promise<FetchResult<ApiClassificationResponse>>;
+import type { Classification } from "@typedefs/api/trackTag";
+import {ClientApi} from "@/api";
 
 const loadedClassificationsThisSession = ref(false);
 export const classifications = ref<Classification | null>(null);
@@ -59,7 +52,7 @@ export const flatClassifications = computed<
 });
 
 const getFreshClassifications = async (): Promise<Classification> => {
-  const res = await apiGetClassifications();
+  const res = await ClientApi.Classifications.apiGetClassifications();
   if (res.success) {
     const { label, version, children } = res.result;
 
@@ -110,7 +103,7 @@ export const getClassifications = async (
     const cached = localStorage.getItem("classifications");
     if (cached && !loadedClassificationsThisSession.value) {
       const parsed = JSON.parse(cached);
-      apiGetClassifications(parsed.version).then(async (res) => {
+      ClientApi.Classifications.apiGetClassifications(parsed.version).then(async (res) => {
         if (res && res.success && res.result.version !== parsed.version) {
           const classifications = await getFreshClassifications();
           cb && cb(classifications);
@@ -134,7 +127,8 @@ export const displayLabelForClassificationLabel = (
   isAudioContext = false,
 ) => {
   if (!label) {
-    debugger;
+    console.warn("No label supplied");
+    return "";
   }
   label = label.toLowerCase();
   if (label === "unclassified") {
@@ -155,7 +149,7 @@ export const getPathForLabel = (label: string): string => {
 
 export const getClassificationForLabel = (label: string): Classification => {
   if (!label) {
-    debugger;
+    console.warn("No label supplied");
   }
   label = label.toLowerCase();
   const classifications = flatClassifications.value || {};

@@ -11,11 +11,7 @@ import {
 } from "vue";
 import SectionHeader from "@/components/SectionHeader.vue";
 import type { ApiAlertResponse } from "@typedefs/api/alerts";
-import {
-  createAlertForScope,
-  getAlertsForCurrentUser,
-  removeAlert,
-} from "@api/Alert";
+import {ClientApi} from "@/api";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
 import DeviceName from "@/components/DeviceName.vue";
 import CardTable from "@/components/CardTable.vue";
@@ -40,7 +36,7 @@ import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import Multiselect from "@vueform/multiselect";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import SectionCard from "@/components/SectionCard.vue";
 import {BButton} from "bootstrap-vue-next";
@@ -178,7 +174,7 @@ const alertBelongsToCurrentProject = (alert: ApiAlertResponse): boolean => {
 
 const loadAlerts = async () => {
   loadingAlerts.value = true;
-  const response = await getAlertsForCurrentUser();
+  const response = await ClientApi.Alerts.getAlertsForCurrentUser();
   if (response.success) {
     alerts.value = response.result.alerts.filter(alertBelongsToCurrentProject);
   }
@@ -190,7 +186,7 @@ onBeforeMount(async () => {
 });
 
 const deleteAlert = async (alertId: AlertId) => {
-  await removeAlert(alertId);
+  await ClientApi.Alerts.removeAlert(alertId);
   await loadAlerts();
 };
 const resetFormFields = () => {
@@ -203,7 +199,7 @@ const resetFormFields = () => {
 
 const saveAlert = async () => {
   creatingAlert.value = true;
-  await createAlertForScope(
+  await ClientApi.Alerts.createAlertForScope(
     alertScope.value,
     scopeId.value as number,
     alertOnTags.value,

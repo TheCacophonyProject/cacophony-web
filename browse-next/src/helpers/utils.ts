@@ -1,5 +1,5 @@
 import { computed, type Ref } from "vue";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 
 export const resourceIsLoading = (val: Ref<LoadedResource<unknown>>) =>
   computed<boolean>(() => val.value === null);

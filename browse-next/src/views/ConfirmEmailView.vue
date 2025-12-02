@@ -1,21 +1,22 @@
 <script lang="ts" setup>
-import { onBeforeMount, ref } from "vue";
+import { inject, onBeforeMount, type Ref, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { validateEmailConfirmationToken } from "@api/User";
+import {ClientApi} from "@/api";
 import {
-  CurrentUser,
-  setLoggedInUserCreds,
+  type LoggedInUser,
   setLoggedInUserData,
   urlNormalisedCurrentProjectName,
   userHasProjects,
   userIsLoggedIn,
 } from "@models/LoggedInUser";
-import type { ErrorResult } from "@api/types";
+import { DEFAULT_AUTH_ID, type ErrorResult } from "@apiClient/types";
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-
+import { currentUser } from "@models/provides.ts";
+const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
 const isValidValidateToken = ref(false);
@@ -45,7 +46,7 @@ onBeforeMount(async () => {
       validateToken.value = params.token.replace(/:/g, ".");
     }
 
-    const validateTokenResponse = await validateEmailConfirmationToken(
+    const validateTokenResponse = await ClientApi.Users.validateEmailConfirmationToken(
       validateToken.value,
     );
     if (!validateTokenResponse.success) {
@@ -69,10 +70,10 @@ onBeforeMount(async () => {
       setLoggedInUserData({
         ...userData,
       });
-      setLoggedInUserCreds({
+      ClientApi.registerCredentials(DEFAULT_AUTH_ID, {
         apiToken: token,
         refreshToken,
-        refreshingToken: false,
+        userData,
       });
 
       // NOTE: Should redirect to "setup" if user has no groups

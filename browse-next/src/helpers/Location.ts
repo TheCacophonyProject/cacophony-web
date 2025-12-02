@@ -2,7 +2,7 @@ import { computed } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { LatLng } from "@typedefs/api/common";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { DeviceType as ConcreteDeviceType } from "@typedefs/api/consts.ts";
 

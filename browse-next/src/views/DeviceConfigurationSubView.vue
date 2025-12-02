@@ -3,7 +3,7 @@ import { computed, inject, type Ref } from "vue";
 import type { ApiMaskRegionsData } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import {BNav, BNavItem, BSpinner} from "bootstrap-vue-next";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 const route = useRoute();

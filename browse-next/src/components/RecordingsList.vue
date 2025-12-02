@@ -243,7 +243,7 @@
 </template>
 
 <script lang="ts" setup>
-import { displayLabelForClassificationLabel } from "@/api/Classifications";
+import { displayLabelForClassificationLabel } from "@/api/classificationsUtils.ts";
 import { formatDuration, timeAtLocation } from "@/models/visitsUtils";
 import { DateTime } from "luxon";
 import type {
@@ -253,7 +253,6 @@ import type {
   StationId as LocationId,
 } from "@typedefs/api/common";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { API_ROOT } from "@api/root";
 import { ref } from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
 import {
@@ -269,6 +268,7 @@ import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiTrackTag } from "@typedefs/api/trackTag";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
+import { ClientApi } from "@/api";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -357,17 +357,11 @@ const thumbnailSrcForRecording = (recording: ApiRecordingResponse): string => {
       (tag) => !["false-positive", "unidentified"].includes(tag.what),
     );
   });
-
-  if (import.meta.env.DEV) {
-    if (nonFalsePositiveTrack.length !== 0) {
-      return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;
-    }
-    return `https://api.cacophony.org.nz/api/v1/recordings/${recording.id}/thumbnail`;
-  }
+  // FIXME: Extract this
   if (nonFalsePositiveTrack.length !== 0) {
-    return `${API_ROOT}/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;
+    return `${ClientApi.getApiRoot()}/api/v1/recordings/${recording.id}/thumbnail?trackId=${nonFalsePositiveTrack[0].id}`;
   }
-  return `${API_ROOT}/api/v1/recordings/${recording.id}/thumbnail`;
+  return `${ClientApi.getApiRoot()}/api/v1/recordings/${recording.id}/thumbnail`;
 };
 
 const selectedRecording = (recording: SunItem | RecordingItem) => {

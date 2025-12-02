@@ -1,12 +1,12 @@
-import CacophonyApi from "./api";
+import CacophonyApi, { type CacophonyApiClient } from "./api";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import type {
   GroupId as ProjectId,
   StationId as LocationId,
 } from "@typedefs/api/common";
-import type { FetchResult, LoadedResource } from "@api/types.ts";
+import { DEFAULT_AUTH_ID, type FetchResult, type LoadedResource, type TestHandle } from "./types";
 
-export const createNewLocationForProject = async (
+const createNewLocationForProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectNameOrId: string | ProjectId,
   locationName: string,
   location: LatLng,
@@ -36,7 +36,7 @@ export const createNewLocationForProject = async (
     }
   }
   return new Promise((resolve, reject) => {
-    return CacophonyApi.post(
+    return api.post(authKey,
       `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/station`,
       payload,
     ).then((result) => {
@@ -50,10 +50,22 @@ export const createNewLocationForProject = async (
   });
 };
 
-export const changeLocationName = (newName: string, locationId: LocationId) => {
-  return CacophonyApi.patch(`/api/v1/stations/${locationId}`, {
+const changeLocationName = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (newName: string, locationId: LocationId) => {
+  return api.patch(authKey, `/api/v1/stations/${locationId}`, {
     "station-updates": {
       name: newName,
     },
   }) as Promise<FetchResult<unknown>>;
+};
+
+export default (api: CacophonyApiClient) => {
+  // NOTE: this is a bit tedious, but it makes the type inference work for the return type.
+  return {
+    createNewLocationForProject: createNewLocationForProject(api),
+    changeLocationName: changeLocationName(api),
+    withAuth: (authKey: TestHandle) => ({
+      createNewLocationForProject: createNewLocationForProject(api, authKey),
+      changeLocationName: changeLocationName(api, authKey),
+    }),
+  };
 };

@@ -1,4 +1,4 @@
-import { EndUserAgreementVersion, GroupId, UserId } from "./common";
+import type { EndUserAgreementVersion, GroupId, UserId } from "./common.ts";
 import { UserGlobalPermission } from "./consts.js";
 
 export interface ApiUserResponse {

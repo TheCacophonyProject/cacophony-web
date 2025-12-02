@@ -1,4 +1,4 @@
-import {
+import type {
   DeviceId,
   GroupId,
   IsoFormattedDateString,
@@ -6,11 +6,11 @@ import {
   RecordingId,
   Seconds,
   StationId,
-} from "./common";
-import { ApiRecordingTagResponse } from "./tag";
-import { ApiTrackResponse } from "./track";
+} from "./common.ts";
+import type { ApiRecordingTagResponse } from "./tag.ts";
+import type { ApiTrackResponse } from "./track.ts";
 import { RecordingProcessingState, RecordingType } from "./consts.js";
-import { DeviceBatteryChargeState } from "./device";
+import type { DeviceBatteryChargeState } from "./device.ts";
 
 export interface ApiRecordingResponse {
   id: RecordingId;

@@ -19,7 +19,7 @@ import type { NamedPoint } from "@models/mapUtils";
 import {
   displayLabelForClassificationLabel,
   getPathForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import type { StationId as LocationId } from "@typedefs/api/common";
 
 const currentlyHighlightedLocation = inject(

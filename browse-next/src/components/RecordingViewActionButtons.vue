@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, type ComputedRef, inject, ref, watch } from "vue";
-import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
-import type { SelectedProject } from "@models/LoggedInUser";
-import { CurrentUser, showUnimplementedModal } from "@models/LoggedInUser";
+import {ClientApi} from "@/api";
+import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
+import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
 import { RecordingType } from "@typedefs/api/consts.ts";
-import { currentSelectedProject } from "@models/provides.ts";
+import { currentSelectedProject, currentUser } from "@models/provides.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const props = withDefaults(
@@ -23,6 +23,7 @@ const props = withDefaults(
 const currentProject = inject(currentSelectedProject) as ComputedRef<
   SelectedProject | false
 >;
+const CurrentUser = inject(currentUser) as ComputedRef<LoggedInUser | null>;
 
 const currentRecordingType = computed<"cptv" | "audio">(() => {
   if (props.recording) {
@@ -51,7 +52,7 @@ const removingLabelInProgress = ref<boolean>(false);
 const addLabel = async (label: string) => {
   if (props.recording) {
     addingLabelInProgress.value = true;
-    const addLabelResponse = await addRecordingLabel(props.recording.id, label);
+    const addLabelResponse = await ClientApi.Recordings.addRecordingLabel(props.recording.id, label);
     if (addLabelResponse.success) {
       // Emit tag change event, patch upstream recording.
       if (CurrentUser.value) {
@@ -76,7 +77,7 @@ const removeLabel = async (label: string) => {
     );
     if (labelToRemove) {
       removingLabelInProgress.value = true;
-      const removeLabelResponse = await removeRecordingLabel(
+      const removeLabelResponse = await ClientApi.Recordings.removeRecordingLabel(
         props.recording.id,
         labelToRemove.id,
       );

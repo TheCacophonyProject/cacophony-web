@@ -10,9 +10,9 @@ import {
 } from "vue";
 import {BBadge, BFormInput} from "bootstrap-vue-next";
 import type { StationId as LocationId } from "@typedefs/api/common";
-import { changeLocationName } from "@api/Location.ts";
 import { userIsProjectAdmin } from "@models/provides.ts";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import {ClientApi} from "@/api";
 
 const { location } = defineProps<{ location: ApiLocationResponse }>();
 const editLocationField = useTemplateRef("input");
@@ -54,7 +54,7 @@ const saveLocationName = async () => {
     locationName.value !== location.name
   ) {
     savingLocation.value = true;
-    const response = await changeLocationName(locationName.value, location.id);
+    const response = await ClientApi.Locations.changeLocationName(locationName.value, location.id);
     if (!response.success) {
       // Else show error
       errorMessage.value = response.result.messages[0];

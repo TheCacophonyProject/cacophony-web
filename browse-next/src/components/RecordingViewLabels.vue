@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, ref } from "vue";
+import { computed, inject, type Ref, ref } from "vue";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { CardTableRows } from "@/components/CardTableTypes";
 import { BModal } from "bootstrap-vue-next";
-import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
+import {ClientApi} from "@/api";
 import {
-  CurrentUser,
+  type LoggedInUser,
   userIsAdminForCurrentSelectedProject,
 } from "@models/LoggedInUser";
 import type { TagId } from "@typedefs/api/common";
@@ -18,7 +18,8 @@ import {
   CurrentProjectAudioLabels,
   CurrentProjectCameraLabels,
 } from "@/helpers/Project.ts";
-
+import { currentUser } from "@models/provides.ts";
+const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const props = withDefaults(
   defineProps<{
     recording?: ApiRecordingResponse | null;
@@ -118,7 +119,7 @@ const addLabel = () => {
 const removeLabel = async (id: TagId) => {
   if (props.recording) {
     removingLabelInProgress.value = true;
-    const removeLabelResponse = await removeRecordingLabel(
+    const removeLabelResponse = await ClientApi.Recordings.removeRecordingLabel(
       props.recording.id,
       id,
     );
@@ -132,7 +133,7 @@ const removeLabel = async (id: TagId) => {
 const doAddLabel = async () => {
   if (props.recording && selectedLabel.value) {
     addingLabelInProgress.value = true;
-    const addLabelResponse = await addRecordingLabel(
+    const addLabelResponse = await ClientApi.Recordings.addRecordingLabel(
       props.recording.id,
       selectedLabel.value,
     );

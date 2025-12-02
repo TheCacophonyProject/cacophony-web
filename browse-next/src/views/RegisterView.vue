@@ -2,12 +2,11 @@
 import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-next";
 import {
-  setLoggedInUserCreds,
   setLoggedInUserData,
 } from "@models/LoggedInUser";
-import { getEUAVersion, register as registerUser } from "@api/User";
+import {ClientApi} from "@/api";
 import { formFieldInputText, isValidName } from "@/utils";
-import type { ErrorResult, FieldValidationError } from "@api/types";
+import { DEFAULT_AUTH_ID, type ErrorResult, type FieldValidationError } from "@apiClient/types";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
 
@@ -171,12 +170,12 @@ const register = async () => {
 
   registrationInProgress.value = true;
   // Register, then log the user in.
-  const latestEUAVersionResponse = await getEUAVersion();
+  const latestEUAVersionResponse = await ClientApi.Users.getEUAVersion();
   let latestEUAVersion = undefined;
   if (latestEUAVersionResponse.success) {
     latestEUAVersion = latestEUAVersionResponse.result.euaVersion;
   }
-  const newUserResponse = await registerUser(
+  const newUserResponse = await ClientApi.Users.register(
     name,
     password,
     emailAddress,
@@ -187,10 +186,10 @@ const register = async () => {
     setLoggedInUserData({
       ...newUser.userData,
     });
-    setLoggedInUserCreds({
+    ClientApi.registerCredentials(DEFAULT_AUTH_ID, {
       refreshToken: newUser.refreshToken,
       apiToken: newUser.token,
-      refreshingToken: false,
+      userData: newUser.userData,
     });
     await router.push({
       name: "setup",

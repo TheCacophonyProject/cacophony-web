@@ -42,19 +42,17 @@ import {
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
-import type { LoggedInUserAuth, SelectedProject } from "@models/LoggedInUser";
-import { maybeRefreshStaleCredentials } from "@api/fetch";
+import type { SelectedProject } from "@models/LoggedInUser";
 import { type CancelableDelay, delayMs } from "@/utils";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
-import { getReferenceImageForDeviceAtTime } from "@api/Device.ts";
+import {ClientApi} from "@/api";
 import {
   currentSelectedProject as currentActiveProject,
-  currentUserCreds,
-  currentUserCredsDev,
 } from "@models/provides.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import { DEFAULT_AUTH_ID, type LoggedInUserAuth } from "@apiClient/types.ts";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -857,7 +855,7 @@ const getPositions = (
 
 const tracksIntermediate = computed<IntermediateTrack[]>(() => {
   return (
-    props.recording?.tracks.map(({ positions, tags, id }) => {
+    props.recording?.tracks?.map(({ positions, tags, id }) => {
       let what = null;
       let justTaggedFalseTrigger = false;
       if (tags) {
@@ -1319,7 +1317,7 @@ const referenceOpacity = ref<number>(0.3);
 const loadReferenceImageUrl = async () => {
   const rec = props.recording as ApiRecordingResponse;
   // Load the reference photo.
-  const referenceImageResponse = await getReferenceImageForDeviceAtTime(
+  const referenceImageResponse = await ClientApi.Devices.getReferenceImageForDeviceAtTime(
     rec.deviceId,
     new Date(rec.recordingDateTime),
     true,
@@ -1725,6 +1723,8 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadTimeout && loadTimeout.cancel();
   cancelAnimationFrame(animationFrame.value);
 
+  /*
+  // NOTE: Checking if tracks can be merged automatically.
   if ((props.recording?.tracks || []).length > 1) {
     console.warn(
       "Can merge",
@@ -1732,17 +1732,18 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       Object.keys(mergedTracks.value),
     );
   }
-  // Our api token could be out of date
-  await maybeRefreshStaleCredentials();
+   */
+  const apiToken = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
   loadTimeout && loadTimeout.cancel();
-  if (creds.value) {
-    loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
-      nextRecordingId,
-      props.cptvSize || 0,
-      (creds.value as LoggedInUserAuth).apiToken,
-    );
+  if (!apiToken) {
+    console.warn("api token not found.");
+    return;
   }
-
+  loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+    nextRecordingId,
+    props.cptvSize || 0,
+    apiToken,
+  );
   if (loadedStream.value === true) {
     loadTimeout && loadTimeout.cancel();
     header.value = Object.freeze(await cptvDecoder.getHeader());
@@ -1781,8 +1782,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       emit("ready-to-play", thisHeader);
       playing.value = true;
     }
-  } else if (typeof loadedStream.value === "string") {
-    streamLoadError.value = loadedStream.value;
+  } else if ((typeof loadedStream.value) === "string") {
+    // FIXME: Show stream load error.
+    // Maybe the CPTV file was deleted.
+    console.warn("Stream load error", loadedStream.value);
+    streamLoadError.value = loadedStream.value as string;
     if (await cptvDecoder.hasStreamError()) {
       await cptvDecoder.free();
       frames = [];

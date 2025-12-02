@@ -219,7 +219,7 @@ describe("User: manage global access permissions", () => {
       "read",
       HttpStatusCode.Forbidden,
       {
-        message: "User is not an admin",
+        message: "User is not a super admin",
       },
     );
 

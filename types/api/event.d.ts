@@ -1,4 +1,4 @@
-import type { IsoFormattedDateString, DeviceId } from "./common";
+import type { IsoFormattedDateString, DeviceId } from "./common.ts";
 import { DeviceEventType } from "./consts.js";
 
 export type EventDates = IsoFormattedDateString[];

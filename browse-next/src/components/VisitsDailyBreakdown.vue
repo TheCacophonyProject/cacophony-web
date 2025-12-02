@@ -14,11 +14,11 @@ import {
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
-import { API_ROOT } from "@api/root";
+import {ClientApi} from "@/api";
 import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import ImageLoader from "@/components/ImageLoader.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
@@ -79,7 +79,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
   for (const visit of props.visits) {
     if (!visit.classification) {
-      debugger;
+      console.warn("No classification found for visit.", visit);
     }
   }
   const events: (VisitEventItem | SunEventItem)[] = props.visits.map(
@@ -269,18 +269,11 @@ const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
         break;
       }
     }
-
-    if (import.meta.env.DEV) {
-      if (foundTrack && foundRec) {
-        return `https://api.cacophony.org.nz/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
-      }
-      return `https://api.cacophony.org.nz/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
-    } else {
-      if (foundTrack && foundRec) {
-        return `${API_ROOT}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
-      }
-      return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+    // FIXME: Just move this to a proper client API function?
+    if (foundTrack && foundRec) {
+      return `${ClientApi.getApiRoot()}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
     }
+    return `${ClientApi.getApiRoot()}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
   }
   return "";
 };

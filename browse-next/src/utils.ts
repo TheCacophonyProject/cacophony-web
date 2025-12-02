@@ -1,8 +1,8 @@
 import type { WatchStopHandle } from "vue";
 import { reactive, watch } from "vue";
-import type { NetworkConnectionErrorSignal } from "@api/fetch";
-import { INITIAL_RETRY_INTERVAL } from "@api/fetch";
-import type { JwtTokenPayload } from "@api/types";
+// FIXME
+import type { NetworkConnectionErrorSignal } from "@/api";
+import { INITIAL_RETRY_INTERVAL } from "@/api";
 import type { LatLng } from "@typedefs/api/common";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 
@@ -104,23 +104,6 @@ export interface FormInputValue {
   value: string;
   touched: boolean;
 }
-
-export const decodeJWT = (jwtString: string): JwtTokenPayload | null => {
-  const parts = jwtString.split(".");
-  if (parts.length !== 3) {
-    return null;
-  }
-  try {
-    const decodedToken = JSON.parse(atob(parts[1]));
-    return {
-      ...decodedToken,
-      expiresAt: new Date(decodedToken.exp * 1000),
-      createdAt: new Date(decodedToken.iat * 1000),
-    };
-  } catch (e) {
-    return null;
-  }
-};
 
 export const urlNormaliseName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();

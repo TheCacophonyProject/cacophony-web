@@ -2,10 +2,9 @@ import type {
   ApiLoggedInUserResponse,
   ApiUserSettings,
 } from "@typedefs/api/user";
-import type { Ref } from "vue";
-import type { ErrorResult, JwtTokenPayload, LoadedResource } from "@api/types";
+import { DEFAULT_AUTH_ID, type ErrorResult, type JwtTokenPayload, type LoadedResource } from "@apiClient/types";
 import { computed, reactive, ref, watch } from "vue";
-import { login as userLogin, saveUserSettings } from "@api/User";
+import { ClientApi, CurrentUser, CurrentViewAbortController } from "@/api";
 import type { GroupId as ProjectId } from "@typedefs/api/common";
 import type {
   ApiGroupResponse,
@@ -14,23 +13,9 @@ import type {
   ApiGroupUserSettings as ApiProjectUserSettings,
 } from "@typedefs/api/group";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import { decodeJWT, urlNormaliseName } from "@/utils";
-import { CurrentViewAbortController } from "@/router";
-import { maybeRefreshStaleCredentials } from "@api/fetch";
+import { urlNormaliseName } from "@/utils";
 import { useWindowSize } from "@vueuse/core";
-import {
-  getAllProjects,
-  getCurrentUserProjects,
-  saveProjectSettings,
-  saveProjectUserSettings,
-} from "@api/Project";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-
-export interface LoggedInUserAuth {
-  apiToken: string;
-  refreshToken: string;
-  refreshingToken: boolean;
-}
 
 export type LoggedInUser = ApiLoggedInUserResponse;
 
@@ -39,10 +24,9 @@ export interface PendingRequest {
   errors?: ErrorResult;
 }
 
-export const CurrentUserCreds = ref<LoadedResource<LoggedInUserAuth>>(null);
-export const CurrentUser = ref<LoadedResource<LoggedInUser>>(null);
-
-export const CurrentUserCredsDev = ref<LoadedResource<LoggedInUserAuth>>(null);
+// TODO: Rely on credentials resolver for all of this?
+// export const CurrentUserCreds = ref<LoadedResource<LoggedInUserAuth>>(null);
+// export const CurrentUserCredsDev = ref<LoadedResource<LoggedInUserAuth>>(null);
 
 export const UserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
 export const NonUserProjects = ref<LoadedResource<ApiProjectResponse[]>>(null);
@@ -94,15 +78,14 @@ export const userHasProjectsIncludingPending = computed<boolean>(() => {
   return !!UserProjects.value && UserProjects.value.length !== 0;
 });
 
-export const setLoggedInUserCreds = (creds: LoggedInUserAuth, dev = false) => {
-  if (!dev) {
-    CurrentUserCreds.value = reactive<LoggedInUserAuth>(creds);
-    persistCreds(CurrentUserCreds.value);
-  } else {
-    CurrentUserCredsDev.value = reactive<LoggedInUserAuth>(creds);
-    persistCreds(CurrentUserCredsDev.value, true);
-  }
-};
+// export const setLoggedInUserCreds = (creds: LoggedInUserAuth, dev = false) => {
+//   if (!dev) {
+//     ClientApi.registerCredentials(DEFAULT_AUTH_ID, creds);
+//     // persistCreds(CurrentUserCreds.value);
+//   } else {
+//     ClientApi.registerCredentials("dev", creds);
+//   }
+// };
 
 export const persistUserProjectSettings = async (
   userSettings: ApiProjectUserSettings,
@@ -113,7 +96,7 @@ export const persistUserProjectSettings = async (
     );
     if (localProjectToUpdate) {
       localProjectToUpdate.userSettings = userSettings;
-      await saveProjectUserSettings(localProjectToUpdate.id, userSettings);
+      await ClientApi.Projects.saveProjectUserSettings(localProjectToUpdate.id, userSettings);
     } else if (isViewingAsSuperUser.value) {
       const nonUserProjectToUpdate = (NonUserProjects.value || []).find(
         ({ id }) => id === (currentSelectedProject.value as SelectedProject).id,
@@ -132,7 +115,7 @@ export const persistProjectSettings = async (settings: ApiProjectSettings) => {
     );
     if (localProjectToUpdate) {
       localProjectToUpdate.settings = settings;
-      await saveProjectSettings(localProjectToUpdate.id, settings);
+      await ClientApi.Projects.saveProjectSettings(localProjectToUpdate.id, settings);
     }
   }
 };
@@ -160,6 +143,7 @@ const userSettingsHaveChanged = (
   return false;
 };
 
+// FIXME(auth): move into serialiser?
 export const setLoggedInUserData = (user: LoggedInUser) => {
   let prevUserData = CurrentUser.value;
   if (prevUserData) {
@@ -178,7 +162,7 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
         // TODO: If something not allowed in user settings schema makes it into settings, we need to remove
         //  it before it can validate properly.  Client-side json schema validation? Or just be careful?
         // Update settings on server?
-        saveUserSettings(user.settings as ApiUserSettings).then((response) => {
+        ClientApi.Users.saveUserSettings(user.settings as ApiUserSettings).then((response) => {
           console.warn("User settings updated", response);
         });
       }
@@ -188,7 +172,6 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
     }
   }
   CurrentUser.value = reactive<LoggedInUser>(user);
-  persistUser(CurrentUser.value);
 };
 
 export const login = async (
@@ -199,190 +182,166 @@ export const login = async (
   const emailAddress = userEmailAddress.trim().toLowerCase();
   const password = userPassword.trim();
   signInInProgress.requestPending = true;
-  const loggedInUserResponse = await userLogin(emailAddress, password);
+  const loggedInUserResponse = await ClientApi.Users.login(emailAddress, password);
   if (loggedInUserResponse.success) {
     const signedInUser = loggedInUserResponse.result;
-    setLoggedInUserData({
-      ...signedInUser.userData,
-    });
-    setLoggedInUserCreds({
+    ClientApi.registerCredentials(DEFAULT_AUTH_ID, {
+      userData: signedInUser.userData,
       apiToken: signedInUser.token,
       refreshToken: signedInUser.refreshToken,
-      refreshingToken: false,
     });
   } else {
-    // console.log("Sign in error", loggedInUserResponse.result);
     signInInProgress.errors = loggedInUserResponse.result;
-  }
-  if (import.meta.env.DEV) {
-    const loggedInUserResponse = await userLogin(emailAddress, password, true);
-    if (loggedInUserResponse.success) {
-      const signedInUser = loggedInUserResponse.result;
-      setLoggedInUserCreds(
-        {
-          apiToken: signedInUser.token,
-          refreshToken: signedInUser.refreshToken,
-          refreshingToken: false,
-        },
-        true,
-      );
-    } else {
-      // console.log("Sign in error for dev account", loggedInUserResponse.result);
-    }
-  }
-
-  signInInProgress.requestPending = false;
-};
-
-export const persistUser = (currentUser: LoggedInUser) => {
-  window.localStorage.setItem(
-    "saved-login-user-data",
-    JSON.stringify(currentUser),
-  );
-};
-
-export const persistCreds = (creds: LoggedInUserAuth, dev = false) => {
-  if (!dev) {
-    // NOTE: These credentials have already been validated.
-    window.localStorage.setItem(
-      "saved-login-credentials",
-      JSON.stringify(creds),
-    );
-  } else {
-    window.localStorage.setItem(
-      "saved-login-credentials-dev",
-      JSON.stringify(creds),
-    );
+    signInInProgress.requestPending = false;
   }
 };
 
-export const refreshLocallyStoredUserActivation = (): boolean => {
-  const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-user-data",
-  );
-  if (rememberedCredentials) {
-    let currentUser;
-    try {
-      currentUser = JSON.parse(rememberedCredentials);
-      if (currentUser.emailConfirmed) {
-        // FIXME - What was this expiry field for?
-        currentUser.expiry = new Date(currentUser.expiry);
-        setLoggedInUserData({
-          ...currentUser,
-        });
-        return true;
-      }
-    } catch (e) {
-      forgetUserOnCurrentDevice();
-    }
-  }
-  return false;
-};
+// export const persistUser = (currentUser: LoggedInUser) => {
+//   window.localStorage.setItem(
+//     "saved-login-user-data",
+//     JSON.stringify(currentUser),
+//   );
+// };
 
-export const refreshLocallyStoredUser = (
-  refreshedUserData?: ApiLoggedInUserResponse,
-): boolean => {
-  if (refreshedUserData) {
-    setLoggedInUserData({
-      ...refreshedUserData,
-    });
-    return true;
-  }
-  const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-user-data",
-  );
-  if (rememberedCredentials) {
-    let currentUser;
-    if (JSON.stringify(CurrentUser.value) !== rememberedCredentials) {
-      try {
-        currentUser = JSON.parse(rememberedCredentials);
-        CurrentUser.value = reactive<LoggedInUser>(currentUser);
-        setLoggedInUserData({
-          ...currentUser,
-        });
-        return true;
-      } catch (e) {
-        forgetUserOnCurrentDevice();
-      }
-    } else {
-      return true;
-    }
-  }
-  return false;
-};
+// export const persistCreds = (creds: LoggedInUserAuth, dev = false) => {
+//   if (!dev) {
+//     // NOTE: These credentials have already been validated.
+//     window.localStorage.setItem(
+//       "saved-login-credentials",
+//       JSON.stringify(creds),
+//     );
+//   } else {
+//     window.localStorage.setItem(
+//       "saved-login-credentials-dev",
+//       JSON.stringify(creds),
+//     );
+//   }
+// };
 
-const refreshCredentials = async () => {
-  // NOTE: Because this can be shared between browser windows/tabs,
-  //  always pull out the localStorage version before refreshing
-  const rememberedCredentials = window.localStorage.getItem(
-    "saved-login-credentials",
-  );
-  if (rememberedCredentials) {
-    if (!import.meta.env.DEV) {
-      console.warn("-- Resuming from saved credentials");
-    }
-    let currentUserCreds;
-    const now = new Date();
-    try {
-      currentUserCreds = JSON.parse(rememberedCredentials) as LoggedInUserAuth;
-      const currentToken = currentUserCreds.apiToken;
-      const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
-      if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
-        if (JSON.stringify(CurrentUserCreds.value) !== rememberedCredentials) {
-          CurrentUserCreds.value = reactive<LoggedInUserAuth>(currentUserCreds);
-        }
-        refreshLocallyStoredUser();
-        if (!import.meta.env.DEV) {
-          // console.log("Not out of date yet, can use existing user");
-          return;
-        }
-      } else {
-        await maybeRefreshStaleCredentials();
-        refreshLocallyStoredUser();
-      }
-    } catch (e) {
-      // JSON user creds was malformed, so clear it, and prompt login again
-      forgetUserOnCurrentDevice();
-    }
-  }
-  if (import.meta.env.DEV) {
-    const rememberedCredentialsDev = window.localStorage.getItem(
-      "saved-login-credentials-dev",
-    );
-    if (rememberedCredentialsDev) {
-      let currentUserCreds;
-      const now = new Date();
-      try {
-        currentUserCreds = JSON.parse(
-          rememberedCredentialsDev,
-        ) as LoggedInUserAuth;
-        const currentToken = currentUserCreds.apiToken;
-        const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
-        if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
-          if (
-            JSON.stringify(CurrentUserCredsDev.value) !==
-            rememberedCredentialsDev
-          ) {
-            CurrentUserCredsDev.value =
-              reactive<LoggedInUserAuth>(currentUserCreds);
-          }
-          return;
-        } else {
-          await maybeRefreshStaleCredentials(true);
-        }
-      } catch (e) {
-        // JSON user creds was malformed, so clear it, and prompt login again
-        forgetUserOnCurrentDevice();
-      }
-    }
-  }
-};
+// export const refreshLocallyStoredUserActivation = (): boolean => {
+//   const rememberedCredentials = window.localStorage.getItem(
+//     "saved-login-user-data",
+//   );
+//   if (rememberedCredentials) {
+//     let currentUser;
+//     try {
+//       currentUser = JSON.parse(rememberedCredentials);
+//       if (currentUser.emailConfirmed) {
+//         // FIXME - What was this expiry field for?
+//         currentUser.expiry = new Date(currentUser.expiry);
+//         setLoggedInUserData({
+//           ...currentUser,
+//         });
+//         return true;
+//       }
+//     } catch (e) {
+//       forgetUserOnCurrentDevice();
+//     }
+//   }
+//   return false;
+// };
 
-export const tryLoggingInRememberedUser = async (isLoggingIn: Ref<boolean>) => {
-  isLoggingIn.value = true;
-  await refreshCredentials();
-  isLoggingIn.value = false;
-};
+// export const refreshLocallyStoredUser = (
+//   refreshedUserData?: ApiLoggedInUserResponse,
+// ): boolean => {
+//   if (refreshedUserData) {
+//     setLoggedInUserData({
+//       ...refreshedUserData,
+//     });
+//     return true;
+//   }
+//   const rememberedCredentials = window.localStorage.getItem(
+//     "saved-login-user-data",
+//   );
+//   if (rememberedCredentials) {
+//     let currentUser;
+//     if (JSON.stringify(CurrentUser.value) !== rememberedCredentials) {
+//       try {
+//         currentUser = JSON.parse(rememberedCredentials);
+//         CurrentUser.value = reactive<LoggedInUser>(currentUser);
+//         setLoggedInUserData({
+//           ...currentUser,
+//         });
+//         return true;
+//       } catch (e) {
+//         forgetUserOnCurrentDevice();
+//       }
+//     } else {
+//       return true;
+//     }
+//   }
+//   return false;
+// };
+
+// const refreshCredentials = async () => {
+//   // NOTE: Because this can be shared between browser windows/tabs,
+//   //  always pull out the localStorage version before refreshing
+//   isLoggingInState.loggingIn();
+//   // const rememberedCredentials = window.localStorage.getItem(
+//   //   "saved-login-credentials",
+//   // );
+//   // if (rememberedCredentials) {
+//   //   if (!import.meta.env.DEV) {
+//   //     console.warn("-- Resuming from saved credentials");
+//   //   }
+//   //   let currentUserCreds;
+//   //   const now = new Date();
+//   //   try {
+//   //     currentUserCreds = JSON.parse(rememberedCredentials) as LoggedInUserAuth;
+//   //     const currentToken = currentUserCreds.apiToken;
+//   //     const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
+//   //     if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
+//   //       if (JSON.stringify(CurrentUserCreds.value) !== rememberedCredentials) {
+//   //         CurrentUserCreds.value = reactive<LoggedInUserAuth>(currentUserCreds);
+//   //       }
+//   //       refreshLocallyStoredUser();
+//   //       if (!import.meta.env.DEV) {
+//   //         // console.log("Not out of date yet, can use existing user");
+//   //         return;
+//   //       }
+//   //     } else {
+//   //       await maybeRefreshStaleCredentials();
+//   //       refreshLocallyStoredUser();
+//   //     }
+//   //   } catch (e) {
+//   //     // JSON user creds was malformed, so clear it, and prompt login again
+//   //     forgetUserOnCurrentDevice();
+//   //   }
+//   // }
+//   // if (import.meta.env.DEV) {
+//   //   const rememberedCredentialsDev = window.localStorage.getItem(
+//   //     "saved-login-credentials-dev",
+//   //   );
+//   //   if (rememberedCredentialsDev) {
+//   //     let currentUserCreds;
+//   //     const now = new Date();
+//   //     try {
+//   //       currentUserCreds = JSON.parse(
+//   //         rememberedCredentialsDev,
+//   //       ) as LoggedInUserAuth;
+//   //       const currentToken = currentUserCreds.apiToken;
+//   //       const apiToken = decodeJWT(currentToken) as JwtTokenPayload;
+//   //       if (apiToken.expiresAt.getTime() > now.getTime() + 5000) {
+//   //         if (
+//   //           JSON.stringify(CurrentUserCredsDev.value) !==
+//   //           rememberedCredentialsDev
+//   //         ) {
+//   //           CurrentUserCredsDev.value =
+//   //             reactive<LoggedInUserAuth>(currentUserCreds);
+//   //         }
+//   //         return;
+//   //       } else {
+//   //         await maybeRefreshStaleCredentials(true);
+//   //       }
+//   //     } catch (e) {
+//   //       // JSON user creds was malformed, so clear it, and prompt login again
+//   //       forgetUserOnCurrentDevice();
+//   //     }
+//   //   }
+//   // }
+//   isLoggingInState.finishedLoggingIn();
+// };
+
 
 export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
@@ -590,15 +549,15 @@ export const isFetchingProjects = ref(false);
 
 export const refreshUserProjects = async () => {
   // Grab the users' groups, and select the first one.
-  isFetchingProjects.value = true;
+
   console.warn("Fetching user projects");
   const NO_ABORT = false;
-  const projectsResponse = await getCurrentUserProjects(NO_ABORT);
+  const projectsResponse = await ClientApi.Projects.getCurrentUserProjects(NO_ABORT);
   if (projectsResponse.success) {
     UserProjects.value = reactive(projectsResponse.result.groups);
   }
   if (currentUserIsSuperUser.value) {
-    const allProjectsResponse = await getAllProjects(NO_ABORT);
+    const allProjectsResponse = await ClientApi.Projects.getAllProjects(NO_ABORT);
     if (allProjectsResponse.success) {
       NonUserProjects.value = reactive(
         (allProjectsResponse.result.groups || []).filter(
@@ -608,8 +567,6 @@ export const refreshUserProjects = async () => {
       );
     }
   }
-
-  isFetchingProjects.value = false;
   return projectsResponse;
 };
 
@@ -642,25 +599,25 @@ export const showSideNavBg = computed<boolean>(() => {
 
 export const rafFps = ref(60);
 // On load:
-{
-  if (typeof window !== "undefined") {
-    const rememberedCredentials = window.localStorage.getItem(
-      "saved-login-credentials",
-    );
-    if (rememberedCredentials) {
-      let currentUser;
-      try {
-        currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
-        window.localStorage.setItem(
-          "saved-login-credentials",
-          JSON.stringify({ ...currentUser, refreshingToken: false }),
-        );
-      } catch (e) {
-        forgetUserOnCurrentDevice();
-      }
-    }
-  }
-}
+// {
+//   if (typeof window !== "undefined") {
+//     const rememberedCredentials = window.localStorage.getItem(
+//       "saved-login-credentials",
+//     );
+//     if (rememberedCredentials) {
+//       let currentUser;
+//       try {
+//         currentUser = JSON.parse(rememberedCredentials) as LoggedInUser;
+//         window.localStorage.setItem(
+//           "saved-login-credentials",
+//           JSON.stringify({ ...currentUser, refreshingToken: false }),
+//         );
+//       } catch (e) {
+//         forgetUserOnCurrentDevice();
+//       }
+//     }
+//   }
+// }
 
 export const currentGroupName = computed<string>(() => {
   if (currentSelectedProject.value) {

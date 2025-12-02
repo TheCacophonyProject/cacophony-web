@@ -1,12 +1,12 @@
 declare module "*.json";
 
-import {
+import type {
   integer,
   float,
   Seconds,
   FloatZeroToOne,
   IsoFormattedDateString,
-} from "./common";
+} from "./common.ts";
 
 type ClassificationClass =
   | "bird"

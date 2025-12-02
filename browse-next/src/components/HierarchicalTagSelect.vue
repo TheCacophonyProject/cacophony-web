@@ -16,7 +16,7 @@
   />
 </template>
 <script setup lang="ts">
-import { getClassifications } from "@api/Classifications";
+import { getClassifications } from "@api/classificationsUtils.ts";
 import LayeredDropdown from "./LayeredDropdown.vue";
 import { onMounted, ref } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";

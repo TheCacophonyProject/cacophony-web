@@ -16,18 +16,15 @@
 
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import type { Ref } from "vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { CptvDecoder } from "@/components/cptv-player/cptv-decoder/decoder";
-import type { LoggedInUserAuth } from "@models/LoggedInUser";
-import { currentUserCreds, currentUserCredsDev } from "@models/provides";
 import {
   ColourMaps,
   renderFrameIntoFrameBuffer,
 } from "@/components/cptv-player/cptv-decoder/frameRenderUtils";
+import { ClientApi } from "@/api";
+import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
 
-const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
-const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
 const defaultPalette = computed(
   () =>
     ColourMaps.find(([name, _val]) => name === props.palette) as [
@@ -35,19 +32,13 @@ const defaultPalette = computed(
       Uint32Array
     ],
 );
-const creds = computed<LoggedInUserAuth | null>(() => {
-  if (import.meta.env.DEV) {
-    return devCreds.value;
-  }
-  return prodCreds.value;
-});
 const defaultOverlayPalette = ColourMaps.find(
   ([name, _val]) => name === "Default",
 ) as [string, Uint32Array];
 const canvas = ref<HTMLCanvasElement>();
 const props = withDefaults(
   defineProps<{
-    recording: ApiRecordingResponse | null;
+    recording: LoadedResource<ApiRecordingResponse>;
     overlay?: Uint8ClampedArray;
     width?: string | number;
     apronPixels?: number;
@@ -83,13 +74,18 @@ const loading = ref<boolean>(false);
 
 // TODO: Could 'provide' the frame at a higher level component to avoid all child components having to reload it.
 const loadRecording = async () => {
-  if (creds.value && props.recording) {
+  if (props.recording) {
     loading.value = true;
+    const token = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
+    if (!token) {
+      loading.value = false;
+      return;
+    }
     const cptvDecoder = new CptvDecoder();
     const result = await cptvDecoder.initWithRecordingIdAndKnownSize(
       props.recording.id,
       0,
-      creds.value.apiToken,
+      token,
     );
     if (result === true) {
       let gotGoodFrame = false;
