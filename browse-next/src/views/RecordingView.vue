@@ -1408,7 +1408,7 @@ const inlineModal = ref<boolean>(false);
                     ref="deviceNameSpan"
                     v-if="recording && recording.deviceId"
                     :to="{
-                      name: 'device-diagnostics',
+                      name: 'device-status',
                       params: {
                         deviceId: recording.deviceId,
                         deviceName: urlNormaliseName(recording.deviceName),
@@ -1597,7 +1597,7 @@ const inlineModal = ref<boolean>(false);
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                        name: 'device-diagnostics',
+                        name: 'device-status',
                         params: {
                           deviceId: recording.deviceId,
                           deviceName: urlNormaliseName(recording.deviceName),
@@ -1787,7 +1787,7 @@ const inlineModal = ref<boolean>(false);
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                        name: 'device-diagnostics',
+                        name: 'device-status',
                         params: {
                           deviceId: recording.deviceId,
                           deviceName: urlNormaliseName(recording.deviceName),
@@ -1886,7 +1886,7 @@ const inlineModal = ref<boolean>(false);
                 ref="deviceNameSpan"
                 v-if="recording && recording.deviceId"
                 :to="{
-                  name: 'device-diagnostics',
+                  name: 'device-status',
                   params: {
                     deviceId: recording.deviceId,
                     deviceName: urlNormaliseName(recording.deviceName),

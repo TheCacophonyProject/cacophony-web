@@ -119,7 +119,7 @@ const records247 = computed<boolean>(() => {
 
 const recordingWindow = computed<string | null>(() => {
   if (records247.value) {
-    return "record 24/7";
+    return "Record 24/7";
   } else if (settings.value) {
     const windows = (settings.value as ApiDeviceHistorySettings).windows;
     const start = (windows && windows.startRecording) || "-30m";
@@ -142,7 +142,7 @@ const recordingWindow = computed<string | null>(() => {
       // Absolute end time
       endTime = end;
     }
-    return `record from ${startTime} until ${endTime}`;
+    return `Record from ${startTime} until ${endTime}`;
   }
   return null;
 });
@@ -704,7 +704,7 @@ watch(customRecordingWindowStop, async () => {
               </div>
 
               <div class="row">
-                <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Recording Settings</dt>
+                <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Recording settings</dt>
                 <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
                   <span v-if="audioMode === 'Disabled'">Video only</span>
                   <span v-if="audioMode === 'AudioOnly'">Audio only</span>

@@ -174,14 +174,14 @@ const _deviceType = computed<string>(() => {
         "
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-diagnostics') },
+          { active: activeTabPath.includes('device-status') },
         ]"
-        title="Diagnostics"
+        title="Status"
         :to="{
-          name: 'device-diagnostics',
+          name: 'device-status',
         }"
         >
-          <span class="text">Diagnostics</span>
+          <span class="text">Status</span>
       </router-link>
       <router-link
         v-if="
@@ -193,14 +193,16 @@ const _deviceType = computed<string>(() => {
         "
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-setup') },
+          { active: activeTabPath.includes('device-configuration') },
         ]"
-        title="Setup"
+        title="Configuration"
         :to="{
-          name: 'device-setup',
+          name: 'device-configuration',
         }"
         >
-          <span class="text">Setup</span>
+          <span class="text">
+            Config<span class="d-none d-sm-inline">uration</span>
+          </span>
       </router-link>
       <router-link
         v-if="

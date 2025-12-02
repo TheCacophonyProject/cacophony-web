@@ -49,6 +49,7 @@ declare module 'vue' {
     CreateProxyDeviceModal: typeof import('./src/components/CreateProxyDeviceModal.vue')['default']
     DeviceBatteryLevel: typeof import('./src/components/DeviceBatteryLevel.vue')['default']
     DeviceName: typeof import('./src/components/DeviceName.vue')['default']
+    DeviceRecordingOptions: typeof import('./src/components/DeviceRecordingOptions.vue')['default']
     DeviceRecordingSetup: typeof import('./src/components/DeviceRecordingSetup.vue')['default']
     DeviceSetupDefineMask: typeof import('./src/components/DeviceSetupDefineMask.vue')['default']
     DeviceSetupReferencePhoto: typeof import('./src/components/DeviceSetupReferencePhoto.vue')['default']
