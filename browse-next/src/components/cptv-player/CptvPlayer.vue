@@ -2228,7 +2228,6 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div v-else class="black-spacer" />
     <div
       key="debug-nav"
       :class="['debug-tools', { open: showDebugTools }]"
@@ -2744,12 +2743,6 @@ const updateSavedOpacity = (val: InputEvent) => {
 .cancel-export-button {
   margin-top: 20px;
   text-align: center;
-}
-.black-spacer {
-  @media screen and (min-width: 1041px) {
-    min-height: 30px;
-  }
-  background: black;
 }
 // Reference image overlay + slider
 .reference-image {
