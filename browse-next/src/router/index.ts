@@ -235,7 +235,7 @@ const router = createRouter({
               children: [
                 {
                   path: "recording-options",
-                  name: "recording-setup",
+                  name: "recording-options",
                   component: () =>
                     import("@/components/DeviceRecordingOptions.vue"),
                 },

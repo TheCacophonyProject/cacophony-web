@@ -90,8 +90,8 @@ const loading = computed<boolean>(() => {
           class="nav-device-config"
         >
           <b-nav-item
-            :to="{ name: 'recording-setup' }"
-            :active="activeTabPath.includes('recording-setup')"
+            :to="{ name: 'recording-options' }"
+            :active="activeTabPath.includes('recording-options')"
           >
             <span class="d-flex">
               <material-symbol name="tune" class="me-2"/>
