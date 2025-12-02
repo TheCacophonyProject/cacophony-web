@@ -1400,7 +1400,7 @@ const inlineModal = ref<boolean>(false);
                     ref="deviceNameSpan"
                     v-if="recording && recording.deviceId"
                     :to="{
-                      name: 'device-diagnostics',
+                      name: 'device-status',
                       params: {
                         deviceId: recording.deviceId,
                         deviceName: urlNormaliseName(recording.deviceName),
@@ -1589,7 +1589,7 @@ const inlineModal = ref<boolean>(false);
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                        name: 'device-diagnostics',
+                        name: 'device-status',
                         params: {
                           deviceId: recording.deviceId,
                           deviceName: urlNormaliseName(recording.deviceName),
@@ -1779,7 +1779,7 @@ const inlineModal = ref<boolean>(false);
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                        name: 'device-diagnostics',
+                        name: 'device-status',
                         params: {
                           deviceId: recording.deviceId,
                           deviceName: urlNormaliseName(recording.deviceName),
@@ -1878,7 +1878,7 @@ const inlineModal = ref<boolean>(false);
                 ref="deviceNameSpan"
                 v-if="recording && recording.deviceId"
                 :to="{
-                  name: 'device-diagnostics',
+                  name: 'device-status',
                   params: {
                     deviceId: recording.deviceId,
                     deviceName: urlNormaliseName(recording.deviceName),
@@ -2190,8 +2190,8 @@ const inlineModal = ref<boolean>(false);
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
-@import "../assets/mixins.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
 .overflow-x-hidden {
   overflow-x: hidden;

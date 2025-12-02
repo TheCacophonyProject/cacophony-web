@@ -41,7 +41,7 @@ onMounted(() => {
     centered
     no-close-on-backdrop
     no-close-on-esc
-    hide-footer
+    no-footer
     hide-header-close
     @hidden="onHidden"
   >

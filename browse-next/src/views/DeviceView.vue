@@ -13,8 +13,6 @@ import {
 } from "@models/LoggedInUser";
 import type {
   DeviceId,
-  LatLng,
-  StationId as LocationId,
 } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
@@ -27,8 +25,6 @@ import {
   getMaskRegionsForDevice,
   getReferenceImageForDeviceAtCurrentLocation,
 } from "@api/Device.ts";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { DateTime } from "luxon";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
@@ -115,7 +111,7 @@ onBeforeMount(async () => {
 const activeTabPath = computed(() => {
   return route.matched.map((item) => item.name);
 });
-const navLinkClasses = ["nav-item", "nav-link", "border-0"];
+const navLinkClasses = ["nav-item", "nav-link"];
 
 const _deviceType = computed<string>(() => {
   if (device.value) {
@@ -134,7 +130,7 @@ const _deviceType = computed<string>(() => {
 });
 </script>
 <template>
-  <div class="device-view d-flex flex-column">
+  <div class="device-view d-flex flex-column flex-fill">
     <overflowing-tab-list v-if="!deviceLoading">
       <!--      <router-link-->
       <!--        v-if="currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"-->
@@ -164,8 +160,9 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-events',
         }"
-        >Events</router-link
-      >
+        >
+          <span class="text">Events</span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -175,14 +172,15 @@ const _deviceType = computed<string>(() => {
         "
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-diagnostics') },
+          { active: activeTabPath.includes('device-status') },
         ]"
-        title="Diagnostics"
+        title="Status"
         :to="{
-          name: 'device-diagnostics',
+          name: 'device-status',
         }"
-        >Diagnostics</router-link
-      >
+        >
+          <span class="text">Status</span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -193,14 +191,17 @@ const _deviceType = computed<string>(() => {
         "
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-setup') },
+          { active: activeTabPath.includes('device-configuration') },
         ]"
-        title="Setup"
+        title="Configuration"
         :to="{
-          name: 'device-setup',
+          name: 'device-configuration',
         }"
-        >Setup</router-link
-      >
+        >
+          <span class="text">
+            Config<span class="d-none d-sm-inline">uration</span>
+          </span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -217,10 +218,11 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-insights',
         }"
-        >Insights</router-link
+        ><span class="text">Insights</span></router-link
       >
     </overflowing-tab-list>
     <router-view
+      class="d-flex flex-fill"
       @start-blocking-work="() => emit('start-blocking-work')"
       @end-blocking-work="() => emit('end-blocking-work')"
       @updated-regions="(e) => (latestMaskRegions = e)"
@@ -234,8 +236,8 @@ const _deviceType = computed<string>(() => {
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
-@import "../assets/mixins.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
 .device-view-header {
   border-bottom: 2px solid #e1e1e1;

@@ -1,0 +1,33 @@
+@import url(breakpoints);
+@import url(typography);
+@import url(spacing);
+@import url(palette);
+@import url(colors);
+@import url(bootstrap-custom);
+
+
+:root {
+  // multi select variables
+  --ms-font-size: var(--cp-font-size-md); // multi select value
+  --ms-option-font-size: var(--cp-font-size-md); // multi select options
+}
+
+.section-card-heading {
+  @media (max-width: @breakpoint-xs-max) {
+    font-size: var(--cp-font-size-h4);
+    margin-bottom: var(--cp-spacing-sm);
+    margin-top: var(--cp-spacing-xs);
+  }
+  @media (min-width: @breakpoint-sm) {
+    font-size: var(--cp-font-size-h4);
+    margin-top: var(--cp-spacing-xs);
+    margin-bottom: var(--cp-spacing-sm);
+  }
+  @media (min-width: @breakpoint-md) {
+    margin-top: var(--cp-spacing-md);
+    margin-bottom: var(--cp-spacing-md);
+  }
+  @media (min-width: @breakpoint-lg) {
+    margin-top: var(--cp-spacing-xl);
+  }
+}

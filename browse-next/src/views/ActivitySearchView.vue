@@ -2106,7 +2106,7 @@ onBeforeUnmount(() => {
     title="Exporting data"
     @hidden="() => (exportProgress = 0)"
     no-close-on-backdrop
-    hide-footer
+    no-footer
     hide-header-close
   >
     <activity-search-description

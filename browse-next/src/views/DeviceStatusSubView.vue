@@ -38,6 +38,8 @@ import type {
 } from "@typedefs/api/device";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import { resourceIsLoading } from "@/helpers/utils.ts";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import {BButton, BPopover, BSpinner} from "bootstrap-vue-next";
 
 const batteryTimeSeries = ref<HTMLDivElement>();
 
@@ -228,6 +230,7 @@ const recordingWindow = computed<string | null>(() => {
     let endTime = "";
     if (start.startsWith("+") || start.startsWith("-")) {
       // Relative start time to sunset
+      // TODO: just return dusk to dawn, can add extra info with a popover
       const beforeAfter = start.startsWith("-") ? "before" : "after";
       startTime = `${start.slice(1)}ins ${beforeAfter} sunset`;
     } else {
@@ -242,7 +245,7 @@ const recordingWindow = computed<string | null>(() => {
       // Absolute end time
       endTime = end;
     }
-    return `record from ${startTime} until ${endTime}`;
+    return `Record from ${startTime} until ${endTime}`;
   }
   return null;
 });
@@ -588,6 +591,24 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
   }
 });
 
+const locationCopied = ref<boolean>(false);
+let locationCopiedTimeout:number;
+
+const copyLocation = (() => {
+  if (device.value && device.value.location) {
+    const {lat, lng} = device.value.location;
+    navigator.clipboard.writeText(`${lat}, ${lng}`);
+    locationCopied.value = true;
+
+    clearTimeout(locationCopiedTimeout);
+
+    locationCopiedTimeout = setTimeout(() => {
+      locationCopied.value = false;
+    }, 1500) as unknown as number;
+
+  }
+});
+
 enum DevicePowerProfile {
   LowPower,
   HighPower,
@@ -623,142 +644,332 @@ const primaryBatteryDataType = computed<string>(() => {
   }
   return "";
 });
+
+const showSoftwareInformation = ref<boolean>(false);
+
 </script>
 <template>
-  <div v-if="device && device.active" class="mt-3">
-    <div class="d-flex justify-content-between flex-md-row flex-column">
-      <div v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
-        <h6 v-if="latestStatusRecording">
-          Camera view from
-          {{
-            DateTime.fromJSDate(
-              new Date(latestStatusRecording.recordingDateTime),
-            ).toRelative()
-          }}:
-        </h6>
-        <cptv-single-frame :recording="latestStatusRecording" v-if="latestStatusRecording" :width="320" :height="240" />
-        <h6 class="mt-3">Recording status:</h6>
-        <div v-if="!shouldBeRecordingNow && recordingWindow">
-          <span v-if="deviceStopped">
-            Camera has stopped<span v-if="device.location">, otherwise </span>
-            <span v-if="records247">would be recording now</span><span v-else-if="scheduledRecordStartTime">would be
-              ready to record
-              {{
-                DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
-              }}</span>
-          </span>
-          <span v-else-if="scheduledRecordStartTime">Ready to record
-            {{
-              DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
-            }}</span>
-          <span v-if="device.location">
-            for a duration of
-            {{ minsHoursFromMins(currentRecordingWindowLengthMins) }}.</span>
-        </div>
+  <div v-if="device && device.active" class="mt-3 d-flex flex-column">
+    <div class="bento-grid gap-3">
+      <!-- Device configuration -->
+      <div class="bento-box configuration">
+        <h4 class="h4 mb-3">Current device configuration</h4>
 
-        <div v-if="configInfoLoading">
-          <b-spinner small class="me-2" />
-          Loading recording window
+        <div v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
+
+          <dl class="settings-summary container mb-0">
+            <!-- Device status -->
+            <div class="row">
+              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Device status</dt>
+              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                <!-- TODO: infer this state better, doesn't report correctly for offline devices  -->
+                <div v-if="deviceStopped">
+                  <span class="d-flex d-inline-flex align-items-center px-1 rounded bg-danger-subtle text-danger-emphasis">
+                    <material-symbol name="close" size="1.125rem" class="me-1"></material-symbol>
+                    Stopped
+                  </span>
+                </div>
+                <div v-else class="d-flex align-items-center">
+                  <span class="d-flex d-inline-flex align-items-center px-1 rounded bg-success-subtle text-success-emphasis">
+                    <material-symbol name="check" size="1.125rem" class="me-1"></material-symbol>
+                    Ready
+                  </span>
+                  <!-- TODO: add description of what these states mean -->
+<!--                  <b-button
+                    variant="outline-secondary"
+                    size="sm"
+                    class="btn-icon d-flex"
+                    aria-label="View device status details"
+                    id="device-ready-description"
+                  >
+                    <material-symbol name="info" size="1.25rem" />
+                  </b-button>
+                  <b-popover
+                    target="device-ready-description"
+                  >
+                    This device connected to the Cacophony Monitoring Platform within the last 24 hours
+                  </b-popover>-->
+                </div>
+              </dd>
+            </div>
+
+            <!-- Power profile -->
+            <div class="row">
+              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Power profile</dt>
+              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                <div v-if="configInfoLoading">
+                  <b-spinner small class="me-2" /> Loading power profile
+                </div>
+                <div v-else-if="powerProfile === DevicePowerProfile.HighPower" class="d-flex align-items-center">
+                  <span>High Power mode</span>
+                  <b-button
+                    variant="light"
+                    size="sm"
+                    class="btn-icon d-inline-flex"
+                    aria-label="View mode details"
+                    id="high-power-mode-description"
+                  >
+                    <material-symbol name="info" size="1.25rem" />
+                  </b-button>
+                  <b-popover
+                    target="high-power-mode-description"
+                    class="popover-wide"
+                  >
+                    <p class="mb-2">Devices in High Power mode upload new recordings to the Cacophony Monitoring Platform immediately (if connected to the internet).</p>
+                    <p class="mb-0">Any alerts configured for specific species will be sent out shortly after the detection.</p>
+                  </b-popover>
+                </div>
+                <div v-else-if="powerProfile === DevicePowerProfile.LowPower">
+                  <span>Low Power mode</span>
+                  <b-button
+                    variant="light"
+                    size="sm"
+                    class="btn-icon d-inline-flex"
+                    aria-label="View mode details"
+                    id="low-power-mode-description"
+                  >
+                    <material-symbol name="info" size="1.25rem" />
+                  </b-button>
+                  <b-popover
+                    class="popover-wide"
+                    target="low-power-mode-description"
+                  >
+                    <p class="mb-2">Devices in Low Power mode will only connect to the Cacophony Monitoring Platform once per day to offload recordings.</p>
+                    <p class="mb-0">Projects tracking an incursion that require real-time alerts of species detected should enable high power mode.</p>
+                  </b-popover>
+                </div>
+                <!-- TODO: v-else for unknown profile? Can this happen? -->
+              </dd>
+            </div>
+
+            <!-- TODO: Recording settings, thermal, audio, both -->
+<!--            <div class="row">
+              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Recording settings</dt>
+              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+                ADD ME
+              </dd>
+            </div>-->
+
+            <!-- Thermal recording schedule -->
+            <div class="row">
+              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Thermal recording schedule</dt>
+              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                <div v-if="configInfoLoading">
+                  <b-spinner small class="me-2" />
+                  Loading recording window
+                </div>
+                <div v-else-if="recordingWindow && !records247">
+                  {{ recordingWindow }}
+
+                  <div v-if="!shouldBeRecordingNow && recordingWindow" class="text-secondary">
+                    <span v-if="scheduledRecordStartTime">
+                      <span v-if="deviceStopped">
+                        Would record
+                      </span>
+                      <span v-else>
+                        Scheduled to record
+                      </span>
+                      {{
+                        DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
+                      }}</span>
+                    <span v-if="device.location">
+                      for a duration of
+                      {{ minsHoursFromMins(currentRecordingWindowLengthMins) }}</span>
+                  </div>
+                </div>
+                <div v-else-if="records247">{{ recordingWindow }}</div>
+                <div v-else class="text-secondary">Recording window unavailable</div>
+              </dd>
+            </div>
+
+            <!-- TODO: Audio recording schedule -->
+<!--            <div class="row">
+              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Audio recording schedule</dt>
+              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+                ADD ME
+              </dd>
+            </div>-->
+          </dl>
         </div>
-        <div v-else-if="recordingWindow && !records247">
-          Will {{ recordingWindow }}.
-        </div>
-        <div v-else-if="records247">{{ recordingWindow }}.</div>
-        <div v-else>Recording window unavailable</div>
       </div>
-      <div class="mt-md-0 mt-4">
-        <h6>
-          <span v-if="!deviceStopped">Current location:</span>
-          <span v-else>Last known location:</span>
-        </h6>
+
+      <!-- Location -->
+      <div class="bento-box location d-flex flex-column">
+        <h4 class="h4 mb-3 d-flex">
+          <span v-if="!deviceStopped">Current location</span>
+          <span v-else>Last known location</span>
+        </h4>
         <!-- Show the device "inside" its station if possible -->
-        <div v-if="device.location">
+        <div v-if="device.location" class="flex-grow-1 d-flex flex-column">
           <div v-if="locationInfoLoading">
             <b-spinner small class="me-2" />
             Loading location info
           </div>
-          <div v-else-if="currentLocationForDevice">
-            <map-with-points :points="deviceLocationPoints" :highlighted-point="null"
-              :active-points="deviceLocationPoints" :radius="30" :is-interactive="false" :zoom="false"
-              :can-change-base-map="false" :loading="locationInfoLoading"
-              style="min-height: 200px; min-width: 200px; aspect-ratio: 1" />
+          <div v-else-if="currentLocationForDevice" class="d-flex flex-column flex-sm-row row">
+            <div class="col col-12 col-sm-6">
+              <!-- TODO: display current/latest known location name -->
+<!--              <p class="mt-1">Location name goes here long name two lines</p>-->
+              <dl class="settings-summary container mb-0 mb-sm-3">
+                <div class="row">
+                  <dt class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Latitude</dt>
+                  <dd class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                    {{device.location.lat.toFixed(6)}}
+                  </dd>
+                </div>
+                <div class="row">
+                  <dt class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Longitude</dt>
+                  <dd class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                    {{device.location.lng.toFixed(6)}}
+                  </dd>
+                </div>
+              </dl>
+              <b-popover
+                v-model="locationCopied"
+                manual
+              >
+                <span class="d-flex">
+                  <material-symbol name="check" size="1.25rem" class="me-2 text-success" />
+                  Copied
+                </span>
+                <template #target>
+                  <b-button
+                    variant="outline-secondary"
+                    class="d-flex"
+                    @click="copyLocation"
+                  >
+                    <material-symbol name="content_copy" size="1.25rem" class="me-2" />
+                    Copy coordinates
+                  </b-button>
+                </template>
+              </b-popover>
+            </div>
+            <div class="col col-12 mt-4 mt-sm-0 col-sm-6">
+              <map-with-points
+                :points="deviceLocationPoints"
+                :highlighted-point="null"
+                :active-points="deviceLocationPoints"
+                :radius="30"
+                :is-interactive="false"
+                :zoom="false"
+                :can-change-base-map="false"
+                :loading="locationInfoLoading"
+                style="min-height: 220px; width: 100%; aspect-ratio: 1" />
+            </div>
           </div>
-          <div v-else>Device is not currently at a known location</div>
+          <div v-else class="d-flex flex-fill align-items-center justify-content-center">
+            <div class="text-secondary text-center">
+              <material-symbol name="not_listed_location" size="2.4rem" grade="thin" class="mb-2"/>
+              <p>Device is not currently at a known location.</p>
+            </div>
+          </div>
         </div>
-        <div v-else>Device does not currently have a known location</div>
-      </div>
-    </div>
-    <div class="mt-4">
-      <h6>Power profile:</h6>
-      <span v-if="configInfoLoading">
-        <b-spinner small class="me-2" />
-      </span>
-      <div v-else-if="powerProfile === DevicePowerProfile.HighPower">
-        <p>This device is currently in 'High Power' mode.</p>
-        <p>
-          In this mode the device is always ready to upload new recordings to
-          the Cacophony Monitoring Platform, which means that you can be alerted
-          about detected species a short time after the detection happened. This
-          also uses more power since the device remains in a more active state.
-        </p>
-      </div>
-      <div v-else-if="powerProfile === DevicePowerProfile.LowPower">
-        <p>This device is currently in 'Low Power' mode.</p>
-        <p>
-          In this mode the device makes recordings during the configured
-          recording window, but doesn't connect to the Cacophony Monitoring
-          Platform to offload the recordings until the end of the recording
-          period.<br />
-          This means that any animal alerts you configure may be delayed by many
-          hours. If timely alerts are important to your use-case, enable 'High
-          Power' mode.
-        </p>
-      </div>
-    </div>
-    <div class="mt-4">
-      <div class="d-flex align-items-center h6 justify-content-between">
-        <span>Battery info:</span>
-        <device-battery-level :device="device" />
-      </div>
-      <div v-if="batteryInfoIsLoading">
-        <b-spinner small class="me-2" /> Loading battery info
-      </div>
-      <div v-else-if="hasUnknownPowerSource">
-        This device has an unrecognised power source.
-      </div>
-      <div v-else-if="batteryInfo && batteryInfo.length !== 0">
-        <div class="battery-chart-info mb-2">
-          <small class="text-muted">{{ primaryBatteryDataType }}</small>
+        <div v-else class="d-flex flex-fill align-items-center justify-content-center">
+          <div class="text-secondary text-center">
+            <material-symbol name="not_listed_location" size="2.4rem" grade="thin" class="mb-2"/>
+            <p>Device does not currently have a known location.</p>
+          </div>
         </div>
-        <div ref="batteryTimeSeries" class="battery-info-time-series position-relative">
-          <!-- Custom tooltip -->
-          <div v-if="tooltipVisible" class="battery-tooltip" :style="{
+      </div>
+
+      <!-- CPTV frame -->
+      <div class="bento-box view d-flex flex-column flex-fill">
+        <h4 class="h4">Camera view</h4>
+        <div v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)" class="flex-grow-1 d-flex flex-column">
+          <div v-if="latestStatusRecording">
+            <p class="text-secondary">
+              Last seen
+              {{
+                DateTime.fromJSDate(
+                  new Date(latestStatusRecording.recordingDateTime),
+                ).toRelative()
+              }}
+            </p>
+            <cptv-single-frame :recording="latestStatusRecording" />
+          </div>
+          <div v-else class="d-flex flex-fill align-items-center justify-content-center">
+            <div class="text-secondary text-center d-flex flex-column">
+              <material-symbol name="videocam_off" size="2.4rem" grade="thin" class="mb-2"/>
+              Camera view not available.
+            </div>
+          </div>
+        </div>
+        <div v-else class="flex-grow-1 d-flex flex-fill align-items-center justify-content-center">
+          <div class="text-secondary text-center d-flex flex-column">
+            <material-symbol name="videocam_off" size="2.4rem" grade="thin" class="mb-2"/>
+            Camera view not available.
+          </div>
+        </div>
+      </div>
+
+      <!-- Battery info -->
+      <div class="bento-box battery d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-start">
+          <h4 class="h4">Battery information</h4>
+          <device-battery-level :device="device" />
+        </div>
+        <div v-if="batteryInfoIsLoading">
+          <b-spinner small class="me-2" /> Loading battery info
+        </div >
+        <div v-else-if="hasUnknownPowerSource" class="flex-grow-1 d-flex align-items-center justify-content-center">
+          <div class="text-secondary text-center d-flex flex-column">
+            <material-symbol name="battery_unknown" size="2.4rem" grade="thin" class="mb-2"/>
+            This device has an unrecognised power source.
+          </div>
+        </div>
+        <div v-else-if="batteryInfo && batteryInfo.length !== 0" class="flex-grow-1 d-flex flex-column">
+          <div class="battery-chart-info">
+            <p class="text-secondary">{{ primaryBatteryDataType }}</p>
+          </div>
+          <div ref="batteryTimeSeries" class="battery-info-time-series position-relative flex-grow-1">
+            <!-- Custom tooltip -->
+            <div v-if="tooltipVisible" class="battery-tooltip" :style="{
             left: tooltipPosition.x + 'px',
             top: tooltipPosition.y + 'px'
           }" v-html="tooltipContent"></div>
+          </div>
+        </div>
+        <div v-else class="flex-grow-1 d-flex align-items-center justify-content-center">
+          <div class="text-secondary text-center d-flex flex-column">
+            <material-symbol name="battery_unknown" size="2.4rem" grade="thin" class="mb-2"/>
+            No battery info available.
+          </div>
         </div>
       </div>
-      <div v-else>No battery info available.</div>
     </div>
-    <div class="mt-4">
-      <h6>Channel:</h6>
-      <span v-if="nodeGroupInfoLoading">
+
+    <div v-if="!showSoftwareInformation" class="text-center">
+      <b-button
+        variant="outline-secondary"
+        @click="showSoftwareInformation = true"
+        class="my-3"
+      >
+        View software information
+      </b-button>
+    </div>
+
+    <div v-if="showSoftwareInformation">
+      <!-- Channel -->
+      <div class="bento-box mt-3" ref="software-information">
+        <h4 class="h4">Channel</h4>
+        <span v-if="nodeGroupInfoLoading">
         <b-spinner small class="me-2" />
-        Loading channel info
-      </span>
-      <span v-else>{{ saltNodeGroup }}</span>
-    </div>
-    <div class="mt-4" v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
-      <h6>Software package versions:</h6>
-      <div v-if="
+          Loading channel info
+        </span>
+        <span v-else>{{ saltNodeGroup }}</span>
+      </div>
+
+      <!-- Software info -->
+      <div class="bento-box mt-3" v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
+        <h4 class="h4">Software information</h4>
+        <div v-if="
         versionInfoLoading || latestVersionInfoLoading || nodeGroupInfoLoading
       ">
-        <b-spinner small class="me-2" />
-        Loading version info
-      </div>
-      <card-table v-else-if="versionInfo" compact :items="versionInfoTable" :sort-dimensions="{ package: true }"
-        default-sort="package">
-        <template #version="{
+          <b-spinner small class="me-2" />
+          Loading version info
+        </div>
+        <card-table v-else-if="versionInfo" compact :items="versionInfoTable" :sort-dimensions="{ package: true }"
+                    default-sort="package">
+          <template #version="{
           cell: versionInfo,
         }: {
           cell: { version: string; latestVersion: string };
@@ -767,12 +978,12 @@ const primaryBatteryDataType = computed<string>(() => {
             versionInfo.version.replace(/~/g, '-') ===
             versionInfo.latestVersion
           ">{{ versionInfo.version }}</span>
-          <span v-else-if="versionInfo.latestVersion !== 'not found'"><span class="outdated-version">{{
-            versionInfo.version }}</span>&nbsp;
+            <span v-else-if="versionInfo.latestVersion !== 'not found'"><span class="outdated-version">{{
+                versionInfo.version }}</span>&nbsp;
             <em class="latest-version">({{ versionInfo.latestVersion }} is latest)</em></span>
-          <span v-else>{{ versionInfo.version }}</span>
-        </template>
-        <template #card="{
+            <span v-else>{{ versionInfo.version }}</span>
+          </template>
+          <template #card="{
           card,
         }: {
           card: {
@@ -780,43 +991,114 @@ const primaryBatteryDataType = computed<string>(() => {
             version: { version: string; latestVersion: string };
           };
         }">
-          <div class="d-flex justify-content-between">
-            <span class="text-capitalize"><strong>Package:</strong></span>
-            <span class="text-nowrap">{{ card.package }}</span>
-          </div>
-          <div class="d-flex justify-content-between">
-            <span class="text-capitalize"><strong>Version:</strong></span>
-            <span v-if="
+            <div class="d-flex justify-content-between">
+              <span class="text-capitalize"><strong>Package:</strong></span>
+              <span class="text-nowrap">{{ card.package }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-capitalize"><strong>Version:</strong></span>
+              <span v-if="
               card.version.version.replace(/~/g, '-') ===
               card.version.latestVersion
             ">{{ card.version.version }}</span>
-            <span v-else-if="card.version.latestVersion !== 'not found'"><span class="outdated-version">{{
-              card.version.version }}</span>&nbsp;
+              <span v-else-if="card.version.latestVersion !== 'not found'"><span class="outdated-version">{{
+                  card.version.version }}</span>&nbsp;
               <em class="latest-version">({{ card.version.latestVersion }} is latest)</em></span>
-            <span v-else>{{ card.version.version }}</span>
-          </div>
-        </template>
-      </card-table>
-      <div v-else>Version info not available.</div>
+              <span v-else>{{ card.version.version }}</span>
+            </div>
+          </template>
+        </card-table>
+        <div v-else>Version info not available.</div>
+      </div>
+    </div>
+
+  </div>
+  <div v-else-if="device && !device.active" class="align-items-center justify-content-center">
+    <div class="text-secondary text-center">
+      <material-symbol name="developer_board_off" size="2.4rem" grade="thin" class="mb-2"/>
+      <p>
+        This device is not currently active.<br />
+        This means that it was either retired, or moved to another project.
+      </p>
+      <p>You can still view historical recording data for this device.</p>
     </div>
   </div>
-  <div v-else-if="device && !device.active" class="p-3">
-    <p>
-      This device is not currently active.<br />
-      This means that it was either retired, or moved to another project.
-    </p>
-    <p>You can still view historical recording data for this device.</p>
+  <div v-else class="align-items-center justify-content-center">
+    <div class="text-secondary text-center">
+      <material-symbol name="developer_board_off" size="2.4rem" grade="thin" class="mb-2"/>
+      <p>Device not found in project.</p>
+    </div>
   </div>
-  <div v-else class="p-3">Device not found in group.</div>
 </template>
 <style scoped lang="less">
+@import "../assets/less/breakpoints";
+@import "../assets/less/elevation";
+
+.bento-box {
+  background: var(--bs-white);
+  padding: var(--cp-spacing-lg);
+  border-radius: var(--bs-border-radius);
+  .standard-shadow();
+}
+
+@media (max-width: @breakpoint-md-max) {
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    grid-template-rows: repeat(1, 1fr);
+  }
+}
+
+@media (min-width: @breakpoint-lg) {
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 1fr);
+
+    .configuration {
+      grid-column: span 2 / span 2;
+    }
+
+    .location {
+      grid-column: span 2 / span 2;
+      grid-column-start: 3;
+    }
+
+    .view {
+      grid-row-start: 2;
+    }
+
+    .battery {
+      grid-column: span 3 / span 3;
+      grid-row-start: 2;
+    }
+  }
+}
+
+
+.settings-summary {
+  @media (min-width: @breakpoint-xs-max) {
+    div:not(:last-of-type) {
+      dt,
+      dd {
+        border-bottom: 1px solid var(--border-color-light);
+      }
+    }
+  }
+}
+
 .map {
   width: 320px;
   height: 240px;
 }
 
+.single-frame-cptv-container {
+  width: 100%;
+  min-width: auto;
+  aspect-ratio: auto 4/3;
+}
+
 .battery-info-time-series {
-  min-height: 300px;
   position: relative;
 }
 
@@ -861,10 +1143,6 @@ const primaryBatteryDataType = computed<string>(() => {
   }
 }
 
-.battery-chart-info {
-  color: #6c757d;
-}
-
 .outdated-version {
   color: darkred;
   font-weight: bold;
@@ -872,6 +1150,14 @@ const primaryBatteryDataType = computed<string>(() => {
 
 .latest-version {
   color: #777;
+}
+</style>
+<style lang="less">
+.popover {
+   &.popover-wide {
+    width: 320px;
+    min-width: 320px;
+  }
 }
 </style>
 <style lang="css">

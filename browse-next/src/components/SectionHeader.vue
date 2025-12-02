@@ -5,6 +5,7 @@ import { useRoute } from "vue-router";
 import { computed, inject } from "vue";
 import type { Ref } from "vue";
 import { currentSelectedProject } from "@models/provides";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 const route = useRoute();
 const currentProject = inject(
   currentSelectedProject,
@@ -16,67 +17,42 @@ const currentProjectName = computed<string>(() => {
 </script>
 <template>
   <div
-    class="section-header d-flex flex-row-reverse d-sm-block align-items-center justify-content-between pt-sm-3"
+    class="section-header d-flex flex-row-reverse d-sm-block align-items-center justify-content-between text-nowrap pt-sm-4"
   >
-    <h4 class="group-name my-0 m-sm-0 mb-sm-2 mx-3" v-if="showProjectName">
+    <h4 class="section-header__group-name h5 text-uppercase text-body-tertiary my-0 m-sm-0 mb-sm-2 mx-3 overflow-hidden text-nowrap text-truncate" v-if="showProjectName">
       <span>{{ currentProjectName }}</span>
     </h4>
     <span v-else></span>
-    <div class="d-flex align-items-center ms-2 m-sm-0">
+    <div class="d-flex align-items-center m-sm-0">
       <button
         type="button"
-        class="btn toggle-nav d-sm-none"
+        class="btn toggle-nav d-sm-none d-flex align-items-center "
         @click.stop.prevent="pinSideNav = !pinSideNav"
       >
-        <font-awesome-icon icon="bars" />
+        <material-symbol name="menu"/>
       </button>
-      <h2
-        class="m-0 ms-1 mb-sm-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
+      <h1
+        class="h1 m-0 ms-1 mb-sm-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
       >
         <slot></slot>
-      </h2>
+      </h1>
     </div>
   </div>
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints";
+@import "../assets/less/spacing";
+@import "../assets/less/elevation";
 .section-header {
-  background: white;
-  height: 50px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  z-index: 1001;
-  h2 {
-    font-size: 18px;
+  @media (max-width: @breakpoint-xs-max) {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 1001;
+    background: var(--bs-white);
+    height: calc(var(--cp-grid-base) * 12);
+    .header-shadow();
   }
-  .group-name {
-    font-size: 12px;
-  }
-  @media (min-width: 576px) {
-    position: unset;
-    background: none;
-    box-shadow: none;
-    height: unset;
-    h2 {
-      font-size: 22px;
-    }
-    .group-name {
-      font-size: 14px;
-    }
-  }
-}
-
-.group-name {
-  text-transform: uppercase;
-  color: #aaa;
-  font-family: "Roboto Medium", "Roboto Regular", var(--bs-body-font-family);
-  font-weight: 500;
-}
-h2 {
-  font-family: "Roboto Bold", "Roboto Regular", var(--bs-body-font-family);
-  font-weight: 700;
-  color: #444;
 }
 </style>

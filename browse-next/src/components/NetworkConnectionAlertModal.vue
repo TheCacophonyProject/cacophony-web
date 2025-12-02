@@ -61,7 +61,7 @@ watch(
     cancel-disabled
     busy
     no-close-on-backdrop
-    hide-footer
+    no-footer
     hide-header
   >
     <div

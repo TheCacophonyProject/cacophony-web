@@ -661,44 +661,31 @@ const isDevicesRoot = computed(() => {
             >
               <div v-if="!cell.value.lastRecordingTime">No recordings</div>
               <two-step-action-button
-                class="text-end"
-                variant="outline-secondary"
                 :action="() => deleteOrArchiveDevice(cell.value.id)"
                 :icon="
                   cell.value.lastConnectionTime && cell.value.lastRecordingTime
-                    ? 'circle-minus'
-                    : 'trash-can'
+                    ? 'do_not_disturb_on'
+                    : 'delete'
                 "
                 :confirmation-label="
                   deleteConfirmationLabelForDevice(cell.value)
                 "
-                :classes="[
-                  'd-flex',
-                  'align-items-center',
-                  'fs-7',
-                  'text-nowrap',
-                  'ms-2',
-                ]"
-                alignment="right"
+                :tooltip-label="
+                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
+                    ? 'Set as inactive'
+                    : 'Delete'
+                "
+                :boundary-padding="false"
               />
             </div>
             <div v-else-if="isProjectAdmin && !cell.value.active">
               <two-step-action-button
-                class="text-end"
-                variant="outline-secondary"
                 :action="() => unarchiveDevice(cell.value.id)"
-                :icon="'circle-plus'"
+                icon="add_circle"
                 :confirmation-label="
                   unarchiveConfirmationLabelForDevice(cell.value)
                 "
-                :classes="[
-                  'd-flex',
-                  'align-items-center',
-                  'fs-7',
-                  'text-nowrap',
-                  'ms-2',
-                ]"
-                alignment="right"
+                :tooltip-label="`Set as active`"
               />
             </div>
             <span v-else></span>
@@ -741,28 +728,24 @@ const isDevicesRoot = computed(() => {
                 </div>
                 <two-step-action-button
                   v-if="card.__active"
-                  class="text-end"
-                  variant="outline-secondary"
                   :action="
                     () => deleteOrArchiveDevice(card._deleteAction.value.id)
                   "
                   :icon="
                     card._deleteAction.value.lastConnectionTime &&
                     card._deleteAction.value.lastRecordingTime
-                      ? 'circle-minus'
-                      : 'trash-can'
+                      ? 'do_not_disturb_on'
+                      : 'delete'
                   "
                   :confirmation-label="
                     deleteConfirmationLabelForDevice(card._deleteAction.value)
                   "
-                  :classes="[
-                    'd-flex',
-                    'align-items-center',
-                    'fs-7',
-                    'text-nowrap',
-                    'ms-2',
-                  ]"
-                  alignment="right"
+                  :tooltip-label="
+                    card._deleteAction.value.lastConnectionTime &&
+                    card._deleteAction.value.lastRecordingTime
+                      ? 'Set as inactive'
+                      : 'Delete'
+                  "
                 />
               </div>
             </div>

@@ -199,7 +199,7 @@ const router = createRouter({
           name: "device",
           redirect: (to): RouteLocationRaw => {
               return {
-                name: "device-diagnostics",
+                name: "device-status",
                 params: {
                   ...to.params,
                   // Remove type from destination route
@@ -211,21 +211,21 @@ const router = createRouter({
           component: () => import("@/views/DeviceView.vue"),
           children: [
             {
-              path: "diagnostics", // Labels also needs to maintain current trackId when we switch to it.
-              name: "device-diagnostics",
-              component: () => import("@/views/DeviceDiagnosticsSubView.vue"),
+              path: "status", // Labels also needs to maintain current trackId when we switch to it.
+              name: "device-status",
+              component: () => import("@views/DeviceStatusSubView.vue"),
             },
             {
-              path: "setup",
-              name: "device-setup",
-              redirect: { name: "recording-setup" }, // Open the first list item on load
-              component: () => import("@/views/DeviceSetupSubView.vue"),
+              path: "configuration",
+              name: "device-configuration",
+              redirect: { name: "recording-options" }, // Open the first list item on load
+              component: () => import("@views/DeviceConfigurationSubView.vue"),
               children: [
                 {
                   path: "recording-options",
-                  name: "recording-setup",
+                  name: "recording-options",
                   component: () =>
-                    import("@/components/DeviceRecordingSetup.vue"),
+                    import("@/components/DeviceRecordingOptions.vue"),
                 },
                 {
                   path: "reference",

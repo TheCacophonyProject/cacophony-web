@@ -7,7 +7,7 @@
   >
     <b-modal
       v-model="showingLocation"
-      hide-footer
+      no-footer
       :title="`${item.deviceName}: #${item.id}`"
       lazy
     >
@@ -170,7 +170,7 @@
     <span v-else></span>
     <b-modal
       v-model="showingLocation"
-      hide-footer
+      no-footer
       :title="`${item.deviceName}: #${item.id}`"
       lazy
     >

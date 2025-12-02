@@ -79,11 +79,11 @@ const signInFormIsFilledAndValid = computed<boolean>(
 );
 </script>
 <template>
-  <div class="sign-in-form px-4 pb-4 pt-5">
+  <div class="sign-in-form p-4">
     <img
       src="../assets/logo-full.svg"
       alt="The Cacophony Project logo"
-      width="220"
+      width="232"
       class="mx-auto d-block mb-5"
     />
     <h1 class="h4 text-center mb-4">Sign in</h1>
@@ -102,8 +102,8 @@ const signInFormIsFilledAndValid = computed<boolean>(
           @blur="userEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
           @input="hasError = false"
-          aria-label="email address"
-          placeholder="email address"
+          aria-label="Email address"
+          placeholder="Email address"
           data-cy="email address"
           :disabled="signInInProgress.requestPending"
           required
@@ -120,8 +120,8 @@ const signInFormIsFilledAndValid = computed<boolean>(
             @blur="userPassword.touched = true"
             @input="hasError = false"
             :state="needsValidationAndIsValidPassword"
-            aria-label="password"
-            placeholder="password"
+            aria-label="Password"
+            placeholder="Password"
             data-cy="password"
             :disabled="signInInProgress.requestPending"
             required
@@ -146,7 +146,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
       </div>
       <button
         type="submit"
-        class="btn btn-primary mb-3"
+        class="btn btn-primary btn-lg mb-3"
         data-cy="sign in button"
         :disabled="
           !signInFormIsFilledAndValid || signInInProgress.requestPending
@@ -165,11 +165,11 @@ const signInFormIsFilledAndValid = computed<boolean>(
     <div class="alternate-action-links d-flex justify-content-between my-2">
       <router-link
         :to="{ name: 'forgot-password' }"
-        class="small"
+        class="small text-decoration-none"
         data-cy="forgotten password link"
         >Forgot password?</router-link
       >
-      <router-link :to="{ name: 'register' }" class="small"
+      <router-link :to="{ name: 'register' }" class="small text-decoration-none"
         >Create a new account</router-link
       >
     </div>
@@ -178,21 +178,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
 
 <style scoped lang="less">
 .sign-in-form {
-  background: white;
   max-width: 360px;
   width: 100%;
-  @media (min-width: 768px) {
-    border-radius: 0.25rem;
-  }
-}
-.toggle-password-visibility-btn {
-  min-width: 3rem;
-}
-.alternate-action-links a {
-  text-decoration: none;
-  text-align: center;
-  &:hover {
-    text-decoration: underline;
-  }
 }
 </style>

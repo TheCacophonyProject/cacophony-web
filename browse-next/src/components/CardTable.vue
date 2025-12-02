@@ -75,7 +75,7 @@
         @mouseenter="enteredItem(card)"
         @mouseleave="leftItem(card)"
         @click="(e) => selectedItem(e, sortedItems[cardIndex])"
-        class="card-table-card py-2 ps-3 pe-2 my-2"
+        class="card-table-card py-3 px-3 py-md-4 px-md-4 mb-3"
         :class="{ highlighted: eq(card, highlightedItem) }"
       >
         <slot name="card" v-bind="{ card }">
@@ -296,43 +296,47 @@ const displayedItems = computed<{
 </script>
 
 <style scoped lang="less">
-@import "../assets/mixins.less";
-@import "../assets/font-sizes.less";
+@import "../assets/less/elevation.less";
+@import "../assets/less/typography.less";
 
 .card-table {
   width: 100%;
   thead {
-    background: #fafafa;
-    color: #888;
+    //background: #fafafa;
+    //color: #888;
     text-transform: capitalize;
-    border-top: 0.5px solid white;
-    border-bottom: 1px solid #eee;
-  }
-  thead,
-  tbody {
-    font-weight: 500;
-    .fs-7();
+    border-bottom: 1px solid var(--border-color-light);
+    tr:hover {
+      background: transparent;
+    }
   }
   th {
     user-select: none;
+    font-weight: var(--cp-font-weight-medium);
     &.sortable {
       cursor: pointer;
     }
+/*    &:first-of-type {
+      padding-left: 0 !important;
+    }*/
   }
   tr {
     user-select: none;
-    &:nth-child(even) {
-      background: #fafafa;
+    &:not(:last-of-type) {
+      border-bottom: 1px solid var(--border-color-light);
     }
     &.highlighted {
       background: #ddd;
+    }
+    &:hover {
+      background: var(--bs-gray-100);
     }
   }
   .card-table-card {
-    background: white;
+    background: var(--bs-white);
     transition: background-color 0.3s linear;
     &.highlighted {
-      background: #ddd;
+      background: var(--bs-gray-200);
     }
     cursor: default;
   }

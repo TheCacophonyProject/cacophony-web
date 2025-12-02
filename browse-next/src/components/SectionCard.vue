@@ -9,26 +9,35 @@ const hasHeader = computed<boolean>(() => {
 
 <template>
 <div class="section-card">
-  <header v-if="hasHeader" class="section-card__header p-3 d-flex justify-content-between align-items-baseline">
-    <h4 class="h6 m-0">
+  <header v-if="hasHeader" class="section-card__header px-3 px-md-4 d-flex justify-content-between align-items-center">
+    <h4 class="h4 m-0">
       <slot name="header-title" />
     </h4>
     <slot name="header-action" />
   </header>
-  <main class="section-card__content p-3">
+  <main class="section-card__content py-3 py-md-4 px-3 px-md-4">
     <slot></slot>
   </main>
 </div>
 </template>
 
 <style scoped lang="less">
-@import "../assets/mixins.less";
+@import "../assets/less/elevation.less";
 .section-card {
   background-color: #fff;
   border-radius: 0.25rem;
   .standard-shadow();
   &__header {
     border-bottom: 1px solid #eee;
+    @media screen and (max-width: 575px) {
+      height: 52px;
+    }
+    @media screen and (min-width: 576px) and (max-width: 767px) {
+      height: 56px;
+    }
+    @media screen and (min-width: 768px) {
+      height: 68px;
+    }
   }
   &__content {
   }

@@ -4,6 +4,8 @@ import type { ApiMaskRegionsData } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { LoadedResource } from "@api/types.ts";
+import {BNav, BNavItem, BSpinner} from "bootstrap-vue-next";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 const route = useRoute();
 
 const emit = defineEmits<{
@@ -78,71 +80,66 @@ const loading = computed<boolean>(() => {
     </p>
   </div>
   <div v-else>
-    <h6 class="d-none d-md-block mt-md-3">Camera setup checklist</h6>
-    <div class="d-flex flex-lg-row flex-column">
+    <div class="row d-flex flex-fill flex-column flex-lg-row">
       <div
-        class="d-flex py-2 justify-content-around flex-column justify-content-md-start checklist me-lg-4"
+        class="col col-12 col-lg-3 mt-3"
       >
-        <b-button
-          variant="light"
-          class="checklist-btn"
-          :to="{ name: 'recording-setup' }"
-          :active="activeTabPath.includes('recording-setup')"
+        <b-nav
+          pills
+          vertical
+          class="nav-device-config"
         >
-          <font-awesome-icon
-            :icon="
-              hasRecordingSetup ? ['far', 'circle-check'] : ['far', 'circle']
-            "
-          />
-          Recording options</b-button
-        >
-        <b-button
-          variant="light"
-          class="mt-2 checklist-btn"
-          :to="{ name: 'reference-photo' }"
-          :active="activeTabPath.includes('reference-photo')"
-        >
-          <font-awesome-icon
-            :icon="
-              hasReferencePhoto ? ['far', 'circle-check'] : ['far', 'circle']
-            "
-          />
-          Set a reference photo</b-button
-        >
-        <b-button
-          variant="light"
-          class="mt-2 checklist-btn"
-          :to="{ name: 'define-masking' }"
-          :active="activeTabPath.includes('define-masking')"
-        >
-          <font-awesome-icon
-            :icon="
-              hasMaskRegionsDefined
-                ? ['far', 'circle-check']
-                : ['far', 'circle']
-            "
-          />
-          Define mask regions (optional)</b-button
-        >
+          <b-nav-item
+            :to="{ name: 'recording-options' }"
+            :active="activeTabPath.includes('recording-options')"
+          >
+            <span class="d-flex">
+              <material-symbol name="tune" class="me-2"/>
+              Recording options
+            </span>
+          </b-nav-item>
+          <b-nav-item
+            :to="{ name: 'reference-photo' }"
+            :active="activeTabPath.includes('reference-photo')"
+          >
+            <span class="d-flex">
+              <material-symbol name="compare" class="me-2"/>
+              Reference photo
+            </span>
+          </b-nav-item>
+          <b-nav-item
+            :to="{ name: 'define-masking' }"
+            :active="activeTabPath.includes('define-masking')"
+          >
+            <span class="d-flex">
+              <material-symbol name="polyline" class="me-2"/>
+              Mask regions
+            </span>
+          </b-nav-item>
+        </b-nav>
       </div>
       <router-view
         @updated-regions="updatedMaskRegions"
         @updated-reference-image="updatedReferenceImage"
-        class="right-column"
+        class="col col-12 col-lg-9 mt-3 mb-3 mb-lg-4"
       ></router-view>
     </div>
   </div>
 </template>
 <style lang="less">
-.checklist-btn.btn {
-  text-align: left;
-}
-@media screen and (min-width: 992px) {
-  .checklist-btn {
-    //max-width: 30svh;
-  }
-  .checklist {
-    min-width: 300px;
+.nav-device-config {
+  .nav-link {
+    color: var(--cp-color-green-700);
+    padding-top: var(--cp-spacing-sm);
+    padding-bottom: var(--cp-spacing-sm);
+    margin-bottom: var(--cp-spacing-xxs);
+    &:hover {
+      background-color: color-mix(in oklch, var(--cp-color-primary), transparent 95%);
+    }
+    &.active {
+      background-color: color-mix(in oklch, var(--cp-color-primary), transparent 85%);
+      color: var(--cp-color-green-800);
+    }
   }
 }
 </style>

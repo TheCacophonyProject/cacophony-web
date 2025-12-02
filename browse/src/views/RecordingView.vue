@@ -2,7 +2,7 @@
   <b-container v-if="recording">
     <b-modal
       v-model="showModal"
-      hide-footer
+      no-footer
       hide-header
       body-class="p-0 d-flex justify-content-center align-items-center"
       centered

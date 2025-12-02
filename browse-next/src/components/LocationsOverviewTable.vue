@@ -6,6 +6,7 @@ import { DateTime, type ToRelativeOptions } from "luxon";
 import { ref } from "vue";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import RenameableLocationName from "@/components/RenameableLocationName.vue";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const oneMinute = 1000 * 60;
 const oneHour = oneMinute * 60;
@@ -96,12 +97,12 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
           @show-rename-hint="showRenameHint"
           @changed-location-name="changedLocationName"
         />
-        <div v-html="activeBetween(location)" />
+        <p v-html="activeBetween(location)" />
       </div>
-      <div class="d-flex mt-2 mb-1">
+      <div class="location-buttons d-flex mt-2 px-2 py-2 border-top border-2 border-light">
         <b-button
           v-if="locationHasThermalRecordings(location)"
-          class="align-items-center justify-content-between d-flex"
+          class="align-items-center justify-content-between d-flex btn-icon"
           variant="light"
           :to="{
             name: 'activity',
@@ -114,17 +115,13 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
               ).toISOString(),
             },
           }"
-          ><span class="me-2">Visits</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
+          >
+          <material-symbol name="video_library" size="1.25rem" />
+          <span class="ms-2">Visits</span>
         </b-button>
+        <div v-if="locationHasThermalRecordings(location)" class="vr"></div>
         <b-button
-          class="align-items-center justify-content-between d-flex"
-          :class="{'ms-2': locationHasThermalRecordings(location)}"
+          class="align-items-center justify-content-between d-flex btn-icon"
           v-if="locationHasThermalRecordings(location)"
           variant="light"
           :to="{
@@ -139,17 +136,13 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
               ).toISOString(),
             },
           }"
-          ><span class="me-2">Thermal recordings</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
+          >
+          <material-symbol name="videocam" size="1.25rem" />
+          <span class="ms-2">Thermal <span class="d-none d-sm-inline-block">recordings</span></span>
         </b-button>
+        <div v-if="locationHasAudioRecordings(location)" class="vr"></div>
         <b-button
-          class="align-items-center justify-content-between d-flex"
-          :class="{'ms-2': locationHasThermalRecordings(location)}"
+          class="align-items-center justify-content-between d-flex btn-icon"
           v-if="locationHasAudioRecordings(location)"
           variant="light"
           :to="{
@@ -164,17 +157,33 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
               ).toISOString(),
             },
           }"
-        ><span class="me-2">Bird recordings</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
+        >
+          <material-symbol name="music_note" size="1.25rem" />
+          <span class="ms-2">Audio <span class="d-none d-sm-inline-block">recordings</span></span>
         </b-button>
       </div>
     </template>
   </card-table>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+@import "../assets/less/breakpoints";
+.location-buttons {
+  @media screen and (min-width: @breakpoint-xs) and (max-width: @breakpoint-sm-max) {
+    margin-left: calc(var(--cp-spacing-md) * -1);
+    margin-right: calc(var(--cp-spacing-md) * -1);
+    margin-bottom: calc(var(--cp-spacing-md) * -1);
+  }
+  @media screen and (min-width: @breakpoint-md) {
+    margin-left: calc(var(--cp-spacing-lg) * -1);
+    margin-right: calc(var(--cp-spacing-lg) * -1);
+    margin-bottom: calc(var(--cp-spacing-lg) * -1);
+  }
+
+  padding-top: var(--cp-spacing-xs);
+  gap: var(--cp-spacing-xxs);
+  .vr {
+    background-color: var(--border-color-light);
+  }
+}
+</style>

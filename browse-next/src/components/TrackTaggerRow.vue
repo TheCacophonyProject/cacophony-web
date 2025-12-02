@@ -37,7 +37,7 @@ import {
 } from "@models/provides";
 import type { LoadedResource } from "@api/types";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
-import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const props = defineProps<{
   track: ApiTrackResponse;
@@ -669,14 +669,14 @@ onMounted(async () => {
         <span class="visually-hidden">Replay track</span>
         <font-awesome-icon icon="rotate-right" color="#666" />
       </button>
-      <two-step-action-button-popover
+      <two-step-action-button
         v-if="isAudioRecording"
         :action="() => permanentlyDeleteTrack(track.id)"
-        :icon="['far', 'trash-can']"
-        :confirmation-label="'Delete track'"
-        color="#666"
+        icon="delete"
+        tooltip-label="Delete"
+        confirmation-label="Delete track"
         :boundary-padding="true"
-      ></two-step-action-button-popover>
+      />
     </div>
     <div v-else class="d-flex">
       <button
@@ -706,16 +706,16 @@ onMounted(async () => {
         <span class="visually-hidden">Replay track</span>
         <font-awesome-icon icon="rotate-right" color="#666" />
       </button>
-      <two-step-action-button-popover
+      <two-step-action-button
         v-if="
           isAudioRecording && (userIsGroupAdmin || trackWasCreatedByUser(track))
         "
         :action="() => permanentlyDeleteTrack(track.id)"
-        :icon="['far', 'trash-can']"
-        :confirmation-label="'Delete track'"
-        color="#666"
+        icon="delete"
+        tooltip-label="Delete"
+        confirmation-label="Delete track"
         :boundary-padding="true"
-      ></two-step-action-button-popover>
+      />
       <button type="button" aria-label="Expand track" class="btn">
         <span class="visually-hidden">Expand track</span>
         <font-awesome-icon
@@ -829,7 +829,7 @@ onMounted(async () => {
   </div>
 </template>
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
+@import "../assets/less/typography.less";
 
 .details-toggle-btn,
 .details-toggle-btn:active,
