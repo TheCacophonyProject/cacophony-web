@@ -625,7 +625,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
 }
 
 .dashboard-subhead {
-  margin-bottom: var(--spacing--sm);
+  margin-bottom: var(--cp-spacing-sm);
 }
 
 .species-summary-container {
@@ -637,7 +637,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
 
 .species-summary {
   user-select: none;
-  gap: var(--spacing--xxs);
+  gap: var(--cp-spacing-xxs);
 
   &__item {
     background: #fff;
@@ -645,7 +645,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     cursor: pointer;
     @media screen and (max-width: 575px) {
       //flex-basis: calc(50% - (var(--spacing--xxs)));
-      flex: 0 0 calc(50% - calc(var(--spacing--xxs) / 2));
+      flex: 0 0 calc(50% - calc(var(--cp-spacing-xxs) / 2));
       border: 1px solid var(--border-color-light);
     }
     @media screen and (min-width: 576px) {
@@ -661,9 +661,9 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       background-color: #ececec;
     }
     &__count {
-      font-weight: var(--font-weight--medium);
+      font-weight: var(--cp-font-weight-medium);
       @media screen and (min-width: 576px) {
-        font-size: var(--font-size--h3);
+        font-size: var(--cp-font-size-h3);
       }
     }
   }

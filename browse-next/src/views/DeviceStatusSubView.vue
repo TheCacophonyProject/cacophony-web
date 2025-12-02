@@ -1036,7 +1036,7 @@ const showSoftwareInformation = ref<boolean>(false);
 
 .bento-box {
   background: var(--bs-white);
-  padding: var(--spacing--lg);
+  padding: var(--cp-spacing-lg);
   border-radius: var(--bs-border-radius);
   .standard-shadow();
 }

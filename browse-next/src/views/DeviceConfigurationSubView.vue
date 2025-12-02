@@ -129,16 +129,16 @@ const loading = computed<boolean>(() => {
 <style lang="less">
 .nav-device-config {
   .nav-link {
-    color: var(--color-cp-green-700);
-    padding-top: var(--spacing--sm);
-    padding-bottom: var(--spacing--sm);
-    margin-bottom: var(--spacing--xxs);
+    color: var(--cp-color-green-700);
+    padding-top: var(--cp-spacing-sm);
+    padding-bottom: var(--cp-spacing-sm);
+    margin-bottom: var(--cp-spacing-xxs);
     &:hover {
-      background-color: color-mix(in oklch, var(--color-cp-primary), transparent 95%);
+      background-color: color-mix(in oklch, var(--cp-color-primary), transparent 95%);
     }
     &.active {
-      background-color: color-mix(in oklch, var(--color-cp-primary), transparent 85%);
-      color: var(--color-cp-green-800);
+      background-color: color-mix(in oklch, var(--cp-color-primary), transparent 85%);
+      color: var(--cp-color-green-800);
     }
   }
 }

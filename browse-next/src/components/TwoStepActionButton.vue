@@ -136,7 +136,7 @@ const computedConfirmationLabel = computed<string>(() => {
 <style lang="less">
 @import "../assets/less/spacing";
 .popover {
-  --bs-popover-body-padding-x: var(--spacing--xs);
-  --bs-popover-body-padding-y: var(--spacing--xs);
+  --bs-popover-body-padding-x: var(--cp-spacing-xs);
+  --bs-popover-body-padding-y: var(--cp-spacing-xs);
 }
 </style>

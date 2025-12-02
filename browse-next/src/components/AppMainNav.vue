@@ -379,7 +379,7 @@ onMounted(() => {
   user-select: none;
   background: #fff;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-  padding: var(--spacing--md) calc(var(--spacing--xs) + var(--spacing--xxxs)) var(--spacing--xs);
+  padding: var(--cp-spacing-md) calc(var(--cp-spacing-xs) + var(--cp-spacing-xxxs)) var(--cp-spacing-xs);
   width: var(--global-side-nav-collapsed-width);
   transform: translateX(calc(var(--global-side-nav-expanded-width) * -1.0));
   transition: width 0.2s, transform 0.2s;
@@ -398,21 +398,21 @@ onMounted(() => {
   // Main navigation links
   a.nav-link {
     color: var(--text-primary);
-    font-weight: var(--font-weight--medium);
+    font-weight: var(--cp-font-weight-medium);
 
     &:hover {
-      background-color: var(--color-cp-green-50);
-      color: var(--color-cp-green-800);
+      background-color: var(--cp-color-green-50);
+      color: var(--cp-color-green-800);
     }
 
     &:active,
     &:active:hover {
-      background-color: var(--color-cp-green-100);
+      background-color: var(--cp-color-green-100);
     }
 
     &.router-link-active {
-      background-color: color-mix(in oklch, var(--color-cp-primary), transparent 90%);
-      color: var(--color-cp-green-800);
+      background-color: color-mix(in oklch, var(--cp-color-primary), transparent 90%);
+      color: var(--cp-color-green-800);
     }
 
     .nav-icon-wrapper {
@@ -420,8 +420,8 @@ onMounted(() => {
 
       .alert-icon {
         position: absolute;
-        right: calc(var(--spacing--xs) * -1);
-        top: calc(var(--spacing--xxs) * -1);
+        right: calc(var(--cp-spacing-xs) * -1);
+        top: calc(var(--cp-spacing-xxs) * -1);
         fill: var(--bs-danger);
       }
     }

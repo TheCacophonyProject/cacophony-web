@@ -312,7 +312,7 @@ const displayedItems = computed<{
   }
   th {
     user-select: none;
-    font-weight: var(--font-weight--medium);
+    font-weight: var(--cp-font-weight-medium);
     &.sortable {
       cursor: pointer;
     }

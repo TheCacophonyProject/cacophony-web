@@ -124,18 +124,18 @@ const activeItemTitle = ref<string>("");
   &.nav-underline {
     border-bottom: 1px solid  var(--bs-border-color);
     .nav-link {
-      min-height: calc(var(--grid--base) * 11); // 44px
+      min-height: calc(var(--cp-grid-base) * 11); // 44px
       @media (min-width: @breakpoint-sm) {
-        padding-top: var(--spacing--md);
-        padding-bottom: var(--spacing--md);
+        padding-top: var(--cp-spacing-md);
+        padding-bottom: var(--cp-spacing-md);
       }
       @media (min-width: @breakpoint-md) {
-        font-size: var(--font-size--h4);
+        font-size: var(--cp-font-size-h4);
       }
       &.active {
-        font-weight: var(--font-weight--medium);
-        border-bottom-color: var(--color-cp-primary);
-        color: var(--color-cp-green-800);
+        font-weight: var(--cp-font-weight-medium);
+        border-bottom-color: var(--cp-color-primary);
+        color: var(--cp-color-green-800);
       }
     }
     .dropdown-item {
@@ -151,7 +151,7 @@ const activeItemTitle = ref<string>("");
   .more-btn {
     &:has(a.active) {
       box-sizing: border-box;
-      border-bottom: 2px solid var(--color-cp-primary);
+      border-bottom: 2px solid var(--cp-color-primary);
     }
   }
 }

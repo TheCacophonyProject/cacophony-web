@@ -1039,14 +1039,14 @@ watch(customRecordingWindowStop, async () => {
 
 /* TODO: move somewhere else? Or leave here, given the component is not used in any other places? */
 .dp__input {
-  font-family: var(--font-family);
-  font-size: var(--font-size--md);
+  font-family: var(--cp-font-family);
+  font-size: var(--cp-font-size-md);
 }
 
 .dp__action_select {
-  background: var(--color-cp-green-600);
+  background: var(--cp-color-green-600);
   &:hover {
-    background: var(--color-cp-green-700);
+    background: var(--cp-color-green-700);
   }
 }
 </style>

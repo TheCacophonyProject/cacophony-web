@@ -1,31 +1,31 @@
 :root {
-  --bs-body-font-family: var(--font-family);
-  --bs-font-sans-serif: var(--font-family);
-  --bs-body-font-size: var(--font-size--md);
+  --bs-body-font-family: var(--cp-font-family);
+  --bs-font-sans-serif: var(--cp-font-family);
+  --bs-body-font-size: var(--cp-font-size-md);
   --bs-btn-disabled-border-color: transparent;
   --bs-btn-focus-border-color: transparent;
   --bs-btn-active-border-color: transparent;
-  --bs-link-color: var(--color-cp-green-600);
+  --bs-link-color: var(--cp-color-green-600);
   --bs-link-color-rgb: 44, 79,1; // same as --color-cp-green-800
-  --bs-link-hover-color: var(--color-cp-green-700);
+  --bs-link-hover-color: var(--cp-color-green-700);
   --bs-link-hover-color-rgb: 65, 118, 1; // same as --color-cp-green-700
-  --bs-primary: var(--color-cp-green-600);
+  --bs-primary: var(--cp-color-green-600);
   --bs-body-line-height: 1.6;
   --bs-primary-rgb: 87, 158, 2; // same as --color-cp-green-600
 }
 
 .btn {
-  --bs-btn-font-size:  var(--font-size--md);
+  --bs-btn-font-size:  var(--cp-font-size-md);
 }
 
 .btn-primary {
-  --bs-btn-bg: var(--color-cp-green-600);
+  --bs-btn-bg: var(--cp-color-green-600);
   --bs-btn-border-color: transparent;
-  --bs-btn-hover-bg: var(--color-cp-green-700);
+  --bs-btn-hover-bg: var(--cp-color-green-700);
   --bs-btn-hover-border-color: transparent;
-  --bs-btn-active-bg: var(--color-cp-green-800);
+  --bs-btn-active-bg: var(--cp-color-green-800);
   --bs-btn-active-border-color: transparent;
-  --bs-btn-disabled-bg: color-mix(in oklch, var(--color-cp-green-600), transparent 5%);
+  --bs-btn-disabled-bg: color-mix(in oklch, var(--cp-color-green-600), transparent 5%);
   --bs-btn-disabled-border-color: transparent;
 }
 
@@ -50,31 +50,31 @@
 
 // Font size of inputs
 .form-control {
-  font-size: var(--font-size--md);
+  font-size: var(--cp-font-size-md);
 }
 
 .form-select {
-  font-size: var(--font-size--md);
+  font-size: var(--cp-font-size-md);
 }
 
 // Switch styles
 .form-check-input {
   &:checked {
-    background-color: var(--color-cp-green-600);
-    border-color: var(--color-cp-green-600);
+    background-color: var(--cp-color-green-600);
+    border-color: var(--cp-color-green-600);
   }
   &:focus {
-    border-color: var(--color-cp-green-400);
+    border-color: var(--cp-color-green-400);
     outline: 0;
-    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--color-cp-green-600), transparent 80%);
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
   }
 }
 
 // select styles
 .form-select {
   &:focus {
-    border-color: var(--color-cp-green-400);
-    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--color-cp-green-600), transparent 80%);
+    border-color: var(--cp-color-green-400);
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
   }
 }
 
@@ -82,33 +82,33 @@
 
 .form-range {
   &::-webkit-slider-thumb {
-    background: var(--color-cp-green-600);
+    background: var(--cp-color-green-600);
     &:active {
-      background: var(--color-cp-green-300);
+      background: var(--cp-color-green-300);
     }
   }
   &::-moz-range-thumb {
-    background: var(--color-cp-green-600);
+    background: var(--cp-color-green-600);
     &:active {
-      background: var(--color-cp-green-300);
+      background: var(--cp-color-green-300);
     }
   }
   &:focus {
     &::-webkit-slider-thumb {
-      box-shadow: 0 0 0 0.25rem color-mix(in oklch, var(--color-cp-green-600), transparent 80%);
+      box-shadow: 0 0 0 0.25rem color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
     }
     &::-moz-range-thumb {
-      box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--color-cp-green-600), transparent 80%);
+      box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
     }
   }
 }
 
 .nav-tabs {
-  --bs-nav-tabs-link-active-color: var(--color-cp-green-800);
+  --bs-nav-tabs-link-active-color: var(--cp-color-green-800);
 }
 
 .badge {
-  --bs-badge-font-size: var(--font-size--sm);
+  --bs-badge-font-size: var(--cp-font-size-sm);
   --bs-badge-font-weight: 500;
   &.text-bg-secondary {
     background-color: var(--bs-black) !important;
@@ -118,5 +118,5 @@
 
 b,
 strong {
-  font-weight: var(--font-weight--semilbold);
+  font-weight: var(--cp-font-weight-semilbold);
 }

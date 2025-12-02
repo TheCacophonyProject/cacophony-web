@@ -8,26 +8,26 @@
 
 :root {
   // multi select variables
-  --ms-font-size: var(--font-size--md); // multi select value
-  --ms-option-font-size: var(--font-size--md); // multi select options
+  --ms-font-size: var(--cp-font-size-md); // multi select value
+  --ms-option-font-size: var(--cp-font-size-md); // multi select options
 }
 
 .section-card-heading {
   @media (max-width: @breakpoint-xs-max) {
-    font-size: var(--font-size--h4);
-    margin-bottom: var(--spacing--sm);
-    margin-top: var(--spacing--xs);
+    font-size: var(--cp-font-size-h4);
+    margin-bottom: var(--cp-spacing-sm);
+    margin-top: var(--cp-spacing-xs);
   }
   @media (min-width: @breakpoint-sm) {
-    font-size: var(--font-size--h4);
-    margin-top: var(--spacing--xs);
-    margin-bottom: var(--spacing--sm);
+    font-size: var(--cp-font-size-h4);
+    margin-top: var(--cp-spacing-xs);
+    margin-bottom: var(--cp-spacing-sm);
   }
   @media (min-width: @breakpoint-md) {
-    margin-top: var(--spacing--md);
-    margin-bottom: var(--spacing--md);
+    margin-top: var(--cp-spacing-md);
+    margin-bottom: var(--cp-spacing-md);
   }
   @media (min-width: @breakpoint-lg) {
-    margin-top: var(--spacing--xl);
+    margin-top: var(--cp-spacing-xl);
   }
 }

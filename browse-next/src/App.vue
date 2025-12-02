@@ -196,8 +196,8 @@ const pollFrameTimes = () => {
   // Multiselect tag colour
   --ms-tag-bg: var(--bs-secondary);
   --ms-option-bg-selected: var(--bs-secondary);
-  --global-side-nav-collapsed-width: calc(var(--grid--base) * 19); // 76px
-  --global-side-nav-expanded-width: calc(var(--grid--base) * 68); // 272px
+  --global-side-nav-collapsed-width: calc(var(--cp-grid-base) * 19); // 76px
+  --global-side-nav-expanded-width: calc(var(--cp-grid-base) * 68); // 272px
 }
 
 #app {

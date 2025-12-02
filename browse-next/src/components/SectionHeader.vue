@@ -51,7 +51,7 @@ const currentProjectName = computed<string>(() => {
     top: 0;
     z-index: 1001;
     background: var(--bs-white);
-    height: calc(var(--grid--base) * 12);
+    height: calc(var(--cp-grid-base) * 12);
     .header-shadow();
   }
 }
