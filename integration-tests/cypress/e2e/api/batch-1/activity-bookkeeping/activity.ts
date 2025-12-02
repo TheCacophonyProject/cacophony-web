@@ -98,6 +98,10 @@ const createProjectWithUserAndDevice = async (projectName: string = "Test"): Pro
 describe("Activity bookkeeping", () => {
   let project: ProjectBundle;
   before(async () => {
+    // The goal of this is to make sure we keep our stats in sync when we add and delete recordings from devices.
+    // This is important, since it lets us know the ranges that we can search within for locations, the whole project
+    // and individual devices.
+
     project = await createProjectWithUserAndDevice();
 
     // TODO: List all the things I want to test

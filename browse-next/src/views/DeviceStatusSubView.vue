@@ -1,18 +1,7 @@
 <script lang="ts" setup>
 import { computed, inject, onBeforeMount, ref, watch } from "vue";
-// import {
-//   type BatteryInfoEvent,
-//   getBatteryInfo,
-//   getDeviceConfig,
-//   getDeviceLastPoweredOff,
-//   getDeviceLastPoweredOn,
-//   getDeviceLatestVersionInfo,
-//   getDeviceLocationAtTime,
-//   getDeviceNodeGroup,
-//   getDeviceVersionInfo,
-// } from "@apiClient/Device";
 import {ClientApi} from "@/api";
-import type { BatteryInfoEvent } from "@apiClient/types";
+import type {BatteryInfo, BatteryInfoEvent} from "@apiClient/types";
 import { useRoute } from "vue-router";
 import type { Ref } from "vue";
 import type { DeviceId } from "@typedefs/api/common";
@@ -107,7 +96,7 @@ const absoluteTime = (timeStr: string, relativeTo: Date): Date => {
   } else {
     const now = new Date();
     now.setHours(17);
-    const [hours, mins] = timeStr.split(":").map(Number);
+    const [hours, mins] = timeStr.split(":").map(Number) as [number, number];
     now.setHours(hours);
     now.setMinutes(mins);
     const nowNow = new Date();
@@ -277,66 +266,24 @@ const uptimes = computed<number[]>(() => {
   return [];
 });
 
-// Store voltage data mapped by timestamp for tooltip display
-const voltageDataMap = ref<Map<number, number>>(new Map());
-
 const initBatteryInfoTimeSeries = () => {
   if (interpolatedBatteryInfo.value && batteryTimeSeries.value) {
-    // Clear previous voltage map
-    voltageDataMap.value.clear();
-
-    // Build voltage map for tooltip display
-    interpolatedBatteryInfo.value.forEach(item => {
-      if (item.voltage !== null) {
-        voltageDataMap.value.set(new Date(item.dateTime).getTime(), item.voltage);
-      }
-    });
-
-    // Determine what data to show
-    const hasPercentage = interpolatedBatteryInfo.value.some(item => item.battery !== null);
-    const hasVoltage = interpolatedBatteryInfo.value.some(item => item.voltage !== null);
-
-    let primaryData = [];
     let chartLow = 0;
     let chartHigh = 100;
     let axisLabelFormat;
 
-    if (hasPercentage) {
-      // Use percentage as primary display
-      primaryData = interpolatedBatteryInfo.value
-        .filter((item) => item.battery !== null)
-        .map((item) => ({
-          x: new Date(item.dateTime),
-          y: item.battery,
-          meta: {
-            voltage: item.voltage,
-            battery: item.battery,
-            dateTime: item.dateTime,
-          },
-        }));
-      axisLabelFormat = (value) => `${value}%`;
-    } else if (hasVoltage) {
-      // Only voltage available, show voltage with proper scaling
-      primaryData = interpolatedBatteryInfo.value
-        .filter((item) => item.voltage !== null)
-        .map((item) => ({
-          x: new Date(item.dateTime),
-          y: item.voltage,
-          meta: {
-            voltage: item.voltage,
-            battery: null,
-            dateTime: item.dateTime,
-          },
-        }));
-
-      const voltageValues = primaryData.map(item => item.y);
-      const minVoltage = Math.min(...voltageValues);
-      const maxVoltage = Math.max(...voltageValues);
-      const voltageRange = maxVoltage - minVoltage;
-      chartLow = Math.max(0, minVoltage - voltageRange * 0.1);
-      chartHigh = maxVoltage + voltageRange * 0.1;
-      axisLabelFormat = (value) => `${value.toFixed(1)}V`;
-    }
+    // Use percentage as primary display
+    const primaryData: {x: Date, y: number, meta: BatteryInfoDisplayEvent}[] = interpolatedBatteryInfo.value
+      .map((item) => ({
+        x: item.dateTime,
+        y: item.battery as number,
+        meta: {
+          voltage: item.voltage,
+          battery: item.battery,
+          dateTime: item.dateTime,
+        },
+      }));
+    axisLabelFormat = (value: number) => `${value}%`;
 
     if (primaryData.length > 0) {
       const chart = new LineChart(
@@ -372,7 +319,7 @@ const initBatteryInfoTimeSeries = () => {
 
       // Add event listeners for tooltips
       chart.on("created", () => {
-        const points = batteryTimeSeries.value?.querySelectorAll(".ct-point");
+        const points = batteryTimeSeries.value!.querySelectorAll(".ct-point") as unknown as SVGElement[];
         if (points) {
           points.forEach((point) => {
             point.addEventListener("mouseenter", (e: MouseEvent) => {
@@ -438,27 +385,41 @@ const hasUnknownPowerSource = computed<boolean>(() => {
     !!batteryInfo.value &&
     batteryInfo.value.length !== 0 &&
     batteryInfo.value.every(
-      (item) => item.batteryType === "unknown" || item.batteryType === "mains",
+      (item) => item.batteryType === "unknown_battery_type" || item.batteryType === "mains",
     )
   );
 });
-
-const interpolatedBatteryInfo = computed<BatteryInfoEvent[]>(() => {
+interface BatteryInfoDisplayEvent {
+  dateTime: Date;
+  voltage: number | null;
+  battery: number | null;
+}
+const interpolatedBatteryInfo = computed<BatteryInfoDisplayEvent[]>(() => {
   const eightWeeksAgo = new Date();
   const now = new Date();
+  const sortedEvents: BatteryInfoDisplayEvent[] = (batteryInfo.value || []).map((event: BatteryInfoEvent) => (
+      {
+        ...event,
+        dateTime: new Date(event.dateTime),
+      }
+  ));
+  sortedEvents.sort(
+      (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime(),
+  );
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-  if (batteryInfo.value && batteryInfo.value.length !== 0) {
-    const firstEventTime = new Date(
-      batteryInfo.value[batteryInfo.value.length - 1].dateTime,
-    );
-    const lastEventTime = new Date(batteryInfo.value[0].dateTime);
+  if (sortedEvents.length !== 0) {
+    const firstEvent = sortedEvents[0] as BatteryInfoDisplayEvent;
+    const lastEvent = sortedEvents[sortedEvents.length - 1] as BatteryInfoDisplayEvent;
+    console.log(firstEvent, lastEvent);
+    const firstEventTime = firstEvent.dateTime;
+    const lastEventTime = lastEvent.dateTime;
     const emptyDaysAtStart = Math.floor(
       (firstEventTime.getTime() - eightWeeksAgo.getTime()) / 1000 / 60 / 60 / 24,
     );
     const emptyDaysAtEnd = Math.floor(
       (now.getTime() - lastEventTime.getTime()) / 1000 / 60 / 60 / 24,
     );
-    const interpolatedValues: BatteryInfoEvent[] = [];
+    const interpolatedValues: BatteryInfoDisplayEvent[] = [];
     for (let i = 0; i < emptyDaysAtStart; i++) {
       const dateTime = new Date(eightWeeksAgo);
       dateTime.setDate(dateTime.getDate() + i);
@@ -466,15 +427,9 @@ const interpolatedBatteryInfo = computed<BatteryInfoEvent[]>(() => {
         dateTime,
         voltage: null,
         battery: null,
-        batteryType: "lime",
       });
     }
-    const sorted = [...batteryInfo.value];
-    sorted.sort(
-      (a, b) => new Date(b.dateTime).getDate() - new Date(a.dateTime).getTime(),
-    );
-
-    interpolatedValues.push(...sorted);
+    interpolatedValues.push(...sortedEvents);
     for (let i = 0; i < emptyDaysAtEnd; i++) {
       const dateTime = new Date(lastEventTime);
       dateTime.setDate(dateTime.getDate() + i);
@@ -482,7 +437,6 @@ const interpolatedBatteryInfo = computed<BatteryInfoEvent[]>(() => {
         dateTime,
         voltage: null,
         battery: null,
-        batteryType: "lime",
       });
     }
     return interpolatedValues;
@@ -908,7 +862,7 @@ const showSoftwareInformation = ref<boolean>(false);
           <h4 class="h4">Battery information</h4>
           <device-battery-level :device="device" />
         </div>
-        <div v-if="batteryInfoIsLoading">
+        <div v-if="batteryInfoIsLoading" class="flex-grow-1 d-flex align-items-center justify-content-center">
           <b-spinner small class="me-2" /> Loading battery info
         </div >
         <div v-else-if="hasUnknownPowerSource" class="flex-grow-1 d-flex align-items-center justify-content-center">
