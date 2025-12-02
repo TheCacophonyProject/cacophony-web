@@ -22,9 +22,7 @@ export interface MonitoringPageCriteria {
   pageUntil?: Date;
   searchFrom?: Date;
   searchUntil?: Date;
-  types?: (
-    | RecordingType.ThermalRaw
-  )[];
+  types?: RecordingType[];
 }
 
 interface VisitRecordingTag {

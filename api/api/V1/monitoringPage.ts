@@ -33,7 +33,7 @@ export interface MonitoringParams {
   until?: Date;
   page: number;
   pageSize: number;
-  types?: [RecordingType.ThermalRaw];
+  types?: RecordingType[];
 }
 
 const GROUPS_AND_STATIONS = "GROUPS_AND_STATIONS";

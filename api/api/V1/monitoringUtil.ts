@@ -28,7 +28,7 @@ export interface MonitoringPageCriteria2 {
   group: GroupId;
   searchFrom: Date;
   searchUntil: Date;
-  types?: [RecordingType.ThermalRaw];
+  types?: RecordingType[];
 }
 
 export async function generateVisits2(
