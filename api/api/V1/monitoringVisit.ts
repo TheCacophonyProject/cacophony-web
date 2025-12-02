@@ -467,11 +467,7 @@ async function getRecordings(
   viewAsSuperUser: boolean,
 ) {
   const types = [];
-  const allowedTypes = [
-    RecordingType.ThermalRaw,
-    RecordingType.TrailCamImage,
-    RecordingType.TrailCamVideo,
-  ];
+  const allowedTypes = [RecordingType.ThermalRaw];
   for (const type of params.types) {
     if (allowedTypes.includes(type)) {
       types.push(type);

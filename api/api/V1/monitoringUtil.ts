@@ -28,11 +28,7 @@ export interface MonitoringPageCriteria2 {
   group: GroupId;
   searchFrom: Date;
   searchUntil: Date;
-  types?: (
-    | RecordingType.ThermalRaw
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
-  )[];
+  types?: [RecordingType.ThermalRaw];
 }
 
 export async function generateVisits2(

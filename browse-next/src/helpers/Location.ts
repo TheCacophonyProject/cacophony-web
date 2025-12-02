@@ -47,10 +47,7 @@ export const latestRecordingTimeForDeviceAtLocation = (
       location.lastAudioRecordingTime
     ) {
       return new Date(location.lastAudioRecordingTime);
-    } else if (
-      [ConcreteDeviceType.Thermal, ConcreteDeviceType.TrailCam].includes(
-        device.type,
-      ) &&
+    } else if (device.type === ConcreteDeviceType.Thermal &&
       location.lastThermalRecordingTime
     ) {
       return new Date(location.lastThermalRecordingTime);

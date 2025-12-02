@@ -56,15 +56,6 @@ import {
 } from "@typedefs/api/consts.ts";
 import type { RouteLocationRaw } from "vue-router";
 
-// NOTE: For some reason importing this enum from global consts fails :-/
-// enum DeviceType {
-//   Audio = "audio",
-//   Thermal = "thermal",
-//
-//   Trailcam = "trailcam",
-//   Unknown = "unknown",
-// }
-
 const props = defineProps<{
   name: string;
   type: DeviceType;
@@ -82,8 +73,6 @@ const deviceTypeIcon = computed<string>(() => {
       return "video";
     case ConcreteDeviceType.Unknown:
       return "question";
-    case ConcreteDeviceType.TrailCam:
-      return "camera";
   }
   return "";
 });

@@ -997,8 +997,6 @@ interface RecordingQueryBase {
   types: (
     | RecordingType.ThermalRaw
     | RecordingType.Audio
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
   )[];
   locations?: LocationId[];
   tagMode?: TagMode;
@@ -1011,11 +1009,7 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
   const query: QueryRecordingsOptions = {
     types:
       searchParams.value.recordingMode === "cameras"
-        ? [
-            ConcreteRecordingType.ThermalRaw,
-            ConcreteRecordingType.TrailCamVideo,
-            ConcreteRecordingType.TrailCamImage,
-          ]
+        ? [ConcreteRecordingType.ThermalRaw]
         : [ConcreteRecordingType.Audio],
   };
   if (searchParams.value.displayMode === "recordings") {
@@ -1221,9 +1215,7 @@ const minDate = (a: Date, b: Date): Date => {
 const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
   if (searchParams.value.recordingMode === "cameras") {
     return [
-      ConcreteRecordingType.ThermalRaw,
-      ConcreteRecordingType.TrailCamVideo,
-      ConcreteRecordingType.TrailCamImage,
+      ConcreteRecordingType.ThermalRaw
     ];
   } else {
     return [ConcreteRecordingType.Audio];
@@ -1308,8 +1300,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           untilDateTime: currentQueryCursor.value.untilDateTime as Date,
           queryIsTimeSensitive: true,
           types: typesForRecordingMode.value as (
-            | RecordingType.TrailCamImage
-            | RecordingType.TrailCamVideo
             | RecordingType.ThermalRaw
             | RecordingType.Audio
           )[],
@@ -1335,8 +1325,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           query.types as
             | (
                 | RecordingType.ThermalRaw
-                | RecordingType.TrailCamImage
-                | RecordingType.TrailCamVideo
               )[]
             | undefined,
         );
@@ -1642,9 +1630,7 @@ const doExport = async () => {
         query.locations,
         query.types as
           | (
-              | RecordingType.TrailCamVideo
               | RecordingType.ThermalRaw
-              | RecordingType.TrailCamImage
             )[]
           | undefined,
         (progress) => {

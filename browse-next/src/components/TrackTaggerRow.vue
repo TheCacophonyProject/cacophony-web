@@ -608,7 +608,6 @@ onMounted(async () => {
               .join(", ")
           }}</span
         >
-        <!-- No AI tag, maybe this is a track for a trailcam image? -->
         <span
           class="text-capitalize d-inline-block fw-bold"
           v-else-if="consensusUserTag && !hasAiTag"

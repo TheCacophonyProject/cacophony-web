@@ -184,11 +184,9 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       const requestUser = await User.findByPk(response.locals.requestUser.id);
       const types = (((request.query.types as string) &&
-        (request.query.types as string).split(",")) as (
-        | RecordingType.TrailCamImage
-        | RecordingType.ThermalRaw
-        | RecordingType.TrailCamVideo
-      )[]) || [RecordingType.ThermalRaw];
+        (request.query.types as string).split(
+          ",",
+        )) as RecordingType.ThermalRaw[]) || [RecordingType.ThermalRaw];
       // TODO: Default to thermalRaw for existing api calls, and new api calls can pass through the recording types they want visits
       //  calculated over.
 
@@ -260,12 +258,7 @@ export default function (app: Application, baseUrl: string) {
         .toArray()
         .isArray({ min: 1 })
         .custom((value: string[]) => {
-          const allowedTypes = [
-            RecordingType.ThermalRaw,
-            RecordingType.TrailCamImage,
-            RecordingType.TrailCamVideo,
-            "thermal",
-          ];
+          const allowedTypes = [RecordingType.ThermalRaw, "thermal"];
           const invalidTypes = value.filter(
             (type) => !allowedTypes.includes(type),
           );
@@ -292,11 +285,7 @@ export default function (app: Application, baseUrl: string) {
           return "thermalRaw";
         }
         return x;
-      }) as (
-        | RecordingType.ThermalRaw
-        | RecordingType.TrailCamImage
-        | RecordingType.TrailCamVideo
-      )[];
+      }) as RecordingType.ThermalRaw[];
 
       const stationIds: StationId[] =
         ((request.query.locations as string[]) || []).map(Number) || [];

@@ -1571,13 +1571,9 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
 ) => {
   // Check if there are any more device/group/station recordings or if the latest recording of this type
   // is not different. If not, set lastRecordingTime to null so that the device will appear as deletable.
-  const cameras = [RecordingType.ThermalRaw, RecordingType.TrailCamImage];
+  const cameras = [RecordingType.ThermalRaw];
   let types = [RecordingType.Audio];
-  if (
-    [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-      recording.type,
-    )
-  ) {
+  if ([RecordingType.ThermalRaw].includes(recording.type)) {
     types = cameras;
   }
   const [
@@ -1708,7 +1704,7 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
 export const fixupLatestRecordingTimesForUndeletedRecording = async (
   recording: Recording,
 ) => {
-  const cameras = [RecordingType.TrailCamImage, RecordingType.ThermalRaw];
+  const cameras = [RecordingType.ThermalRaw];
   const [device, group] = await Promise.all([
     Device.findByPk(recording.DeviceId),
     Group.findByPk(recording.GroupId),

@@ -25,12 +25,9 @@ const currentProject = inject(currentSelectedProject) as ComputedRef<
   SelectedProject | false
 >;
 
-const currentRecordingType = computed<"cptv" | "image" | "audio">(() => {
+const currentRecordingType = computed<"cptv" | "audio">(() => {
   if (props.recording) {
     switch (props.recording.type) {
-      case RecordingType.TrailCamVideo:
-      case RecordingType.TrailCamImage:
-        return "image";
       case RecordingType.ThermalRaw:
         return "cptv";
       case RecordingType.Audio:
@@ -203,9 +200,7 @@ const notImplemented = () => {
       </b-dropdown-item-button>
     </b-dropdown>
     <button
-      v-else-if="
-        currentRecordingType === 'image' || currentRecordingType === 'audio'
-      "
+      v-else-if="currentRecordingType === 'audio'"
       type="button"
       class="btn btn-square btn-hi"
       :disabled="!recordingReady"

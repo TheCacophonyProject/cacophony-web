@@ -298,60 +298,6 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/devices/create-proxy-device Create a new (proxy) device
-   * @apiName CreateProxyDevice
-   * @apiGroup Device
-   *
-   * @apiInterface {apiBody::ApiCreateProxyDeviceRequestBody}
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess {int} id id of device registered
-   * @apiUse V1ResponseError
-   */
-  app.post(
-    `${apiUrl}/create-proxy-device`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      nameOf(body("group")),
-      validNameOf(body("deviceName")),
-      body("type")
-        .default("trailcam")
-        .optional()
-        .isIn(Object.values(DeviceType)),
-    ]),
-    fetchAuthorizedRequiredGroupByNameOrId(body("group")),
-    checkDeviceNameIsUniqueInGroup(body("deviceName")),
-    async (request: Request, response: Response) => {
-      try {
-        const device: Device = await Device.create({
-          deviceName: request.body.deviceName,
-          GroupId: response.locals.group.id,
-          kind: request.body.type,
-          password: "no-password",
-        });
-        await Promise.all([
-          device.update({ uuid: device.id, saltId: device.id }),
-          // Create the initial entry in the device history table.
-          DeviceHistory.create({
-            saltId: device.id,
-            setBy: "register",
-            GroupId: device.GroupId,
-            DeviceId: device.id,
-            fromDateTime: new Date(),
-            deviceName: device.deviceName,
-            uuid: device.id,
-          }),
-        ]);
-        return successResponse(response, "Created new device.", {
-          id: device.id,
-        });
-      } catch (e) {
-        console.log(e);
-      }
-    },
-  );
-
-  /**
    * @api {delete} /api/v1/devices/:deviceId Delete a device
    * @apiName DeleteDevice
    * @apiGroup Device

@@ -187,16 +187,6 @@ const emit = defineEmits<{
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { width: canvasWidth, height: canvasHeight } = useElementSize(canvas);
 
-// Trailcam image ratio
-const imageBitmap = ref<ImageBitmap | null>(null);
-const imageRatio = computed<number>(() => {
-  if (imageBitmap.value) {
-    return imageBitmap.value.width / imageBitmap.value.height;
-  } else {
-    return 1;
-  }
-});
-
 watch(canvasWidth, () => {
   animationTick.value = 0;
   setOverlayCanvasDimensions();
@@ -1209,95 +1199,40 @@ const currentAbsoluteTime = computed<string | null>(() => {
   return null;
 });
 
-const drawTrailcamImageAndOverlay = () => {
-  if (overlayContext.value && imageBitmap.value) {
-    clearCanvases();
-    const ctx = overlayContext.value;
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
-    const restrictedHeight = Math.floor(canvasWidth / imageRatio.value);
-    const offsetY = (canvasHeight - restrictedHeight) * 0.5;
-    overlayContext.value.drawImage(
-      imageBitmap.value,
-      0,
-      offsetY / pixelRatio.value,
-      canvasWidth / pixelRatio.value,
-      restrictedHeight / pixelRatio.value,
-    );
-    if (props.recording && props.recording.tracks) {
-      for (const track of props.recording.tracks) {
-        if (track.positions && track.positions.length) {
-          const pos = { ...track.positions[0] };
-          pos.y = 1 - pos.y - pos.height;
-          pos.x = (pos.x * canvasWidth) / pixelRatio.value;
-          pos.height = (pos.height * restrictedHeight) / pixelRatio.value;
-          pos.y = (pos.y * restrictedHeight) / pixelRatio.value;
-          pos.width = (pos.width * canvasWidth) / pixelRatio.value;
-          const authTag = getAuthoritativeTagForTrack(track.tags);
-          let what = "";
-          let aiTag = false;
-          if (authTag) {
-            what = authTag[0];
-            aiTag = authTag[1];
-          }
-          if (what) {
-            drawRectWithText(
-              ctx,
-              track.id,
-              [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height],
-              displayLabelForClassificationLabel(what, aiTag),
-              false,
-              props.recording.tracks,
-              track,
-              pixelRatio.value,
-              1,
-              restrictedHeight,
-            );
-          }
-        }
-      }
-    }
-  }
-};
-
 const updateOverlayCanvas = (frameNumToRender: number) => {
   if (overlayContext.value) {
-    if (currentRecordingType.value === "cptv") {
-      renderOverlay(
-        overlayContext.value,
-        scale.value,
-        secondsSinceLastFFC.value,
-        false,
-        frameNumToRender,
-        tracksIntermediate.value,
-        props.canSelectTracks,
-        props.currentTrack,
-        motionPathMode.value ? motionPaths.value : [],
-        pixelRatio.value,
-        tracksByFrame.value,
-        framesByTrack.value,
-        trackExportOptions.value,
-      );
+    renderOverlay(
+      overlayContext.value,
+      scale.value,
+      secondsSinceLastFFC.value,
+      false,
+      frameNumToRender,
+      tracksIntermediate.value,
+      props.canSelectTracks,
+      props.currentTrack,
+      motionPathMode.value ? motionPaths.value : [],
+      pixelRatio.value,
+      tracksByFrame.value,
+      framesByTrack.value,
+      trackExportOptions.value,
+    );
 
-      {
-        const time = `${elapsedTime.value} / ${formatTime(
-          Math.max(currentTime.value, actualDuration.value),
-        )}`;
-        drawBottomRightOverlayLabel(
-          time,
-          overlayContext.value,
-          pixelRatio.value,
-        );
-        // Draw time and temperature in
-        // overlayContext.
-        drawBottomLeftOverlayLabel(
-          currentAbsoluteTime.value,
-          overlayContext.value,
-          pixelRatio.value,
-        );
-      }
-    } else {
-      drawTrailcamImageAndOverlay();
+    {
+      const time = `${elapsedTime.value} / ${formatTime(
+        Math.max(currentTime.value, actualDuration.value),
+      )}`;
+      drawBottomRightOverlayLabel(
+        time,
+        overlayContext.value,
+        pixelRatio.value,
+      );
+      // Draw time and temperature in
+      // overlayContext.
+      drawBottomLeftOverlayLabel(
+        currentAbsoluteTime.value,
+        overlayContext.value,
+        pixelRatio.value,
+      );
     }
   }
 };
@@ -1771,7 +1706,6 @@ const creds = computed<LoggedInUserAuth | null>(() => {
   return prodCreds.value;
 });
 
-const currentRecordingType = ref<"cptv" | "image">("cptv");
 let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
@@ -1811,7 +1745,6 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
 
   if (loadedStream.value === true) {
     loadTimeout && loadTimeout.cancel();
-    currentRecordingType.value = "cptv";
     header.value = Object.freeze(await cptvDecoder.getHeader());
     loadTimeout && loadTimeout.cancel();
     const thisHeader = (header.value as CptvHeader) || {
@@ -1846,33 +1779,6 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       await loadedNextRecordingData();
       loadTimeout && loadTimeout.cancel();
       emit("ready-to-play", thisHeader);
-      playing.value = true;
-    }
-  } else if (loadedStream.value instanceof Blob) {
-    currentRecordingType.value = "image";
-    loadTimeout && loadTimeout.cancel();
-    try {
-      imageBitmap.value = await createImageBitmap(loadedStream.value);
-      drawTrailcamImageAndOverlay();
-    } catch (e) {
-      console.log("Image Error", e);
-    }
-
-    frames = [];
-    header.value = null;
-    resetRecordingNormalisation();
-    buffering.value = false;
-
-    while (!props.recording) {
-      // Wait for the recording data to be loaded if it's not,
-      // so that we can seek to the beginning of any track.
-      loadTimeout = delayMs(10);
-      await loadTimeout.promise;
-    }
-    if (props.recording && props.recording.id === props.recordingId) {
-      await loadedNextRecordingData();
-      loadTimeout && loadTimeout.cancel();
-      emit("ready-to-play", header.value as unknown as CptvHeader);
       playing.value = true;
     }
   } else if (typeof loadedStream.value === "string") {
@@ -2091,7 +1997,7 @@ const updateSavedOpacity = (val: InputEvent) => {
       key="container"
       class="video-container"
       ref="container"
-      :class="[currentRecordingType, { 'no-reference': !hasReferencePhoto }]"
+      :class="[{ 'no-reference': !hasReferencePhoto }]"
     >
       <canvas
         key="base"
@@ -2146,7 +2052,6 @@ const updateSavedOpacity = (val: InputEvent) => {
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
       <div
-        v-if="currentRecordingType === 'cptv'"
         key="playback-controls"
         :class="[
           'playback-controls',
@@ -2175,7 +2080,6 @@ const updateSavedOpacity = (val: InputEvent) => {
     <div
       key="playback-nav"
       class="playback-nav"
-      v-if="currentRecordingType === 'cptv'"
     >
       <button
         @click.prevent="togglePlayback"
@@ -2324,22 +2228,10 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div v-else-if="hasReferencePhoto" class="playback-nav justify-content-end">
-      <button
-        :class="{ selected: showingReferencePhoto }"
-        @click="toggleReferencePhotoComparison"
-        ref="toggleReferencePhoto"
-        class="reference-photo-btn"
-        data-tooltip="Reference photo"
-      >
-        <font-awesome-icon icon="panorama" />
-      </button>
-    </div>
     <div v-else class="black-spacer" />
     <div
       key="debug-nav"
       :class="['debug-tools', { open: showDebugTools }]"
-      v-if="currentRecordingType === 'cptv'"
     >
       <div class="debug-info">
         <div ref="frameNumField"></div>
@@ -2424,7 +2316,7 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div class="tracks-container" v-if="currentRecordingType === 'cptv'">
+    <div class="tracks-container">
       <tracks-scrubber
         class="player-tracks"
         :tracks="tracksIntermediate"
@@ -2550,11 +2442,6 @@ const updateSavedOpacity = (val: InputEvent) => {
     padding: 0;
     background: black;
     overflow: hidden;
-    &.image.no-reference {
-      @media screen and (min-width: 1041px) {
-        margin-top: 30px;
-      }
-    }
   }
   .time,
   .temp,
@@ -2859,8 +2746,6 @@ const updateSavedOpacity = (val: InputEvent) => {
   text-align: center;
 }
 .black-spacer {
-  // TODO for trailcam images, use minimum height possible.
-
   @media screen and (min-width: 1041px) {
     min-height: 30px;
   }

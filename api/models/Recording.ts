@@ -645,10 +645,6 @@ export class Recording extends ModelStaticCommon<Recording> {
   ]);
 
   static processingStates = Object.freeze({
-    "trailcam-image": [
-      RecordingProcessingState.Analyse,
-      RecordingProcessingState.Finished,
-    ],
     irRaw: [
       RecordingProcessingState.ReTrack,
       RecordingProcessingState.Tracking,
@@ -669,7 +665,7 @@ export class Recording extends ModelStaticCommon<Recording> {
   });
 
   static uploadedState(type: RecordingType) {
-    if (type == RecordingType.Audio || type == RecordingType.TrailCamImage) {
+    if (type == RecordingType.Audio) {
       return RecordingProcessingState.Analyse;
     } else {
       return RecordingProcessingState.TrackAndAnalyse;
