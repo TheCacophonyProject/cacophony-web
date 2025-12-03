@@ -14,17 +14,28 @@ defineProps<{
         :to="to"
         variant="secondary"
     >
+      <span class="location-name d-inline-flex">
         <material-symbol
             name="location_on"
             size="1.25rem"
             class="me-1"
         />
         {{ name }}
+      </span>
     </b-link>
     <span class="d-inline-flex align-items-center" v-else>
-        <material-symbol
-            name="location_on"
-            size="1.25rem"
-            class="me-1"
-        />{{ name }}</span>
+      <span class="location-name d-inline-flex">
+         <material-symbol
+           name="location_on"
+           size="1.25rem"
+           class="me-1"
+         />{{ name }}</span>
+      </span>
+
 </template>
+
+<style scoped lang="less">
+  .location-name {
+    word-break: break-word;
+  }
+</style>

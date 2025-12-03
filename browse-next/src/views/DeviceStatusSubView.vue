@@ -404,7 +404,6 @@ const interpolatedBatteryInfo = computed<BatteryInfoDisplayEvent[]>(() => {
   if (sortedEvents.length !== 0) {
     const firstEvent = sortedEvents[0] as BatteryInfoDisplayEvent;
     const lastEvent = sortedEvents[sortedEvents.length - 1] as BatteryInfoDisplayEvent;
-    console.log(firstEvent, lastEvent);
     const firstEventTime = firstEvent.dateTime;
     const lastEventTime = lastEvent.dateTime;
     const emptyDaysAtStart = Math.floor(
@@ -620,28 +619,44 @@ const audioRecordingModeDisplay = computed<string>(() => {
 const audioRecordingModeDescription = computed<string>(() => {
   switch (audioRecordingMode.value) {
     case AudioRecordingMode.AudioOrThermal:
-      return "Audio Or Thermal tooltip text";
+      return "Record thermal video and a one-minute clip of audio 32 times a day, at random intervals during the day. " +
+        "The device won't be able to record thermal video while the audio is being recorded.";
     case AudioRecordingMode.AudioOnly:
-      return "Audio only tooltip text";
+      return "Device records only audio, thermal video recording is disabled.";
     case AudioRecordingMode.Disabled:
-      return "Audio mode disabled tooltip text";
+      return "Device records only thermal video, audio recording is disabled.";
     case AudioRecordingMode.AudioAndThermal:
     default:
-      return "Audio And Thermal tooltip text";
+      return "Device records thermal video and audio. Audio is only recorded outside of the thermal recording schedule.";
   }
 });
 
 const audioRecordingSchedule = computed<string>(() => {
   switch (audioRecordingMode.value) {
     case AudioRecordingMode.AudioOrThermal:
-      return "Records audio at regular intervals outside of thermal recording window";
+      return "Set to record 24/7, but thermal recording is prioritised";
     case AudioRecordingMode.AudioOnly:
-      return "Makes an average of 32 one minute audio recordings per day, spread randomly across the day";
+      return "Set to record 24/7";
     case AudioRecordingMode.Disabled:
-      return "Takes no audio recordings, only thermal";
+      return "Audio recording disabled";
     case AudioRecordingMode.AudioAndThermal:
     default:
-      return "Makes an average of 32 one minute audio recordings per day, spread randomly across the day, when not making a thermal recording";
+      return "Record outside of the thermal recording schedule";
+  }
+});
+
+const audioRecordingScheduleDescription = computed<string>(() => {
+  switch (audioRecordingMode.value) {
+    case AudioRecordingMode.AudioOrThermal:
+      return `<p class="mb-2">Records a one-minute clip of audio 32 times a day, at random intervals during the day.</p>
+      <p class="mb-0">The device won't be able to record thermal video while the audio is being recorded.</p>`;
+    case AudioRecordingMode.AudioOnly:
+      return `<p class="mb-0">Records a one-minute clip of audio 32 times a day, at random intervals during the day.</p>`;
+    case AudioRecordingMode.Disabled:
+      return `<p class="mb-0">Audio recording is disabled, device records only thermal video.</p>`;
+    case AudioRecordingMode.AudioAndThermal:
+    default:
+      return `<p class="mb-0">Records a one-minute clip of audio outside of the thermal video recording schedule.</p>`;
   }
 });
 
@@ -658,8 +673,8 @@ const audioRecordingSchedule = computed<string>(() => {
           <dl class="settings-summary container mb-0">
             <!-- Device status -->
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Device status</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+              <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Device status</dt>
+              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
                 <!-- TODO: infer this state better, doesn't report correctly for offline devices  -->
                 <div v-if="deviceStopped">
                   <span class="d-flex d-inline-flex align-items-center px-1 rounded bg-danger-subtle text-danger-emphasis">
@@ -693,12 +708,12 @@ const audioRecordingSchedule = computed<string>(() => {
 
             <!-- Power profile -->
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Power profile</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+              <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Power profile</dt>
+              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
                 <div v-if="configInfoLoading">
                   <b-spinner small class="me-2" /> Loading power profile
                 </div>
-                <div v-else-if="powerProfile === DevicePowerProfile.HighPower" class="d-flex align-items-center">
+                <span v-else-if="powerProfile === DevicePowerProfile.HighPower" class="d-flex align-items-center">
                   <span>High Power mode</span>
                   <b-button
                     variant="light"
@@ -716,7 +731,7 @@ const audioRecordingSchedule = computed<string>(() => {
                     <p class="mb-2">Devices in High Power mode upload new recordings to the Cacophony Monitoring Platform immediately (if connected to the internet).</p>
                     <p class="mb-0">Any alerts configured for specific species will be sent out shortly after the detection.</p>
                   </b-popover>
-                </div>
+                </span>
                 <div v-else-if="powerProfile === DevicePowerProfile.LowPower">
                   <span>Low Power mode</span>
                   <b-button
@@ -741,39 +756,40 @@ const audioRecordingSchedule = computed<string>(() => {
             </div>
 
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 align-items-center fw-medium">Recording settings</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2 align-items-center">
-                {{ audioRecordingModeDisplay }}
-                <b-button
+              <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Recording settings</dt>
+              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                <span class="d-flex align-items-center">
+                  {{ audioRecordingModeDisplay }}
+                  <b-button
                     variant="light"
                     size="sm"
                     class="btn-icon d-inline-flex"
                     aria-label="View mode details"
                     id="audio-mode-description"
-                >
-                  <material-symbol name="info" size="1.25rem" />
-                </b-button>
-                <b-popover
+                  >
+                    <material-symbol name="info" size="1.25rem" />
+                  </b-button>
+                  <b-popover
                     class="popover-wide"
                     target="audio-mode-description"
-                >
-                  <p class="mb-0">{{ audioRecordingModeDescription }}</p>
-                </b-popover>
+                  >
+                    <p class="mb-0">{{ audioRecordingModeDescription }}</p>
+                  </b-popover>
+                </span>
               </dd>
             </div>
 
             <!-- Thermal recording schedule -->
             <div class="row" v-if="audioRecordingMode !== AudioRecordingMode.AudioOnly">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Thermal recording schedule</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+              <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Thermal recording schedule</dt>
+              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
                 <div v-if="configInfoLoading">
                   <b-spinner small class="me-2" />
                   Loading recording window
                 </div>
                 <div v-else-if="recordingWindow && !records247">
-                  {{ recordingWindow }}
-
-                  <div v-if="!shouldBeRecordingNow && recordingWindow" class="text-secondary">
+                  <p class="lh-base mb-1 mb-sm-0">{{ recordingWindow }}</p>
+                  <div v-if="!shouldBeRecordingNow && recordingWindow" class="text-secondary lh-base">
                     <span v-if="scheduledRecordStartTime">
                       <span v-if="deviceStopped">
                         Would record
@@ -794,9 +810,31 @@ const audioRecordingSchedule = computed<string>(() => {
               </dd>
             </div>
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Audio recording schedule</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
-                {{ audioRecordingSchedule }}
+              <dt class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-0 pb-0 ps-0 py-sm-2 pb-sm-0 fw-medium">Audio recording schedule</dt>
+              <dd class="col-sm-8 d-sm-inline-flex mb-0 mb-sm-0 pt-1 px-0 py-sm-2 pb-sm-0 align-items-start">
+                <div class="d-flex align-items-center">
+                  <span
+                    :class="{ 'text-secondary': audioRecordingMode === AudioRecordingMode.Disabled }"
+                    class="lh-base"
+                  >
+                    {{ audioRecordingSchedule }}
+                  </span>
+                  <b-button
+                    variant="light"
+                    size="sm"
+                    class="btn-icon d-inline-flex"
+                    aria-label="View audio recording schedule details"
+                    id="audio-recording-mode-description"
+                  >
+                    <material-symbol name="info" size="1.25rem" />
+                  </b-button>
+                  <b-popover
+                    class="popover-wide"
+                    target="audio-recording-mode-description"
+                  >
+                    <span v-html="audioRecordingScheduleDescription"></span>
+                  </b-popover>
+                </div>
               </dd>
             </div>
           </dl>
@@ -815,57 +853,63 @@ const audioRecordingSchedule = computed<string>(() => {
             <b-spinner small class="me-2" />
             Loading location info
           </div>
-          <div v-else-if="currentLocationForDevice" class="d-flex flex-column flex-sm-row row">
-            <div class="col col-12 col-sm-6">
-              <p class="mt-1 d-flex align-content-center">
-                <location-name :name="currentLocationForDevice.name" />
-              </p>
-              <dl class="settings-summary container mb-0 mb-sm-3">
-                <div class="row">
-                  <dt class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Latitude</dt>
-                  <dd class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
-                    {{device.location.lat.toFixed(6)}}
-                  </dd>
-                </div>
-                <div class="row">
-                  <dt class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Longitude</dt>
-                  <dd class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
-                    {{device.location.lng.toFixed(6)}}
-                  </dd>
-                </div>
-              </dl>
-              <b-popover
-                v-model="locationCopied"
-                manual
-              >
+          <div v-else-if="currentLocationForDevice" class="d-flex flex-column flex-fill">
+            <p class="mt-1">
+              <!--                <location-name :name="currentLocationForDevice.name" />-->
+              <location-name name="New station for usually-golden-donkey_2024-07-11T22:31:03.290Z" />
+            </p>
+
+            <div class="d-flex flex-column flex-sm-row flex-fill row">
+              <div class="col col-12 col-sm-6">
+                <dl class="settings-summary container mb-0 mb-sm-3">
+                  <div class="row">
+                    <dt class="col-sm-6 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Latitude</dt>
+                    <dd class="col-sm-6 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                      {{device.location.lat.toFixed(6)}}
+                    </dd>
+                  </div>
+                  <div class="row">
+                    <dt class="col-sm-6 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Longitude</dt>
+                    <dd class="col-sm-6 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                      {{device.location.lng.toFixed(6)}}
+                    </dd>
+                  </div>
+                </dl>
+                <b-popover
+                  v-model="locationCopied"
+                  manual
+                >
                 <span class="d-flex">
                   <material-symbol name="check" size="1.25rem" class="me-2 text-success" />
                   Copied
                 </span>
-                <template #target>
-                  <b-button
-                    variant="outline-secondary"
-                    class="d-flex"
-                    @click="copyLocation"
-                  >
-                    <material-symbol name="content_copy" size="1.25rem" class="me-2" />
-                    Copy coordinates
-                  </b-button>
-                </template>
-              </b-popover>
+                  <template #target>
+                    <b-button
+                      variant="outline-secondary"
+                      class="d-flex mb-3"
+                      @click="copyLocation"
+                    >
+                      <material-symbol name="content_copy" size="1.25rem" class="me-2" />
+                      Copy coordinates
+                    </b-button>
+                  </template>
+                </b-popover>
+              </div>
+              <div class="col col-12 col-sm-6">
+                <map-with-points
+                  :points="deviceLocationPoints"
+                  :highlighted-point="null"
+                  :active-points="deviceLocationPoints"
+                  :radius="30"
+                  :is-interactive="false"
+                  :zoom="false"
+                  :can-change-base-map="false"
+                  :loading="locationInfoLoading"
+                  class="location-map"
+                />
+              </div>
             </div>
-            <div class="col col-12 mt-4 mt-sm-0 col-sm-6">
-              <map-with-points
-                :points="deviceLocationPoints"
-                :highlighted-point="null"
-                :active-points="deviceLocationPoints"
-                :radius="30"
-                :is-interactive="false"
-                :zoom="false"
-                :can-change-base-map="false"
-                :loading="locationInfoLoading"
-                style="min-height: 220px; width: 100%; aspect-ratio: 1" />
-            </div>
+
           </div>
           <div v-else class="d-flex flex-fill align-items-center justify-content-center">
             <div class="text-secondary text-center">
@@ -991,7 +1035,7 @@ const audioRecordingSchedule = computed<string>(() => {
           ">{{ versionInfo.version }}</span>
             <span v-else-if="versionInfo.latestVersion !== 'not found'"><span class="outdated-version">{{
                 versionInfo.version }}</span>&nbsp;
-            <em class="latest-version">({{ versionInfo.latestVersion }} is latest)</em></span>
+            <span class="latest-version">({{ versionInfo.latestVersion }} is latest)</span></span>
             <span v-else>{{ versionInfo.version }}</span>
           </template>
           <template #card="{
@@ -1014,7 +1058,7 @@ const audioRecordingSchedule = computed<string>(() => {
             ">{{ card.version.version }}</span>
               <span v-else-if="card.version.latestVersion !== 'not found'"><span class="outdated-version">{{
                   card.version.version }}</span>&nbsp;
-              <em class="latest-version">({{ card.version.latestVersion }} is latest)</em></span>
+              <span class="latest-version">({{ card.version.latestVersion }} is latest)</span></span>
               <span v-else>{{ card.version.version }}</span>
             </div>
           </template>
@@ -1052,35 +1096,89 @@ const audioRecordingSchedule = computed<string>(() => {
   .standard-shadow();
 }
 
-@media (max-width: @breakpoint-md-max) {
+.map {
+  height: 144px;
+}
+
+@media (max-width: @breakpoint-sm-max) {
   .bento-grid {
     display: grid;
     grid-template-columns: repeat(1, minmax(0, 1fr));
-    grid-template-rows: repeat(1, 1fr);
+  }
+}
+
+@media (min-width: @breakpoint-md) and (max-width: @breakpoint-md-max) {
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-rows: auto;
+
+    .configuration {
+      grid-column: span 8 / span 8;
+    }
+
+    .location {
+      grid-column: span 5 / span 5;
+      grid-row-start: 2;
+    }
+
+    .view {
+      grid-column: span 3 / span 3;
+      grid-column-start: 6;
+      grid-row-start: 2;
+    }
+
+    .battery {
+      grid-column: span 8 / span 8;
+      grid-row-start: 3;
+    }
+  }
+}
+
+@media (min-width: @breakpoint-md) {
+  .location-map {
+    &.map {
+      height: 100%;
+    }
   }
 }
 
 @media (min-width: @breakpoint-lg) {
   .bento-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-template-rows: repeat(2, 1fr);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-rows: auto;
 
     .configuration {
-      grid-column: span 2 / span 2;
+      grid-column: span 7 / span 7;
     }
 
     .location {
-      grid-column: span 2 / span 2;
-      grid-column-start: 3;
+      grid-column: span 5 / span 5;
+      grid-column-start: 8;
     }
 
     .view {
+      grid-column: span 4 / span 4;
       grid-row-start: 2;
     }
 
     .battery {
+      grid-column: span 8 / span 8;
+      grid-row-start: 2;
+    }
+  }
+}
+
+@media (min-width: @breakpoint-xxl) {
+  .bento-grid {
+    .view {
       grid-column: span 3 / span 3;
+      grid-row-start: 2;
+    }
+
+    .battery {
+      grid-column: span 9 / span 9;
       grid-row-start: 2;
     }
   }
@@ -1096,11 +1194,6 @@ const audioRecordingSchedule = computed<string>(() => {
       }
     }
   }
-}
-
-.map {
-  width: 320px;
-  height: 240px;
 }
 
 .single-frame-cptv-container {
@@ -1155,12 +1248,12 @@ const audioRecordingSchedule = computed<string>(() => {
 }
 
 .outdated-version {
-  color: darkred;
+  color: var(--bs-danger);
   font-weight: bold;
 }
 
 .latest-version {
-  color: #777;
+  color: var(--bs-secondary);
 }
 </style>
 <style lang="less">
