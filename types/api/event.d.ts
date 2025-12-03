@@ -1,5 +1,5 @@
 import type { IsoFormattedDateString, DeviceId } from "./common.ts";
-import { DeviceEventType } from "./consts.ts";
+import {AudioRecordingMode, DeviceEventType} from "./consts.ts";
 
 export type EventDates = IsoFormattedDateString[];
 
@@ -21,9 +21,13 @@ export interface DeviceEvent {
     details: object;
   };
 }
-
 export interface DeviceConfigDetail {
   audio: null;
+  "audio-recording"?: {
+    "audio-mode"?: AudioRecordingMode;
+    "random-seed"?: number;
+    updated: IsoFormattedString;
+  },
   battery: {
     "no-battery-reading": number;
     "low-battery-reading": number;

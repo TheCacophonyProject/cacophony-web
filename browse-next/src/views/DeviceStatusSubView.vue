@@ -1,35 +1,29 @@
 <script lang="ts" setup>
-import { computed, inject, onBeforeMount, ref, watch } from "vue";
+import type {Ref} from "vue";
+import {computed, inject, onBeforeMount, ref, watch} from "vue";
 import {ClientApi} from "@/api";
-import type {BatteryInfo, BatteryInfoEvent} from "@apiClient/types";
-import { useRoute } from "vue-router";
-import type { Ref } from "vue";
-import type { DeviceId } from "@typedefs/api/common";
+import type {BatteryInfoEvent, LoadedResource} from "@apiClient/types";
+import {useRoute} from "vue-router";
+import type {DeviceId} from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
-import type { CardTableRows } from "@/components/CardTableTypes";
-import type { DeviceConfigDetail } from "@typedefs/api/event";
-import {
-  projectDevicesLoaded,
-  projectLocationsLoaded,
-} from "@models/LoggedInUser";
-import type { LoadedResource } from "@apiClient/types";
+import type {CardTableRows} from "@/components/CardTableTypes";
+import type {DeviceConfigDetail} from "@typedefs/api/event";
+import {projectDevicesLoaded, projectLocationsLoaded} from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type { NamedPoint } from "@models/mapUtils";
-import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
+import type {NamedPoint} from "@models/mapUtils";
+import type {ApiStationResponse as ApiLocationResponse} from "@typedefs/api/station";
 import sunCalc from "suncalc";
-import { DateTime } from "luxon";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import {DateTime} from "luxon";
+import type {ApiRecordingResponse} from "@typedefs/api/recording";
 import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
-import { FixedScaleAxis, Interpolation, LineChart } from "chartist";
-import { DeviceType } from "@typedefs/api/consts.ts";
-import type {
-  ApiDeviceResponse,
-  ApiDeviceHistorySettings,
-} from "@typedefs/api/device";
+import {FixedScaleAxis, Interpolation, LineChart} from "chartist";
+import {AudioRecordingMode, DeviceType} from "@typedefs/api/consts.ts";
+import type {ApiDeviceHistorySettings, ApiDeviceResponse} from "@typedefs/api/device";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
-import { resourceIsLoading } from "@/helpers/utils.ts";
+import {resourceIsLoading} from "@/helpers/utils.ts";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 import {BButton, BPopover, BSpinner} from "bootstrap-vue-next";
+import LocationName from "@/components/LocationName.vue";
 
 const batteryTimeSeries = ref<HTMLDivElement>();
 
@@ -268,12 +262,12 @@ const uptimes = computed<number[]>(() => {
 
 const initBatteryInfoTimeSeries = () => {
   if (interpolatedBatteryInfo.value && batteryTimeSeries.value) {
-    let chartLow = 0;
-    let chartHigh = 100;
+    const chartLow = 0;
+    const chartHigh = 100;
     let axisLabelFormat;
 
     // Use percentage as primary display
-    const primaryData: {x: Date, y: number, meta: BatteryInfoDisplayEvent}[] = interpolatedBatteryInfo.value
+    const primaryData: {x: Date; y: number; meta: BatteryInfoDisplayEvent}[] = interpolatedBatteryInfo.value
       .map((item) => ({
         x: item.dateTime,
         y: item.battery as number,
@@ -602,6 +596,55 @@ const primaryBatteryDataType = computed<string>(() => {
 
 const showSoftwareInformation = ref<boolean>(false);
 
+const audioRecordingMode = computed<AudioRecordingMode>(() => {
+  if (deviceConfig.value && deviceConfig.value["audio-recording"] && deviceConfig.value["audio-recording"]["audio-mode"]) {
+    return deviceConfig.value["audio-recording"]["audio-mode"];
+  }
+  return AudioRecordingMode.AudioAndThermal;
+});
+
+const audioRecordingModeDisplay = computed<string>(() => {
+  switch (audioRecordingMode.value) {
+    case AudioRecordingMode.AudioOrThermal:
+      return "Audio or thermal";
+    case AudioRecordingMode.AudioOnly:
+      return "Audio only";
+    case AudioRecordingMode.Disabled:
+      return "Thermal only";
+    case AudioRecordingMode.AudioAndThermal:
+    default:
+      return "Audio and thermal";
+  }
+});
+
+const audioRecordingModeDescription = computed<string>(() => {
+  switch (audioRecordingMode.value) {
+    case AudioRecordingMode.AudioOrThermal:
+      return "Audio Or Thermal tooltip text";
+    case AudioRecordingMode.AudioOnly:
+      return "Audio only tooltip text";
+    case AudioRecordingMode.Disabled:
+      return "Audio mode disabled tooltip text";
+    case AudioRecordingMode.AudioAndThermal:
+    default:
+      return "Audio And Thermal tooltip text";
+  }
+});
+
+const audioRecordingSchedule = computed<string>(() => {
+  switch (audioRecordingMode.value) {
+    case AudioRecordingMode.AudioOrThermal:
+      return "Records audio at regular intervals outside of thermal recording window";
+    case AudioRecordingMode.AudioOnly:
+      return "Makes an average of 32 one minute audio recordings per day, spread randomly across the day";
+    case AudioRecordingMode.Disabled:
+      return "Takes no audio recordings, only thermal";
+    case AudioRecordingMode.AudioAndThermal:
+    default:
+      return "Makes an average of 32 one minute audio recordings per day, spread randomly across the day, when not making a thermal recording";
+  }
+});
+
 </script>
 <template>
   <div v-if="device && device.active" class="mt-3 d-flex flex-column">
@@ -697,16 +740,30 @@ const showSoftwareInformation = ref<boolean>(false);
               </dd>
             </div>
 
-            <!-- TODO: Recording settings, thermal, audio, both -->
-<!--            <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Recording settings</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
-                ADD ME
+            <div class="row">
+              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 align-items-center fw-medium">Recording settings</dt>
+              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2 align-items-center">
+                {{ audioRecordingModeDisplay }}
+                <b-button
+                    variant="light"
+                    size="sm"
+                    class="btn-icon d-inline-flex"
+                    aria-label="View mode details"
+                    id="audio-mode-description"
+                >
+                  <material-symbol name="info" size="1.25rem" />
+                </b-button>
+                <b-popover
+                    class="popover-wide"
+                    target="audio-mode-description"
+                >
+                  <p class="mb-0">{{ audioRecordingModeDescription }}</p>
+                </b-popover>
               </dd>
-            </div>-->
+            </div>
 
             <!-- Thermal recording schedule -->
-            <div class="row">
+            <div class="row" v-if="audioRecordingMode !== AudioRecordingMode.AudioOnly">
               <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Thermal recording schedule</dt>
               <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
                 <div v-if="configInfoLoading">
@@ -736,14 +793,12 @@ const showSoftwareInformation = ref<boolean>(false);
                 <div v-else class="text-secondary">Recording window unavailable</div>
               </dd>
             </div>
-
-            <!-- TODO: Audio recording schedule -->
-<!--            <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium">Audio recording schedule</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
-                ADD ME
+            <div class="row">
+              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Audio recording schedule</dt>
+              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+                {{ audioRecordingSchedule }}
               </dd>
-            </div>-->
+            </div>
           </dl>
         </div>
       </div>
@@ -762,8 +817,9 @@ const showSoftwareInformation = ref<boolean>(false);
           </div>
           <div v-else-if="currentLocationForDevice" class="d-flex flex-column flex-sm-row row">
             <div class="col col-12 col-sm-6">
-              <!-- TODO: display current/latest known location name -->
-<!--              <p class="mt-1">Location name goes here long name two lines</p>-->
+              <p class="mt-1 d-flex align-content-center">
+                <location-name :name="currentLocationForDevice.name" />
+              </p>
               <dl class="settings-summary container mb-0 mb-sm-3">
                 <div class="row">
                   <dt class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Latitude</dt>

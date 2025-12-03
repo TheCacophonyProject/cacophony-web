@@ -11,6 +11,14 @@ export enum RecordingPermission {
   UPDATE = "update",
 }
 
+export enum AudioRecordingMode {
+    AudioOrThermal = "AudioOrThermal",
+    AudioAndThermal = "AudioAndThermal",
+    AudioOnly = "AudioOnly",
+    Disabled = "Disabled",
+}
+
+
 export enum TagMode {
   Any = "any",
   UnTagged = "untagged",
