@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { computed, onBeforeMount, ref, watch } from "vue";
-// import {
-//   type BatteryInfoEvent,
-//   getLastKnownDeviceBatteryLevel,
-// } from "@api/Device.ts";
-import type { LoadedResource } from "@apiClient//types.ts";
+import type {BatteryInfoEvent, LoadedResource} from "@apiClient/types.ts";
 import {ClientApi} from "@/api";
 import { resourceFailedLoading, resourceIsLoading } from "@/helpers/utils.ts";
-import type { BatteryInfoEvent } from "@apiClient/Device.ts";
 
 const props = withDefaults(
   defineProps<{
@@ -38,7 +33,7 @@ const loadInfo = async () => {
   ) {
     batteryLevelInfo.value = (
       window as unknown as BatteryInfoMapContainer
-    ).deviceBatteryInfoMap[`__${props.device.id}`];
+    ).deviceBatteryInfoMap[`__${props.device.id}`] as BatteryInfoEvent;
   } else {
     batteryLevelInfo.value = null;
     batteryLevelInfo.value = await ClientApi.Devices.getLastKnownDeviceBatteryLevel(
@@ -89,7 +84,7 @@ watch(
   <div v-else-if="loadingFailed">&ndash;</div>
   <div v-else-if="
     batteryLevelInfo &&
-    batteryLevelInfo.batteryType === 'unknown' &&
+    batteryLevelInfo.batteryType === 'unknown_battery_type' &&
     batteryLevelInfo.battery === 100
   " :class="{ active: deviceIsActive, inactive: !deviceIsActive }">
     <font-awesome-icon icon="plug" />

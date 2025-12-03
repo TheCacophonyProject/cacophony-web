@@ -767,7 +767,7 @@ const drawRectWithText = (
   })`;
   context.beginPath();
   context.strokeRect(x, y, width, height);
-  const color = TagColours[trackIndex % TagColours.length].background;
+  const color = TagColours[trackIndex % TagColours.length]!.background;
   const r = parseInt(color.slice(1, 3), 16);
   const g = parseInt(color.slice(3, 5), 16);
   const b = parseInt(color.slice(5), 16);
@@ -1161,14 +1161,16 @@ watch(pendingTrackClass, async (classification: string[]) => {
     props.recording &&
     showClassificationSelector.value &&
     classification.length &&
-    pendingTrack.value
+    pendingTrack.value &&
+    pendingTrack.value.tags.length &&
+    pendingTrack.value.tags[0]
   ) {
     selectionPopover.value?.classList.add("removed");
     setTimeout(() => {
       showClassificationSelector.value = false;
     }, 300);
     // Patch the pending track
-    pendingTrack.value.tags[0].what = classification[0];
+    pendingTrack.value.tags[0].what = classification[0] as string;
     pendingTrack.value.tags[0].automatic = false;
     const tagToReplace = {
       ...pendingTrack.value.tags[0],
@@ -1176,6 +1178,7 @@ watch(pendingTrackClass, async (classification: string[]) => {
     pendingTrack.value.tags[0].createdAt = new Date().toISOString();
     pendingTrack.value.tags[0].userId = currentUser.value?.id;
     pendingTrack.value.tags[0].userName = currentUser.value?.userName;
+
 
     let willDeleteRecording = false;
     if (classification[0] === "human" && currentProject.value && currentProject.value.settings?.filterHuman) {
@@ -1209,7 +1212,7 @@ watch(pendingTrackClass, async (classification: string[]) => {
 
         emit("track-tag-changed", {
           track: pendingTrack.value,
-          tag: classification[0],
+          tag: classification[0] as string,
           action: "add",
           newId: response.result.trackId,
           userId: currentUser.value?.id,
@@ -1298,7 +1301,7 @@ const getAuthoritativeTagForTrack = (
   trackTags: ApiTrackTagResponse[],
 ): [string, boolean, boolean] | null => {
   const userTags = trackTags.filter((tag) => !tag.automatic);
-  if (userTags.length) {
+  if (userTags.length && userTags[0]) {
     return [
       userTags[0].what,
       false,
@@ -1553,6 +1556,7 @@ const isMobileView = computed<boolean>(() => {
       :color-scheme="currentPalette"
       :height="height"
       frequency-scale
+      time-scale
       delegate-double-click
     >
       <div
