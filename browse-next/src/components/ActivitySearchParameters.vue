@@ -39,6 +39,12 @@ import {
   CurrentProjectAudioLabels,
   CurrentProjectCameraLabels,
 } from "@/helpers/Project.ts";
+import {
+  BButton,
+  BFormCheckbox,
+  BPopover,
+} from "bootstrap-vue-next";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -931,12 +937,13 @@ const { top: searchParamsOffsetTop } = useElementBounding(
 const scrolledToStickyPosition = computed<boolean>(() => {
   return searchParamsOffsetTop.value === 15;
 });
+
 </script>
 
 <template>
   <div ref="searchParamsContainer">
     <div
-      class="btn-group btn-group-sm d-flex mb-2"
+      class="btn-group btn-group-md d-flex"
       role="group"
       aria-label="Toggle between camera and bird monitor results"
       v-if="projectHasAudioAndThermal"
@@ -950,9 +957,13 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="recordingMode"
         value="cameras"
       />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"
-        >Cameras</label
+      <label
+        class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center pt-2 pb-2"
+        for="recording-mode-cameras"
       >
+        <material-symbol name="videocam" class="me-2" size="1.25rem" />
+        Thermal
+      </label>
       <input
         type="radio"
         class="btn-check"
@@ -962,12 +973,16 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="recordingMode"
         value="audio"
       />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"
-        >Bird Monitors</label
+      <label
+        class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center pt-2 pb-2"
+        for="recording-mode-audio"
       >
+        <material-symbol name="music_note" class="me-2" size="1.25rem" />
+        Audio
+      </label>
     </div>
     <div
-      class="btn-group d-flex"
+      class="btn-group d-flex mt-4"
       :class="{ 'btn-group-sm': scrolledToStickyPosition }"
       role="group"
       aria-label="Toggle between results groups as visits or as recordings"
@@ -982,7 +997,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="computedDisplayMode"
         :value="'visits'"
       />
-      <label class="btn btn-outline-secondary w-50" for="display-mode-visits"
+      <label class="btn btn-radio-group btn-sm w-50" for="display-mode-visits"
         >Visits</label
       >
       <input
@@ -995,19 +1010,20 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         :value="'recordings'"
       />
       <label
-        class="btn btn-outline-secondary w-50"
+        class="btn btn-radio-group btn-sm w-50"
         for="display-mode-recordings"
         >Recordings</label
       >
     </div>
   </div>
-  <div class="mt-2">
-    <label class="fs-7">Date range</label>
+  <div class="mt-3">
+    <label for="date-range" class="mb-1">Date range</label>
     <multiselect
       v-model="selectedDateRange"
       :options="commonDateRanges"
       value-prop="label"
       label="label"
+      id="date-range"
       :object="true"
       :searchable="false"
       :can-clear="false"
@@ -1038,42 +1054,45 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       auto-apply
     />
   </div>
-  <div class="mt-2">
-    <label class="fs-7">Locations</label>
+  <div class="mt-3">
+    <label for="locations" class="mb-1">Locations</label>
     <multiselect
       mode="tags"
       ref="selectedLocationsSelect"
       v-model="selectedLocations"
       :options="locationsInSelectedTimespanOptions"
       :can-clear="false"
+      id="locations"
       class="ms-bootstrap"
       @change="onChangeLocationsSelect"
       searchable
     />
   </div>
-  <div class="mt-3" v-if="displayMode === ActivitySearchDisplayMode.Recordings">
-    <!--    <label class="fs-7">Filtering</label>-->
-    <div class="d-flex justify-content-between">
+  <div class="mt-2" v-if="displayMode === ActivitySearchDisplayMode.Recordings">
+    <div class="d-flex align-items-center">
       <b-form-checkbox
         v-model="showFilteredFalsePositivesAndNones"
         switch
         :disabled="showUntaggedOnly"
-        >Include
-        <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
-          >false triggers</span
-        ><span v-if="recordingMode === ActivitySearchRecordingMode.Audio"
-          >redacted audio</span
-        ></b-form-checkbox
+        size="lg"
       >
-      <span class="help-toggle" ref="falsePositiveInfoParent"
-        ><font-awesome-icon icon="question"
-      /></span>
+        <span class="d-flex justify-content-center">
+          <span>Include&nbsp;</span>
+          <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras">
+            false triggers
+          </span>
+          <span v-if="recordingMode === ActivitySearchRecordingMode.Audio">
+            redacted audio
+          </span>
+        </span>
+      </b-form-checkbox>
+      <span ref="falsePositiveInfoParent" class="text-secondary d-flex align-items-baseline">
+        <material-symbol name="help" size="1.25rem" />
+      </span>
+
     </div>
     <b-popover
-      click
-      variant="secondary"
       v-model="toggleFalsePositiveFilterHelp"
-      tooltip
       custom-class="tag-info-popover"
       placement="right-start"
       teleport-to="body"
@@ -1089,20 +1108,21 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       >
     </b-popover>
   </div>
-  <button
-    type="button"
+  <b-button
+    variant="link-secondary"
     v-if="params.displayMode === ActivitySearchDisplayMode.Recordings"
-    class="btn mt-2 fs-7 px-0 advanced-filtering-btn d-flex align-items-center w-100"
+    class="btn mt-2 d-flex align-items-center justify-content-center w-100"
     @click="showAdvanced = !showAdvanced"
   >
-    Advanced search
-    <font-awesome-icon
-      icon="chevron-right"
-      :rotation="!showAdvanced ? 90 : 270"
-      size="sm"
-      class="ms-2"
+    <span v-if="!showAdvanced">Show&nbsp;</span>
+    <span v-else>Hide&nbsp;</span>
+    advanced search
+    <material-symbol
+      :name="!showAdvanced ? 'keyboard_arrow_down' : 'keyboard_arrow_up'"
+      size="1.25rem"
+      class="ms-1"
     />
-  </button>
+  </b-button>
 
   <div
     class="advanced-search"
@@ -1111,14 +1131,18 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       params.displayMode === ActivitySearchDisplayMode.Recordings
     "
   >
-    <div class="mt-2">
+    <div class="mt-3">
+      <span class="d-block mb-2">Show only recordings</span>
       <b-form-checkbox v-model="showUntaggedOnly" switch :disabled="showUntaggedByHumanOnly"
-        >Untagged only</b-form-checkbox
+      ><span class="text-muted">Not tagged</span></b-form-checkbox
       >
       <b-form-checkbox v-model="showUntaggedByHumanOnly" switch :disabled="showUntaggedOnly"
-      >Untagged <em>by humans</em> only</b-form-checkbox
+      ><span class="text-muted">Not tagged by humans</span></b-form-checkbox
       >
-      <div class="mt-2">
+    </div>
+    <div class="mt-4">
+      <div>
+        <span class="d-block mb-1">Track tags</span>
         <hierarchical-tag-select
           :disabled="showUntaggedOnly"
           class="flex-grow-1"
@@ -1129,60 +1153,56 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         />
       </div>
       <div class="mt-2">
-        <div class="d-flex justify-content-between">
+        <div class="d-flex align-items-center">
           <b-form-checkbox
-            switch
             v-model="includeSubSpeciesTags"
             :disabled="selectedTags.length === 0 || showUntaggedOnly"
-            >Include sub-species tags
+          >Include sub-species tags
           </b-form-checkbox>
-          <span ref="tagInfoParent" class="help-toggle"
-            ><font-awesome-icon icon="question"
-          /></span>
+          <span ref="tagInfoParent" class="text-secondary d-flex align-items-baseline ms-3">
+            <material-symbol name="help" size="1.25rem" />
+          </span>
         </div>
         <b-popover
-          click
           teleport-to="body"
-          variant="secondary"
           v-model="toggleSubspeciesHelp"
-          tooltip
           custom-class="tag-info-popover"
           placement="right-start"
           :target="tagInfoParent"
         >
-          If you select the tag 'mammal', having this option selected means
-          we'll search for all tags with 'mammal' as an ancestor. Having the
-          option disabled means we'll only search for recordings with the
-          explicit 'mammal' tag.
+          <p class="mb-1">If you select the tag 'mammal', having this option selected means
+            we'll search for all tags with 'mammal' as an ancestor.</p>
+          <p class="mb-0">Having the option disabled means we'll only search for recordings with the
+            explicit 'mammal' tag.</p>
         </b-popover>
       </div>
     </div>
-    <div class="mt-2">
-      <div class="d-flex justify-content-between">
+    <div class="mt-4 mb-3">
+      <span class="d-block mb-2">Recording labels</span>
+      <div class="d-flex justify-content-between gap-2 mb-2">
         <b-button
           @click.prevent="starredLabel = !starredLabel"
-          variant="light"
-          size="sm"
+          variant="outline-secondary"
+          class="w-100"
         >
           <font-awesome-icon
             :icon="starredLabel ? ['fas', 'star'] : ['far', 'star']"
-            :color="starredLabel ? 'goldenrod' : '#666'"
+            :color="starredLabel ? 'goldenrod' : ''"
           />
           <span class="ms-2">Starred</span>
         </b-button>
         <b-button
           @click.prevent="flaggedLabel = !flaggedLabel"
-          variant="light"
-          size="sm"
+          variant="outline-secondary"
+          class="w-100"
         >
           <font-awesome-icon
             :icon="flaggedLabel ? ['fas', 'flag'] : ['far', 'flag']"
-            :color="flaggedLabel ? '#ad0707' : '#666'"
+            :color="flaggedLabel ? '#ad0707' : ''"
           />
           <span class="ms-2">Flagged</span>
         </b-button>
       </div>
-      <label class="fs-7">Labelled with</label>
       <multiselect
         v-model="selectedLabels"
         :options="availableLabels"
@@ -1190,6 +1210,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         :can-clear="false"
         class="ms-bootstrap"
         searchable
+        placeholder="Select labels"
       />
     </div>
   </div>
@@ -1204,73 +1225,27 @@ const scrolledToStickyPosition = computed<boolean>(() => {
   <!--    Search-->
   <!--  </b-button>-->
   <b-button
-    variant="link"
+    variant="outline-secondary"
     :size="scrolledToStickyPosition ? 'sm' : 'md'"
-    class="w-100 mt-2 grey-link"
+    class="w-100 mt-2 mt-3 mb-3"
     :disabled="!searchIsValid"
     @click="emit('export-requested')"
   >
     Export search results
   </b-button>
 </template>
-
-<style lang="less" scoped>
-.advanced-filtering-btn,
-.advanced-filtering-btn:hover {
-  color: #007086;
-}
-.grey-link {
-  color: #666;
-}
-.help-toggle {
-  background: var(--bs-light-bg-subtle);
-  color: var(--bs-secondary);
-  border: 1px solid var(--bs-secondary-bg);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 25px;
-  height: 25px;
-}
-.ms-bootstrap {
-  // Match focus colours to bootstrap?
-  --ms-ring-width: 0.25rem;
-  --ms-ring-color: rgb(13 110 253 / 25%);
-  --ms-border-color-active: #86b7fe;
-}
-.dp__theme_light {
-  --dp-border-color-hover: #86b7fe;
-  --dp-border-radius: 0.375rem;
-  //&:focus {
-  //  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-  //}
-  border-radius: 0.375rem;
-}
-//.dp__input {
-//  border-radius: 0.375rem;
-//}
-.dp__input_focus {
-  //border-radius: 0.375rem;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-</style>
 <style lang="less">
+// TODO: should this be scoped?
 .multiselect-tag {
   white-space: unset !important;
 }
 
+// TODO: do we still need this?
 .tag-info-popover {
   z-index: 200001;
-}
-.form-check-input:checked {
-  background-color: var(--bs-secondary);
-  border-color: var(--bs-secondary);
 }
 </style>
 <style lang="css">
 @import url("@vueform/multiselect/themes/default.css");
-</style>
-<style lang="css">
 @import url("@vuepic/vue-datepicker/dist/main.css");
 </style>

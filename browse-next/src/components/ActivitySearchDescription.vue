@@ -14,6 +14,8 @@ import { TagMode } from "@typedefs/api/consts.ts";
 import { displayLabelForClassificationLabel, flatClassifications } from "@api/classificationsUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
+import {BAlert} from "bootstrap-vue-next";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const COOL = "cool";
 const FLAG = "requires review";
@@ -116,7 +118,12 @@ const otherLabels = computed<string[]>(
 </script>
 
 <template>
-  <div class="mb-3 search-description fs-6">
+  <b-alert
+    :model-value="true"
+    variant="light"
+    class="mb-3"
+  >
+    <material-symbol name="info" class="me-2" size="1.25rem" />
     <em v-if="hasStarred"> Starred</em
     ><span v-if="hasStarred && hasFlagged"> or </span
     ><em v-if="hasFlagged">{{ hasStarred ? "flagged" : "Flagged" }}</em>
@@ -235,10 +242,5 @@ const otherLabels = computed<string[]>(
       </span>
     </span>
     <span>.</span>
-  </div>
+  </b-alert>
 </template>
-<style scoped lang="less">
-.fw-semibold {
-  font-weight: 500 !important;
-}
-</style>

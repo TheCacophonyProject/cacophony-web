@@ -1,0 +1,18 @@
+@import url("@vuepic/vue-datepicker/dist/main.css");
+
+.dp__theme_light {
+  --dp-primary-color: var(--cp-color-green-600) !important;
+  --dp-font-family: var(--cp-font-family);
+  --dp-font-size: var(--cp-font-size-md);
+
+  .dp__action_select,
+  .dp__action_buttons .dp__action_select {
+    &:hover {
+      background: var(--cp-color-green-700);
+    }
+  }
+
+  .dp__action_cancel:hover {
+    border-color: var(--bs-gray-500);
+  }
+}

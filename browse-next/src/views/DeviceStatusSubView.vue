@@ -855,8 +855,7 @@ const audioRecordingScheduleDescription = computed<string>(() => {
           </div>
           <div v-else-if="currentLocationForDevice" class="d-flex flex-column flex-fill">
             <p class="mt-1">
-              <!--                <location-name :name="currentLocationForDevice.name" />-->
-              <location-name name="New station for usually-golden-donkey_2024-07-11T22:31:03.290Z" />
+              <location-name :name="currentLocationForDevice.name" />
             </p>
 
             <div class="d-flex flex-column flex-sm-row flex-fill row">
@@ -886,7 +885,7 @@ const audioRecordingScheduleDescription = computed<string>(() => {
                   <template #target>
                     <b-button
                       variant="outline-secondary"
-                      class="d-flex mb-3"
+                      class="d-flex align-items-center mb-3"
                       @click="copyLocation"
                     >
                       <material-symbol name="content_copy" size="1.25rem" class="me-2" />
@@ -986,7 +985,7 @@ const audioRecordingScheduleDescription = computed<string>(() => {
         <div v-else class="flex-grow-1 d-flex align-items-center justify-content-center">
           <div class="text-secondary text-center d-flex flex-column">
             <material-symbol name="battery_unknown" size="2.4rem" grade="thin" class="mb-2"/>
-            No battery info available.
+            No battery information available.
           </div>
         </div>
       </div>

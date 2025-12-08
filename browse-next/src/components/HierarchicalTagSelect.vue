@@ -37,7 +37,7 @@ const props = withDefaults(
   {
     disabled: false,
     exclude: () => [],
-    placeholder: "Search Tags...",
+    placeholder: "Search tags",
     multiselect: false,
     withAudioContext: false,
     canBePinned: false,

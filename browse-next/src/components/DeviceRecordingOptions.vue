@@ -1030,19 +1030,3 @@ watch(customRecordingWindowStop, async () => {
   }
 }
 </style>
-<style lang="css">
-@import url("@vuepic/vue-datepicker/dist/main.css");
-
-/* TODO: move somewhere else? Or leave here, given the component is not used in any other places? */
-.dp__input {
-  font-family: var(--cp-font-family);
-  font-size: var(--cp-font-size-md);
-}
-
-.dp__action_select {
-  background: var(--cp-color-green-600);
-  &:hover {
-    background: var(--cp-color-green-700);
-  }
-}
-</style>

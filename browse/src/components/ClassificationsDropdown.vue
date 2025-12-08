@@ -54,7 +54,7 @@ export default defineComponent({
     },
     placeholder: {
       type: String as PropType<string>,
-      default: () => "Search Tags...",
+      default: () => "Search tags",
     },
   },
   components: {
