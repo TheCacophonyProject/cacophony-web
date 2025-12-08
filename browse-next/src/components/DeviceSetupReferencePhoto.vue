@@ -884,7 +884,10 @@ const helpInfo = ref(true);
                   class="position-absolute"
                   @loaded="handleSingleFrameLoaded"
                 />
-                <div class="reveal-slider position-absolute top-0 bottom-0 left-0 right-0" ref="revealSlider"">
+                <div
+                  class="reveal-slider position-absolute top-0 bottom-0 left-0 right-0"
+                  ref="revealSlider"
+                >
                   <img
                     alt="Current device point-of-view reference photo"
                     :src="latestReferenceImageURL"
