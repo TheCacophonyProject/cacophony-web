@@ -496,10 +496,10 @@ const moveRevealHandle = (event: PointerEvent) => {
     const parentBounds = target.parentElement!.getBoundingClientRect();
     const handleBounds = target.getBoundingClientRect();
     const halfHandleWidth = handleBounds.width / 2;
-    const x = Math.min(
+    const x = Math.max(0, Math.min(
       event.clientX - parentBounds.left - revealGrabOffsetX,
       parentBounds.width,
-    );
+    ));
     const left = (x / parentBounds.width) * 100;
     if (revealSlider.value) {
       revealSlider.value.style.width = `${left}%`;
