@@ -11,7 +11,10 @@ import {
   queryValueIsDate,
 } from "@/components/activitySearchUtils.ts";
 import { TagMode } from "@typedefs/api/consts.ts";
-import { displayLabelForClassificationLabel, flatClassifications } from "@api/classificationsUtils.ts";
+import {
+  displayLabelForClassificationLabel,
+  flatClassifications,
+} from "@api/classificationsUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
 
@@ -183,13 +186,22 @@ const otherLabels = computed<string[]>(
       <span v-if="searchParams.tagMode === TagMode.UnTagged">
         that don't have any tag</span
       >
-      <span v-else-if="[TagMode.NoHuman, TagMode.Tagged].includes(searchParams.tagMode)">
+      <span
+        v-else-if="
+          [TagMode.NoHuman, TagMode.Tagged].includes(searchParams.tagMode)
+        "
+      >
         <span v-if="searchParams.tagMode === TagMode.NoHuman">
-          that are untagged by humans<span v-if="searchParams.taggedWith.length !== 0 && searchParams.taggedWith[0] !== 'any'"> and tagged by AI with </span>
+          that are untagged by humans<span
+            v-if="
+              searchParams.taggedWith.length !== 0 &&
+              searchParams.taggedWith[0] !== 'any'
+            "
+          >
+            and tagged by AI with
+          </span>
         </span>
-        <span v-else>
-        tagged with
-        </span>
+        <span v-else> tagged with </span>
         <span
           v-if="
             searchParams.subClassTags &&
@@ -198,10 +210,20 @@ const otherLabels = computed<string[]>(
         >
           or inheriting from
         </span>
-        <span :key="index" v-for="(tag, index) in searchParams.taggedWith.filter(t => t !== 'any')">
+        <span
+          :key="index"
+          v-for="(tag, index) in searchParams.taggedWith.filter(
+            (t) => t !== 'any',
+          )"
+        >
           <strong class="fw-semibold"
             ><span class="text-capitalize">{{
-              displayLabelForClassificationLabel(tag, searchParams.tagMode === TagMode.NoHuman, searchParams.recordingMode === ActivitySearchRecordingMode.Audio)
+              displayLabelForClassificationLabel(
+                tag,
+                searchParams.tagMode === TagMode.NoHuman,
+                searchParams.recordingMode ===
+                  ActivitySearchRecordingMode.Audio,
+              )
             }}</span></strong
           ><span v-if="index === searchParams.taggedWith.length - 2"> or </span
           ><span
@@ -216,7 +238,8 @@ const otherLabels = computed<string[]>(
       <span
         v-if="
           !searchParams.includeFalsePositives &&
-          (searchParams.tagMode == TagMode.Any || searchParams.tagMode == TagMode.NoHuman)
+          (searchParams.tagMode == TagMode.Any ||
+            searchParams.tagMode == TagMode.NoHuman)
         "
         >, excluding those with no tracks, or that are only tagged as
         <strong class="fw-semibold text-capitalize">false trigger</strong>

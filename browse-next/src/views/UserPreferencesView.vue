@@ -7,7 +7,7 @@ import type { Ref } from "vue";
 import { formFieldInputText, isValidName } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 import type { ErrorResult, FieldValidationError } from "@apiClient/types";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import router from "@/router";
 import { currentUser as currentUserInfo } from "@models/provides";
@@ -137,7 +137,7 @@ const isValidPassword = computed<boolean>(() => {
   const hasUpper = /[A-Z]/.test(newPassword.value);
   const hasLower = /[a-z]/.test(newPassword.value);
   const hasDigit = /\d/.test(newPassword.value);
-  
+
   return hasUpper && hasLower && hasDigit;
 });
 
@@ -177,7 +177,9 @@ const updateUserDisplayName = async () => {
   };
 
   userUpdateInProgress.value = true;
-  const updatedUserResponse = await ClientApi.Users.updateUserFields({ userName: name });
+  const updatedUserResponse = await ClientApi.Users.updateUserFields({
+    userName: name,
+  });
 
   if (updatedUserResponse.success) {
     const currentUserInfo = currentUser.value || {};
@@ -200,7 +202,9 @@ const updateUserEmailAddress = async () => {
   };
 
   userUpdateInProgress.value = true;
-  const updatedUserResponse = await ClientApi.Users.updateUserFields({ email: emailAddress });
+  const updatedUserResponse = await ClientApi.Users.updateUserFields({
+    email: emailAddress,
+  });
 
   if (updatedUserResponse.success) {
     const currentUserInfo = currentUser.value || {};
@@ -224,7 +228,11 @@ const updateUserEmailAddress = async () => {
 
 const changePassword = async () => {
   // Validate that all fields are filled
-  if (!currentPassword.value.trim() || !newPassword.value.trim() || !confirmPassword.value.trim()) {
+  if (
+    !currentPassword.value.trim() ||
+    !newPassword.value.trim() ||
+    !confirmPassword.value.trim()
+  ) {
     passwordError.value = "All fields are required";
     showPasswordErrors.value = true;
     return;
@@ -241,9 +249,10 @@ const changePassword = async () => {
   const hasUpper = /[A-Z]/.test(newPassword.value);
   const hasLower = /[a-z]/.test(newPassword.value);
   const hasDigit = /\d/.test(newPassword.value);
-  
+
   if (!(hasUpper && hasLower && hasDigit)) {
-    passwordError.value = "New password must contain uppercase, lowercase and digit";
+    passwordError.value =
+      "New password must contain uppercase, lowercase and digit";
     showPasswordErrors.value = true;
     return;
   }
@@ -261,16 +270,16 @@ const changePassword = async () => {
   showPasswordErrors.value = false;
 
   userUpdateInProgress.value = true;
-  
+
   // Note: This is a placeholder implementation - you would need to implement the actual API call for password change
   // const updatedUserResponse = await updatePassword({
   //   currentPassword: currentPassword.value,
   //   newPassword: newPassword.value
   // });
-  
+
   // For now, just simulate success
   // If you were implementing this properly, you'd handle the API response here
-  
+
   userUpdateInProgress.value = false;
   changePasswordModal.value = false; // Close modal after successful change
 };
@@ -280,22 +289,23 @@ const changePassword = async () => {
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
       <h3 class="section-card-heading">User Settings</h3>
-      <p class="text-secondary pb-1">Your details across the Cacophony Monitoring Platform. These settings don't affect projects.</p>
+      <p class="text-secondary pb-1">
+        Your details across the Cacophony Monitoring Platform. These settings
+        don't affect projects.
+      </p>
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          My details
-        </template>
+        <template #header-title> My details </template>
         <div class="account-settings-list row py-2 d-flex align-items-center">
           <span class="col-sm-3 fw-medium">Name</span>
           <div class="d-flex align-items-center col-sm-9">
             <span data-cy="user display name">{{ currentUser?.userName }}</span>
             <button
-                type="button"
-                class="btn ms-2"
-                data-cy="change display name button"
-                @click="() => (changeDisplayNameModal = true)"
+              type="button"
+              class="btn ms-2"
+              data-cy="change display name button"
+              @click="() => (changeDisplayNameModal = true)"
             >
               <font-awesome-icon icon="pencil-alt" size="xs" />
             </button>
@@ -306,10 +316,10 @@ const changePassword = async () => {
           <div class="col-sm-9 d-flex align-items-center">
             <span cy-data="user email">{{ currentUser?.email }}</span>
             <button
-                type="button"
-                class="btn ms-2"
-                data-cy="change email address button"
-                @click.prevent="() => (changeEmailModal = true)"
+              type="button"
+              class="btn ms-2"
+              data-cy="change email address button"
+              @click.prevent="() => (changeEmailModal = true)"
             >
               <font-awesome-icon icon="pencil-alt" size="xs" />
             </button>
@@ -320,12 +330,16 @@ const changePassword = async () => {
           <span class="col-sm-3 fw-medium">Password</span>
           <div class="col-sm-9 d-flex align-items-center">
             <button
-                type="button"
-                class="btn btn-light ms-2"
-                data-cy="change password button"
-                @click="() => (changePasswordModal = true)"
+              type="button"
+              class="btn btn-light ms-2"
+              data-cy="change password button"
+              @click="() => (changePasswordModal = true)"
             >
-              <font-awesome-icon icon="pencil-alt" size="xs" class="me-2" />Change
+              <font-awesome-icon
+                icon="pencil-alt"
+                size="xs"
+                class="me-2"
+              />Change
             </button>
           </div>
         </div>
@@ -355,7 +369,8 @@ const changePassword = async () => {
       >
         {{ userUpdateErrorMessagesDisplay }}
       </b-alert>
-      <b-form-group label="Name"
+      <b-form-group
+        label="Name"
         description="The name displayed in your projects and used to identify you."
       >
         <b-form-input
@@ -386,7 +401,7 @@ const changePassword = async () => {
       </b-form-invalid-feedback>
     </b-form>
   </b-modal>
-  
+
   <b-modal
     v-model="changeEmailModal"
     title="Change email address"
@@ -409,8 +424,9 @@ const changePassword = async () => {
       >
         {{ userUpdateErrorMessagesDisplay }}
       </b-alert>
-      <b-form-group label="Email"
-          description="The email you use to sign into Cacophony."
+      <b-form-group
+        label="Email"
+        description="The email you use to sign into Cacophony."
       >
         <b-form-input
           type="text"
@@ -430,7 +446,7 @@ const changePassword = async () => {
       </b-form-invalid-feedback>
     </b-form>
   </b-modal>
-  
+
   <!-- New password change modal -->
   <b-modal
     v-model="changePasswordModal"
@@ -454,7 +470,7 @@ const changePassword = async () => {
       >
         {{ userUpdateErrorMessagesDisplay }}
       </b-alert>
-      
+
       <!-- Current password field -->
       <b-form-group label="Current Password">
         <b-form-input
@@ -469,7 +485,7 @@ const changePassword = async () => {
           class="mb-3"
         />
       </b-form-group>
-      
+
       <!-- New password field -->
       <b-form-group label="New Password">
         <b-form-input
@@ -484,10 +500,11 @@ const changePassword = async () => {
           class="mb-3"
         />
         <b-form-invalid-feedback v-if="showPasswordErrors && !isValidPassword">
-          Password must be at least 8 characters long and contain uppercase, lowercase and digit
+          Password must be at least 8 characters long and contain uppercase,
+          lowercase and digit
         </b-form-invalid-feedback>
       </b-form-group>
-      
+
       <!-- Confirm password field -->
       <b-form-group label="Confirm New Password">
         <b-form-input
@@ -504,7 +521,7 @@ const changePassword = async () => {
           Passwords do not match
         </b-form-invalid-feedback>
       </b-form-group>
-      
+
       <!-- General error message -->
       <div v-if="passwordError" class="text-danger mb-2">
         {{ passwordError }}

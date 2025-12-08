@@ -3,7 +3,6 @@ import type {
   CptvFrameHeader,
   CptvHeader,
 } from "@/components/cptv-player/cptv-decoder/decoder";
-import type { ReadableStreamDefaultReader } from "stream/web";
 import type { CptvDecoderContext as DecoderContext } from "@/components/cptv-player/cptv-decoder/decoder/cptv_decoder";
 import wasmUrl from "./decoder/cptv_decoder_bg.wasm?url";
 import init, { CptvDecoderContext } from "./decoder/cptv_decoder.js";

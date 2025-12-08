@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { BAlert } from "bootstrap-vue-next";
-import {
-  setLoggedInUserData,
-} from "@models/LoggedInUser";
-import {ClientApi} from "@/api";
+import { setLoggedInUserData } from "@models/LoggedInUser";
+import { ClientApi } from "@/api";
 import { formFieldInputText, isValidName } from "@/utils";
-import { DEFAULT_AUTH_ID, type ErrorResult, type FieldValidationError } from "@apiClient/types";
+import {
+  DEFAULT_AUTH_ID,
+  type ErrorResult,
+  type FieldValidationError,
+} from "@apiClient/types";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
 
@@ -240,7 +242,9 @@ const register = async () => {
             Name must be at least 3 characters.
           </span>
           <span v-else-if="!isValidName(userName.value.trim())">
-            Name must contain at least one letter and start with either a letter or a number. Valid characters include numbers, underscores, hyphens and spaces.
+            Name must contain at least one letter and start with either a letter
+            or a number. Valid characters include numbers, underscores, hyphens
+            and spaces.
           </span>
           <span v-else-if="userNameInUse">
             {{ userNameFieldValidationErrorMessage }}
@@ -330,7 +334,7 @@ const register = async () => {
             >
               <span>end user agreement</span>
             </a>
-             terms.
+            terms.
           </span>
         </b-form-checkbox>
         <b-form-invalid-feedback :state="needsValidationAndAcceptedEUA">

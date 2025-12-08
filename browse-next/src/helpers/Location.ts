@@ -47,7 +47,8 @@ export const latestRecordingTimeForDeviceAtLocation = (
       location.lastAudioRecordingTime
     ) {
       return new Date(location.lastAudioRecordingTime);
-    } else if (device.type === ConcreteDeviceType.Thermal &&
+    } else if (
+      device.type === ConcreteDeviceType.Thermal &&
       location.lastThermalRecordingTime
     ) {
       return new Date(location.lastThermalRecordingTime);

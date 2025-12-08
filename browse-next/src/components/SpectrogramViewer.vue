@@ -28,12 +28,15 @@ import {
 } from "@models/LoggedInUser.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import type { Rectangle } from "@/components/cptv-player/cptv-player-types";
-import {displayLabelForClassificationLabel, getClassificationForLabel} from "@api/classificationsUtils.ts";
+import {
+  displayLabelForClassificationLabel,
+  getClassificationForLabel,
+} from "@api/classificationsUtils.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
 import { useMediaQuery, useWindowSize } from "@vueuse/core";
 import { useRoute } from "vue-router";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import type {
   ApiAutomaticTrackTagResponse,
   ApiHumanTrackTagResponse,
@@ -85,7 +88,8 @@ const loadRecording = async () => {
   }
 };
 onBeforeMount(() => {
-  currentPalette.value = localStorage.getItem("spectastiq-palette") || "Viridis";
+  currentPalette.value =
+    localStorage.getItem("spectastiq-palette") || "Viridis";
   loadRecording();
 
   if (props.recording) {
@@ -248,7 +252,12 @@ const selectTrackRegionAndPlay = async (
           maxFreqZeroOne,
         );
 
-        const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+        const newGain = spectastiqEl.value.getGainForRegionOfInterest(
+          trackStartZeroOne,
+          trackEndZeroOne,
+          minFreqZeroOne,
+          maxFreqZeroOne,
+        );
         spectastiqEl.value.setGain(newGain);
       }
       currentTime.value = trackStartZeroOne;
@@ -539,11 +548,15 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
                 track.maxFreq || audioSampleRate.value,
                 audioSampleRate.value,
               ) / audioSampleRate.value;
-            const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+            const newGain = spectastiqEl.value.getGainForRegionOfInterest(
+              trackStartZeroOne,
+              trackEndZeroOne,
+              minFreqZeroOne,
+              maxFreqZeroOne,
+            );
             spectastiqEl.value.setGain(newGain);
           }
         }
-
       }
       spectastiq.endCustomInteraction();
     } else if (inRegionCreationMode.value && overlayCanvasContext.value) {
@@ -590,7 +603,15 @@ const initInteractionHandlers = (context: CanvasRenderingContext2D) => {
         minFreq: minFreqHz,
         maxFreq: maxFreqHz,
         automatic: false,
-        tags: [{ what: "unnamed", confidence: 0.5, id: -1, path: "unnamed", automatic: false } as ApiHumanTrackTagResponse],
+        tags: [
+          {
+            what: "unnamed",
+            confidence: 0.5,
+            id: -1,
+            path: "unnamed",
+            automatic: false,
+          } as ApiHumanTrackTagResponse,
+        ],
       } as ApiTrackResponse;
 
       emit("track-tag-changed", {
@@ -838,7 +859,7 @@ const drawRectWithText = (
         context.save();
         const hovered = hoveredTrackFeature === handle;
         {
-          const handleSize = (hovered ? 15: 10) * deviceRatio;
+          const handleSize = (hovered ? 15 : 10) * deviceRatio;
           context.fillStyle = "black";
           context.beginPath();
           context.arc(x, y, handleSize / 2, 0, 2 * Math.PI);
@@ -848,7 +869,8 @@ const drawRectWithText = (
         context.save();
         {
           const handleSize = (hovered ? 14 : 9) * deviceRatio;
-          context.fillStyle = handle === hoveredTrackFeature ? "white" : strokeStyle;
+          context.fillStyle =
+            handle === hoveredTrackFeature ? "white" : strokeStyle;
           context.beginPath();
           context.arc(x, y, handleSize / 2, 0, 2 * Math.PI);
           context.fill();
@@ -1009,18 +1031,22 @@ onMounted(() => {
         currentTime.value = timeInSeconds;
       },
     );
-    spectastiq.addEventListener("double-click", async ({ detail: { audioOffsetZeroOne }}) => {
-      if (currentTrack.value) {
-        const currentTrackEndZeroOne = currentTrack.value.end / audioDuration.value;
-        if (currentTrackEndZeroOne > audioOffsetZeroOne) {
-          await spectastiq.play(audioOffsetZeroOne, currentTrackEndZeroOne);
+    spectastiq.addEventListener(
+      "double-click",
+      async ({ detail: { audioOffsetZeroOne } }) => {
+        if (currentTrack.value) {
+          const currentTrackEndZeroOne =
+            currentTrack.value.end / audioDuration.value;
+          if (currentTrackEndZeroOne > audioOffsetZeroOne) {
+            await spectastiq.play(audioOffsetZeroOne, currentTrackEndZeroOne);
+          } else {
+            await spectastiq.play(audioOffsetZeroOne);
+          }
         } else {
           await spectastiq.play(audioOffsetZeroOne);
         }
-      } else {
-        await spectastiq.play(audioOffsetZeroOne);
-      }
-    });
+      },
+    );
   }
 });
 
@@ -1031,7 +1057,6 @@ const cancelTrackResizeOperation = () => {
     currentTrack.value.minFreq = props.currentTrack.minFreq!;
     currentTrack.value.maxFreq = props.currentTrack.maxFreq!;
     delete currentTrack.value.mutated;
-
 
     if (spectastiqEl.value) {
       // Set gain and bandpass for original unchanged track.
@@ -1044,7 +1069,12 @@ const cancelTrackResizeOperation = () => {
           currentTrack.value.maxFreq || audioSampleRate.value,
           audioSampleRate.value,
         ) / audioSampleRate.value;
-      const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+      const newGain = spectastiqEl.value.getGainForRegionOfInterest(
+        trackStartZeroOne,
+        trackEndZeroOne,
+        minFreqZeroOne,
+        maxFreqZeroOne,
+      );
       spectastiqEl.value.setGain(newGain);
       spectastiqEl.value.setPlaybackFrequencyBandPass(
         minFreqZeroOne * audioSampleRate.value,
@@ -1060,8 +1090,15 @@ const updateInProgress = ref<boolean>(false);
 const confirmTrackResizeOperation = async () => {
   updateInProgress.value = true;
   if (currentTrack.value) {
-    const {id, start, end, minFreq, maxFreq} = currentTrack.value;
-    await ClientApi.Recordings.updateResizedTrack(props.recordingId, id, start, end, minFreq, maxFreq);
+    const { id, start, end, minFreq, maxFreq } = currentTrack.value;
+    await ClientApi.Recordings.updateResizedTrack(
+      props.recordingId,
+      id,
+      start,
+      end,
+      minFreq,
+      maxFreq,
+    );
   }
   exitResizeMode();
   updateInProgress.value = false;
@@ -1081,10 +1118,13 @@ const togglePlayback = async () => {
     if (!audioIsPlaying.value) {
       const currentIntermediateTrack = currentTrack.value;
       if (currentIntermediateTrack) {
-        const trackStartZeroOne = currentIntermediateTrack.start / audioDuration.value;
-        const trackEndZeroOne = currentIntermediateTrack.end / audioDuration.value;
+        const trackStartZeroOne =
+          currentIntermediateTrack.start / audioDuration.value;
+        const trackEndZeroOne =
+          currentIntermediateTrack.end / audioDuration.value;
         const minFreqZeroOne =
-          Math.max(0, currentIntermediateTrack.minFreq || 0) / audioSampleRate.value;
+          Math.max(0, currentIntermediateTrack.minFreq || 0) /
+          audioSampleRate.value;
         const maxFreqZeroOne =
           Math.min(
             currentIntermediateTrack.maxFreq || audioSampleRate.value,
@@ -1095,22 +1135,24 @@ const togglePlayback = async () => {
           minFreqZeroOne * audioSampleRate.value,
           maxFreqZeroOne * audioSampleRate.value,
         );
-        const newGain = spectastiqEl.value.getGainForRegionOfInterest(trackStartZeroOne, trackEndZeroOne, minFreqZeroOne, maxFreqZeroOne);
+        const newGain = spectastiqEl.value.getGainForRegionOfInterest(
+          trackStartZeroOne,
+          trackEndZeroOne,
+          minFreqZeroOne,
+          maxFreqZeroOne,
+        );
         spectastiqEl.value.setGain(newGain);
         if (currentTime.value >= currentIntermediateTrack.end) {
-          await spectastiqEl.value.play(
-            trackStartZeroOne,
-            trackEndZeroOne,
-          );
+          await spectastiqEl.value.play(trackStartZeroOne, trackEndZeroOne);
         } else if (currentTime.value > currentIntermediateTrack.start) {
           // Play until the end of the current track
-          await spectastiqEl.value.play(currentTime.value / audioDuration.value, trackEndZeroOne);
-        } else if (shouldPlayTrackOnLoad) {
-          // If there was a track initially selected from the url route.
           await spectastiqEl.value.play(
-            trackStartZeroOne,
+            currentTime.value / audioDuration.value,
             trackEndZeroOne,
           );
+        } else if (shouldPlayTrackOnLoad) {
+          // If there was a track initially selected from the url route.
+          await spectastiqEl.value.play(trackStartZeroOne, trackEndZeroOne);
           shouldPlayTrackOnLoad = false;
         } else {
           // Continue playing normally until the end of the recording
@@ -1179,10 +1221,15 @@ watch(pendingTrackClass, async (classification: string[]) => {
     pendingTrack.value.tags[0].userId = currentUser.value?.id;
     pendingTrack.value.tags[0].userName = currentUser.value?.userName;
 
-
     let willDeleteRecording = false;
-    if (classification[0] === "human" && currentProject.value && currentProject.value.settings?.filterHuman) {
-      willDeleteRecording = confirm("Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?");
+    if (
+      classification[0] === "human" &&
+      currentProject.value &&
+      currentProject.value.settings?.filterHuman
+    ) {
+      willDeleteRecording = confirm(
+        "Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?",
+      );
       if (willDeleteRecording) {
         emit("delete-recording");
       }
@@ -1203,7 +1250,10 @@ watch(pendingTrackClass, async (classification: string[]) => {
         automatic: false,
       };
 
-      const response = await ClientApi.Recordings.createUserDefinedTrack(props.recording, payload);
+      const response = await ClientApi.Recordings.createUserDefinedTrack(
+        props.recording,
+        payload,
+      );
       if (response.success) {
         emit("track-selected", {
           trackId: response.result.trackId,
@@ -1219,9 +1269,9 @@ watch(pendingTrackClass, async (classification: string[]) => {
         });
 
         await ClientApi.Recordings.replaceTrackTag(
-            tagToReplace,
-            props.recording.id,
-            response.result.trackId,
+          tagToReplace,
+          props.recording.id,
+          response.result.trackId,
         );
         pendingTrackClass.value = [];
         pendingTrack.value = null;
@@ -1540,7 +1590,6 @@ const hasSelectedTrack = computed<boolean>(() => {
   return !!props.currentTrack;
 });
 
-
 const desktop = useMediaQuery("(min-width: 1040px)");
 const isMobileView = computed<boolean>(() => {
   return !desktop.value;
@@ -1589,7 +1638,9 @@ const isMobileView = computed<boolean>(() => {
                 <font-awesome-icon
                   :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
                 />
-                <span class="ms-2">add<span v-if="!isMobileView"> track</span></span>
+                <span class="ms-2"
+                  >add<span v-if="!isMobileView"> track</span></span
+                >
               </button>
             </div>
             <div class="pe-3 align-items-end">

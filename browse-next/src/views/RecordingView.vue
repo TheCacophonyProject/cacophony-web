@@ -43,14 +43,18 @@ import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.
 import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import type { LoggedInUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   activeLocations,
   currentUser as currentUserInfo,
   currentUserCreds as currentUserCredentials,
   latLngForActiveLocations,
 } from "@models/provides";
-import { DEFAULT_AUTH_ID, type LoadedResource, type LoggedInUserAuth } from "@apiClient/types";
+import {
+  DEFAULT_AUTH_ID,
+  type LoadedResource,
+  type LoggedInUserAuth,
+} from "@apiClient/types";
 import {
   RecordingProcessingState,
   RecordingType,
@@ -587,7 +591,9 @@ const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
 
 const trackRemoved = ({ trackId }: { trackId: TrackId }) => {
   if (recording.value) {
-    const index = recording.value.tracks.findIndex(({ id }: {id: TrackId}) => id === trackId);
+    const index = recording.value.tracks.findIndex(
+      ({ id }: { id: TrackId }) => id === trackId,
+    );
     recording.value.tracks.splice(index, 1);
     if (currentTrack.value && currentTrack.value.id === trackId) {
       currentTrack.value = undefined;
@@ -627,7 +633,8 @@ const trackTagChanged = async ({
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
         const changedTag = trackToPatch.tags.find(
-          ({ what, userId }) => what === tag && userId === currentUser.value?.id,
+          ({ what, userId }) =>
+            what === tag && userId === currentUser.value?.id,
         );
         if (changedTag) {
           await recalculateCurrentVisit(
@@ -740,11 +747,12 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     }
   }
 
-  const hasReferenceResponse = await ClientApi.Devices.hasReferenceImageForDeviceAtTime(
-    deviceId,
-    atTime,
-    true,
-  );
+  const hasReferenceResponse =
+    await ClientApi.Devices.hasReferenceImageForDeviceAtTime(
+      deviceId,
+      atTime,
+      true,
+    );
   if (
     // We know the earliest time for the reference image, and the location.
     // We could infer that later recordings for this device at the exact same location
@@ -788,7 +796,9 @@ const loadRecording = async () => {
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
-    const recordingResponse = await ClientApi.Recordings.getRecordingById(currentRecordingId.value);
+    const recordingResponse = await ClientApi.Recordings.getRecordingById(
+      currentRecordingId.value,
+    );
     if (recordingResponse) {
       recording.value = recordingResponse;
       if (
@@ -815,9 +825,7 @@ const loadRecording = async () => {
         setTimeout(loadRecording, 30000);
       }
 
-      if (
-          rec.type === RecordingType.ThermalRaw
-      ) {
+      if (rec.type === RecordingType.ThermalRaw) {
         // If not already known, check if there is a reference image for the recording device at the time
         // the recording was made.
         const _ = checkReferencePhotoAtTime(
@@ -876,7 +884,7 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   };
   if (
     recording.value &&
-    recording.value.tracks.find(({ id }: {id: TrackId}) => id == trackId)
+    recording.value.tracks.find(({ id }: { id: TrackId }) => id == trackId)
   ) {
     if (!automatically) {
       // Make the player start playing at the beginning of the selected track,
@@ -1197,7 +1205,9 @@ interface MaybeDeletedVisit extends ApiVisitResponse {
 const deleteRecording = async () => {
   if (recording.value) {
     const recordingIdToDelete = recording.value.id;
-    const deleteResponse = await ClientApi.Recordings.deleteRecording(recording.value.id);
+    const deleteResponse = await ClientApi.Recordings.deleteRecording(
+      recording.value.id,
+    );
     if (deleteResponse.success) {
       const hasNextRec = hasNextRecording.value;
       const hasNextVis = hasNextVisit.value;
@@ -1300,9 +1310,11 @@ const inlineModal = ref<boolean>(false);
           >
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
-          <span class="recording-header-label fw-bold text-capitalize" v-if="isInVisitContext">{{
-            visitForRecording
-          }}</span>
+          <span
+            class="recording-header-label fw-bold text-capitalize"
+            v-if="isInVisitContext"
+            >{{ visitForRecording }}</span
+          >
           <span
             v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
@@ -1527,7 +1539,7 @@ const inlineModal = ref<boolean>(false);
           </div>
           <!-- Mobile view only -->
           <recording-view-tracks
-            v-if="isMobileView"
+            v-if="isMobileView && recording"
             :recording="recording"
             class="recording-tracks"
             @track-tag-changed="trackTagChanged"
@@ -1555,7 +1567,6 @@ const inlineModal = ref<boolean>(false);
             <div
               class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
             >
-
               <map-with-points
                 class="recording-location-map"
                 :points="mapPointForRecording"
@@ -1629,7 +1640,6 @@ const inlineModal = ref<boolean>(false);
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

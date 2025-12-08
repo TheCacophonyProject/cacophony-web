@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   UserProjects,
   switchCurrentProject,
@@ -37,7 +37,8 @@ const createNewProjectError = ref<ErrorResult | null>(null);
 const createNewProject = async () => {
   submittingCreateRequest.value = true;
   const projectName = newProjectName.value.trim();
-  const createProjectResponse = await ClientApi.Projects.addNewProject(projectName);
+  const createProjectResponse =
+    await ClientApi.Projects.addNewProject(projectName);
   if (createProjectResponse.success) {
     if (Array.isArray(UserProjects.value)) {
       const newProjectId = createProjectResponse.result.groupId;

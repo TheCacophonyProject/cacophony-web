@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { inject, onBeforeMount, type Ref, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   type LoggedInUser,
   setLoggedInUserData,
@@ -46,9 +46,8 @@ onBeforeMount(async () => {
       validateToken.value = params.token.replace(/:/g, ".");
     }
 
-    const validateTokenResponse = await ClientApi.Users.validateEmailConfirmationToken(
-      validateToken.value,
-    );
+    const validateTokenResponse =
+      await ClientApi.Users.validateEmailConfirmationToken(validateToken.value);
     if (!validateTokenResponse.success) {
       if (validateTokenResponse.status === HttpStatusCode.AuthorizationError) {
         // await router.push({

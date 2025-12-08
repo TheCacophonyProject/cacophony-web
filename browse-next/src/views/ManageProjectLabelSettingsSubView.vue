@@ -4,7 +4,7 @@ import type { SelectedProject } from "@models/LoggedInUser";
 import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
 import CardTable from "@/components/CardTable.vue";
-import type { CardTableRows } from "@/components/CardTableTypes";
+import type { CardTableItem, CardTableRows } from "@/components/CardTableTypes";
 import {
   DEFAULT_AUDIO_RECORDING_LABELS,
   DEFAULT_CAMERA_RECORDING_LABELS,
@@ -107,35 +107,39 @@ const addAudioLabel = async (label: string, description: string) => {
   }
 };
 
-const cameraLabelTableItems = computed<CardTableRows<string>>(() => {
-  return customCameraLabels.value.map((label: RecordingLabel) => ({
-    label: {
-      value: label.text || label.value,
-    },
-    description: {
-      value: label.description || "",
-      cellClasses: ["w-100"],
-    },
-    _deleteAction: {
-      value: label,
-    },
-  }));
-});
+const cameraLabelTableItems = computed<CardTableRows<string | RecordingLabel>>(
+  () => {
+    return customCameraLabels.value.map((label: RecordingLabel) => ({
+      label: {
+        value: label.text || label.value || "",
+      },
+      description: {
+        value: label.description || "",
+        cellClasses: ["w-100"],
+      },
+      _deleteAction: {
+        value: label,
+      },
+    }));
+  },
+);
 
-const audioLabelTableItems = computed<CardTableRows<string>>(() => {
-  return customAudioLabels.value.map((label: RecordingLabel) => ({
-    label: {
-      value: label.text || label.value,
-    },
-    description: {
-      value: label.description || "",
-      cellClasses: ["w-100"],
-    },
-    _deleteAction: {
-      value: label,
-    },
-  }));
-});
+const audioLabelTableItems = computed<CardTableRows<string | RecordingLabel>>(
+  () => {
+    return customAudioLabels.value.map((label: RecordingLabel) => ({
+      label: {
+        value: label.text || label.value || "",
+      },
+      description: {
+        value: label.description || "",
+        cellClasses: ["w-100"],
+      },
+      _deleteAction: {
+        value: label,
+      },
+    }));
+  },
+);
 
 const resetCameraLabels = async () => {
   localCameraLabels.value = [...DEFAULT_CAMERA_RECORDING_LABELS];
@@ -191,91 +195,103 @@ const reset = () => {
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
       <h3 class="section-card-heading">Project label settings</h3>
-      <p class="text-secondary pb-1">Manage the set of default labels that users can apply to camera recordings
-        or bird recordings, and what those labels mean in the context of your
-        project.
+      <p class="text-secondary pb-1">
+        Manage the set of default labels that users can apply to camera
+        recordings or bird recordings, and what those labels mean in the context
+        of your project.
       </p>
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          Camera labels
-        </template>
+        <template #header-title> Camera labels </template>
         <template #header-action>
           <div>
             <button
-                type="button"
-                class="btn btn-outline-secondary ms-2"
-                @click.stop.prevent="showAddCameraLabelModal = true"
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              @click.stop.prevent="showAddCameraLabelModal = true"
             >
               Add
             </button>
             <button
-                type="button"
-                class="btn btn-outline-danger ms-2"
-                :disabled="
-          !canReset(localCameraLabels, DEFAULT_CAMERA_RECORDING_LABELS)
-        "
-                @click.stop.prevent="resetCameraLabels"
+              type="button"
+              class="btn btn-outline-danger ms-2"
+              :disabled="
+                !canReset(localCameraLabels, DEFAULT_CAMERA_RECORDING_LABELS)
+              "
+              @click.stop.prevent="resetCameraLabels"
             >
               Reset
             </button>
           </div>
         </template>
-        <card-table :items="cameraLabelTableItems" compact :max-card-width="575">
+        <card-table
+          :items="cameraLabelTableItems"
+          compact
+          :max-card-width="575"
+        >
           <template #_deleteAction="{ cell }">
-            <button class="btn" @click.prevent="() => removeCameraLabel(cell.value)">
+            <button
+              class="btn"
+              @click.prevent="() => removeCameraLabel(cell.value)"
+            >
               <font-awesome-icon icon="trash-can" />
             </button>
           </template>
-          <template #card="{ card }">
+          <template
+            #card="{
+              card,
+            }: {
+              card: {
+                label: CardTableItem<any>;
+                description: CardTableItem<any>;
+              };
+            }"
+          >
             <div class="d-flex flex-row">
               <div class="d-flex flex-column flex-grow-1 me-3">
-          <span
-          ><strong>{{ card.label.value }}</strong></span
-          >
+                <span
+                  ><strong>{{ card.label.value }}</strong></span
+                >
                 <span>{{ card.description.value }}</span>
               </div>
               <button
-                  class="btn"
-                  @click.prevent="() => removeCameraLabel(card.label.value)"
+                class="btn"
+                @click.prevent="() => removeCameraLabel(card.label.value)"
               >
                 <font-awesome-icon icon="trash-can" />
               </button>
             </div>
           </template>
         </card-table>
-
       </section-card>
     </div>
   </div>
 
   <div class="row mb-3">
-    <div class="col-lg-3">
-    </div>
+    <div class="col-lg-3"></div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          Bird recording labels
-        </template>
+        <template #header-title> Bird recording labels </template>
         <template #header-action>
           <div>
             <button
-                type="button"
-                class="btn btn-outline-secondary ms-2"
-                @click.stop.prevent="showAddAudioLabelModal = true"
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              @click.stop.prevent="showAddAudioLabelModal = true"
             >
               Add
             </button>
             <button
-                type="button"
-                class="btn btn-outline-danger ms-2"
-                @click.stop.prevent="resetAudioLabels"
-                :disabled="!canReset(localAudioLabels, DEFAULT_AUDIO_RECORDING_LABELS)"
+              type="button"
+              class="btn btn-outline-danger ms-2"
+              @click.stop.prevent="resetAudioLabels"
+              :disabled="
+                !canReset(localAudioLabels, DEFAULT_AUDIO_RECORDING_LABELS)
+              "
             >
               Reset
             </button>
@@ -283,21 +299,33 @@ const reset = () => {
         </template>
         <card-table :items="audioLabelTableItems" compact :max-card-width="575">
           <template #_deleteAction="{ cell }">
-            <button class="btn" @click.prevent="() => removeAudioLabel(cell.value)">
+            <button
+              class="btn"
+              @click.prevent="() => removeAudioLabel(cell.value)"
+            >
               <font-awesome-icon icon="trash-can" />
             </button>
           </template>
-          <template #card="{ card }">
+          <template
+            #card="{
+              card,
+            }: {
+              card: {
+                label: CardTableItem<any>;
+                description: CardTableItem<any>;
+              };
+            }"
+          >
             <div class="d-flex flex-row">
               <div class="d-flex flex-column flex-grow-1 me-3">
-          <span
-          ><strong>{{ card.label.value }}</strong></span
-          >
+                <span
+                  ><strong>{{ card.label.value }}</strong></span
+                >
                 <span>{{ card.description.value }}</span>
               </div>
               <button
-                  class="btn"
-                  @click.prevent="() => removeCameraLabel(card.label.value)"
+                class="btn"
+                @click.prevent="() => removeCameraLabel(card.label.value)"
               >
                 <font-awesome-icon icon="trash-can" />
               </button>

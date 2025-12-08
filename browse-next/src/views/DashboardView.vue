@@ -497,7 +497,9 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         <div
           class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
         >
-          <div class="species-summary__item__count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
+          <div class="species-summary__item__count pe-sm-0 pe-1 lh-sm">
+            {{ val }}
+          </div>
           <div class="species-summary__item__name lh-sm text-capitalize">
             {{ displayLabelForClassificationLabel(key) }}
           </div>
@@ -669,7 +671,6 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     }
   }
 }
-
 </style>
 <style lang="less">
 .species-summary__item {

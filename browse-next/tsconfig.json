@@ -20,7 +20,7 @@
     },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "ignoreDeprecations": "5.0"
+    "noUncheckedIndexedAccess": false
   },
 
   "references": [

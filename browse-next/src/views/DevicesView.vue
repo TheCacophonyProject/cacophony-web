@@ -3,7 +3,7 @@ import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   DevicesForCurrentProject,
   type SelectedProject,
@@ -13,6 +13,7 @@ import type {
   CardTableItem,
   CardTableRow,
   CardTableRows,
+  GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { DateTime } from "luxon";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -196,8 +197,7 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
     (poweredDevice) => poweredDevice.id === device.id,
   );
-  return device.hasOwnProperty("isHealthy") &&
-    device.active
+  return device.hasOwnProperty("isHealthy") && device.active
     ? device.isHealthy
       ? isPoweredOn
         ? "online"
@@ -211,7 +211,9 @@ const batteryLevelForDevice = async (
 ): Promise<"unknown" | number> => {
   const status = statusForDevice(device);
   if (status === "online" || status == "standby") {
-    const response = await ClientApi.Devices.getLastKnownDeviceBatteryLevel(device.id);
+    const response = await ClientApi.Devices.getLastKnownDeviceBatteryLevel(
+      device.id,
+    );
     if (response) {
       if (response.battery === null) {
         return "unknown";
@@ -365,29 +367,29 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
   return null;
 });
 
-const highlightedDevice = computed<CardTableRow<string> | null>(() => {
+const highlightedDevice = computed<DeviceTableItem | null>(() => {
   if (route.name !== "devices" && route.params.deviceId) {
-    const device = tableItems.value.find(
+    const device = (tableItems.value as unknown as DeviceTableItem[]).find(
       ({ __id: id }) => Number(route.params.deviceId) === Number(id),
     );
-    return (device && (device as CardTableRow<string>)) || null;
+    return device || null;
   } else if (highlightedPointInternal.value) {
-    const device = tableItems.value.find(
+    const device = (tableItems.value as unknown as DeviceTableItem[]).find(
       ({ __id: id }) =>
         highlightedPointInternal.value &&
         highlightedPointInternal.value.id === Number(id),
     );
-    return (device && (device as CardTableRow<string>)) || null;
+    return device || null;
   } else {
-    return highlightedDeviceInternal.value as CardTableRow<string> | null;
+    return highlightedDeviceInternal.value;
   }
 });
 
-const enteredTableItem = (item: DeviceTableItem | null) => {
-  highlightedDeviceInternal.value = item;
+const enteredTableItem = (item: GenericCardTableValue<unknown>) => {
+  highlightedDeviceInternal.value = item as DeviceTableItem;
 };
 
-const leftTableItem = (_item: DeviceTableItem | null) => {
+const leftTableItem = (_item: GenericCardTableValue<unknown>) => {
   highlightedDeviceInternal.value = null;
 };
 
@@ -465,10 +467,13 @@ watch(selectedDevice, async (next) => {
   }
 });
 
-const selectTableDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
-  const device = devices.value.find(({ id }) => id === Number(deviceId));
-  if (device) {
-    await openSelectedDevice(device);
+const selectTableDevice = async (val: GenericCardTableValue<unknown>) => {
+  if (typeof val === "object" && val !== null && "__id" in val) {
+    const deviceId = val.__id;
+    const device = devices.value.find(({ id }) => id === Number(deviceId));
+    if (device) {
+      await openSelectedDevice(device);
+    }
   }
 };
 

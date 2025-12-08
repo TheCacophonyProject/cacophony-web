@@ -1,13 +1,16 @@
 <script lang="ts" setup>
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   nonPendingUserProjects,
   refreshUserProjects,
   urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
-import type { ErrorResult, JwtAcceptInviteTokenPayload } from "@apiClient/types";
+import type {
+  ErrorResult,
+  JwtAcceptInviteTokenPayload,
+} from "@apiClient/types";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
@@ -28,7 +31,8 @@ onMounted(async () => {
     validateToken.value = token;
     const jwtToken = decodeJWT(token) as JwtAcceptInviteTokenPayload | null;
     if (jwtToken && jwtToken.group) {
-      const validateTokenResponse = await ClientApi.Users.confirmAddToProjectRequest(token);
+      const validateTokenResponse =
+        await ClientApi.Users.confirmAddToProjectRequest(token);
       if (!validateTokenResponse.success) {
         if (
           validateTokenResponse.status === HttpStatusCode.AuthorizationError

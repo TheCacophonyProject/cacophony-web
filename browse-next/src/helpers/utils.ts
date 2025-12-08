@@ -6,3 +6,5 @@ export const resourceIsLoading = (val: Ref<LoadedResource<unknown>>) =>
 
 export const resourceFailedLoading = (val: Ref<LoadedResource<unknown>>) =>
   computed<boolean>(() => val.value === false);
+
+export type NonEmptyArray<T> = [T, ...T[]];

@@ -8,19 +8,19 @@ import {
   useTemplateRef,
   watch,
 } from "vue";
-import {BBadge, BFormInput} from "bootstrap-vue-next";
+import { BBadge, BInput } from "bootstrap-vue-next";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { userIsProjectAdmin } from "@models/provides.ts";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
-import {ClientApi} from "@/api";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { ClientApi } from "@/api";
 
 const { location } = defineProps<{ location: ApiLocationResponse }>();
-const editLocationField = useTemplateRef("input");
-watch(editLocationField, (next) => {
+const editLocationField = ref<typeof BInput | null>(null);
+watch(editLocationField, (next: typeof BInput | null) => {
   // Edit location field is mounted
   if (next) {
-    (next as typeof BFormInput).focus();
-    ((next as typeof BFormInput).$el as HTMLInputElement).select();
+    next.focus();
+    (next.$el as HTMLInputElement).select();
   }
 });
 const clickedRename = (e: MouseEvent) => {
@@ -54,7 +54,10 @@ const saveLocationName = async () => {
     locationName.value !== location.name
   ) {
     savingLocation.value = true;
-    const response = await ClientApi.Locations.changeLocationName(locationName.value, location.id);
+    const response = await ClientApi.Locations.changeLocationName(
+      locationName.value,
+      location.id,
+    );
     if (!response.success) {
       // Else show error
       errorMessage.value = response.result.messages[0];
@@ -82,7 +85,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
       <b-input
         v-if="editingLocationName"
         v-model="locationName"
-        ref="input"
+        ref="editLocationField"
         autofocus
         size="sm"
         placeholder="Enter the new name for this location"
@@ -93,28 +96,30 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
       <h4
         v-else
         class="location-name"
-        :class="['h4 me-2', {'needs-rename text-break': !!location.needsRename }]"
-        >{{ location.name }}</h4
+        :class="[
+          'h4 me-2',
+          { 'needs-rename text-break': !!location.needsRename },
+        ]"
       >
+        {{ location.name }}
+      </h4>
       <b-spinner small v-if="savingLocation" class="ms-3" />
     </div>
     <div class="d-flex align-items-center">
-       <span
-         class="d-flex align-items-center"
-         @mouseover.stop.prevent="showRenameHint"
-         @mouseout.stop.prevent="hideRenameHint"
-         v-if="location.needsRename"
-       >
-          <b-badge variant="warning" class="rename-hint d-flex flex-row align-items-center me-2">
-            <material-symbol
-              name="warning"
-              filled
-              size="1rem"
-              class="me-1"
-            />
-            Rename
-          </b-badge>
-        </span>
+      <span
+        class="d-flex align-items-center"
+        @mouseover.stop.prevent="showRenameHint"
+        @mouseout.stop.prevent="hideRenameHint"
+        v-if="location.needsRename"
+      >
+        <b-badge
+          variant="warning"
+          class="rename-hint d-flex flex-row align-items-center me-2"
+        >
+          <material-symbol name="warning" filled size="1rem" class="me-1" />
+          Rename
+        </b-badge>
+      </span>
       <b-button
         variant="light"
         class="btn-icon"
@@ -122,7 +127,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         @click="clickedRename"
         v-if="isProjectAdmin"
       >
-        <material-symbol name="edit" size="1.125rem"/>
+        <material-symbol name="edit" size="1.125rem" />
       </b-button>
     </div>
   </div>
@@ -136,5 +141,4 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
   >
 </template>
 
-<style scoped lang="less">
-</style>
+<style scoped lang="less"></style>

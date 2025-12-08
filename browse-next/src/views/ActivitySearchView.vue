@@ -26,7 +26,8 @@ import {
 import {
   projectDevicesLoaded,
   projectLocationsLoaded,
-  type SelectedProject, shouldViewAsSuperUser,
+  type SelectedProject,
+  shouldViewAsSuperUser,
 } from "@models/LoggedInUser";
 import type {
   FetchResult,
@@ -77,7 +78,10 @@ import {
 } from "vue-router";
 import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import type {
+  ApiVisitResponse,
+  ApiVisitResponseRecording,
+} from "@typedefs/api/monitoring";
 // import {
 //   getAllVisitsForProjectBetweenTimes,
 //   getVisitsForProject,
@@ -107,9 +111,13 @@ import {
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 // import { CurrentViewAbortController } from "@/router";
 // import { getDevicesForProject } from "@api/Project.ts";
-import type { BulkRecordingsResponse, QueryRecordingsOptions } from "@apiClient/Recording.ts";
+import type {
+  BulkRecordingsResponse,
+  QueryRecordingsOptions,
+} from "@apiClient/Recording.ts";
 import { ClientApi, CurrentViewAbortController } from "@/api";
 import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
+import type { NonEmptyArray } from "@/helpers/utils.ts";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
@@ -329,12 +337,16 @@ const maxDateForProject = computed<Date>(() => {
   return latest;
 });
 
-const availableDateRanges = computed<
-  { range: [Date, Date]; from: string; label: string }[]
->(() => {
+interface DateRangeOption {
+  range: DateRange;
+  from: string;
+  label: string;
+}
+
+const availableDateRanges = computed<NonEmptyArray<DateRangeOption>>(() => {
   const earliest = minDateForProject.value;
   const latest = maxDateForProject.value;
-  const ranges = [] as { range: [Date, Date]; from: string; label: string }[];
+  const ranges = [] as DateRangeOption[];
   if (earliest < oneDayAgo && latest > oneDayAgo) {
     ranges.push({
       range: lastTwentyFourHours,
@@ -378,7 +390,7 @@ const availableDateRanges = computed<
     });
   }
   ranges.push({ range: [earliest, now], from: "any", label: "at any time" });
-  return ranges;
+  return ranges as NonEmptyArray<DateRangeOption>;
 });
 
 const deserialiseAndValidateRouteValue = (
@@ -428,15 +440,16 @@ const deserialiseAndValidateRouteValue = (
     }
   } else if (key === "from") {
     value = value || "";
-    const knownLabels = availableDateRanges.value.reduce(
-      (arr: Record<string, DateRange>, { from, range }) => {
-        arr[from] = range;
-        return arr;
-      },
-      {},
-    );
+    const knownLabels: Record<string, DateRange> =
+      availableDateRanges.value.reduce(
+        (arr: Record<string, DateRange>, { from, range }) => {
+          arr[from] = range;
+          return arr;
+        },
+        {},
+      );
     if (value in knownLabels) {
-      dateRange.value = [...knownLabels[value]];
+      dateRange.value = [...(knownLabels[value] as DateRange)];
       searchParams.value.from = value;
     } else {
       const date = new Date(value);
@@ -866,14 +879,13 @@ const currentlySelectedVisit = ref<ApiVisitResponse | null>(null);
 //const visitsContext = ref<ApiVisitResponse[] | null>(null);
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
+type RecordingsChunk = {
+  dateTime: DateTime;
+  items: (RecordingItem | SunItem)[];
+};
 // Chunk recordings into days and hours.
 // Do we want to insert sunrise and sunset?  Probably.
-const chunkedRecordings = ref<
-  {
-    dateTime: DateTime;
-    items: (RecordingItem | SunItem)[];
-  }[]
->([]);
+const chunkedRecordings = ref<RecordingsChunk[]>([]);
 
 const prefilteredChunkedVisits = ref<ApiVisitResponse[]>([]);
 const chunkedVisits = computed<ApiVisitResponse[]>(() => {
@@ -997,10 +1009,7 @@ const getCurrentQueryHash = (): string => {
 };
 
 interface RecordingQueryBase {
-  types: (
-    | RecordingType.ThermalRaw
-    | RecordingType.Audio
-  )[];
+  types: (RecordingType.ThermalRaw | RecordingType.Audio)[];
   locations?: LocationId[];
   tagMode?: TagMode;
   tags?: string[];
@@ -1217,9 +1226,7 @@ const minDate = (a: Date, b: Date): Date => {
 
 const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
   if (searchParams.value.recordingMode === "cameras") {
-    return [
-      ConcreteRecordingType.ThermalRaw,
-    ];
+    return [ConcreteRecordingType.ThermalRaw];
   } else {
     return [ConcreteRecordingType.Audio];
   }
@@ -1296,17 +1303,20 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         // NOTE: Not sure we need to ever get the total count for this query for the
         //  purposes of this UI?
         CurrentViewAbortController.newView();
-        response = await ClientApi.Recordings.queryRecordingsInProjectNew(project.id, {
-          ...query,
-          limit: twoPagesWorth,
-          fromDateTime: dateRange.value[0],
-          untilDateTime: currentQueryCursor.value.untilDateTime as Date,
-          queryIsTimeSensitive: true,
-          types: typesForRecordingMode.value as (
-            | RecordingType.ThermalRaw
-            | RecordingType.Audio
-          )[],
-        });
+        response = await ClientApi.Recordings.queryRecordingsInProjectNew(
+          project.id,
+          {
+            ...query,
+            limit: twoPagesWorth,
+            fromDateTime: dateRange.value[0],
+            untilDateTime: currentQueryCursor.value.untilDateTime as Date,
+            queryIsTimeSensitive: true,
+            types: typesForRecordingMode.value as (
+              | RecordingType.ThermalRaw
+              | RecordingType.Audio
+            )[],
+          },
+        );
         if (response && response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
         }
@@ -1326,11 +1336,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           shouldViewAsSuperUser.value,
           //pageSize,
           query.locations,
-          query.types as
-            | (
-                | RecordingType.ThermalRaw
-              )[]
-            | undefined,
+          query.types as RecordingType.ThermalRaw[] | undefined,
         );
       }
       if (response && response.success) {
@@ -1454,7 +1460,7 @@ const arrayToCsv = (data: string[][]) => {
       (row) =>
         row
           .map(String) // convert every value to String
-          .map((v) => v.replaceAll("\"", "\"\"")) // escape double quotes
+          .map((v) => v.replaceAll(`"`, `""`)) // escape double quotes
           .map((v) => `"${v}"`) // quote it
           .join(","), // comma-separated
     )
@@ -1517,7 +1523,7 @@ const createVisitsCsv = (data: ApiVisitResponse[]): string => {
 
 const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
   // TODO: More columns as needed
-  const csv = [
+  const csv: NonEmptyArray<string[]> = [
     [
       "Location",
       "Latitude/Longitude",
@@ -1627,22 +1633,19 @@ const doExport = async () => {
     exportProgress.value = 0;
     if (inVisitsMode.value) {
       // Get all the responses
-      const visitsResponse = await ClientApi.Monitoring.getAllVisitsForProjectBetweenTimes(
-        project.id,
-        fromDateTime,
-        untilDateTime,
-        shouldViewAsSuperUser.value,
-        query.locations,
-        query.types as
-          | (
-              | RecordingType.ThermalRaw
-            )[]
-          | undefined,
-        (progress) => {
-          exportProgress.value = progress;
-          exportTime.value = performance.now();
-        },
-      );
+      const visitsResponse =
+        await ClientApi.Monitoring.getAllVisitsForProjectBetweenTimes(
+          project.id,
+          fromDateTime,
+          untilDateTime,
+          shouldViewAsSuperUser.value,
+          query.locations,
+          query.types as RecordingType.ThermalRaw[] | undefined,
+          (progress) => {
+            exportProgress.value = progress;
+            exportTime.value = performance.now();
+          },
+        );
       const csvFileData = createVisitsCsv(
         visitsResponse.visits as ApiVisitResponse[],
       );
@@ -1655,13 +1658,14 @@ const doExport = async () => {
     } else if (inRecordingsMode.value) {
       query.fromDateTime = fromDateTime;
       query.untilDateTime = untilDateTime;
-      const recordings = await ClientApi.Recordings.getAllRecordingsForProjectBetweenTimes(
-        project.id,
-        query,
-        () => {
-          exportTime.value = performance.now();
-        },
-      );
+      const recordings =
+        await ClientApi.Recordings.getAllRecordingsForProjectBetweenTimes(
+          project.id,
+          query,
+          () => {
+            exportTime.value = performance.now();
+          },
+        );
       const csvFileData = createRecordingsCsv(recordings);
       download(
         URL.createObjectURL(
@@ -1824,9 +1828,13 @@ watch(
       }
       const params: Record<string, string> = {
         visitLabel: visit.classification || "",
-        currentRecordingId: firstRec.recId.toString(),
-        trackId: (firstTrack && firstTrack.id.toString()) as string,
       };
+      if (firstRec) {
+        params.currentRecordingId = firstRec.recId.toString();
+      }
+      if (firstTrack) {
+        params.trackId = firstTrack.id.toString();
+      }
       if (recordingIds.length) {
         params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
       }

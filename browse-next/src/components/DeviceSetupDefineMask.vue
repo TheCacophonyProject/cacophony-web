@@ -2,7 +2,7 @@
 import { reactive, type Ref } from "vue";
 import { ref, onMounted, computed, inject, watch } from "vue";
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import { useRoute } from "vue-router";
 import type {
   ApiDeviceResponse,
@@ -16,10 +16,15 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import { formFieldInputText, type FormInputValidationState } from "@/utils.ts";
 import CardTable from "@/components/CardTable.vue";
 import type { LoadedResource } from "@apiClient/types.ts";
-import {DateTime} from "luxon";
 import SectionCard from "@/components/SectionCard.vue";
-import {BAlert, BButton, BFormGroup, BFormInput, BFormInvalidFeedback, BFormSelect, BModal} from "bootstrap-vue-next";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import {
+  BButton,
+  BFormGroup,
+  BFormInput,
+  BFormInvalidFeedback,
+  BModal,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 interface Point {
   x: number;
@@ -37,7 +42,7 @@ const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
 const regionsProvided = inject(
   "latestMaskRegions",
   ref<ApiMaskRegionsData | (() => ApiMaskRegionsData)>(
-    () => ({} as unknown as ApiMaskRegionsData),
+    () => ({}) as unknown as ApiMaskRegionsData,
   ),
   true,
 );
@@ -70,7 +75,7 @@ const emit = defineEmits<{
 }>();
 
 const regionsTable = computed(() => {
-  return Object.entries(regions.value).map(([name/*, { alertOnEnter }*/]) => ({
+  return Object.entries(regions.value).map(([name /*, { alertOnEnter }*/]) => ({
     maskRegion: name,
     /*alertOnEnter,*/
     _deleteAction: { value: name },
@@ -92,7 +97,10 @@ const updateExistingMaskRegions = async () => {
     }
     const regionsPayload: ApiMaskRegionsData = { maskRegions };
     emit("updated-regions", regionsPayload);
-    await ClientApi.Devices.updateMaskRegionsForDevice(device.value.id, regionsPayload);
+    await ClientApi.Devices.updateMaskRegionsForDevice(
+      device.value.id,
+      regionsPayload,
+    );
   }
 };
 
@@ -523,25 +531,26 @@ watch(
             <span v-if="newRegionName.value.trim().length === 0">
               Region name cannot be blank.
             </span>
-                <span v-else-if="newRegionName.value.trim().length < 3">
+            <span v-else-if="newRegionName.value.trim().length < 3">
               Region name must be at least 3 characters.
             </span>
-                <span
-                  v-else-if="Object.keys(regions).includes(newRegionName.value.trim())"
-                >
+            <span
+              v-else-if="
+                Object.keys(regions).includes(newRegionName.value.trim())
+              "
+            >
               Region name must be unique.
             </span>
           </b-form-invalid-feedback>
         </b-form-group>
 
         <!-- TODO: enable once implemented -->
-<!--        <b-form-group class="mt-3">
+        <!--        <b-form-group class="mt-3">
           <b-form-checkbox
             v-model="newRegionHasAlerts">
             Alert project members when an animal enters this region.
           </b-form-checkbox>
         </b-form-group>-->
-
       </b-form>
       <template #footer>
         <button
@@ -550,26 +559,29 @@ watch(
           data-cy="create device button"
           @click.stop.prevent="addCurrentRegion"
           :disabled="
-          !needsValidationAndIsValidRegionName || submittingNewRegionRequest
-        "
+            !needsValidationAndIsValidRegionName || submittingNewRegionRequest
+          "
         >
-        <span
-          v-if="submittingNewRegionRequest"
-          class="spinner-border spinner-border-sm"
-        ></span>
+          <span
+            v-if="submittingNewRegionRequest"
+            class="spinner-border spinner-border-sm"
+          ></span>
           {{ submittingNewRegionRequest ? "Adding region" : "Add region" }}
         </button>
       </template>
     </b-modal>
     <section-card>
-      <template #header-title>
-        Mask regions
-      </template>
-      <p>Mask regions are areas in the video that will be ignored for motion-detection
-        purposes while a device is recording.</p>
+      <template #header-title> Mask regions </template>
+      <p>
+        Mask regions are areas in the video that will be ignored for
+        motion-detection purposes while a device is recording.
+      </p>
 
-      <p class="mb-4">Define a mask region to help reduce false-positive recordings, e.g., if the camera is
-        pointing towards moving warmer tree branches over a cold background, such as the night sky.</p>
+      <p class="mb-4">
+        Define a mask region to help reduce false-positive recordings, e.g., if
+        the camera is pointing towards moving warmer tree branches over a cold
+        background, such as the night sky.
+      </p>
       <!-- TODO: enable once implemented -->
       <!--
       <p class="mb-0">
@@ -581,9 +593,9 @@ watch(
       </p>-->
 
       <div class="row">
-
-        <div class="col order-2 order-md-1 col-12 col-md-9 position-relative text-white">
-
+        <div
+          class="col order-2 order-md-1 col-12 col-md-9 position-relative text-white"
+        >
           <div
             class="position-relative canvas-container bg-dark rounded-2 d-flex justify-content-center align-items-center"
             ref="canvasContainer"
@@ -611,7 +623,6 @@ watch(
               Click to begin adding points and define a closed shape
             </div>
           </div>
-
         </div>
         <div class="col order-1 order-md-2 col-12 col-md-3 mb-3">
           <b-button
@@ -632,12 +643,16 @@ watch(
             Undo last point
           </b-button>
         </div>
-
       </div>
 
-      <card-table :items="regionsTable" compact :break-point="0" :class="regionsTable.length ? 'mt-4': ''">
+      <card-table
+        :items="regionsTable"
+        compact
+        :break-point="0"
+        :class="regionsTable.length ? 'mt-4' : ''"
+      >
         <!-- TODO: enable once implemented -->
-<!--        <template #alertOnEnter="{ cell }">
+        <!--        <template #alertOnEnter="{ cell }">
           <font-awesome-icon v-if="cell" icon="check-circle" />
           <span v-else>-</span>
         </template>-->
@@ -661,9 +676,7 @@ watch(
           </div>
         </template>
       </card-table>
-
     </section-card>
-
   </div>
 </template>
 

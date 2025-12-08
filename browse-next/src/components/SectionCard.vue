@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, getCurrentInstance} from "vue";
+import { computed, getCurrentInstance } from "vue";
 
 const instance = getCurrentInstance();
 const hasHeader = computed<boolean>(() => {
@@ -8,17 +8,20 @@ const hasHeader = computed<boolean>(() => {
 </script>
 
 <template>
-<div class="section-card">
-  <header v-if="hasHeader" class="section-card__header px-3 px-md-4 d-flex justify-content-between align-items-center">
-    <h4 class="h4 m-0">
-      <slot name="header-title" />
-    </h4>
-    <slot name="header-action" />
-  </header>
-  <main class="section-card__content py-3 py-md-4 px-3 px-md-4">
-    <slot></slot>
-  </main>
-</div>
+  <div class="section-card">
+    <header
+      v-if="hasHeader"
+      class="section-card__header px-3 px-md-4 d-flex justify-content-between align-items-center"
+    >
+      <h4 class="h4 m-0">
+        <slot name="header-title" />
+      </h4>
+      <slot name="header-action" />
+    </header>
+    <main class="section-card__content py-3 py-md-4 px-3 px-md-4">
+      <slot></slot>
+    </main>
+  </div>
 </template>
 
 <style scoped lang="less">

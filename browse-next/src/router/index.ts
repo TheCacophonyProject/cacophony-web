@@ -191,14 +191,14 @@ const router = createRouter({
           path: ":deviceId/:deviceName/:type?",
           name: "device",
           redirect: (to): RouteLocationRaw => {
-              return {
-                name: "device-status",
-                params: {
-                  ...to.params,
-                  // Remove type from destination route
-                  type: null,
-                },
-              };
+            return {
+              name: "device-status",
+              params: {
+                ...to.params,
+                // Remove type from destination route
+                type: null,
+              },
+            };
           }, // Make diagnostics the default tab
           meta: { title: "Manage device :deviceName" },
           component: () => import("@/views/DeviceView.vue"),
@@ -476,7 +476,7 @@ router.onError((e) => {
   return () => {};
 });
 
-router.afterEach(async (to, from , failure) => {
+router.afterEach(async (to, from, failure) => {
   if (failure) {
     let type = "unknown";
     if (isNavigationFailure(failure, NavigationFailureType.aborted)) {
@@ -503,15 +503,26 @@ router.beforeEach(async (to, from, next) => {
   if (!requiresCreds) {
     // If we don't require creds, we can just go to route most of the time
     pinSideNav.value = false;
-    console.warn(`Navigating to non-creds route '${String(to.name || to.path)}'`, to.fullPath, to);
+    console.warn(
+      `Navigating to non-creds route '${String(to.name || to.path)}'`,
+      to.fullPath,
+      to,
+    );
     return next();
   }
-  const credsRequirementMet = !requiresCreds || (requiresCreds && await ClientApi.getCredentials(DEFAULT_AUTH_ID));
+  const credsRequirementMet =
+    !requiresCreds ||
+    (requiresCreds && (await ClientApi.getCredentials(DEFAULT_AUTH_ID)));
   if (!credsRequirementMet) {
     // Make sure we refresh any tokens before checking if user is logged in.
     return next({ name: "sign-in", query: { nextUrl: to.fullPath } });
   }
-  console.assert(userIsLoggedIn.value, "User should be logged in", to.meta.requiresLogin, to.path);
+  console.assert(
+    userIsLoggedIn.value,
+    "User should be logged in",
+    to.meta.requiresLogin,
+    to.path,
+  );
   let nextUrl = {};
   if (to.query.nextUrl) {
     nextUrl = { query: { nextUrl: to.query.nextUrl } };
@@ -523,7 +534,7 @@ router.beforeEach(async (to, from, next) => {
   ) {
     return next({ name: "setup", ...nextUrl });
   }
-  console.assert(credsRequirementMet, "Should be logged in");
+  console.assert(!!credsRequirementMet, "Should be logged in");
   if (!UserProjects.value) {
     // Grab the users' projects, and select the first one.
     isFetchingProjects.value = true;
@@ -540,7 +551,10 @@ router.beforeEach(async (to, from, next) => {
   }
   if (to.query.nextUrl) {
     // After sign-in, redirect to to.query.nextUrl
-    console.assert(from.name === "sign-in", "Should be coming from sign-in route");
+    console.assert(
+      from.name === "sign-in",
+      "Should be coming from sign-in route",
+    );
     // Make sure we follow any nextUrl on login
     return next({
       path: to.query.nextUrl as string,
@@ -562,8 +576,7 @@ router.beforeEach(async (to, from, next) => {
       matchedProject = (
         (NonUserProjects.value as ApiGroupResponse[]) || []
       ).find(
-        ({ groupName }) =>
-          urlNormaliseName(groupName) === potentialProjectName,
+        ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName,
       );
     }
     if (matchedProject) {
@@ -604,9 +617,10 @@ router.beforeEach(async (to, from, next) => {
         DevicesForCurrentProject.value = null;
       }
     } else {
-      const unknownMatch = to.matched.length === 1 && to.matched[0].name === "dashboard";
-      const unknownRoute = to.name &&
-        !nonProjectPrefixedRouteNames.includes(to.name as string);
+      const unknownMatch =
+        to.matched.length === 1 && to.matched[0].name === "dashboard";
+      const unknownRoute =
+        to.name && !nonProjectPrefixedRouteNames.includes(to.name as string);
       if (unknownMatch || unknownRoute) {
         // Project in url not found, redirect to our last selected project dashboard.
         return next({

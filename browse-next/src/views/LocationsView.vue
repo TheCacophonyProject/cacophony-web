@@ -15,9 +15,9 @@ import {
   type SelectedProject,
 } from "@models/LoggedInUser";
 import type { LoadedResource } from "@apiClient/types";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
-import {BPopover, BSpinner} from "bootstrap-vue-next";
+import { BPopover, BSpinner } from "bootstrap-vue-next";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
@@ -222,10 +222,11 @@ const updateLocationName = async (payload: {
   const location = (locations.value || []).find(({ id }) => id === payload.id);
   if (location) {
     location.name = payload.newName;
-    LocationsForCurrentProject.value = (await ClientApi.Projects.getLocationsForProject(
-      selectedProject.value.id.toString(),
-      true,
-    )) as LoadedResource<ApiLocationResponse[]>;
+    LocationsForCurrentProject.value =
+      (await ClientApi.Projects.getLocationsForProject(
+        selectedProject.value.id.toString(),
+        true,
+      )) as LoadedResource<ApiLocationResponse[]>;
   }
 };
 </script>
@@ -248,7 +249,10 @@ const updateLocationName = async (payload: {
       This location was automatically named. Rename it to a meaningful name for
       your project.
     </b-popover>
-    <div v-if="loadingLocations" class="d-flex align-items-center flex-column flex-fill">
+    <div
+      v-if="loadingLocations"
+      class="d-flex align-items-center flex-column flex-fill"
+    >
       <div class="d-flex align-items-center flex-fill">
         <b-spinner variant="secondary" />
       </div>
@@ -267,14 +271,15 @@ const updateLocationName = async (payload: {
         <!--      TODO - Maybe use bootstrap 'placeholder' elements -->
       </div>
 
-      <div
-        class="d-flex flex-column-reverse justify-content-between flex-fill"
-      >
+      <div class="d-flex flex-column-reverse justify-content-between flex-fill">
         <div v-if="!projectHasLocations" class="d-flex flex-fill">
           <!-- TODO: Styles for empty state -->
           There are no existing locations for this project
         </div>
-        <div v-else class="col col-12 col-lg-8 col-xl-7 d-flex flex-fill flex-column me-md-3 mt-4 mt-lg-0">
+        <div
+          v-else
+          class="col col-12 col-lg-8 col-xl-7 d-flex flex-fill flex-column me-md-3 mt-4 mt-lg-0"
+        >
           <!--        <h6>Things that need to appear here:</h6>-->
           <!--        <ul>-->
           <!--          <li>-->
@@ -284,7 +289,9 @@ const updateLocationName = async (payload: {
           <!--          <li>Show active vs inactive stations</li>-->
           <!--        </ul>-->
           <!--        TODO: Split into: stations active in the last week, last month, last year, older, retired -->
-          <h3 v-if="locationsActiveInLastWeek.length" class="h4 mb-3">Active in past week</h3>
+          <h3 v-if="locationsActiveInLastWeek.length" class="h4 mb-3">
+            Active in past week
+          </h3>
           <locations-overview-table
             v-if="locationsActiveInLastWeek.length"
             :locations="locationsActiveInLastWeek"
@@ -297,7 +304,9 @@ const updateLocationName = async (payload: {
             class="mb-3 mb-sm-4"
           />
 
-          <h6 v-if="locationsActiveInLastMonth.length" class="h4 mb-3">Active in past month</h6>
+          <h6 v-if="locationsActiveInLastMonth.length" class="h4 mb-3">
+            Active in past month
+          </h6>
           <locations-overview-table
             v-if="locationsActiveInLastMonth.length"
             :locations="locationsActiveInLastMonth"
@@ -310,7 +319,9 @@ const updateLocationName = async (payload: {
             class="mb-3 mb-sm-4"
           />
 
-          <h6 v-if="locationsActiveInLastYear.length" class="h4 mb-3">Active in past year</h6>
+          <h6 v-if="locationsActiveInLastYear.length" class="h4 mb-3">
+            Active in past year
+          </h6>
           <locations-overview-table
             v-if="locationsActiveInLastYear.length"
             :locations="locationsActiveInLastYear"
@@ -366,7 +377,6 @@ const updateLocationName = async (payload: {
           :radius="30"
         />
       </div>
-
     </div>
   </div>
 </template>

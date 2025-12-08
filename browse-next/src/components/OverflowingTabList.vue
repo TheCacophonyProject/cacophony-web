@@ -1,14 +1,25 @@
 <script setup lang="ts">
-import {Comment, computed, Fragment, onBeforeMount, ref, useSlots, type VNode, watch} from "vue";
-import {useElementSize} from "@vueuse/core";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import {
+  Comment,
+  computed,
+  Fragment,
+  onBeforeMount,
+  ref,
+  useSlots,
+  type VNode,
+  watch,
+} from "vue";
+import { useElementSize } from "@vueuse/core";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const navList = ref<HTMLUListElement>();
 const slots = useSlots();
 const items = ref<VNode[]>([]);
 
 onBeforeMount(() => {
-  items.value = ((slots.default && slots.default()) || []).filter(node => node.type !== Comment && node.type !== Fragment);
+  items.value = ((slots.default && slots.default()) || []).filter(
+    (node) => node.type !== Comment && node.type !== Fragment,
+  );
   visibleItems.value = items.value.length;
   findSelectedItemName();
 });
@@ -20,14 +31,15 @@ const nonOverflowingItems = computed(() => {
   return items.value.slice(0, visibleItems.value);
 });
 const overFlowingItems = computed(() => {
-  return items.value
-    .slice(visibleItems.value);
+  return items.value.slice(visibleItems.value);
 });
 
 watch(
   () => slots.default && slots.default(),
   (newItems) => {
-    items.value = (newItems as VNode[]).filter(node => node.type !== Comment && node.type !== Fragment);
+    items.value = (newItems as VNode[]).filter(
+      (node) => node.type !== Comment && node.type !== Fragment,
+    );
     findSelectedItemName();
   },
 );
@@ -48,7 +60,8 @@ const calculateListOverflow = (availableWidth: number) => {
 
     for (const child of Array.from(children)) {
       if (!child.classList.contains("btn-group")) {
-        const width = child.querySelector(".text")!.getBoundingClientRect().width + gap;
+        const width =
+          child.querySelector(".text")!.getBoundingClientRect().width + gap;
         totalWidth += width;
 
         if (Math.floor(totalWidth) + extraWidth >= availableWidth) {
@@ -122,7 +135,7 @@ const activeItemTitle = ref<string>("");
 @import "../assets/less/bootstrap-custom";
 .overflow-tab-list {
   &.nav-underline {
-    border-bottom: 1px solid  var(--bs-border-color);
+    border-bottom: 1px solid var(--bs-border-color);
     .nav-link {
       min-height: calc(var(--cp-grid-base) * 11); // 44px
       @media (min-width: @breakpoint-sm) {

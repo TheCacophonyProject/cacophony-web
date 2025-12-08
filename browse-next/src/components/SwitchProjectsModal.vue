@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {BBadge, BModal} from "bootstrap-vue-next";
+import { BBadge, BModal } from "bootstrap-vue-next";
 import {
   currentSelectedProject,
   showSwitchProject,
@@ -15,7 +15,7 @@ import {
   type Ref,
   watch,
 } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import { currentUser as currentUserInfo } from "@models/provides.ts";
 import { userProjects as currentUserProjects } from "@models/provides.ts";
@@ -23,18 +23,12 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import { DateTime } from "luxon";
 import Multiselect from "@vueform/multiselect";
 import type { LoadedResource } from "@apiClient/types.ts";
-// import { getAllProjects } from "@api/Project.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-// import {
-//   list as listUsers,
-//   superUserGetProjectsForUserByEmail,
-// } from "@api/User.ts";
 import type { DeviceId, UserId } from "@typedefs/api/common";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-//import { getActiveDevicesForCurrentUser } from "@api/Device.ts";
 import DeviceName from "@/components/DeviceName.vue";
-import {ClientApi} from "@/api";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { ClientApi } from "@/api";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const router = useRouter();
 const currentRoute = useRoute();
@@ -45,7 +39,7 @@ interface MultiSelectElement extends Multiselect {
   $el: HTMLElement;
 }
 
-const nextRoute = (projectName: string) => {
+const nextRoute = (projectName: string): RouteLocationRaw => {
   const newRoute = {
     ...currentRoute,
     name: "dashboard",
@@ -56,7 +50,7 @@ const nextRoute = (projectName: string) => {
   };
   delete (newRoute as never)["path"];
   delete (newRoute as never)["fullPath"];
-  return newRoute;
+  return newRoute as unknown as RouteLocationRaw;
 };
 const currentProjectName = computed<string>(() => {
   return (
@@ -243,7 +237,9 @@ const devicesList = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const userToFilterProjects = ref<UserId | null>(null);
 const deviceToFilterProjects = ref<DeviceId | null>(null);
 const filterUser = computed(() =>
-  (usersList.value || []).find((user) => user.id === userToFilterProjects.value),
+  (usersList.value || []).find(
+    (user) => user.id === userToFilterProjects.value,
+  ),
 );
 const loadAllUsers = async () => {
   const response = await ClientApi.Users.list();
@@ -279,21 +275,21 @@ const filterUserProjects = ref<ApiProjectResponse[] | null>(null);
 watch(userToFilterProjects, (userId) => {
   if (userId) {
     if (filterUser.value) {
-      ClientApi.Users.superUserGetProjectsForUserByEmail(filterUser.value.email).then(
-        (projects) => {
-          if (projects) {
-            filterUserProjects.value = projects as ApiProjectResponse[];
-            if (
-              selectedProjectName.value &&
-              !filterUserProjects.value.some(
-                (project) => project.groupName === selectedProjectName.value,
-              )
-            ) {
-              selectedProjectName.value = "";
-            }
+      ClientApi.Users.superUserGetProjectsForUserByEmail(
+        filterUser.value.email,
+      ).then((projects) => {
+        if (projects) {
+          filterUserProjects.value = projects as ApiProjectResponse[];
+          if (
+            selectedProjectName.value &&
+            !filterUserProjects.value.some(
+              (project) => project.groupName === selectedProjectName.value,
+            )
+          ) {
+            selectedProjectName.value = "";
           }
-        },
-      );
+        }
+      });
     }
   } else {
     filterUserProjects.value = null;
@@ -331,7 +327,11 @@ watch(userToFilterProjects, (userId) => {
             <span class="d-flex justify-content-between w-100">
               <span class="d-flex align-items-center">
                 <span class="fw-medium">{{ option.groupName }}</span>
-                <span class="ms-1">({{lastActiveRelativeToNow(option.latestRecordingTime)}})</span>
+                <span class="ms-1"
+                  >({{
+                    lastActiveRelativeToNow(option.latestRecordingTime)
+                  }})</span
+                >
                 <span
                   v-if="option.groupName === currentProjectName"
                   class="ms-1"
@@ -340,25 +340,25 @@ watch(userToFilterProjects, (userId) => {
               </span>
               <span class="d-flex align-items-center">
                 <material-symbol
-                    name="videocam"
-                    size="1.125rem"
-                    class="text-secondary ms-1"
-                    v-if="option.lastThermalRecordingTime"
+                  name="videocam"
+                  size="1.125rem"
+                  class="text-secondary ms-1"
+                  v-if="option.lastThermalRecordingTime"
                 />
                 <material-symbol
-                    name="music_note"
-                    size="1.125rem"
-                    class="text-secondary ms-1"
-                    v-if="option.lastAudioRecordingTime"
+                  name="music_note"
+                  size="1.125rem"
+                  class="text-secondary ms-1"
+                  v-if="option.lastAudioRecordingTime"
                 />
                 <material-symbol
-                    name="question_mark"
-                    size="1.125rem"
-                    class="text-secondary ms-1"
-                    v-if="
-                      !option.lastAudioRecordingTime &&
-                      !option.lastThermalRecordingTime
-                    "
+                  name="question_mark"
+                  size="1.125rem"
+                  class="text-secondary ms-1"
+                  v-if="
+                    !option.lastAudioRecordingTime &&
+                    !option.lastThermalRecordingTime
+                  "
                 />
               </span>
             </span>
@@ -367,29 +367,32 @@ watch(userToFilterProjects, (userId) => {
             <span class="w-100 px-3 d-flex align-items-center">
               <span>
                 <span class="fw-medium">{{ value.groupName }}</span>
-                (<span>{{lastActiveRelativeToNow(value.latestRecordingTime)}}</span>)
+                (<span>{{
+                  lastActiveRelativeToNow(value.latestRecordingTime)
+                }}</span
+                >)
               </span>
               <span class="d-flex align-items-center">
                 <material-symbol
-                    name="videocam"
-                    size="1.125rem"
-                    class="text-secondary ms-2"
-                    v-if="value.lastThermalRecordingTime"
+                  name="videocam"
+                  size="1.125rem"
+                  class="text-secondary ms-2"
+                  v-if="value.lastThermalRecordingTime"
                 />
                 <material-symbol
-                    name="music_note"
-                    size="1.125rem"
-                    class="text-secondary ms-2"
-                    v-if="value.lastAudioRecordingTime"
+                  name="music_note"
+                  size="1.125rem"
+                  class="text-secondary ms-2"
+                  v-if="value.lastAudioRecordingTime"
                 />
                 <material-symbol
-                    name="question_mark"
-                    size="1.125rem"
-                    class="text-secondary ms-2"
-                    v-if="
-                      !value.lastAudioRecordingTime &&
-                      !value.lastThermalRecordingTime
-                    "
+                  name="question_mark"
+                  size="1.125rem"
+                  class="text-secondary ms-2"
+                  v-if="
+                    !value.lastAudioRecordingTime &&
+                    !value.lastThermalRecordingTime
+                  "
                 />
               </span>
             </span>
@@ -452,7 +455,9 @@ watch(userToFilterProjects, (userId) => {
       </div>
     </div>
     <div class="list-group" v-if="sortedUserProjects">
-      <p v-if="currentUser.globalPermission !== 'off'" class="mb-2">My projects</p>
+      <p v-if="currentUser.globalPermission !== 'off'" class="mb-2">
+        My projects
+      </p>
       <router-link
         :class="[
           'list-group-item',
@@ -479,11 +484,16 @@ watch(userToFilterProjects, (userId) => {
         <span class="d-flex justify-content-between align-items-center">
           <span>
             <span class="fw-medium">{{ groupName }}</span>
-            <span class="ms-1">({{lastActiveRelativeToNow(latestRecordingTime)}})</span>
-            <b-badge v-if="groupName === currentProjectName" class="ms-1" variant="secondary">
-              Selected
-            </b-badge
+            <span class="ms-1"
+              >({{ lastActiveRelativeToNow(latestRecordingTime) }})</span
             >
+            <b-badge
+              v-if="groupName === currentProjectName"
+              class="ms-1"
+              variant="secondary"
+            >
+              Selected
+            </b-badge>
           </span>
           <span class="d-flex align-items-center">
             <material-symbol

@@ -15,12 +15,17 @@ import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import type { LoadedResource } from "@apiClient/types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { DateTime } from "luxon";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import SectionCard from "@/components/SectionCard.vue";
 import CardTable from "@/components/CardTable.vue";
-import {BAlert, BFormGroup, BFormInput, BFormSelect} from "bootstrap-vue-next";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import {
+  BAlert,
+  BFormGroup,
+  BFormInput,
+  BFormSelect,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -100,13 +105,16 @@ onMounted(async () => {
   }
   if (device.value) {
     // How long has the device been in its current location?  That's the timespan we care about by default.
-    const locationHistory = await ClientApi.Devices.getLocationHistory(deviceId.value);
+    const locationHistory = await ClientApi.Devices.getLocationHistory(
+      deviceId.value,
+    );
     if (locationHistory && locationHistory.length) {
       locationStartTime.value = new Date(locationHistory[0].fromDateTime);
-      trackTags.value = await ClientApi.Devices.getUniqueTrackTagsForDeviceInProject(
-        deviceId.value,
-        locationStartTime.value,
-      );
+      trackTags.value =
+        await ClientApi.Devices.getUniqueTrackTagsForDeviceInProject(
+          deviceId.value,
+          locationStartTime.value,
+        );
     }
   }
 });
@@ -115,11 +123,12 @@ const getTracksForTag = async (tag: string | null) => {
   if (device.value && tag && locationStartTime.value) {
     computingHeatmap.value = true;
     // Maybe restrict to one month ago max?
-    tracksForSelectedTag.value = await ClientApi.Devices.getTracksWithTagForDeviceInProject(
-      deviceId.value,
-      tag,
-      locationStartTime.value,
-    );
+    tracksForSelectedTag.value =
+      await ClientApi.Devices.getTracksWithTagForDeviceInProject(
+        deviceId.value,
+        tag,
+        locationStartTime.value,
+      );
     const tracksHeatmapData = await (new Promise((resolve) => {
       if (tracksForSelectedTag.value) {
         const worker = new Worker(
@@ -157,25 +166,27 @@ const helpInfo = ref<boolean>(true);
     <div class="col-lg-3">
       <h3 class="section-card-heading">Thermal camera insights</h3>
       <div class="text-secondary pb-1">
-        <p>Use this tool to select from species seen during this period and
-          visualise where in the scene this species moves. The insights can be used
-          to inform decisions about where to position traps.
+        <p>
+          Use this tool to select from species seen during this period and
+          visualise where in the scene this species moves. The insights can be
+          used to inform decisions about where to position traps.
         </p>
-        <p>Insights works best when the device has been in the same place for a
-          while. The data may be invalid if the camera viewpoint has
-          shifted (e.g. rotated in a tree trunk) but the
-          gps location has not been updated.</p>
+        <p>
+          Insights works best when the device has been in the same place for a
+          while. The data may be invalid if the camera viewpoint has shifted
+          (e.g. rotated in a tree trunk) but the gps location has not been
+          updated.
+        </p>
       </div>
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          Insights
-        </template>
+        <template #header-title> Insights </template>
 
         <div class="row">
-
-          <div class="col order-2 order-md-1 col-12 col-md-8 position-relative text-white">
+          <div
+            class="col order-2 order-md-1 col-12 col-md-8 position-relative text-white"
+          >
             <cptv-single-frame
               :recording="latestStatusRecording"
               :overlay="overlayData"
@@ -185,14 +196,8 @@ const helpInfo = ref<boolean>(true);
             />
             <b-spinner v-if="computingHeatmap" class="loading-heatmap" />
           </div>
-          <div
-            class="col order-1 order-md-2 col-12 col-md-4"
-          >
-            <b-form-group
-              label="Species"
-              label-for="species"
-              class="mb-3"
-            >
+          <div class="col order-1 order-md-2 col-12 col-md-4">
+            <b-form-group label="Species" label-for="species" class="mb-3">
               <b-form-select
                 :options="trackTagOptions"
                 v-model="selectedTag"
@@ -217,33 +222,29 @@ const helpInfo = ref<boolean>(true);
             </b-form-group>
 
             <b-alert
-                v-if="locationStartTime"
-                :model-value="true"
-                variant="light"
-                :no-animation="true"
-                class="mb-3"
-              >
-                <div class="d-flex">
-                  <material-symbol name="info" class="me-2" size="1.25rem"/>
-                  <span>This camera has been at its current location for
-                <strong
-                >{{
-                    DateTime.fromJSDate(locationStartTime as Date)
-                      .toRelative()!
-                      .replace(" ago", "")
-                  }}.</strong
-                >
+              v-if="locationStartTime"
+              :model-value="true"
+              variant="light"
+              :no-animation="true"
+              class="mb-3"
+            >
+              <div class="d-flex">
+                <material-symbol name="info" class="me-2" size="1.25rem" />
+                <span
+                  >This camera has been at its current location for
+                  <strong
+                    >{{
+                      DateTime.fromJSDate(locationStartTime as Date)
+                        .toRelative()!
+                        .replace(" ago", "")
+                    }}.</strong
+                  >
                 </span>
-
-                </div>
-              </b-alert>
+              </div>
+            </b-alert>
             <p v-else><b-spinner small /></p>
-
           </div>
-
-
         </div>
-
       </section-card>
     </div>
   </div>

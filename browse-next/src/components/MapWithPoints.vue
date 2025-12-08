@@ -213,16 +213,14 @@ const mapLayers = [
   {
     name: "OpenTopoMap Basemap",
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution:
-      "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, <a href=\"http://viewfinderpanoramas.org\">SRTM</a> | Map style: &copy; <a href=\"https://opentopomap.org\">OpenTopoMap</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)",
+    attribution: `Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)`,
     visible: true,
   },
   {
     name: "OpenStreetMap Basemap",
     visible: false,
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution:
-      "&copy; <a href=\"http://osm.org/copyright\">OpenStreetMap</a> contributors",
+    attribution: `&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors`,
   },
 ];
 const mapBounds = computed<LatLngBounds | null>(() => {
@@ -406,7 +404,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("mouseover", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && hoverPoint(namedPoint);
         });
@@ -414,7 +413,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("click", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && selectPoint(namedPoint);
         });
@@ -504,7 +504,7 @@ onMounted(() => {
     dragging: props.isInteractive,
     scrollWheelZoom: props.isInteractive,
     keyboard: props.isInteractive,
-    tap: props.isInteractive,
+    tapHold: props.isInteractive, // TODO: Check this is the correct property for interactivity
     maxZoom: 15,
     minZoom: props.minZoom,
     attributionControl: false,

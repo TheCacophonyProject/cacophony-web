@@ -5,7 +5,7 @@ import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, ref } from "vue";
 import { BFormCheckboxGroup } from "bootstrap-vue-next";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 
 const emit = defineEmits<{
   (e: "invited"): void;

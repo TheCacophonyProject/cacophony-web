@@ -1,5 +1,5 @@
 import type { RecordingId } from "@typedefs/api/common";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 
 interface MessageData {
   type: string;
@@ -71,7 +71,13 @@ export class CptvDecoder {
     const type = "initWithRecordingIdAndSize";
 
     decoder &&
-      decoder.postMessage({ type, id, size, apiToken, apiRoot: ClientApi.getApiRoot() });
+      decoder.postMessage({
+        type,
+        id,
+        size,
+        apiToken,
+        apiRoot: ClientApi.getApiRoot(),
+      });
 
     return (await this.waitForMessage(type)) as string | boolean | Blob;
   }

@@ -32,16 +32,21 @@
         <tr
           v-for="(row, rowIndex) in displayedItems.values"
           :key="rowIndex"
-          @click="(e) => selectedItem(e, sortedItems[rowIndex])"
-          @mouseenter="() => enteredItem(sortedItems[rowIndex])"
-          @mouseleave="leftItem(sortedItems[rowIndex])"
+          @click="
+            (e) =>
+              selectedItem(e, sortedItems[rowIndex] as CardTableRow<unknown>)
+          "
+          @mouseenter="
+            () => enteredItem(sortedItems[rowIndex] as CardTableRow<unknown>)
+          "
+          @mouseleave="leftItem(sortedItems[rowIndex] as CardTableRow<unknown>)"
           :class="{ highlighted: eq(sortedItems[rowIndex], highlightedItem) }"
         >
           <td
             :class="[
               compact ? 'py-2 ps-3' : 'py-3 ps-3',
               { 'pe-3': index === row.length - 1 },
-              ...((cell && cell.cellClasses) || []),
+              ...cellClasses(cell),
             ]"
             v-for="(cell, index) in row"
             :key="index"
@@ -51,7 +56,12 @@
               v-bind="{ cell, row: sortedItems[rowIndex] }"
             >
               <span
-                v-if="cell && cell.value !== undefined"
+                v-if="
+                  cell &&
+                  typeof cell === 'object' &&
+                  cell !== null &&
+                  'value' in cell
+                "
                 :class="{ 'text-nowrap': !hasLineBreaks(cell) }"
                 v-html="cell.value"
               />
@@ -72,14 +82,22 @@
       <div
         v-for="(card, cardIndex) in sortedItems"
         :key="cardIndex"
-        @mouseenter="enteredItem(card)"
-        @mouseleave="leftItem(card)"
-        @click="(e) => selectedItem(e, sortedItems[cardIndex])"
+        @mouseenter="enteredItem(card as CardTableRow<unknown>)"
+        @mouseleave="leftItem(card as CardTableRow<unknown>)"
+        @click="
+          (e) =>
+            selectedItem(e, sortedItems[cardIndex] as CardTableRow<unknown>)
+        "
         class="card-table-card py-3 px-3 py-md-4 px-md-4 mb-3"
         :class="{ highlighted: eq(card, highlightedItem) }"
       >
         <slot name="card" v-bind="{ card }">
-          <div v-for="(value, index) in Object.values(card)" :key="index">
+          <div
+            v-for="(value, index) in Object.values(
+              card as CardTableRow<unknown>,
+            )"
+            :key="index"
+          >
             <div
               v-if="displayedItems.headings[index]"
               class="d-flex justify-content-between"
@@ -88,7 +106,11 @@
                 ><strong>{{ displayedItems.headings[index] }}:</strong></span
               >
               <span
-                v-if="value.value"
+                v-if="
+                  typeof value === 'object' &&
+                  value !== null &&
+                  'value' in value
+                "
                 :class="{ 'text-nowrap': !hasLineBreaks(value.value) }"
                 v-html="value.value"
               />
@@ -113,7 +135,6 @@ import type {
   GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { useElementSize } from "@vueuse/core";
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 const props = withDefaults(
   defineProps<{
@@ -133,6 +154,17 @@ const props = withDefaults(
   },
 );
 
+const cellClasses = (cell: unknown): string[] => {
+  if (
+    cell &&
+    typeof cell === "object" &&
+    "cellClasses" in cell &&
+    Array.isArray(cell.cellClasses)
+  ) {
+    return cell.cellClasses as string[];
+  }
+  return [];
+};
 const eq = (a: GenericCardTableValue<any>, b: GenericCardTableValue<any>) => {
   const aa = isProxy(a) ? toRaw(a) : a;
   const bb = isProxy(b) ? toRaw(b) : b;
@@ -140,14 +172,14 @@ const eq = (a: GenericCardTableValue<any>, b: GenericCardTableValue<any>) => {
 };
 
 const emit = defineEmits<{
-  (e: "entered-item", payload: GenericCardTableValue<any>): void;
-  (e: "left-item", payload: GenericCardTableValue<any>): void;
-  (e: "select-item", payload: GenericCardTableValue<any>): void;
+  (e: "entered-item", payload: GenericCardTableValue<unknown>): void;
+  (e: "left-item", payload: GenericCardTableValue<unknown> | null): void;
+  (e: "select-item", payload: GenericCardTableValue<unknown>): void;
 }>();
 
 const cardTableContainer = ref<HTMLDivElement>();
 
-const hasLineBreaks = (value: any) => {
+const hasLineBreaks = (value: unknown) => {
   return (
     typeof value === "string" && (value.length > 50 || value.includes("\n"))
   );
@@ -159,7 +191,9 @@ const shouldRenderAsRows = computed(() => width.value >= props.maxCardWidth);
 const hasItems = computed(() => props.items.length !== 0);
 const headings = computed<string[]>(() => {
   if (props.items.length) {
-    return Object.keys(props.items[0]).filter((h) => !h.startsWith("__"));
+    if (typeof props.items[0] === "object" && props.items[0] !== null) {
+      return Object.keys(props.items[0]).filter((h) => !h.startsWith("__"));
+    }
   }
   return [];
 });
@@ -204,13 +238,13 @@ type SortFn = <T>(a: T, b: T) => number;
 
 const hasSorts = computed<boolean>(() => Object.values(sorts).length !== 0);
 
-const defaultLexicalSort = (a: any, b: any): number => {
+const defaultLexicalSort = (a: unknown, b: unknown): number => {
   if (typeof a === "string" && typeof b === "string") {
     const aa = a.toLowerCase();
     const bb = b.toLowerCase();
     return aa > bb ? 1 : aa === bb ? 0 : -1;
   }
-  return a > b ? 1 : a === b ? 0 : -1;
+  return (a as number) > (b as number) ? 1 : a === b ? 0 : -1;
 };
 
 enum SortDirection {
@@ -227,7 +261,11 @@ onBeforeMount(() => {
     sorts[splitCamelCase(columnName)] = {
       fn:
         sortDimension === true
-          ? (a: any, b: any) => defaultLexicalSort(a[columnName], b[columnName])
+          ? (a, b) =>
+              defaultLexicalSort(
+                (a as Record<string, unknown>)[columnName],
+                (b as Record<string, unknown>)[columnName],
+              )
           : (sortDimension as SortFn),
       direction:
         props.defaultSort && columnName === props.defaultSort
@@ -287,7 +325,7 @@ const displayedItems = computed<{
         heading.startsWith("_") ? "" : splitCamelCase(heading),
       ),
     values: sortedItems.value.map((row) =>
-      Object.entries(row)
+      Object.entries(row as object)
         .filter(([heading, _value]) => !heading.startsWith("__"))
         .map(([_heading, value]) => value),
     ),
@@ -316,7 +354,7 @@ const displayedItems = computed<{
     &.sortable {
       cursor: pointer;
     }
-/*    &:first-of-type {
+    /*    &:first-of-type {
       padding-left: 0 !important;
     }*/
   }

@@ -229,34 +229,34 @@ const pendingTagIsValid = computed<boolean>(() => {
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
       <h3 class="section-card-heading">Project tagging settings</h3>
-      <p class="text-secondary">Manage the set of default tags that users see for this project when
-        tagging either camera recordings or bird recordings.</p>
-      <p class="text-secondary pb-1">Users can also
-        add and pin their own most-used tags via each tagging interface.
+      <p class="text-secondary">
+        Manage the set of default tags that users see for this project when
+        tagging either camera recordings or bird recordings.
+      </p>
+      <p class="text-secondary pb-1">
+        Users can also add and pin their own most-used tags via each tagging
+        interface.
       </p>
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          Camera tags
-        </template>
+        <template #header-title> Camera tags </template>
         <template #header-action>
           <div>
             <button
-                type="button"
-                class="btn btn-outline-secondary ms-2"
-                @click.stop.prevent="showAddCameraTagModal = true"
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              @click.stop.prevent="showAddCameraTagModal = true"
             >
               Add
             </button>
             <button
-                type="button"
-                class="btn btn-outline-danger ms-2"
-                @click.stop.prevent="resetCameraTags"
+              type="button"
+              class="btn btn-outline-danger ms-2"
+              @click.stop.prevent="resetCameraTags"
             >
               Reset
             </button>
@@ -265,24 +265,27 @@ const pendingTagIsValid = computed<boolean>(() => {
         <card-table :items="cameraTagTableItems" compact :max-card-width="0">
           <template #_moveUp="{ cell }">
             <button
-                class="btn"
-                @click.prevent="() => moveCameraTagUp(cell.value)"
-                :disabled="isFirstTagInCameraList(cell.value)"
+              class="btn"
+              @click.prevent="() => moveCameraTagUp(cell.value)"
+              :disabled="isFirstTagInCameraList(cell.value)"
             >
               <font-awesome-icon icon="arrow-up" />
             </button>
           </template>
           <template #_moveDown="{ cell }">
             <button
-                class="btn"
-                @click.prevent="() => moveCameraTagDown(cell.value)"
-                :disabled="isLastTagInCameraList(cell.value)"
+              class="btn"
+              @click.prevent="() => moveCameraTagDown(cell.value)"
+              :disabled="isLastTagInCameraList(cell.value)"
             >
               <font-awesome-icon icon="arrow-up" rotation="180" />
             </button>
           </template>
           <template #_deleteAction="{ cell }">
-            <button class="btn" @click.prevent="() => removeCameraTag(cell.value)">
+            <button
+              class="btn"
+              @click.prevent="() => removeCameraTag(cell.value)"
+            >
               <font-awesome-icon icon="trash-can" />
             </button>
           </template>
@@ -292,26 +295,23 @@ const pendingTagIsValid = computed<boolean>(() => {
   </div>
 
   <div class="row mb-3">
-    <div class="col-lg-3">
-    </div>
+    <div class="col-lg-3"></div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          Bird recording tags
-        </template>
+        <template #header-title> Bird recording tags </template>
         <template #header-action>
           <div>
             <button
-                type="button"
-                class="btn btn-outline-secondary ms-2"
-                @click.stop.prevent="showAddAudioTagModal = true"
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              @click.stop.prevent="showAddAudioTagModal = true"
             >
               Add
             </button>
             <button
-                type="button"
-                class="btn btn-outline-danger ms-2"
-                @click.stop.prevent="resetAudioTags"
+              type="button"
+              class="btn btn-outline-danger ms-2"
+              @click.stop.prevent="resetAudioTags"
             >
               Reset
             </button>
@@ -320,24 +320,27 @@ const pendingTagIsValid = computed<boolean>(() => {
         <card-table :items="audioTagTableItems" compact :max-card-width="0">
           <template #_moveUp="{ cell }">
             <button
-                class="btn"
-                @click.prevent="() => moveAudioTagUp(cell.value)"
-                :disabled="isFirstTagInAudioList(cell.value)"
+              class="btn"
+              @click.prevent="() => moveAudioTagUp(cell.value)"
+              :disabled="isFirstTagInAudioList(cell.value)"
             >
               <font-awesome-icon icon="arrow-up" />
             </button>
           </template>
           <template #_moveDown="{ cell }">
             <button
-                class="btn"
-                @click.prevent="() => moveAudioTagDown(cell.value)"
-                :disabled="isLastTagInAudioList(cell.value)"
+              class="btn"
+              @click.prevent="() => moveAudioTagDown(cell.value)"
+              :disabled="isLastTagInAudioList(cell.value)"
             >
               <font-awesome-icon icon="arrow-up" rotation="180" />
             </button>
           </template>
           <template #_deleteAction="{ cell }">
-            <button class="btn" @click.prevent="() => removeAudioTag(cell.value)">
+            <button
+              class="btn"
+              @click.prevent="() => removeAudioTag(cell.value)"
+            >
               <font-awesome-icon icon="trash-can" />
             </button>
           </template>

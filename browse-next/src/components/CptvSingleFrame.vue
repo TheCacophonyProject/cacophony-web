@@ -29,7 +29,7 @@ const defaultPalette = computed(
   () =>
     ColourMaps.find(([name, _val]) => name === props.palette) as [
       string,
-      Uint32Array
+      Uint32Array,
     ],
 );
 const defaultOverlayPalette = ColourMaps.find(
@@ -156,11 +156,12 @@ const renderFrame = () => {
         ctx.putImageData(frameData.value, 0, 0);
       }
       if (props.overlay) {
-        const source = props.overlay;
+        const source = props.overlay as Uint8ClampedArray;
         const imageData = new ImageData(160, 120);
         const frameBufferView = new Uint32Array(imageData.data.buffer);
+        const palette = defaultOverlayPalette[1];
         for (let i = 0; i < frameBufferView.length; i++) {
-          frameBufferView[i] = defaultOverlayPalette[1][source[i]];
+          frameBufferView[i] = palette[source[i] as number] as number;
         }
         const tmp = document.createElement("canvas");
         tmp.width = 160;

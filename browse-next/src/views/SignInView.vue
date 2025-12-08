@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref } from "vue";
-import { login, refreshUserProjects, urlNormalisedCurrentProjectName } from "@models/LoggedInUser";
+import {
+  login,
+  refreshUserProjects,
+  urlNormalisedCurrentProjectName,
+} from "@models/LoggedInUser";
 import type { PendingRequest } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";

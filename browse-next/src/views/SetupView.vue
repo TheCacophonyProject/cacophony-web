@@ -11,14 +11,21 @@ import {
   urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
 import type { LoggedInUser } from "@models/LoggedInUser";
-import { computed, inject, onBeforeMount, onUnmounted, type Ref, ref } from "vue";
+import {
+  computed,
+  inject,
+  onBeforeMount,
+  onUnmounted,
+  type Ref,
+  ref,
+} from "vue";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 import { formFieldInputText } from "@/utils";
 import CardTable from "@/components/CardTable.vue";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import { currentUser } from "@models/provides.ts";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
 
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
@@ -103,7 +110,9 @@ const updateEmailAddress = async () => {
 const acceptingInvite = ref<boolean>(false);
 const acceptInvitationToProject = async (project: ApiProjectResponse) => {
   acceptingInvite.value = true;
-  const acceptInviteResponse = await ClientApi.Users.acceptProjectInvitation(project.id);
+  const acceptInviteResponse = await ClientApi.Users.acceptProjectInvitation(
+    project.id,
+  );
   if (acceptInviteResponse.success) {
     await refreshUserProjects();
     await router.push({
@@ -166,7 +175,8 @@ const debugConfirmEmail = async () => {
   );
   if (tokenResponse.success) {
     const token = tokenResponse.result.token;
-    const validateTokenResponse = await ClientApi.Users.validateEmailConfirmationToken(token);
+    const validateTokenResponse =
+      await ClientApi.Users.validateEmailConfirmationToken(token);
     if (validateTokenResponse.success) {
       const { userData, token, refreshToken, signOutUser } =
         validateTokenResponse.result;

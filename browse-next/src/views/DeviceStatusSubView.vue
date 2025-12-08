@@ -1,28 +1,34 @@
 <script lang="ts" setup>
-import type {Ref} from "vue";
-import {computed, inject, onBeforeMount, ref, watch} from "vue";
-import {ClientApi} from "@/api";
-import type {BatteryInfoEvent, LoadedResource} from "@apiClient/types";
-import {useRoute} from "vue-router";
-import type {DeviceId} from "@typedefs/api/common";
+import type { Ref } from "vue";
+import { computed, inject, onBeforeMount, ref, watch } from "vue";
+import { ClientApi } from "@/api";
+import type { BatteryInfoEvent, LoadedResource } from "@apiClient/types";
+import { useRoute } from "vue-router";
+import type { DeviceId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
-import type {CardTableRows} from "@/components/CardTableTypes";
-import type {DeviceConfigDetail} from "@typedefs/api/event";
-import {projectDevicesLoaded, projectLocationsLoaded} from "@models/LoggedInUser";
+import type { CardTableRows } from "@/components/CardTableTypes";
+import type { DeviceConfigDetail } from "@typedefs/api/event";
+import {
+  projectDevicesLoaded,
+  projectLocationsLoaded,
+} from "@models/LoggedInUser";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type {NamedPoint} from "@models/mapUtils";
-import type {ApiStationResponse as ApiLocationResponse} from "@typedefs/api/station";
+import type { NamedPoint } from "@models/mapUtils";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import sunCalc from "suncalc";
-import {DateTime} from "luxon";
-import type {ApiRecordingResponse} from "@typedefs/api/recording";
+import { DateTime } from "luxon";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
-import {FixedScaleAxis, Interpolation, LineChart} from "chartist";
-import {AudioRecordingMode, DeviceType} from "@typedefs/api/consts.ts";
-import type {ApiDeviceHistorySettings, ApiDeviceResponse} from "@typedefs/api/device";
+import { FixedScaleAxis, Interpolation, LineChart } from "chartist";
+import { AudioRecordingMode, DeviceType } from "@typedefs/api/consts.ts";
+import type {
+  ApiDeviceHistorySettings,
+  ApiDeviceResponse,
+} from "@typedefs/api/device";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
-import {resourceIsLoading} from "@/helpers/utils.ts";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
-import {BButton, BPopover, BSpinner} from "bootstrap-vue-next";
+import { resourceIsLoading } from "@/helpers/utils.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { BButton, BPopover, BSpinner } from "bootstrap-vue-next";
 import LocationName from "@/components/LocationName.vue";
 
 const batteryTimeSeries = ref<HTMLDivElement>();
@@ -264,11 +270,10 @@ const initBatteryInfoTimeSeries = () => {
   if (interpolatedBatteryInfo.value && batteryTimeSeries.value) {
     const chartLow = 0;
     const chartHigh = 100;
-    let axisLabelFormat;
 
     // Use percentage as primary display
-    const primaryData: {x: Date; y: number; meta: BatteryInfoDisplayEvent}[] = interpolatedBatteryInfo.value
-      .map((item) => ({
+    const primaryData: { x: Date; y: number; meta: BatteryInfoDisplayEvent }[] =
+      interpolatedBatteryInfo.value.map((item) => ({
         x: item.dateTime,
         y: item.battery as number,
         meta: {
@@ -277,7 +282,7 @@ const initBatteryInfoTimeSeries = () => {
           dateTime: item.dateTime,
         },
       }));
-    axisLabelFormat = (value: number) => `${value}%`;
+    const axisLabelFormat = (value: number) => `${value}%`;
 
     if (primaryData.length > 0) {
       const chart = new LineChart(
@@ -313,7 +318,9 @@ const initBatteryInfoTimeSeries = () => {
 
       // Add event listeners for tooltips
       chart.on("created", () => {
-        const points = batteryTimeSeries.value!.querySelectorAll(".ct-point") as unknown as SVGElement[];
+        const points = batteryTimeSeries.value!.querySelectorAll(
+          ".ct-point",
+        ) as unknown as SVGElement[];
         if (points) {
           points.forEach((point) => {
             point.addEventListener("mouseenter", (e: MouseEvent) => {
@@ -321,8 +328,8 @@ const initBatteryInfoTimeSeries = () => {
               const ctValue = target.getAttribute("ct:value");
               if (ctValue) {
                 const [x, y] = ctValue.split(",").map(Number);
-                const dataPoint = primaryData.find(d =>
-                  d.x.getTime() === x && d.y === y,
+                const dataPoint = primaryData.find(
+                  (d) => d.x.getTime() === x && d.y === y,
                 );
 
                 if (dataPoint && dataPoint.meta) {
@@ -349,7 +356,8 @@ const initBatteryInfoTimeSeries = () => {
 
                   // Position tooltip near the point
                   const rect = (e.target as Element).getBoundingClientRect();
-                  const containerRect = batteryTimeSeries.value!.getBoundingClientRect();
+                  const containerRect =
+                    batteryTimeSeries.value!.getBoundingClientRect();
                   tooltipPosition.value = {
                     x: rect.left - containerRect.left + rect.width / 2,
                     y: rect.top - containerRect.top - 10,
@@ -379,7 +387,9 @@ const hasUnknownPowerSource = computed<boolean>(() => {
     !!batteryInfo.value &&
     batteryInfo.value.length !== 0 &&
     batteryInfo.value.every(
-      (item) => item.batteryType === "unknown_battery_type" || item.batteryType === "mains",
+      (item) =>
+        item.batteryType === "unknown_battery_type" ||
+        item.batteryType === "mains",
     )
   );
 });
@@ -391,24 +401,29 @@ interface BatteryInfoDisplayEvent {
 const interpolatedBatteryInfo = computed<BatteryInfoDisplayEvent[]>(() => {
   const eightWeeksAgo = new Date();
   const now = new Date();
-  const sortedEvents: BatteryInfoDisplayEvent[] = (batteryInfo.value || []).map((event: BatteryInfoEvent) => (
-      {
-        ...event,
-        dateTime: new Date(event.dateTime),
-      }
-  ));
+  const sortedEvents: BatteryInfoDisplayEvent[] = (batteryInfo.value || []).map(
+    (event: BatteryInfoEvent) => ({
+      ...event,
+      dateTime: new Date(event.dateTime),
+    }),
+  );
   sortedEvents.sort(
-      (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime(),
+    (a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime(),
   );
   eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
   if (sortedEvents.length !== 0) {
     const firstEvent = sortedEvents[0] as BatteryInfoDisplayEvent;
-    const lastEvent = sortedEvents[sortedEvents.length - 1] as BatteryInfoDisplayEvent;
-    console.log(firstEvent, lastEvent);
+    const lastEvent = sortedEvents[
+      sortedEvents.length - 1
+    ] as BatteryInfoDisplayEvent;
     const firstEventTime = firstEvent.dateTime;
     const lastEventTime = lastEvent.dateTime;
     const emptyDaysAtStart = Math.floor(
-      (firstEventTime.getTime() - eightWeeksAgo.getTime()) / 1000 / 60 / 60 / 24,
+      (firstEventTime.getTime() - eightWeeksAgo.getTime()) /
+        1000 /
+        60 /
+        60 /
+        24,
     );
     const emptyDaysAtEnd = Math.floor(
       (now.getTime() - lastEventTime.getTime()) / 1000 / 60 / 60 / 24,
@@ -474,19 +489,33 @@ const init = async () => {
   await Promise.all([projectDevicesLoaded(), projectLocationsLoaded()]);
   await deviceLoaded();
   if (device.value) {
-    loadResource(deviceConfig, () => ClientApi.Devices.getDeviceConfig(deviceId));
-    loadResource(versionInfo, () => ClientApi.Devices.getDeviceVersionInfo(deviceId));
+    loadResource(deviceConfig, () =>
+      ClientApi.Devices.getDeviceConfig(deviceId),
+    );
+    loadResource(versionInfo, () =>
+      ClientApi.Devices.getDeviceVersionInfo(deviceId),
+    );
 
     loadResource(currentLocationForDevice, () =>
       ClientApi.Devices.getDeviceLocationAtTime(deviceId, true),
     );
-    loadResource(lastPowerOffTime, () => ClientApi.Devices.getDeviceLastPoweredOff(deviceId));
-    loadResource(lastPowerOnTime, () => ClientApi.Devices.getDeviceLastPoweredOn(deviceId));
-    loadResource(saltNodeGroup, () => ClientApi.Devices.getDeviceNodeGroup(deviceId));
+    loadResource(lastPowerOffTime, () =>
+      ClientApi.Devices.getDeviceLastPoweredOff(deviceId),
+    );
+    loadResource(lastPowerOnTime, () =>
+      ClientApi.Devices.getDeviceLastPoweredOn(deviceId),
+    );
+    loadResource(saltNodeGroup, () =>
+      ClientApi.Devices.getDeviceNodeGroup(deviceId),
+    );
     const eightWeeksAgo = new Date();
     eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
-    loadResource(batteryInfo, () => ClientApi.Devices.getBatteryInfo(deviceId, eightWeeksAgo));
-    loadResource(latestVersionInfo, () => ClientApi.Devices.getDeviceLatestVersionInfo());
+    loadResource(batteryInfo, () =>
+      ClientApi.Devices.getBatteryInfo(deviceId, eightWeeksAgo),
+    );
+    loadResource(latestVersionInfo, () =>
+      ClientApi.Devices.getDeviceLatestVersionInfo(),
+    );
   }
 };
 
@@ -541,11 +570,11 @@ const deviceLocationPoints = computed<NamedPoint[]>(() => {
 });
 
 const locationCopied = ref<boolean>(false);
-let locationCopiedTimeout:number;
+let locationCopiedTimeout: number;
 
-const copyLocation = (() => {
+const copyLocation = () => {
   if (device.value && device.value.location) {
-    const {lat, lng} = device.value.location;
+    const { lat, lng } = device.value.location;
     navigator.clipboard.writeText(`${lat}, ${lng}`);
     locationCopied.value = true;
 
@@ -554,9 +583,8 @@ const copyLocation = (() => {
     locationCopiedTimeout = setTimeout(() => {
       locationCopied.value = false;
     }, 1500) as unknown as number;
-
   }
-});
+};
 
 enum DevicePowerProfile {
   LowPower,
@@ -581,8 +609,12 @@ const isTc2Device = computed<boolean>(() => {
 });
 
 const primaryBatteryDataType = computed<string>(() => {
-  const hasPercentage = interpolatedBatteryInfo.value.some(item => item.battery !== null);
-  const hasVoltage = interpolatedBatteryInfo.value.some(item => item.voltage !== null);
+  const hasPercentage = interpolatedBatteryInfo.value.some(
+    (item) => item.battery !== null,
+  );
+  const hasVoltage = interpolatedBatteryInfo.value.some(
+    (item) => item.voltage !== null,
+  );
 
   if (hasPercentage && hasVoltage) {
     return "Battery Level (hover for voltage details)";
@@ -597,7 +629,11 @@ const primaryBatteryDataType = computed<string>(() => {
 const showSoftwareInformation = ref<boolean>(false);
 
 const audioRecordingMode = computed<AudioRecordingMode>(() => {
-  if (deviceConfig.value && deviceConfig.value["audio-recording"] && deviceConfig.value["audio-recording"]["audio-mode"]) {
+  if (
+    deviceConfig.value &&
+    deviceConfig.value["audio-recording"] &&
+    deviceConfig.value["audio-recording"]["audio-mode"]
+  ) {
     return deviceConfig.value["audio-recording"]["audio-mode"];
   }
   return AudioRecordingMode.AudioAndThermal;
@@ -644,7 +680,6 @@ const audioRecordingSchedule = computed<string>(() => {
       return "Makes an average of 32 one minute audio recordings per day, spread randomly across the day, when not making a thermal recording";
   }
 });
-
 </script>
 <template>
   <div v-if="device && device.active" class="mt-3 d-flex flex-column">
@@ -653,27 +688,46 @@ const audioRecordingSchedule = computed<string>(() => {
       <div class="bento-box configuration">
         <h4 class="h4 mb-3">Current device configuration</h4>
 
-        <div v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
-
+        <div
+          v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)"
+        >
           <dl class="settings-summary container mb-0">
             <!-- Device status -->
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Device status</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+              <dt
+                class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+              >
+                Device status
+              </dt>
+              <dd
+                class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
                 <!-- TODO: infer this state better, doesn't report correctly for offline devices  -->
                 <div v-if="deviceStopped">
-                  <span class="d-flex d-inline-flex align-items-center px-1 rounded bg-danger-subtle text-danger-emphasis">
-                    <material-symbol name="close" size="1.125rem" class="me-1"></material-symbol>
+                  <span
+                    class="d-flex d-inline-flex align-items-center px-1 rounded bg-danger-subtle text-danger-emphasis"
+                  >
+                    <material-symbol
+                      name="close"
+                      size="1.125rem"
+                      class="me-1"
+                    ></material-symbol>
                     Stopped
                   </span>
                 </div>
                 <div v-else class="d-flex align-items-center">
-                  <span class="d-flex d-inline-flex align-items-center px-1 rounded bg-success-subtle text-success-emphasis">
-                    <material-symbol name="check" size="1.125rem" class="me-1"></material-symbol>
+                  <span
+                    class="d-flex d-inline-flex align-items-center px-1 rounded bg-success-subtle text-success-emphasis"
+                  >
+                    <material-symbol
+                      name="check"
+                      size="1.125rem"
+                      class="me-1"
+                    ></material-symbol>
                     Ready
                   </span>
                   <!-- TODO: add description of what these states mean -->
-<!--                  <b-button
+                  <!--                  <b-button
                     variant="outline-secondary"
                     size="sm"
                     class="btn-icon d-flex"
@@ -693,12 +747,21 @@ const audioRecordingSchedule = computed<string>(() => {
 
             <!-- Power profile -->
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Power profile</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+              <dt
+                class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+              >
+                Power profile
+              </dt>
+              <dd
+                class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
                 <div v-if="configInfoLoading">
                   <b-spinner small class="me-2" /> Loading power profile
                 </div>
-                <div v-else-if="powerProfile === DevicePowerProfile.HighPower" class="d-flex align-items-center">
+                <div
+                  v-else-if="powerProfile === DevicePowerProfile.HighPower"
+                  class="d-flex align-items-center"
+                >
                   <span>High Power mode</span>
                   <b-button
                     variant="light"
@@ -713,8 +776,15 @@ const audioRecordingSchedule = computed<string>(() => {
                     target="high-power-mode-description"
                     class="popover-wide"
                   >
-                    <p class="mb-2">Devices in High Power mode upload new recordings to the Cacophony Monitoring Platform immediately (if connected to the internet).</p>
-                    <p class="mb-0">Any alerts configured for specific species will be sent out shortly after the detection.</p>
+                    <p class="mb-2">
+                      Devices in High Power mode upload new recordings to the
+                      Cacophony Monitoring Platform immediately (if connected to
+                      the internet).
+                    </p>
+                    <p class="mb-0">
+                      Any alerts configured for specific species will be sent
+                      out shortly after the detection.
+                    </p>
                   </b-popover>
                 </div>
                 <div v-else-if="powerProfile === DevicePowerProfile.LowPower">
@@ -732,8 +802,15 @@ const audioRecordingSchedule = computed<string>(() => {
                     class="popover-wide"
                     target="low-power-mode-description"
                   >
-                    <p class="mb-2">Devices in Low Power mode will only connect to the Cacophony Monitoring Platform once per day to offload recordings.</p>
-                    <p class="mb-0">Projects tracking an incursion that require real-time alerts of species detected should enable high power mode.</p>
+                    <p class="mb-2">
+                      Devices in Low Power mode will only connect to the
+                      Cacophony Monitoring Platform once per day to offload
+                      recordings.
+                    </p>
+                    <p class="mb-0">
+                      Projects tracking an incursion that require real-time
+                      alerts of species detected should enable high power mode.
+                    </p>
                   </b-popover>
                 </div>
                 <!-- TODO: v-else for unknown profile? Can this happen? -->
@@ -741,31 +818,43 @@ const audioRecordingSchedule = computed<string>(() => {
             </div>
 
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 align-items-center fw-medium">Recording settings</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2 align-items-center">
+              <dt
+                class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 align-items-center fw-medium"
+              >
+                Recording settings
+              </dt>
+              <dd
+                class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2 align-items-center"
+              >
                 {{ audioRecordingModeDisplay }}
                 <b-button
-                    variant="light"
-                    size="sm"
-                    class="btn-icon d-inline-flex"
-                    aria-label="View mode details"
-                    id="audio-mode-description"
+                  variant="light"
+                  size="sm"
+                  class="btn-icon d-inline-flex"
+                  aria-label="View mode details"
+                  id="audio-mode-description"
                 >
                   <material-symbol name="info" size="1.25rem" />
                 </b-button>
-                <b-popover
-                    class="popover-wide"
-                    target="audio-mode-description"
-                >
+                <b-popover class="popover-wide" target="audio-mode-description">
                   <p class="mb-0">{{ audioRecordingModeDescription }}</p>
                 </b-popover>
               </dd>
             </div>
 
             <!-- Thermal recording schedule -->
-            <div class="row" v-if="audioRecordingMode !== AudioRecordingMode.AudioOnly">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Thermal recording schedule</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+            <div
+              class="row"
+              v-if="audioRecordingMode !== AudioRecordingMode.AudioOnly"
+            >
+              <dt
+                class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+              >
+                Thermal recording schedule
+              </dt>
+              <dd
+                class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
                 <div v-if="configInfoLoading">
                   <b-spinner small class="me-2" />
                   Loading recording window
@@ -773,29 +862,42 @@ const audioRecordingSchedule = computed<string>(() => {
                 <div v-else-if="recordingWindow && !records247">
                   {{ recordingWindow }}
 
-                  <div v-if="!shouldBeRecordingNow && recordingWindow" class="text-secondary">
+                  <div
+                    v-if="!shouldBeRecordingNow && recordingWindow"
+                    class="text-secondary"
+                  >
                     <span v-if="scheduledRecordStartTime">
-                      <span v-if="deviceStopped">
-                        Would record
-                      </span>
-                      <span v-else>
-                        Scheduled to record
-                      </span>
+                      <span v-if="deviceStopped"> Would record </span>
+                      <span v-else> Scheduled to record </span>
                       {{
-                        DateTime.fromJSDate(scheduledRecordStartTime).toRelative()
-                      }}</span>
+                        DateTime.fromJSDate(
+                          scheduledRecordStartTime,
+                        ).toRelative()
+                      }}</span
+                    >
                     <span v-if="device.location">
                       for a duration of
-                      {{ minsHoursFromMins(currentRecordingWindowLengthMins) }}</span>
+                      {{
+                        minsHoursFromMins(currentRecordingWindowLengthMins)
+                      }}</span
+                    >
                   </div>
                 </div>
                 <div v-else-if="records247">{{ recordingWindow }}</div>
-                <div v-else class="text-secondary">Recording window unavailable</div>
+                <div v-else class="text-secondary">
+                  Recording window unavailable
+                </div>
               </dd>
             </div>
             <div class="row">
-              <dt class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Audio recording schedule</dt>
-              <dd class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
+              <dt
+                class="col-sm-3 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+              >
+                Audio recording schedule
+              </dt>
+              <dd
+                class="col-sm-9 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
                 {{ audioRecordingSchedule }}
               </dd>
             </div>
@@ -815,31 +917,47 @@ const audioRecordingSchedule = computed<string>(() => {
             <b-spinner small class="me-2" />
             Loading location info
           </div>
-          <div v-else-if="currentLocationForDevice" class="d-flex flex-column flex-sm-row row">
+          <div
+            v-else-if="currentLocationForDevice"
+            class="d-flex flex-column flex-sm-row row"
+          >
             <div class="col col-12 col-sm-6">
               <p class="mt-1 d-flex align-content-center">
                 <location-name :name="currentLocationForDevice.name" />
               </p>
               <dl class="settings-summary container mb-0 mb-sm-3">
                 <div class="row">
-                  <dt class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Latitude</dt>
-                  <dd class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
-                    {{device.location.lat.toFixed(6)}}
+                  <dt
+                    class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+                  >
+                    Latitude
+                  </dt>
+                  <dd
+                    class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+                  >
+                    {{ device.location.lat.toFixed(6) }}
                   </dd>
                 </div>
                 <div class="row">
-                  <dt class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Longitude</dt>
-                  <dd class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
-                    {{device.location.lng.toFixed(6)}}
+                  <dt
+                    class="col-sm-5 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+                  >
+                    Longitude
+                  </dt>
+                  <dd
+                    class="col-sm-7 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+                  >
+                    {{ device.location.lng.toFixed(6) }}
                   </dd>
                 </div>
               </dl>
-              <b-popover
-                v-model="locationCopied"
-                manual
-              >
+              <b-popover v-model="locationCopied" manual>
                 <span class="d-flex">
-                  <material-symbol name="check" size="1.25rem" class="me-2 text-success" />
+                  <material-symbol
+                    name="check"
+                    size="1.25rem"
+                    class="me-2 text-success"
+                  />
                   Copied
                 </span>
                 <template #target>
@@ -848,7 +966,11 @@ const audioRecordingSchedule = computed<string>(() => {
                     class="d-flex"
                     @click="copyLocation"
                   >
-                    <material-symbol name="content_copy" size="1.25rem" class="me-2" />
+                    <material-symbol
+                      name="content_copy"
+                      size="1.25rem"
+                      class="me-2"
+                    />
                     Copy coordinates
                   </b-button>
                 </template>
@@ -864,19 +986,36 @@ const audioRecordingSchedule = computed<string>(() => {
                 :zoom="false"
                 :can-change-base-map="false"
                 :loading="locationInfoLoading"
-                style="min-height: 220px; width: 100%; aspect-ratio: 1" />
+                style="min-height: 220px; width: 100%; aspect-ratio: 1"
+              />
             </div>
           </div>
-          <div v-else class="d-flex flex-fill align-items-center justify-content-center">
+          <div
+            v-else
+            class="d-flex flex-fill align-items-center justify-content-center"
+          >
             <div class="text-secondary text-center">
-              <material-symbol name="not_listed_location" size="2.4rem" grade="thin" class="mb-2"/>
+              <material-symbol
+                name="not_listed_location"
+                size="2.4rem"
+                grade="thin"
+                class="mb-2"
+              />
               <p>Device is not currently at a known location.</p>
             </div>
           </div>
         </div>
-        <div v-else class="d-flex flex-fill align-items-center justify-content-center">
+        <div
+          v-else
+          class="d-flex flex-fill align-items-center justify-content-center"
+        >
           <div class="text-secondary text-center">
-            <material-symbol name="not_listed_location" size="2.4rem" grade="thin" class="mb-2"/>
+            <material-symbol
+              name="not_listed_location"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
             <p>Device does not currently have a known location.</p>
           </div>
         </div>
@@ -885,7 +1024,10 @@ const audioRecordingSchedule = computed<string>(() => {
       <!-- CPTV frame -->
       <div class="bento-box view d-flex flex-column flex-fill">
         <h4 class="h4">Camera view</h4>
-        <div v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)" class="flex-grow-1 d-flex flex-column">
+        <div
+          v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)"
+          class="flex-grow-1 d-flex flex-column"
+        >
           <div v-if="latestStatusRecording">
             <p class="text-secondary">
               Last seen
@@ -897,16 +1039,32 @@ const audioRecordingSchedule = computed<string>(() => {
             </p>
             <cptv-single-frame :recording="latestStatusRecording" />
           </div>
-          <div v-else class="d-flex flex-fill align-items-center justify-content-center">
+          <div
+            v-else
+            class="d-flex flex-fill align-items-center justify-content-center"
+          >
             <div class="text-secondary text-center d-flex flex-column">
-              <material-symbol name="videocam_off" size="2.4rem" grade="thin" class="mb-2"/>
+              <material-symbol
+                name="videocam_off"
+                size="2.4rem"
+                grade="thin"
+                class="mb-2"
+              />
               Camera view not available.
             </div>
           </div>
         </div>
-        <div v-else class="flex-grow-1 d-flex flex-fill align-items-center justify-content-center">
+        <div
+          v-else
+          class="flex-grow-1 d-flex flex-fill align-items-center justify-content-center"
+        >
           <div class="text-secondary text-center d-flex flex-column">
-            <material-symbol name="videocam_off" size="2.4rem" grade="thin" class="mb-2"/>
+            <material-symbol
+              name="videocam_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
             Camera view not available.
           </div>
         </div>
@@ -918,30 +1076,60 @@ const audioRecordingSchedule = computed<string>(() => {
           <h4 class="h4">Battery information</h4>
           <device-battery-level :device="device" />
         </div>
-        <div v-if="batteryInfoIsLoading" class="flex-grow-1 d-flex align-items-center justify-content-center">
+        <div
+          v-if="batteryInfoIsLoading"
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
+        >
           <b-spinner small class="me-2" /> Loading battery info
-        </div >
-        <div v-else-if="hasUnknownPowerSource" class="flex-grow-1 d-flex align-items-center justify-content-center">
+        </div>
+        <div
+          v-else-if="hasUnknownPowerSource"
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
+        >
           <div class="text-secondary text-center d-flex flex-column">
-            <material-symbol name="battery_unknown" size="2.4rem" grade="thin" class="mb-2"/>
+            <material-symbol
+              name="battery_unknown"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
             This device has an unrecognised power source.
           </div>
         </div>
-        <div v-else-if="batteryInfo && batteryInfo.length !== 0" class="flex-grow-1 d-flex flex-column">
+        <div
+          v-else-if="batteryInfo && batteryInfo.length !== 0"
+          class="flex-grow-1 d-flex flex-column"
+        >
           <div class="battery-chart-info">
             <p class="text-secondary">{{ primaryBatteryDataType }}</p>
           </div>
-          <div ref="batteryTimeSeries" class="battery-info-time-series position-relative flex-grow-1">
+          <div
+            ref="batteryTimeSeries"
+            class="battery-info-time-series position-relative flex-grow-1"
+          >
             <!-- Custom tooltip -->
-            <div v-if="tooltipVisible" class="battery-tooltip" :style="{
-            left: tooltipPosition.x + 'px',
-            top: tooltipPosition.y + 'px'
-          }" v-html="tooltipContent"></div>
+            <div
+              v-if="tooltipVisible"
+              class="battery-tooltip"
+              :style="{
+                left: tooltipPosition.x + 'px',
+                top: tooltipPosition.y + 'px',
+              }"
+              v-html="tooltipContent"
+            ></div>
           </div>
         </div>
-        <div v-else class="flex-grow-1 d-flex align-items-center justify-content-center">
+        <div
+          v-else
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
+        >
           <div class="text-secondary text-center d-flex flex-column">
-            <material-symbol name="battery_unknown" size="2.4rem" grade="thin" class="mb-2"/>
+            <material-symbol
+              name="battery_unknown"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
             No battery info available.
           </div>
         </div>
@@ -963,58 +1151,88 @@ const audioRecordingSchedule = computed<string>(() => {
       <div class="bento-box mt-3" ref="software-information">
         <h4 class="h4">Channel</h4>
         <span v-if="nodeGroupInfoLoading">
-        <b-spinner small class="me-2" />
+          <b-spinner small class="me-2" />
           Loading channel info
         </span>
         <span v-else>{{ saltNodeGroup }}</span>
       </div>
 
       <!-- Software info -->
-      <div class="bento-box mt-3" v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)">
+      <div
+        class="bento-box mt-3"
+        v-if="[DeviceType.Thermal, DeviceType.Hybrid].includes(device.type)"
+      >
         <h4 class="h4">Software information</h4>
-        <div v-if="
-        versionInfoLoading || latestVersionInfoLoading || nodeGroupInfoLoading
-      ">
+        <div
+          v-if="
+            versionInfoLoading ||
+            latestVersionInfoLoading ||
+            nodeGroupInfoLoading
+          "
+        >
           <b-spinner small class="me-2" />
           Loading version info
         </div>
-        <card-table v-else-if="versionInfo" compact :items="versionInfoTable" :sort-dimensions="{ package: true }"
-                    default-sort="package">
-          <template #version="{
-          cell: versionInfo,
-        }: {
-          cell: { version: string; latestVersion: string };
-        }">
-          <span v-if="
-            versionInfo.version.replace(/~/g, '-') ===
-            versionInfo.latestVersion
-          ">{{ versionInfo.version }}</span>
-            <span v-else-if="versionInfo.latestVersion !== 'not found'"><span class="outdated-version">{{
-                versionInfo.version }}</span>&nbsp;
-            <em class="latest-version">({{ versionInfo.latestVersion }} is latest)</em></span>
+        <card-table
+          v-else-if="versionInfo"
+          compact
+          :items="versionInfoTable"
+          :sort-dimensions="{ package: true }"
+          default-sort="package"
+        >
+          <template
+            #version="{
+              cell: versionInfo,
+            }: {
+              cell: { version: string; latestVersion: string };
+            }"
+          >
+            <span
+              v-if="
+                versionInfo.version.replace(/~/g, '-') ===
+                versionInfo.latestVersion
+              "
+              >{{ versionInfo.version }}</span
+            >
+            <span v-else-if="versionInfo.latestVersion !== 'not found'"
+              ><span class="outdated-version">{{ versionInfo.version }}</span
+              >&nbsp;
+              <em class="latest-version"
+                >({{ versionInfo.latestVersion }} is latest)</em
+              ></span
+            >
             <span v-else>{{ versionInfo.version }}</span>
           </template>
-          <template #card="{
-          card,
-        }: {
-          card: {
-            package: string;
-            version: { version: string; latestVersion: string };
-          };
-        }">
+          <template
+            #card="{
+              card,
+            }: {
+              card: {
+                package: string;
+                version: { version: string; latestVersion: string };
+              };
+            }"
+          >
             <div class="d-flex justify-content-between">
               <span class="text-capitalize"><strong>Package:</strong></span>
               <span class="text-nowrap">{{ card.package }}</span>
             </div>
             <div class="d-flex justify-content-between">
               <span class="text-capitalize"><strong>Version:</strong></span>
-              <span v-if="
-              card.version.version.replace(/~/g, '-') ===
-              card.version.latestVersion
-            ">{{ card.version.version }}</span>
-              <span v-else-if="card.version.latestVersion !== 'not found'"><span class="outdated-version">{{
-                  card.version.version }}</span>&nbsp;
-              <em class="latest-version">({{ card.version.latestVersion }} is latest)</em></span>
+              <span
+                v-if="
+                  card.version.version.replace(/~/g, '-') ===
+                  card.version.latestVersion
+                "
+                >{{ card.version.version }}</span
+              >
+              <span v-else-if="card.version.latestVersion !== 'not found'"
+                ><span class="outdated-version">{{ card.version.version }}</span
+                >&nbsp;
+                <em class="latest-version"
+                  >({{ card.version.latestVersion }} is latest)</em
+                ></span
+              >
               <span v-else>{{ card.version.version }}</span>
             </div>
           </template>
@@ -1022,11 +1240,18 @@ const audioRecordingSchedule = computed<string>(() => {
         <div v-else>Version info not available.</div>
       </div>
     </div>
-
   </div>
-  <div v-else-if="device && !device.active" class="align-items-center justify-content-center">
+  <div
+    v-else-if="device && !device.active"
+    class="align-items-center justify-content-center"
+  >
     <div class="text-secondary text-center">
-      <material-symbol name="developer_board_off" size="2.4rem" grade="thin" class="mb-2"/>
+      <material-symbol
+        name="developer_board_off"
+        size="2.4rem"
+        grade="thin"
+        class="mb-2"
+      />
       <p>
         This device is not currently active.<br />
         This means that it was either retired, or moved to another project.
@@ -1036,7 +1261,12 @@ const audioRecordingSchedule = computed<string>(() => {
   </div>
   <div v-else class="align-items-center justify-content-center">
     <div class="text-secondary text-center">
-      <material-symbol name="developer_board_off" size="2.4rem" grade="thin" class="mb-2"/>
+      <material-symbol
+        name="developer_board_off"
+        size="2.4rem"
+        grade="thin"
+        class="mb-2"
+      />
       <p>Device not found in project.</p>
     </div>
   </div>
@@ -1085,7 +1315,6 @@ const audioRecordingSchedule = computed<string>(() => {
     }
   }
 }
-
 
 .settings-summary {
   @media (min-width: @breakpoint-xs-max) {
@@ -1144,7 +1373,7 @@ const audioRecordingSchedule = computed<string>(() => {
   white-space: nowrap;
 
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 100%;
     left: 50%;
@@ -1165,7 +1394,7 @@ const audioRecordingSchedule = computed<string>(() => {
 </style>
 <style lang="less">
 .popover {
-   &.popover-wide {
+  &.popover-wide {
     width: 320px;
     min-width: 320px;
   }

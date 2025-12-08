@@ -4,8 +4,8 @@ import type { ApiMaskRegionsData } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { LoadedResource } from "@apiClient/types.ts";
-import {BNav, BNavItem, BSpinner} from "bootstrap-vue-next";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { BNav, BNavItem, BSpinner } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 const route = useRoute();
 
 const emit = defineEmits<{
@@ -81,20 +81,14 @@ const loading = computed<boolean>(() => {
   </div>
   <div v-else>
     <div class="row d-flex flex-fill flex-column flex-lg-row">
-      <div
-        class="col col-12 col-lg-3 mt-3"
-      >
-        <b-nav
-          pills
-          vertical
-          class="nav-device-config"
-        >
+      <div class="col col-12 col-lg-3 mt-3">
+        <b-nav pills vertical class="nav-device-config">
           <b-nav-item
             :to="{ name: 'recording-options' }"
             :active="activeTabPath.includes('recording-options')"
           >
             <span class="d-flex">
-              <material-symbol name="tune" class="me-2"/>
+              <material-symbol name="tune" class="me-2" />
               Recording options
             </span>
           </b-nav-item>
@@ -103,7 +97,7 @@ const loading = computed<boolean>(() => {
             :active="activeTabPath.includes('reference-photo')"
           >
             <span class="d-flex">
-              <material-symbol name="compare" class="me-2"/>
+              <material-symbol name="compare" class="me-2" />
               Reference photo
             </span>
           </b-nav-item>
@@ -112,7 +106,7 @@ const loading = computed<boolean>(() => {
             :active="activeTabPath.includes('define-masking')"
           >
             <span class="d-flex">
-              <material-symbol name="polyline" class="me-2"/>
+              <material-symbol name="polyline" class="me-2" />
               Mask regions
             </span>
           </b-nav-item>
@@ -134,10 +128,18 @@ const loading = computed<boolean>(() => {
     padding-bottom: var(--cp-spacing-sm);
     margin-bottom: var(--cp-spacing-xxs);
     &:hover {
-      background-color: color-mix(in oklch, var(--cp-color-primary), transparent 95%);
+      background-color: color-mix(
+        in oklch,
+        var(--cp-color-primary),
+        transparent 95%
+      );
     }
     &.active {
-      background-color: color-mix(in oklch, var(--cp-color-primary), transparent 85%);
+      background-color: color-mix(
+        in oklch,
+        var(--cp-color-primary),
+        transparent 85%
+      );
       color: var(--cp-color-green-800);
     }
   }

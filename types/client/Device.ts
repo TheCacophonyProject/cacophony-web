@@ -25,7 +25,7 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { type CacophonyApiClient, optionalQueryString, unwrapLoadedResource } from "./api";
 import {
-    BatteryInfo,
+    type BatteryInfo,
     type BatteryInfoEvent,
     DEFAULT_AUTH_ID,
     type FetchResult,

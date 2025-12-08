@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, type ComputedRef, inject, ref, watch } from "vue";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
 import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
@@ -52,7 +52,10 @@ const removingLabelInProgress = ref<boolean>(false);
 const addLabel = async (label: string) => {
   if (props.recording) {
     addingLabelInProgress.value = true;
-    const addLabelResponse = await ClientApi.Recordings.addRecordingLabel(props.recording.id, label);
+    const addLabelResponse = await ClientApi.Recordings.addRecordingLabel(
+      props.recording.id,
+      label,
+    );
     if (addLabelResponse.success) {
       // Emit tag change event, patch upstream recording.
       if (CurrentUser.value) {
@@ -77,10 +80,11 @@ const removeLabel = async (label: string) => {
     );
     if (labelToRemove) {
       removingLabelInProgress.value = true;
-      const removeLabelResponse = await ClientApi.Recordings.removeRecordingLabel(
-        props.recording.id,
-        labelToRemove.id,
-      );
+      const removeLabelResponse =
+        await ClientApi.Recordings.removeRecordingLabel(
+          props.recording.id,
+          labelToRemove.id,
+        );
       if (removeLabelResponse.success) {
         emit("removed-recording-label", labelToRemove.id);
       }

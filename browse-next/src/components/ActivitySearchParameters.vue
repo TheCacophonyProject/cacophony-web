@@ -19,8 +19,11 @@ import {
   userProjects,
 } from "@models/provides.ts";
 import type { SelectedProject } from "@models/LoggedInUser.ts";
-import type { LoadedResource } from "@api/types.ts";
-import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
+import type { LoadedResource } from "@apiClient/types.ts";
+import type {
+  ApiGroupResponse as ApiProjectResponse,
+  RecordingLabel,
+} from "@typedefs/api/group";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import { canonicalLatLngForLocations } from "@/helpers/Location.ts";
@@ -327,15 +330,13 @@ watch(
       combinedDateRange.value[1] > maxDateForProject.value
     ) {
       console.warn("Should adjust range");
-      selectedDateRange.value = commonDateRanges.value[0];
+      selectedDateRange.value = commonDateRanges.value[0] as DateRangeOption;
       customDateRange.value = null;
     }
   },
 );
 
-const commonDateRanges = computed<
-  { value: [Date, Date] | "custom"; label: string; urlLabel: string }[]
->(() => {
+const commonDateRanges = computed<DateRangeOption[]>(() => {
   const earliest = minDateForProject.value;
   const latest = maxDateForProject.value;
   const ranges = [];
@@ -569,7 +570,10 @@ const getCurrentQuery = (): LocationQuery => {
     "no-false-positives":
       (!showFilteredFalsePositivesAndNones.value).toString(),
   };
-  if ([TagMode.Tagged, TagMode.NoHuman].includes(tagMode.value) && !selectedTags.value.includes("any")) {
+  if (
+    [TagMode.Tagged, TagMode.NoHuman].includes(tagMode.value) &&
+    !selectedTags.value.includes("any")
+  ) {
     query["tagged-with"] = selectedTags.value.join(",");
   } else {
     if (tagMode.value === TagMode.Tagged) {
@@ -682,7 +686,11 @@ const arrayContentsAreTheSame = (
   return true;
 };
 
-const updateTagsRoute = async (next: string[], prev: string[] | undefined, force: boolean = false) => {
+const updateTagsRoute = async (
+  next: string[],
+  prev: string[] | undefined,
+  force: boolean = false,
+) => {
   if (force || !arrayContentsAreTheSame(prev || [], next)) {
     const query = getCurrentQuery();
     await router.replace({
@@ -863,13 +871,16 @@ onBeforeMount(() => {
     }
   });
 
-  watchUntaggedByHumanOnly.value = watch(showUntaggedByHumanOnly, (next: boolean) => {
-    if (next) {
-      tagMode.value = TagMode.NoHuman;
-    } else {
-      tagMode.value = TagMode.Any;
-    }
-  });
+  watchUntaggedByHumanOnly.value = watch(
+    showUntaggedByHumanOnly,
+    (next: boolean) => {
+      if (next) {
+        tagMode.value = TagMode.NoHuman;
+      } else {
+        tagMode.value = TagMode.Any;
+      }
+    },
+  );
 
   watchSelectedTags.value = watch(
     selectedTags,
@@ -1112,11 +1123,17 @@ const scrolledToStickyPosition = computed<boolean>(() => {
     "
   >
     <div class="mt-2">
-      <b-form-checkbox v-model="showUntaggedOnly" switch :disabled="showUntaggedByHumanOnly"
+      <b-form-checkbox
+        v-model="showUntaggedOnly"
+        switch
+        :disabled="showUntaggedByHumanOnly"
         >Untagged only</b-form-checkbox
       >
-      <b-form-checkbox v-model="showUntaggedByHumanOnly" switch :disabled="showUntaggedOnly"
-      >Untagged <em>by humans</em> only</b-form-checkbox
+      <b-form-checkbox
+        v-model="showUntaggedByHumanOnly"
+        switch
+        :disabled="showUntaggedOnly"
+        >Untagged <em>by humans</em> only</b-form-checkbox
       >
       <div class="mt-2">
         <hierarchical-tag-select
