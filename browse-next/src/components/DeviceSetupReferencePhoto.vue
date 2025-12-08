@@ -103,11 +103,13 @@ const editExistingReferenceImage = async () => {
     try {
       await nextTick();
       editingReferenceImage.value = true;
+      await nextTick();
       const resp = await fetch(latestReferenceImageURL.value);
       const blob = await resp.blob();
       referenceImage.value = await createImageBitmap(blob);
-      positionHandles();
+      await nextTick();
       renderSkewedImage();
+      positionHandles();
     } catch (e) {
       console.error("Failed to load existing reference image to edit:", e);
     }
@@ -118,12 +120,13 @@ const onSelectReferenceImage = async (event: Event) => {
   if (event && event.target && (event.target as HTMLInputElement).files) {
     await nextTick();
     editingReferenceImage.value = true;
+    await nextTick();
     const files = (event.target as HTMLInputElement).files as FileList;
     const file = files[0];
     referenceImage.value = await createImageBitmap(file);
-    positionHandles();
-    renderSkewedImage();
     await nextTick();
+    renderSkewedImage();
+    positionHandles();
   }
 };
 
@@ -881,7 +884,7 @@ const helpInfo = ref(true);
                   class="position-absolute"
                   @loaded="handleSingleFrameLoaded"
                 />
-                <div class="reveal-slider position-absolute" ref="revealSlider">
+                <div class="reveal-slider position-absolute top-0 bottom-0 left-0 right-0" ref="revealSlider"">
                   <img
                     alt="Current device point-of-view reference photo"
                     :src="latestReferenceImageURL"
@@ -923,8 +926,7 @@ const helpInfo = ref(true);
     width: 100%;
     aspect-ratio: auto 4/3;
     img {
-      width: 640px;
-      height: 480px;
+      height: 100%;
       aspect-ratio: auto 4/3;
     }
   }
@@ -935,7 +937,7 @@ const helpInfo = ref(true);
     width: calc(100svw - 56px);
     aspect-ratio: auto 4/3;
     img {
-      width: 100svw;
+      height: 100%;
       aspect-ratio: auto 4/3;
     }
   }
