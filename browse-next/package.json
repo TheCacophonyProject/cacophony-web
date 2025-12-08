@@ -29,11 +29,11 @@
     "luxon": "^3.3.0",
     "material-symbols": "^0.39.2",
     "scale-color-perceptual": "^1.1.2",
+    "spectastiq": "github:hardiesoft/spectastiq#v0.10.0",
     "suncalc": "^1.9.0",
     "tz-lookup-oss": "^6.3.0",
     "vue": "^3.5.25",
-    "vue-router": "^4.6.3",
-    "spectastiq": "github:hardiesoft/spectastiq#v0.10.0"
+    "vue-router": "^4.6.3"
   },
   "devDependencies": {
     "@eslint/compat": "^2.0.0",
@@ -41,6 +41,7 @@
     "@stylistic/eslint-plugin": "^5.6.1",
     "@types/leaflet": "^1.9.21",
     "@types/luxon": "^3.7.1",
+    "@types/node": "^24.10.1",
     "@types/suncalc": "^1.9.2",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
@@ -49,8 +50,8 @@
     "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/tsconfig": "^0.8.1",
     "eslint": "^9.39.1",
-    "eslint-plugin-vue": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^9.33.0",
     "globals": "^16.5.0",
     "less": "^4.4.2",
     "prettier": "^3.7.3",

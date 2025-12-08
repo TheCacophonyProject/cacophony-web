@@ -128,6 +128,7 @@
 </template>
 
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { computed, isProxy, onBeforeMount, reactive, ref, toRaw } from "vue";
 import type {
   CardTableRow,

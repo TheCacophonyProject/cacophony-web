@@ -10,12 +10,12 @@ import {
 import vue from "@vitejs/plugin-vue";
 import eslintPlugin from "vite-plugin-eslint";
 import Components from "unplugin-vue-components/vite";
-import { BootstrapVueNextResolver } from "unplugin-vue-components/resolvers";
-import http from "node:http";
+import { BootstrapVueNextResolver } from "bootstrap-vue-next";
+import { IncomingMessage, ServerResponse } from "node:http";
 
 function crossOriginIsolationMiddleware(
-  _: http.IncomingMessage,
-  response: http.ServerResponse,
+  _: IncomingMessage,
+  response: ServerResponse,
   next: Connect.NextFunction,
 ) {
   // Was this to allow wasm threads?  It kills maps locally...

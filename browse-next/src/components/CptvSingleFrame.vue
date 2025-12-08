@@ -194,21 +194,10 @@ watch(
 </script>
 
 <style scoped lang="less">
-@media screen and (min-width: 640px) {
-  .single-frame-cptv-container {
-    width: 100%;
-    height: auto;
-    min-width: 640px;
-    aspect-ratio: auto 4/3;
-  }
-}
-
-@media screen and (max-width: 639px) {
-  .single-frame-cptv-container {
-    width: 100svw;
-    height: auto;
-    aspect-ratio: auto 4/3;
-  }
+.single-frame-cptv-container {
+  width: 100%;
+  height: auto;
+  aspect-ratio: auto 4/3;
 }
 
 .single-frame-cptv-container {

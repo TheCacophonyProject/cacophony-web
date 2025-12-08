@@ -8,7 +8,7 @@
       "src/**/*.d.ts",
   ],
   "compilerOptions": {
-    "lib": ["ESNext", "dom", "dom.iterable"],
+    "lib": ["esnext", "dom", "dom.iterable"],
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],

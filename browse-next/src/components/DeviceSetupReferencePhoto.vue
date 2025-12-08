@@ -53,6 +53,7 @@ const emit = defineEmits<{
   (e: "updated-reference-image"): void;
 }>();
 
+// TODO: The whole skew thing might be much simpler with a webgl quad
 const skewContainer = ref<HTMLDivElement>();
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
@@ -101,13 +102,11 @@ const editExistingReferenceImage = async () => {
     typeof latestReferenceImageURL.value === "string"
   ) {
     try {
-      await nextTick();
       editingReferenceImage.value = true;
       await nextTick();
       const resp = await fetch(latestReferenceImageURL.value);
       const blob = await resp.blob();
       referenceImage.value = await createImageBitmap(blob);
-      await nextTick();
       renderSkewedImage();
       positionHandles();
     } catch (e) {
@@ -377,11 +376,24 @@ watch(singleFrameCanvasWidth, () => {
         .parentElement as HTMLDivElement
     ).getBoundingClientRect();
 
-    const sfLeft = singleFrameBounds.left - singleFrameParentBounds.left;
-    const sfTop = singleFrameBounds.top - singleFrameParentBounds.top;
-    const sfRight = sfLeft + singleFrameBounds.width;
-    const sfBottom = sfTop + singleFrameBounds.height;
+    const sfLeft =
+      (singleFrameBounds.left - singleFrameParentBounds.left) /
+      singleFrameParentBounds.width;
+    const sfTop =
+      (singleFrameBounds.top - singleFrameParentBounds.top) /
+      singleFrameParentBounds.height;
+    const sfRight =
+      (singleFrameBounds.left -
+        singleFrameParentBounds.left +
+        singleFrameBounds.width) /
+      singleFrameParentBounds.width;
+    const sfBottom =
+      (singleFrameBounds.top -
+        singleFrameParentBounds.top +
+        singleFrameBounds.height) /
+      singleFrameParentBounds.height;
 
+    // Skew canvas container div
     const parentBounds = (
       handle0.value.parentElement as HTMLDivElement
     ).getBoundingClientRect();
@@ -394,9 +406,9 @@ watch(singleFrameCanvasWidth, () => {
     ]) {
       const h = handle as HTMLDivElement;
       const { left: handleX, top: handleY, width } = h.getBoundingClientRect();
-      const dim = width / 2;
-      let x = handleX - parentBounds.left;
-      let y = handleY - parentBounds.top;
+      const dim = width / 2 / parentBounds.width;
+      let x = (handleX - parentBounds.left) / parentBounds.width;
+      let y = (handleY - parentBounds.top) / parentBounds.height;
 
       if (h === handle0.value) {
         x = Math.min(x, sfLeft - dim);
@@ -411,12 +423,15 @@ watch(singleFrameCanvasWidth, () => {
         x = Math.min(x, sfLeft - dim);
         y = Math.max(y, sfBottom - dim);
       }
-      h.style.left = `${x}px`;
-      h.style.top = `${y}px`;
+      // Maybe make this a percentage?
+      h.style.left = `${x * 100}%`;
+      h.style.top = `${y * 100}%`;
     }
   }
   renderSkewedImage();
 });
+
+// Re-render when the scale slider is moved.
 watch(cptvFrameScale, renderSkewedImage);
 
 const referenceImageIsLandscape = computed<boolean>(() => {
@@ -480,17 +495,16 @@ const moveRevealHandle = (event: PointerEvent) => {
     const target = revealHandle.value;
     const parentBounds = target.parentElement!.getBoundingClientRect();
     const handleBounds = target.getBoundingClientRect();
+    const halfHandleWidth = handleBounds.width / 2;
     const x = Math.min(
-      Math.max(
-        -(handleBounds.width / 2),
-        event.clientX - parentBounds.left - revealGrabOffsetX,
-      ),
-      parentBounds.width - handleBounds.width / 2,
+      event.clientX - parentBounds.left - revealGrabOffsetX,
+      parentBounds.width,
     );
+    const left = (x / parentBounds.width) * 100;
     if (revealSlider.value) {
-      revealSlider.value.style.width = `${x + handleBounds.width / 2}px`;
+      revealSlider.value.style.width = `${left}%`;
     }
-    target.style.left = `${x}px`;
+    target.style.left = `calc(${left}% - ${halfHandleWidth}px)`;
   }
 };
 
