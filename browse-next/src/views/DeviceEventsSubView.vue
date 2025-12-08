@@ -293,17 +293,28 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
                 </div>
               </div>
               <span v-else>
-                <span v-if="key === 'alarm-time'">{{
-                  DateTime.fromJSDate(
-                    new Date(val / 1000 / 1000),
-                  ).toLocaleString({
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "numeric",
-                  })
-                }}</span>
+                <span v-if="key === 'alarm-time'"
+                  >{{
+                    DateTime.fromJSDate(
+                      new Date(val / 1000 / 1000),
+                    ).toLocaleString({
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
+                    })
+                  }}
+                  (in
+                  {{
+                    Math.round(
+                      DateTime.fromJSDate(new Date(val / 1000 / 1000)).diff(
+                        DateTime.fromISO(event.dateTime),
+                        "minutes",
+                      ).minutes,
+                    )
+                  }}mins)</span
+                >
                 <span v-else>{{ val }}</span>
               </span>
             </div>
